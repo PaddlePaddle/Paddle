@@ -314,8 +314,8 @@ static utils::Attribute ConvertArrayAttribute(
         CASE_ATTRIBUTE(float, FloatAttribute)
       } else if (attr_vec[0].isa<::pir::DoubleAttribute>()) {
         CASE_ATTRIBUTE(double, DoubleAttribute)
-      } else if (attr_vec[0].isa<::pir::StringAttribute>()) {
-        CASE_ATTRIBUTE(std::string, StringAttribute)
+      } else if (attr_vec[0].isa<::pir::StrAttribute>()) {
+        CASE_ATTRIBUTE(std::string, StrAttribute)
       } else {
         LOG(FATAL)
             << "only support bool/int32/int64/float/double/string attribute in "
