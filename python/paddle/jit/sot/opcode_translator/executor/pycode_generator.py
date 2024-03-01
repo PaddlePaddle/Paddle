@@ -149,7 +149,7 @@ def gen_new_opcode(
     else:
         code_options["co_lnotab"] = linetable
     code_options["co_code"] = bytecode
-    breakpoint()
+    # breakpoint()
     code_options["co_nlocals"] = len(code_options["co_varnames"])
     code_options["co_stacksize"] = stacksize(instrs)
     if sys.version_info >= (3, 11):
@@ -159,7 +159,7 @@ def gen_new_opcode(
         if isinstance(val, list):
             code_options[key] = tuple(val)
 
-    breakpoint()
+    # breakpoint()
     # code_options is a dict, use keys to make sure the input order
     return types.CodeType(*[code_options[k] for k in keys])
 
@@ -195,7 +195,7 @@ def assemble(
         for _ in range(get_instruction_size(instr) // 2 - 1):
             code.extend((0, 0))
 
-    breakpoint()
+    # breakpoint()
     if sys.version_info >= (3, 11):
         # End hook for Python 3.11
         linetable.extend(calc_linetable(None, len(code)))
@@ -538,19 +538,46 @@ class PyCodeGen:
             hook()
         self.hooks.clear()
 
-        breakpoint()
+        # breakpoint()
         self.insert_prefix_instructions()
-        breakpoint()
+        # breakpoint()
         apply_instr_pass(self._instructions, self._code_options)
-        breakpoint()
+        # breakpoint()
         modify_instrs(self._instructions)
-        breakpoint()
+        # breakpoint()
         modify_vars(self._instructions, self._code_options)
-        breakpoint()
+        """
+        (Pdb) self.pprint()
+             0 RESUME                        0
+             2 LOAD_FAST                     2   (object_165)
+        >>   4 FOR_ITER                      37  (76)
+             6 STORE_FAST                    0   (i)
+
+7            8 LOAD_GLOBAL                   0   (sot)
+            20 LOAD_ATTR                     1   (psdb)
+            30 LOAD_METHOD                   2   (breakgraph)
+            52 PRECALL                       0
+            56 CALL                          0
+            66 POP_TOP
+
+8           68 LOAD_FAST                     0   (i)
+            70 STORE_FAST                    1   (zzz)
+            72 JUMP_FORWARD                  1   (6)
+            74 JUMP_FORWARD                  2
+            76 NOP
+            78 JUMP_BACKWARD                 38
+            80 NOP
+            82 LOAD_FAST                     0   (i)
+            84 LOAD_FAST                     1   (zzz)
+            86 LOAD_FAST                     2   (object_165)
+            88 BUILD_TUPLE                   3   (3)
+            90 RETURN_VALUE
+        """
+        # breakpoint()
         new_code = gen_new_opcode(
             self._instructions, self._code_options, PYCODE_ATTRIBUTES
         )
-
+        # breakpoint()
         return new_code
 
     @cached_property

@@ -2142,9 +2142,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         nop = self._graph.pycode_gen.add_instr("NOP")
 
-        for_iter.jump_to = nop
+        for_iter.jump_to = end_for
         jump_if_break.jump_to = nop
-        breakpoint()
 
         # 9. prepare inputs and call after_loop_fn
         if after_loop_fn is not None:
@@ -2219,23 +2218,22 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 )
 
                 end_for = pycode_gen.add_instr("END_FOR")
-                nop_for_break = pycode_gen.gen_pop_top()
+                nop_for_break = pycode_gen.add_instr("NOP")
 
                 # 2.4. relocate jumps
                 for instr in pycode_gen._instructions:
-                    # 这里会如果跳转到 END_FOR 会跑两次 pop, 所以这里应该是跳到 END_FOR 的下一个字节码 NOP
                     if instr.jump_to == for_iter_instr:
-                        instr.jump_to = nop_for_break
+                        instr.jump_to = nop_for_continue
 
                     if (
-                        sys.version_info < (3, 12)
+                        instr.opname != "FOR_ITER"
                         and instr.jump_to in origin_instrs
                         and origin_instrs.index(instr.jump_to) >= end_idx
                     ):
-                        breakpoint()
                         instr.jump_to = nop_for_break
 
                 jump.jump_to = for_iter_instr
+                for_iter_instr.jump_to = end_for
             else:
                 """
                         >>    6 FOR_ITER                34 (to 76)
@@ -2353,24 +2351,27 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
                         8          70 LOAD_FAST                0 (i)
                                     72 STORE_FAST               1 (zzz)
-                                    74 JUMP_BACKWARD           35 (to 6) 一次改这个跳到82
+                                    74 JUMP_BACKWARD           35 (to 6) 一次改这个跳到78
                                     76 JUMP_FORWARD             1 (to out_loop_instr)
                                     78 NOP
-                                    80 JUMP_BACKWARD           35 (to 6) 一次改这个跳到82
+                                    80 JUMP_BACKWARD           35 (to 6) 一次改这个跳到78
                                     82 NOP
                         """
+                        # 为了修改为 JUMP_BACKWARD 跳回 FOR_ITER
                         instr.jump_to = nop_for_continue
 
                     if (
                         instr.jump_to in origin_instrs
                         and origin_instrs.index(instr.jump_to) >= end_idx
                     ):
+                        # 将 FOR_ITER 和 跳出循环的字节码到全部跳到 82 行的 NOP
                         instr.jump_to = nop_for_break
 
+                # 这里会把80行的 JUMP_BACKWARD 改回跳到 FOR_ITER
                 jump.jump_to = for_iter_instr
 
             pycode_gen.set_function_outputs(output_var_names)
-            breakpoint()
+            # breakpoint()
             inline_call_fn = pycode_gen.create_function()
 
             log(
