@@ -68,14 +68,12 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
     const Target &target,
     const std::string &op_name,
     const PeFunc &pe_func) {
-  std::cerr << "static 1111111 \n";
   framework::CINNCompute unary_compute(
       [=](lang::Args args, lang::RetValue *ret) {
         CHECK(!args.empty()) << "The input argument of " << op_name
                              << " compute is empty! Please check.";
         CINNValuePack pack_args = args[0];
 
-        std::cerr << "static 1111111 \n";
         CHECK_GE(pack_args.size(), 1U)
             << "1 input tensor for " << op_name << " compute";
         CHECK_EQ(pack_args.size(), 2U);
@@ -111,14 +109,11 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
     const Target &target,
     const std::string &op_name,
     const PeFunc &pe_func) {
-  std::cerr << "symbolic 1111111 \n";
   framework::CINNCompute unary_compute(
       [=](lang::Args args, lang::RetValue *ret) {
         CHECK(!args.empty()) << "The input argument of " << op_name
                              << " compute is empty! Please check.";
         CINNValuePack pack_args = args[0];
-        std::cerr << "symbolic 1111111 \n";
-        std::cerr << "input " << inputs[0] << std::endl;
         CHECK_GE(pack_args.size(), 1U)
             << "1 input tensor for " << op_name << " compute";
         CHECK_EQ(pack_args.size(), 2U);

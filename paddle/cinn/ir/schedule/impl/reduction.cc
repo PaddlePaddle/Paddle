@@ -166,10 +166,6 @@ Expr StScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
   VLOG(3) << "before FactorizeReduction, original computational body of the "
              "reduction is:\n"
           << original_loops[0];
-  // std::cerr << "last loop is " << original_loops.back() << std::endl;
-  // std::cerr << "cond " <<
-  // original_loops.back().As<For>()->body.As<Block>()->stmts[0].As<IfThenElse>()->condition
-  // << std::endl;
   Expr bound_check(false);
   auto first_st = original_loops.back().As<For>()->body.As<Block>()->stmts[0];
   if (first_st.As<IfThenElse>()) {

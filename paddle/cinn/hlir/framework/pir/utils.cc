@@ -218,8 +218,6 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
 }
 
 bool IsSupportForCinn(const ::pir::Operation& op) {
-  // if (!AllInputDenseTensor(op) || HaveZeroDimInput(op) || UnimplementOps(op))
-  // {
   if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
     VLOG(4) << "Found " << op.name()
             << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
