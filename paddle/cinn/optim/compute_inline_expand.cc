@@ -187,7 +187,7 @@ struct SSANode : public cinn::common::GraphNode {
   static constexpr char *__type_info__ = "optim::SSANode";
 };
 
-// TODO(Superjomn) the graph here is not a SSA now, it is flattern for the
+// TODO(Superjomn) the graph here is not a SSA now, it is flatten for the
 // ir::CollectIRNodes method collects all the tensors recursively, so it can not
 // reserve the level information, fix it.
 struct SSABuilder : public ir::IRMutator<> {

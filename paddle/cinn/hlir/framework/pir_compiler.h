@@ -28,7 +28,7 @@ namespace hlir {
 namespace framework {
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
-// the co-existance with GraphCompiler.
+// the co-existence with GraphCompiler.
 class PirCompiler final {
  public:
   PirCompiler(const ::pir::Program& prog,

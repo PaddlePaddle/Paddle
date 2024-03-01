@@ -340,7 +340,7 @@ class TestSaveLoadBase(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -357,7 +357,7 @@ class TestSaveLoadBase(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             paddle.static.load(
@@ -480,7 +480,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -497,7 +497,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             paddle.static.load(
@@ -613,7 +613,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -630,7 +630,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             paddle.static.load(
@@ -751,7 +751,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -768,7 +768,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # base.load(test_program, "./test_1", None )
@@ -807,7 +807,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             paddle.static.set_program_state(test_program, program_state_1)
@@ -829,7 +829,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             paddle.static.set_program_state(test_program, program_state_2)
@@ -851,7 +851,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             paddle.static.set_program_state(test_program, program_state_3)
@@ -954,7 +954,7 @@ class TestVariableInit(unittest.TestCase):
                 t = np.array(
                     base.global_scope().find_var(var.name).get_tensor()
                 )
-                # make sure all the paramerter or optimizer var have been update
+                # make sure all the parameter or optimizer var have been update
                 base_map[var.name] = t
 
         for var in program.list_vars():
@@ -1073,7 +1073,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -1091,7 +1091,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             paddle.static.load(
@@ -1214,7 +1214,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -1237,7 +1237,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             paddle.static.load(
@@ -1355,7 +1355,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
             save_dir = os.path.join(temp_dir.name, "test_path")
@@ -1373,7 +1373,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             file_model_path = os.path.join(save_dir, "model_single")
@@ -1556,7 +1556,7 @@ class TestProgramStateOldSave(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
             save_dir = os.path.join(self.temp_dir.name, "test_program_1")
@@ -1571,7 +1571,7 @@ class TestProgramStateOldSave(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # case 1: load basic
@@ -1731,7 +1731,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -1749,7 +1749,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # base.load(test_program, "./test_1", None )
@@ -1816,7 +1816,7 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 

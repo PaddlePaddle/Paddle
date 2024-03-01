@@ -40,9 +40,12 @@ def dynamic_guard():
 
 
 class TestSqrtOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 # The input type of sqrt op must be Variable or numpy.ndarray.
                 in1 = 1
                 self.assertRaises(TypeError, paddle.sqrt, in1)
@@ -370,7 +373,7 @@ class TestParameter:
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             z = eval("paddle.%s(x).numpy()" % self.op_type)
             z_expected = eval("np.%s(np_x)" % self.op_type)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
@@ -643,6 +646,7 @@ class TestSiluAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -890,6 +894,7 @@ class TestTanhAPI(unittest.TestCase):
             for r in [out1, out2, out3]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -963,7 +968,7 @@ class TestAtan(TestActivation, TestParameter):
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             z = paddle.atan(x).numpy()
             z_expected = np.arctan(np_x)
             self.assertEqual(z, z_expected)
@@ -1036,7 +1041,7 @@ class TestSinhAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             z = paddle.sinh(x).numpy()
             z_expected = np.sinh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
@@ -1075,7 +1080,7 @@ class TestSinhAPI(unittest.TestCase):
             input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
                 "float32"
             )
-            var = base.dygraph.to_variable(input_x)
+            var = paddle.to_tensor(input_x)
             var.stop_gradient = False
             loss = paddle.sinh(var)
             loss.backward()
@@ -1168,7 +1173,7 @@ class TestCoshAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             z = paddle.cosh(x).numpy()
             z_expected = np.cosh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
@@ -1206,7 +1211,7 @@ class TestCoshAPI(unittest.TestCase):
             input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
                 "float32"
             )
-            var = base.dygraph.to_variable(input_x)
+            var = paddle.to_tensor(input_x)
             var.stop_gradient = False
             loss = paddle.cosh(var)
             loss.backward()
@@ -2702,22 +2707,24 @@ class TestReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    # The input type must be Variable.
-                    self.assertRaises(TypeError, self.relu, 1)
-                    # The input dtype must be float16, float32, float64.
-                    x_int32 = paddle.static.data(
-                        name='x_int32', shape=[10, 12], dtype='int32'
-                    )
-                    self.assertRaises(TypeError, self.relu, x_int32)
-                    # support the input dtype is float16
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[10, 12], dtype='float16'
-                    )
-                    self.relu(x_fp16)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                # The input type must be Variable.
+                self.assertRaises(TypeError, self.relu, 1)
+                # The input dtype must be float16, float32, float64.
+                x_int32 = paddle.static.data(
+                    name='x_int32', shape=[10, 12], dtype='int32'
+                )
+                self.assertRaises(TypeError, self.relu, x_int32)
+                # support the input dtype is float16
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[10, 12], dtype='float16'
+                )
+                self.relu(x_fp16)
 
 
 class TestReluInplaceAPI(TestReluAPI):
@@ -2846,6 +2853,7 @@ class TestLeakyReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3029,6 +3037,7 @@ class TestGELUAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4067,7 +4076,7 @@ class TestLog1pAPI(unittest.TestCase):
         # dygraph
         with base.dygraph.guard():
             np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
-            data_x = base.dygraph.to_variable(np_x)
+            data_x = paddle.to_tensor(np_x)
             z = paddle.log1p(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log1p(np_x))

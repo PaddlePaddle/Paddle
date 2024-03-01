@@ -265,7 +265,7 @@ TEST_F(CinnGraphSymbolizationTest, scope) {
   ASSERT_EQ(cinn_tensor->type(), ::cinn::common::F32());
 }
 
-TEST_F(CinnGraphSymbolizationTest, sortgraph) {
+TEST_F(CinnGraphSymbolizationTest, sort_graph) {
   auto cinn_op_descs = test_->TransformAllGraphOpToCinn();
   ASSERT_FALSE(cinn_op_descs.empty());
   std::vector<std::string> sort_names;
@@ -276,7 +276,7 @@ TEST_F(CinnGraphSymbolizationTest, sortgraph) {
             std::vector<std::string>({"feed", "feed", "mul", "add", "relu"}));
 }
 
-TEST_F(CinnGraphSymbolizationTest, runop) {
+TEST_F(CinnGraphSymbolizationTest, run_op) {
   auto cinn_op_descs = test_->TransformAllGraphOpToCinn();
   auto feed_map = test_->GetFeedInfoMapFromInput();
 

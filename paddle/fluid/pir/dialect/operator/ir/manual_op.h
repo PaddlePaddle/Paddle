@@ -90,29 +90,6 @@ class AddN_Op : public pir::Op<AddN_Op,
       const pir::AttributeMap &attributes);
 };
 
-class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
-                                        paddle::dialect::OpYamlInfoInterface,
-                                        paddle::dialect::InferMetaInterface> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd_op.add_n_with_kernel"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  static OpInfoTuple GetOpInfo();
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value inputs_);
-
-  void VerifySig();
-  pir::Value inputs() { return operand_source(0); }
-  pir::Value out() { return result(0); }
-
-  static void InferMeta(phi::InferMetaContext *infer_meta);
-  static std::vector<pir::Type> InferMeta(
-      const std::vector<pir::Value> &input_values,
-      const pir::AttributeMap &attributes);
-};
-
 class AddNArrayOp : public pir::Op<AddNArrayOp,
                                    paddle::dialect::OpYamlInfoInterface,
                                    paddle::dialect::InferMetaInterface> {
@@ -818,7 +795,6 @@ class ArrayPopOp : public pir::Op<ArrayPopOp,
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssignOut_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)

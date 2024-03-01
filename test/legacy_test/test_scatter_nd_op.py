@@ -29,16 +29,16 @@ def numpy_scatter_nd(ref, index, updates, fun):
     index_shape = index.shape
 
     end_size = index_shape[-1]
-    remain_numl = 1
+    remain_numel = 1
     for i in range(len(index_shape) - 1):
-        remain_numl *= index_shape[i]
+        remain_numel *= index_shape[i]
 
     slice_size = 1
     for i in range(end_size, len(ref_shape)):
         slice_size *= ref_shape[i]
 
-    flat_index = index.reshape([remain_numl] + list(index_shape[-1:]))
-    flat_updates = updates.reshape((remain_numl, slice_size))
+    flat_index = index.reshape([remain_numel] + list(index_shape[-1:]))
+    flat_updates = updates.reshape((remain_numel, slice_size))
     flat_output = ref.reshape(list(ref_shape[:end_size]) + [slice_size])
 
     for i_up, i_out in enumerate(flat_index):

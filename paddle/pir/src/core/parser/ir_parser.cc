@@ -18,9 +18,9 @@
 
 namespace pir {
 IrParser::IrParser(IrContext* ctx, std::istream& is) {
-  lexer.reset(new Lexer{is});
+  lexer = std::make_unique<Lexer>(is);
   this->ctx = ctx;
-  builder.reset(new Builder{ctx});
+  builder = std::make_unique<Builder>(ctx);
 }
 
 Token IrParser::ConsumeToken() { return lexer->ConsumeToken(); }
@@ -116,7 +116,7 @@ Type IrParser::ParseType() {
 // Attribute := BuiltinAttribute | OtherDialectsDefineAttribute
 // BuiltinAttribute := Bool | String | Float | Double | Int32 |
 //                  := | Int64 | Pointer | ArrayAttribute
-// ArrayAttribute   := '[' Atribute(,Attribute)* ']'
+// ArrayAttribute   := '[' Attribute(,Attribute)* ']'
 Attribute IrParser::ParseAttribute() {
   auto parenthesis_token = ConsumeToken();
   if (parenthesis_token.val_ == "true" || parenthesis_token.val_ == "false") {
@@ -204,7 +204,7 @@ void IrParser::ParseBlock(Block& block) {  // NOLINT
   ConsumeAToken("}");
 }
 
-// Operation := ValueList ":=" Opname "(" OprandList ? ")" AttributeMap ":"
+// Operation := ValueList ":=" Opname "(" OperandList ? ")" AttributeMap ":"
 // FunctionType
 // FunctionType := "(" TypeList ")"  "->" TypeList
 Operation* IrParser::ParseOperation() {
@@ -263,7 +263,7 @@ OpInfo IrParser::ParseOpInfo() {
   return ctx->GetRegisteredOpInfo(opname);
 }
 
-// OprandList := ValueList
+// OperandList := ValueList
 // ValueList := ValueId(,ValueId)*
 std::vector<Value> IrParser::ParseOperandList() {
   ConsumeAToken("(");

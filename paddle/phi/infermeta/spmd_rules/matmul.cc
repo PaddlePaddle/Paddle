@@ -157,7 +157,7 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   std::string out_axes;
   FillMatmulOperandNotation(x_ndim, y_ndim, &x_axes, &y_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   if (trans_x) {
     PADDLE_ENFORCE_GE(x_ndim,
                       2,
@@ -251,7 +251,7 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
   std::string out_axes;
   FillMatmulOperandNotation(x_ndim, y_ndim, &x_axes, &y_axes, &out_axes);
 
-  // step2: Sharding Propogation
+  // step2: Sharding Propagation
   // should not use input dims mapping for backward sharding merge
   auto axis_to_dim_map =
       ShardingMergeForTensors({{out_axes, out_dims_mapping}}, false);

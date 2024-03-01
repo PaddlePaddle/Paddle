@@ -20,7 +20,7 @@ set(LAPACK_DOWNLOAD_DIR
 set(LAPACK_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lapack)
 set(LAPACK_LIB_DIR ${LAPACK_INSTALL_DIR}/lib)
 
-# Note(zhouwei): lapack need fortan compiler which many machines don't have, so use precompiled library.
+# Note(zhouwei): lapack need fortran compiler which many machines don't have, so use precompiled library.
 # use lapack tag v3.10.0 on 06/28/2021 https://github.com/Reference-LAPACK/lapack
 if(LINUX)
   set(LAPACK_FILE

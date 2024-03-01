@@ -22,7 +22,7 @@ class RandomRoutingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Prob"), "Input", "Porb", "RandomRouting");
+    OP_INOUT_CHECK(ctx->HasInput("Prob"), "Input", "Prob", "RandomRouting");
     OP_INOUT_CHECK(
         ctx->HasInput("TopK_Value"), "Input", "TopKValue", "RandomRouting");
     OP_INOUT_CHECK(
