@@ -30,12 +30,19 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
   dev_ctx.template Alloc<T>(out);
   int r = 0;
+  DenseTensor wmaxptr;
+  wmaxptr.Resize({6});
+  dev_ctx.template Alloc<float>(&wmaxptr);
+  r = baidu::xpu::api::constant(xpu_ctx->x_context(), wmaxptr.data<float>(), 6, 1.f);
+  PD_CHECK(r == 0, "constant");
   switch (x.dtype()) {
     case phi::DataType::FLOAT16: {
       using XPUType = typename XPUTypeTrait<phi::dtype::float16>::Type;
       int n = weight.dims()[0];
       int k = weight.dims()[1];
       int m = x.numel() / k;
+      std::cout << "x: " << m << ", " << k << std::endl;
+      std::cout << "w: " << n << ", " << k << std::endl;
       auto& output = *out;
       DenseTensor bias_fp32;
       if (bias.is_initialized() &&
@@ -61,7 +68,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             false,
             true,
             nullptr,
-            nullptr,
+            wmaxptr.data<float>(),
             nullptr,
             k,
             k,
@@ -90,7 +97,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                 false,
                 true,
                 nullptr,
-                nullptr,
+                wmaxptr.data<float>(),
                 nullptr,
                 k,
                 k,
