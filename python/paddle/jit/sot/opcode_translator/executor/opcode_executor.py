@@ -1570,6 +1570,10 @@ class OpcodeExecutorBase:
         else:
             raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
 
+    def END_FOR(self, instr):
+        self.POP_TOP(instr)
+        self.POP_TOP(instr)
+
 
 class OpcodeExecutor(OpcodeExecutorBase):
     """

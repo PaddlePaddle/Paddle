@@ -258,7 +258,6 @@ class TestEnumerateCache(TestCaseBase):
         x = [
             paddle.randn([5, 10]),
         ]
-
         out = symbolic_translate(for_enumerate_cache)(func_list, x)
         out = symbolic_translate(for_enumerate_cache)(func_list, x)
         self.assert_nest_match(OpcodeExecutorCache().translate_count, 1)

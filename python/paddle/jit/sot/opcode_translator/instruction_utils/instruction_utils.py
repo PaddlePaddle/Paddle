@@ -341,9 +341,7 @@ def modify_vars(instructions: list[Instruction], code_options):
         elif instrs.opname == "FOR_ITER":
             # breakpoint()
             if sys.version_info >= (3, 12):
-                # assert isinstance(instrs.jump_to, Instruction)
                 assert instrs.arg is not None
-                # instrs.argval = instrs.jump_to.offset
                 instrs.arg -= 1
 
 
