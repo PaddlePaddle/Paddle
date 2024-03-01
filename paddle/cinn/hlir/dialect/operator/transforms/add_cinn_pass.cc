@@ -89,8 +89,8 @@ void ApplyCinnPreprocessPass(
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
   pass_manager->AddPass(
       cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
-  pass_manager->AddPass(
-      std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
+  // pass_manager->AddPass(
+  //     std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   if (has_dynamic_shape) {

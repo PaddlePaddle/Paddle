@@ -52,11 +52,9 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.multiply", "elementwise_mul"},
     {"pd_op.maximum", "max"},
     {"pd_op.minimum", "min"},
-    {"pd_op.reshape", "reshape"},
     {"pd_op.squeeze", "reshape"},
     {"pd_op.unsqueeze", "reshape"},
     {"pd_op.split_with_num", "split"},
-    // {"pd_op.expand", "broadcast_to"},
     {"cinn_op.generate_shape", "generate_shape"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
@@ -84,12 +82,25 @@ class OpTransInfo {
   DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
-  std::unordered_set<std::string> default_deny_ops_{
-      "feed",   "fetch",       "conv2d",    "conv2d_grad",      "dropout",
-      "slice",  "concat",      "gather_nd", "pool2d",           "split",
-      "matmul", "matmul_grad", "transpose", "embedding_grad",   "embedding",
-      "gather", "arange",      "pool3d",    "depthwise_conv2d",
-  };
+  std::unordered_set<std::string> default_deny_ops_{"feed",
+                                                    "fetch",
+                                                    "conv2d",
+                                                    "conv2d_grad",
+                                                    "dropout",
+                                                    "slice",
+                                                    "concat",
+                                                    "gather_nd",
+                                                    "pool2d",
+                                                    "split",
+                                                    "matmul",
+                                                    "matmul_grad",
+                                                    "transpose",
+                                                    "embedding_grad",
+                                                    "embedding",
+                                                    "gather",
+                                                    "arange",
+                                                    "pool3d",
+                                                    "depthwise_conv2d"};
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,

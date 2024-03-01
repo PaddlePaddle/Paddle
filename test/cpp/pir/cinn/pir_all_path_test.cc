@@ -706,24 +706,57 @@ static void RunAndCheckResult(::pir::Program* program,
 //   RunAndCheckResult(program.get(), 2.0);
 // }
 
+// std::shared_ptr<::pir::Program> BuildSmallSumGroupProgram() {
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+//   auto program = std::make_shared<::pir::Program>(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+//   auto x =
+//       builder
+//           .Build<paddle::dialect::FullOp>(std::vector<int64_t>({10,25,37}),
+//                                           1.0,
+//                                           phi::DataType::FLOAT32,
+//                                           phi::GPUPlace())
+//           .result(0);
+
+//   auto out =
+//       builder
+//           .Build<paddle::dialect::SumOp>(
+//               x, std::vector<int64_t>({0, 1}), paddle::DataType::FLOAT32,
+//               false)
+//           .result(0);
+
+//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+//   return program;
+// }
+
+// TEST(GroupOp, TestBuildSum2Group) {
+//   // Step 1: Construct pir::Program
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   std::shared_ptr<::pir::Program> program = BuildSmallSumGroupProgram();
+
+//   RunAndCheckResult(program.get(), false, 32.0);
+// }
+
 std::shared_ptr<::pir::Program> BuildSmallSumGroupProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-  auto x =
-      builder
-          .Build<paddle::dialect::FullOp>(std::vector<int64_t>({512, 1024}),
-                                          1.0,
-                                          phi::DataType::FLOAT32,
-                                          phi::GPUPlace())
-          .result(0);
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(
+                   std::vector<int64_t>({1, 384, 32, 32}),
+                   1.0,
+                   phi::DataType::FLOAT32,
+                   phi::GPUPlace())
+               .result(0);
 
   auto out =
       builder
           .Build<paddle::dialect::SumOp>(
-              x, std::vector<int64_t>({0}), paddle::DataType::FLOAT32, false)
+              x, std::vector<int64_t>({2, 3}), paddle::DataType::FLOAT32, false)
           .result(0);
 
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);

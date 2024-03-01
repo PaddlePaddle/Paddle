@@ -206,6 +206,8 @@ class ReshapeOpPattern
     auto not_combine_input =
         op->result(0).use_count() == 1 &&
         op->result(0).first_use().owner()->name() == "builtin.combine";
+    std::cerr << "res " << flag << "\t" << full_op << "\t"
+              << (!not_combine_input) << std::endl;
     return flag && full_op && (!not_combine_input);
   }
 
