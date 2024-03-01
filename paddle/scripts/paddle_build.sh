@@ -2464,6 +2464,8 @@ set +x
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
+
+	ut_actual_total_startTime_s=`date +%s`
         card_test "$single_card_tests" 1
 	collect_failed_tests
 
@@ -2551,29 +2553,6 @@ set +x
         echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
-        fi
-
-        for file in `ls $tmp_dir`; do
-            exit_code=0
-            grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
-            if [ $exit_code -ne 0 ]; then
-                failuretest=''
-            else
-                failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
-                failed_test_lists="${failed_test_lists}
-                ${failuretest}"
-                break
-            fi
-        done
-        ut_endTime_s=`date +%s`
-        echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        if [[ "$EXIT_CODE" != "0" ]]; then
-            rm -f $tmp_dir/*
-            echo "Summary Failed Tests... "
-            echo "========================================"
-            echo "The following tests FAILED: "
-            echo "${failuretest}" | sort -u
-            exit 8;
         fi
     fi
 }
