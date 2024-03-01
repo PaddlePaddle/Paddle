@@ -83,6 +83,7 @@ def train_mlp(
     accumulate_grad=False,
     use_main_grad=False,
     test_scaler=False,
+    sharding_use_reduce_avg=False,
 ):
     scaler = None
     scale_loss = 1024
@@ -120,6 +121,9 @@ def train_mlp(
             "sharding_degree": 2,
         }
         strategy.hybrid_configs = hybrid_configs
+        strategy.hybrid_configs[
+            "sharding_configs"
+        ].use_reduce_avg = sharding_use_reduce_avg
 
     fleet.init(is_collective=True, strategy=strategy)
     model = fleet.distributed_model(model)
@@ -249,6 +253,23 @@ def test_stage1_fp16():
         o1_loss_grad_acc = paddle.cast(
             o1_losses_grad_acc[i], dtype='float32'
         ).detach()
+        np.testing.assert_array_equal(o2_loss_grad_acc, o1_loss_grad_acc)
+
+    # nccl reduce_avg test
+    mlp7 = MLP()
+    mlp7.set_state_dict(state_dict)
+    o2_losses_nccl_reduce_avg = train_mlp(
+        mlp6,
+        sharding_stage=1,
+        use_pure_fp16=True,
+        use_main_grad=True,
+        sharding_use_reduce_avg=True,
+    )
+    for i in range(len(o2_losses_nccl_reduce_avg)):
+        o2_losses_nccl_reduce_avg = paddle.cast(
+            o2_losses_nccl_reduce_avg[i], dtype='float32'
+        ).detach()
+        o2_losses = paddle.cast(o2_losses[i], dtype='float32').detach()
         np.testing.assert_array_equal(o2_loss_grad_acc, o1_loss_grad_acc)
 
     return
