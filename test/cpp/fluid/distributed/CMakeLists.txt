@@ -1,9 +1,3 @@
-set(DISTRIBUTE_COMPILE_FLAGS
-    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-)
-if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-  set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-endif()
 set_source_files_properties(
   table_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 paddle_test(table_test SRCS table_test.cc)
