@@ -78,20 +78,8 @@ int64_t Next2Power(int64_t n) {
 std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     const GroupPtr& group) {
   auto master_ops = group->master_ops;
-  std::shared_ptr<cinn::ir::GroupTileInfo> group_tile_info;
-
-  group_tile_info = std::make_shared<cinn::ir::GroupTileInfo>();
-
-  std::stringstream ss;
-  ::pir::IrPrinter printer(ss);
-
-  ss << "group\t" << group->group_id << std::endl;
-  ss << "kind\t" << group->kind() << std::endl;
-
-  for (auto op : group->ops) {
-    printer.PrintOperation(op);
-    ss << "\n";
-  }
+  std::shared_ptr<cinn::ir::GroupTileInfo> group_tile_info =
+      std::make_shared<cinn::ir::GroupTileInfo>();
 
   auto data_dim = group->loop_ranges;
   group_tile_info->data_rank = data_dim.size();
@@ -190,19 +178,19 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   group_tile_info->reduce_numel = reduce_numel;
   group_tile_info->reduce_block = reduce_block;
 
-  std::cerr << "block num " << group_tile_info->block_num << std::endl;
-  std::cerr << "num warp " << warp_num << std::endl;
-  std::cerr << "flatten block " << flatten_block << std::endl;
-  std::cerr << "reduce block  " << reduce_block << std::endl;
-  std::cerr << "flatten inner num " << flatten_inner_num << std::endl;
-  std::cerr << "reduce inner num " << reduce_inner_num << std::endl;
+  VLOG(6) << "block num " << group_tile_info->block_num << std::endl;
+  VLOG(6) << "num warp " << warp_num << std::endl;
+  VLOG(6) << "flatten block " << flatten_block << std::endl;
+  VLOG(6) << "reduce block  " << reduce_block << std::endl;
+  VLOG(6) << "flatten inner num " << flatten_inner_num << std::endl;
+  VLOG(6) << "reduce inner num " << reduce_inner_num << std::endl;
 
   group_tile_info->warp_num = warp_num;
   group_tile_info->flatten_inner_num = flatten_inner_num;
   group_tile_info->reduce_inner_num = reduce_inner_num;
 
   if (reduce_block > 1 && reduce_block <= 256) {
-    group_tile_info->reduce_type = 0;
+    group_tile_info->reduce_method = ir::WarpReduceMethod();
   }
 
   for (auto op : group->ops) {

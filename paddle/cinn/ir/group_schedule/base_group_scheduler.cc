@@ -24,7 +24,7 @@ std::unique_ptr<GroupScheduler> GroupScheduler::Make(
     const std::unordered_set<std::string>& output_tensor_names,
     const cinn::common::Target& target,
     bool is_dy_shape,
-    std::shared_ptr<GroupTileInfo> group_tile_info) {
+    const std::shared_ptr<GroupTileInfo>& group_tile_info) {
   if (is_dy_shape) {
     std::cerr << "dy shape " << (group_tile_info != nullptr) << std::endl;
     return std::make_unique<DynamicShapeGroupScheduler>(

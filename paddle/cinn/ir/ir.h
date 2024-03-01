@@ -962,6 +962,12 @@ struct Block : public ExprNode<Block> {
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
 };
 
+struct NoneReduceMethod {};
+struct WarpReduceMethod {};
+struct BlockReduceMethod {};
+using ReduceMethod =
+    std::variant<NoneReduceMethod, WarpReduceMethod, BlockReduceMethod>;
+
 // ScheduleBlock is the unit of schedule IR which represents tensor's
 // computation
 struct ScheduleBlock : public ExprNode<ScheduleBlock> {
@@ -977,7 +983,7 @@ struct ScheduleBlock : public ExprNode<ScheduleBlock> {
   std::map<std::string, attr_t> attrs;
   std::string name;
   Expr body;
-  int32_t reduce_type{-1};  // 0 for warp reduce, 1 for block reduce
+  ReduceMethod reduce_method{NoneReduceMethod()};
 
   static Expr Make(const std::vector<Var>& iter_vars,
                    const std::vector<Expr>& read_buffers,

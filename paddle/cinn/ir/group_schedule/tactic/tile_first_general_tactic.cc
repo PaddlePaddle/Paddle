@@ -210,9 +210,7 @@ void TileFirstGeneralTactic::SetReduceType(ir::IRSchedule* sch,
     auto block = sch->GetBlock(block_id)
                      .As<ir::ScheduleBlockRealize>()
                      ->schedule_block.As<ir::ScheduleBlock>();
-    if (context_->group_tile_info->reduce_type == 0) {
-      block->reduce_type = 0;
-    }
+    block->reduce_method = context_->group_tile_info->reduce_method;
   }
 }
 

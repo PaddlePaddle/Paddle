@@ -116,7 +116,7 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
   wb_block_creater.CreateBlock();
 
   Expr rf_body = rf_block_creater.CreateLoops();
-  Expr wb_body = wb_block_creater.CreateLoops(false);
+  Expr wb_body = wb_block_creater.CreateLoops(/* with_init = */ false);
 
   Expr new_computational_body = Block::Make({rf_body, wb_body});
 
@@ -217,7 +217,7 @@ Expr StScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
   wb_block_creater.CreateBlock();
 
   Expr rf_body = rf_block_creater.CreateLoops();
-  Expr wb_body = wb_block_creater.CreateLoops(false);
+  Expr wb_body = wb_block_creater.CreateLoops(/* with_init = */ false);
 
   Expr new_computational_body = Block::Make({rf_body, wb_body});
 

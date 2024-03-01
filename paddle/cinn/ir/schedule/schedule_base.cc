@@ -74,44 +74,23 @@ void ScheduleBase::Replace(const Expr& src_sref, const Expr& tgt_stmt) {
 void ScheduleBase::BroadcastToElementwise(const std::string& block_name,
                                           const std::vector<int64_t>& axes) {
   std::vector<Expr> all_loops = this->GetLoops(block_name);
-
-  auto broadcast_loop = all_loops.back().As<ir::For>();
-
-  Expr broadcast_body = broadcast_loop->body;
-
-  std::cerr << "broadcast body  " << broadcast_body << std::endl;
+  Expr broadcast_body = all_loops.back().As<ir::For>()->body;
 
   auto schedule_realize = broadcast_body.As<ir::Block>()
                               ->expr_fields()[0]
                               ->As<ir::ScheduleBlockRealize>();
-
   auto schedule_block =
       schedule_realize->schedule_block.As<ir::ScheduleBlock>();
-
   auto iter_vars = schedule_block->iter_vars;
 
-  std::cerr << "iter vars " << std::endl;
-  for (auto& expr : iter_vars) {
-    std::cerr << "11 " << expr << std::endl;
-  }
-  auto iter_values = schedule_realize->iter_values;
-
-  std::cerr << "iter value \n";
-
-  for (auto& expr : iter_values) {
-    std::cerr << "22 " << expr << std::endl;
-  }
-
-  auto exprs = ir::ir_utils::CollectIRNodesInOrder(
+  auto load_exprs = ir::ir_utils::CollectIRNodesInOrder(
       schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
 
-  for (auto expr : exprs) {
-    auto load = expr.As<ir::Load>();
+  for (auto load_expr : load_exprs) {
+    auto load = load_expr.As<ir::Load>();
     load->indices.resize(all_loops.size(), Expr(0));
 
     for (size_t i = 0; i < axes.size(); ++i) {
-      auto loop_temp = all_loops[axes[i]].As<ir::For>();
-
       load->indices[axes[i]] = schedule_block->iter_vars[axes[i]];
     }
   }
@@ -119,43 +98,23 @@ void ScheduleBase::BroadcastToElementwise(const std::string& block_name,
 
 void ScheduleBase::Broadcast(const std::string& block_name,
                              const BroadcastInfo& info) {
-  std::cerr << "step in broadcast\n";
   auto axes = info.broadcast_axes;
-  std::cerr << "axes .size " << axes.size() << std::endl;
   std::vector<Expr> all_loops = this->GetLoops(block_name);
-  std::cerr << "broadcast axes " << axes[0] << std::endl;
   if (axes[0] >= all_loops.size()) {
     throw std::runtime_error("axes execeed loop size");
   }
 
   // Get Last loop
-  // auto broadcast_loop = all_loops[axes[0]].As<ir::For>();
-  auto broadcast_loop = all_loops.back().As<ir::For>();
-
-  Expr broadcast_body = broadcast_loop->body;
-
-  // std::cerr << "broadcast body  " << broadcast_body << std::endl;
+  Expr broadcast_body = all_loops.back().As<ir::For>()->body;
 
   auto schedule_realize = broadcast_body.As<ir::Block>()
                               ->expr_fields()[0]
                               ->As<ir::ScheduleBlockRealize>();
-
   auto schedule_block =
       schedule_realize->schedule_block.As<ir::ScheduleBlock>();
 
   auto iter_vars = schedule_block->iter_vars;
-
-  std::cerr << "iter vars " << std::endl;
-  for (auto& expr : iter_vars) {
-    std::cerr << "11 " << expr << std::endl;
-  }
   auto iter_values = schedule_realize->iter_values;
-
-  std::cerr << "iter value \n";
-
-  for (auto& expr : iter_values) {
-    std::cerr << "22 " << expr << std::endl;
-  }
 
   auto factors = info.output_shape;
   auto full_broadcast = info.full_broadcast;
@@ -177,7 +136,6 @@ void ScheduleBase::Broadcast(const std::string& block_name,
     }
 
     // change load and store
-
     // get new offset
     all_loops = this->GetLoops(block_name);
     auto offset = Expr(0);
@@ -196,7 +154,6 @@ void ScheduleBase::Broadcast(const std::string& block_name,
       }
     }
 
-    std::cerr << "offset " << offset << std::endl;
     auto exprs = ir::ir_utils::CollectIRNodesInOrder(
         schedule_block->body,
         [&](const Expr* x) { return x->As<ir::Store>(); });
@@ -227,10 +184,6 @@ void ScheduleBase::Broadcast(const std::string& block_name,
     int extent = factors[i];
     loop_temp->extent = Expr(extent);
 
-    std::cerr << "loop temp  loop var " << loop_temp->loop_var << std::endl;
-    std::cerr << "axis " << axis << "\t" << schedule_realize->iter_values.size()
-              << std::endl;
-
     if (!full_broadcast && (!(info.with_constrain))) {
       schedule_realize->iter_values[axis] = loop_temp->loop_var;
     }
@@ -242,7 +195,6 @@ void ScheduleBase::Broadcast(const std::string& block_name,
   }
 
   if (first_broadcast && !full_broadcast) {
-    std::cerr << "first broadcat\n";
     auto exprs = ir::ir_utils::CollectIRNodesInOrder(
         schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
 
@@ -263,14 +215,12 @@ void ScheduleBase::Broadcast(const std::string& block_name,
     for (auto expr : exprs) {
       auto load = expr.As<ir::Load>();
       if (load->indices.size() == schedule_realize->iter_values.size()) {
-        std::cerr << "load axis size " << load->indices.size() << std::endl;
         for (size_t i = 0; i < axes.size(); ++i) {
           load->indices[axes[i]] = Expr(0);
         }
       } else if (load->indices.size() < schedule_realize->iter_values.size()) {
         // only one element
         // replace t zeros
-
         for (size_t k = 0; k < load->indices.size(); ++k) {
           for (size_t i = 0; i < axes.size(); ++i) {
             ReplaceExpr(&load->indices[k],
@@ -279,12 +229,8 @@ void ScheduleBase::Broadcast(const std::string& block_name,
           }
         }
       } else {
-        std::cerr << "load size " << load->indices.size() << "\t "
-                  << axes.size() << std::endl;
         throw std::runtime_error("not support broadcast type yet");
       }
-
-      std::cerr << "after load " << expr << std::endl;
     }
   }
 }
