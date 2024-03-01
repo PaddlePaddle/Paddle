@@ -2283,6 +2283,7 @@ def shard_dataloader(
     Examples:
         .. code-block:: python
             :name: example-1
+
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> from paddle.io import BatchSampler, DataLoader, Dataset
@@ -2379,6 +2380,7 @@ def shard_dataloader(
 
         .. code-block:: python
             :name: example-2
+
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> from paddle.io import BatchSampler, DataLoader, Dataset
