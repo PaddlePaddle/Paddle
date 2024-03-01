@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
+#include "paddle/phi/infermeta/spmd_rules/expand_as.h"
 #include "paddle/phi/infermeta/spmd_rules/flash_attention.h"
 #include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/full_like.h"

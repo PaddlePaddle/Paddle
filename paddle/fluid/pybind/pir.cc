@@ -1537,24 +1537,6 @@ void BindUtils(pybind11::module *m) {
 
 namespace {
 
-bool HasDynamicShape(const pir::Program &program) {
-  for (const auto &op : *program.block()) {
-    if (op.isa<pir::CombineOp>()) {
-      continue;
-    }
-    for (uint32_t i = 0; i < op.num_results(); ++i) {
-      if (op.result(i) && op.result(i).type()) {
-        auto shape_type =
-            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
-        if (shape_type && shape_type.IsDynamicShape()) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
 void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   cinn::dialect::ir::ApplyCinnPass(&program, [] {
@@ -1582,7 +1564,8 @@ void InferSymbolicShapePass(
     pir::Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+  if (pir::shape::HasDynamicShape(program) &&
+      FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }

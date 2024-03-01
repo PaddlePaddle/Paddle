@@ -702,7 +702,7 @@ void PirInterpreter::BuildInstruction() {
         continue;
       }
     } else if (op.dialect()->name() == "pd_op") {
-      if (op.isa<paddle::dialect::IfOp>()) {
+      if (op.isa<paddle::dialect::IfOp>()) {  // NOLINT
         vec_instruction_base_.emplace_back(std::make_unique<IfInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
         sub_blocks_.insert(
@@ -751,7 +751,7 @@ void PirInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op.isa<paddle::dialect::LegacyKernelOp>()) {
+      if (op.isa<paddle::dialect::LegacyKernelOp>()) {  // NOLINT
         CREATE_INSTR(LegacyKernelInstruction);
       } else {
         CREATE_INSTR(PhiKernelInstruction);

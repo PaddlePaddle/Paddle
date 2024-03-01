@@ -40,7 +40,7 @@ void ConcatGradKernel(const Context& dev_ctx,
 
   auto out_grad_vec_dims = common::vectorize(out_grad.dims());
 
-  axis = funcs::ComputeAxis(axis, out_grad_vec_dims.size());
+  axis = static_cast<int>(funcs::ComputeAxis(axis, out_grad_vec_dims.size()));
 
   std::vector<int64_t> offset(out_grad_vec_dims.size(), 0);
 
@@ -60,7 +60,7 @@ void ConcatGradKernel(const Context& dev_ctx,
       auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
           grad,
           x_grad_vec_dims,
-          funcs::GetPlainOneDNNFormat(x_grad_vec_dims.size()),
+          funcs::GetPlainOneDNNFormat(static_cast<int>(x_grad_vec_dims.size())),
           dev_ctx.GetPlace());
       auto reorder_p =
           reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
