@@ -28,31 +28,12 @@
     support_trans_dtype : x, y
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+# this add_n is only for ops_api_gen.py
 - op : add_n
   args : (Tensor[] inputs)
   output : Tensor
   invoke : add_n_impl(inputs)
   backward : add_n_grad
-
-- op : add_n_
-  args : (Tensor[] inputs)
-  output : Tensor(out)
-  infer_meta:
-    func: AddNInferMeta
-    param: [inputs]
-  kernel:
-    func: add_n
-    param: [inputs]
-
-- op : add_n_with_kernel
-  args : (Tensor[] inputs)
-  output : Tensor(out)
-  infer_meta:
-    func: AddNInferMeta
-    param: [inputs]
-  kernel:
-    func: add_n
-    param: [inputs]
 
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -1089,6 +1070,7 @@
   kernel :
     func : print_kernel
     param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : prod
   args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)

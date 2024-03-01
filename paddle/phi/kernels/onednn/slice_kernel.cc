@@ -69,7 +69,7 @@ void SliceKernel(const Context& dev_ctx,
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       out,
       slice_dims,
-      funcs::GetPlainOneDNNFormat(x_vec_dims.size()),
+      funcs::GetPlainOneDNNFormat(static_cast<int>(x_vec_dims.size())),
       dev_ctx.GetPlace());
 
   auto reorder_p =

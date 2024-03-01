@@ -15,6 +15,7 @@
 #pragma once
 
 #include <optional>
+
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
 #include "paddle/pir/include/core/ir_printer.h"

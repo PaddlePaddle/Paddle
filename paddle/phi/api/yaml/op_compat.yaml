@@ -1445,6 +1445,10 @@
     {x_grad : DX, y_grad : DY, bias_grad : DBias}
 
 - op : fused_transpose
+  inputs:
+    {x : X}
+  outputs :
+    {out : Out}
   extra :
     attrs : [str data_format = "AnyLayout"]
 
@@ -1467,6 +1471,26 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", float Scale_data = 1.0f, float Shift_data = 0.0f, 'float[] Scale_weights = {1.0f}']
 
 - op : fusion_lstm
+  inputs :
+    x : X
+    h0 : H0
+    weight_x : WeightX
+    weight_h : WeightH
+    bias : Bias
+    c0 : C0
+  outputs :
+    out : Out
+    hidden : Hidden
+    cell : Cell
+    xx : XX
+    batched_input : BatchedInput
+    batched_hidden : BatchedHidden
+    batched_cell : BatchedCell
+    reordered_h0 : ReorderedH0
+    reordered_c0 : ReorderedC0
+    checked_cell : CheckedCell
+  attrs :
+    {scale_data : Scale_data, shift_data : Shift_data, scale_weights : Scale_weights}
   extra :
     attrs : [bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
@@ -3609,6 +3633,20 @@
     {x: X, y: Y}
   outputs :
     {out : Out, intermediate_out : IntermediateOut}
+
+- op: fused_matmul
+  inputs :
+    {x: X, y: Y, residual_data: ResidualData}
+  outputs :
+    {out : Out}
+  attrs :
+    {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, fused_reshape_x : fused_reshape_X, fused_transpose_x : fused_transpose_X, fused_reshape_y : fused_reshape_Y, fused_transpose_y : fused_transpose_Y, fused_reshape_out : fused_reshape_Out, fused_transpose_out : fused_transpose_Out}
+
+- op: fused_softplus
+  inputs :
+    {x: X}
+  outputs :
+    {out : Out}
 
 - op: fusion_squared_mat_sub
   inputs :
