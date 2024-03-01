@@ -2406,15 +2406,14 @@ def shard_dataloader(
             ...         self.labels = [
             ...             np.array(index, dtype="float32") for index in range(num_samples)
             ...         ]
-
             ...     def __getitem__(self, index):
             ...         return {
             ...             "inputs": [self.inputs1[index], self.inputs2[index]],
             ...             "label": self.labels[index],
             ...         }
-
             ...     def __len__(self):
             ...         return self.num_samples
+
             >>> dataset = RandomDataset(4, 8)
             >>> sampler = BatchSampler(
             ...     dataset,
