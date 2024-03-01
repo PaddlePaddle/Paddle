@@ -98,10 +98,35 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
             << FLAGS_group_schedule_tiling_first;
     std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(axis_len);
     const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
-    VLOG(4) << "ast gen: tensor init_body is " << init_body;
+    const auto reduce_axis_position = [&reduce_axis,
+                                       &tensor]() -> std::vector<int> {
+      VLOG(4) << "start calculus reduce_axis_position: ";
+      std::vector<int> res;
+      auto fn_body = tensor->operation.ptr()->as<ir::ComputeOp>()->body[0];
+      if (fn_body.defined() && fn_body.As<ir::Reduce>()) {
+        auto& reduce_body =
+            fn_body.As<ir::Reduce>()->body;  // reduce body is a tensor store.
+        auto& load_indices = reduce_body.As<ir::Load>()->indices;
+        int position = -1;
+        for (auto& obj : load_indices) {
+          position += 1;
+          for (auto& reduce_var : reduce_axis) {
+            if (obj.as_var_ref() == reduce_var) {
+              res.push_back(position);
+            }
+          }
+        }
+        for (auto i : res) {
+          VLOG(4) << "reduce axis position is " << i;
+        }
+        return res;
+      }
+    }();
     for (int i = 0; i < shape.size(); ++i) {
-      bool is_keep_dim = axis[i]->is_keepdim;
-      if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
+      if (FLAGS_group_schedule_tiling_first &&
+          std::find(reduce_axis_position.begin(),
+                    reduce_axis_position.end(),
+                    i) != reduce_axis_position.end()) {
         // if tiling first, we need to replace the reduce axis with 0, but don't
         // deal with the non-reduce axis
         optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
@@ -124,8 +149,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
         iter_values.push_back(axis_vars[i]);
       }
     }
-    VLOG(4) << "iter_value.size() and block_vars.size() is "
-            << iter_values.size() << " " << block_vars.size();
     init_body = ir::ScheduleBlockRealize::Make(
         iter_values,
         ir::ScheduleBlock::Make(
@@ -134,9 +157,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // For the remaining reduce axis, make reduce body
     ir::Expr reduce_body =
         ConvertReduceBody(tensor->body(), tensor, axis_exprs);
-
-    VLOG(4) << "ast gen: reduce body is " << reduce_body;
-
     // create schedule block itervars, i0,i1...
     std::vector<ir::Var> reduce_block_vars;
     std::vector<ir::Expr> reduce_iter_values;
@@ -144,8 +164,10 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // for same axis so we re-create objects
     std::vector<Var> reduce_axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
-      bool is_keep_dim = axis[i]->is_keepdim;
-      if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
+      if (FLAGS_group_schedule_tiling_first &&
+          std::find(reduce_axis_position.begin(),
+                    reduce_axis_position.end(),
+                    i) != reduce_axis_position.end()) {
         // if tiling first, we need to replace the reduce axis with 0, but don't
         // deal with the non-reduce axis
         optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
@@ -167,7 +189,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
         reduce_iter_values.push_back(axis_vars[i]);
       }
     }
-    VLOG(4) << "ast gen: reduce body is after replace 0" << reduce_body;
     for (int i = 0; i < reduce_axis.size(); ++i) {
       int count = shape.size() + i;
       reduce_block_vars.push_back(
@@ -181,43 +202,19 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     }
 
     int non_zero_axis_size = 0;
-    if (FLAGS_group_schedule_tiling_first) {
-      std::vector<ir::Var> non_reduce_axis_vars = [&]() {
-        std::vector<ir::Var> res;
-        for (int i = 0; i < shape.size(); ++i) {
-          bool is_keep_dim = axis[i]->is_keepdim;
-          if (!is_keep_dim) {
-            res.push_back(axis[i]);
-          }
-        }
-        return res;
-      }();
-      for (int i = 0; i < non_reduce_axis_vars.size(); ++i) {
-        optim::ReplaceVarWithExpr(
-            &reduce_body, non_reduce_axis_vars[i], reduce_block_vars[i]);
-        ++non_zero_axis_size;
+    for (int i = 0; i < axis.size(); ++i) {
+      if (!FLAGS_group_schedule_tiling_first &&
+          FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
+        continue;
       }
-    } else {
-      for (int i = 0; i < axis.size(); ++i) {
-        if (!FLAGS_group_schedule_tiling_first &&
-            FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
-          continue;
-        }
-        optim::ReplaceVarWithExpr(
-            &reduce_body, axis[i], reduce_block_vars[non_zero_axis_size]);
-        ++non_zero_axis_size;
-      }
+      optim::ReplaceVarWithExpr(
+          &reduce_body, axis[i], reduce_block_vars[non_zero_axis_size]);
+      ++non_zero_axis_size;
     }
 
-    VLOG(4) << "to replace : " << non_zero_axis_size << " "
-            << reduce_block_vars.size();
-    for (auto i = 0; i < reduce_block_vars.size(); i++) {
-      VLOG(4) << "reduce_block_vars[" << i << "] = " << reduce_block_vars[i];
+    if (FLAGS_group_schedule_tiling_first) {
+      non_zero_axis_size = axis.size() - reduce_axis.size();
     }
-    for (auto i = 0; i < reduce_axis.size(); i++) {
-      VLOG(4) << "reduce_axis[" << i << "] = " << reduce_axis[i];
-    }
-    VLOG(4) << "before replace body: " << reduce_body;
     for (int i = non_zero_axis_size; i < reduce_block_vars.size(); ++i) {
       optim::ReplaceVarWithExpr(&reduce_body,
                                 reduce_axis[i - non_zero_axis_size],
@@ -240,8 +237,10 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // Put the two parts together
     ir::Expr body = ir::Block::Make({init_body, reduce_body});
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
-      bool is_keep_dim = axis[i]->is_keepdim;
-      if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
+      if (FLAGS_group_schedule_tiling_first &&
+          std::find(reduce_axis_position.begin(),
+                    reduce_axis_position.end(),
+                    i) != reduce_axis_position.end()) {
         continue;
       }
       if (!FLAGS_group_schedule_tiling_first && !FLAGS_cinn_bucket_compile &&
