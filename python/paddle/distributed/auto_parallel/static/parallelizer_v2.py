@@ -493,7 +493,6 @@ class Parallelizer:
             auto_parallel_gradient_merge_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
-        self._logger.info(main_program)
 
         if self._strategy.pipeline.enable and not use_new_executor():
             config = copy.deepcopy(self._strategy.pipeline.to_dict())
