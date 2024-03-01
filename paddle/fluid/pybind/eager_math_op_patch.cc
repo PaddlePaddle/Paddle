@@ -761,11 +761,6 @@ static PyObject* tensor__div__method(TensorObject* self,
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
       }
-    } else if (is_support_int(self_tensor_ref.dtype()) &&
-               self_tensor_ref.dtype() == other_tensor_ref.dtype()) {
-      eager_gil_scoped_release guard;
-      self_tensor_ref = cast_ad_func(self_tensor_ref, DataType::FLOAT32);
-      other_tensor_ref = cast_ad_func(other_tensor_ref, DataType::FLOAT32);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -797,6 +792,15 @@ static PyObject* tensor__div__method(TensorObject* self,
 
   // 3. promote types or unify right var type to left var, float type promotion
   // mv to divide_ad_func
+  if (self_tensor.dtype() == other_tensor.dtype()) {
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      std::cout << "cast self" << std::endl;
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
+    }
+  }
 
   // 4. calculation
   VLOG(6) << "Calling divide_ad_func in tensor__div__method";
@@ -898,12 +902,6 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
         }
       }
     }
-    if (is_support_int(self_tensor_ref.dtype()) &&
-        self_tensor_ref.dtype() == other_tensor_ref.dtype()) {
-      eager_gil_scoped_release guard;
-      self_tensor_ref = cast_ad_func(self_tensor_ref, DataType::FLOAT32);
-      other_tensor_ref = cast_ad_func(other_tensor_ref, DataType::FLOAT32);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -934,6 +932,14 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
 
   // 3. promote types or unify right var type to left var, float type promotion
   // mv to divide_ad_func
+  if (self_tensor.dtype() == other_tensor.dtype()) {
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
+    }
+  }
 
   // 4. calculation
   VLOG(6) << "Calling divide_ad_func in tensor__rdiv__method";

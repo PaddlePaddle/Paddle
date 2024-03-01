@@ -8268,7 +8268,7 @@ def process_type_promotion(program):
                     all_input_name_need_cast.append(input_arg_name)
 
             # only support promote between float
-            if core.need_type_promotion(*all_dtypes):
+            if len(all_dtypes) == 2 and core.need_type_promotion(*all_dtypes):
                 common_dtype = core.get_promote_dtype(op.type, *all_dtypes)
                 for input_name_need_cast in all_input_name_need_cast:
                     var_name = op.block._var_recursive(input_name_need_cast)

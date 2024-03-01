@@ -166,10 +166,15 @@ class TestModelAverage(unittest.TestCase):
                 'num_updates', layer.bias
             )
 
+            print(num_accumulates, old_num_accumulates)
             return (
-                (sum_1 + sum_2 + sum_3)
-                / (num_accumulates + old_num_accumulates)
-            ).numpy()
+                (
+                    (sum_1 + sum_2 + sum_3)
+                    / (num_accumulates + old_num_accumulates)
+                )
+                .astype(sum_1.dtype)
+                .numpy()
+            )
 
         def evaluate(layer, loader, loss_fn, check_param):
             for batch_id, (image, label) in enumerate(loader()):

@@ -773,8 +773,8 @@ def logaddexp(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [-0.30685282, -0.68673831, -0.87307199])
     """
-
-    return paddle.log1p(paddle.exp(-paddle.abs(x - y))) + paddle.maximum(x, y)
+    log_1p = paddle.log1p(paddle.exp(-paddle.abs(x - y)))
+    return log_1p + paddle.maximum(x, y).astype(log_1p.dtype)
 
 
 def subtract(x, y, name=None):

@@ -189,7 +189,9 @@ class Gumbel(TransformedDistribution):
             Tensor: probability.The data type is same with value.
 
         """
-        y = (self.loc - value) / self.scale
+        y = (self.loc.astype(value.dtype) - value) / self.scale.astype(
+            value.dtype
+        )
 
         return paddle.exp(y - paddle.exp(y)) / self.scale
 
@@ -214,7 +216,12 @@ class Gumbel(TransformedDistribution):
             Tensor: cumulative probability of value.
 
         """
-        return paddle.exp(-paddle.exp(-(value - self.loc) / self.scale))
+        return paddle.exp(
+            -paddle.exp(
+                -(value - self.loc.astype(value.dtype))
+                / self.scale.astype(value.dtype)
+            )
+        )
 
     def entropy(self):
         """Entropy of Gumbel distribution.

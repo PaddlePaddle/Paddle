@@ -20,7 +20,7 @@ import paddle
 
 class TestTensorTypePromotion(unittest.TestCase):
     def setUp(self):
-        self.x = paddle.to_tensor([2, 3])
+        self.x = paddle.to_tensor([2, 3], dtype='float16')
         self.y = paddle.to_tensor([1.0, 2.0])
 
     def add_operator(self):

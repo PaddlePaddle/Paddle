@@ -458,7 +458,9 @@ def median(x, axis=None, keepdim=False, name=None):
             dtype=dtype,
         )
     out_tensor = out_tensor + paddle.sum(
-        paddle.cast(paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True
+        paddle.cast(paddle.isnan(x), dtype=dtype) * x.astype(dtype),
+        axis=axis,
+        keepdim=True,
     )
     if is_flatten:
         if keepdim:
