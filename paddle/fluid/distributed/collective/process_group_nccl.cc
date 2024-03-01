@@ -855,8 +855,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   NCCL_CHECK(phi::dynload::ncclGroupStart());
   ncclComm_t nccl_comm;
-  if (nccl_comm_init_option_ > 0 &&
-      phi::dynload::ncclCommInitRank2::IsValid()) {
+  if (nccl_comm_init_option_ > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
     NCCL_CHECK(phi::dynload::ncclCommInitRank2(
         &nccl_comm, num_ranks, nccl_id, rank, nccl_comm_init_option_));
