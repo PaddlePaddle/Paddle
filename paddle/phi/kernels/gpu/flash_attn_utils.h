@@ -83,8 +83,15 @@ static std::vector<int64_t> GetAttnSparseMaskDims(
     int max_seqlen_q) {
   std::vector<int64_t> mask_dim_3d;
   if (attn_mask_start_row_indices) {
+    const auto& dtype = attn_mask_start_row_indices->dtype();
     const auto& origin_dims = attn_mask_start_row_indices->dims();
     auto rank = origin_dims.size();
+    PADDLE_ENFORCE_EQ(dtype,
+                      DataType::INT32,
+                      phi::errors::InvalidArgument(
+                          "dtype of attn_mask_start_row_indices must be "
+                          "int32, but recieved %d",
+                          dtype));
     PADDLE_ENFORCE_GE(
         rank,
         3,
