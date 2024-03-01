@@ -1338,14 +1338,14 @@ T Blas<phi::CPUContext>::ASUM(int n, T *x, int inc) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::GEMV(bool trans_a,
-                                 int M,
-                                 int N,
-                                 T alpha,
-                                 const T *A,
-                                 const T *B,
-                                 T beta,
-                                 T *C) const {
+TEST_API void Blas<phi::CPUContext>::GEMV(bool trans_a,
+                                          int M,
+                                          int N,
+                                          T alpha,
+                                          const T *A,
+                                          const T *B,
+                                          T beta,
+                                          T *C) const {
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
   CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
 }
