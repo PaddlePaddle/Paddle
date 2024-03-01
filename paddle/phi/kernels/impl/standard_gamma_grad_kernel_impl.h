@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -204,8 +204,8 @@ struct GammaGradFunctor {
       : alpha_(alpha), x_(x), grad_(grad) {}
 
   HOSTDEVICE void operator()(int64_t index) {
-    grad_[index] = gamma_grad<T>(alpha_[index], x_[index]);
-    // std::max(std::numeric_limits<T>::min(), sample);
+    auto sample = gamma_grad<T>(alpha_[index], x_[index]);
+    grad_[index] = std::max(std::numeric_limits<T>::min(), sample);
   }
 
   const T* alpha_;

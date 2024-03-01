@@ -60,6 +60,10 @@ class TestStandardGammaOp(OpTest):
         )
 
     def test_check_grad_normal(self):
+        grads, numeric_grads = self._get_gradients()
+        np.testing.assert_allclose(grads, numeric_grads, rtol=0.002, atol=0)
+
+    def _get_gradients(self):
         x = paddle.to_tensor(self.inputs['x'])
         x.stop_gradient = False
         y = paddle.standard_gamma(x)
@@ -76,7 +80,7 @@ class TestStandardGammaOp(OpTest):
         cdf_y = pdf(y, alpha)
         numeric_grads = -cdf_alpha / cdf_y
 
-        np.testing.assert_allclose(grads, numeric_grads, rtol=0.05, atol=0)
+        return grads, numeric_grads
 
 
 class TestStandardGammaFP32Op(TestStandardGammaOp):
