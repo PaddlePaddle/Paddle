@@ -186,11 +186,6 @@ class UserDefinedFunctionVariable(FunctionVariable):
             if output is not None:
                 return output
 
-        if inspect.isgeneratorfunction(self.value):
-            raise BreakGraphError(
-                f"call function {self.value}, which is a generator"
-            )
-
         try:
             inline_executor = OpcodeInlineExecutor(self, *args, **kwargs)
             with EventGuard(
@@ -686,9 +681,9 @@ class BuiltinVariable(FunctionVariable):
         }
 
 
-class UserDefinedGeneratorVariable(FunctionVariable):
+class UserDefinedGeneratorFunctionVariable(FunctionVariable):
     """
-    UserDefinedGeneratorVariable is a subclass of FunctionVariable used to wrap a user-defined generator.
+    UserDefinedGeneratorFunctionVariable is a subclass of FunctionVariable used to wrap a user-defined generator.
     Args:
         fn (Callable[..., Any]): The user-defined generator to be wrapped.
         graph(FunctionGraph): The FunctionGraph object that this variable is associated with.
@@ -716,7 +711,7 @@ class UserDefinedGeneratorVariable(FunctionVariable):
     )
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isgeneratorfunction(value):
-            return UserDefinedGeneratorVariable(value, graph, tracker)
+            return UserDefinedGeneratorFunctionVariable(value, graph, tracker)
         return None
 
 

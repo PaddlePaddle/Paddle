@@ -1310,7 +1310,7 @@ class OpcodeExecutorBase:
             closure,
         )
         self.stack.push(
-            UserDefinedFunctionVariable(
+            VariableFactory.from_value(
                 new_fn, self._graph, DummyTracker(related_list)
             )
         )
