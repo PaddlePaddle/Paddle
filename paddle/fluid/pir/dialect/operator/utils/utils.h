@@ -136,6 +136,8 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
 
 VariantType GetAttributeData(const pir::Attribute& attr);
 
+paddle::any TransAttrToAny(const pir::Attribute& attr);
+
 bool IsLegacyOp(const std::string& name);
 
 bool IsEmptyValue(const pir::Value& value);

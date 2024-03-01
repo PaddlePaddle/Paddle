@@ -32,6 +32,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
                          bool use_neox_rotary_style,
+                         bool time_major,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
@@ -41,10 +42,10 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   phi::Array<int64_t, 3> inputs_num_heads;
   // small size for broadcast
-  auto batch_size = dout_q.dims()[0];
+  auto batch_size = time_major ? dout_q.dims()[1] : dout_q.dims()[0];
+  auto seq_len = time_major ? dout_q.dims()[0] : dout_q.dims()[1];
   inputs_num_heads[0] = dout_q.dims()[2];
   auto head_dim = dout_q.dims()[3];
-  auto seq_len = dout_q.dims()[1];
   PADDLE_ENFORCE_NE(head_dim % 2,
                     1,
                     phi::errors::InvalidArgument(
@@ -117,6 +118,9 @@ void FusedRopeGradKernel(const Context& dev_ctx,
           : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
 
   if (is_same_num_heads) {
+    int64_t batch_stride =
+        time_major ? dout_q.strides()[1] : dout_q.strides()[0];
+    int64_t seq_stride = time_major ? dout_q.strides()[0] : dout_q.strides()[1];
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
                                             sin_cos_data,
                                             position_ids_data,
@@ -126,13 +130,18 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             seq_len,
                                             inputs_num_heads[0],
                                             head_dim,
+                                            batch_stride,
+                                            seq_stride,
                                             outs_data,
                                             num_inputs,
                                             div_c);
 
   } else {
     // rotary position embedding Q
-
+    int64_t batch_stride_q =
+        time_major ? dout_q.strides()[1] : dout_q.strides()[0];
+    int64_t seq_stride_q =
+        time_major ? dout_q.strides()[0] : dout_q.strides()[1];
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
                                             sin_cos_data,
                                             position_ids_data,
@@ -142,11 +151,20 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             seq_len,
                                             inputs_num_heads[0],
                                             head_dim,
+                                            batch_stride_q,
+                                            seq_stride_q,
                                             outs_data,
                                             1,
                                             div_c);
 
     // rotary position embedding K,V
+    int64_t batch_stride_kv = time_major
+                                  ? inputs_num_heads[1] * head_dim
+                                  : seq_len * inputs_num_heads[1] * head_dim;
+    int64_t seq_stride_kv = time_major
+                                ? batch_size * inputs_num_heads[1] * head_dim
+                                : inputs_num_heads[1] * head_dim;
+
     phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
     phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
     kernel_func<<<grid, block, 0, stream>>>(input_kv,
@@ -158,6 +176,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             seq_len,
                                             inputs_num_heads[1],
                                             head_dim,
+                                            batch_stride_kv,
+                                            seq_stride_kv,
                                             out_kv,
                                             num_inputs - 1,
                                             div_c);

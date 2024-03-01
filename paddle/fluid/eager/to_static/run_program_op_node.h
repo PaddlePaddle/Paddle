@@ -19,6 +19,7 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+#include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/operators/run_program_op.h"
@@ -120,10 +121,20 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is SelectedRows",
                           name));
+  } else if (paddle::framework::VariableRefArray::classof(
+                 dst_tensor.impl().get())) {
+    auto &src_tensor = src_var.Get<paddle::framework::VariableRefArray>();
+    PADDLE_ENFORCE_EQ(paddle::framework::VariableRefArray::classof(&src_tensor),
+                      true,
+                      paddle::platform::errors::InvalidArgument(
+                          "The output tensor %s get from "
+                          "RunProgram(Grad)Op's internal scope holds "
+                          "wrong type. Expect type is VariableRefArray",
+                          name));
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The RunProgram(Grad)Op only support output "
-        "variable of type LoDTensor or SelectedRows",
+        "variable of type DenseTensor, SelectedRows or VariableRefArray",
         name));
   }
 }
@@ -183,6 +194,11 @@ static auto GetNameFromValue(const ::pir::Block *block,
                              bool is_input) {
   // we use name here, later value is used directly.
   std::unordered_map<::pir::Value, std::string> value2name;
+  if (is_input) {
+    for (auto &kwarg : block->kwargs()) {
+      value2name[kwarg.second] = kwarg.first;
+    }
+  }
   for (auto &op : *block) {
     std::string name;
     if (is_input && op.name() == "pd_op.data") {
@@ -315,6 +331,17 @@ static void ShareTensorsFromScopeByValue(
       auto *dst_tensor = const_cast<phi::SelectedRows *>(
           dynamic_cast<const phi::SelectedRows *>(tensors[i]->impl().get()));
       *dst_tensor = src_tensor;
+    } else if (var->IsType<paddle::framework::VariableRefArray>()) {
+      auto &src_tensor = var->Get<paddle::framework::VariableRefArray>();
+      auto *dst_tensor = const_cast<paddle::framework::VariableRefArray *>(
+          dynamic_cast<const paddle::framework::VariableRefArray *>(
+              tensors[i]->impl().get()));
+      *dst_tensor = src_tensor;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "The RunProgram(Grad)Op only support output "
+          "variable of type DenseTensor, SelectedRows or VariableRefArray",
+          name));
     }
   }
 }
@@ -1513,7 +1540,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
             x.size(),
             x_grad_values.size()));
 
-    // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
+    // TODO(dev): Need an elegant way to determine information of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     for (size_t i = 0; i < x.size(); i++) {
       if (x[i].is_dense_tensor()) {

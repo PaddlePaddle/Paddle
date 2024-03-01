@@ -23,7 +23,7 @@ from ..base.core import (  # noqa: F401
     IPUPlace,
     XPUPlace,
 )
-from ..base.dygraph import base, to_variable  # noqa: F401
+from ..base.dygraph import base  # noqa: F401
 from ..base.dygraph.base import (  # noqa: F401
     disable_dygraph as enable_static,
     enable_dygraph as disable_static,

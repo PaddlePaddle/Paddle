@@ -23,7 +23,7 @@
 #include "test/cpp/pir/tools/test_dialect.h"
 #include "test/cpp/pir/tools/test_op.h"
 
-TEST(shapedtype_test, shapedtype_test) {
+TEST(shape_dtype_test, shape_dtype_test) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<test::TestDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();

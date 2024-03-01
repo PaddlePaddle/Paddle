@@ -373,7 +373,7 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
       source_loops = {source_loop};
     }
 
-    // 3. Rerorder loops to match the target loops
+    // 3. Reorder loops to match the target loops
     if (total_source_extent == total_master_loop_extents) {
       ir_sch_->Reorder(node->id(), recover_loop_order);
     }

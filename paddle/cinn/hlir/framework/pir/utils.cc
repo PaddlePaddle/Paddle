@@ -86,7 +86,7 @@ class OpTransInfo {
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
   std::unordered_set<std::string> default_deny_ops_{
-      "feed", "fetch", "conv2d", "conv2d_grad", "dropout"};
+      "feed", "fetch", "conv2d", "conv2d_grad", "dropout", "matmul"};
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
@@ -406,7 +406,7 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
     // As binary op was defined as broadcast, actually it should be
-    // element-wise. See fusion_hepler_base.h for detail.
+    // element-wise. See fusion_helper_base.h for detail.
     if (op_name != "broadcast_to") {
       kind = hlir::framework::kElementWise;
     }
