@@ -109,7 +109,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
     ids = CopyIdsToVector<int, int64_t>(ids_cpu);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64"));
+        "embedding input only support int32 and int64"));
   }
 
   auto ids_num = static_cast<int64_t>(input.numel());
