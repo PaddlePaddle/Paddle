@@ -106,7 +106,8 @@ float CalculateEstOccupancy(uint32_t DeviceId,
   float occupancy = 0.0;
   std::vector<int> device_ids = GetSelectedDevices();
   if (DeviceId < device_ids.size()) {
-    const gpuDeviceProp& device_property = GetDeviceProperties(DeviceId);
+    const gpuDeviceProp& device_property =
+        GetDeviceProperties(static_cast<int>(DeviceId));
     cudaOccFuncAttributes occFuncAttr;
     occFuncAttr.maxThreadsPerBlock = INT_MAX;
     occFuncAttr.numRegs = RegistersPerThread;
@@ -127,11 +128,13 @@ float CalculateEstOccupancy(uint32_t DeviceId,
                                                 blockSize,
                                                 dynamicSmemSize);
     if (status == CUDA_OCC_SUCCESS) {
-      if (occ_result.activeBlocksPerMultiprocessor < BlocksPerSm) {
-        BlocksPerSm = occ_result.activeBlocksPerMultiprocessor;
+      if (static_cast<float>(occ_result.activeBlocksPerMultiprocessor) <
+          BlocksPerSm) {
+        BlocksPerSm =
+            static_cast<float>(occ_result.activeBlocksPerMultiprocessor);
       }
       occupancy =
-          BlocksPerSm * blockSize /
+          BlocksPerSm * static_cast<float>(blockSize) /
           static_cast<float>(device_property.maxThreadsPerMultiProcessor);
     } else {
       LOG(WARNING) << "Failed to calculate estimated occupancy, status = "

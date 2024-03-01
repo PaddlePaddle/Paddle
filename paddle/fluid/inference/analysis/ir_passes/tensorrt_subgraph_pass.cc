@@ -754,7 +754,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   bool calibration_mode =
       (enable_int8 && calibration_data.empty() && use_calib_mode);
   if (calibration_mode) {
-    // calibraion mode means generate int8 calibration table data process.
+    // calibration mode means generate int8 calibration table data process.
     return calibration_engine_key;
   }
 

@@ -658,7 +658,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         if (attr_ptr && !is_attr_var) {
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
-            case framework::proto::AttrType::INTS:
+            case framework::proto::AttrType::INTS:  // NOLINT
               infer_meta_context.EmplaceBackAttr(std::move(
                   phi::IntArray(PADDLE_GET_CONST(std::vector<int32_t>, attr))));
               break;
@@ -836,7 +836,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                       attr_names[i]));
               }
               break;
-            case phi::AttributeType::FLOAT32S:
+            case phi::AttributeType::FLOAT32S:  // NOLINT
               infer_meta_context.EmplaceBackAttr(
                   PADDLE_GET_CONST(std::vector<float>, attr));
               break;
