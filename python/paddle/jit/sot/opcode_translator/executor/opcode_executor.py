@@ -47,7 +47,7 @@ from ..instruction_utils import (
     calc_stack_effect,
     get_instructions,
 )
-from ..instruction_utils.opcode_info import JumpDirection, PopJumpCond
+from ..instruction_utils.opcode_info import RETURN, JumpDirection, PopJumpCond
 from .dispatch_functions import (
     operator_BAD,
     operator_exception_match,
@@ -772,6 +772,12 @@ class OpcodeExecutorBase:
             )(obj, attr_name_var)
         )
 
+    @call_break_graph_decorator(push_n=1)
+    def LOAD_SUPER_ATTR(self, instr: Instruction):
+        # This bytecode is for Python 3.12+, and it will break graph in Python 3.11-.
+        # We align it's behavior with Python 3.11-.
+        raise BreakGraphError("call super is not supported")
+
     def LOAD_CONST(self, instr: Instruction):
         var = self._co_consts[instr.arg]
         self.stack.push(var)
@@ -803,6 +809,9 @@ class OpcodeExecutorBase:
     def LOAD_FAST(self, instr: Instruction):
         var = self._locals[instr.argval]
         self.stack.push(var)
+
+    def LOAD_FAST_CHECK(self, instr: Instruction):
+        self.LOAD_FAST(instr)
 
     def DELETE_FAST(self, instr: Instruction):
         varname = self._code.co_varnames[instr.arg]
@@ -1401,11 +1410,13 @@ class OpcodeExecutorBase:
 
     POP_JUMP_FORWARD_IF_NONE = pop_jump_if_op_wrapper([operator_is_none])
     POP_JUMP_BACKWARD_IF_NONE = POP_JUMP_FORWARD_IF_NONE
+    POP_JUMP_IF_NONE = POP_JUMP_FORWARD_IF_NONE
 
     POP_JUMP_FORWARD_IF_NOT_NONE = pop_jump_if_op_wrapper(
         [operator_is_not_none]
     )
     POP_JUMP_BACKWARD_IF_NOT_NONE = POP_JUMP_FORWARD_IF_NOT_NONE
+    POP_JUMP_IF_NOT_NONE = POP_JUMP_FORWARD_IF_NOT_NONE
 
     @call_break_graph_decorator(push_n=lambda arg: arg)
     def UNPACK_SEQUENCE(self, instr: Instruction):
@@ -1669,8 +1680,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
         start = self.indexof(instr)
         end = self.indexof(instr.jump_to)
         for i in range(start, end):
-            if self._instructions[i].opname == "RETURN_VALUE":
-                raise FallbackError("Found RETURN_VALUE in for loop body.")
+            if self._instructions[i].opname in RETURN:
+                raise FallbackError(
+                    f"Found {self._instructions[i].opname} in for loop body."
+                )
 
         self._graph.add_global_guarded_variable(iterator)
 

@@ -63,7 +63,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   int out_split_axis =
       GetSplitAxisWithDimsMapping(out_dist_attr.dims_mapping()).begin()->first;
 
-  DenseTensor in_all_to_all = in.value();
+  DenseTensor in_all_to_all;
   // 1. preprocess, reshape and transpose the input tensor
   if (out_split_axis != 0) {
     // 1.1 calc the shape and reshape
@@ -93,10 +93,11 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     pre_shape_vec[in_split_axis] *= nranks;
     RESHARD_FUNCTOR(
         dev_ctx, Reshape, dtype, out_transpose, pre_shape_vec, &in_all_to_all);
+  } else {
+    in_all_to_all.ShareDataWith(in.value());
   }
 
   // 2. use all to all to switch data to other ranks
-  DenseTensor out_all_to_all;
   RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                             AllToAll,
                             dtype,

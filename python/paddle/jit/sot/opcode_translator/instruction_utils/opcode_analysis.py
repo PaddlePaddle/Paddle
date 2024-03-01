@@ -19,7 +19,12 @@ import dataclasses
 from paddle.jit.utils import OrderedSet
 
 from .instruction_utils import Instruction
-from .opcode_info import ALL_JUMP, HAS_FREE, HAS_LOCAL, UNCONDITIONAL_JUMP
+from .opcode_info import (
+    ALL_JUMP,
+    HAS_FREE,
+    HAS_LOCAL,
+    UNCONDITIONAL_JUMP,
+)
 
 
 @dataclasses.dataclass
@@ -36,6 +41,7 @@ class NameRecorder:
 def is_read_opcode(opname):
     if opname in [
         "LOAD_FAST",
+        "LOAD_FAST_CHECK",
         "LOAD_DEREF",
         "LOAD_NAME",
         "LOAD_GLOBAL",
@@ -69,7 +75,7 @@ def analysis_used_names(
     instructions: list[Instruction],
     current_instr_idx: int,
     stop_instr_idx: int | None = None,
-) -> OrderedSet[str]:
+) -> tuple[OrderedSet[str], OrderedSet[str]]:
     """
     Analyze the inputs of the instructions from current_instr_idx to stop_instr_idx.
 
@@ -80,7 +86,7 @@ def analysis_used_names(
             If None, the analysis will stop at the end of the instructions.
 
     Returns:
-        set[str]: The analysis result.
+        State: The analysis result.
     """
     name_recorder = NameRecorder(OrderedSet(), OrderedSet())
 

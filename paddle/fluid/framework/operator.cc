@@ -1754,7 +1754,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
-      if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
+      if (phi::KernelFactory::Instance().HasStructuredKernel(
+              type_)) {  // NOLINT
         kernel_signature_ =
             std::make_unique<phi::KernelSignature>(type_.c_str());
       } else {
@@ -1989,7 +1990,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        1,
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
-      if (fallback_to_cpu) {
+      if (fallback_to_cpu) {  // NOLINT
         transfer_scope = PrepareData(scope,
                                      phi_cpu_kernel_key,
                                      &transfered_inplace_vars,
@@ -2278,7 +2279,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
   std::string phi_kernel_name;
-  if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
+  if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {  // NOLINT
     kernel_signature_ = std::make_unique<phi::KernelSignature>(type_.c_str());
   } else {
     kernel_signature_ = std::make_unique<phi::KernelSignature>(
@@ -2677,7 +2678,7 @@ Scope* OperatorWithKernel::PrepareData(
       // target_kernel_type.
       // Have a discussion with @Superjomn or the inference developers if some
       // changes on this logic for this macro might not tested on the other
-      // scenerios.
+      // scenarios.
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
@@ -3088,10 +3089,10 @@ static void SetDnnAttrIntoDeviceContext(
     phi::DeviceContext* dev_ctx,
     const Attribute& attr,
     const std::string& attr_name,
-    const operators::ExtraAttrPropertySet& attr_propertys) {
+    const operators::ExtraAttrPropertySet& attr_properties) {
 #ifdef PADDLE_WITH_DNNL
   if (phi::OneDNNContext::classof(dev_ctx) &&
-      attr_propertys.Support(operators::ExtraAttrProperty::ONEDNN)) {
+      attr_properties.Support(operators::ExtraAttrProperty::ONEDNN)) {
     VLOG(4) << "Runtime attr `" << attr_name << "` is passed to OneDNNContext.";
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
     switch (AttrTypeID(attr)) {
@@ -3104,7 +3105,7 @@ static void SetDnnAttrIntoDeviceContext(
       case proto::AttrType::STRING:
         one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(std::string, attr));
         break;
-      case proto::AttrType::INTS:
+      case proto::AttrType::INTS:  // NOLINT
         one_dnn_ctx->SetDnnAttr(attr_name,
                                 PADDLE_GET_CONST(std::vector<int>, attr));
         break;
@@ -3124,7 +3125,7 @@ static void SetDnnAttrIntoDeviceContext(
 #endif
 #ifdef PADDLE_WITH_CUDA
   if (phi::GPUContext::classof(dev_ctx) &&
-      attr_propertys.Support(operators::ExtraAttrProperty::GPUDNN)) {
+      attr_properties.Support(operators::ExtraAttrProperty::GPUDNN)) {
     VLOG(4) << "Runtime attr `" << attr_name << "` is passed to GPUDNNContext.";
     phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
     switch (AttrTypeID(attr)) {
@@ -3358,7 +3359,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       case phi::AttributeType::INT_ARRAY:
         if (attr_iter != Attrs().end()) {
           switch (AttrTypeID(attr_iter->second)) {
-            case proto::AttrType::INTS:
+            case proto::AttrType::INTS:  // NOLINT
               phi_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
                   PADDLE_GET_CONST(std::vector<int32_t>, attr_iter->second))));
               break;
@@ -3497,7 +3498,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(int64_t, attr_iter->second));
             break;
-          case phi::AttributeType::INT32S:
+          case phi::AttributeType::INT32S:  // NOLINT
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<int>, attr_iter->second));
             break;
@@ -3536,7 +3537,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                     attr_names[i]));
             }
             break;
-          case phi::AttributeType::FLOAT32S:
+          case phi::AttributeType::FLOAT32S:  // NOLINT
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<float>, attr_iter->second));
             break;
@@ -3585,8 +3586,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
-    auto attr_propertys = paddle::operators::GetExtraAttrProperties(attr_name);
-    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
+    auto attr_properties = paddle::operators::GetExtraAttrProperties(attr_name);
+    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_properties);
   }
   // TODO(chenweihang): Since the pass will still `SetAttr` in the OpDesc,
   // we try to add these Attrs to the RuntimeAttrs, but these OpDesc will lose
@@ -3600,8 +3601,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (const auto& attr_iter : attrs) {
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
-    auto attr_propertys = paddle::operators::GetExtraAttrProperties(attr_name);
-    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
+    auto attr_properties = paddle::operators::GetExtraAttrProperties(attr_name);
+    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_properties);
   }
   VLOG(4) << "Done runtime attributes";
 #endif

@@ -496,9 +496,12 @@ create_test_bf16_class(TestSumOpReverseExclusive)
 
 
 class BadInputTest(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         paddle.enable_static()
-        with base.program_guard(base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_bad_x():
                 data = [1, 2, 4]

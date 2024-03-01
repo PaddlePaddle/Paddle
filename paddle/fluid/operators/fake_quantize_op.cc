@@ -825,7 +825,7 @@ $$Out = X$$
   }
 };
 
-class StrightThroughEstimatorGradOp : public framework::OperatorWithKernel {
+class StraightThroughEstimatorGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -835,11 +835,11 @@ class StrightThroughEstimatorGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput(out_grad_name),
                    "Input",
                    out_grad_name,
-                   "StrightThroughEstimatorGradOp");
+                   "StraightThroughEstimatorGradOp");
     OP_INOUT_CHECK(ctx->HasOutput(x_grad_name),
                    "Output",
                    x_grad_name,
-                   "StrightThroughEstimatorGradOp");
+                   "StraightThroughEstimatorGradOp");
 
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim(out_grad_name));
   }
@@ -853,13 +853,13 @@ class StrightThroughEstimatorGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class StrightThroughEstimatorMaker : public framework::SingleGradOpMaker<T> {
+class StraightThroughEstimatorMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("stright_throuth_estimator_grad");
+    grad_op->SetType("straight_through_estimator_grad");
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
@@ -888,8 +888,8 @@ REGISTER_OPERATOR(
     fake_quantize_dequantize_abs_max,
     ops::FakeQuantOrWithDequantAbsMaxOp,
     ops::FakeQuantOrWithDequantAbsMaxOpMaker,
-    ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
+    ops::StraightThroughEstimatorMaker<paddle::framework::OpDesc>,
+    ops::StraightThroughEstimatorMaker<paddle::imperative::OpBase>);
 PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_abs_max,
                           CPU,
                           ALL_LAYOUT,
@@ -924,8 +924,8 @@ REGISTER_OPERATOR(
     fake_quantize_dequantize_moving_average_abs_max,
     ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
     ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-    ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
+    ops::StraightThroughEstimatorMaker<paddle::framework::OpDesc>,
+    ops::StraightThroughEstimatorMaker<paddle::imperative::OpBase>);
 PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_moving_average_abs_max,
                           CPU,
                           ALL_LAYOUT,
@@ -948,28 +948,28 @@ REGISTER_OPERATOR(
     moving_average_abs_max_scale,
     ops::MovingAverageAbsMaxScaleOp,
     ops::MovingAverageAbsMaxScaleOpMaker,
-    ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
+    ops::StraightThroughEstimatorMaker<paddle::framework::OpDesc>,
+    ops::StraightThroughEstimatorMaker<paddle::imperative::OpBase>);
 PD_REGISTER_STRUCT_KERNEL(moving_average_abs_max_scale,
                           CPU,
                           ALL_LAYOUT,
                           ops::MovingAverageAbsMaxScaleKernel,
                           float) {}
 
-REGISTER_OPERATOR(stright_throuth_estimator_grad,
-                  ops::StrightThroughEstimatorGradOp);
-PD_REGISTER_STRUCT_KERNEL(stright_throuth_estimator_grad,
+REGISTER_OPERATOR(straight_through_estimator_grad,
+                  ops::StraightThroughEstimatorGradOp);
+PD_REGISTER_STRUCT_KERNEL(straight_through_estimator_grad,
                           CPU,
                           ALL_LAYOUT,
-                          ops::StrightThroughEstimatorGradKernel,
+                          ops::StraightThroughEstimatorGradKernel,
                           float) {}
 
 REGISTER_OPERATOR(
     fake_channel_wise_quantize_dequantize_abs_max,
     ops::FakeChannelWiseQuantizeDequantizeAbsMaxOp,
     ops::FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker,
-    ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
+    ops::StraightThroughEstimatorMaker<paddle::framework::OpDesc>,
+    ops::StraightThroughEstimatorMaker<paddle::imperative::OpBase>);
 PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_quantize_dequantize_abs_max,
                           CPU,
                           ALL_LAYOUT,

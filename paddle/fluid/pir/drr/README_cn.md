@@ -9,9 +9,9 @@ DRR ( Declarative Rewrite Rule ) 是来处理这种 DAG-to-DAG 类型的一套 P
 以消除冗余 CastOp 的 PASS 为例，使用 DRR 的代码开发示例如下：
 ~~~ c++
 // 1. 继承 DrrPatternBase 类
-class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
+class RemoveRedundantCastPattern : public paddle::drr::DrrPatternBase {
 public:
-	std::string name() const override { return "RemoveRedundentCastPattern"; }
+	std::string name() const override { return "RemoveRedundantCastPattern"; }
 
   // 2. 重载 operator()
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
