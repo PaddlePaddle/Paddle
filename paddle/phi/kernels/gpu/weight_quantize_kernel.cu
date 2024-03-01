@@ -38,10 +38,9 @@ void WeightQuantizeKernel(const Context& dev_ctx,
   std::vector<int> weight_shape{static_cast<int>(x.dims()[0]),
                                 static_cast<int>(x.dims()[1])};
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
+      (arch >= 70),
       true,
-      phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86."));
+      phi::errors::InvalidArgument("Currently, arch only support >= 70"));
 
   if (algo == "llm.int8") {
     std::vector<int> axis = {1, 0};

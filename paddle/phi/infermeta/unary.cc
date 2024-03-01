@@ -5236,10 +5236,9 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaTensor* scale) {
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86) || (arch == 70) || (arch == 75)),
+      arch >= 70,
       true,
-      phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86."));
+      phi::errors::InvalidArgument("Currently, arch only support SM >= 70."));
 
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(

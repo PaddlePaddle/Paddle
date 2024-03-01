@@ -23,7 +23,6 @@ from paddle import base
 from paddle.base import core
 from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
 paddle.seed(123)
@@ -72,6 +71,8 @@ class LLMInt8LinearTestCase(unittest.TestCase):
         self.weight, self.weight_scale = Q.weight_quantize(
             self.weight, algo="llm.int8"
         )
+        # since llm_int8_linear assume fp32 weight scale, so we add a temporary cast here 
+        self.weight_scale = paddle.cast(self.weight_scale, paddle.float32)
 
     def get_linear_out(self):
         out = self.linear(self.x)
@@ -87,20 +88,17 @@ class LLMInt8LinearTestCase(unittest.TestCase):
         )
         return out.numpy()
 
-    @test_with_pir_api
     def get_llm_int8_linear_out_static(self):
         paddle.enable_static()
-        main = base.static.Program()
-        start = base.static.Program()
-        with base.static.program_guard(main, start):
-            x = paddle.static.data("x", self.x.shape, dtype=self.x.dtype)
+        main = paddle.static.Program()
+        start = paddle.static.Program()
+        with paddle.static.program_guard(main, start):
+            x = paddle.static.data("x", self.x.shape, dtype=self.dtype)
 
             weight = paddle.static.data(
-                "weight", self.weight.shape, dtype=self.weight.dtype
+                "weight", self.weight.shape, dtype='int8'
             )
-            bias = paddle.static.data(
-                "bias", self.bias.shape, dtype=self.bias.dtype
-            )
+            bias = paddle.static.data("bias", self.bias.shape, dtype=self.dtype)
             x_np = self.x.numpy()
             weight_np = self.weight.numpy()
             bias_np = self.bias.numpy()
@@ -108,7 +106,7 @@ class LLMInt8LinearTestCase(unittest.TestCase):
                 weight_scale = paddle.static.data(
                     "weight_scale",
                     self.weight_scale.shape,
-                    dtype=self.weight_scale.dtype,
+                    dtype='float32',
                 )
                 weight_scale_np = self.weight_scale.numpy()
             else:

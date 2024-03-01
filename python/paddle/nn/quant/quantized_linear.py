@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, version
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
@@ -48,7 +49,7 @@ def weight_quantize(x, algo="weight_only_int8", arch=None):
 
     Returns:
         out (Tensor): The Tensor which is the quantitative results, the data type is int8, the shape is transposition of x.
-        scale (Tensor): The scale Tensor which is the scale of pre-channel, the data type is float32.
+        scale (Tensor): The scale Tensor which is the scale of pre-channel
     Examples:
         .. code-block:: python
 
@@ -68,11 +69,11 @@ def weight_quantize(x, algo="weight_only_int8", arch=None):
         arch = _get_arch_info()
 
     assert (
-        arch == 70 or arch == 80 or arch == 86 or arch == 75
-    ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
+        arch >= 70
+    ), f"Currently weight_quantize only support SM >= 70. but got {arch} "
 
     if in_dynamic_mode():
-        return _C_ops.weight_quantize(x, algo, arch)
+        out, scale = _C_ops.weight_quantize(x, algo, arch)
     else:
         type = "weight_quantize"
         helper = LayerHelper(type, **locals())
@@ -85,7 +86,7 @@ def weight_quantize(x, algo="weight_only_int8", arch=None):
             outputs={'out': out, "scale": scale},
             attrs={"algo": algo, "arch": arch},
         )
-        return (out, scale)
+    return (out, scale)
 
 
 def weight_dequantize(x, scale, algo="weight_only_int8", out_dtype='float16'):
@@ -172,8 +173,8 @@ def weight_only_linear(
         arch = _get_arch_info()
 
     assert (
-        arch == 70 or arch == 80 or arch == 86 or arch == 75
-    ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
+        arch >= 70
+    ), f"Currently weight_quantize only support SM >= 70. but got {arch} "
 
     if in_dynamic_mode():
         out = _C_ops.weight_only_linear(
