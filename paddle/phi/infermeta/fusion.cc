@@ -1077,7 +1077,6 @@ void FusedBiasDropoutResidualLnInferMeta(
 }
 
 void FusedBiasDropoutResidualLnGradInferMeta(
-    const MetaTensor& y_grad,
     const MetaTensor& x,
     const MetaTensor& residual,
     const MetaTensor& bias,
@@ -1087,6 +1086,7 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     const MetaTensor& ln_variance,
     const MetaTensor& bias_dropout_residual_out,
     const MetaTensor& dropout_mask_out,
+    const MetaTensor& y_grad,
     const float dropout_rate,
     const bool is_test,
     const bool dropout_fix_seed,
