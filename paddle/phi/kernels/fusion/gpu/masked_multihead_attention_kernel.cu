@@ -16,11 +16,13 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
+// kai mod
+#include <nvtx3/nvToolsExt.h>
 
 namespace phi {
 namespace fusion {
 
-constexpr int steps_per_block = 128;
+constexpr int steps_per_block = 64;
 
 #ifndef PADDLE_WITH_HIP
 
@@ -498,7 +500,7 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
-  
+
   int useful_smem_index = end_seq - start_seq;
   if (!is_last_block) {
     useful_smem_index = end_seq - start_seq - 1;
@@ -517,8 +519,11 @@ __global__ void masked_multihead_attention_kernel(
   
   int bhsi = bhi*params.split_seq;
   if (tid == 0) {
-    params.qk_sum_max_split_seq[(bhsi + split_index) * 2] = sum;
-    params.qk_sum_max_split_seq[(bhsi + split_index) * 2 + 1] = qk_max;
+    // kai mod
+    float2 sum_max = {sum, qk_max};
+    *reinterpret_cast<float2*>(&params.qk_sum_max_split_seq[(bhsi + split_index) * 2]) = sum_max;
+    // params.qk_sum_max_split_seq[(bhsi + split_index) * 2] = sum;
+    // params.qk_sum_max_split_seq[(bhsi + split_index) * 2 + 1] = qk_max;
   }
 
   // FIXME(wangxi): need add 1.e-6f?
@@ -527,6 +532,7 @@ __global__ void masked_multihead_attention_kernel(
   for (int ti = tid; ti <= end_seq - start_seq; ti += THREADS_PER_BLOCK) {
     convert_from_float(logits_smem[ti], qk_smem[ti] * inv_sum);
   }
+
   __syncthreads();
 
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
@@ -616,10 +622,10 @@ __global__ void masked_multihead_attention_kernel(
   __syncthreads();
 
   // now we do the reduction in the seq dimension to get [1, head_dim].
+  // kai：在Dh比较小的情况下，warpLevelReduce可能可以优化这段代码
   if (Dh == Dh_MAX || vi < Dh) {
 #pragma unroll
-    for (int active_groups = V_PER_ITER; active_groups >= 2;
-         active_groups /= 2) {
+    for (int active_groups = V_PER_ITER; active_groups >= 2; active_groups /= 2) {
       int midpoint = active_groups / 2;
 
       if ((vo-start_seq) >= midpoint && (vo-start_seq) < active_groups && (Dh == Dh_MAX || vi < Dh)) {
@@ -643,13 +649,9 @@ __global__ void masked_multihead_attention_kernel(
   // kai mod
   if(vo == start_seq && (Dh == Dh_MAX || vi < Dh)){
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-    for(int v_ele_id = 0; v_ele_id < V_VEC_SIZE; v_ele_id++){
-      params.split_out[(bhsi + split_index) * Dh + vi + v_ele_id] = (reinterpret_cast<const float *>(&out))[v_ele_id];
-    } 
+    *(reinterpret_cast<V_vec_acum *>(&params.split_out[(bhsi + split_index) * Dh + vi])) = out;
 #else
-    for(int v_ele_id = 0; v_ele_id < V_VEC_SIZE; v_ele_id++){
-      params.split_out[(bhsi + split_index) * Dh + vi + v_ele_id] = static_cast<float>((reinterpret_cast<const T *>(&out))[v_ele_id]);
-    }
+    *(reinterpret_cast<V_vec_acum_fp32_<V_vec>::Type *>(&params.split_out[(bhsi + split_index) * Dh + vi])) = cast_to_float(out);
 #endif
   }
 
@@ -669,7 +671,7 @@ __global__ void post_process_kernel_kai(Masked_multihead_attention_params<T> par
   const int bhi = (bi * params.num_head + hi);
   const int bhsi = (bi * params.num_head + hi) * params.split_seq;
   // 分配一个共享内存大小，如果实际seq的需要超过该大小，则用循环解决。
-  /// 在Dh特别小，seq特别大的情况下会出问题
+  /// 在Dh_MAX特别小，seq特别大的情况下会出问题(Dh_MAX=32，max_seq_len不能超 32 * steps_per_block)
   constexpr int smem_size = Dh_MAX;
   __shared__ float2 qk_sum_max_smem[smem_size];
 
@@ -682,11 +684,13 @@ __global__ void post_process_kernel_kai(Masked_multihead_attention_params<T> par
   float sum = 0;
   float v = 0;
   if(tid < Dh){
+    #pragma unroll
     for (int i = 0; i < params.real_split_each_batch[bi]; ++i) {
       float2 sum_max = qk_sum_max_smem[i];
       float tmp_max = sum_max.y;
       max = tmp_max > max ? tmp_max : max;
     }
+    #pragma unroll
     for (int i = 0; i < params.real_split_each_batch[bi]; ++i) {
       float2 sum_max = qk_sum_max_smem[i];
       // split_out:[bsz , num_head, split_seq, dim_head]
@@ -702,6 +706,126 @@ __global__ void post_process_kernel_kai(Masked_multihead_attention_params<T> par
     T tmp_v = (T)v;
     store_func.store(tmp_v, bhi * Dh + tid);
     // params.out[bhi * Dh + tid] = (T)(v);
+  }
+}
+// v2允许处理102400及以下长度的seq，更长序列报错原因未查看
+template <typename T, int Dh, int Dh_MAX, typename StoreFunc>
+__global__ void post_process_kernel_kai_v2(Masked_multihead_attention_params<T> params, StoreFunc store_func)
+{
+  const int bi = blockIdx.y;
+  const int tid = threadIdx.x;
+  const int hi = blockIdx.x;
+  const int bhi = (bi * params.num_head + hi);
+  const int bhsi = (bi * params.num_head + hi) * params.split_seq;
+  extern __shared__ float2 qk_sum_max_smem[];
+
+  for(int i = tid; i < params.real_split_each_batch[bi]; i += blockDim.x){
+    qk_sum_max_smem[i] = *reinterpret_cast<float2*>(&params.qk_sum_max_split_seq[(bhsi + i) * 2]);
+  }
+  __syncthreads();
+
+  float max = -FLT_MAX;
+  float sum = 0;
+  float v = 0;
+  if(tid < Dh){
+    #pragma unroll
+    for (int i = 0; i < params.real_split_each_batch[bi]; ++i) {
+      float2 sum_max = qk_sum_max_smem[i];
+      float tmp_max = sum_max.y;
+      max = tmp_max > max ? tmp_max : max;
+    }
+    #pragma unroll
+    for (int i = 0; i < params.real_split_each_batch[bi]; ++i) {
+      float2 sum_max = qk_sum_max_smem[i];
+      // split_out:[bsz , num_head, split_seq, dim_head]
+      float this_v = params.split_out[(bhsi + i) * Dh + tid];
+
+      float real_this_sum = sum_max.x * __expf(sum_max.y - max);
+      v += real_this_sum * this_v;
+      // v += this_v * __expf(this_max - max);
+      sum += real_this_sum;
+    }
+
+    v /= sum;
+    T tmp_v = (T)v;
+    store_func.store(tmp_v, bhi * Dh + tid);
+    // params.out[bhi * Dh + tid] = (T)(v);
+  }
+}
+// v3的每个线程块都启动了更多的线程（4x/8x）来处理长seq导致的多循环延迟 如10240Seq / 128StepsPerBlock = 80循环。用4x倍线程就是20个循环
+template <typename T, int Dh, int Dh_MAX, int SPLTS_PER_BLOCK, typename StoreFunc>
+__global__ void post_process_kernel_kai_v3(Masked_multihead_attention_params<T> params, StoreFunc store_func)
+{
+  const int bi = blockIdx.y;
+  const int tid = threadIdx.x;
+  const int hi = blockIdx.x;
+  const int bhi = (bi * params.num_head + hi);
+  const int bhsi = (bi * params.num_head + hi) * params.split_seq;
+  
+  extern __shared__ float2 qk_sum_max_smem[];
+  float max = -FLT_MAX;
+  const int WARP_SIZE = 32;
+  int WARPS_PER_BLOCK = blockDim.x / WARP_SIZE;
+
+  for(int i = tid; i < params.real_split_each_batch[bi]; i += blockDim.x){
+    float2 sum_max = *reinterpret_cast<float2*>(&params.qk_sum_max_split_seq[(bhsi + i) * 2]);
+    max = fmaxf(sum_max.y, max);
+    qk_sum_max_smem[i] = sum_max;
+  }
+#pragma unroll
+  for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
+    max = fmaxf(max, __shfl_xor_sync(uint32_t(-1), max, mask));
+  }
+
+  __shared__ float max_smem[32];
+  const int warp = tid / WARP_SIZE;
+  const int lane = tid % WARP_SIZE;
+  if (lane == 0) {
+    max_smem[warp] = max;
+  }
+  __syncthreads();
+
+  max = lane < WARPS_PER_BLOCK ? max_smem[lane] : -FLT_MAX;
+#pragma unroll
+  for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
+    max = fmaxf(max, __shfl_xor_sync(uint32_t(-1), max, mask));
+  }
+
+  max = __shfl_sync(uint32_t(-1), max, 0);
+  
+  __shared__ float redu_smem[SPLTS_PER_BLOCK/2][2][Dh_MAX];
+  float sum = 0;
+  float v = 0;
+  int split_group_idx = tid / Dh_MAX;
+  if((tid % Dh_MAX) < Dh){
+#pragma unroll
+    for (int i = split_group_idx; i < params.real_split_each_batch[bi]; i+=SPLTS_PER_BLOCK) {
+      float2 sum_max = qk_sum_max_smem[i];
+      float this_v = params.split_out[(bhsi + i) * Dh + (tid % Dh_MAX)];
+
+      float real_this_sum = sum_max.x * __expf(sum_max.y - max);
+      v += real_this_sum * this_v;
+      sum += real_this_sum;
+    }
+    // 多个splits合并成一个
+    for(int active_groups = SPLTS_PER_BLOCK; active_groups >= 2; active_groups /= 2){
+      int midpoint = active_groups / 2;
+      if(split_group_idx >= midpoint && split_group_idx < active_groups){
+        redu_smem[split_group_idx - midpoint][0][tid % Dh_MAX] = v; 
+        redu_smem[split_group_idx - midpoint][1][tid % Dh_MAX] = sum;
+      }
+      __syncthreads();
+      if(split_group_idx < midpoint){
+        v += redu_smem[split_group_idx][0][tid % Dh_MAX];
+        sum += redu_smem[split_group_idx][1][tid % Dh_MAX];
+      }
+      __syncthreads();
+    }
+    if(split_group_idx == 0){
+      v /= sum;
+      T tmp_v = (T)v;
+      store_func.store(tmp_v, bhi * Dh + tid);
+    }
   }
 }
 
@@ -757,8 +881,9 @@ template <typename T, int Dh, int Dh_MAX, typename LoadFunc>
 void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
                         const cudaStream_t &stream,
                         LoadFunc load_func) {
+  // kai：在Dh_MAX比较小的情况下 可能启动多个warp 比每个线程读16B更划算？
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
-  if (params.timestep < 32) {
+  if (params.timestep < 64) {
     MMHA_LAUNCH_KERNEL(
         T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 64, stream, load_func);
   } else if (params.timestep < 204800) {
@@ -773,10 +898,11 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
                        stream,
                        load_func);
 #else
+    // kai mod： 4_128在大部分情况下都是优解
     MMHA_LAUNCH_KERNEL(T,
                        Dh,
                        Dh_MAX,
-                       2,
+                       4,
                        THREADS_PER_VALUE,
                        128,
                        stream,
@@ -800,7 +926,8 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
                int dim_head,
                LoadFunc load_func,
                StoreFunc_kai store_func_kai) {
-  // kai mod: for post_process_kernel_kai
+  //// kai mod: for post_process_kernel_kai
+/*
   dim3 grid(params.num_head, params.batch_size);
   switch (dim_head) {
     case 10:
@@ -853,6 +980,143 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
       PADDLE_THROW(
           phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head)); 
   }
+*/
+
+  nvtxRangeId_t fmha_id;
+  nvtxRangeId_t post_kernel_id;
+  fmha_id = nvtxRangeStartA("fmha");
+  switch (dim_head) {
+    case 10:
+      fmha_launch_kernel<T, 10, 32>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    case 16:
+      fmha_launch_kernel<T, 16, 32>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    case 26:
+      fmha_launch_kernel<T, 26, 32>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    case 32:
+      fmha_launch_kernel<T, 32, 32>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    case 64:
+      fmha_launch_kernel<T, 64, 64>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    // // for opt model
+    case 80:
+      fmha_launch_kernel<T, 80, 128>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    case 96:
+      fmha_launch_kernel<T, 96, 128>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    case 128:
+      fmha_launch_kernel<T, 128, 128>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    case 192:
+      fmha_launch_kernel<T, 192, 256>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    case 256:
+      fmha_launch_kernel<T, 256, 256>(
+          params, dev_ctx.stream(), load_func);
+      break;
+    default:
+      PADDLE_THROW(
+          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head)); 
+  }
+  nvtxRangeEnd(fmha_id);
+
+  post_kernel_id = nvtxRangeStartA("post_process_kernel_kai");
+  /// for v3   BLK_SIZE = Dh_MAX * 4 以应对长seq的大量循环
+//
+  dim3 grid(params.num_head, params.batch_size);
+  int smem_sz = params.split_seq * sizeof(float2); 
+  switch (dim_head) {
+    case 10:
+      post_process_kernel_kai_v3<T, 10, 32, 8, StoreFunc_kai><<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 16:
+      post_process_kernel_kai_v3<T, 16, 32, 8, StoreFunc_kai><<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 26:
+      post_process_kernel_kai_v3<T, 26, 32, 8, StoreFunc_kai><<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 32:
+      post_process_kernel_kai_v3<T, 32, 32, 8, StoreFunc_kai><<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 64:
+      post_process_kernel_kai_v3<T, 64, 64, 4, StoreFunc_kai><<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 80:
+      post_process_kernel_kai_v3<T, 80, 128, 4, StoreFunc_kai><<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 96:
+      post_process_kernel_kai_v3<T, 96, 128, 4, StoreFunc_kai><<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 128:
+      post_process_kernel_kai_v3<T, 128, 128, 4, StoreFunc_kai><<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 192:
+      post_process_kernel_kai_v3<T, 192, 256, 4, StoreFunc_kai><<<grid, 1024, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 256:
+      post_process_kernel_kai_v3<T, 256, 256, 4, StoreFunc_kai><<<grid, 1024, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    default:
+      PADDLE_THROW(
+          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
+  }
+//
+
+  /// for v2
+/*
+  dim3 grid(params.num_head, params.batch_size);
+  // 对于64KB/SM 共享内存的小设备 split_seq最大不能超过8K，max_seq不能超过128*8*1024
+  int smem_sz = params.split_seq * sizeof(float2);
+  switch (dim_head) {
+    case 10:
+      post_process_kernel_kai_v2<T, 10, 32, StoreFunc_kai><<<grid, 32, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 16:
+      post_process_kernel_kai_v2<T, 16, 32, StoreFunc_kai><<<grid, 32, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 26:
+      post_process_kernel_kai_v2<T, 26, 32, StoreFunc_kai><<<grid, 32, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 32:
+      post_process_kernel_kai_v2<T, 32, 32, StoreFunc_kai><<<grid, 32, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 64:
+      post_process_kernel_kai_v2<T, 64, 64, StoreFunc_kai><<<grid, 64, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 80:
+      post_process_kernel_kai_v2<T, 80, 128, StoreFunc_kai><<<grid, 128, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 96:
+      post_process_kernel_kai_v2<T, 96, 128, StoreFunc_kai><<<grid, 128, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 128:
+      post_process_kernel_kai_v2<T, 128, 128, StoreFunc_kai><<<grid, 128, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 192:
+      post_process_kernel_kai_v2<T, 192, 256, StoreFunc_kai><<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    case 256:
+      post_process_kernel_kai_v2<T, 256, 256, StoreFunc_kai><<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      break;
+    default:
+      PADDLE_THROW(
+          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
+  }
+*/
+  nvtxRangeEnd(post_kernel_id);
 }
 
 /// kai mod
