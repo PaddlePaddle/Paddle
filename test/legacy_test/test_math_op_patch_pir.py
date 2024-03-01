@@ -643,6 +643,32 @@ class TestMathOpPatchesPir(unittest.TestCase):
             self.assertTrue(inspect.ismethod(a.asinh_))
             self.assertTrue(inspect.ismethod(a.diag))
 
+    def test_binary_op_with_scalar(self):
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x_np = np.array(10, dtype=np.int32)
+                x = paddle.static.data(name='x', shape=[], dtype="int32")
+                y1 = x / 2
+                y2 = x / 5.0
+                y3 = x // 2
+                y4 = x * 8.0
+                self.assertEqual(y1.dtype, paddle.pir.core.DataType.FLOAT32)
+                self.assertEqual(y2.dtype, paddle.pir.core.DataType.FLOAT32)
+                self.assertEqual(y3.dtype, paddle.pir.core.DataType.INT32)
+                self.assertEqual(y4.dtype, paddle.pir.core.DataType.FLOAT32)
+                (y1_out, y2_out, y3_out, y4_out) = exe.run(
+                    main_program,
+                    feed={
+                        "x": x_np,
+                    },
+                    fetch_list=[y1, y2, y3, y4],
+                )
+                np.testing.assert_allclose(x_np / 2, y1_out, rtol=1e-05)
+                np.testing.assert_allclose(x_np / 5.0, y2_out, rtol=1e-05)
+                np.testing.assert_allclose(x_np // 2, y3_out, atol=1e-05)
+                np.testing.assert_allclose(x_np * 8.0, y4_out, rtol=1e-05)
+
 
 if __name__ == '__main__':
     unittest.main()
