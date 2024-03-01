@@ -21,7 +21,13 @@ template <typename T, typename Context>
 void AsRealStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          DenseTensor* out) {
-  out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
+  auto out_stride_v = common::vectorize(x.strides());
+  for (size_t i = 0; i < out_stride_v.size(); ++i) {
+    out_stride_v[i] *= 2;
+  }
+  out_stride_v.push_back(1);
+  out->set_strides(common::make_ddim(out_stride_v));
+
   if (x.dtype() == DataType::COMPLEX64) {
     out->set_type(DataType::FLOAT32);
   } else if (x.dtype() == DataType::COMPLEX128) {

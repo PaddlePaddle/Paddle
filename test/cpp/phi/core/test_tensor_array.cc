@@ -46,42 +46,42 @@ TEST(tensor_array, tensor_array_not_init) {
 
   try {
     tensor_array.dims();
-  } catch (const phi::enforce::EnforceNotMet& error) {
+  } catch (const common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     EXPECT_TRUE(ex_msg.find("dims") != std::string::npos);
   }
 
   try {
     tensor_array.place();
-  } catch (const phi::enforce::EnforceNotMet& error) {
+  } catch (const common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     EXPECT_TRUE(ex_msg.find("place") != std::string::npos);
   }
 
   try {
     tensor_array.dtype();
-  } catch (const phi::enforce::EnforceNotMet& error) {
+  } catch (const common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     EXPECT_TRUE(ex_msg.find("dtype") != std::string::npos);
   }
 
   try {
     tensor_array.layout();
-  } catch (const phi::enforce::EnforceNotMet& error) {
+  } catch (const common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     EXPECT_TRUE(ex_msg.find("layout") != std::string::npos);
   }
 
   try {
     tensor_array.numel();
-  } catch (const phi::enforce::EnforceNotMet& error) {
+  } catch (const common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     EXPECT_TRUE(ex_msg.find("numel") != std::string::npos);
   }
 
   try {
     tensor_array.valid();
-  } catch (const phi::enforce::EnforceNotMet& error) {
+  } catch (const common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     EXPECT_TRUE(ex_msg.find("valid") != std::string::npos);
   }

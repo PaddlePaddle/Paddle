@@ -86,16 +86,16 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         self.init_kernel_type()
 
     def check_with_place(self, place, inplace):
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, True, True, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, True, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, False, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, False, False
         )
 
@@ -108,7 +108,7 @@ class TestSelectedRowsSumOp(unittest.TestCase):
             array[i] *= rows[i]
         return array
 
-    def check_input_and_optput(
+    def check_input_and_output(
         self,
         scope,
         place,
@@ -198,7 +198,7 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         else:
             return np.ndarray((0, row_numel), dtype=self.dtype)
 
-    def check_input_and_optput(
+    def check_input_and_output(
         self,
         scope,
         place,
@@ -521,35 +521,11 @@ class TestRaiseSumsError(unittest.TestCase):
 
             def test_dtype1():
                 data1 = paddle.static.data(
-                    name="input1", shape=[10], dtype="int8"
+                    name="input3", shape=[10], dtype="int8"
                 )
                 paddle.add_n(data1)
 
             self.assertRaises(TypeError, test_dtype1)
-
-            def test_out_type():
-                data1 = paddle.static.data(
-                    name="input1", shape=[10], dtype="flaot32"
-                )
-                data2 = paddle.static.data(
-                    name="input2", shape=[10], dtype="float32"
-                )
-                out = [10]
-                out = paddle.add_n([data1, data2])
-
-            self.assertRaises(TypeError, test_out_type)
-
-            def test_out_dtype():
-                data1 = paddle.static.data(
-                    name="input1", shape=[10], dtype="flaot32"
-                )
-                data2 = paddle.static.data(
-                    name="input2", shape=[10], dtype="float32"
-                )
-                out = paddle.static.data(name="out", shape=[10], dtype="int8")
-                out = paddle.add_n([data1, data2])
-
-            self.assertRaises(TypeError, test_out_dtype)
 
 
 class TestSumOpError(unittest.TestCase):
@@ -607,8 +583,8 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
     def test_static_and_infer(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(
                 shape=self.x.shape, name='x', dtype='float32'
@@ -630,7 +606,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             sgd = paddle.optimizer.SGD(learning_rate=0.0)
             sgd.minimize(paddle.mean(out))
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(
                 feed={'x': self.x.numpy().astype('float32')}, fetch_list=[out]
             )
@@ -677,7 +653,7 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -721,7 +697,7 @@ class TestAddNTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -766,7 +742,7 @@ class TestSumDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -798,7 +774,7 @@ class TestSumTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 

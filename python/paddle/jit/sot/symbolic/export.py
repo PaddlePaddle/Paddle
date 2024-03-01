@@ -18,7 +18,7 @@ from itertools import chain
 import paddle
 from paddle.utils import flatten
 
-from ..utils import ConstTypes, ExportError, NameGenerator
+from ..utils import ConstTypes, ExportError, NameGenerator, get_api_fullname
 from .statement_ir import Symbol
 
 
@@ -31,8 +31,8 @@ class PyStatement:
 
     def get_lines(self, prefix=""):
         lines = [prefix + line for line in self.lines]
-        for statment in self.sub_statement:
-            lines.extend(statment.get_lines(self.tab + prefix))
+        for statement in self.sub_statement:
+            lines.extend(statement.get_lines(self.tab + prefix))
         return lines
 
     def add_sub(self, *lines):
@@ -130,26 +130,33 @@ class PyFileGen:
         self.new_root("\n")
         self.create_layer()
         self.new_root("\n")
+        self.create_inputs()
+        self.new_root("\n")
         self.create_test()
         self.new_root("\n")
         self.create_tail()
         return self.roots_to_string()
 
+    def is_exportable_type(self, value):
+        if (
+            isinstance(value, (ConstTypes, Symbol, paddle.dtype))
+            or value is Ellipsis  # NOINT
+        ):
+            return True
+        if isinstance(value, slice):
+            return (
+                self.is_exportable_type(value.start)
+                and self.is_exportable_type(value.stop)
+                and self.is_exportable_type(value.step)
+            )
+        return False
+
     def check_exportable(self):
         for stmt in self.SIR.statements:
             for inp in flatten(stmt.inputs):
-                if not isinstance(inp, ConstTypes) and not isinstance(
-                    inp, Symbol
-                ):
+                if not self.is_exportable_type(inp):
                     raise ExportError(
                         f"Not support create python file with input: {inp}"
-                    )
-            for out in flatten(stmt.outputs):
-                if not isinstance(out, ConstTypes) and not isinstance(
-                    out, Symbol
-                ):
-                    raise ExportError(
-                        f"Not support create python file with output: {out}"
                     )
 
     def create_header(self):
@@ -201,13 +208,14 @@ class PyFileGen:
             )
         )
 
-    def create_test(self):
-        test_class = self.new_root("class TestLayer(unittest.TestCase):")
+    def create_inputs(self):
+        create_paddle_inputs = self.new_root("def create_paddle_inputs():")
+        self.new_root("\n")
+        craete_numpy_inputs = self.new_root("def create_numpy_inputs():")
 
-        setup = test_class.add_sub("def setUp(self):")
-        test_inputs = [
-            "self.inputs = (",
-        ]
+        paddle_inputs = ["inputs = ("]
+        numpy_inputs = ["inputs = ("]
+
         for inp in self.SIR.inputs:
             if inp in self.SIR.non_param_symbol:
                 meta = self.SIR.symbol_meta_map[inp.name]
@@ -218,29 +226,61 @@ class PyFileGen:
                     paddle.int32,
                     paddle.int64,
                 ):
-                    test_inputs.append(
+                    paddle_inputs.append(
                         f"    paddle.randint(low=0, high=10, shape={shape_str}, dtype={meta.dtype}),"
                     )
+                    numpy_inputs.append(
+                        "    np.random.randint(low=0, high=10, size={}, dtype='{}'),".format(
+                            shape_str, str(meta.dtype).replace('paddle.', '')
+                        )
+                    )
+                elif meta.dtype is paddle.bool:
+                    paddle_inputs.append(
+                        f"    paddle.randint(low=0, high=2, shape={shape_str}, dtype=paddle.int32).cast(paddle.bool),"
+                    )
+                    numpy_inputs.append(
+                        "    np.random.randint(low=0, high=2, size={}, dtype='int').astype('bool'),".format(
+                            shape_str
+                        )
+                    )
                 else:
-                    test_inputs.append(
+                    paddle_inputs.append(
                         f"    paddle.rand(shape={shape_str}, dtype={meta.dtype}),"
                     )
-        test_inputs.append(")")
-        setup.add_sub(*test_inputs)
+                    numpy_inputs.append(
+                        "    np.random.random(size={}).astype('{}'),".format(
+                            shape_str, str(meta.dtype).replace('paddle.', '')
+                        )
+                    )
+
+        paddle_inputs.append(")")
+        paddle_inputs.append("return inputs")
+        numpy_inputs.append(")")
+        numpy_inputs.append("return inputs")
+
+        create_paddle_inputs.add_sub(*paddle_inputs)
+        craete_numpy_inputs.add_sub(*numpy_inputs)
+
+    def create_test(self):
+        test_class = self.new_root("class TestLayer(unittest.TestCase):")
+
+        setup = test_class.add_sub("def setUp(self):")
+        setup.add_sub("self.inputs = create_paddle_inputs()")
         setup.add_sub("self.net = LayerCase()")
 
         train = test_class.add_sub(
             "def train(self, net, to_static, with_prim=False, with_cinn=False):"
         )
         train.add_sub(
-            "paddle.set_flags({'FLAGS_prim_all': with_prim})",
             "if to_static:",
+            "    paddle.set_flags({'FLAGS_prim_all': with_prim})",
             "    if with_cinn:",
             "        build_strategy = paddle.static.BuildStrategy()",
             "        build_strategy.build_cinn_pass = True",
             "        net = paddle.jit.to_static(net, build_strategy=build_strategy, full_graph=True)",
             "    else:",
             "        net = paddle.jit.to_static(net, full_graph=True)",
+            "paddle.seed(123)",
             "outs = net(*self.inputs)",
             "return outs",
         )
@@ -262,7 +302,7 @@ class PyFileGen:
         )
 
     def init_sub_layer(self, layer, layer_name):
-        # TODO @wuzhanfei need more effecient way to create a sub layer
+        # TODO @wuzhanfei need more efficient way to create a sub layer
         # now, we just close call_Layer behavior
         raise ExportError("Not support create sub layer now.")
 
@@ -308,7 +348,9 @@ class PyFileGen:
         args, kwargs = stmt.inputs
         input_str = self.create_input_string(args, kwargs)
         api = stmt.api
-        api_str = api.__module__ + "." + api.__name__
+        api_str = get_api_fullname(api)
+        if api_str is None:
+            raise ExportError(f"Can not find module of {api}")
         if isinstance(stmt.outputs, Symbol):
             return [f"{self.name_gener(stmt.outputs)} = {api_str}({input_str})"]
         else:
@@ -343,4 +385,6 @@ def export(SIR, path):
 
     with open(os.path.join(path, f"{SIR.name}.py"), "w") as f:
         f.write(string)
-        print(f"[SOT] Export {SIR.name} Sucess with size {len(SIR.statements)}")
+        print(
+            f"[SOT] Export {SIR.name} Success with size {len(SIR.statements)}"
+        )

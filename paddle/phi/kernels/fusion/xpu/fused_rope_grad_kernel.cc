@@ -28,6 +28,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
                          bool use_neox_rotary_style,
+                         bool time_major,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
@@ -55,7 +56,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                       cos.get_ptr()->dims(),
                       phi::errors::InvalidArgument(
                           "The dims of sin and cos must be the same. But "
-                          "recieved sin's dims is {%s}, cos's dims is {%s}.",
+                          "received sin's dims is {%s}, cos's dims is {%s}.",
                           sin.get_ptr()->dims(),
                           cos.get_ptr()->dims()));
   }

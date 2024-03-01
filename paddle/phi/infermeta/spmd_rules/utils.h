@@ -33,16 +33,16 @@ inline bool IsEmpty(const std::vector<int64_t>& shape) {
 }
 
 // Generate the axis notation of tensor for the einsum notation of a broadcast
-// operation(alignment star from the rightmost axis). tenosr_ndim: the size of
-// the tensor. broadcast_ndim: the maxium size of tensors in this broadcast
+// operation(alignment star from the rightmost axis). tensor_ndim: the size of
+// the tensor. broadcast_ndim: the maximum size of tensors in this broadcast
 // operation. alphabet: the characters used to represent the axes of tensor.
 // length of alphabet should >= broadcast_ndim.
-std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
+std::string GetBroadcastAxes(const int64_t& tensor_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
-// Rule1: A repicated dimension could be merged by any sharded dimension.
+// Rule1: A replicated dimension could be merged by any sharded dimension.
 // Rule2: A tensor axis could at most be sharded by one mesh dimension.
 // (TODO trigger heuristics cost model and reshard to handle axis sharded by
 // multiple dimension case.)
@@ -67,14 +67,14 @@ TensorDistAttr UnShardTensorDims(const TensorDistAttr& dist_attr,
                                  std::vector<int64_t> dims);
 
 // Resolute the partial mesh dimension of a output tensor, giving the
-// merged sharding specifcation of input tensors and the axis names of output
+// merged sharding specification of input tensors and the axis names of output
 // tensor. Input are
 std::vector<int64_t> ResoluteOutputPartialDimension(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const std::string& tensor_axes);
 
 // Construct a DistAttr from the incoming DistAttr corresponding to the
-// Repliacated state
+// Replicated state
 TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr);
 
 bool IsDimSharded(const TensorDistAttr& dist_attr, int dim);

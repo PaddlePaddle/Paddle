@@ -534,7 +534,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     int fea_dim,
     uint64_t padding_id,
     bool scale_sparse,
-    const std::string& accesor,
+    const std::string& accessor,
     const std::string& click_name,
     platform::Place place,
     const std::vector<std::string>& input_names,
@@ -918,8 +918,8 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
       clock_gettime(CLOCK_REALTIME, &tp);
       double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
       static std::atomic<uint64_t> x(0);
-      std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
-      engine.seed(sseq);
+      std::seed_seq s_seq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
+      engine.seed(s_seq);
     }
   };
   thread_local engine_wrapper_t r;

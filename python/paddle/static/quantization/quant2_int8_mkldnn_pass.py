@@ -84,7 +84,7 @@ class Quant2Int8MkldnnPass:
         self._gru_ops = ['fusion_gru', 'multi_gru']
         self._lstm_ops = ['fusion_lstm']
         self._weight_thresholds = {}
-        # Collect the Input and Output sclaes from Fake quant models
+        # Collect the Input and Output scales from Fake quant models
         self._var_quant_scales = {}
         self._max_range = {}
         self._s8_max = 127

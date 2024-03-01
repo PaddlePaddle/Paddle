@@ -201,7 +201,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         self.assertRaises(ValueError, run_5)
 
-        # ValueError: channel dimmention
+        # ValueError: channel dimension
         x = paddle.static.data(
             name="x",
             shape=[2, 5, 5, -1],
@@ -344,7 +344,7 @@ class TestConv2DEnviron(unittest.TestCase):
 
     def run2(self, place):
         with base.dygraph.guard(place):
-            inputs = base.dygraph.to_variable(self.input_np)
+            inputs = paddle.to_tensor(self.input_np)
             conv = paddle.nn.Conv2D(
                 in_channels=3,
                 out_channels=4,

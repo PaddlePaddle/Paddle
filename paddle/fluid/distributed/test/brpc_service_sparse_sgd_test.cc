@@ -43,9 +43,6 @@ class DenseTensor;
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace operators = paddle::operators;
-namespace memory = paddle::memory;
-namespace distributed = paddle::distributed;
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");

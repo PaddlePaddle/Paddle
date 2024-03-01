@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.lod_tensor import (
@@ -84,7 +85,7 @@ class TestLoDTensor(unittest.TestCase):
         self.assertEqual(
             tensor.recursive_sequence_lengths(), correct_recursive_seq_lens
         )
-        self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT64)
+        self.assertEqual(tensor._dtype(), paddle.int64)
         self.assertEqual(tensor.shape(), [5, 1])
         np.testing.assert_array_equal(
             np.array(tensor),
@@ -98,7 +99,7 @@ class TestLoDTensor(unittest.TestCase):
         self.assertEqual(
             tensor.recursive_sequence_lengths(), recursive_seq_lens
         )
-        self.assertEqual(tensor._dtype(), core.VarDesc.VarType.FP64)
+        self.assertEqual(tensor._dtype(), paddle.float64)
         self.assertEqual(tensor.shape(), [10, 1])
         np.testing.assert_array_equal(np.array(tensor), data)
 
@@ -182,7 +183,7 @@ class TestLoDTensor(unittest.TestCase):
             [[1, 3]],
             base.CPUPlace(),
         )
-        fp32_tensor = tensor._as_type(core.VarDesc.VarType.FP32)
+        fp32_tensor = tensor._as_type(paddle.float32)
         print(fp32_tensor)
 
 

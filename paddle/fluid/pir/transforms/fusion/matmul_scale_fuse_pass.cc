@@ -18,13 +18,15 @@
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
 class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "MatmulScaleFusePattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -68,8 +70,6 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
     matmul_op_res({&res.Tensor("x"), &res.Tensor("scale_res_out")},
                   {&res.Tensor("scale_out")});
   }
-
-  std::string name() const override { return "MatmulScaleFusePattern"; }
 };
 
 class MatmulScaleFusePass : public pir::PatternRewritePass {
@@ -79,7 +79,7 @@ class MatmulScaleFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(MatmulScaleFusePattern().Build(context));
+    ps.Add(paddle::drr::Create<MatmulScaleFusePattern>(context));
     return ps;
   }
 };

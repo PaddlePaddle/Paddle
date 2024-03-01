@@ -185,7 +185,11 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
             if self.mode == "ValueTensor":
                 return 0, 3
             else:
-                return 1, 2
+                ver = paddle_infer.get_trt_compile_version()
+                if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8500:
+                    return 1, 3
+                else:
+                    return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

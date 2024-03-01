@@ -26,7 +26,6 @@ from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
 from paddle import _legacy_C_ops, base
-from paddle.base.dygraph import to_variable
 from paddle.framework import in_dynamic_mode
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -66,9 +65,9 @@ class DynamicGRU(paddle.nn.Layer):
         self.is_reverse = is_reverse
 
     def forward(self, inputs):
-        # Use `to_variable` to create a copy of global h_0 created not in `DynamicGRU`,
+        # Use `paddle.assign` to create a copy of global h_0 created not in `DynamicGRU`,
         # to avoid modify it because `h_0` is both used in other `DynamicGRU`.
-        hidden = to_variable(self.h_0)
+        hidden = paddle.assign(self.h_0)
         hidden.stop_gradient = True
 
         res = []
@@ -375,7 +374,7 @@ class LexNet(paddle.nn.Layer):
         )
 
         h_0 = np.zeros((args.batch_size, self.grnn_hidden_dim), dtype="float32")
-        h_0 = to_variable(h_0)
+        h_0 = paddle.to_tensor(h_0)
 
         self.bigru_units = []
         for i in range(self.bigru_num):
@@ -659,9 +658,9 @@ class TestLACModel(Dy2StTestBase):
                 model.eval()
 
                 _, pred_res = model(
-                    to_variable(words),
-                    to_variable(targets),
-                    to_variable(length),
+                    paddle.to_tensor(words),
+                    paddle.to_tensor(targets),
+                    paddle.to_tensor(length),
                 )
 
                 return pred_res.numpy()
@@ -699,7 +698,7 @@ class TestLACModel(Dy2StTestBase):
             model = paddle.jit.load(self.model_save_prefix)
             model.eval()
 
-            pred_res = model(to_variable(words), to_variable(length))
+            pred_res = model(paddle.to_tensor(words), paddle.to_tensor(length))
 
             return pred_res.numpy()
 

@@ -29,6 +29,7 @@ from .tensor.linalg import (
     lu,
     lu_unpack,
     matrix_exp,
+    matrix_norm,
     matrix_power,
     matrix_rank,
     multi_dot,
@@ -40,11 +41,14 @@ from .tensor.linalg import (
     solve,
     svd,
     triangular_solve,
+    vector_norm,
 )
 
 __all__ = [
     'cholesky',
     'norm',
+    'matrix_norm',
+    'vector_norm',
     'cond',
     'cov',
     'corrcoef',

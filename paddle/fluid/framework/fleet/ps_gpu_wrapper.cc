@@ -42,12 +42,12 @@ limitations under the License. */
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
-PHI_DECLARE_int32(gpugraph_dedup_pull_push_mode);
-PHI_DECLARE_int32(gpugraph_storage_mode);
-PHI_DECLARE_bool(query_dest_rank_by_multi_node);
-PHI_DECLARE_string(graph_edges_split_mode);
+COMMON_DECLARE_int32(gpugraph_dedup_pull_push_mode);
+COMMON_DECLARE_int32(gpugraph_storage_mode);
+COMMON_DECLARE_bool(query_dest_rank_by_multi_node);
+COMMON_DECLARE_string(graph_edges_split_mode);
 
 namespace paddle {
 namespace framework {
@@ -2323,7 +2323,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const std::vector<int64_t>& slot_lengths,
                               const std::vector<int>& slot_dim,
                               const int hidden_size) {
-  VLOG(3) << "Begine Gpu Ps PullSparse";
+  VLOG(3) << "Begin Gpu Ps PullSparse";
   platform::Timer all_timer;
   platform::Timer pull_gpups_timer;
   all_timer.Start();
@@ -2565,7 +2565,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
 #endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
-    VLOG(3) << "Begine Xpu Ps PullSparse";
+    VLOG(3) << "Begin Xpu Ps PullSparse";
     size_t total_length =
         std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
     FeatureValue* total_values_gpu = nullptr;
@@ -2752,7 +2752,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
       VLOG(3) << "Begin GPUPS PushSparseGrad";
 
       auto buf = memory::Alloc(place, total_length * grad_value_size);
-      VLOG(3) << "Push Sparse Max mf dimention: " << max_mf_dim_
+      VLOG(3) << "Push Sparse Max mf dimension: " << max_mf_dim_
               << "grad_value_size:" << grad_value_size;
       float* total_grad_values_gpu = reinterpret_cast<float*>(buf->ptr());
 
@@ -2790,7 +2790,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     VLOG(3) << "Begin GPUPS PushSparseGrad";
 
     auto buf = memory::Alloc(place, total_length * grad_value_size);
-    VLOG(3) << "Push Sparse Max mf dimention: " << max_mf_dim_
+    VLOG(3) << "Push Sparse Max mf dimension: " << max_mf_dim_
             << "grad_value_size:" << grad_value_size;
     float* total_grad_values_gpu = reinterpret_cast<float*>(buf->ptr());
     phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];

@@ -19,7 +19,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class SSAGraghBuilderWithPrinterPass : public ir::Pass {
+class SSAGraphBuilderWithPrinterPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
     std::unique_ptr<std::ostream> fout(
@@ -102,5 +102,5 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
 }  // namespace paddle
 
 REGISTER_PASS(multi_devices_print_pass,
-              paddle::framework::ir::SSAGraghBuilderWithPrinterPass)
+              paddle::framework::ir::SSAGraphBuilderWithPrinterPass)
     .RequirePassAttr(paddle::framework::ir::kGraphvizPath);

@@ -370,8 +370,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor_ref);
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
@@ -839,10 +839,10 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    if (PyFloat_Check(other_obj)) {
+    if (PyFloat_Check(other_obj)) {  // NOLINT
       other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
       has_other_double = true;
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {  // NOLINT
       other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
       has_other_double = true;
     }

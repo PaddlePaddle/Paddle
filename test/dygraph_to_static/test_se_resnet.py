@@ -29,7 +29,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
-from paddle.base.dygraph.base import to_variable
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -403,8 +402,8 @@ class TestSeResnet(Dy2StTestBase):
                         .reshape(BATCH_SIZE, 1)
                     )
 
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
+                    img = paddle.to_tensor(dy_x_data)
+                    label = paddle.to_tensor(y_data)
                     label.stop_gradient = True
 
                     pred, avg_loss, acc_top1, acc_top5 = se_resnext(img, label)
@@ -494,8 +493,8 @@ class TestSeResnet(Dy2StTestBase):
                 se_resnext.eval()
 
                 label = np.random.random([1, 1]).astype("int64")
-                img = base.dygraph.to_variable(data)
-                label = base.dygraph.to_variable(label)
+                img = paddle.to_tensor(data)
+                label = paddle.to_tensor(label)
                 pred_res, _, _, _ = se_resnext(img, label)
 
                 return pred_res.numpy()

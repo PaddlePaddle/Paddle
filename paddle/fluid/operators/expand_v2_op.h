@@ -53,26 +53,26 @@ inline std::vector<int> get_expand_shape(
       ctx.MultiInput<phi::DenseTensor>("expand_shapes_tensor");
   if (list_expand_shapes_tensor.size() > 0) {
     // get tensor from
-    std::vector<int> vec_epxand_shape;
+    std::vector<int> vec_expand_shape;
     for (size_t i = 0; i < list_expand_shapes_tensor.size(); ++i) {
       auto tensor = list_expand_shapes_tensor[i];
       if (platform::is_gpu_place(tensor->place())) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_epxand_shape.push_back(*temp.data<int32_t>());
+        vec_expand_shape.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_XPU
       else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_epxand_shape.push_back(*temp.data<int32_t>());
+        vec_expand_shape.push_back(*temp.data<int32_t>());
       }
 #endif
       else {  // NOLINT
-        vec_epxand_shape.push_back(*tensor->data<int32_t>());
+        vec_expand_shape.push_back(*tensor->data<int32_t>());
       }
     }
-    return vec_epxand_shape;
+    return vec_expand_shape;
   } else {
     return ctx.Attr<std::vector<int>>("shape");
   }

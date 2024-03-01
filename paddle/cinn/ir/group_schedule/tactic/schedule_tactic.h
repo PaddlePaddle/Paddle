@@ -47,6 +47,21 @@ struct IterativeSpaceInfo {
   // the memory consistent order axis is [A, B, C], and the B axis is reduce，
   // the rb last order axis is [A, C, B], and rb_last_order is [0, 2, 1].
   std::vector<int> rb_last_order;
+
+  std::string PrintIterSpace() const {
+    std::stringstream ss;
+    ss << "[sp space]: ";
+    for (const auto& axis : sp_space) {
+      ss << "<" << std::get<0>(axis) << ", AxisType = ["
+         << static_cast<int>(std::get<1>(axis)) << "]>  ";
+    }
+    ss << "\n[rb space]: ";
+    for (const auto& axis : rb_space) {
+      ss << "<" << std::get<0>(axis) << ", AxisType = ["
+         << static_cast<int>(std::get<1>(axis)) << "]>  ";
+    }
+    return ss.str();
+  }
 };
 
 struct BucketInfo {

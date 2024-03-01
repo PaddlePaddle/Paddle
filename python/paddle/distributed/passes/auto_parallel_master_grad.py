@@ -17,6 +17,7 @@ import logging
 from collections import OrderedDict
 from typing import List, Tuple
 
+import paddle
 from paddle.base import Variable
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
@@ -118,10 +119,10 @@ class MasterGradPass(PassBase):
         for grad_name, idx in reversed(grad_first_ids.items()):
             grad_var = cur_block.var(grad_name)
             if (
-                grad_var.dtype == core.VarDesc.VarType.FP16
-                or grad_var.dtype == core.VarDesc.VarType.BF16
+                grad_var.dtype == paddle.float16
+                or grad_var.dtype == paddle.bfloat16
             ):
-                is_fp16 = grad_var.dtype == core.VarDesc.VarType.FP16
+                is_fp16 = grad_var.dtype == paddle.float16
                 producer_op = cur_block.ops[idx]
                 producer_op_dist_attr = (
                     dist_context.get_op_dist_attr_for_program(producer_op)

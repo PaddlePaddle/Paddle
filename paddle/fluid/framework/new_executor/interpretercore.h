@@ -36,27 +36,29 @@ class InterpreterCore {
                   Scope* scope,
                   const ExecutionConfig& execution_config = ExecutionConfig());
   // This constructor is for New IR.
-  InterpreterCore(const platform::Place& place,
-                  const std::vector<std::string>& fetch_var_names,
-                  const ::pir::Block* ir_prog,
-                  Scope* scope,
-                  const ExecutionConfig& execution_config = ExecutionConfig());
-  ~InterpreterCore();
+  TEST_API InterpreterCore(
+      const platform::Place& place,
+      const std::vector<std::string>& fetch_var_names,
+      const ::pir::Block* ir_prog,
+      Scope* scope,
+      const ExecutionConfig& execution_config = ExecutionConfig());
+  TEST_API ~InterpreterCore();
 
   const InterpreterBaseImpl* Impl() const { return impl_.get(); }
 
-  paddle::framework::FetchList Run(
+  TEST_API paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
       bool need_fetch = true,
       bool enable_job_schedule_profiler = false,
       bool switch_stream = false);
 
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true,
-                                   bool enable_job_schedule_profiler = false,
-                                   bool enable_op_profiling = false,
-                                   bool switch_stream = false);
+  TEST_API paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true,
+      bool enable_job_schedule_profiler = false,
+      bool enable_op_profiling = false,
+      bool switch_stream = false);
 
   void RunProfile(const std::vector<std::string>& feed_names);
 
@@ -68,7 +70,7 @@ class InterpreterCore {
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
-  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+  TEST_API void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
 
   const std::set<std::string>& JitInputVars() const;
 
@@ -94,7 +96,7 @@ class InterpreterCore {
   std::tuple<double, double> InterpreterRunTime();
 
   // Only for debug
-  Variable* DebugVar(const std::string& name) const;
+  TEST_API Variable* DebugVar(const std::string& name) const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);

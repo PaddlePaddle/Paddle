@@ -28,8 +28,8 @@
  */
 #define CINN_IR_SCHEDULE_END(err_msg_level)                    \
   }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  catch (const utils::ErrorHandler& err_handler) {             \
+    CINN_THROW(err_handler.FormatErrorMessage(err_msg_level)); \
   }
 
 namespace cinn {
@@ -42,11 +42,11 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   std::string primitive = "ComputeAt";
   std::ostringstream os;
   if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr prama(block) should be a ScheduleBlockRealize!\n";
+    os << "Expr param(block) should be a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (!loop.As<ir::For>()) {
-    os << "Expr prama(loop) should be a For node!\n";
+    os << "Expr param(loop) should be a For node!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   Expr root = this->GetRootBlock(block);
@@ -152,13 +152,14 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   // collect if
   auto if_checker = [](const Expr* x) { return x->As<ir::IfThenElse>(); };
   auto if_set = ir::ir_utils::CollectIRNodesWithoutTensor(body, if_checker);
+  auto checker = [block_name](const Expr* x) {
+    return x->As<ir::ScheduleBlockRealize>() &&
+           x->As<ir::ScheduleBlockRealize>()
+                   ->schedule_block.As<ScheduleBlock>()
+                   ->name == block_name;
+  };
   for (auto if_expr : if_set) {
-    auto checker = [block_name](const Expr* x) {
-      return x->As<ir::ScheduleBlockRealize>() &&
-             x->As<ir::ScheduleBlockRealize>()
-                     ->schedule_block.As<ScheduleBlock>()
-                     ->name == block_name;
-    };
+    if (Contains(result, if_expr)) continue;
     if (ir::ir_utils::CollectIRNodesWithoutTensor(if_expr, checker, true)
             .size() > 0) {
       result =

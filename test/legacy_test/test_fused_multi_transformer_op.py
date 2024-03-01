@@ -22,7 +22,6 @@ from op_test import OpTest
 import paddle
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.base.framework import default_main_program
 from paddle.incubate.nn import FusedMultiTransformer
 from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.nn.layer.common import Dropout, Linear
@@ -32,7 +31,6 @@ from paddle.nn.layer.transformer import _convert_attention_mask
 seed = 42
 
 random.seed(seed)
-default_main_program().random_seed = seed
 np.random.seed(seed)
 paddle.seed(seed)
 

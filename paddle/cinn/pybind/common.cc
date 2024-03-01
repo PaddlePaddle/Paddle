@@ -217,7 +217,7 @@ void BindShared(py::module *m) {
       .def("val", &cinn::common::RefCount::val);
 }
 
-// TODO(wanghaipeng03) using true_type or false_type as tag disptcher losses
+// TODO(wanghaipeng03) using true_type or false_type as tag dispatcher losses
 // semantic context
 template <typename T1, typename T2, typename F>
 inline auto __binary_op_fn_dispatch(T1 x, T2 y, F fn, std::true_type) {

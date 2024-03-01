@@ -20,10 +20,8 @@
 #include "paddle/fluid/platform/profiler/event_python.h"
 
 using paddle::framework::AttributeMap;
-using paddle::platform::CudaRuntimeTraceEventNode;
 using paddle::platform::DeserializationReader;
 using paddle::platform::DeviceTraceEvent;
-using paddle::platform::DeviceTraceEventNode;
 using paddle::platform::HostTraceEvent;
 using paddle::platform::HostTraceEventNode;
 using paddle::platform::KernelEventInfo;
@@ -32,7 +30,6 @@ using paddle::platform::MemsetEventInfo;
 using paddle::platform::MemTraceEvent;
 using paddle::platform::NodeTrees;
 using paddle::platform::OperatorSupplementEvent;
-using paddle::platform::ProfilerResult;
 using paddle::platform::RuntimeTraceEvent;
 using paddle::platform::SerializationLogger;
 using paddle::platform::TracerEventType;

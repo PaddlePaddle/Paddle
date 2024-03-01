@@ -62,7 +62,7 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
         4,
         phi::errors::InvalidArgument(
             "The number of dimensions of attn_mask is expected to be greater "
-            "or equal to 4, but recieved %d. The shape of attn_mask is {%s}",
+            "or equal to 4, but received %d. The shape of attn_mask is {%s}",
             rank,
             origin_dims));
 

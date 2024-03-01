@@ -142,7 +142,7 @@ struct ChannelDequantizeFunctor<phi::GPUContext, T> {
     } else if (scale_num == 2) {
       // Dequantize activations after quantizable operators.
       // inputs --> quant --> conv2d --> deqaunt -->
-      // Note 1:  Not need to consider 'quant_axis'. Because 'quant_aixs' is the
+      // Note 1:  Not need to consider 'quant_axis'. Because 'quant_axis' is the
       // axis of weights to be quantized on while dequantization is applied on
       // activations. Note 2: 'x_num_col_dims' is the axis of activations to be
       // quantized on. `x_num_col_dims` is -1 for operator in ['matmul',

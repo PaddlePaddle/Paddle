@@ -225,7 +225,7 @@ def standard_gamma(x, name=None):
         out_i \sim Gamma (alpha = x_i, beta = 1.0)
 
     Args:
-        x(Tensor):  A tensor with rate parameter of standrad gamma Distribution. The data type
+        x(Tensor):  A tensor with rate parameter of standard gamma Distribution. The data type
             should be bfloat16, float16, float32, float64.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -779,7 +779,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
 
     out = out * std + mean
     if not in_dynamic_or_pir_mode():
-        out.stop_grediant = True
+        out.stop_gradient = True
     return out
 
 
@@ -788,7 +788,7 @@ def normal_(x, mean=0.0, std=1.0, name=None):
     """
     This is the inplace version of api ``normal``, which returns a Tensor filled
     with random values sampled from a normal distribution. The output Tensor will
-    be inplaced with input ``x``. Please refer to :ref:`api_tensor_noraml`.
+    be inplaced with input ``x``. Please refer to :ref:`api_tensor_normal`.
 
     Args:
         x(Tensor): The input tensor to be filled with random values.
@@ -799,7 +799,7 @@ def normal_(x, mean=0.0, std=1.0, name=None):
         std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
             If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
-            Defaule is 1.0
+            Default is 1.0
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -1023,7 +1023,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. Default is [1].
         dtype (str|np.dtype, optional): The data type of the
-            output tensor. Supported data types: int32, int64. If ``dytpe``
+            output tensor. Supported data types: int32, int64. If ``dtype``
             is None, the data type is int64. Default is None.
         name (str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
@@ -1162,7 +1162,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             If ``high`` is None, the range is [0, ``low``).
         dtype (str|np.dtype, optional): The data type of the
             output tensor. Supported data types: bool, int32, int64, float16,
-            float32, float64. If ``dytpe`` is None, the data type is the
+            float32, float64. If ``dtype`` is None, the data type is the
             same as x's data type. Default is None.
         name (str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please

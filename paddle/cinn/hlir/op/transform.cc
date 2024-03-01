@@ -219,7 +219,7 @@ std::shared_ptr<OpStrategy> StrategyForSplit(
       << "The Spilt Op's output shape list should not empty.";
   CHECK_LT(axis, static_cast<int>(output_shapes[0].size()));
   CHECK(!sections.empty())
-      << "The Split op doesn't find [num_or_sections] attrbute! It it a "
+      << "The Split op doesn't find [num_or_sections] attribute! It it a "
          "mandatory attribute ! Please check.";
 
   framework::CINNCompute split_compute(
@@ -286,8 +286,9 @@ std::vector<std::vector<int>> InferShapeForSplit(
   if (attrs.find("num_or_sections") != attrs.end()) {
     sections = absl::get<std::vector<int>>(attrs.at("num_or_sections"));
   } else {
-    LOG(FATAL) << "The Split op doesn't find [num_or_sections] attrbute! It it "
-                  "a mandatory attribute ! Please check.";
+    LOG(FATAL)
+        << "The Split op doesn't find [num_or_sections] attribute! It it "
+           "a mandatory attribute ! Please check.";
   }
 
   if (inputs_shape.empty()) {
@@ -372,8 +373,9 @@ std::vector<Type> InferDtypeForSplit(const std::vector<Type> &inputs_type,
   if (attrs.find("num_or_sections") != attrs.end()) {
     sections = absl::get<std::vector<int>>(attrs.at("num_or_sections"));
   } else {
-    LOG(FATAL) << "The Split op doesn't find [num_or_sections] attrbute! It it "
-                  "a mandatory attribute ! Please check.";
+    LOG(FATAL)
+        << "The Split op doesn't find [num_or_sections] attribute! It it "
+           "a mandatory attribute ! Please check.";
   }
 
   int output_size = sections.size();
@@ -397,8 +399,9 @@ std::vector<std::vector<std::string>> InferLayoutForSplit(
     sections =
         absl::get<std::vector<int>>(attrs.attr_store.at("num_or_sections"));
   } else {
-    LOG(FATAL) << "The Split op doesn't find [num_or_sections] attrbute! It it "
-                  "a mandatory attribute ! Please check.";
+    LOG(FATAL)
+        << "The Split op doesn't find [num_or_sections] attribute! It it "
+           "a mandatory attribute ! Please check.";
   }
 
   int output_size = sections.size();
@@ -1504,9 +1507,9 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
         absl::get<std::vector<int>>(attrs.attr_store.at("decrease_axis"));
   }
 
-  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attrbute! It "
+  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attribute! It "
                             "it a mandatory attribute, please check.";
-  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attrbute! It it a "
+  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attribute! It it a "
                           "mandatory attribute, please check.";
   CHECK_EQ(starts.size(), ends.size())
       << "The size of [starts] and [ends] must be identical! Please check.";
@@ -1587,9 +1590,9 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
         absl::get<std::vector<int>>(attrs.attr_store.at("decrease_axis"));
   }
 
-  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attrbute! It "
+  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attribute! It "
                             "it a mandatory attribute, please check.";
-  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attrbute! It it a "
+  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attribute! It it a "
                           "mandatory attribute, please check.";
   CHECK_EQ(starts.size(), ends.size())
       << "The size of [starts] and [ends] must be identical! Please check.";
@@ -1613,7 +1616,7 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
 
   std::vector<Expr> output_shape;
   for (auto &i : output_shapes[0]) {
-    output_shape.push_back(Expr(i));
+    output_shape.push_back(i->dim_expr);
     LOG(INFO) << "output_shape: " << output_shape.back();
     CHECK(output_shape.back().type().valid());
   }
@@ -1633,7 +1636,7 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
         CHECK(arg_pack[1].is_string());
         std::string tensor_name = arg_pack[1].operator std::string();
 
-        auto out = pe::Slice(
+        auto out = pe::SliceSymbolic(
             A, starts, axes, strides, decrease_axis, output_shape, tensor_name);
         LOG(INFO) << "out: " << out;
         auto stages = CreateStages({out});
@@ -1669,9 +1672,9 @@ std::vector<std::vector<int>> InferShapeForSlice(
       LOG(ERROR) << "Unsupported attr: " << iter.first << std::endl;
     }
   }
-  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attrbute! It "
+  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attribute! It "
                             "it a mandatory attribute, please check.";
-  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attrbute! It it a "
+  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attribute! It it a "
                           "mandatory attribute, please check.";
   CHECK_EQ(starts.size(), ends.size())
       << "The size of [starts] and [ends] must be identical! Please check.";
@@ -1824,11 +1827,12 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
     strides = absl::get<std::vector<int>>(attrs.attr_store.at("strides"));
   }
 
-  CHECK(!starts.empty())
-      << "The SliceAssign op doesn't find [starts] attrbute! It it a mandatory "
-         "attribute, please check.";
-  CHECK(!ends.empty()) << "The SliceAssign op doesn't find [ends] attrbute! It "
-                          "it a mandatory attribute, please check.";
+  CHECK(!starts.empty()) << "The SliceAssign op doesn't find [starts] "
+                            "attribute! It it a mandatory "
+                            "attribute, please check.";
+  CHECK(!ends.empty())
+      << "The SliceAssign op doesn't find [ends] attribute! It "
+         "it a mandatory attribute, please check.";
   CHECK_EQ(starts.size(), ends.size())
       << "The size of [starts] and [ends] must be identical! Please check.";
   if (!axes.empty()) {

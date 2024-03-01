@@ -21,10 +21,10 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_x =
@@ -87,8 +87,7 @@ TEST(PatternRewrite, broadcast_elementwise) {
   BuildProgram(builder);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
   pm.Run(&program);
 
@@ -113,8 +112,7 @@ TEST(PatternRewrite, broadcast_elementwise_both) {
   BuildProgramBoth(builder);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
   pm.Run(&program);
 
@@ -141,8 +139,7 @@ TEST(PatternRewrite, broadcast_elementwise_sub_both) {
   BuildProgramSubBoth(builder);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
   pm.Run(&program);
 

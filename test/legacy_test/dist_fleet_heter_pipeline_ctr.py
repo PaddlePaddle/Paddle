@@ -27,8 +27,7 @@ from paddle import base
 paddle.enable_static()
 
 # Fix seed for test
-base.default_startup_program().random_seed = 1
-base.default_main_program().random_seed = 1
+paddle.seed(1)
 
 
 class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):

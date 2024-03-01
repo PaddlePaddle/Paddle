@@ -102,8 +102,10 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     auto store = CreateOrGetGlobalTCPStore();
     if (phi::CPUContext::classof(&dev_ctx)) {
 #if defined(PADDLE_WITH_GLOO)
-      CommContextManager::CreateGlooCommContext(
-          store, unique_comm_key, rank, world_size);
+      CommContextManager::CreateGlooCommContext(store,
+                                                unique_comm_key,
+                                                static_cast<int>(rank),
+                                                static_cast<int>(world_size));
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
           "Cannot use gloo on CPU, please turn PADDLE_WITH_GLOO flag on."));
@@ -116,8 +118,10 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (phi::GPUContext::classof(&dev_ctx)) {
-        CommContextManager::CreateNCCLCommContext(
-            store, unique_comm_key, rank, world_size);
+        CommContextManager::CreateNCCLCommContext(store,
+                                                  unique_comm_key,
+                                                  static_cast<int>(rank),
+                                                  static_cast<int>(world_size));
       }
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
@@ -215,6 +219,43 @@ phi::DDim InferShapeForReshardFromReplicate(
     }
   }
   return out_dim;
+}
+
+// 1. Get all the sub meshes of global_mesh
+// e.g. global_mesh = [[1, 2], [3, 4]], out_mesh = [1, 2] and [3, 4]
+//      global_mesh = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+//      out_mesh = [[1, 2], [3, 4]] and [[5, 6], [7, 8]]
+std::vector<ProcessMesh> GetSubMeshes(const ProcessMesh& process_mesh) {
+  const std::vector<int64_t>& shape = process_mesh.shape();
+  const std::vector<int64_t>& process_ids = process_mesh.process_ids();
+  const std::vector<std::string>& dim_names = process_mesh.dim_names();
+  int64_t total_process_num = process_ids.size();
+  int64_t sub_process_num = total_process_num / shape[0];
+  std::vector<int64_t> sub_process_mesh_shape(shape.begin() + 1, shape.end());
+  std::vector<std::string> sub_process_mesh_dim_names(dim_names.begin() + 1,
+                                                      dim_names.end());
+
+  std::vector<ProcessMesh> sub_process_meshes;
+  for (int i = 0; i < shape[0]; ++i) {
+    int64_t start_position = i * sub_process_num;
+    int64_t end_position = start_position + sub_process_num;
+    std::vector<int64_t> sub_process_ids(process_ids.begin() + start_position,
+                                         process_ids.begin() + end_position);
+
+    sub_process_meshes.emplace_back(ProcessMesh(
+        sub_process_mesh_shape, sub_process_ids, sub_process_mesh_dim_names));
+  }
+  return sub_process_meshes;
+}
+
+bool IsSubMesh(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh) {
+  std::vector<ProcessMesh> sub_process_meshes = GetSubMeshes(global_mesh);
+  for (const ProcessMesh& mesh : sub_process_meshes) {
+    if (mesh == sub_mesh) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace distributed

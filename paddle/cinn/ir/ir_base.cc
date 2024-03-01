@@ -22,6 +22,7 @@
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn {
 namespace ir {
@@ -115,7 +116,7 @@ int16_t Expr::as_int16() const {
   return As<IntImm>()->value;
 }
 int32_t Expr::as_int32() const {
-  CHECK(type().is_int(32));
+  CHECK(type().is_int(32)) << utils::enforce::GetCurrentTraceBackString();
   return As<IntImm>()->value;
 }
 int64_t Expr::as_int64() const {
