@@ -2037,7 +2037,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
-        // TODO(inference): Now we only suppor dense_tensor cache, we may be
+        // TODO(inference): Now we only support dense_tensor cache, we may be
         // support ScalarTensor, SparseTensor in future.
         bool all_dense_tensor_input_{true};
         for (auto& iter : Inputs()) {
@@ -2572,7 +2572,7 @@ Scope* OperatorWithKernel::PrepareData(
         // for some situation like InferShape().
         // In this situation We cannot skip Var analysis, as
         // oneDNN shape of Var may differ from kNHWC Var
-        // In such situation corressponding resized Var
+        // In such situation corresponding resized Var
         // has to be created and registered
         if ((tensor_in->layout() == DataLayout::ONEDNN) &&
             (var->IsType<phi::DenseTensor>() == true) &&
@@ -3192,7 +3192,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ctx.inputs.find(input_names[i]);
 
-    // calcute the start and end index of the input tensors
+    // calculate the start and end index of the input tensors
     size_t start_idx =
         (i == 0 ? 0 : phi_kernel_context->InputRangeAt(i - 1).second);
     // deal with optional here
@@ -3398,7 +3398,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             attr_iter,
             Attrs().end(),
             platform::errors::NotFound("(%s) is not found in AttributeMap when "
-                                       "buildind static KernelContext.",
+                                       "building static KernelContext.",
                                        attr_names[i]));
         switch (AttrTypeID(attr_iter->second)) {
           case proto::AttrType::INTS: {
@@ -3472,7 +3472,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                             RuntimeAttrs().end(),
                             platform::errors::NotFound(
                                 "(%s) is not found in AttributeMap when "
-                                "buildind static KernelContext.",
+                                "building static KernelContext.",
                                 attr_names[i]));
         }
 
