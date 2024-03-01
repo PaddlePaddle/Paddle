@@ -67,26 +67,6 @@ class GroupOpGenerateShapeOpsPattern
   }
 };
 
-// class MoveGenerateShapeOpsToProloguePass : public pir::PatternRewritePass {
-//  public:
-//   MoveGenerateShapeOpsToProloguePass()
-//       : pir::PatternRewritePass("move_generate_shape_ops_to_prologue", 1) {}
-
-//   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override
-//   {
-//     pir::RewritePatternSet ps(context);
-//     ps.Add<GroupOpGenerateShapeOpsPattern>(context);
-//     return ps;
-//   }
-
-//   bool CanApplyOn(pir::Operation* op) const override {
-//     if (!(op->isa<pir::ModuleOp>() && op->num_regions() > 0)) return false;
-//     auto* program = op->GetParentProgram();
-//     VLOG(4) << "Before MoveGenerateShapeOpsToProloguePass: " << *program;
-//     return true;
-//   }
-// };
-
 class MoveGenerateShapeOpsToProloguePass : public pir::Pass {
  public:
   MoveGenerateShapeOpsToProloguePass()
@@ -114,9 +94,6 @@ class MoveGenerateShapeOpsToProloguePass : public pir::Pass {
   bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
   }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace
