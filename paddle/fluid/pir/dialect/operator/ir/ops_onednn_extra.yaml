@@ -238,9 +238,7 @@
 
 - op : scale
 
-- op : sgd
-
-# - op : sgd_dense_param_sparse_grad
+- op : sgd_
 
 - op : shape
   extra_args : str mkldnn_data_type="float32"
