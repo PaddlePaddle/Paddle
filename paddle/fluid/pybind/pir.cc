@@ -499,6 +499,12 @@ void BindOperation(py::module *m) {
              }
              return attrs_dict;
            })
+      .def("set_scheduling_priority",
+           [](Operation &self, int64_t priority) {
+             self.set_attribute("scheduling_priority",
+                                pir::Int64Attribute::get(
+                                    pir::IrContext::Instance(), priority));
+           })
       .def("operands_source",
            [](Operation &self) -> py::list {
              py::list op_list;
@@ -591,7 +597,10 @@ void BindOperation(py::module *m) {
             auto op = self.Clone(ir_mapping, options);
             return ApiBuilder::Instance().GetBuilder()->Insert(op);
           },
-          return_value_policy::reference);
+          return_value_policy::reference)
+      .def("move_before", [](Operation &self, Operation &other) {
+        self.MoveTo(other.GetParent(), Block::Iterator{other});
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.

@@ -138,6 +138,9 @@ class ValueSet:
         for val in other:
             self.add(val)
 
+    def pop(self):
+        return self._set.pop()._value
+
     def __and__(self, other: ValueSet):
         return ValueSet(self._set & other._set)
 
