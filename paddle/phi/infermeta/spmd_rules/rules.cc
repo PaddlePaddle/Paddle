@@ -605,6 +605,16 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(
         phi::distributed::FusedLinearParamGradAddInferSpmdFakeReverse));
 
+PD_REGISTER_SPMD_RULE(
+    expand_as,
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    expand_as_v2,
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmdReverse));
+
 // scatter
 PD_REGISTER_SPMD_RULE(scatter,
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmd),
