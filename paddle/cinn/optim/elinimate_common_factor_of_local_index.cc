@@ -21,6 +21,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/utils/external_func_names.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -32,7 +33,7 @@ class GatherLocalIndexVisitor : public ir::IRMutator<> {
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
   const std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>>&
-  local_var_to_indexes() {
+  local_var_to_indexes() const {
     return local_var_to_indexes_;
   }
 
@@ -74,6 +75,66 @@ class GatherLocalIndexVisitor : public ir::IRMutator<> {
       local_var_to_indexes_;
 };
 
+class GatherProhibitedLocalVarVisitor : public ir::IRMutator<> {
+ public:
+  void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+  const std::unordered_set<std::string>& prohibited_local_vars() const {
+    return prohibited_local_vars_;
+  }
+
+ private:
+  void Visit(const ir::Store* op, Expr* expr) override {
+    auto store = expr->As<ir::Store>();
+
+    ir::IRMutator<>::Visit(op, expr);
+    if (!store->tensor.as_tensor_ref()->buffer.defined()) {
+      return;
+    }
+    if (store->tensor.as_tensor_ref()->buffer->memory_type !=
+        ir::MemoryType::GPULocal) {
+      return;
+    }
+    const auto& local_var_name = store->tensor.as_tensor_ref()->buffer->name;
+    if (store->value.As<ir::Call>()) {
+      const auto& call_name = store->value.As<ir::Call>()->name;
+      if (cinn::utils::kProhibitScheduleExternalFuncNames.count(call_name) >
+          0) {
+        prohibited_local_vars_.insert(local_var_name);
+      }
+    }
+  }
+
+  std::unordered_set<std::string> prohibited_local_vars_;
+};
+
+std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>>
+EraseProhibitedLocalVar(
+    const std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>>&
+        local_var_to_indexes,
+    const std::unordered_set<std::string>& prohibited_local_vars) {
+  std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>> ret{};
+  for (const auto& [local_var, indexes] : local_var_to_indexes) {
+    if (prohibited_local_vars.count(local_var) == 0) {
+      ret[local_var] = indexes;
+    }
+  }
+  return ret;
+}
+
+std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>>
+CollectLocalVarToIndexes(ir::Expr* expr) {
+  GatherLocalIndexVisitor gather_local_index_visitor;
+  gather_local_index_visitor(expr);
+
+  GatherProhibitedLocalVarVisitor gather_prohibited_local_var_visitor;
+  gather_prohibited_local_var_visitor(expr);
+
+  return EraseProhibitedLocalVar(
+      gather_local_index_visitor.local_var_to_indexes(),
+      gather_prohibited_local_var_visitor.prohibited_local_vars());
+}
+
 template <typename DoEachT>
 void VisitEachRowExpr(const std::vector<std::vector<ir::Expr>>& indexes,
                       std::size_t var_idx,
@@ -112,13 +173,14 @@ ir::Expr CalculateGcdForExprPair(const ir::Expr& expr1, const ir::Expr& expr2) {
 }
 
 std::vector<ir::Expr> CalculateIndexVectorGcd(
+    const std::string& local_var,
     const std::vector<std::vector<ir::Expr>>& indexes) {
   CHECK_GE(indexes.size(), 2)
       << "We should guarantee indexes.size() >= 2, because local variable "
-         "should at least load and store once.";
+      << local_var << "should at least load and store once.";
   for (std::size_t i = 1; i < indexes.size(); ++i) {
     CHECK_EQ(indexes[0].size(), indexes[i].size())
-        << "We should guarantee all index vector have the same size.";
+        << "We should guarantee all index vectors have the same size.";
   }
   std::size_t var_index_size = indexes[0].size();
   std::vector<ir::Expr> gcd_indexes;
@@ -142,7 +204,8 @@ std::unordered_map<std::string, std::vector<ir::Expr>> CalculateLocalIndexGcd(
   std::unordered_map<std::string, std::vector<ir::Expr>>
       local_var_to_gcd_factor;
   for (const auto& [local_var, indexes] : local_var_to_indexes) {
-    local_var_to_gcd_factor[local_var] = CalculateIndexVectorGcd(indexes);
+    local_var_to_gcd_factor[local_var] =
+        CalculateIndexVectorGcd(local_var, indexes);
   }
   return local_var_to_gcd_factor;
 }
@@ -161,17 +224,16 @@ class DivideGcdForLocalIndexVisitor : public ir::IRMutator<> {
     auto store = expr->As<ir::Store>();
 
     ir::IRMutator<>::Visit(op, expr);
-    if (!store->tensor.as_tensor_ref()->buffer.defined()) {
+    const auto& store_buffer = store->tensor.as_tensor_ref()->buffer;
+    if (!store_buffer.defined()) {
       return;
     }
 
-    if (store->tensor.as_tensor_ref()->buffer->memory_type ==
-        ir::MemoryType::GPULocal) {
-      CHECK(local_var_to_gcd_factor_.count(
-                store->tensor.as_tensor_ref()->buffer->name) > 0)
-          << "Local variable should be in local_var_to_gcd_factor.";
-      const auto& gcd_factors = local_var_to_gcd_factor_.at(
-          store->tensor.as_tensor_ref()->buffer->name);
+    if (store_buffer->memory_type == ir::MemoryType::GPULocal) {
+      if (local_var_to_gcd_factor_.count(store_buffer->name) == 0) {
+        return;
+      }
+      const auto& gcd_factors = local_var_to_gcd_factor_.at(store_buffer->name);
       CHECK(store->indices.size() == gcd_factors.size())
           << "Store index size should be equal to gcd factor size.";
       for (std::size_t i = 0; i < store->indices.size(); ++i) {
@@ -189,17 +251,16 @@ class DivideGcdForLocalIndexVisitor : public ir::IRMutator<> {
     if (load->is_addr_scalar()) {
       return;
     }
-    if (!load->tensor.as_tensor_ref()->buffer.defined()) {
+    const auto& load_buffer = load->tensor.as_tensor_ref()->buffer;
+    if (!load_buffer.defined()) {
       return;
     }
 
-    if (load->tensor.as_tensor_ref()->buffer->memory_type ==
-        ir::MemoryType::GPULocal) {
-      CHECK(local_var_to_gcd_factor_.count(
-                load->tensor.as_tensor_ref()->buffer->name) > 0)
-          << "Local variable should be in local_var_to_gcd_factor.";
-      const auto& gcd_factors = local_var_to_gcd_factor_.at(
-          load->tensor.as_tensor_ref()->buffer->name);
+    if (load_buffer->memory_type == ir::MemoryType::GPULocal) {
+      if (local_var_to_gcd_factor_.count(load_buffer->name) == 0) {
+        return;
+      }
+      const auto& gcd_factors = local_var_to_gcd_factor_.at(load_buffer->name);
       CHECK(load->indices.size() == gcd_factors.size())
           << "Store index size should be equal to gcd factor size.";
       for (std::size_t i = 0; i < load->indices.size(); ++i) {
@@ -218,19 +279,19 @@ class DivideGcdForLocalIndexVisitor : public ir::IRMutator<> {
 }  // namespace
 
 void ElinimateCommonFactorOfLocalIndex(ir::Expr* expr) {
-  VLOG(4) << "Before ElinimateCommonFactorOfLocalIndex, Expr = \n" << *expr;
-  GatherLocalIndexVisitor gather_local_index_visitor;
-  gather_local_index_visitor(expr);
+  VLOG(2) << "Before ElinimateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+
+  std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>>
+      local_var_to_indexes = CollectLocalVarToIndexes(expr);
 
   std::unordered_map<std::string, std::vector<ir::Expr>>
-      local_var_to_gcd_factor = CalculateLocalIndexGcd(
-          gather_local_index_visitor.local_var_to_indexes());
+      local_var_to_gcd_factor = CalculateLocalIndexGcd(local_var_to_indexes);
 
   DivideGcdForLocalIndexVisitor divide_gcd_for_local_index_visitor(
       local_var_to_gcd_factor);
   divide_gcd_for_local_index_visitor(expr);
 
-  VLOG(4) << "After ElinimateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+  VLOG(2) << "After ElinimateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
 
 }  // namespace optim
