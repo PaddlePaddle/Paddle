@@ -189,8 +189,8 @@ class Gumbel(TransformedDistribution):
             Tensor: probability.The data type is same with value.
 
         """
-        y = (self.loc.astype(value.dtype) - value) / self.scale.astype(
-            value.dtype
+        y = (self.loc - value.astype(self.loc.dtype)) / self.scale.astype(
+            self.loc.dtype
         )
 
         return paddle.exp(y - paddle.exp(y)) / self.scale.astype(y.dtype)

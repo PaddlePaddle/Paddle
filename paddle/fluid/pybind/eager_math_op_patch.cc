@@ -795,7 +795,6 @@ static PyObject* tensor__div__method(TensorObject* self,
   if (self_tensor.dtype() == other_tensor.dtype()) {
     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
         _supported_int_dtype_.end()) {
-      std::cout << "cast self" << std::endl;
       eager_gil_scoped_release guard;
       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
