@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+#include "paddle/utils/test_macros.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 
