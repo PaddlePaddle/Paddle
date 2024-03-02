@@ -71,7 +71,7 @@ std::vector<std::string> IOVarsFilter(const std::vector<Node*>& nodes) {
 
 void StrToBinaryFile(const std::string& path, const std::string& str) {
   std::ofstream file(path.c_str(), std::ios::binary);
-  file.write(str.c_str(), str.size());
+  file.write(str.c_str(), str.size());  // NOLINT
   file.close();
 }
 
@@ -271,7 +271,7 @@ void LiteSubgraphPass::SetUpEngine(
       Get<std::vector<std::string>>("nnadapter_model_cache_token");
 
   lite_api::TargetType target_type = TARGET(kX86);
-  if (use_gpu) {
+  if (use_gpu) {  // NOLINT
     target_type = TARGET(kCUDA);
   } else if (use_xpu) {
     target_type = TARGET(kXPU);
@@ -417,13 +417,11 @@ void LiteSubgraphPass::ApplyImpl(framework::ir::Graph* graph) const {
   auto& lite_ops_filter = Get<std::vector<std::string>>("lite_ops_filter");
 
   auto teller = [&lite_ops_filter](const Node* node) {
-    if (!node->IsOp() || !node->Op())
-      return false;
-    else if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch")
-      return false;
-    else if (std::find(lite_ops_filter.begin(),
-                       lite_ops_filter.end(),
-                       node->Op()->Type()) != lite_ops_filter.end())
+    if (!node->IsOp() || !node->Op() || node->Op()->Type() == "feed" ||
+        node->Op()->Type() == "fetch" ||
+        std::find(lite_ops_filter.begin(),
+                  lite_ops_filter.end(),
+                  node->Op()->Type()) != lite_ops_filter.end())
       return false;
     return inference::lite::OpTeller::Global().Tell(node->Op()->Type(),
                                                     *node->Op());

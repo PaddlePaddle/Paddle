@@ -99,7 +99,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc,
   while (ancestor_scope->parent()) {
     ancestor_scope = ancestor_scope->parent();
   }
-  if (ancestor_scope != scope) {
+  if (ancestor_scope != scope) {  // NOLINT
     for (auto& var : global_block.AllVars()) {
       if (var->Name() == framework::kEmptyVarName) {
         continue;

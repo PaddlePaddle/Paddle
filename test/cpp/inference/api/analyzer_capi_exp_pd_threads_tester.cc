@@ -84,13 +84,13 @@ void threads_run(int thread_num) {
       reinterpret_cast<pthread_t*>(malloc(thread_num * sizeof(pthread_t)));
   RunParameter* params = reinterpret_cast<RunParameter*>(
       malloc(thread_num * sizeof(RunParameter)));
-  int32_t shapes[4] = {1, 3, 300, 300};
+  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
   float* input =
       reinterpret_cast<float*>(malloc(1 * 3 * 300 * 300 * sizeof(float)));
   memset(input, 0, 1 * 3 * 300 * 300 * sizeof(float));
   for (int i = 0; i < thread_num; ++i) {
     params[i].predictor = PD_PredictorClone(predictor);
-    params[i].shapes = shapes;
+    params[i].shapes = shapes.data();
     params[i].shape_size = 4;
     params[i].input_data = input;
     params[i].out_size = 0;

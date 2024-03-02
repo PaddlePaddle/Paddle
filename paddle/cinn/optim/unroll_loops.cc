@@ -62,7 +62,7 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
   void Visit(const ir::For* op, Expr* expr) override {
     IRMutator<>::Visit(op, expr);
     if (op->extent.As<ir::IntImm>() == nullptr) {
-      VLOG(5) << "loop to be unrolled should have a contant extent";
+      VLOG(5) << "loop to be unrolled should have a constant extent";
       return;
     }
     int64_t extent = op->extent.as_int64();

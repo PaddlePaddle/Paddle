@@ -488,7 +488,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
 
         // gate act: sigmoid
         act_gate(D3, lstm_out_data, lstm_out_data);
-        // candicate act: tanh
+        // candidate act: tanh
         act_cand(D, lstm_out_data + D3, lstm_out_data + D3);
 
         // a = forget * prev_cell
