@@ -28,14 +28,26 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
                             pir::ShapeConstraintIRAnalysis* shape_analysis,
                             pir::PatternRewriter& rewriter) {  // NOLINT
   pir::Value output = op->result(0);
-  // The value of shape attribute is fake, we only use the output shape info
-  // in shape analysis.
-  std::vector<int> shape(
-      output.type().dyn_cast<pir::DenseTensorType>().dims().size(), 1);
-  shape[0] = -1;
+  // Try to Get more detail output info
+  const auto& GetOupputShape = [&]() -> std::vector<int> {
+    std::vector<int> shape = phi::vectorize<int>(
+        output.type().dyn_cast<pir::DenseTensorType>().dims());
 
-  auto cinn_reshape =
-      rewriter.Build<cinn::dialect::ReshapeOp>(op->operand_source(0), shape);
+    if (shape_analysis->HasShapeOrDataForValue(op->result(0))) {
+      auto shape_info =
+          shape_analysis->GetShapeOrDataForValue(op->result(0)).shape();
+
+      for (size_t i = 0; i < shape_info.size(); ++i) {
+        if (shape_info[i].isa<int64_t>()) {
+          shape[i] = shape_info[i].Get<int64_t>();
+        }
+      }
+    }
+    return shape;
+  };
+
+  auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+      op->operand_source(0), GetOupputShape());
 
   shape_analysis->SetShapeOrDataForValue(
       cinn_reshape.result(0), shape_analysis->GetShapeOrDataForValue(output));
