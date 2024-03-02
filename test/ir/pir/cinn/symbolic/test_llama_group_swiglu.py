@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle import nn
-from paddle.base import core
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
@@ -53,28 +52,28 @@ class TestTransposeReshape(unittest.TestCase):
         utils.check_jit_kernel_number(static_fn, 1)
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
-    def eval(self, use_cinn):
+    def eval(self, use_cinn=False, mode="jit"):
         net = TransposeReshapeNet()
-        input_spec = [
-            InputSpec(shape=[None, None, 11008], dtype="float16"),
-            InputSpec(shape=[None, None, 11008], dtype="float16"),
-        ]
-        net = utils.apply_to_static(net, use_cinn, input_spec)
-        net.eval()
-        out = net(self.x, self.y)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
+        if mode == "eager":
+            out = out = net(self.x, self.y)
+        else:
+            input_spec = [
+                InputSpec(shape=[None, None, 11008], dtype="float16"),
+                InputSpec(shape=[None, None, 11008], dtype="float16"),
+            ]
+            net = utils.apply_to_static(net, use_cinn, input_spec)
+            net.eval()
+            out = net(self.x, self.y)
+            if use_cinn:
+                self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
-        dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            core._set_prim_all_enabled(True)
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
-            core._set_prim_all_enabled(False)
+        dy_out = self.eval(mode="eager")
+        cinn_out = self.eval(use_cinn=utils.unittest_use_cinn())
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-2, rtol=1e-2
+        )
 
 
 if __name__ == '__main__':

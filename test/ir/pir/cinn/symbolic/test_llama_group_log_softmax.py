@@ -21,11 +21,10 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.base import core
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
-# breakpoint()
+sys.path.append("../")
 import utils
 
 
@@ -87,30 +86,30 @@ class TestGroupOp(unittest.TestCase):
         utils.check_jit_kernel_number(static_fn, 1)
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
-    def eval(self, use_cinn):
+    def eval(self, use_cinn=False, mode="jit"):
         net = TestGroupOpNet()
-        input_spec = [
-            InputSpec(shape=[None, 32000], dtype="float16"),
-            InputSpec(shape=[None, 1], dtype="float16"),
-            InputSpec(shape=[None, 1], dtype="int64"),
-            InputSpec(shape=[1], dtype="int64"),
-        ]
-        net = utils.apply_to_static(net, use_cinn, input_spec)
-        net.eval()
-        out = net(self.x, self.score, self.y, self.z)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
+        if mode == "eager":
+            out = net(self.x, self.score, self.y, self.z)
+        else:
+            input_spec = [
+                InputSpec(shape=[None, 32000], dtype="float16"),
+                InputSpec(shape=[None, 1], dtype="float16"),
+                InputSpec(shape=[None, 1], dtype="int64"),
+                InputSpec(shape=[1], dtype="int64"),
+            ]
+            net = utils.apply_to_static(net, use_cinn, input_spec)
+            net.eval()
+            out = net(self.x, self.score, self.y, self.z)
+            if use_cinn:
+                self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
-        dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            core._set_prim_all_enabled(True)
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
-            core._set_prim_all_enabled(False)
+        dy_out = self.eval(mode="eager")
+        cinn_out = self.eval(use_cinn=utils.unittest_use_cinn())
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':
