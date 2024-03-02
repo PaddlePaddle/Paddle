@@ -116,7 +116,7 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto &attributes = op->attributes();
-  bool keepdim = GET_BOOL_ATTR(op, "keepdim");
+  bool keepdim = GetBoolAttr(op, "keepdim");
   bool reduce_all = false;
 
   auto axis_gen_op = op->operand_source(1).defining_op();
@@ -141,10 +141,8 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
 
 bool ProdOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &attributes = op->attributes();
-  bool keepdim = GET_BOOL_ATTR(op, "keep_dim");
-
-  bool reduce_all = GET_BOOL_ATTR(op, "reduce_all");
+  bool keepdim = GetBoolAttr(op, "keep_dim");
+  bool reduce_all = GetBoolAttr(op, "reduce_all");
 
   auto axis_gen_op = op->operand_source(1).defining_op();
   if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
@@ -976,8 +974,8 @@ bool MatmulOpInferSymbolicShape(
     }
   }
 
-  bool transpose_x_attr = GET_BOOL_ATTR(op, "transpose_x");
-  bool transpose_y_attr = GET_BOOL_ATTR(op, "transpose_y");
+  bool transpose_x_attr = GetBoolAttr(op, "transpose_x");
+  bool transpose_y_attr = GetBoolAttr(op, "transpose_y");
   symbol::DimExpr out_M =
       transpose_x_attr ? x_dims[ndims_x - 1] : x_dims[ndims_x - 2];
   symbol::DimExpr out_N =
@@ -997,7 +995,7 @@ bool MatmulOpInferSymbolicShape(
 
 bool MaxOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  bool keepdim = GET_BOOL_ATTR(op, "keepdim");
+  bool keepdim = GetBoolAttr(op, "keepdim");
 
   const std::vector<int64_t> axis = [&] {
     pir::Operation *axis_gen_op = op->operand_source(1).defining_op();

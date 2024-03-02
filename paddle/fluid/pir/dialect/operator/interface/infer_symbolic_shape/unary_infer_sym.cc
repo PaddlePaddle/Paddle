@@ -19,8 +19,8 @@ namespace paddle::dialect {
 
 bool ArgmaxOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  bool flatten = GET_BOOL_ATTR(op, "flatten");
-  bool keepdims = GET_BOOL_ATTR(op, "keepdims");
+  bool flatten = GetBoolAttr(op, "flatten");
+  bool keepdims = GetBoolAttr(op, "keepdims");
 
   const auto &input_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
@@ -143,7 +143,7 @@ bool CumsumOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
 
-  bool flatten = GET_BOOL_ATTR(op, "flatten");
+  bool flatten = GetBoolAttr(op, "flatten");
   if (flatten) {
     symbol::DimExpr product{1};
     const auto &dim_exprs = operand_shape_or_data.shape();

@@ -93,7 +93,7 @@ bool ConcatOpInferSymbolicShape(
 
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  bool keep_dim = GET_BOOL_ATTR(op, "keep_dim");
+  bool keep_dim = GetBoolAttr(op, "keep_dim");
   auto axis = paddle::dialect::details::GetVectorAttr(op, "dim");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::details::ReduceInferDim(
