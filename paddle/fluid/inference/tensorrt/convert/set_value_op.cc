@@ -151,7 +151,7 @@ class SetValueConverter : public OpConverter {
         platform::errors::InvalidArgument(
             "ValueTensor‘s rank not equal to Input's rank, "
             "you should try use C++ API "
-            "config.exp_disable_tensorrt_ops({\"%s\"}) to forbind this op "
+            "config.exp_disable_tensorrt_ops({\"%s\"}) to forbid this op "
             "enter into TRT, "
             "please find the %s's real name from .pdmodel or shape.txt",
             output_name,
