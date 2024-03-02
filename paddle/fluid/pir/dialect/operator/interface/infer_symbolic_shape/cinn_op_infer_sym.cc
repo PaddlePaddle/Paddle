@@ -170,14 +170,14 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   auto GetAttrInt64Value = [&](const std::string &name) -> int64_t {
     std::vector<pir::Attribute> attr =
         attributes[name].dyn_cast<pir::ArrayAttribute>().AsVector();
-    PADDLE_ENFORCE_GT(
-        attr.size(),
-        0,
-        phi::errors::PreconditionNotMet(
-            "Only Support [%s] op len(%s) == 1 , but received %d.",
-            op->name(),
-            name,
-            attr.size()));
+    // PADDLE_ENFORCE_GT(
+    //     attr.size(),
+    //     0,
+    //     phi::errors::PreconditionNotMet(
+    //         "Only Support [%s] op len(%s) == 1 , but received %d.",
+    //         op->name(),
+    //         name,
+    //         attr.size()));
     return attr[0].dyn_cast<pir::Int64Attribute>().data();
   };
 

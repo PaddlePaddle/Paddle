@@ -292,11 +292,11 @@ inline void CheckAndUpdateSliceAttrs(
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes[i];
 
-    if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("SliceOpInferSymbolicShape CAN NOT "
-                                     "deal with -1 in infer_flags now"));
-    }
+    // if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
+    //   PADDLE_THROW(
+    //       phi::errors::Unimplemented("SliceOpInferSymbolicShape CAN NOT "
+    //                                  "deal with -1 in infer_flags now"));
+    // }
 
     // For both start and end can be negtive or positive, we need to handle the
     // following different arrangements.
@@ -329,11 +329,11 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes[i];
 
-    if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("SliceOpInferSymbolicShape CAN NOT "
-                                     "deal with -1 in infer_flags now"));
-    }
+    // if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
+    //   PADDLE_THROW(
+    //       phi::errors::Unimplemented("SliceOpInferSymbolicShape CAN NOT "
+    //                                  "deal with -1 in infer_flags now"));
+    // }
 
     slice_dims[axis] = ends[i] - starts[i];
   }
@@ -360,6 +360,25 @@ inline ExprVec GetDecreasedDims(const ExprVec &slice_dims,
   }
   return decreased_dims;
 }
+
+// bool SliceRawInferSymbolicShape(const pir::Value &x,
+//                                 const std::vector<int64_t> &starts_raw,
+//                                 const std::vector<int64_t> &ends_raw,
+//                                 const std::vector<int64_t> &axes_raw,
+//                                 const std::vector<int64_t> &infer_flags_raw,
+//                                 const std::vector<int64_t> &decrease_axis) {
+//   const std::vector<int64_t> axes = [&] {
+//     std::vector<int64_t> axes_vec = details::GetVectorAttr(op, "axes");
+//     int64_t rank = int64_t(operand_shape_or_data.shape().size());
+//     for (size_t i = 0; i < axes_vec.size(); i++) {
+//       int64_t axis = axes_vec[i];
+//       axes_vec[i] = axis >= 0 ? axis : std::max(int64_t(0), axis + rank);
+//     }
+//     return axes_vec;
+//   }();
+
+//   return true;
+// }
 
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
