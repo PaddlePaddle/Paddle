@@ -64,7 +64,7 @@ class AllocatorFacade {
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size);
   // Allocate a unique allocation.
-  AllocationPtr Alloc(const platform::Place& place, size_t size);
+  TEST_API AllocationPtr Alloc(const platform::Place& place, size_t size);
   // Release unused memory pool.
   uint64_t Release(const platform::Place& place);
 

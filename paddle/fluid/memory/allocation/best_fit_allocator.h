@@ -111,7 +111,7 @@ class BestFitAllocator : public Allocator {
 
   const platform::Place& Place() const { return allocation_->place(); }
 
-  size_t NumFreeChunks() const;
+  TEST_API size_t NumFreeChunks() const;
 
   bool IsAllocThreadSafe() const override { return true; }
 

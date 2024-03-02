@@ -37,7 +37,7 @@ class CPUAllocator : public Allocator {
   TEST_API bool IsAllocThreadSafe() const override;
 
  protected:
-  void FreeImpl(phi::Allocation* allocation) override;
+  TEST_API void FreeImpl(phi::Allocation* allocation) override;
   TEST_API phi::Allocation* AllocateImpl(size_t size) override;
 };
 }  // namespace allocation
