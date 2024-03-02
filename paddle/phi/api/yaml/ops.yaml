@@ -207,7 +207,6 @@
     func : as_strided
   backward : as_strided_grad
   no_need_buffer : input
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : asgd_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor d, Tensor y, Tensor n, Tensor master_param, bool multi_precision=false)
