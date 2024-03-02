@@ -21,9 +21,10 @@ namespace cinn::utils {
 
 static const std::unordered_set<std::string>
     kProhibitScheduleExternalFuncNames = {
-#define CINN_NVGPU_FUNC2STRING(str) #str
-#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE) \
-  CINN_NVGPU_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE)
+#define CINN_FUNC2STRING(str) #str
+#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE)     \
+  CINN_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE), \
+      CINN_FUNC2STRING(cinn_host_##FUNC##TYPE),
 
 #define GEN_FUNC_NAME(_, impl) \
   _(impl, gt_num)              \
@@ -40,7 +41,7 @@ static const std::unordered_set<std::string>
 #undef GEN_FUNC_NAME
 #undef GEN_FUNC_NAME_WITH_TYPE
 #undef CINN_NVGPU_FUNC_TYPE
-#undef CINN_NVGPU_FUNC2STRING
+#undef CINN_FUNC2STRING
 };
 
 }  // namespace cinn::utils

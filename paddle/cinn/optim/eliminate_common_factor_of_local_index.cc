@@ -177,7 +177,7 @@ std::vector<ir::Expr> CalculateIndexVectorGcd(
     const std::vector<std::vector<ir::Expr>>& indexes) {
   CHECK_GE(indexes.size(), 2)
       << "We should guarantee indexes.size() >= 2, because local variable "
-      << local_var << "should at least load and store once.";
+      << local_var << " should at least load and store once.";
   for (std::size_t i = 1; i < indexes.size(); ++i) {
     // NOTE(Hongyu Jia): Ideally, we can guarantee the size of indexes are equal
     // under flags FLAGS_cinn_new_group_scheduler=1 and
