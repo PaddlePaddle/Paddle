@@ -51,11 +51,11 @@ class DeviceCode {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class GPUDeviceCode : public DeviceCode {
  public:
-  explicit GPUDeviceCode(const Place& place,
-                         const std::string& name,
-                         const std::string& kernel);
-  bool Compile(bool include_path = false) override;
-  void Launch(const size_t n, std::vector<void*>* args) const override;
+  TEST_API explicit GPUDeviceCode(const Place& place,
+                                  const std::string& name,
+                                  const std::string& kernel);
+  TEST_API bool Compile(bool include_path = false) override;
+  TEST_API void Launch(const size_t n, std::vector<void*>* args) const override;
 
   void SetNumThreads(int num_threads) { num_threads_ = num_threads; }
   void SetWorkloadPerThread(int workload_per_thread) {

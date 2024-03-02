@@ -32,14 +32,16 @@ class SubGraph;
 
 class CodeGenerator {
  public:
-  CodeGenerator();
+  TEST_API CodeGenerator();
 
-  std::string Generate(std::string func_name,
-                       const std::vector<OperationExpression>& expressions);
+  TEST_API std::string Generate(
+      std::string func_name,
+      const std::vector<OperationExpression>& expressions);
 
-  std::string Generate(SubGraph* subgraph);
+  TEST_API std::string Generate(SubGraph* subgraph);
 
-  std::vector<OperationExpression> ConvertToExpressions(SubGraph* subgraph);
+  TEST_API std::vector<OperationExpression> ConvertToExpressions(
+      SubGraph* subgraph);
 
  private:
   std::set<int> DistilInputIds(
