@@ -17,6 +17,12 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
+// To make codes shorter
+using ExprVec = std::vector<symbol::DimExpr>;
+using ShapeOrData = symbol::ShapeOrDataDimExprs;
+using TensorExprs = symbol::TensorShapeOrDataDimExprs;
+using TensorListExprs = symbol::TensorListShapeOrDataDimExprs;
+
 namespace paddle::dialect::details {
 template <typename T>
 struct AttributeTrait;
@@ -59,6 +65,8 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
   }
   return vec_res;
 }
+
+std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
 
 bool ReduceInferDim(pir::Operation *op,
                     pir::ShapeConstraintIRAnalysis *shape_analysis,
