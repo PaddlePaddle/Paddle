@@ -35,9 +35,15 @@ else()
   paddle_test(best_fit_allocator_test SRCS best_fit_allocator_test.cc)
 endif()
 
-paddle_test(test_aligned_allocator SRCS test_aligned_allocator.cc)
+nv_test(
+  test_aligned_allocator
+  SRCS test_aligned_allocator.cc
+  DEPS allocator)
 
-paddle_test(retry_allocator_test SRCS retry_allocator_test.cc)
+nv_test(
+  retry_allocator_test
+  SRCS retry_allocator_test.cc
+  DEPS allocator)
 if(TEST retry_allocator_test)
   set_tests_properties(retry_allocator_test PROPERTIES LABELS
                                                        "RUN_TYPE=EXCLUSIVE")
