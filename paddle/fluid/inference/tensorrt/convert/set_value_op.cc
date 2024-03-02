@@ -25,7 +25,7 @@ limitations under the License. */
         PADDLE_ENFORCE_EQ(vec_##attr_name__.size(),                        \
                           1UL,                                             \
                           platform::errors::InvalidArgument(               \
-                              "attr axes/starst/ends/steps 's size in "    \
+                              "attr axes/starts/ends/steps 's size in "    \
                               "set_value must be one, but got %d",         \
                               vec_##attr_name__.size()));                  \
       }                                                                    \
