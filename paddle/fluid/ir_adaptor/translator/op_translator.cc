@@ -1903,7 +1903,7 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
       }
     }
     switch (place_type) {
-      case -1:
+      case -1:  // NOLINT
         attribute_map["place"] = paddle::dialect::PlaceAttribute::get(
             ctx, phi::Place(phi::AllocationType::UNDEFINED));
         break;

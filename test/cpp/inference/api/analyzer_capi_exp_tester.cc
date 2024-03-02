@@ -53,8 +53,8 @@ void predictor_run() {
   const int width = 318;
   float *input = new float[batch_size * channels * height * width]();
 
-  int32_t shape[4] = {batch_size, channels, height, width};
-  PD_TensorReshape(tensor, 4, shape);
+  std::array<int32_t, 4> shape = {batch_size, channels, height, width};
+  PD_TensorReshape(tensor, 4, shape.data());
   PD_TensorCopyFromCpuFloat(tensor, input);
   EXPECT_TRUE(PD_PredictorRun(predictor));
 

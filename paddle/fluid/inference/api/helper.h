@@ -431,7 +431,7 @@ static bool IsFileExists(const std::string &path) {
   return exists;
 }
 
-void RegisterAllCustomOperator();
+void RegisterAllCustomOperator(bool use_pir);
 
 void InitGflagsFromEnv();
 
