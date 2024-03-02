@@ -24,7 +24,7 @@ static const std::unordered_set<std::string>
 #define CINN_FUNC2STRING(str) #str
 #define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE)     \
   CINN_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE), \
-      CINN_FUNC2STRING(cinn_host_##FUNC##TYPE),
+      CINN_FUNC2STRING(cinn_host_##FUNC##TYPE)
 
 #define GEN_FUNC_NAME(_, impl) \
   _(impl, gt_num)              \
