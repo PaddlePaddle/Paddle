@@ -94,14 +94,14 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     reduce_set.insert(dim);
   }
 
-  int64_t flatten_numel = 1;
+  int64_t spatial_numel = 1;
   int64_t reduce_numel = 1;
 
   for (int64_t i = 0; i < group_tile_info->data_rank; ++i) {
     if (reduce_set.count(i)) {
       reduce_numel *= data_dim[i];
     } else {
-      flatten_numel *= data_dim[i];
+      spatial_numel *= data_dim[i];
     }
   }
 
@@ -111,67 +111,67 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
       phi::errors::Unimplemented("negative reduce numel or flaten numel"));
 
   int64_t reduce_block = 1;
-  int64_t flatten_block = 1;
+  int64_t spatial_block = 1;
 
   int64_t reduce_inner_num = 1;
-  int64_t flatten_inner_num = 1;
+  int64_t spatial_inner_num = 1;
   int warp_num = 1;
 
   if (reduce_numel == 1) {
     reduce_block = 1;
-    if (flatten_numel < 0) {
-      flatten_block = 1024;
+    if (spatial_numel < 0) {
+      spatial_block = 1024;
 
       reduce_inner_num = 1;
-      warp_num = flatten_block / 128;
+      warp_num = spatial_block / 128;
 
-      flatten_inner_num = flatten_block / (warp_num * 32);
-      if (flatten_inner_num == 0) {
-        flatten_inner_num = 1;
+      spatial_inner_num = spatial_block / (warp_num * 32);
+      if (spatial_inner_num == 0) {
+        spatial_inner_num = 1;
       }
 
       group_tile_info->block_num = -1;
     } else {
-      flatten_block = Next2Power(flatten_numel);
-      if (flatten_block > 1024) {
-        flatten_block = 1024;
+      spatial_block = Next2Power(spatial_numel);
+      if (spatial_block > 1024) {
+        spatial_block = 1024;
       }
       reduce_inner_num = 1;
-      warp_num = flatten_block / 128;
+      warp_num = spatial_block / 128;
       if (warp_num == 0) {
         warp_num = 1;
       }
-      flatten_inner_num = flatten_block / (warp_num * 32);
-      if (flatten_inner_num == 0) {
-        flatten_inner_num = 1;
+      spatial_inner_num = spatial_block / (warp_num * 32);
+      if (spatial_inner_num == 0) {
+        spatial_inner_num = 1;
       }
 
       int64_t block_num =
-          int64_t(std::ceil(flatten_numel * 1.0 / flatten_block));
+          int64_t(std::ceil(spatial_numel * 1.0 / spatial_block));
       group_tile_info->block_num = block_num;
     }
   } else if (reduce_numel <= 256) {
     // warp reduce
     reduce_block = Next2Power(reduce_numel);
-    flatten_block = 256 / reduce_block;
-    flatten_inner_num = flatten_block;
+    spatial_block = 256 / reduce_block;
+    spatial_inner_num = spatial_block;
     reduce_inner_num = reduce_block / 32;
     if (reduce_inner_num == 0) {
       reduce_inner_num = 2;
     }
     warp_num = 8;
   } else if (reduce_numel > 256 && reduce_numel <= 2048) {
-    flatten_block = 1;
+    spatial_block = 1;
     reduce_block = int64_t(std::ceil(reduce_numel * 1.0 / 256.0)) * 256;
     warp_num = reduce_block / 256;
-    flatten_inner_num = 1;
+    spatial_inner_num = 1;
     reduce_inner_num = 8;
   } else if (reduce_numel > 2048) {
-    flatten_block = 1;
+    spatial_block = 1;
     reduce_block = 2048;
     warp_num = 8;
     reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 256.0));
-    flatten_inner_num = 1;
+    spatial_inner_num = 1;
   }
 
   group_tile_info->reduce_numel = reduce_numel;
@@ -179,13 +179,13 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   VLOG(6) << "block num " << group_tile_info->block_num << std::endl;
   VLOG(6) << "num warp " << warp_num << std::endl;
-  VLOG(6) << "flatten block " << flatten_block << std::endl;
+  VLOG(6) << "flatten block " << spatial_block << std::endl;
   VLOG(6) << "reduce block  " << reduce_block << std::endl;
-  VLOG(6) << "flatten inner num " << flatten_inner_num << std::endl;
+  VLOG(6) << "flatten inner num " << spatial_inner_num << std::endl;
   VLOG(6) << "reduce inner num " << reduce_inner_num << std::endl;
 
   group_tile_info->warp_num = warp_num;
-  group_tile_info->flatten_inner_num = flatten_inner_num;
+  group_tile_info->spatial_inner_num = spatial_inner_num;
   group_tile_info->reduce_inner_num = reduce_inner_num;
 
   if (reduce_block > 1 && reduce_block <= 256) {
@@ -194,7 +194,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   for (auto op : group->ops) {
     if (CompatibleInfo::OpKind(*op) == OpPatternKind::kReduction) {
-      group_tile_info->reduce_var_names.insert(ValueName(op->result(0)));
+      group_tile_info->reduce_tensor_names.insert(ValueName(op->result(0)));
     }
   }
 
@@ -271,10 +271,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
                &tensor_map,
                &tmp_tensor_info);
 
-  for (size_t i = 0; i < func_bodies.size(); ++i) {
-    std::cerr << "!!!!!!!!!!!!!!!!!!!!!!   " << i << std::endl;
-    std::cerr << func_bodies[i] << std::endl;
-  }
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
   ir::IRSchedule ir_sch(
@@ -549,10 +545,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     }
   }
 
-  for (size_t i = 0; i < func_bodies.size(); ++i) {
-    std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
-  }
-
   // 2.Do group schedule.
 
   ir::ModuleExpr mod_expr(func_bodies);
@@ -633,14 +625,11 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
                      .dyn_cast<paddle::dialect::DenseTensorType>()
                      .dims();
       }
-      std::cerr << it->first->name() << "\t in dim " << in_dim << "\t"
-                << it->second[0].DebugStr() << std::endl;
 
       cinn::ir::BroadcastInfo info;
       if (in_dim.size() == 1u && in_dim[0] == 1u) {
         info.full_broadcast = true;
         for (size_t i = 0; i < output_shape.size(); ++i) {
-          std::cerr << i << "    shape   " << output_shape[i] << std::endl;
           info.broadcast_axes.push_back(i);
           info.output_shape.push_back(output_shape[i]);
         }
@@ -664,9 +653,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           }
         } else {
           for (size_t i = 0; i < broadcast_axes.size(); ++i) {
-            std::cerr << "broadcast axes " << broadcast_axes[i] << std::endl;
-            std::cerr << in_dim << std::endl;
-            std::cerr << output_shape[broadcast_axes[i]] << std::endl;
             if (in_dim[i] != output_shape[broadcast_axes[i]]) {
               if (in_dim[i] != 1) {
                 throw std::runtime_error("Only support 1 - D broadcast ");
@@ -681,7 +667,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         std::set<int> axes_set;
         for (size_t i = 0; i < broadcast_axes.size(); ++i) {
           axes_set.insert(broadcast_axes[i]);
-          std::cerr << "broadcast axes " << broadcast_axes[i] << std::endl;
           if (in_dim[broadcast_axes[i]] != 1) {
             throw std::runtime_error("Only support 1 - D broadcast ");
           }
@@ -697,18 +682,14 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {
         if (!align_info.count(it->first->operand_source(i).defining_op())) {
-          std::cerr << "is first broadcast " << it->first->name() << std::endl;
           info.first_broadcast = true;
           break;
         }
       }
 
       auto op_out = it->first->result(0);
-      std::cerr << "var name " << ValueName(op_out) << std::endl;
       info.op_name = it->first->name();
       broadcast_info[ValueName(op_out)] = info;
-
-      std::cerr << "op " << it->first->name() << std::endl;
 
       for (auto use_it = op_out.use_begin(); use_it != op_out.use_end();
            ++use_it) {
@@ -717,7 +698,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         }
         if (CompatibleInfo::OpKind(*(use_it->owner())) ==
             framework::kBroadcast) {
-          std::cerr << "match broadcast !!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
           if (!info.full_broadcast) {
             broadcast_to_elementwise[ValueName(use_it->owner()->result(0))] =
                 info;
@@ -794,7 +774,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         .emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
     arg_name_set.insert(arg_tensor->buffer->name);
   }
-  std::cerr << "post process\n";
 
   group->output_names.clear();
 
@@ -840,8 +819,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
   }
 
-  std::cerr << "22\n";
-
   std::map<int, CINNKernelInfo::ArgDimIdx> mps;
   // update args for dynamic dim
   int num_tensor_args = static_cast<int>(group_func_args->size());
@@ -869,14 +846,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       }
     }
   }
-  std::cerr << "33\n";
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names);
 #ifdef CINN_WITH_CUDA
     optim::OptimizeExprGPU(&(func_body));
 #endif
-    // std::cerr << "fun body " << func_body << std::endl;
 
     // 2.Prepare temp buffers
     auto temp_buffers =
@@ -928,11 +903,10 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   }
 
   for (auto* op : ops) {
-    std::cerr << "op name " << op->name() << std::endl;
     VLOG(4) << "start lowering op:" << op->name();
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
 
-    std::cerr << "cinn op name " << cinn_op_name << std::endl;
+    VLOG(4) << "cinn op name " << cinn_op_name << std::endl;
 
     // 1.Select Op impl
     std::vector<ir::Tensor> op_func_arg_tensors =
@@ -1112,27 +1086,12 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   VLOG(3) << "using StaticShapeGroupScheduler to schedule group.";
-  std::cerr << "!!!!!!!!!!!!!!!!!!!!group op kind" << group->op_pattern_kind
-            << std::endl;
-
-  std::cerr << "group id " << group->group_id << std::endl;
-  std::cerr << "type " << group->op_pattern_kind << std::endl;
-
-  std::cerr << "reduce axis ";
-  for (auto d : group->reduce_axis) {
-    std::cerr << " " << d;
-  }
-  std::cerr << std::endl;
-
-  std::cerr << "loop range ";
   bool have_dy_shape = false;
   for (auto d : group->loop_ranges) {
     if (d < 0) {
       have_dy_shape = true;
     }
-    std::cerr << " " << d;
   }
-  std::cerr << std::endl;
 
   auto group_tile_info = GetGroupTileInfo(group);
 
@@ -1252,14 +1211,12 @@ void OpLowererImpl::CollectOutputInfo(
     auto ForEachDimExpr = [&](const auto& DoEach) {
       const auto& dims = type_info.dims();
       if (::common::contain_unknown_dim(dims)) {  // dynamic shape
-        std::cerr << "have unkow dim\n";
         const auto& sym_vec = group->GetShapeOrDataExprs(out_value).shape();
         std::vector<ir::Dim> sym_shape;
         for (const auto& sym : sym_vec) {
           DoEach(sym);
         }
       } else {  // static shape
-        std::cerr << "static shape\n";
         auto out_shape = ::common::vectorize<int64_t>(dims);
         for (int64_t dim : out_shape) {
           DoEach(symbol::DimExpr{dim});
