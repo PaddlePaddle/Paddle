@@ -186,12 +186,12 @@ HOSTDEVICE inline void GetUTF8Str(const uint32_t* unicode_str,
 }
 
 const uint8_t* GetUniFlagMap();
-const uint16_t* GetCharcasesMap();
+const uint16_t* GetCharCasesMap();
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 const uint8_t* GetGPUUniflagMap();
-const uint16_t* GetGPUCharcasesMap();
+const uint16_t* GetGPUCharCasesMap();
 #endif
 
 }  // namespace strings
