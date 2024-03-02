@@ -52,8 +52,10 @@ endif()
 paddle_test(allocator_facade_abs_flags_test SRCS
             allocator_facade_abs_flags_test.cc)
 
-paddle_test(allocator_facade_frac_flags_test SRCS
-            allocator_facade_frac_flags_test.cc)
+nv_test(
+  allocator_facade_frac_flags_test
+  SRCS allocator_facade_frac_flags_test.cc
+  DEPS allocator)
 
 if(WITH_GPU)
   nv_test(
