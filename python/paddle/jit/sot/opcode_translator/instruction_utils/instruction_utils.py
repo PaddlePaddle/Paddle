@@ -338,9 +338,17 @@ def modify_vars(instructions: list[Instruction], code_options):
                 instrs.arg = namemap.index(instrs.argval)
         elif instrs.opname == "FOR_ITER":
             if sys.version_info >= (3, 12):
+                assert instrs.jump_to is not None
                 assert instrs.arg is not None
-                # END_FOR offset = ((FOR_ITER arg) + (FOR_ITER offset) - 1) << 1
+                assert instrs.offset is not None
                 instrs.arg -= 1
+                # END_FOR offset = (((FOR_ITER arg + 2) << 1) + FOR_ITER offset)
+                if instrs.jump_to.offset != (
+                    ((instrs.arg + 2) << 1) + instrs.offset
+                ):
+                    raise InnerError(
+                        'FOR_ITER jump_to offset is not equal to "(((FOR_ITER arg + 2) << 1) + FOR_ITER offset)" '
+                    )
 
 
 def calc_offset_from_bytecode_offset(
