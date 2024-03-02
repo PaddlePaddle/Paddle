@@ -77,5 +77,49 @@ class TestTransposeReshape(unittest.TestCase):
             )
 
 
+class ReshapeTransposeNet(nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        y = paddle.reshape(x, [0, 0, 32, 128])
+        out = paddle.transpose(y, [0, 2, 1, 3])
+
+        return out
+
+
+class TestReshapeTranspose(unittest.TestCase):
+    def setUp(self):
+        paddle.seed(2024)
+        self.prepare_data()
+
+    def prepare_data(self):
+        self.x = paddle.randn([4, 16, 4096], dtype="float16")
+
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
+    def eval(self, use_cinn):
+        net = ReshapeTransposeNet()
+        input_spec = [
+            InputSpec(shape=[None, None, 4096], dtype="float16"),
+        ]
+        net = utils.apply_to_static(net, use_cinn, input_spec)
+        net.eval()
+        out = net(self.x)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
+        return out
+
+    def test_eval(self):
+        dy_out = self.eval(use_cinn=False)
+        if utils.unittest_use_cinn():
+            cinn_out = self.eval(use_cinn=True)
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+            )
+
+
 if __name__ == '__main__':
     unittest.main()

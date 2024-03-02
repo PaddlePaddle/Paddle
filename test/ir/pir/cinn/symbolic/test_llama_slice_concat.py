@@ -27,7 +27,7 @@ sys.path.append(dirname(dirname(__file__)))
 import utils
 
 
-class SliceConcatNet(nn.Layer):
+class SliceMultiConcatNet(nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -41,7 +41,7 @@ class SliceConcatNet(nn.Layer):
         return out0, out1
 
 
-class TestReshapeZeroShape(unittest.TestCase):
+class TestSliceMultiConcat(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.prepare_data()
@@ -56,9 +56,54 @@ class TestReshapeZeroShape(unittest.TestCase):
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
-        net = SliceConcatNet()
+        net = SliceMultiConcatNet()
         input_spec = [
             InputSpec(shape=[None, None], dtype="int64"),
+        ]
+        net = utils.apply_to_static(net, use_cinn, input_spec)
+        net.eval()
+        out = net(self.x)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
+        return out
+
+    def test_eval(self):
+        dy_out = self.eval(use_cinn=False)
+        if utils.unittest_use_cinn():
+            cinn_out = self.eval(use_cinn=True)
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+            )
+
+
+class SliceConcatNet(nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        x0 = paddle.shape(x)[0].reshape([1])
+        x1 = paddle.full([1], 1, dtype="int32")
+        out = paddle.concat([x0, x1])
+        return out
+
+
+class TestSliceConcat(unittest.TestCase):
+    def setUp(self):
+        paddle.seed(2024)
+        self.prepare_data()
+
+    def prepare_data(self):
+        self.x = paddle.randn([1, 32000], dtype="float16")
+        self.x.stop_gradient = False
+
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
+    def eval(self, use_cinn):
+        net = SliceConcatNet()
+        input_spec = [
+            InputSpec(shape=[None, 32000], dtype="float16"),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
