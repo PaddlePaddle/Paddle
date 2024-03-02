@@ -1174,19 +1174,6 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
 
 //  Not Impelmented Ops.
 
-bool ArgmaxOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-bool ArgminOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
 bool AsComplexOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(

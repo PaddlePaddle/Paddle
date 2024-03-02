@@ -17,6 +17,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
+#define GET_BOOL_ATTR(op, str) \
+  op->attributes().at(str).dyn_cast<pir::BoolAttribute>().data();
+
 // To make codes shorter
 using ExprVec = std::vector<symbol::DimExpr>;
 using ShapeOrData = symbol::ShapeOrDataDimExprs;
