@@ -33,29 +33,31 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class RemoveUnchangedReshapePattern
-    : public pir::OpRewritePattern<cinn::dialect::ReshapeOp> {
+bool RemoveOp(pir::Operation *op, pir::PatternRewriter *rewriter) {
+  auto in_dim = op->operand_source(0)
+                    .type()
+                    .dyn_cast<paddle::dialect::DenseTensorType>()
+                    .dims();
+  auto out_dim =
+      op->result(0).type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+
+  if (in_dim == out_dim) {
+    rewriter->ReplaceAllUsesWith(op->result(0), op->operand_source(0));
+    rewriter->EraseOp(op);
+    return true;
+  }
+
+  return false;
+}
+
+template <typename OPTYPE>
+class RemoveUnchangedReshapePattern : public pir::OpRewritePattern<OPTYPE> {
  public:
-  using pir::OpRewritePattern<cinn::dialect::ReshapeOp>::OpRewritePattern;
+  using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
 
-  bool MatchAndRewrite(cinn::dialect::ReshapeOp op,
+  bool MatchAndRewrite(OPTYPE op,
                        pir::PatternRewriter &rewriter) const override {
-    auto in_dim = op->operand_source(0)
-                      .type()
-                      .dyn_cast<paddle::dialect::DenseTensorType>()
-                      .dims();
-    auto out_dim = op->result(0)
-                       .type()
-                       .dyn_cast<paddle::dialect::DenseTensorType>()
-                       .dims();
-
-    if (in_dim == out_dim) {
-      rewriter.ReplaceAllUsesWith(op->result(0), op->operand_source(0));
-      rewriter.EraseOp(op);
-      return true;
-    }
-
-    return false;
+    return RemoveOp(op, &rewriter);
   }
 };
 
@@ -87,7 +89,8 @@ class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
     pir::RewritePatternSet ps(context);
 
     // remove out_shape equal in_shape reshape op
-    ps.Add<RemoveUnchangedReshapePattern>(context);
+    ps.Add<RemoveUnchangedReshapePattern<cinn::dialect::ReshapeOp>>(context);
+    ps.Add<RemoveUnchangedReshapePattern<paddle::dialect::ReshapeOp>>(context);
     ps.Add<MergeReshapePattern>(context);
 
     return ps;
