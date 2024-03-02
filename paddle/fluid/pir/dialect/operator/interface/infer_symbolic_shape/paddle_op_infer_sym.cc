@@ -1487,4 +1487,18 @@ bool UniqueOpInferSymbolicShape(
   return true;
 }
 
+bool FullWithTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+
+  const auto &out_shape = operand_shape_or_data.data().has_value()
+                              ? operand_shape_or_data.data().value()
+                              : operand_shape_or_data.shape();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+  return true;
+}
 }  // namespace paddle::dialect
