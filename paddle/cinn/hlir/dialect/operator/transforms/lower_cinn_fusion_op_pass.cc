@@ -229,6 +229,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
 GroupPtr CloneGroup(const GroupPtr& group,
                     pir::Block* block,
                     pir::IrMapping* ir_mapping) {
+  std::cerr << "clone grou !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
   return group->Clone(block, *ir_mapping);
 }
 
@@ -648,7 +649,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }
-    std::cerr << "after shape dal\n";
 
     // auto attr = fusion_op.attribute("group_info")
     //                 .dyn_cast<cinn::dialect::GroupInfoAttribute>()
@@ -724,12 +724,15 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       auto attr = fusion_op.attribute("group_info")
                       .dyn_cast<cinn::dialect::GroupInfoAttribute>()
                       .data();
-
+      std::cerr << "have group info\n";
       group->op_pattern_kind = attr.op_pattern_kind;
       group->loop_ranges = attr.loop_ranges;
 
       group->reduce_axis = attr.reduce_axis;
       group->alignment_schedule_info = attr.alignment_schedule_info;
+
+      std::cerr << "align info num \n " << attr.alignment_schedule_info.size()
+                << std::endl;
     }
 
     // Rebuild ops of the group

@@ -51,8 +51,10 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   Unroll(sch, block_id);
   SetReduceType(sch, block_id);
 
-  std::cerr << "process:  " << block_id << "\n"
-            << sch->GetModule().GetExprs().front() << std::endl;
+  if (sch->HasBlock(block_id)) {
+    std::cerr << "process:  " << block_id << "\n"
+              << sch->GetBlock(block_id) << std::endl;
+  }
 }
 
 void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
@@ -64,8 +66,15 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
                                              const std::string& block_id) {
+  // should down reduce axis
+  std::vector<int32_t> fuse_axis = vec_reduce_axis_;
+  if (vec_reduce_axis_.size() >= 2) {
+    for (size_t i = 0; i < fuse_axis.size(); ++i) {
+      fuse_axis[i] -= (vec_flatten_axis_.size() - 1);
+    }
+  }
   if (vec_reduce_axis_.size() >= 2 && !ir::IsReduceInitTensorName(block_id)) {
-    sch->Fuse(block_id, vec_reduce_axis_);
+    sch->Fuse(block_id, fuse_axis);
   }
 }
 

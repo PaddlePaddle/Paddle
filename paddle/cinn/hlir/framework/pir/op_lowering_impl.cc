@@ -212,7 +212,13 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   }
 
   for (auto& val : group->output_values) {
-    group_tile_info->direct_output_var_names.insert(ValueName(val));
+    if (val.defining_op()->name() == "cinn_op.reshape" &&
+        erase_reshape.count(val.defining_op())) {
+      group_tile_info->direct_output_var_names.insert(
+          ValueName(val.defining_op()->operand_source(0)));
+    } else {
+      group_tile_info->direct_output_var_names.insert(ValueName(val));
+    }
   }
 
   group_tile_info->shared_var_names = shared_var_names;
@@ -606,10 +612,17 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
   // TODO(phlrain): this is primary verion for loop aligment
   // will be update by a new method
   auto& align_info = group->alignment_schedule_info;
+  for (auto it = align_info.begin(); it != align_info.end(); ++it) {
+    std::cerr << "point " << it->first << std::endl;
+  }
+
   auto& ops = group->ops;
   for (auto op1 : ops) {
+    std::cerr << "op point " << op1 << std::endl;
+    std::cerr << "build broadcast info " << op1->name() << std::endl;
     auto it = align_info.find(op1);
     if (it == align_info.end()) {
+      std::cerr << "not found continue\n";
       continue;
     }
 
@@ -817,6 +830,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       continue;
     }
     auto tensor = tensor_map.at(op_result);
+    if ((op_result.defining_op()->name() == "cinn_op.reshape") &&
+        erase_reshape.count(op_result.defining_op())) {
+      tensor = tensor_map.at(op_result.defining_op()->operand_source(0));
+    }
+
     if (arg_name_set.count(tensor->buffer->name) != 0) {
       continue;
     }
@@ -999,6 +1017,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     {
       if (ops.size() > 1 && not_used_op.count(op) &&
           (op->name() == "cinn_op.reshape")) {
+        std::cerr << "erase \n";
         erase_reshape.insert(op);
         continue;
       }
@@ -1010,6 +1029,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       remain_ops.push_back(op);
     }
   }
+
+  std::cerr << "func body size " << func_bodies.size() << std::endl;
 
   VLOG(4) << "group_func_arg_tensors.size(): "
           << group_func_arg_tensors->size();
