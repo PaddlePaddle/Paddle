@@ -201,6 +201,10 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].overlap_p2p_comm
 
+        self._clear_every_step_cache = self._strategy.hybrid_configs[
+            "pp_configs"
+        ].clear_every_step_cache
+
         self._batch_p2p_comm = not self._overlap_p2p_comm
 
         if self._dp_comm_overlap:
@@ -476,6 +480,10 @@ class PipelineParallel(MetaParallelBase):
             train_loss = self._broadcast_final_loss()
         if self._enable_timer:
             self.timers("broadcast_final_loss").stop()
+
+        if self._clear_every_step_cache:
+            self._p2p_helper.clear_meta_cache()
+
         self.timer_printer()
         return train_loss
 
@@ -1394,6 +1402,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
             # else just return all intermediate output tensor for all micro steps
             train_loss = self.output_tensors
 
+        if self._clear_every_step_cache:
+            self._p2p_helper.clear_meta_cache()
+
         self.timer_printer()
         return train_loss
 
@@ -1633,6 +1644,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         else:
             # else just return all intermediate output tensor for all micro steps
             train_loss = self.output_tensors
+
+        if self._clear_every_step_cache:
+            self._p2p_helper.clear_meta_cache()
 
         self.timer_printer()
         return train_loss
