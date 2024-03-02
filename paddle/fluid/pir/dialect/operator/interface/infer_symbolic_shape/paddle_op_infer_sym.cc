@@ -115,7 +115,6 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 
 bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &attributes = op->attributes();
   bool keepdim = GetBoolAttr(op, "keepdim");
   bool reduce_all = false;
 
