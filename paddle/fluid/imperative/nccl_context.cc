@@ -67,7 +67,7 @@ void NCCLParallelContext::Init() {
   std::vector<ncclUniqueId> nccl_ids;
   nccl_ids.resize(strategy_.nrings_);
 
-  if (strategy_.local_rank_ == 0) {
+  if (strategy_.local_rank_ == 0) {  // NOLINT
     // generate the unique ncclid on the root worker
     for (auto &nccl_id : nccl_ids) {
       platform::dynload::ncclGetUniqueId(&nccl_id);

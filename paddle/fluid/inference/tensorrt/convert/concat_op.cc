@@ -49,7 +49,7 @@ class ConcatOpConverter : public OpConverter {
         engine_, Concatenation, itensors.data(), itensors.size());
     layer->setAxis(axis);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "concat", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "concat", {output_name}, test_mode);
   }
 };
 
