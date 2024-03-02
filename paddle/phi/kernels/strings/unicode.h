@@ -169,7 +169,7 @@ HOSTDEVICE inline uint32_t GetUTF8StrLen(const uint32_t* unicode_str,
   // +1 means '\0'
   return utf8_str_count + 1;
 }
-// Need to gurantee utf8_str has enough memory
+// Need to guarantee utf8_str has enough memory
 
 HOSTDEVICE inline void GetUTF8Str(const uint32_t* unicode_str,
                                   char* utf8_str,
