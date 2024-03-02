@@ -185,5 +185,20 @@ class TestBreakGraphInLayer(TestCaseBase):
         self.assert_results(net.forward, x)
 
 
+def dummy(*args):
+    return None
+
+
+def break_graph_call_generator_function(x):
+    return dummy(y for y in x)
+
+
+class TestBreakGraphCallGeneratorFunction(TestCaseBase):
+    def test_break_graph_when_call_generator_function(self):
+        x = paddle.rand([1], dtype=paddle.float32)
+        y = paddle.rand([1], dtype=paddle.float32)
+        self.assert_results(break_graph_call_generator_function, [x, y])
+
+
 if __name__ == "__main__":
     unittest.main()
