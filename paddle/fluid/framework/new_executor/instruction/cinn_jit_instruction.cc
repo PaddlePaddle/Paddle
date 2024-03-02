@@ -185,7 +185,7 @@ void CinnJitInstruction::Run() {
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
-                      "support non-CUDA kernel";
+             "support non-CUDA kernel";
 #endif
 }
 
