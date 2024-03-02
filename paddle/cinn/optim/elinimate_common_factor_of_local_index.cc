@@ -179,8 +179,18 @@ std::vector<ir::Expr> CalculateIndexVectorGcd(
       << "We should guarantee indexes.size() >= 2, because local variable "
       << local_var << "should at least load and store once.";
   for (std::size_t i = 1; i < indexes.size(); ++i) {
-    CHECK_EQ(indexes[0].size(), indexes[i].size())
-        << "We should guarantee all index vectors have the same size.";
+    // NOTE(Hongyu Jia): Ideally, we can guarantee the size of indexes are equal
+    // under flags FLAGS_cinn_new_group_scheduler=1 and
+    // FLAGS_cinn_bucket_compile=1. However, some unit tests (e.g.
+    // test_resnet_cinn, test_instance_norm_op) are still running with the
+    // deprecated OpScheduler, and the ir::Expr will break this guarantee after
+    // IRCudaScheduleBlockReduce function. So we have to relax the restriction
+    // here.
+    if (indexes[i].size() != indexes[0].size()) {
+      LOG(WARNING) << "Not supported for calculating gcd, local var = "
+                   << local_var;
+      return std::vector<ir::Expr>(indexes[0].size(), ir::Expr(1));
+    }
   }
   std::size_t var_index_size = indexes[0].size();
   std::vector<ir::Expr> gcd_indexes;
