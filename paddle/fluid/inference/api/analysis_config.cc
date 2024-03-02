@@ -581,6 +581,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(skip_load_params_);
 
   CP_MEMBER(use_new_executor_);
+  CP_MEMBER(use_pir_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,

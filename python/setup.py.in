@@ -876,7 +876,7 @@ headers = (
     # init headers
     list(find_files('init_phi.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')) +  # phi init headers
     # init headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pir/include')) +  # pir init headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pir/include', recursive=True)) +  # pir init headers
     # init headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/drr/include')) +  # drr init headers
     # init headers
