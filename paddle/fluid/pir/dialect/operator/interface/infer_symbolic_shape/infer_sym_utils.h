@@ -17,6 +17,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
+#define GET_BOOL_ATTR(op, str) \
+  op->attributes().at(str).dyn_cast<pir::BoolAttribute>().data();
+
 namespace paddle::dialect::details {
 template <typename T>
 struct AttributeTrait;
