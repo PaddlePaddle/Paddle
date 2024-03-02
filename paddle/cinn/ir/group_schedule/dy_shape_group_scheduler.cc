@@ -118,14 +118,10 @@ void DynamicShapeGroupScheduler::InitBuckets() {
 }
 
 void DynamicShapeGroupScheduler::Schedule() {
-  if (FLAGS_cinn_bucket_compile) {
-    for (BucketContext& bucket_context : bucket_contexts_) {
-      VLOG(4) << "===========================Apply tactics on Bucket ["
-              << bucket_context.predicate << "]==========================";
-      ApplyTactics(&bucket_context);
-    }
-  } else {
-    CINN_NOT_IMPLEMENTED;
+  for (BucketContext& bucket_context : bucket_contexts_) {
+    VLOG(4) << "===========================Apply tactics on Bucket ["
+            << bucket_context.predicate << "]==========================";
+    ApplyTactics(&bucket_context);
   }
 }
 
