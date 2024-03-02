@@ -156,7 +156,9 @@ class ScheduleBase {
   virtual void ReverseComputeInline(const Expr& schedule_block) = 0;
   virtual void Bind(const Expr& loop, const std::string& thread_axis) = 0;
   virtual Expr Rfactor(const Expr& rf_loop, int rf_axis) = 0;
-  virtual Expr FactorizeReduction(const Expr& rf_loop, int rf_axis) = 0;
+  virtual Expr FactorizeReduction(const Expr& rf_loop,
+                                  int rf_axis,
+                                  bool with_write_back_block_init = true) = 0;
   virtual Expr AddUnitLoop(const Expr& block) const = 0;
   virtual void Annotate(const Expr& block,
                         const std::string& key,

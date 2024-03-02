@@ -629,12 +629,17 @@ Expr IRSchedule::Rfactor(const Expr& rf_loop, int rf_axis) {
   return result;
 }
 
-Expr IRSchedule::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
-  auto result = impl_->FactorizeReduction(rf_loop, rf_axis);
-  trace_.Append(ScheduleDesc::Step("FactorizeReduction",
-                                   {{"rf_loop", std::vector<Expr>({rf_loop})}},
-                                   {{"rf_axis", rf_axis}},
-                                   {result}));
+Expr IRSchedule::FactorizeReduction(const Expr& rf_loop,
+                                    int rf_axis,
+                                    bool with_write_back_block_init) {
+  auto result =
+      impl_->FactorizeReduction(rf_loop, rf_axis, with_write_back_block_init);
+  trace_.Append(ScheduleDesc::Step(
+      "FactorizeReduction",
+      {{"rf_loop", std::vector<Expr>({rf_loop})}},
+      {{"rf_axis", rf_axis},
+       {"with_write_back_block_init", with_write_back_block_init}},
+      {result}));
   return result;
 }
 

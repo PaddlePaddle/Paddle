@@ -408,7 +408,9 @@ class IRSchedule {
    *        B[i] = B[i] + rf_B[j, i]
    * \endcode
    */
-  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
+  Expr FactorizeReduction(const Expr& rf_loop,
+                          int rf_axis,
+                          bool with_write_back_block_init = true);
 
   /*!
    * \brief Annotate a block with a key-value pair to set as its attribute
