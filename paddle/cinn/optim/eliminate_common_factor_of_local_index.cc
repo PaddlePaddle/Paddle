@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/elinimate_common_factor_of_local_index.h"
+#include "paddle/cinn/optim/eliminate_common_factor_of_local_index.h"
 
 #include <unordered_map>
 
@@ -285,8 +285,8 @@ class DivideGcdForLocalIndexVisitor : public ir::IRMutator<> {
 
 }  // namespace
 
-void ElinimateCommonFactorOfLocalIndex(ir::Expr* expr) {
-  VLOG(2) << "Before ElinimateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
+  VLOG(2) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 
   std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>>
       local_var_to_indexes = CollectLocalVarToIndexes(expr);
@@ -298,7 +298,7 @@ void ElinimateCommonFactorOfLocalIndex(ir::Expr* expr) {
       local_var_to_gcd_factor);
   divide_gcd_for_local_index_visitor(expr);
 
-  VLOG(2) << "After ElinimateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+  VLOG(2) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
 
 }  // namespace optim

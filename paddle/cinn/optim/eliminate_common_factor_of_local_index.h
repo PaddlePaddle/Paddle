@@ -24,7 +24,7 @@ namespace optim {
  * indexes. Then each local index divides it's GCD value. This optimization
  * could help analysising the space allocated for local variables.
  */
-void ElinimateCommonFactorOfLocalIndex(ir::Expr* expr);
+void EliminateCommonFactorOfLocalIndex(ir::Expr* expr);
 
 }  // namespace optim
 }  // namespace cinn

@@ -27,7 +27,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/optim/elinimate_common_factor_of_local_index.h"
+#include "paddle/cinn/optim/eliminate_common_factor_of_local_index.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/resize_buffer.h"
@@ -445,7 +445,7 @@ void OptimizeExprGPU(Expr *expr) {
   LocalAxisVisitor local_axis_visitor;
   local_axis_visitor(expr);
 
-  ElinimateCommonFactorOfLocalIndex(expr);
+  EliminateCommonFactorOfLocalIndex(expr);
 
   ResizeBufferToMaxVarRange(expr);
 
