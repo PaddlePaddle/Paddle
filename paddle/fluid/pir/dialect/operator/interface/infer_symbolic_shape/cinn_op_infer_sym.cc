@@ -141,6 +141,26 @@ bool ReshapeOpInferSymbolicShape(
   return true;
 }
 
+inline ExprVec GetDecreasedDims(const ExprVec &slice_dims,
+                                const std::vector<int64_t> &decrease_axes) {
+  ExprVec decreased_dims(slice_dims);
+  std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
+  if (decrease_axes.size() > 0) {
+    for (size_t i = 0; i < decrease_axes.size(); ++i) {
+      int64_t axis = decrease_axes[i];
+      decrease_flag[axis] = 1;
+    }
+    ExprVec new_shape;
+    for (size_t i = 0; i < slice_dims.size(); ++i) {
+      if (decrease_flag[i] == 0) {
+        new_shape.emplace_back(slice_dims[i]);
+      }
+    }
+    decreased_dims = new_shape;
+  }
+  return decreased_dims;
+}
+
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // TODO(zhangbopd): Not implemented yet, different from the one in paddle
@@ -164,6 +184,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   const int64_t start = GetAttrInt64Value("starts");
   const int64_t end = GetAttrInt64Value("ends");
   const int64_t axis = GetAttrInt64Value("axes");
+  const int64_t decrease_axis = GetAttrInt64Value("decrease_axis");
 
   const pir::Value operand_source = op->operand_source(0);
   const auto &operand_shape_or_data =
@@ -176,7 +197,9 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
     } else {
       out_sym_shape[axis] = end - start;
     }
-    symbol::TensorShapeOrDataDimExprs shape_dim_expr(out_sym_shape);
+
+    symbol::TensorShapeOrDataDimExprs shape_dim_expr(
+        GetDecreasedDims(out_sym_shape, {decrease_axis}));
     if (operand_shape_or_data.data().has_value()) {
       std::vector<symbol::DimExpr> out_data;
       for (int64_t i = start; i < end; i++) {
