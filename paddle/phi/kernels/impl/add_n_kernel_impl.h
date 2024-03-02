@@ -31,7 +31,6 @@ template <typename T, typename Context>
 void AddNArrayKernel(const Context& dev_ctx,
                      const std::vector<const TensorArray*>& x,
                      TensorArray* out) {
-  throw common::enforce::EnforceNotMet("1", "1", 1);
   for (auto& ele : *out) {
     dev_ctx.template Alloc<T>(&ele);
   }
