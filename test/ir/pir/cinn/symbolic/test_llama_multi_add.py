@@ -27,46 +27,52 @@ sys.path.append(dirname(dirname(__file__)))
 import utils
 
 
-class UnsqueezeExpandNet(nn.Layer):
+class MultiAddNet(nn.Layer):
     def __init__(self):
         super().__init__()
 
-    def forward(self, x, y):
-        s0 = paddle.shape(x)[0]
-        s1 = 1
-        s2 = paddle.shape(y)[0]
-        s3 = paddle.shape(x)[1]
+    def forward(self, x):
+        shape = paddle.shape(x)
+        mask = paddle.full(shape, 0, dtype="bool")
 
-        z = x.unsqueeze([1, 2]).cast(bool)
-        z.stop_gradient = True
-        out = paddle.expand(z, [s0, s1, s2, s3])
-        return out
+        x1 = paddle.full([1], 0, dtype="float64")
+        x2 = paddle.full([1], -65504, dtype="float64")
+        x3 = paddle.full([1], 0, dtype="float64")
+        x4 = paddle.full([1], 0, dtype="float64")
+
+        y = mask.cast("float64")
+        z = x.cast("float64")
+
+        s0 = x3 + x4
+        s1 = s0 + y
+        s2 = x1 + s1
+        s3 = x2 + s1
+        s4 = (z + s1).cast("bool")
+
+        return s2, s3, s4
 
 
-class TestUnsqueezeExpand(unittest.TestCase):
+class TestMultiAdd(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.prepare_data()
 
     def prepare_data(self):
-        self.x = paddle.randint(0, 100, [64, 128], dtype="int64")
+        self.x = paddle.randint(0, 1, [64, 1, 32, 128], dtype="int64").astype(
+            "bool"
+        )
         self.x.stop_gradient = False
-        self.y = paddle.randint(0, 100, [64, 32], dtype="int64")
-        self.y.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
-        net = UnsqueezeExpandNet()
-        input_spec = [
-            InputSpec(shape=[None, None], dtype="int64"),
-            InputSpec(shape=[None, None], dtype="int64"),
-        ]
+        net = MultiAddNet()
+        input_spec = [InputSpec(shape=[None, 1, None, None], dtype="bool")]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x, self.y)
+        out = net(self.x)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out

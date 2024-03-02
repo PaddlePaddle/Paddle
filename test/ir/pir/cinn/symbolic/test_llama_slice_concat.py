@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
-
-# sys.path.append(dirname(dirname(__file__)))
-import utils
 
 import paddle
 from paddle import nn
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
+
+import utils
 
 
 class SliceConcatNet(nn.Layer):
