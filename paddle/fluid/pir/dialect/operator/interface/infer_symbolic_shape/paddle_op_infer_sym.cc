@@ -983,13 +983,6 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
   return true;
 }
 
-bool ExpandOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
 bool MatmulOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // x_dims can't be const or ref here, in case to be broadcasted

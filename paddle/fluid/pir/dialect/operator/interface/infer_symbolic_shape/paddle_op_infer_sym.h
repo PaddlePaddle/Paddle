@@ -82,9 +82,6 @@ bool EmbeddingOpInferSymbolicShape(
 bool SparseWeightEmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 
-bool ExpandOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
 bool MatmulOpInferSymbolicShape(pir::Operation *op,
                                 pir::ShapeConstraintIRAnalysis *shape_analysis);
 
