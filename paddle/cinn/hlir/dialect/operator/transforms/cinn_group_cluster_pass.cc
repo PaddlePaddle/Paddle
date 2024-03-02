@@ -830,6 +830,9 @@ class CinnGroupClusterPattern
     auto all_output_values = BuildValueOrderByYieldOp(split_res, group_op);
 
     for (auto& node : split_res) {
+      if (node.ops.size() == 0) {
+        continue;
+      }
       auto output_values = GenerateOutputValue(node.ops, all_output_values);
       auto uniq_ops = SortByOriginalOrderAndUniq(group_op, node.ops);
 
