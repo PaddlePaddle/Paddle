@@ -118,11 +118,11 @@ if(WITH_GPU AND WITH_TESTING)
                                     FLAGS_use_stream_safe_cuda_allocator=true;")
 endif()
 
-cc_test(
+paddle_test(
   auto_growth_best_fit_allocator_facade_test
   SRCS auto_growth_best_fit_allocator_facade_test.cc
   DEPS allocator)
-cc_test(
+paddle_test(
   auto_growth_best_fit_allocator_test
   SRCS auto_growth_best_fit_allocator_test.cc
   DEPS allocator)
