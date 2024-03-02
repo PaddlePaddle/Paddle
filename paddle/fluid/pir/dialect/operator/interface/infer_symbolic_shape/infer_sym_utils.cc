@@ -16,6 +16,17 @@
 
 namespace paddle::dialect::details {
 
+std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec) {
+  std::vector<int64_t> int64vec;
+  for (auto item : expr_vec) {
+    if (!item.isa<int64_t>()) {
+      return std::nullopt;
+    }
+    int64vec.push_back(item.Get<int64_t>());
+  }
+  return int64vec;
+}
+
 bool ReduceInferDim(pir::Operation *op,
                     pir::ShapeConstraintIRAnalysis *shape_analysis,
                     const std::vector<int64_t> &axis,
@@ -76,6 +87,27 @@ bool ReduceInferDim(pir::Operation *op,
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
+}
+
+void BuildCstrEqForTensorListAlongAxis(
+    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
+    int axis) {
+  for (size_t i = 1; i < shape_data_list.size(); ++i) {
+    shape_analysis->CreateDimExprBuilder().CstrEq(
+        shape_data_list[0].shape()[axis], shape_data_list[i].shape()[axis]);
+  }
+}
+
+void BuildCstrEqForTensorListAlongAxis(
+    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    const std::vector<pir::Value> &values,
+    int axis) {
+  for (size_t i = 1; i < values.size(); ++i) {
+    shape_analysis->CreateDimExprBuilder().CstrEq(
+        shape_analysis->GetShapeOrDataForValue(values[0]).shape()[axis],
+        shape_analysis->GetShapeOrDataForValue(values[i]).shape()[axis]);
+  }
 }
 
 }  // namespace paddle::dialect::details

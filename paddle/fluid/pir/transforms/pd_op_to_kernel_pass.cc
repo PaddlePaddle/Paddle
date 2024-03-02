@@ -251,7 +251,7 @@ static phi::Backend DeriveBackend(const std::string& op,
                                   const OpYamlInfoParser* op_info_parser,
                                   phi::Backend kernel_backend,
                                   size_t input_index) {
-  // NOTE: Parameters are initilizered on executor place defined
+  // NOTE: Parameters are initialized on executor place defined
   if ((op.compare(pir::SetParameterOp::name()) == 0 ||
        op.compare(pir::ShadowOutputOp::name()) == 0) &&
       place.GetType() == phi::AllocationType::GPU) {
@@ -786,7 +786,7 @@ static phi::Backend GetKernelBackendByYaml(
     }
   }
 
-  if (backend_info.size() > 0 && kernel_backend == phi::Backend::UNDEFINED) {
+  if (!backend_info.empty() && kernel_backend == phi::Backend::UNDEFINED) {
     kernel_backend = paddle::experimental::ParseBackend(place);
   }
 
@@ -812,7 +812,7 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
     kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
   }
 
-  if (op_item->isa<AddN_Op>() || op_item->isa<AddNWithKernelOp>()) {
+  if (op_item->isa<AddN_Op>() || op_item->isa<AddNOp>()) {
     if (op_item->result(0).type().isa<SelectedRowsType>()) {
       kernel_fn_str = "add_n_sr";
     }
@@ -958,7 +958,7 @@ phi::KernelKey GetKernelKey(
   phi::DataType kernel_dtype = phi::DataType::UNDEFINED;
 
   if (op_info_parser != nullptr) {
-    // only suppurt non vector input for now
+    // only support non vector input for now
     int tensor_input_number =
         static_cast<int>(op_info_parser->InputTensorNumber());
     VLOG(8) << "Begin to infer kernel key from op_info_parser(defined by yaml "
@@ -1018,7 +1018,7 @@ phi::KernelKey GetKernelKey(
       // Because we can't make sure the place when build data op
       // and the output place of data op is undefined. It means we
       // don't know how to select the kernel in the next of op that
-      // uses data op outout as inputs. So, we need set kernel backend
+      // uses data op output as inputs. So, we need set kernel backend
       // manually.
       auto op_res = input_tmp.dyn_cast<pir::OpResult>();
       if (!op_res) {
@@ -2089,7 +2089,7 @@ std::vector<pir::Value> BuildInputs(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
       } else if (new_in_type.isa<pir::VectorType>()) {
-        // [ todo need update here, support combine data transfomer]
+        // [ todo need update here, support combine data transformer]
         // deal with pre combine op
         auto pre_define_op = cur_in.defining_op();
         if (pre_define_op->isa<::pir::CombineOp>()) {
@@ -2536,6 +2536,39 @@ void ProcessBlock(
     std::unordered_map<pir::Value, pir::Value>* map_value_pair,
     bool for_if_block) {
   auto inputs_by_data_op = GetInputsByDataOp(block);
+
+  for (auto& [keyword, arg] : block->kwargs()) {
+    auto new_arg = new_block->AddKwarg(keyword, arg.type());
+    (*map_value_pair)[arg] = new_arg;
+    if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
+      new_arg.set_type(
+          AllocatedDenseTensorType::get(ctx, phi::Place(), dense_tensor_type));
+    }
+  }
+  if (platform::is_gpu_place(place)) {
+    for (auto& [keyword, arg] : block->kwargs()) {
+      if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
+        auto dtype = dense_tensor_type.dtype();
+        phi::KernelKey shadow_key{
+            phi::Backend::GPU, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
+        std::unordered_map<std::string, pir::Attribute> attr_map{
+            {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
+            {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
+            {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
+
+        auto out_type =
+            AllocatedDenseTensorType::get(ctx, place, dense_tensor_type);
+
+        pir::OpInfo phi_kernel_op_info =
+            ctx->GetRegisteredOpInfo(PhiKernelOp::name());
+        pir::Operation* shadow_op = pir::Operation::Create(
+            {(*map_value_pair)[arg]}, attr_map, {out_type}, phi_kernel_op_info);
+
+        new_block->push_back(shadow_op);
+        (*map_value_pair)[arg] = shadow_op->result(0);
+      }
+    }
+  }
 
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);

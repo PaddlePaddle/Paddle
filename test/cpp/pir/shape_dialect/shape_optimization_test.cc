@@ -116,17 +116,20 @@ TEST(shape_optimization, shape_optimization_pass) {
   symbol::ShapeOrDataDimExprs subtract_res =
       shape_analysis.GetShapeOrDataForValue(subtract_op.result(0));
 
-  // TODO(zhangbopd): after shape infer is completed, we can check the results
-  // EXPECT_EQ(cast_res.shape()[0], 1);
-  // EXPECT_EQ(cast_res.shape()[1], 64);
-  // EXPECT_EQ(symbol::ToString(cast_res.shape()[2]) == "Mul(S0, 32)");
-  // EXPECT_EQ(cast_res.shape()[3] == 2);
-  // EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(S2, -4)");
-  // EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(S3, -4)");
-  // EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(S4, -4)");
-  // EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(S5, -4)");
+  EXPECT_EQ(cast_res.shape()[0], 1);
+  EXPECT_EQ(cast_res.shape()[1], 64);
+  EXPECT_EQ(symbol::ToString(cast_res.shape()[2]),
+            "Mul(Mul(Mul(Mul(1, S1), 128), 32), 1 / (128))");
+  EXPECT_EQ(cast_res.shape()[3], 2);
+
+  EXPECT_EQ(symbol::ToString(relu_res.shape()[0]), "Add(-2, -Add(2, -S2))");
+  EXPECT_EQ(symbol::ToString(relu_res.shape()[1]), "Add(-2, -Add(2, -S3))");
+  EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(-2, -Add(2, -S4))");
+  EXPECT_EQ(symbol::ToString(relu_res.shape()[3]), "Add(-2, -Add(2, -S5))");
 
   EXPECT_EQ(subtract_res.shape()[0], 1);
   EXPECT_EQ(subtract_res.shape()[1], 64);
-  EXPECT_EQ(symbol::ToString(subtract_res.shape()[2]), "Broadcast(S0, -1)");
+  EXPECT_EQ(symbol::ToString(subtract_res.shape()[2]),
+            "Broadcast(S0, Mul(Mul(Mul(Mul(1, S1), 128), 32), 1 / (128)))");
+  EXPECT_EQ(subtract_res.shape()[3], 2);
 }

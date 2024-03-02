@@ -99,7 +99,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.python_out_sig = ["Loss", "Softmax"]
         self.numeric_stable_mode = False
         self.soft_label = False
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.axis = -1
         self.ignore_index = -1

@@ -13,11 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
+
+COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 const int vlog_level = 3;
 
@@ -85,29 +89,7 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   shape_analysis.Init();
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
-      for (auto& op : block) {
-        auto infer_symbolic_shape_interface =
-            op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-        if (infer_symbolic_shape_interface) {
-          VLOG(vlog_level) << op.name() << " has InferSymbolicShapeInterface.";
-          PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
-                             &shape_analysis),
-                         "InferSymbolicShape for %s failed.",
-                         op.name());
-          if (op.num_results() > 0) {
-            // TODO(lanxianghit): deal with the ops which have more than 1
-            // ACTUAL results
-            pir::shape::SetShapeAttrForOp(
-                &op, shape_analysis.GetShapeOrDataForValue(op.result(0)));
-          }
-        } else {
-          VLOG(vlog_level) << op.name() +
-                                  " DOES NOT have InferSymbolicShapeInterface!";
-          PADDLE_THROW(phi::errors::Unimplemented(
-              op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
-        }
-        DebugPrintOpInfo(&op, &shape_analysis);
-      }
+      InferSymExprForBlock(block, &shape_analysis);
     }
   }
 }
@@ -143,10 +125,72 @@ class ShapeOptimizationPass : public pir::Pass {
 
 }  // namespace
 
+void InferSymExprForBlock(const Block& block,
+                          ShapeConstraintIRAnalysis* shape_analysis) {
+  for (auto& op : block) {
+    auto infer_symbolic_shape_interface =
+        op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+    if (infer_symbolic_shape_interface) {
+      VLOG(vlog_level) << op.name() << " has InferSymbolicShapeInterface.";
+      PADDLE_ENFORCE_EQ(
+          infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
+          true,
+          "InferSymbolicShape for %s failed.",
+          op.name());
+      if (op.num_results() > 0) {
+        // TODO(lanxianghit): deal with the ops which have more than 1
+        // ACTUAL results
+        pir::shape::SetShapeAttrForOp(
+            &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
+      }
+    } else {
+      VLOG(vlog_level) << op.name() +
+                              " DOES NOT have InferSymbolicShapeInterface!";
+      PADDLE_THROW(phi::errors::Unimplemented(
+          op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
+    }
+    DebugPrintOpInfo(&op, shape_analysis);
+  }
+}
+
 std::unique_ptr<Pass> CreateShapeOptimizationPass() {
   return std::make_unique<ShapeOptimizationPass>();
 }
 
 }  // namespace pir
+
+namespace pir::shape {
+
+bool HasDynamicShape(const pir::Program& program) {
+  for (const auto& op : *program.block()) {
+    if (op.isa<pir::CombineOp>()) {
+      continue;
+    }
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      if (op.result(i) && op.result(i).type()) {
+        auto shape_type =
+            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
+        if (shape_type && shape_type.IsDynamicShape()) {
+          VLOG(vlog_level) << "###### HasDynamicShape == true";
+          return true;
+        }
+      }
+    }
+  }
+  VLOG(vlog_level) << "###### HasDynamicShape == false";
+  return false;
+}
+
+void AddShapeOptimizationPass(
+    std::shared_ptr<pir::PassManager>& pass_manager,  // NOLINT
+    pir::Program& program) {                          // NOLINT
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+}
+
+}  // namespace pir::shape
 
 REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);

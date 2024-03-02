@@ -784,7 +784,7 @@ class CommOpCost(OpCost):
             shape = None
             if self.op is not None:
                 vars = self.op.block.vars
-                # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overrided
+                # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overridden
                 try:
                     var_name = self.op.input("X")[0]
                 except:

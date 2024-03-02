@@ -156,7 +156,7 @@ bool TransferLayoutElimPass::AllInputIsTransferlayout(
 
   for (auto var : op_node->inputs) {
     // If this input is a 1D persistable tensor，we allow transfer_layout not
-    // appear before this var, but temporarily diasble this if.
+    // appear before this var, but temporarily disable this if.
     if (var->Var()->Persistable() && false) {
       auto var_dims =
           scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
@@ -239,7 +239,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init(pattern_name, graph);
 
   auto transfer_format = [&](std::string data_format) -> std::string {
-    if (data_format == "NCHW") {
+    if (data_format == "NCHW") {  // NOLINT
       return "NHWC";
     } else if (data_format == "NHWC") {
       return "NCHW";

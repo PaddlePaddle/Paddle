@@ -80,7 +80,19 @@ def tile_net2(x):
     return y
 
 
-class TestPrimOne(unittest.TestCase):
+def index_sample_net(x, index):
+    return paddle.index_sample(x, index)
+
+
+def swiglu_net1(x, y):
+    return paddle.incubate.nn.functional.swiglu(x, y)
+
+
+def swiglu_net2(x):
+    return paddle.incubate.nn.functional.swiglu(x)
+
+
+class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
@@ -126,7 +138,7 @@ class TestPrimOne(unittest.TestCase):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
 
-class TestPrimOne2(TestPrimOne):
+class TestPrimAny(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "bool"
@@ -138,7 +150,7 @@ class TestPrimOne2(TestPrimOne):
         self.enable_cinn = False
 
 
-class TestEmbeddingPrimOne3(TestPrimOne):
+class TestEmbedding(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "int"
@@ -150,7 +162,7 @@ class TestEmbeddingPrimOne3(TestPrimOne):
         self.enable_cinn = False
 
 
-class TestPrimOne3(TestPrimOne):
+class TestPrimFullLike(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
@@ -162,7 +174,7 @@ class TestPrimOne3(TestPrimOne):
         self.enable_cinn = False
 
 
-class TestPrimOne4(TestPrimOne):
+class TestPrimStack(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
@@ -174,7 +186,7 @@ class TestPrimOne4(TestPrimOne):
         self.enable_cinn = False
 
 
-class TestPrimOne5(TestPrimOne):
+class TestPrimTile(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
@@ -186,7 +198,7 @@ class TestPrimOne5(TestPrimOne):
         self.enable_cinn = False
 
 
-class TestPrimOne6(TestPrimOne):
+class TestPrimTile2(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
@@ -195,6 +207,101 @@ class TestPrimOne6(TestPrimOne):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = tile_net2
         self.necessary_ops = "pd_op.tile"
+        self.enable_cinn = False
+
+
+class TestPrimTwo(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [300, 4096]
+        self.shape_y = [300, 2048]
+        self.dtype_x = "float32"
+        self.dtype_y = int
+        self.init_x_shape = [None, 4096]
+        self.init_y_shape = [None, 2048]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.net = index_sample_net
+        self.necessary_ops = "pd_op.index_sample"
+        self.enable_cinn = False
+
+    def base_net(self, flag=None):
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        if flag == "prim":
+            core._set_prim_all_enabled(True)
+            fn = apply_to_static(
+                self.net,
+                use_cinn=self.enable_cinn,
+                input_spec=[
+                    InputSpec(shape=self.init_x_shape, dtype=self.dtype_x),
+                    InputSpec(shape=self.init_y_shape, dtype=self.dtype_y),
+                ],
+            )
+            fn.eval()
+        else:
+            fn = self.net
+        res = fn(x, y)
+
+        if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.program_cache.last()[-1][-1]
+                .infer_program.program.global_block()
+                .ops
+            ]
+            assert self.necessary_ops not in ops
+            core._set_prim_all_enabled(False)
+        return res
+
+    def test_prim_all_dynamic(self):
+        res_ref = self.base_net()
+        res = self.base_net("prim")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+
+
+class TestPrimTwoIndexSample(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [300, 4096]
+        self.shape_y = [300, 2048]
+        self.dtype_x = "float32"
+        self.dtype_y = int
+        self.init_x_shape = [None, 4096]
+        self.init_y_shape = [300, 2048]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.net = index_sample_net
+        self.necessary_ops = "pd_op.index_sample"
+        self.enable_cinn = False
+
+
+class TestPrimSwiglu1(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [300, 4096]
+        self.shape_y = [300, 4096]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.net = swiglu_net1
+        self.necessary_ops = "pd_op.swiglu"
+        self.enable_cinn = False
+
+
+class TestPrimSwiglu2(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = swiglu_net2
+        self.necessary_ops = "pd_op.swiglu"
         self.enable_cinn = False
 
 

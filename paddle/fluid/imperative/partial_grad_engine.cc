@@ -325,7 +325,7 @@ static void FillConstantLike(const VariableWrapper &ref_var,
   auto *dst_tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
   auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   dst_tensor->Resize(ref_tensor.dims());
-  // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
+  // TODO(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
   // grad mission
   // we can't get data_type_ directly. We need to check if we can only use
   // default data_type for now.
@@ -366,7 +366,7 @@ class GradientAccumulationInfo {
       if (!grad_var_) {
         grad_var_ = std::make_shared<VarBase>(true, mapped_grad_var_->Name());
         grad_var_->SetOverriddenStopGradient(false);
-        if (sort_gradient_) {
+        if (sort_gradient_) {  // NOLINT
           accumulator_ = std::make_unique<SortedGradientAccumulator>(
               grad_var_->SharedVar().get());
         } else {

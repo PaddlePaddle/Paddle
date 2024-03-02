@@ -495,7 +495,7 @@ class IpuDynamicPatcher:
 
     @staticmethod
     def patch_program_cache(ipu_strategy):
-        """Monkey patch ProgramCache discriptor to support dynamic2static in IPU.
+        """Monkey patch ProgramCache descriptor to support dynamic2static in IPU.
 
         Args:
             ipu_strategy: The ipu_strategy used in dynamic graph.
@@ -528,7 +528,7 @@ class IpuDynamicPatcher:
                     )
                 if self._caches and not ipu_strategy.need_compile:
                     logging_utils.warn(
-                        "dynamic2static on IPU doesn't support mutiple caches. Please make sure"
+                        "dynamic2static on IPU doesn't support multiple caches. Please make sure"
                         "dynamic inputs is not used."
                     )
                 concrete_program, _ = self._build_once(item)
@@ -751,7 +751,7 @@ class IpuStrategy:
             num_ipus (int, optional): Number of IPU devices. Default 1, which means only use 1 IPU.
             is_training (bool, optional): True is training graph, False is inference graph. Default True, which means is training mode.
             batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
-                if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamice.
+                if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamic.
             enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True.
                 Default False, which means disabled.
 

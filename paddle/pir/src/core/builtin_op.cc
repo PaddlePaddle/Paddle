@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/core/builtin_op.h"
+#include <glog/logging.h>
+
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
 
 namespace pir {
@@ -353,7 +355,7 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
   if (auto input = argument.inputs[0]) {
     auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
-      IR_ENFORCE(argument.output_types.size(),
+      IR_ENFORCE(!argument.output_types.empty(),
                  defining_op->num_operands(),
                  "Required SplitOp.output.size() == CombineOp.input.size(), "
                  "but received %d != %d",

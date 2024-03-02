@@ -102,21 +102,21 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestOneDNNElementwiseAddOp):
         pass
 
 
-class TestOneDNNlementwiseAddOpZeroDim(TestOneDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOpZeroDim(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestOneDNNlementwiseAddOpZeroDim2(TestOneDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOpZeroDim2(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestOneDNNlementwiseAddOpZeroDim3(TestOneDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOpZeroDim3(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
@@ -127,7 +127,7 @@ class TestOneDNNlementwiseAddOpZeroDim3(TestOneDNNElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="oneDNN's int8 elementwise_ops don't implemend grad kernel."
+    reason="oneDNN's int8 elementwise_ops don't implement grad kernel."
 )
 class TestInt8(TestElementwiseAddOp):
     def init_kernel_type(self):

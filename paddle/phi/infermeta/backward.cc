@@ -746,27 +746,33 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   const int64_t value_num_head = value.dims()[2];
   const int64_t value_head_size = value.dims()[3];
 
-  std::vector<int64_t> query_grad_dims(
-      {query_batch_size, query_seq_length, query_num_head, query_head_size});
-  std::vector<int64_t> key_grad_dims(
-      {key_batch_size, key_seq_length, key_num_head, key_head_size});
-  std::vector<int64_t> value_grad_dims(
-      {value_batch_size, value_seq_length, value_num_head, value_head_size});
-
-  query_grad->set_dims(common::make_ddim(query_grad_dims));
-  query_grad->share_lod(query);
-  query_grad->set_dtype(query.dtype());
-  query_grad->set_layout(query.layout());
-
-  key_grad->set_dims(common::make_ddim(key_grad_dims));
-  key_grad->share_lod(key);
-  key_grad->set_dtype(key.dtype());
-  key_grad->set_layout(key.layout());
-
-  value_grad->set_dims(common::make_ddim(value_grad_dims));
-  value_grad->share_lod(value);
-  value_grad->set_dtype(value.dtype());
-  value_grad->set_layout(value.layout());
+  if (query_grad) {
+    std::vector<int64_t> query_grad_dims;
+    query_grad_dims = {
+        query_batch_size, query_seq_length, query_num_head, query_head_size};
+    query_grad->set_dims(common::make_ddim(query_grad_dims));
+    query_grad->share_lod(query);
+    query_grad->set_dtype(query.dtype());
+    query_grad->set_layout(query.layout());
+  }
+  if (key_grad) {
+    std::vector<int64_t> key_grad_dims;
+    key_grad_dims = {
+        key_batch_size, key_seq_length, key_num_head, key_head_size};
+    key_grad->set_dims(common::make_ddim(key_grad_dims));
+    key_grad->share_lod(key);
+    key_grad->set_dtype(key.dtype());
+    key_grad->set_layout(key.layout());
+  }
+  if (value_grad) {
+    std::vector<int64_t> value_grad_dims;
+    value_grad_dims = {
+        value_batch_size, value_seq_length, value_num_head, value_head_size};
+    value_grad->set_dims(common::make_ddim(value_grad_dims));
+    value_grad->share_lod(value);
+    value_grad->set_dtype(value.dtype());
+    value_grad->set_layout(value.layout());
+  }
 
   if (bias && bias_grad) {
     const int64_t bias_batch_size = bias.dims()[0];

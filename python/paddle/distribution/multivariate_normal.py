@@ -150,7 +150,7 @@ class MultivariateNormal(distribution.Distribution):
                 batch_shape
                 + [precision_matrix.shape[-2], precision_matrix.shape[-1]]
             )
-        self._check_constriants()
+        self._check_constraints()
         self.loc = loc.expand(
             batch_shape
             + [
@@ -223,16 +223,16 @@ class MultivariateNormal(distribution.Distribution):
             raise ValueError(
                 "covariance_matrix or precision_matrix must be a symmetric matrix"
             )
-        is_postive_definite = (
+        is_positive_definite = (
             paddle.cast(paddle.linalg.eigvalsh(value), dtype=self.dtype) > 0
         ).all()
-        return is_postive_definite
+        return is_positive_definite
 
-    def _check_constriants(self):
-        """Check whether the matrix satisfy corresponding constriant
+    def _check_constraints(self):
+        """Check whether the matrix satisfy corresponding constraint
 
         Return:
-            Tensor: indicator for the pass of constriants check
+            Tensor: indicator for the pass of constraints check
         """
         if self.scale_tril is not None:
             check = self._check_lower_triangular(self.scale_tril)
@@ -241,25 +241,25 @@ class MultivariateNormal(distribution.Distribution):
                     "scale_tril matrix must be a lower triangular matrix with positive diagonals"
                 )
         elif self.covariance_matrix is not None:
-            is_postive_definite = self._check_positive_definite(
+            is_positive_definite = self._check_positive_definite(
                 self.covariance_matrix
             )
-            if not is_postive_definite:
+            if not is_positive_definite:
                 raise ValueError(
                     "covariance_matrix must be a symmetric positive definite matrix"
                 )
         else:
-            is_postive_definite = self._check_positive_definite(
+            is_positive_definite = self._check_positive_definite(
                 self.precision_matrix
             )
-            if not is_postive_definite:
+            if not is_positive_definite:
                 raise ValueError(
                     "precision_matrix must be a symmetric positive definite matrix"
                 )
 
     @property
     def mean(self):
-        """Mean of Multivariate Normal distribuion.
+        """Mean of Multivariate Normal distribution.
 
         Returns:
             Tensor: mean value.
@@ -451,7 +451,7 @@ def precision_to_scale_tril(P):
 
 def batch_mahalanobis(bL, bx):
     r"""
-    Computes the squared Mahalanobis distance of the Multivariate Normal distribution with cholesky decomposition of the covatiance matrix.
+    Computes the squared Mahalanobis distance of the Multivariate Normal distribution with cholesky decomposition of the covariance matrix.
     Accepts batches for both bL and bx.
 
     Args:

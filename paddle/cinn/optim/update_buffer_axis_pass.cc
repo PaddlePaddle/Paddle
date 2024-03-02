@@ -219,7 +219,7 @@ class ReplaceSameAxisToZero : public ir::IRMutator<> {
       for (auto p : buffer_name_access_same_index_expr_.at(buffer_name)) {
         int r = p.first;
         // After optimization, some load indice may be removed, so we need this
-        // conditioin
+        // condition
         if (indices->size() > r) {
           ir::ir_utils::IrReplace(
               &(indices->at(r)), indices->at(r), ir::Expr(0));

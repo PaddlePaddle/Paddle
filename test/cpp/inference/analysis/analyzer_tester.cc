@@ -33,6 +33,7 @@ TEST(Analyzer, analysis_without_tensorrt) {
   argument.SetModelDir(FLAGS_inference_model_dir);
   argument.SetEnableIrOptim(false);
   argument.SetUseGPU(false);
+  argument.SetUsePIR(false);
   argument.SetAnalysisPasses({"ir_graph_build_pass",
                               "ir_analysis_pass",
                               "ir_params_sync_among_devices_pass"});
@@ -49,6 +50,7 @@ TEST(Analyzer, analysis_with_tensorrt) {
   argument.SetTensorRtWorkspaceSize(1 << 20);
   argument.SetModelDir(FLAGS_inference_model_dir);
   argument.SetUseGPU(false);
+  argument.SetUsePIR(false);
   argument.SetAnalysisPasses({"ir_graph_build_pass",
                               "ir_analysis_pass",
                               "ir_params_sync_among_devices_pass"});

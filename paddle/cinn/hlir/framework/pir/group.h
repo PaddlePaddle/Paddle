@@ -203,7 +203,13 @@ struct Group {
     return group_outputs;
   }
 
-  std::vector<::pir::Value> GetGroupOutputValues() const {
+  const std::vector<::pir::Value>& GetGroupOutputValues() const {
+    return this->output_values;
+  }
+
+  std::string GetFuncName() { return "fn_" + group_id + unique_id; }
+
+  std::vector<::pir::Value> GenerateGroupOutputValues() const {
     std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
                                                         this->ops.end());
 
@@ -226,8 +232,6 @@ struct Group {
     }
     return output_values;
   }
-
-  std::string GetFuncName() { return "fn_" + group_id + unique_id; }
 
   std::shared_ptr<adt::MapExprCtx> mut_map_expr_ctx() {
     CHECK_NOTNULL(map_expr_ctx_);
