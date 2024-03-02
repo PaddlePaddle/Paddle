@@ -2746,7 +2746,7 @@ struct RandIntOpTranscriber : public OpTranscriber {
     paddle::dialect::DenseTensorTypeStorage::Dim dim =
         common::make_ddim(var->GetShape());
     paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
-        paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED;
+        paddle::dialect::DenseTensorTypeStorage::DataLayout::NCHW;
     paddle::dialect::DenseTensorTypeStorage::LoD lod = {};
     size_t offset = 0;
     pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(
