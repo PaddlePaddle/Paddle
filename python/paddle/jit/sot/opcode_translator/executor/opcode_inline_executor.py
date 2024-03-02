@@ -316,6 +316,8 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
                 self.stack.pop()
                 assert isinstance(instr.jump_to, Instruction)
                 self._lasti = self.indexof(instr.jump_to)
+                next_instr = self._instructions[self._lasti]
+                self._lasti += int(next_instr.opname == 'END_FOR')
 
         else:
             self._graph.remove_global_guarded_variable(iterator)

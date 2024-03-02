@@ -315,7 +315,7 @@ def modify_extended_args(instructions: list[Instruction]) -> bool:
     return modify_completed
 
 
-def modify_vars(instructions, code_options):
+def modify_vars(instructions: list[Instruction], code_options):
     co_names = code_options['co_names']
     co_varnames = code_options['co_varnames']
     co_freevars = code_options['co_freevars']
@@ -336,6 +336,11 @@ def modify_vars(instructions, code_options):
                     instrs.argval in namemap
                 ), f"`{instrs.argval}` not in {namemap}"
                 instrs.arg = namemap.index(instrs.argval)
+        elif instrs.opname == "FOR_ITER":
+            if sys.version_info >= (3, 12):
+                assert instrs.arg is not None
+                # END_FOR offset = ((FOR_ITER arg) + (FOR_ITER offset) - 1) << 1
+                instrs.arg -= 1
 
 
 def calc_offset_from_bytecode_offset(

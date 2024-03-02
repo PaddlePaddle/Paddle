@@ -640,6 +640,10 @@ class OpcodeExecutorBase:
     def POP_TOP(self, instr: Instruction):
         self.stack.pop()
 
+    def END_FOR(self, instr: Instruction):
+        self.POP_TOP(instr)
+        self.POP_TOP(instr)
+
     def PUSH_NULL(self, instr: Instruction):
         self.stack.push(NullVariable())
 
@@ -1570,13 +1574,6 @@ class OpcodeExecutorBase:
         else:
             raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
 
-    def END_FOR(self, instr: Instruction):
-        # 我们不应该跑到这个字节码
-        pass
-        # breakpoint()
-        # self.POP_TOP(instr)
-        # self.POP_TOP(instr)
-
 
 class OpcodeExecutor(OpcodeExecutorBase):
     """
@@ -2069,7 +2066,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             origin_instrs = get_instructions(pycode_gen._origin_code)
             resume_fn_end_idx = loop_body_end_idx
 
-            # skip END_FOR in python3.12
+            # skip resume END_FOR in python3.12
             if (
                 sys.version_info >= (3, 12)
                 and origin_instrs[loop_body_end_idx].opname == "END_FOR"
@@ -2143,12 +2140,14 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self._graph.pycode_gen.gen_jump(
             for_iter, direction=JumpDirection.BACKWARD
         )
-        nop = self._graph.pycode_gen.add_instr("NOP")
-        if sys.version_info >= (3, 12):
-            self._graph.pycode_gen.add_instr("END_FOR")
 
-        for_iter.jump_to = nop
-        jump_if_break.jump_to = self._graph.pycode_gen.add_instr("NOP")
+        if sys.version_info >= (3, 12):
+            end_for = self._graph.pycode_gen.add_instr("END_FOR")
+
+        nop = self._graph.pycode_gen.add_instr("NOP")
+
+        for_iter.jump_to = end_for if sys.version_info >= (3, 12) else nop
+        jump_if_break.jump_to = nop
 
         # 9. prepare inputs and call after_loop_fn
         if after_loop_fn is not None:
@@ -2217,9 +2216,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 for_iter_instr, direction=JumpDirection.BACKWARD
             )
 
-            nop_for_break = pycode_gen.add_instr("NOP")
             if sys.version_info >= (3, 12):
-                pycode_gen.add_instr("END_FOR")
+                end_for = pycode_gen.add_instr("END_FOR")
+            nop_for_break = pycode_gen.add_instr("NOP")
 
             # 2.4. relocate jumps
             for instr in pycode_gen._instructions:
@@ -2233,6 +2232,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
                     instr.jump_to = nop_for_break
 
             jump.jump_to = for_iter_instr
+            if sys.version_info >= (3, 12):
+                for_iter_instr.jump_to = end_for
 
             pycode_gen.set_function_outputs(output_var_names)
             inline_call_fn = pycode_gen.create_function()
