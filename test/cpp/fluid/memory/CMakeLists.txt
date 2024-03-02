@@ -32,24 +32,22 @@ elseif(WITH_ROCM)
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator)
 else()
-  paddle_test(best_fit_allocator_test SRCS best_fit_allocator_test.cc DEPS
-              allocator)
+  paddle_test(best_fit_allocator_test SRCS best_fit_allocator_test.cc)
 endif()
 
-paddle_test(test_aligned_allocator SRCS test_aligned_allocator.cc DEPS
-            allocator)
+paddle_test(test_aligned_allocator SRCS test_aligned_allocator.cc)
 
-paddle_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS allocator)
+paddle_test(retry_allocator_test SRCS retry_allocator_test.cc)
 if(TEST retry_allocator_test)
   set_tests_properties(retry_allocator_test PROPERTIES LABELS
                                                        "RUN_TYPE=EXCLUSIVE")
 endif()
 
 paddle_test(allocator_facade_abs_flags_test SRCS
-            allocator_facade_abs_flags_test.cc DEPS allocator)
+            allocator_facade_abs_flags_test.cc)
 
 paddle_test(allocator_facade_frac_flags_test SRCS
-            allocator_facade_frac_flags_test.cc DEPS allocator)
+            allocator_facade_frac_flags_test.cc)
 
 if(WITH_GPU)
   nv_test(
