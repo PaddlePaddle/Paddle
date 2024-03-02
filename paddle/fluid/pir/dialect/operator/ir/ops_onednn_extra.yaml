@@ -15,7 +15,8 @@
 
 - op : abs_grad
 
-# - op : add_n
+- op : add_n_onednn
+  extra_args : str mkldnn_data_type="float32"
 
 - op : batch_norm
   extra_args : bool fuse_with_relu=false
@@ -110,16 +111,19 @@
 
 - op : fused_elementwise_sub
 
-# - op : fused_matmul
+- op : fused_matmul
 
-# - op : fused_softplus
+- op : fused_softplus
 
-# - op : fused_transpose
+- op : fused_transpose
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32"
+  data_format_tensors : x
 
 - op : fusion_gru
   extra_args : str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=0.0, float[] scale_weights={1.0f}
 
-# - op : fusion_lstm
+- op : fusion_lstm
+  extra_args : str mkldnn_data_type="float32"
 
 - op : gaussian
 
@@ -234,9 +238,7 @@
 
 - op : scale
 
-- op : sgd
-
-# - op : sgd_dense_param_sparse_grad
+- op : sgd_
 
 - op : shape
   extra_args : str mkldnn_data_type="float32"
@@ -247,9 +249,11 @@
 
 - op : sigmoid_grad
 
-# - op : slice
+- op : slice
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : slice_grad
+- op : slice_grad
+  extra_args : str mkldnn_data_type="float32"
 
 - op : softmax
   extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32", bool is_test=false
@@ -261,9 +265,10 @@
 
 - op : softplus
 
-# - op : split
+- op : split
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : split_with_num
+- op : split_with_num
 
 - op : sqrt
 
@@ -275,7 +280,7 @@
 - op : squeeze_grad
   extra_args : str mkldnn_data_type="float32"
 
-# - op : stack
+- op : stack
 
 - op : subtract
 
@@ -297,6 +302,10 @@
 
 - op : tanh_grad
 
-# - op : transpose
+- op : transpose
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32"
+  data_format_tensors : x
 
-# - op : transpose_grad
+- op : transpose_grad
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32"
+  data_format_tensors : out_grad

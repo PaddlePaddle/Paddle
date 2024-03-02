@@ -185,7 +185,7 @@ AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
       true,
       phi::errors::InvalidArgument(
           "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
-  if (data_type == phi::DataType::FLOAT16) {
+  if (data_type == phi::DataType::FLOAT16) {  // NOLINT
     return unsupported_fp16_ops_;
   } else {
     return unsupported_bf16_ops_;
@@ -375,7 +375,8 @@ template <typename VarType>
 NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
                                    const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);
-  if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
+  if (AmpOperators::Instance().GetMutableAllowOps()->count(
+          op_type)) {  // NOLINT
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||

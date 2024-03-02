@@ -126,7 +126,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   bool is_first_stage = (pipeline_stage_ == 0);
   bool is_last_stage = (pipeline_stage_ + 1 == num_pipeline_stages_);
 
-  if (is_first_stage) {
+  if (is_first_stage) {  // NOLINT
     for (auto& op_desc : program_->Block(0).AllOps()) {
       auto op = std::move(OpRegistry::CreateOp(*op_desc));
       auto op_type = op->Type();
@@ -507,7 +507,7 @@ void HeterSectionWorker::PrintFetchVars() {
   if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
     time_t curtime;
     time(&curtime);
-    char mbstr[80];
+    char mbstr[80];  // NOLINT
     std::strftime(
         mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S", std::localtime(&curtime));
     std::stringstream ss;

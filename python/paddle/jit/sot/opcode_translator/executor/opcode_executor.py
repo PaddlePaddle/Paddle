@@ -88,6 +88,7 @@ from .variables import (
     TensorVariable,
     TupleVariable,
     UserDefinedFunctionVariable,
+    UserDefinedGeneratorFunctionVariable,
     VariableBase,
     VariableFactory,
 )
@@ -809,6 +810,9 @@ class OpcodeExecutorBase:
         var = self._locals[instr.argval]
         self.stack.push(var)
 
+    def LOAD_FAST_CHECK(self, instr: Instruction):
+        self.LOAD_FAST(instr)
+
     def DELETE_FAST(self, instr: Instruction):
         varname = self._code.co_varnames[instr.arg]
         del self._locals[varname]
@@ -1315,11 +1319,21 @@ class OpcodeExecutorBase:
             default_args,
             closure,
         )
-        self.stack.push(
-            UserDefinedFunctionVariable(
-                new_fn, self._graph, DummyTracker(related_list)
+        # new_fn is created for which is binded with Variables
+        # so new_fn.__module__ is a ConstantVariable
+        # can not use VariableFactory.from_value
+        if inspect.isgeneratorfunction(new_fn):
+            self.stack.push(
+                UserDefinedGeneratorFunctionVariable(
+                    new_fn, self._graph, DummyTracker(related_list)
+                )
             )
-        )
+        else:
+            self.stack.push(
+                UserDefinedFunctionVariable(
+                    new_fn, self._graph, DummyTracker(related_list)
+                )
+            )
 
     def GET_ITER(self, instr: Instruction):
         source_obj = self.stack.pop()
