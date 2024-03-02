@@ -208,7 +208,8 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (size > usable) {
     LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
                  << " MB pinned memory."
-                 << ", available " << usable / 1024.0 / 1024.0 << " MB";
+                 << ", available " << usable / 1024.0 / 1024.0
+                 << " MB";  // NOLINT
     return nullptr;
   }
 

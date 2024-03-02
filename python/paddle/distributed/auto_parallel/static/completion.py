@@ -22,7 +22,6 @@ import paddle
 from paddle.base.core import (  # noqa: F401
     contains_spmd_rule,
     get_phi_spmd_rule,
-    get_spmd_rule,
 )
 from paddle.base.framework import Operator
 from paddle.base.log_helper import get_logger
@@ -182,6 +181,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "unsqueeze2",
         "silu",
         "concat",
+        "expand_as_v2",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":
