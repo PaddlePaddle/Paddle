@@ -1360,7 +1360,12 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
       const std::string &inplace_name = yaml_parser.InplaceName(value_name);
       inplace_info[i] = yaml_parser.InputName2Id().at(inplace_name);
     }
+    if (yaml_parser.HasView(value_name)) {
+      const std::string &view_name = yaml_parser.ViewName(value_name);
+      inplace_info[i] = yaml_parser.InputName2Id().at(view_name);
+    }
   }
+
   return inplace_info;
 }
 
