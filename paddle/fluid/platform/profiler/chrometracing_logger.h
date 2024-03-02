@@ -32,20 +32,21 @@ namespace platform {
 class ChromeTracingLogger : public BaseLogger {
  public:
   explicit ChromeTracingLogger(const std::string& filename);
-  explicit ChromeTracingLogger(const char* filename);
-  ~ChromeTracingLogger();
+  TEST_API explicit ChromeTracingLogger(const char* filename);
+  TEST_API ~ChromeTracingLogger();
   std::string filename() { return filename_; }
   void LogDeviceTraceEventNode(const DeviceTraceEventNode&) override;
   void LogHostTraceEventNode(const HostTraceEventNode&) override;
   void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) override;
   void LogNodeTrees(const NodeTrees&) override;
-  void LogExtraInfo(const std::unordered_map<std::string, std::string>);
+  TEST_API void LogExtraInfo(
+      const std::unordered_map<std::string, std::string>);
   void LogMemTraceEventNode(const MemTraceEventNode&) override;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void LogDeviceProperty(
       const std::map<uint32_t, gpuDeviceProp>& device_property_map);
 #endif
-  void LogMetaInfo(const std::string& version, uint32_t span_indx);
+  TEST_API void LogMetaInfo(const std::string& version, uint32_t span_indx);
 
  private:
   void OpenFile();

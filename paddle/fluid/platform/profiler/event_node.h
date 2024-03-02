@@ -283,11 +283,11 @@ class NodeTrees {
   TEST_API ~NodeTrees();
 
   TEST_API void LogMe(BaseLogger* logger);
-  void HandleTrees(std::function<void(HostTraceEventNode*)>,
-                   std::function<void(CudaRuntimeTraceEventNode*)>,
-                   std::function<void(DeviceTraceEventNode*)>,
-                   std::function<void(MemTraceEventNode*)>,
-                   std::function<void(OperatorSupplementEventNode*)>);
+  TEST_API void HandleTrees(std::function<void(HostTraceEventNode*)>,
+                            std::function<void(CudaRuntimeTraceEventNode*)>,
+                            std::function<void(DeviceTraceEventNode*)>,
+                            std::function<void(MemTraceEventNode*)>,
+                            std::function<void(OperatorSupplementEventNode*)>);
   const std::map<uint64_t, HostTraceEventNode*>& GetNodeTrees() const {
     return thread_event_trees_map_;
   }
