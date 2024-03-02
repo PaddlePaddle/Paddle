@@ -189,7 +189,8 @@ std::vector<ir::Expr> CalculateIndexVectorGcd(
     if (indexes[i].size() != indexes[0].size()) {
       LOG(WARNING) << "Not supported for calculating gcd, local var = "
                    << local_var;
-      return std::vector<ir::Expr>(indexes[0].size(), ir::Expr(1));
+      return std::vector<ir::Expr>(
+          std::max(indexes[0].size(), indexes[i].size()), ir::Expr(1));
     }
   }
   std::size_t var_index_size = indexes[0].size();
@@ -244,8 +245,6 @@ class DivideGcdForLocalIndexVisitor : public ir::IRMutator<> {
         return;
       }
       const auto& gcd_factors = local_var_to_gcd_factor_.at(store_buffer->name);
-      CHECK(store->indices.size() == gcd_factors.size())
-          << "Store index size should be equal to gcd factor size.";
       for (std::size_t i = 0; i < store->indices.size(); ++i) {
         if (gcd_factors[i] != ir::Expr(0)) {
           store->indices[i] = cinn::common::AutoSimplify(
@@ -271,8 +270,6 @@ class DivideGcdForLocalIndexVisitor : public ir::IRMutator<> {
         return;
       }
       const auto& gcd_factors = local_var_to_gcd_factor_.at(load_buffer->name);
-      CHECK(load->indices.size() == gcd_factors.size())
-          << "Store index size should be equal to gcd factor size.";
       for (std::size_t i = 0; i < load->indices.size(); ++i) {
         if (gcd_factors[i] != ir::Expr(0)) {
           load->indices[i] = cinn::common::AutoSimplify(
