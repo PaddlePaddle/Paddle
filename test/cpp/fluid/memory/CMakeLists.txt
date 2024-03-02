@@ -40,7 +40,10 @@ nv_test(
   SRCS test_aligned_allocator.cc
   DEPS allocator)
 
-paddle_test(retry_allocator_test SRCS retry_allocator_test.cc)
+nv_test(
+  retry_allocator_test
+  SRCS retry_allocator_test.cc
+  DEPS allocator)
 if(TEST retry_allocator_test)
   set_tests_properties(retry_allocator_test PROPERTIES LABELS
                                                        "RUN_TYPE=EXCLUSIVE")
