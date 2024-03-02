@@ -17,7 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
-inline bool GetBoolAttr(op, str) {
+inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
   const auto &attr_map = op->attributes();
   PADDLE_ENFORCE(
       attr_map.count(str),
