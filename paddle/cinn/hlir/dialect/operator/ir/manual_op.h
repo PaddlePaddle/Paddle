@@ -29,6 +29,19 @@
 namespace cinn {
 namespace dialect {
 
+class IR_API LoadOp : public pir::Op<LoadOp> {
+	public:
+		using Op::Op;
+		static const char *name() { return "cinn_op.load"; }
+		static constexpr uint32_t attributes_num = 0;
+		static constexpr const char **attributes_name = nullptr;
+		static void Build(pir::Builder &builder,
+						pir::OperationArgument &argument,
+						pir::Value x,
+						pir::Type output_type);
+		void VerifySig();
+}
+
 class IR_API GroupOp : public pir::Op<GroupOp> {
  public:
   using Op::Op;
@@ -185,3 +198,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::StoreOp);
+
