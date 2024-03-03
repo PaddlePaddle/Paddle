@@ -167,7 +167,7 @@ class TestShardingPass(unittest.TestCase):
         dp_losses_using_allreduce_avg = np.array(history.history["loss"])
 
         # sharding2 stage2 training using allreduce avg
-        sharding2_engine_using_allreduce_avg = self.get_engine(True, 2)
+        sharding2_engine_using_allreduce_avg = self.get_engine(True, 2, True)
         sharding2_engine_using_allreduce_avg.load(
             "./dp_engine_using_allreduce_avg"
         )
