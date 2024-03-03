@@ -287,10 +287,13 @@ std::vector<pir::Type> BuildOutType(
     auto new_op = op->Clone(*ir_mapping, clone_options);
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
     for (size_t i = 0; i < op->num_results(); ++i) {
-      shape_analysis.SetShapeOrDataForValue(
-          new_op->result(i),
-          shape_analysis.GetShapeOrDataForValue(op->result(i)));
+      if (shape_analysis.HasShapeOrDataForValue(op->result(i))) {
+        shape_analysis.SetShapeOrDataForValue(
+            new_op->result(i),
+            shape_analysis.GetShapeOrDataForValue(op->result(i)));
+      }
     }
 
     vec_new_op_list.push_back(new_op);

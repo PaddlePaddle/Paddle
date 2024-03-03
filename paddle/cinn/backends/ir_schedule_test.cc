@@ -2383,6 +2383,11 @@ function test_factorize_reduction (_A, _B)
       }
       serial for (i, 0, 3)
       {
+        ScheduleBlock(B__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          B__reduce_init[i0_0] = 0.00000000f
+        }
         serial for (j0, 0, 4)
         {
           ScheduleBlock(B)
@@ -2467,6 +2472,11 @@ function test_factorize_reduction (_A, _B)
       }
       serial for (i, 0, 3)
       {
+        ScheduleBlock(B__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          B__reduce_init[i0_0] = 0.00000000f
+        }
         serial for (j0, 0, 4)
         {
           ScheduleBlock(B)
@@ -2548,6 +2558,11 @@ function test_factorize_reduction (_A, _B)
       }
       serial for (i, 0, 3)
       {
+        ScheduleBlock(B__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          B__reduce_init[i0_0] = 0.00000000f
+        }
         serial for (j0, 0, 4)
         {
           ScheduleBlock(B)
