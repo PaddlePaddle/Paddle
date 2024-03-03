@@ -54,6 +54,28 @@ void tanh_double_grad(const Tensor& out,
 }
 
 template <typename T>
+void pow_double_grad(const Tensor& x,
+                     const Tensor& grad_out,
+                     const Tensor& grad_x_grad,
+                     const Scalar& y,
+                     Tensor* x_grad,
+                     Tensor* grad_out_grad) {
+  // pow grad grad : ddout = y * pow(x, y-1) * ddx, dx = y * (y-1) * pow(x, y-2)
+  // * dout * ddx
+  auto y_value = y.to<float>();
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = y_value * x.pow(y_value - 1) * grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+
+  if (x_grad) {
+    auto x_grad_tmp =
+        y_value * (y_value - 1) * x.pow(y_value - 2) * grad_out * grad_x_grad;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
 void tanh_triple_grad(const Tensor& out,
                       const Tensor& grad_out_forward,
                       const Tensor& grad_x_grad_forward,
