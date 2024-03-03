@@ -65,7 +65,7 @@ message PpConfig {
     optional bool enable_timer = 3 [ default = false ];
     optional bool sharding_comm_overlap = 4 [ default = false ];
     optional bool release_gradients = 5 [ default = false ];
-    optional bool overlap_p2p_comm = 6 [default = true];
+    optional bool overlap_p2p_comm = 6 [default = false];
     optional bool clear_every_step_cache = 7 [default = false];
 }
 
