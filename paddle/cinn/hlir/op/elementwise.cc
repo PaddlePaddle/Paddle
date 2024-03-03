@@ -1567,7 +1567,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
 
-  CINN_REGISTER_OP(store)
+  CINN_REGISTER_OP(yield_store)
       .describe("This operator is used to cast input tensor's type to target.")
       .set_num_inputs(1)
       .set_num_outputs(1)
