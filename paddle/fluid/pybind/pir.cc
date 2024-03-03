@@ -63,11 +63,11 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/ir_mapping.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/ir_mapping.h"
 #include "paddle/pir/include/core/parser/ir_parser.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/type.h"
@@ -483,8 +483,12 @@ void BindCloneOptions(py::module *m) {
   )DOC");
   clone_options.def(
       "__init__",
-      [](CloneOptions &self, bool clone_regions, bool clone_operands) {
-        new (&self) CloneOptions(clone_regions, clone_operands);
+      [](CloneOptions &self,
+         bool clone_regions,
+         bool clone_operands,
+         bool clone_successors) {
+        new (&self)
+            CloneOptions(clone_regions, clone_operands, clone_successors);
       },
       return_value_policy::reference);
 }

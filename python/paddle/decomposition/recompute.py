@@ -61,7 +61,7 @@ def clone_graph(program, origin_ops, graph_inputs, clone_insertion_op):
     for op in all_ops:
         if op in origin_ops:
             cloned_ops.append(
-                op.clone(value_map, paddle.pir.CloneOptions(False, True))
+                op.clone(value_map, paddle.pir.CloneOptions(False, True, True))
             )
     pir.set_insertion_point_to_block_end(program.global_block())
     return cloned_ops, value_map
