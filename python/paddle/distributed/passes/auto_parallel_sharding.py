@@ -1320,6 +1320,17 @@ class ShardingPass(PassBase):
                     )
                     idx += 1
 
+                # NOTE(Ruibiao): Why add dependecy here?
+                # It is hack to delay GC for coalesce_var, which significantly reduce memory usage.
+                # With the pattern of reduce_sum + scale, the coalesce_var is used by the reduce_sum
+                # op on the comm-stream, and then released by the scale op on the comp-stream. Since
+                # the generated and released op are both in comp-stream, the allocation of the
+                # coalesce_var can be fast-GC and reused by subsequent comp-op. However in reduce_avg
+                # parrent, the coalesce_var is released on the reduce_avg op in comm-stream,
+                # triggering a cross-stream GC. In such case, an event is recorded on the underlying
+                # allocation, and the memory is unable to reused by other comp-ops, resulting in an
+                # increase in memory usage. For more details, see the code of StreamSafeCUDAAllocator.
+                # This issue should be fixed using CUDAMallocAsyncAllocator in the future.
                 if (
                     op.type == "c_reduce_avg"
                     and not grad_group.is_in_local_shard
