@@ -21,7 +21,13 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from ...utils import InnerError
-from .opcode_info import ABS_JUMP, ALL_JUMP, REL_BWD_JUMP, REL_JUMP
+from .opcode_info import (
+    ABS_JUMP,
+    ALL_JUMP,
+    PYOPCODE_CACHE_SIZE,
+    REL_BWD_JUMP,
+    REL_JUMP,
+)
 
 if TYPE_CHECKING:
     import types
@@ -239,6 +245,9 @@ def relocate_jump_target(instructions: list[Instruction]) -> None:
             if instr.opname in ABS_JUMP:
                 new_arg = jump_target
             else:  # instr.opname in REL_JUMP
+                if sys.version_info >= (3, 12):
+                    cache = PYOPCODE_CACHE_SIZE.get(instr.opname, 0)
+                    jump_target -= 2 * cache
                 new_arg = jump_target - instr.offset - 2
                 if instr.opname in REL_BWD_JUMP:
                     new_arg = -new_arg
@@ -336,19 +345,6 @@ def modify_vars(instructions: list[Instruction], code_options):
                     instrs.argval in namemap
                 ), f"`{instrs.argval}` not in {namemap}"
                 instrs.arg = namemap.index(instrs.argval)
-        elif instrs.opname == "FOR_ITER":
-            if sys.version_info >= (3, 12):
-                assert instrs.jump_to is not None
-                assert instrs.arg is not None
-                assert instrs.offset is not None
-                instrs.arg -= 1
-                # END_FOR offset = (((FOR_ITER arg + 2) << 1) + FOR_ITER offset)
-                if instrs.jump_to.offset != (
-                    ((instrs.arg + 2) << 1) + instrs.offset
-                ):
-                    raise InnerError(
-                        'FOR_ITER jump_to offset is not equal to "(((FOR_ITER arg + 2) << 1) + FOR_ITER offset)" '
-                    )
 
 
 def calc_offset_from_bytecode_offset(

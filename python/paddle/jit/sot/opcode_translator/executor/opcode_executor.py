@@ -640,10 +640,6 @@ class OpcodeExecutorBase:
     def POP_TOP(self, instr: Instruction):
         self.stack.pop()
 
-    def END_FOR(self, instr: Instruction):
-        self.POP_TOP(instr)
-        self.POP_TOP(instr)
-
     def PUSH_NULL(self, instr: Instruction):
         self.stack.push(NullVariable())
 
@@ -1690,8 +1686,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             self._inline_call_for_loop(iterator, instr)
             self._lasti = self.indexof(instr.jump_to)
-            next_instr = self._instructions[self._lasti]
-            self._lasti += int(next_instr.opname == 'END_FOR')
+            if sys.version_info >= (3, 12):
+                assert self._instructions[self._lasti].opname == "END_FOR"
+                self._lasti += 1
         except BreakGraphError as e:
             log(3, f"[BreakGraph] FOR_ITER sim for loop failed for: {e}\n")
             if backup_iter_idx:
@@ -2067,10 +2064,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             resume_fn_end_idx = loop_body_end_idx
 
             # skip resume END_FOR in python3.12
-            if (
-                sys.version_info >= (3, 12)
-                and origin_instrs[loop_body_end_idx].opname == "END_FOR"
-            ):
+            if sys.version_info >= (3, 12):
+                assert origin_instrs[loop_body_end_idx].opname == "END_FOR"
                 resume_fn_end_idx += 1
 
             pycode_gen.set_function_inputs(
