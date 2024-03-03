@@ -26,8 +26,6 @@ void WarpctcKernel(const Context& dev_ctx,
                    const paddle::optional<DenseTensor>& logits_length,
                    const paddle::optional<DenseTensor>& labels_length,
                    int blank,
-                   bool use_softmax,
-                   bool zero_infinity,
                    bool norm_by_times,
                    DenseTensor* loss,
                    DenseTensor* warpctcgrad);

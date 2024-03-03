@@ -121,9 +121,6 @@ class WarpCTCFunctor {
    * \param num_sequences     number of sequence.
    * \param blank             blank label used in ctc loss function.
    * \param cpu_losss         cost of each sequence in CPU memory.
-   * \param use_softmax       whether to apply softmax on the last dimension of
-   * input first. \param zero_infinity     whether to zero infinite losses and
-   * associated gradients.
    */
   void operator()(const Context& dev_ctx,
                   const T* input,
@@ -134,11 +131,9 @@ class WarpCTCFunctor {
                   const size_t sequence_width,
                   const size_t num_sequences,
                   const size_t blank,
-                  T* cpu_loss,
-                  bool use_softmax,
-                  bool zero_infinity) {
+                  T* cpu_loss) {
     // Init warp-ctc options
-    init(dev_ctx, blank, use_softmax, zero_infinity);
+    init(dev_ctx, blank);
 
     // Compute the required workspace size.
     // There is no memory allocated operations within warp-ctc.
@@ -206,10 +201,7 @@ class WarpCTCFunctor {
   }
 
  protected:
-  void init(const Context& dev_ctx,
-            const size_t blank,
-            bool use_softmax,
-            bool zero_infinity) {
+  void init(const Context& dev_ctx, const size_t blank) {
     warpctc_version_ = phi::dynload::get_warpctc_version();
 
     if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
@@ -227,8 +219,6 @@ class WarpCTCFunctor {
     }
 
     options_.blank_label = blank;
-    options_.use_softmax = use_softmax;
-    options_.zero_infinity = zero_infinity;
   }
 
  private:
@@ -243,8 +233,6 @@ void WarpctcKernel(const Context& dev_ctx,
                    const paddle::optional<DenseTensor>& logits_length,
                    const paddle::optional<DenseTensor>& labels_length,
                    int blank,
-                   bool use_softmax,
-                   bool zero_infinity,
                    bool norm_by_times UNUSED,
                    DenseTensor* loss,
                    DenseTensor* warpctcgrad) {
@@ -455,9 +443,7 @@ void WarpctcKernel(const Context& dev_ctx,
                                sequence_width,
                                num_sequences,
                                blank,
-                               warpctc_loss_data,
-                               use_softmax,
-                               zero_infinity);
+                               warpctc_loss_data);
   // Copy the loss back
   phi::Copy(dev_ctx, warpctc_loss, dev_ctx.GetPlace(), false, loss);
 }
