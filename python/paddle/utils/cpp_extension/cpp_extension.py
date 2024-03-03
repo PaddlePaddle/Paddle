@@ -12,61 +12,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# isort: skip_file
 
-import os
 import copy
+import os
 import re
 
 import setuptools
-from setuptools.command.easy_install import easy_install
+from setuptools.command.build import build
 from setuptools.command.build_ext import build_ext
-from distutils.command.build import build
+from setuptools.command.easy_install import easy_install
 
+from ...base import core
 from .extension_utils import (
+    CLANG_COMPILE_FLAGS,
+    CLANG_LINK_FLAGS,
+    IS_WINDOWS,
+    MSVC_COMPILE_FLAGS,
+    OS_NAME,
+    CustomOpInfo,
+    _import_module_from_library,
+    _jit_compile,
+    _reset_so_rpath,
+    _write_setup_file,
     add_compile_flag,
+    add_std_without_repeat,
+    bootstrap_context,
+    check_abi_compatibility,
+    clean_object_if_change_cflags,
     find_cuda_home,
     find_rocm_home,
-    normalize_extension_kwargs,
-)
-from .extension_utils import (
+    get_build_directory,
     is_cuda_file,
+    log_v,
+    normalize_extension_kwargs,
+    parse_op_name_from,
     prepare_unix_cudaflags,
     prepare_win_cudaflags,
 )
-from .extension_utils import (
-    _import_module_from_library,
-    _write_setup_file,
-    _jit_compile,
-)
-from .extension_utils import (
-    check_abi_compatibility,
-    log_v,
-    CustomOpInfo,
-    parse_op_name_from,
-)
-from .extension_utils import _reset_so_rpath, clean_object_if_change_cflags
-from .extension_utils import (
-    bootstrap_context,
-    get_build_directory,
-    add_std_without_repeat,
-)
-
-from .extension_utils import (
-    IS_WINDOWS,
-    OS_NAME,
-    MSVC_COMPILE_FLAGS,
-)
-from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
-
-from ...base import core
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
 # refer to https://stackoverflow.com/questions/34689210/error-exporting-symbol-when-building-python-c-extension-in-windows
 if IS_WINDOWS:
-    from distutils.command.build_ext import build_ext as _du_build_ext
     from unittest.mock import Mock
+
+    from setuptools.command.build_ext import build_ext as _du_build_ext
 
     _du_build_ext.get_export_symbols = Mock(return_value=None)
 
