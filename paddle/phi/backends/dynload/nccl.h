@@ -20,6 +20,15 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+ncclResult_t ncclCommInitRank2(
+    ncclComm_t* comm, int nranks, ncclUniqueId commId, int rank, int option);
+#ifdef __cplusplus
+}
+#endif
+
 namespace phi {
 namespace dynload {
 
@@ -28,15 +37,21 @@ extern void* nccl_dso_handle;
 
 #define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                   \
   struct DynLoad__##__name {                                     \
-    template <typename... Args>                                  \
-    auto operator()(Args... args) -> decltype(__name(args...)) { \
+    static auto GetNCCLFunc() {                                  \
       using nccl_func = decltype(&::__name);                     \
       std::call_once(nccl_dso_flag, []() {                       \
         nccl_dso_handle = phi::dynload::GetNCCLDsoHandle();      \
       });                                                        \
       static void* p_##__name = dlsym(nccl_dso_handle, #__name); \
-      return reinterpret_cast<nccl_func>(p_##__name)(args...);   \
+      return reinterpret_cast<nccl_func>(p_##__name);            \
     }                                                            \
+                                                                 \
+    template <typename... Args>                                  \
+    auto operator()(Args... args) -> decltype(__name(args...)) { \
+      return GetNCCLFunc()(args...);                             \
+    }                                                            \
+                                                                 \
+    static bool IsValid() { return GetNCCLFunc() != nullptr; }   \
   };                                                             \
   extern DynLoad__##__name __name
 
@@ -44,6 +59,7 @@ extern void* nccl_dso_handle;
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
+  __macro(ncclCommInitRank2);           \
   __macro(ncclCommAbort);               \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \
@@ -83,15 +99,6 @@ NCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
   __macro(ncclRedOpCreatePreMulSum);                \
   __macro(ncclRedOpDestroy);
 NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
-#endif
-
-#ifndef NCCL_FIX_CODE
-#define NCCL_FIX_CODE 0
-#endif
-
-#if NCCL_FIX_CODE > 0
-#define NCCL_RAND_ROUTINE_EACH_WITH_FIX(__macro) __macro(ncclCommInitRank2);
-NCCL_RAND_ROUTINE_EACH_WITH_FIX(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 }  // namespace dynload
