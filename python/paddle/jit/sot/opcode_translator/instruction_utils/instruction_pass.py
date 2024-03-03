@@ -78,7 +78,7 @@ def find_loaded_once_local_vars(instrs: list[Instruction], code_options):
     """
     loaded_vars = {}
     for instr in instrs:
-        if instr.opname == "LOAD_FAST" or instr.opname == "LOAD_FAST_CHECK":
+        if instr.opname in ["LOAD_FAST", "LOAD_FAST_CHECK"]:
             if instr.argval in loaded_vars:
                 loaded_vars[instr.argval] += 1
             else:
@@ -95,7 +95,7 @@ def find_related_local_opcodes(instrs: list[Instruction], code_options):
     stack = []
     opcode_pairs = []
     for instr in instrs:
-        if instr.opname == "LOAD_FAST" or instr.opname == "LOAD_FAST_CHECK":
+        if instr.opname in ["LOAD_FAST", "LOAD_FAST_CHECK"]:
             stack.append(instr)
         elif instr.opname == "STORE_FAST":
             if len(stack) > 0 and stack[-1] is not None:

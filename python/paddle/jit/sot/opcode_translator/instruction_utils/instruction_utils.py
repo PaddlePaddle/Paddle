@@ -245,10 +245,8 @@ def relocate_jump_target(instructions: list[Instruction]) -> None:
             if instr.opname in ABS_JUMP:
                 new_arg = jump_target
             else:  # instr.opname in REL_JUMP
-                if sys.version_info >= (3, 12):
-                    cache = PYOPCODE_CACHE_SIZE.get(instr.opname, 0)
-                    jump_target -= 2 * cache
-                new_arg = jump_target - instr.offset - 2
+                cache_size = PYOPCODE_CACHE_SIZE.get(instr.opname, 0)
+                new_arg = jump_target - (2 * cache_size) - instr.offset - 2
                 if instr.opname in REL_BWD_JUMP:
                     new_arg = -new_arg
 
@@ -329,11 +327,7 @@ def modify_vars(instructions: list[Instruction], code_options):
     co_varnames = code_options['co_varnames']
     co_freevars = code_options['co_freevars']
     for instrs in instructions:
-        if (
-            instrs.opname == 'LOAD_FAST'
-            or instrs.opname == 'LOAD_FAST_CHECK'
-            or instrs.opname == 'STORE_FAST'
-        ):
+        if instrs.opname in ['LOAD_FAST', 'LOAD_FAST_CHECK', 'STORE_FAST']:
             assert (
                 instrs.argval in co_varnames
             ), f"`{instrs.argval}` not in {co_varnames}"
