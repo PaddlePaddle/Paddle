@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
 #include "paddle/phi/infermeta/spmd_rules/argmax.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -39,6 +37,7 @@ SpmdInfo ArgMaxInferSpmdBase(const DistMetaTensor& x,
       axis_vec.push_back(i);
     }
   } else {
+    axis = axis < 0 ? x_ndim + axis : axis;
     axis_vec.push_back(axis);
   }
 
@@ -59,6 +58,7 @@ SpmdInfo ArgMaxInferSpmdReverseBase(const DistMetaTensor& x,
       axis_vec.push_back(i);
     }
   } else {
+    axis = axis < 0 ? x_ndim + axis : axis;
     axis_vec.push_back(axis);
   }
 
