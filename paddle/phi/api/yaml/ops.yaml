@@ -2962,7 +2962,7 @@
     data_type : potentials
 
 - op : warpctc
-  args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false)
+  args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool use_softmax = true, bool zero_infinity = false, bool norm_by_times = false)
   output :  Tensor(loss), Tensor(warpctcgrad)
   infer_meta :
     func : WarpctcInferMeta
