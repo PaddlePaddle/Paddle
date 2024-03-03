@@ -38,6 +38,8 @@ class CTCForward:
         batch_size,
         blank,
         norm_by_times,
+        use_softmax,
+        zero_infinity,
     ):
         self.softmax = softmax
         self.softmax_lod = softmax_lod
@@ -45,6 +47,8 @@ class CTCForward:
         self.labels_lod = labels_lod
         self.blank = blank
         self.norm_by_times = norm_by_times
+        self.use_softmax = use_softmax
+        self.zero_infinity = zero_infinity
 
         self.level = 0
         self.num_classes = num_classes
@@ -212,9 +216,18 @@ def warpctc_wrapper(
     LabelLength=None,
     blank=0,
     norm_by_times=False,
+    use_softmax=True,
+    zero_infinity=False,
 ):
     return paddle._C_ops.warpctc(
-        Logits, Label, LogitsLength, LabelLength, blank, norm_by_times
+        Logits,
+        Label,
+        LogitsLength,
+        LabelLength,
+        blank,
+        use_softmax,
+        zero_infinity,
+        norm_by_times,
     )
 
 
@@ -226,6 +239,8 @@ class TestWarpCTCOp(OpTest):
         self.labels_lod = [[3, 1, 4, 4]]
         self.blank = self.num_classes - 1
         self.norm_by_times = False
+        self.use_softmax = True
+        self.zero_infinity = True
 
     def setUp(self):
         self.op_type = "warpctc"
@@ -251,6 +266,8 @@ class TestWarpCTCOp(OpTest):
             self.batch_size,
             self.blank,
             self.norm_by_times,
+            self.use_softmax,
+            self.zero_infinity,
         )
         loss = ctc.forward()
 
@@ -271,6 +288,8 @@ class TestWarpCTCOp(OpTest):
         self.outputs = {"Loss": loss}
         self.attrs = {
             "blank": self.blank,
+            "use_softmax": self.use_softmax,
+            "zero_infinity": self.zero_infinity,
             "norm_by_times": self.norm_by_times,
         }
 
@@ -303,6 +322,8 @@ class TestWarpCTCOpCase1(TestWarpCTCOp):
         self.labels_lod = [[3, 1, 4, 4]]
         self.blank = self.num_classes - 1
         self.norm_by_times = False
+        self.use_softmax = True
+        self.zero_infinity = True
 
 
 class TestWarpCTCOpWithPadding(OpTest):
@@ -315,6 +336,8 @@ class TestWarpCTCOpWithPadding(OpTest):
         self.labels_length = np.array([3, 1, 4, 4], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = False
+        self.use_softmax = True
+        self.zero_infinity = True
 
     def setUp(self):
         self.op_type = "warpctc"
@@ -340,6 +363,8 @@ class TestWarpCTCOpWithPadding(OpTest):
             self.batch_size,
             self.blank,
             self.norm_by_times,
+            self.use_softmax,
+            self.zero_infinity,
         )
         loss = ctc.forward()
 
@@ -391,6 +416,8 @@ class TestWarpCTCOpWithPadding(OpTest):
         self.outputs = {"Loss": loss}
         self.attrs = {
             "blank": self.blank,
+            "use_softmax": self.use_softmax,
+            "zero_infinity": self.zero_infinity,
             "norm_by_times": self.norm_by_times,
         }
 
@@ -427,6 +454,8 @@ class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
         self.labels_length = np.array([3, 1, 4, 4], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = False
+        self.use_softmax = True
+        self.zero_infinity = True
 
 
 class TestWarpCTCOpFp64(OpTest):
@@ -439,6 +468,8 @@ class TestWarpCTCOpFp64(OpTest):
         self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = False
+        self.use_softmax = True
+        self.zero_infinity = True
 
     def setUp(self):
         self.op_type = "warpctc"
@@ -464,6 +495,8 @@ class TestWarpCTCOpFp64(OpTest):
             self.batch_size,
             self.blank,
             self.norm_by_times,
+            self.use_softmax,
+            self.zero_infinity,
         )
         loss = ctc.forward()
 
@@ -515,6 +548,8 @@ class TestWarpCTCOpFp64(OpTest):
         self.outputs = {"Loss": loss}
         self.attrs = {
             "blank": self.blank,
+            "use_softmax": self.use_softmax,
+            "zero_infinity": self.zero_infinity,
             "norm_by_times": self.norm_by_times,
         }
 
@@ -625,6 +660,8 @@ class TestCTCLossAPICase(unittest.TestCase):
         self.labels_length = np.array([0, 1, 2], dtype=np.int64)
         self.blank = 0
         self.norm_by_times = False
+        self.use_softmax = True
+        self.zero_infinity = True
 
         logits = np.random.uniform(
             0.1,
@@ -649,6 +686,8 @@ class TestCTCLossAPICase(unittest.TestCase):
             self.batch_size,
             self.blank,
             self.norm_by_times,
+            self.use_softmax,
+            self.zero_infinity,
         )
         loss_np = ctc.forward()
 
@@ -675,6 +714,8 @@ class TestCTCLossAPICase(unittest.TestCase):
             self.labels_length = np.array([3, 1, 4, 4], dtype=np.int64)
             self.blank = self.num_classes - 1
             self.norm_by_times = False
+            self.use_softmax = True
+            self.zero_infinity = True
 
             logits = np.random.uniform(
                 0.1,
@@ -699,6 +740,8 @@ class TestCTCLossAPICase(unittest.TestCase):
                 self.batch_size,
                 self.blank,
                 self.norm_by_times,
+                self.use_softmax,
+                self.zero_infinity,
             )
             loss_np = ctc.forward()
 

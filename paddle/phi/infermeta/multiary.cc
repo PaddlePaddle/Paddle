@@ -4116,6 +4116,8 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& logits_length,
                       const MetaTensor& labels_length,
                       int blank,
+                      bool use_softmax,
+                      bool zero_infinity,
                       bool norm_by_times,
                       MetaTensor* loss,
                       MetaTensor* warpctcgrad) {

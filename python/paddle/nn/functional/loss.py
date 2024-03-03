@@ -1825,6 +1825,8 @@ def ctc_loss(
     blank=0,
     reduction='mean',
     norm_by_times=False,
+    use_softmax=True,
+    zero_infinity=False,
 ):
     """
 
@@ -1834,13 +1836,15 @@ def ctc_loss(
     is interated to the Warp-CTC library to normalize values for each row of the input tensor.
 
     Parameters:
-        log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type should be float32 or float64.
+        log_probs (Tensor): The probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type should be float32 or float64. Whether the input probabilities should be scaled depend on the value of ``use_softmax``.
         labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
         input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default: 0.
         reduction (str, optional): Indicate how to average the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default: ``'mean'``.
         norm_by_times (bool, optional): Whether to normalize the gradients by the number of time-step, which is also the sequence's length. There is no need to normalize the gradients if reduction mode is 'mean'. Default: False.
+        use_softmax (bool, optional): Whether to perform logsoftmax on the input ``log_probs``. Default value is True, which means the input ``log_probs`` are regard as unscaled logits. When set to False, the input ``log_probs`` should be the output of logsoftmax.
+        zero_infinity (bool, optional): Whether to set the infinite loss and its associated gradients to zero. Default value is False.
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``log_probs``.
@@ -1907,6 +1911,8 @@ def ctc_loss(
         norm_by_times=False,
         input_length=None,
         label_length=None,
+        use_softmax=True,
+        zero_infinity=False,
     ):
         if in_dynamic_or_pir_mode():
             if input_length is None or label_length is None:
@@ -1914,7 +1920,14 @@ def ctc_loss(
                     "input_length and label_length must not be None in dygraph mode!"
                 )
             loss_out = _C_ops.warpctc(
-                input, label, input_length, label_length, blank, norm_by_times
+                input,
+                label,
+                input_length,
+                label_length,
+                blank,
+                use_softmax,
+                zero_infinity,
+                norm_by_times,
             )
             return loss_out
         else:
@@ -1947,13 +1960,22 @@ def ctc_loss(
                 outputs={'WarpCTCGrad': [grad_out], 'Loss': [loss_out]},
                 attrs={
                     'blank': blank,
+                    'use_softmax': use_softmax,
+                    'zero_infinite': zero_infinity,
                     'norm_by_times': norm_by_times,
                 },
             )
             return loss_out
 
     loss_out = warpctc(
-        log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
+        log_probs,
+        labels,
+        blank,
+        norm_by_times,
+        input_lengths,
+        label_lengths,
+        use_softmax,
+        zero_infinity,
     )
 
     loss_out = paddle.squeeze(loss_out, [-1])
