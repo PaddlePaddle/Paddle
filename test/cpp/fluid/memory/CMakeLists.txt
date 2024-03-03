@@ -124,8 +124,7 @@ paddle_test(
   DEPS allocator)
 paddle_test(
   auto_growth_best_fit_allocator_test
-  SRCS auto_growth_best_fit_allocator_test.cc
-  DEPS allocator)
+  SRCS auto_growth_best_fit_allocator_test.cc)
 
 if(NOT WIN32)
   cc_test(
