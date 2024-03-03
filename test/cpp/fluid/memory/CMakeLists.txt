@@ -122,23 +122,24 @@ paddle_test(
   auto_growth_best_fit_allocator_facade_test
   SRCS auto_growth_best_fit_allocator_facade_test.cc
   DEPS allocator)
-paddle_test(
+nv_test(
   auto_growth_best_fit_allocator_test
-  SRCS auto_growth_best_fit_allocator_test.cc)
+  SRCS auto_growth_best_fit_allocator_test.cc
+  DEPS allocator)
 
 if(NOT WIN32)
-  cc_test(
+  paddle_test(
     mmap_allocator_test
     SRCS mmap_allocator_test.cc
     DEPS allocator)
 endif()
 
-cc_test(
+paddle_test(
   system_allocator_test
   SRCS system_allocator_test.cc
   DEPS allocator)
 
-cc_test(
+paddle_test(
   buddy_allocator_test
   SRCS buddy_allocator_test.cc
   DEPS allocator)
