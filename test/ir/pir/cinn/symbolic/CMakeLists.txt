@@ -54,7 +54,6 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_cinn_convert_dynamic_dim_to_static_dim=S0:2048
       FLAGS_cinn_bucket_compile=True FLAGS_enable_pir_api=1 ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_if_dy.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -207,7 +206,6 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_cinn_convert_dynamic_dim_to_static_dim=S0:2048
       FLAGS_cinn_bucket_compile=True FLAGS_enable_pir_api=1 ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_while_dy.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

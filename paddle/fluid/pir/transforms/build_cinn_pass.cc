@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 #include "paddle/pir/include/core/builtin_op.h"
@@ -29,21 +30,27 @@ class BuildCinnPass : public pir::Pass {
   BuildCinnPass() : pir::Pass("build_cinn_pass", /*opt_level=*/1) {}
 
   void Run(pir::Operation* op) override {
-    auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "build_cinn_pass should run on module op.");
-    auto& block = module_op.block();
-
-    std::vector<GroupOpsVec> groups =
-        ::pir::SubgraphDetector(&block, CompatibleInfo::IsSupportCinn)();
-    AddStatistics(groups.size());
-    for (auto& group_ops : groups) {
-      VLOG(4) << "current group_ops.size(): " << group_ops.size();
-      ::pir::ReplaceWithGroupOp(&block, group_ops);
+    for (uint32_t i = 0; i < op->num_regions(); ++i) {
+      for (auto& block : op->region(i)) {
+        ProcessBlock(&block);
+      }
     }
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0 && !op->isa<cinn::dialect::GroupOp>() &&
+           !op->isa<cinn::dialect::FusionOp>();
+  }
+
+ private:
+  void ProcessBlock(pir::Block* block) {
+    std::vector<GroupOpsVec> groups =
+        ::pir::SubgraphDetector(block, CompatibleInfo::IsSupportCinn)();
+    AddStatistics(groups.size());
+    for (auto& group_ops : groups) {
+      VLOG(4) << "current group_ops.size(): " << group_ops.size();
+      ::pir::ReplaceWithGroupOp(block, group_ops);
+    }
   }
 };
 }  // namespace
