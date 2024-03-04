@@ -160,7 +160,8 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     }
     // SetAttributes if needed
     grad_node->SetAttribute_axis(-1);
-    if (paddle::platform::is_gpu_place(x.place())) {
+    if (paddle::platform::is_gpu_place(x.place()) ||
+        paddle::platform::is_custom_place(x.place())) {
       if (x_autograd_meta != nullptr && x_autograd_meta->StopGradient() &&
           y_autograd_meta != nullptr && !y_autograd_meta->StopGradient()) {
         grad_node->SetTensorWrapper_x(x);
