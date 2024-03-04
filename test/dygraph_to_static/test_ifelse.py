@@ -565,7 +565,6 @@ class IfElseNet(paddle.nn.Layer):
 
 class TestDy2StIfElseBackward(Dy2StTestBase):
     # TODO(zhangbo): open pir test (IfOp grad execution not yet supported)
-    @test_legacy_and_pt_and_pir
     @disable_test_case((ToStaticMode.AST, IrMode.PT))
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
