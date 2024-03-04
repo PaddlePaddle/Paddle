@@ -980,8 +980,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     remain_ops.push_back(op);
   }
 
-  std::cerr << "func body size " << func_bodies.size() << std::endl;
-
   VLOG(4) << "group_func_arg_tensors.size(): "
           << group_func_arg_tensors->size();
 
