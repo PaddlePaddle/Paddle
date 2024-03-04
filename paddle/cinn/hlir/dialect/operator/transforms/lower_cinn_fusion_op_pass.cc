@@ -695,15 +695,12 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       auto attr = fusion_op.attribute("group_info")
                       .dyn_cast<cinn::dialect::GroupInfoAttribute>()
                       .data();
-      std::cerr << "have group info\n";
+
       group->op_pattern_kind = attr.op_pattern_kind;
       group->loop_ranges = attr.loop_ranges;
 
       group->reduce_axis = attr.reduce_axis;
       group->alignment_schedule_info = attr.alignment_schedule_info;
-
-      std::cerr << "align info num \n " << attr.alignment_schedule_info.size()
-                << std::endl;
     }
 
     // Rebuild ops of the group

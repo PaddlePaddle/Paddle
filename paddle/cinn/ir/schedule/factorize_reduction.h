@@ -363,7 +363,6 @@ class RFBlockCreater : public ReduceBlockCreater {
     new_update_stmt_ =
         ir::Store::Make(rf_tensor_, new_store_body, rf_tensor_access_indices_);
 
-    std::cerr << "new update stams \n" << new_update_stmt_ << std::endl;
     if (!bound_check_.is_constant()) {
       new_update_stmt_ = ir::IfThenElse::Make(bound_check_, new_update_stmt_);
     }

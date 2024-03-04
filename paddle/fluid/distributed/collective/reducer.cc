@@ -831,23 +831,33 @@ void EagerReducer::MarkVarReady(const size_t var_index,
     auto &group_tensor = group.dense_tensors_[inside_group_index];
     const auto length = group.length_[inside_group_index];
     if (is_used_var) {
-      auto *autograd_meta = tensors_[var_index].get_autograd_meta();
-      paddle::Tensor grad_tensor =
-          static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
-      if (grad_tensor.is_dense_tensor()) {
-        const auto &tensor_impl = grad_tensor.impl();
-        auto dense_tensor =
-            std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
-        if (!dense_tensor->meta().is_contiguous()) {
-          grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
-              paddle::experimental::Trans2Contiguous(*dense_tensor))));
+      if (HasGrad(var_index)) {
+        auto *autograd_meta = tensors_[var_index].get_autograd_meta();
+        paddle::Tensor grad_tensor =
+            static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
+        if (grad_tensor.is_dense_tensor()) {
+          const auto &tensor_impl = grad_tensor.impl();
+          auto dense_tensor =
+              std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
+          if (!dense_tensor->meta().is_contiguous()) {
+            grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
+                paddle::experimental::Trans2Contiguous(*dense_tensor))));
+          }
         }
-      }
 
-      group_tensor
-          .ShareDataWith(*(
-              std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl())))
-          .Resize({grad_tensor.numel()});
+        group_tensor
+            .ShareDataWith(*(std::dynamic_pointer_cast<phi::DenseTensor>(
+                grad_tensor.impl())))
+            .Resize({grad_tensor.numel()});
+      } else {
+        VLOG(3) << "Tensor[" << tensors_[var_index].name()
+                << "] doesn't have grad";
+        auto *dev_ctx =
+            platform::DeviceContextPool::Instance().Get(inner_place_);
+        group_tensor.Resize({static_cast<int64_t>(length)});
+        dev_ctx->Alloc(&group_tensor, group.dtype_);
+        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0f);
+      }
     } else {
       // TODO(shenliang03): maybe save the memory by avoiding tensor
       // construction

@@ -70,7 +70,6 @@ OPS_API_TEMPLATE = """
 
 NEED_GEN_STATIC_ONLY_APIS = [
     'fetch',
-    'fused_bias_dropout_residual_layer_norm',
     'fused_embedding_eltwise_layernorm',
     'fused_fc_elementwise_layernorm',
     'fused_multi_transformer_xpu',
@@ -158,8 +157,12 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'soft_relu',
     'uniform_random_batch_size_like',
     'match_matrix_tensor',
+    'c_reduce_max',
+    'c_reduce_max_',
     'c_reduce_min',
     'c_reduce_min_',
+    'c_reduce_prod',
+    'c_reduce_prod_',
     'push_sparse_v2',
     'push_sparse_v2_',
     'partial_send',

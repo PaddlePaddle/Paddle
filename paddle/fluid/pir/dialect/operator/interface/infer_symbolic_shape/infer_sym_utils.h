@@ -17,8 +17,14 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
-#define GET_BOOL_ATTR(op, str) \
-  op->attributes().at(str).dyn_cast<pir::BoolAttribute>().data();
+inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
+  const auto &attr_map = op->attributes();
+  PADDLE_ENFORCE(
+      attr_map.count(str),
+      phi::errors::PreconditionNotMet(
+          "attr [%s] MUST in attribute map for [%s] op", str, op->name()));
+  return attr_map.at(str).dyn_cast<pir::BoolAttribute>().data();
+}
 
 // To make codes shorter
 using ExprVec = std::vector<symbol::DimExpr>;

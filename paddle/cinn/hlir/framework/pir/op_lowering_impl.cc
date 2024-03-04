@@ -591,17 +591,11 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
   // TODO(phlrain): this is primary verion for loop aligment
   // will be update by a new method
   auto& align_info = group->alignment_schedule_info;
-  for (auto it = align_info.begin(); it != align_info.end(); ++it) {
-    std::cerr << "point " << it->first << std::endl;
-  }
 
   auto& ops = group->ops;
   for (auto op1 : ops) {
-    std::cerr << "op point " << op1 << std::endl;
-    std::cerr << "build broadcast info " << op1->name() << std::endl;
     auto it = align_info.find(op1);
     if (it == align_info.end()) {
-      std::cerr << "not found continue\n";
       continue;
     }
 
@@ -707,6 +701,7 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           op_out.first_use().owner()->name() == "cf.yield") {
         info.with_constrain = true;
       }
+
       broadcast_info[ValueName(op_out)] = info;
 
       for (auto use_it = op_out.use_begin(); use_it != op_out.use_end();
@@ -982,7 +977,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body);
     }
-
     remain_ops.push_back(op);
   }
 
