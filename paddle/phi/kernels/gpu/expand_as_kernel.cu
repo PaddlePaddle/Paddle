@@ -27,11 +27,12 @@ template <typename T, typename Context>
 void ExpandAsKernel(const Context& ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
-                    const std::vector<int>& target_shape,
+                    const IntArray& shape,
                     DenseTensor* out) {
   int rank = x.dims().size();
+  const std::vector<int64_t> target_shape = shape.GetData();
   int target_rank = static_cast<int>(target_shape.size());
-  auto vec_in_dims = common::vectorize<int>(x.dims());
+  auto vec_in_dims = common::vectorize<int64_t>(x.dims());
 
   unsigned int diff = target_rank - rank;
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);

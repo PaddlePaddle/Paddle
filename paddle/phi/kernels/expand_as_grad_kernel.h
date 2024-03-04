@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -22,7 +23,7 @@ template <typename T, typename Context>
 void ExpandAsGradKernel(const Context& ctx,
                         const DenseTensor& x,
                         const DenseTensor& out_grad,
-                        const std::vector<int>& target_shape,
+                        const IntArray& shape,
                         DenseTensor* in_grad);
 
 }  // namespace phi

@@ -4165,7 +4165,7 @@ def expand_as(x, y, name=None):
         helper.append_op(
             type='expand_as_v2',
             inputs=inputs,
-            attrs={'target_shape': y.shape},
+            attrs={'shape': y.shape},
             outputs={'Out': out},
         )
         return out

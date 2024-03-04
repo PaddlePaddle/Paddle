@@ -27,10 +27,10 @@ namespace phi {
 template <typename Context, typename T, int Rank>
 void ExpandAs(const Context& context,
               const DenseTensor& x,
-              const std::vector<int>& target_shape,
+              const std::vector<int64_t>& target_shape,
               DenseTensor* out) {
   auto in_dims = x.dims();
-  auto vec_in_dims = common::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
@@ -98,9 +98,10 @@ template <typename T, typename Context>
 void ExpandAsKernel(const Context& ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
-                    const std::vector<int>& target_shape,
+                    const IntArray& shape,
                     DenseTensor* out) {
   auto rank = x.dims().size();
+  std::vector<int64_t> target_shape = shape.GetData();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
                     rank,
@@ -124,12 +125,12 @@ void ExpandAsKernel(const Context& ctx,
                         target_rank,
                         MAX_RANK_SUPPORTED));
 
-  std::vector<int> real_target_shape = target_shape;
+  std::vector<int64_t> real_target_shape = target_shape;
   for (size_t i = 0; i < target_shape.size(); ++i) {
     if (target_shape[i] == -1) {
       if (y) {
         if (y->IsInitialized()) {
-          real_target_shape = common::vectorize<int>(y->dims());
+          real_target_shape = common::vectorize<int64_t>(y->dims());
         }
       }
       break;

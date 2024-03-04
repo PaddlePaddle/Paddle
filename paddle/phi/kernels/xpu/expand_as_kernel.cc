@@ -24,11 +24,11 @@ namespace phi {
 template <typename Context, typename T>
 void ExpandAs(const Context& context,
               const DenseTensor& x,
-              const std::vector<int>& target_shape,
+              const std::vector<int64_t>& target_shape,
               DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_dims = x.dims();
-  auto vec_in_dims = common::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
@@ -93,10 +93,11 @@ template <typename T, typename Context>
 void ExpandAsKernel(const Context& ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
-                    const std::vector<int>& target_shape,
+                    const IntArray& shape,
                     DenseTensor* out) {
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
+  std::vector<int64_t> target_shape = shape.GetData();
   PADDLE_ENFORCE_GE(target_rank,
                     rank,
                     phi::errors::InvalidArgument(

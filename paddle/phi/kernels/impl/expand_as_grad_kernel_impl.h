@@ -21,8 +21,8 @@ namespace phi {
 template <typename Context, typename T, int Dims>
 void ExpandAsBackward(const Context& ctx,
                       const DenseTensor& out_grad,
-                      const std::vector<int>& reshape_dims_vec,
-                      const std::vector<int>& reduce_dims_vec,
+                      const std::vector<int64_t>& reshape_dims_vec,
+                      const std::vector<int64_t>& reduce_dims_vec,
                       DenseTensor* in_grad) {
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
@@ -46,24 +46,25 @@ template <typename T, typename Context>
 void ExpandAsGradKernel(const Context& context,
                         const DenseTensor& x,
                         const DenseTensor& out_grad,
-                        const std::vector<int>& target_shape,
+                        const IntArray& shape,
                         DenseTensor* in_grad) {
   auto x_dims = x.dims();
+  const std::vector<int64_t> target_shape = shape.GetData();
 
   if (in_grad->dims() == out_grad.dims()) {
     phi::Copy(context, out_grad, context.GetPlace(), false, in_grad);
     return;
   }
 
-  auto vec_in_dims = common::vectorize<int>(x_dims);
+  auto vec_in_dims = common::vectorize<int64_t>(x_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
-  std::vector<int> repeat_times(vec_in_dims.size());
+  std::vector<int64_t> repeat_times(vec_in_dims.size());
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     repeat_times[i] = target_shape[i] / vec_in_dims[i];
   }
-  std::vector<int> reshape_dims_vec;
-  std::vector<int> reduce_dims_vec;
+  std::vector<int64_t> reshape_dims_vec;
+  std::vector<int64_t> reduce_dims_vec;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     reduce_dims_vec.push_back(reshape_dims_vec.size());
     reshape_dims_vec.push_back(repeat_times[i]);
