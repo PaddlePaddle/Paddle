@@ -225,6 +225,16 @@
     func : c_reduce_sum
   inplace : (x -> out)
 
+- op : c_scatter
+  args : (Tensor x, int ring_id, int root, int nranks, bool use_calc_stream)
+  output : Tensor(out)
+  infer_meta :
+    func : CScatterInferMeta
+    param : [x, nranks]
+  kernel :
+    func : c_scatter
+    param : [x, nranks]
+
 - op : c_sync_calc_stream
   args : (Tensor x)
   output : Tensor(out)
