@@ -518,7 +518,8 @@ def recompute(function, *args, **kwargs):
         )
 
         # Remove it when static_auto_recompute supports use_reentrant.
-        kwargs.pop('use_reentrant')
+        if 'use_reentrant' in kwargs:
+            kwargs.pop('use_reentrant')
 
         return static_auto_recompute(function)(*args, **kwargs)
 
