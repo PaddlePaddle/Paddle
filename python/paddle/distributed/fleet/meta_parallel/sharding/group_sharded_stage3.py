@@ -119,7 +119,7 @@ class GroupShardedStage3(nn.Layer):
             core.is_compiled_with_cuda()
             or core.is_compiled_with_xpu()
             or (device in core.get_all_custom_device_type())
-        ), "Only support CUDA / CustomDevice."
+        ), "Only support CUDA / XPU / CustomDevice."
 
         self._layer = layer
         self._default_device = device
