@@ -492,24 +492,31 @@ class LlamaModelAuto(nn.Layer):
             [dist.Replicate(), dist.Shard(1)],
         )
 
-        def get_layer_ipp(layer_index):
+        def get_layer_pp_info(layer_index):
             global _global_mesh
             mesh = _global_mesh
             if is_pp_enable(mesh) is False:
-                return None
+                return None, False
             else:
                 pp_degree = mesh.get_dim_size("pp")
                 layer_per_stage = math.ceil(
                     config.num_hidden_layers / pp_degree
                 )
-                return layer_index // layer_per_stage
+                input_need_reshard = layer_index % layer_per_stage == 0
+                return layer_index // layer_per_stage, input_need_reshard
 
-        self.layers = nn.LayerList(
-            [
-                LlamaDecoderLayerAuto(config, False, get_layer_ipp(i))
-                for i in range(config.num_hidden_layers)
-            ]
-        )
+        decoder_layers = []
+        self.next_pp_stage_indexes = []
+        for i in range(config.num_hidden_layers):
+            pp_stage_id, input_need_reshard = get_layer_pp_info(i)
+            decoder_layers.append(
+                LlamaDecoderLayerAuto(config, False, pp_stage_id)
+            )
+            if input_need_reshard:
+                self.next_pp_stage_indexes.append(i)
+
+        self.layers = nn.LayerList(decoder_layers)
+
         self.norm = LlamaRMSNormAuto(config)
 
         self.gradient_checkpointing = False
@@ -651,7 +658,6 @@ class LlamaModelAuto(nn.Layer):
         all_self_attns = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
 
-        pre_ipp = None
         for idx, (decoder_layer) in enumerate(self.layers):
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
@@ -659,18 +665,17 @@ class LlamaModelAuto(nn.Layer):
                 past_key_values[idx] if past_key_values is not None else None
             )
 
-            has_gradient = not hidden_states.stop_gradient
-            ipp = decoder_layer.ipp
-            if ipp is None:  # without pp
-                position_ids_ipp = position_ids
-                attention_mask_ipp = attention_mask
-            elif pre_ipp != ipp:
-                position_ids_ipp = dist.reshard(
+            if not is_pp_enable(get_mesh()):
+                position_ids_input = position_ids
+                attention_mask_input = attention_mask
+            elif idx in self.next_pp_stage_indexes:
+                ipp = decoder_layer.ipp
+                position_ids_input = dist.reshard(
                     position_ids,
                     get_mesh(ipp),
                     [dist.Replicate(), dist.Replicate()],
                 )
-                attention_mask_ipp = dist.reshard(
+                attention_mask_input = dist.reshard(
                     attention_mask,
                     get_mesh(ipp),
                     [dist.Replicate(), dist.Replicate()],
@@ -688,8 +693,8 @@ class LlamaModelAuto(nn.Layer):
                 layer_outputs = recompute(
                     decoder_layer,
                     hidden_states,
-                    position_ids_ipp,
-                    attention_mask_ipp,
+                    position_ids_input,
+                    attention_mask_input,
                     output_attentions,
                     past_key_value,
                     use_cache,
@@ -698,13 +703,12 @@ class LlamaModelAuto(nn.Layer):
             else:
                 layer_outputs = decoder_layer(
                     hidden_states,
-                    position_ids_ipp,
-                    attention_mask_ipp,
+                    position_ids_input,
+                    attention_mask_input,
                     output_attentions,
                     past_key_value,
                     use_cache,
                 )
-            pre_ipp = ipp
 
             if type(layer_outputs) is tuple:
                 hidden_states = layer_outputs[0]
