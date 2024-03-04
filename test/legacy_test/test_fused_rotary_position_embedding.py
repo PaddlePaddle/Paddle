@@ -41,13 +41,15 @@ def mult_qkv(value, cos_tensor, sin_tensor):
     return query
 
 
-def paddle_fused_rotary_position_embedding(init_q, init_k, init_v):
+def paddle_fused_rotary_position_embedding(
+    init_q, init_k, init_v, rotary_emb_base=10000.0
+):
     q, k, v = deal_qkv(init_q, init_k, init_v)
 
     pos_seq = paddle.arange(0, q.shape[2], 1, dtype="float32")
     indices = paddle.arange(0, q.shape[3], 2, dtype="float32")
 
-    indices = 1 / 10000 ** (indices / q.shape[3])
+    indices = 1 / rotary_emb_base ** (indices / q.shape[3])
     sinusoid_inp = pos_seq.unsqueeze(1) * indices.unsqueeze(0)
 
     sin_sin = np.empty((q.shape[2] * q.shape[3]), dtype=np.float32)
@@ -92,6 +94,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.dtype = 'float32'
         self.training = True
         self.seed = 1203
+        self.rotary_emb_base = 10000.0
 
     def get_paddle_tensor(self):
         tmp = paddle.randn(self.shape, self.dtype)
@@ -106,7 +109,9 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tensor_q = self.get_paddle_tensor()
         tensor_k = self.get_paddle_tensor()
         tensor_v = self.get_paddle_tensor()
-        out_q, out_k, out_v = rope_function(tensor_q, tensor_k, tensor_v)
+        out_q, out_k, out_v = rope_function(
+            tensor_q, tensor_k, tensor_v, rotary_emb_base=self.rotary_emb_base
+        )
 
         fw.append(out_q)
         fw.append(out_k)
@@ -146,6 +151,30 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 name="q", shape=self.shape, dtype=self.dtype
             )
             fused_rotary_position_embedding(static_q, static_q, static_q)
+        paddle.disable_static()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA ",
+)
+class TestFusedRotaryPositionEmbeddingRotaryEmbBase(
+    TestFusedRotaryPositionEmbedding
+):
+    def setUp(self):
+        self.shape = [1, 16, 1, 16]
+        self.dtype = 'float32'
+        self.training = True
+        self.seed = 1203
+        self.rotary_emb_base = 500000.0
+
+    def test_error(self):
+        paddle.enable_static()
+        with self.assertRaises(RuntimeError):
+            static_q = paddle.static.data(
+                name="q", shape=self.shape, dtype=self.dtype
+            )
+            fused_rotary_position_embedding(static_q, static_q, static_q, 10000)
         paddle.disable_static()
 
 
