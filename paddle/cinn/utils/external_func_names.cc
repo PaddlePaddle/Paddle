@@ -20,7 +20,7 @@ namespace cinn::utils {
 
 const std::unordered_set<std::string>& GetProhibitScheduleExternalFuncNames() {
   static const std::unordered_set<std::string>
-      kProhibitScheduleExternalFuncNames = {
+      prohibit_schedule_external_func_names = {
 #define CINN_FUNC2STRING(str) #str
 #define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE)     \
   CINN_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE), \
@@ -43,7 +43,7 @@ const std::unordered_set<std::string>& GetProhibitScheduleExternalFuncNames() {
 #undef CINN_NVGPU_FUNC_TYPE
 #undef CINN_FUNC2STRING
       };
-  return kProhibitScheduleExternalFuncNames;
+  return prohibit_schedule_external_func_names;
 }
 
 }  // namespace cinn::utils
