@@ -354,12 +354,54 @@ copy(
   SRCS ${PADDLE_SOURCE_DIR}/paddle/extension.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/)
 
-# the include path of phi needs to be changed to adapt to inference api path
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/core/parser/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/core/parser/)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/core/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/core/)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/dialect/control_flow/ir/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/dialect/control_flow/ir/
+)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/dialect/shape/ir/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/dialect/shape/ir/
+)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/dialect/shape/utils/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/dialect/shape/utils/
+)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/pass/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/pass/)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/pattern_rewrite/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/pattern_rewrite/
+)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/include/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/drr/)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/transforms/transform_general_functions.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/transforms/)
+
+# the include path of paddle needs to be changed to adapt to inference api path
 add_custom_command(
   TARGET inference_lib_dist
   POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/phi_header.cmake"
-  COMMENT "Change phi header include path to adapt to inference api path")
+  COMMAND ${CMAKE_COMMAND} -P
+          "${PADDLE_SOURCE_DIR}/cmake/export_paddle_header.cmake"
+  COMMENT "Change paddle header include path to adapt to inference api path")
 
 # CAPI inference library for only inference
 set(PADDLE_INFERENCE_C_INSTALL_DIR

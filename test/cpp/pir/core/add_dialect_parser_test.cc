@@ -37,7 +37,7 @@ class TestParserDialect : public pir::Dialect {
 
   static const char* name() { return "tp"; }
 
-  void PrintAttribute(pir::Attribute attr, std::ostream& os) const;
+  void PrintAttribute(pir::Attribute attr, std::ostream& os) const;  // NOLINT
 
   pir::Attribute ParseAttribute(pir::IrParser& parser);  // NOLINT
 
