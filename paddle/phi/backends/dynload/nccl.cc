@@ -14,11 +14,22 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/nccl.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+ncclResult_t ncclCommInitRank2(
+    ncclComm_t* comm, int nranks, ncclUniqueId commId, int rank, int option) {
+  return ncclInvalidUsage;
+}
+#ifdef __cplusplus
+}
+#endif
+
 namespace phi {
 namespace dynload {
 
 std::once_flag nccl_dso_flag;
-void *nccl_dso_handle;
+void* nccl_dso_handle;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 

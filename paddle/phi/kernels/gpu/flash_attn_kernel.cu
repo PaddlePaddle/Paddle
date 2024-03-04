@@ -91,8 +91,10 @@ void FlashAttnUnpaddedKernel(
                                                            q.dtype(),
                                                            is_test,
                                                            rng_name,
+                                                           0,
                                                            fixed_seed_offset,
                                                            attn_mask,
+                                                           nullptr,
                                                            softmax,
                                                            softmax_lse,
                                                            seed_offset);
@@ -138,21 +140,24 @@ void FlashAttnUnpaddedKernel(
 }
 
 template <typename T, typename Context>
-void FlashAttnKernel(const Context& ctx,
-                     const DenseTensor& q,
-                     const DenseTensor& k,
-                     const DenseTensor& v,
-                     const paddle::optional<DenseTensor>& fixed_seed_offset,
-                     const paddle::optional<DenseTensor>& attn_mask,
-                     float dropout,
-                     bool causal,
-                     bool return_softmax,
-                     bool is_test,
-                     const std::string& rng_name,
-                     DenseTensor* out,
-                     DenseTensor* softmax,
-                     DenseTensor* softmax_lse,
-                     DenseTensor* seed_offset) {
+void FlashAttnKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    int attn_mask_start_row,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
@@ -176,25 +181,28 @@ void FlashAttnKernel(const Context& ctx,
 
   const float scale = 1.0f / std::sqrt(head_size);
 
-  FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
-                                                           batch_size,
-                                                           seqlen_q,
-                                                           seqlen_k,
-                                                           num_heads,
-                                                           num_heads_k,
-                                                           head_size,
-                                                           dropout,
-                                                           scale,
-                                                           causal,
-                                                           return_softmax,
-                                                           q.dtype(),
-                                                           is_test,
-                                                           rng_name,
-                                                           fixed_seed_offset,
-                                                           attn_mask,
-                                                           softmax,
-                                                           softmax_lse,
-                                                           seed_offset);
+  FlashAttnFwdParamsV2<T> params =
+      FlashAttnFwdParamsV2<T>(ctx,
+                              batch_size,
+                              seqlen_q,
+                              seqlen_k,
+                              num_heads,
+                              num_heads_k,
+                              head_size,
+                              dropout,
+                              scale,
+                              causal,
+                              return_softmax,
+                              q.dtype(),
+                              is_test,
+                              rng_name,
+                              attn_mask_start_row,
+                              fixed_seed_offset,
+                              attn_mask,
+                              attn_mask_start_row_indices,
+                              softmax,
+                              softmax_lse,
+                              seed_offset);
 
   VLOG(10) << "FlashAttn fwd dims: q[" << q.dims() << "], k[" << k.dims()
            << "], v[" << v.dims() << "]";
@@ -232,7 +240,12 @@ void FlashAttnKernel(const Context& ctx,
       params.seed,
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data());
+      params.mask_dims.data(),
+      params.attn_mask_start_row_indices_tensor
+          ? params.attn_mask_start_row_indices_tensor->data()
+          : nullptr,
+      params.attn_mask_start_row_indices_dims.data(),
+      params.attn_mask_start_row);
   CheckFlashAttnStatus(succ);
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
