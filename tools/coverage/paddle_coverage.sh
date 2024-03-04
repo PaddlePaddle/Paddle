@@ -26,7 +26,7 @@ else
     cp /root/.cache/lcov-1.16.tar.gz /home/lcov-1.16.tar.gz
 fi
 tar -xf /home/lcov-1.16.tar.gz -C /
-cd /lcov-1.14
+cd /lcov-1.16
 make install
 
 # run paddle coverage
