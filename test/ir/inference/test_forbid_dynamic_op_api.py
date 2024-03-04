@@ -95,7 +95,6 @@ class TestTRTOptimizationLevel(unittest.TestCase):
         config = Config(
             self.model_prefix + '.pdmodel', self.model_prefix + '.pdiparams'
         )
-        config.switch_ir_debug(True)
         config.enable_use_gpu(256, 0, PrecisionType.Half)
         config.enable_tensorrt_engine(
             workspace_size=1 << 30,
@@ -107,7 +106,7 @@ class TestTRTOptimizationLevel(unittest.TestCase):
         )
         config.enable_memory_optim()
         config.exp_disable_dynamic_tensorrt_ops(True)
-        # config.disable_glog_info()
+        config.disable_glog_info()
         config.set_tensorrt_optimization_level(0)
         self.assertEqual(config.tensorrt_optimization_level(), 0)
         predictor = create_predictor(config)
