@@ -68,11 +68,11 @@ def mult_qkv_rotate_half(value, cos_tensor, sin_tensor):
     return query
 
 
-def get_sin_cos_tensor(seq_len, head_dim, sign=1, rotary_emb_base=10000):
+def get_sin_cos_tensor(seq_len, head_dim, sign=1):
     pos_seq = paddle.arange(0, seq_len, 1, dtype="float32")
     indices = paddle.arange(0, head_dim, 2, dtype="float32")
 
-    indices = 1 / rotary_emb_base ** (indices / head_dim)
+    indices = 1 / 10000 ** (indices / head_dim)
     sinusoid_inp = pos_seq.unsqueeze(1) * indices.unsqueeze(0)
 
     sin_sin = np.empty((seq_len * head_dim), dtype=np.float32)
@@ -211,7 +211,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tmp.stop_gradient = False
         return tmp
 
-    def get_inputs(self, seed, with_sin_cos, rotary_emb_base=10000):
+    def get_inputs(self, seed, with_sin_cos):
         paddle.disable_static()
         paddle.seed(seed)
         # tensor_q shape: [batch_size, seq_len, num_heads, head_dim]
@@ -220,12 +220,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tensor_v = self.get_paddle_tensor(self.shape_v)
 
         tensor_sin, tensor_cos = (
-            get_sin_cos_tensor(
-                tensor_q.shape[1],
-                tensor_q.shape[3],
-                1,
-                rotary_emb_base=rotary_emb_base,
-            )
+            get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], 1)
             if with_sin_cos
             else (None, None)
         )
@@ -239,14 +234,13 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         use_neox_rotary_style=True,
         position_ids=None,
         test_time_major=False,
-        rotary_emb_base=10000,
     ):
         paddle.disable_static()
         fw = []
         bw = []
 
         tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
-            seed, with_sin_cos, rotary_emb_base=rotary_emb_base
+            seed, with_sin_cos
         )
 
         if test_time_major:
@@ -265,7 +259,6 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             tensor_sin,
             tensor_cos,
             position_ids=position_ids,
-            rotary_emb_base=rotary_emb_base,
             use_neox_rotary_style=use_neox_rotary_style,
             time_major=test_time_major,
         )
@@ -318,32 +311,6 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.check_results(p_fw, f_fw_time_major)
         self.check_results(p_bw, f_bw_time_major)
 
-    def test_fused_rope_with_rotary_emb_base(self):
-        p_fw, p_bw = self.get_forward_backward(
-            paddle_fused_rotary_position_embedding,
-            seed=self.seed,
-            rotary_emb_base=50000,
-        )
-        f_fw, f_bw = self.get_forward_backward(
-            fused_rotary_position_embedding,
-            seed=self.seed,
-            test_time_major=False,
-            with_sin_cos=False,
-            rotary_emb_base=50000,
-        )
-        f_fw_time_major, f_bw_time_major = self.get_forward_backward(
-            fused_rotary_position_embedding,
-            seed=self.seed,
-            test_time_major=True,
-            with_sin_cos=False,
-            rotary_emb_base=50000,
-        )
-
-        self.check_results(p_fw, f_fw)
-        self.check_results(p_bw, f_bw)
-        self.check_results(p_fw, f_fw_time_major)
-        self.check_results(p_bw, f_bw_time_major)
-
     def test_fused_rope_with_sin_cos(self):
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding,
@@ -385,35 +352,6 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             seed=self.seed,
             use_neox_rotary_style=False,
             test_time_major=True,
-        )
-
-        self.check_results(p_fw, f_fw)
-        self.check_results(p_bw, f_bw)
-        self.check_results(p_fw, f_fw_time_major)
-        self.check_results(p_bw, f_bw_time_major)
-
-    def test_fused_rope_rotate_half_with_rotary_emb_base(self):
-        p_fw, p_bw = self.get_forward_backward(
-            paddle_fused_rotary_position_embedding,
-            seed=self.seed,
-            use_neox_rotary_style=False,
-            rotary_emb_base=50000,
-        )
-        f_fw, f_bw = self.get_forward_backward(
-            fused_rotary_position_embedding,
-            seed=self.seed,
-            use_neox_rotary_style=False,
-            test_time_major=False,
-            with_sin_cos=False,
-            rotary_emb_base=50000,
-        )
-        f_fw_time_major, f_bw_time_major = self.get_forward_backward(
-            fused_rotary_position_embedding,
-            seed=self.seed,
-            use_neox_rotary_style=False,
-            test_time_major=True,
-            with_sin_cos=False,
-            rotary_emb_base=50000,
         )
 
         self.check_results(p_fw, f_fw)
