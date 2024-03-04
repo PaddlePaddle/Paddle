@@ -189,6 +189,7 @@ class AllocatorFacadePrivate {
     strategy_ = GetAllocatorStrategy();
     is_stream_safe_cuda_allocator_used_ = false;
     is_cuda_malloc_async_allocator_used_ = false;
+    VLOG(2) << "selected allocator strategy:" << int(strategy_) << std::endl;
     switch (strategy_) {
       case AllocatorStrategy::kNaiveBestFit: {
         InitNaiveBestFitCPUAllocator();
@@ -1289,7 +1290,11 @@ class AllocatorFacadePrivate {
     auto alignment = phi::DeviceManager::GetMinChunkSize(p);
     custom_device_allocators_[p][stream] =
         std::make_shared<AutoGrowthBestFitAllocator>(
-            custom_allocator, alignment, chunk_size, allow_free_idle_chunk_);
+            custom_allocator,
+            alignment,
+            chunk_size,
+            allow_free_idle_chunk_,
+            phi::DeviceManager::GetExtraPaddingSize(p));
   }
 
   void InitAutoGrowthCustomDeviceAllocator(platform::CustomPlace p,
@@ -1303,7 +1308,8 @@ class AllocatorFacadePrivate {
         custom_allocator,
         phi::DeviceManager::GetMinChunkSize(p),
         /*chunk_size=*/chunk_size,
-        allow_free_idle_chunk);
+        allow_free_idle_chunk,
+        phi::DeviceManager::GetExtraPaddingSize(p));
   }
 
   void WrapStreamSafeCustomDeviceAllocatorForDefault() {
