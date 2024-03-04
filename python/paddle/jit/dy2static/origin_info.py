@@ -69,7 +69,7 @@ class OriginInfo:
             self.location, self.source_code, self.function_name
         )
 
-    def formated_message(self):
+    def formatted_message(self):
         flag_for_origin_info = "(* user code *)"
         return '    File "{}", line {}, in {} {}\n\t{}'.format(
             self.location.filepath,

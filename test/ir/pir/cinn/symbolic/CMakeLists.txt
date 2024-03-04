@@ -13,6 +13,7 @@ if(WITH_GPU)
     test_if_dy.py
     test_llama_if_dy.py
     test_decomp_inference_predictor_run.py
+    test_unary_op_infer_sym_shape.py
     test_sub_graph_for_backend.py
     test_sub_graph_for_frontend.py
     test_check_infer_symbolic.py
@@ -37,6 +38,18 @@ if(WITH_GPU)
     set_tests_properties(${cinn_pir_test_name} PROPERTIES LABELS
                                                           "RUN_TYPE=CINN")
   endforeach()
+
+  add_test(
+    NAME test_unary_op_infer_sym_shape
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_enable_pir_api=1 FLAGS_cinn_bucket_compile=True FLAGS_prim_all=True
+      FLAGS_pir_apply_shape_optimization_pass=1 ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_unary_op_infer_sym_shape.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_tests_properties(test_unary_op_infer_sym_shape PROPERTIES LABELS
+                                                                "RUN_TYPE=CINN")
 
   add_test(
     NAME test_if_st

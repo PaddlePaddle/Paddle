@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/attn_gemm_int8.h"
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 
 namespace paddle {
 namespace operators {
@@ -345,18 +346,18 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       if (time_step) {  // generation decoder stage
         // [2, batch_size, num_head, max_seq_len, head_size]
         int max_seq_len = cache_kv->dims()[3];
-        fmha<T>(dev_ctx,
-                qkv_out,
-                *qkv_bias,
-                *src_mask,
-                cache_kv_out,
-                &fmha_out,
-                bsz,
-                max_seq_len,
-                num_head,
-                dim_head,
-                time_step->data<int>()[0],
-                1. / std::sqrt(dim_head));
+        phi::fusion::fmha<T>(dev_ctx,
+                             qkv_out,
+                             *qkv_bias,
+                             *src_mask,
+                             cache_kv_out,
+                             &fmha_out,
+                             bsz,
+                             max_seq_len,
+                             num_head,
+                             dim_head,
+                             time_step->data<int>()[0],
+                             1. / std::sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         // TODO(wangxi): can remove dropout in inference
         fmha_compute.ComputeForward(qkv_out,
@@ -387,16 +388,16 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         T *cache_k_ptr = cache_kv_data;
         T *cache_v_ptr = cache_kv_data + cache_k_size;
 
-        write_cache_kv<T>(dev_ctx,
-                          cache_k_ptr,
-                          cache_v_ptr,
-                          k_ptr,
-                          v_ptr,
-                          bsz,
-                          num_head,
-                          seq_len,
-                          max_seq_len,
-                          dim_head);
+        phi::fusion::write_cache_kv<T>(dev_ctx,
+                                       cache_k_ptr,
+                                       cache_v_ptr,
+                                       k_ptr,
+                                       v_ptr,
+                                       bsz,
+                                       num_head,
+                                       seq_len,
+                                       max_seq_len,
+                                       dim_head);
       } else {  // not generation
         // TODO(wangxi): can remove dropout in inference
         fmha_compute.ComputeForward(qkv_out,
@@ -427,10 +428,10 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                                  quant_round_type,
                                                  quant_max_bound,
                                                  quant_min_bound);
-        AllReduce<int32_t>(output_workspace,
-                           ring_id,
-                           bsz * seq_len * num_head * dim_head,
-                           dev_ctx);
+        phi::fusion::AllReduce<int32_t>(output_workspace,
+                                        ring_id,
+                                        bsz * seq_len * num_head * dim_head,
+                                        dev_ctx);
       } else {
         out_linear_compute.ComputeForward(out_linear_weights[i],
                                           &fmha_out,
@@ -444,7 +445,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           quant_round_type,
                                           quant_max_bound,
                                           quant_min_bound);
-        AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
+        phi::fusion::AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step4";
@@ -583,12 +584,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 #endif
 
       if (pre_layer_norm) {
-        AllReduce<int32_t>(output_workspace,
-                           ring_id,
-                           bsz * seq_len * num_head * dim_head,
-                           dev_ctx);
+        phi::fusion::AllReduce<int32_t>(output_workspace,
+                                        ring_id,
+                                        bsz * seq_len * num_head * dim_head,
+                                        dev_ctx);
       } else {
-        AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
+        phi::fusion::AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.1";
