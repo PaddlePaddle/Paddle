@@ -3104,6 +3104,7 @@ class TestRelu6(TestActivation):
         self.init_shape()
         self.python_api = paddle.nn.functional.relu6
         self.prim_op_type = "comp"
+        self.public_python_api = paddle.nn.functional.relu6
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 10, self.shape).astype(self.dtype)
@@ -3121,7 +3122,6 @@ class TestRelu6(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,

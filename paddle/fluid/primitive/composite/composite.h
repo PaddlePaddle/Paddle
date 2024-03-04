@@ -355,7 +355,7 @@ Tensor relu_decomp(const Tensor& x) {
 template <typename T>
 Tensor relu6_decomp(const Tensor& x) {
   auto tmp = maximum<T>(x, full<T>(empty_shape, 0.0, x.dtype()));
-  auto res = minimum<T>(x, full<T>(empty_shape, 6.0, x.dtype()));
+  auto res = minimum<T>(tmp, full<T>(empty_shape, 6.0, x.dtype()));
   return res;
 }
 
