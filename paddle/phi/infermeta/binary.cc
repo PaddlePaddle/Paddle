@@ -1476,19 +1476,19 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
-                       const std::vector<int>& target_shape,
+                       const IntArray& shape,
                        MetaTensor* out) {
 #define MAX_RANK_SUPPORTED 6
   auto x_dims = x.dims();
-  PADDLE_ENFORCE_GE(
-      target_shape.size(),
-      static_cast<size_t>(x_dims.size()),
-      phi::errors::InvalidArgument(
-          "The rank of target_shape must be greater than or equal "
-          "to the rank of Input(X). But received Input(X): input "
-          "rank %u; received target_shape: rank %u.",
-          x_dims.size(),
-          target_shape.size()));
+  auto target_shape = shape.GetData();
+  PADDLE_ENFORCE_GE(target_shape.size(),
+                    static_cast<size_t>(x_dims.size()),
+                    phi::errors::InvalidArgument(
+                        "The rank of shape must be greater than or equal "
+                        "to the rank of Input(X). But received Input(X): input "
+                        "rank %u; received shape: rank %u.",
+                        x_dims.size(),
+                        target_shape.size()));
   PADDLE_ENFORCE_LE(target_shape.size(),
                     MAX_RANK_SUPPORTED,
                     phi::errors::InvalidArgument(

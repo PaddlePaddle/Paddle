@@ -731,8 +731,8 @@
   composite : exp_grad(out, out_grad, x_grad)
 
 - backward_op : expand_as_grad
-  forward : expand_as (Tensor x, Tensor y, int[] target_shape = {}) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] target_shape)
+  forward : expand_as (Tensor x, Tensor y, IntArray shape = {}) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray shape)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

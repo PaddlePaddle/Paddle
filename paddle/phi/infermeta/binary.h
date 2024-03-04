@@ -260,7 +260,7 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
-                       const std::vector<int>& target_shape,
+                       const IntArray& shape,
                        MetaTensor* out);
 
 void FillDiagonalTensorInferMeta(const MetaTensor& x,
