@@ -950,26 +950,17 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     std::vector<ir::LoweredFunc> funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
 
-    // func_bodies.push_back(DoOpSchedule(op_impl, op_func_arg_tensors,
-    //   funcs));
-    // if (apply_op_schedule && (this->*schedule_determine_func)(op)) {
-    //   // 3.Perform the schedule of Op
-    //   func_bodies.push_back(DoOpSchedule(op_impl, op_func_arg_tensors,
-    //   funcs));
-    // } else
-    {
-      if (ops.size() > 1 && not_used_op.count(op) &&
-          (op->name() == "cinn_op.reshape")) {
-        erase_reshape.insert(op);
-        continue;
-      }
-
-      for (const ir::LoweredFunc& func : funcs) {
-        func_bodies.push_back(func->body);
-      }
-
-      remain_ops.push_back(op);
+    if (ops.size() > 1 && not_used_op.count(op) &&
+        (op->name() == "cinn_op.reshape")) {
+      erase_reshape.insert(op);
+      continue;
     }
+
+    for (const ir::LoweredFunc& func : funcs) {
+      func_bodies.push_back(func->body);
+    }
+
+    remain_ops.push_back(op);
   }
 
   VLOG(4) << "group_func_arg_tensors.size(): "
@@ -1128,18 +1119,23 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
       }
     }
   };
-  // if (FLAGS_cinn_bucket_compile) {
-  std::vector<ir::Dim> sym_shape;
-  ForEachDimExpr(
-      [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
-  return lang::CreatePlaceHolder(
-      sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
-  // } else {
-  //   return
-  //   lang::CreatePlaceHolder(::common::vectorize<int>(type_info.dims()),
-  //                                  CompatibleInfo::ConvertIRType(dtype),
-  //                                  input_id);
-  // }
+  if (FLAGS_cinn_bucket_compile) {
+    std::vector<ir::Dim> sym_shape;
+    ForEachDimExpr(
+        [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
+    if (sym_shape.empty()) {
+      sym_shape.emplace_back(input_id, symbol::DimExpr{1});
+    }
+    return lang::CreatePlaceHolder(
+        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  } else {
+    auto shape = ::common::vectorize<int>(type_info.dims());
+    if (shape.empty()) {
+      shape.push_back(1);
+    }
+    return lang::CreatePlaceHolder(
+        shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  }
 }
 
 std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
@@ -1190,6 +1186,9 @@ void OpLowererImpl::CollectOutputInfo(::pir::Operation* op,
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
     auto out_shape = ::common::vectorize<int>(type_info.dims());
+    if (out_shape.empty()) {
+      out_shape.push_back(1);
+    }
     out_shapes->push_back(std::move(out_shape));
   }
 }
@@ -1226,6 +1225,9 @@ void OpLowererImpl::CollectOutputInfo(
     std::vector<ir::Dim> sym_shape;
     ForEachDimExpr(
         [&](const auto& sym) { sym_shape.emplace_back(output_id, sym); });
+    if (sym_shape.empty()) {
+      sym_shape.emplace_back(output_id, symbol::DimExpr{1});
+    }
     out_shapes->emplace_back(std::move(sym_shape));
   }
 }

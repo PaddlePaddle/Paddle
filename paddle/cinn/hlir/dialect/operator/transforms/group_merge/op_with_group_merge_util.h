@@ -246,6 +246,11 @@ inline bool horizontal_or_vertical_reduce_relation(
   // check producer has same shape with reducer op.
   auto reduce_shape = ::common::vectorize(GetFirstInputShape(reducer));
   auto reduce_axes = GetVectorAttr(reducer, "dim");
+  if (reduce_axes.empty()) {
+    for (size_t i = 0; i < reduce_shape.size(); ++i) {
+      reduce_axes.push_back(i);
+    }
+  }
 
   for (auto& axis : reduce_axes) {
     // if axis = -1, set as shape.size() - 1

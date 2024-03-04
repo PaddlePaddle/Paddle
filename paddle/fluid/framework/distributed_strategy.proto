@@ -82,7 +82,7 @@ message PpConfig {
     optional bool sharding_comm_overlap = 4 [ default = false ];
     optional bool profiling = 5 [ default = false ];
     optional bool release_gradients = 6 [ default = false ];
-    optional bool overlap_p2p_comm = 7 [default = true];
+    optional bool overlap_p2p_comm = 7 [default = false];
 }
 
 message DygraphShardingConfig {
