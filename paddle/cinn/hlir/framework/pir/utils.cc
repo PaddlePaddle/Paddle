@@ -271,12 +271,12 @@ bool IsDeniedForCinn(const ::pir::Operation& op) {
     VLOG(6) << "Found " << op.name()
             << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
             << "So mark IsDeniedForCinn: " << true;
-    return false;
+    return true;
   }
   if (IsTempDenySpecialOp(op)) {
     VLOG(6) << "Found " << op.name() << " is in TempDenySpecialOp."
             << "So mark IsDeniedForCinn: " << true;
-    return false;
+    return true;
   }
 
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
@@ -325,7 +325,7 @@ const std::unordered_set<std::string> TOCINN_OPS = {
 #undef PD_OP_NAME
 
 bool HasHandledInPass(const ::pir::Operation& op) {
-  return TOCINN_OPS.count(op.name());
+  return TOCINN_OPS.count(op.name()) == 0U;
 }
 
 // In following cases, the op is marked SupportCinn:
