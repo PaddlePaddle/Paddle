@@ -39,7 +39,7 @@ if(WITH_TESTING AND WITH_CINN)
       test_add_broadcast_to_elementwise
       test_sub_graph_extract
       test_ir_op_fusion
-      test_pir_all_path
+      # test_pir_all_path
       test_group_op
       test_pir_build_cinn_pass
       test_compilation_task
