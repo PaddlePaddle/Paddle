@@ -47,10 +47,10 @@ void ComputeInverseEigen(const Context& dev_ctx,
     Eigen::PartialPivLU<Matrix> lu;
     lu.compute(mat);
 
-    const T min_abs_pivot = lu.matrixLU().diagonal().cwiseAbs().minCoeff();
-    PADDLE_ENFORCE_GT(min_abs_pivot,
+    PADDLE_ENFORCE_NE(mat.determinant(),
                       static_cast<T>(0),
                       errors::InvalidArgument("Input is not invertible."));
+
     mat_inv.noalias() = lu.inverse();
   }
 }

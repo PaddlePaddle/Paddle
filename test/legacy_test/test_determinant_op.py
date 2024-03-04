@@ -82,7 +82,10 @@ class TestDeterminantOpCase2FP16(TestDeterminantOp):
 class TestDeterminantOpCaseComplex64(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
-        self.case = np.random.rand(10, 10).astype('complex64')
+        self.case = (
+            np.random.uniform(-1, 1, (10, 10))
+            + 1j * np.random.uniform(-1, 1, (10, 10))
+        ).astype("complex64")
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
 
@@ -96,7 +99,10 @@ class TestDeterminantOpCaseComplex64(TestDeterminantOp):
 class TestDeterminantOpCaseComplex128(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
-        self.case = np.random.rand(10, 10).astype('complex128')
+        self.case = (
+            np.random.uniform(-1, 1, (10, 10))
+            + 1j * np.random.uniform(-1, 1, (10, 10))
+        ).astype("complex128")
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
 

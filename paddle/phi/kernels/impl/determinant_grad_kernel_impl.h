@@ -19,6 +19,7 @@
 
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -148,6 +149,12 @@ void DeterminantGradKernel(const Context& dev_ctx,
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
+
+  if constexpr (std::is_same<T, phi::dtype::complex<float>>::value ||
+                std::is_same<T, phi::dtype::complex<double>>::value) {
+    // The transpose of a complex matrix is the conjugate transpose
+    transpose_inverse_A = phi::Conj<MPType>(dev_ctx, transpose_inverse_A);
+  }
 
   // Third: dA * |A|
   auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, out);
