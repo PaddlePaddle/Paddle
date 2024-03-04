@@ -22,7 +22,7 @@
 namespace phi {
 namespace fusion {
 
-constexpr int steps_per_block = 64;
+constexpr int steps_per_block = 128;
 
 #ifndef PADDLE_WITH_HIP
 
@@ -623,6 +623,7 @@ __global__ void masked_multihead_attention_kernel(
 
   // now we do the reduction in the seq dimension to get [1, head_dim].
   // kai：在Dh比较小的情况下，warpLevelReduce可能可以优化这段代码
+/* 
   if (Dh == Dh_MAX || vi < Dh) {
 #pragma unroll
     for (int active_groups = V_PER_ITER; active_groups >= 2; active_groups /= 2) {
@@ -645,7 +646,68 @@ __global__ void masked_multihead_attention_kernel(
       __syncthreads();
     }
   }
-  
+*/ 
+/// kai mod
+  if (Dh == Dh_MAX || vi < Dh) {
+    // 就是先做warplevel归并，不能做就用原来的解决方案
+    if constexpr (THREADS_PER_VALUE < WARP_SIZE){
+      for(int mask = WARP_SIZE / 2; mask >= THREADS_PER_VALUE; mask /= 2){
+        for(int out_vec_iter = 0; out_vec_iter < V_VEC_SIZE; out_vec_iter++){
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+          auto curr_ele = reinterpret_cast<float*>(&out)[out_vec_iter];
+          reinterpret_cast<float*>(&out)[out_vec_iter] += __shfl_xor_sync(uint32_t(-1), curr_ele, mask);
+#else
+          auto curr_ele = reinterpret_cast<T*>(&out)[out_vec_iter];
+          reinterpret_cast<T*>(&out)[out_vec_iter] += __shfl_xor_sync(uint32_t(-1), curr_ele, mask);
+#endif
+        }
+      }
+      // 然后拿到每个warp中处理第一行元素的线程
+      if(lane / THREADS_PER_VALUE == 0){
+#pragma unroll
+        for (int active_groups = WARPS_PER_BLOCK; active_groups >= 2; active_groups /= 2) {
+          int midpoint = active_groups / 2;
+          if(warp >= midpoint && warp < active_groups){
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+          convert_from_float(
+              *reinterpret_cast<V_vec *>(&out_smem[(warp - midpoint) * Dh + vi]),
+              out);
+#else
+          *reinterpret_cast<V_vec *>(&out_smem[(warp - midpoint) * Dh + vi]) = out;
+#endif
+          }
+          __syncthreads();
+          if(warp < midpoint){
+            out = add(*reinterpret_cast<const V_vec *>(&out_smem[warp * Dh + vi]), out);
+          }
+          __syncthreads();
+        }
+      }
+    }
+    else{
+    // 这就是原来的代码
+#pragma unroll
+      for (int active_groups = V_PER_ITER; active_groups >= 2; active_groups /= 2) {
+        int midpoint = active_groups / 2;
+        if ((vo-start_seq) >= midpoint && (vo-start_seq) < active_groups && (Dh == Dh_MAX || vi < Dh)) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+          convert_from_float(
+              *reinterpret_cast<V_vec *>(&out_smem[(vo - start_seq - midpoint) * Dh + vi]),
+              out);
+#else
+          *reinterpret_cast<V_vec *>(&out_smem[(vo - start_seq - midpoint) * Dh + vi]) = out;
+#endif
+        }
+        __syncthreads();
+        if ((vo-start_seq) < midpoint && (Dh == Dh_MAX || vi < Dh)) {
+          out = add(*reinterpret_cast<const V_vec *>(&out_smem[(vo - start_seq) * Dh + vi]), out);
+        }
+        __syncthreads();
+      }
+    }
+  }
+
+
   // kai mod
   if(vo == start_seq && (Dh == Dh_MAX || vi < Dh)){
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
@@ -881,24 +943,13 @@ template <typename T, int Dh, int Dh_MAX, typename LoadFunc>
 void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
                         const cudaStream_t &stream,
                         LoadFunc load_func) {
-  // kai：在Dh_MAX比较小的情况下 可能启动多个warp 比每个线程读16B更划算？
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
   if (params.timestep < 64) {
     MMHA_LAUNCH_KERNEL(
         T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 64, stream, load_func);
-  } else if (params.timestep < 204800) {
-#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
-    __CUDA_ARCH__ >= 750
-    MMHA_LAUNCH_KERNEL(T,
-                       Dh,
-                       Dh_MAX,
-                       4,
-                       THREADS_PER_VALUE,
-                       256,
-                       stream,
-                       load_func);
-#else
-    // kai mod： 4_128在大部分情况下都是优解
+  }
+  else{
+    // 因为每个block处理的seq长度固定了，所以最佳参数也可以固定。
     MMHA_LAUNCH_KERNEL(T,
                        Dh,
                        Dh_MAX,
@@ -907,17 +958,38 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
                        128,
                        stream,
                        load_func);
-#endif
-  } else {
-    MMHA_LAUNCH_KERNEL(T,
-                       Dh,
-                       Dh_MAX,
-                       1,
-                       THREADS_PER_VALUE,
-                       256,
-                       stream,
-                       load_func);
   }
+//   else if (params.timestep < 2048) {
+// #if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
+//     __CUDA_ARCH__ >= 750
+//     MMHA_LAUNCH_KERNEL(T,
+//                        Dh,
+//                        Dh_MAX,
+//                        4,
+//                        THREADS_PER_VALUE,
+//                        256,
+//                        stream,
+//                        load_func);
+// #else
+//     MMHA_LAUNCH_KERNEL(T,
+//                        Dh,
+//                        Dh_MAX,
+//                        4,
+//                        THREADS_PER_VALUE,
+//                        128,
+//                        stream,
+//                        load_func);
+// #endif
+//   } else {
+//     MMHA_LAUNCH_KERNEL(T,
+//                        Dh,
+//                        Dh_MAX,
+//                        1,
+//                        THREADS_PER_VALUE,
+//                        256,
+//                        stream,
+//                        load_func);
+//   }
 }
 
 template <typename T, typename LoadFunc, typename StoreFunc_kai>
@@ -926,62 +998,6 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
                int dim_head,
                LoadFunc load_func,
                StoreFunc_kai store_func_kai) {
-  //// kai mod: for post_process_kernel_kai
-/*
-  dim3 grid(params.num_head, params.batch_size);
-  switch (dim_head) {
-    case 10:
-      fmha_launch_kernel<T, 10, 32>(
-          params, dev_ctx.stream(), load_func);
-      post_process_kernel_kai<T, 10, 32, StoreFunc_kai><<<grid, 32, 0, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    case 16:
-      fmha_launch_kernel<T, 16, 32>(
-          params, dev_ctx.stream(), load_func);
-      post_process_kernel_kai<T, 16, 32, StoreFunc_kai><<<grid, 32, 0, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    case 26:
-      fmha_launch_kernel<T, 26, 32>(
-          params, dev_ctx.stream(), load_func);
-      post_process_kernel_kai<T, 26, 32, StoreFunc_kai><<<grid, 32, 0, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    case 32:
-      fmha_launch_kernel<T, 32, 32>(
-          params, dev_ctx.stream(), load_func);
-      post_process_kernel_kai<T, 32, 32, StoreFunc_kai><<<grid, 32, 0, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    case 64:
-      fmha_launch_kernel<T, 64, 64>(
-          params, dev_ctx.stream(), load_func);
-      post_process_kernel_kai<T, 64, 64, StoreFunc_kai><<<grid, 64, 0, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    // // for opt model
-    case 80:
-      fmha_launch_kernel<T, 80, 128>(
-          params, dev_ctx.stream(), load_func);
-      post_process_kernel_kai<T, 80, 128, StoreFunc_kai><<<grid, 128, 0, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    case 96:
-      fmha_launch_kernel<T, 96, 128>(
-          params, dev_ctx.stream(), load_func);
-      post_process_kernel_kai<T, 96, 128, StoreFunc_kai><<<grid, 128, 0, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    case 128:
-      fmha_launch_kernel<T, 128, 128>(
-          params, dev_ctx.stream(), load_func);
-      post_process_kernel_kai<T, 128, 128, StoreFunc_kai><<<grid, 128, 0, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    case 192:
-      fmha_launch_kernel<T, 192, 256>(
-          params, dev_ctx.stream(), load_func);
-      post_process_kernel_kai<T, 192, 256, StoreFunc_kai><<<grid, 256, 0, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    default:
-      PADDLE_THROW(
-          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head)); 
-  }
-*/
-
   nvtxRangeId_t fmha_id;
   nvtxRangeId_t post_kernel_id;
   fmha_id = nvtxRangeStartA("fmha");
@@ -1034,8 +1050,8 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
   nvtxRangeEnd(fmha_id);
 
   post_kernel_id = nvtxRangeStartA("post_process_kernel_kai");
-  /// for v3   BLK_SIZE = Dh_MAX * 4 以应对长seq的大量循环
-//
+  
+    /// v3   BLK_SIZE = Dh_MAX * 4 以应对长seq的大量循环
   dim3 grid(params.num_head, params.batch_size);
   int smem_sz = params.split_seq * sizeof(float2); 
   switch (dim_head) {
@@ -1073,10 +1089,8 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
       PADDLE_THROW(
           phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
   }
-//
-
-  /// for v2
-/*
+/* 
+  /// v2
   dim3 grid(params.num_head, params.batch_size);
   // 对于64KB/SM 共享内存的小设备 split_seq最大不能超过8K，max_seq不能超过128*8*1024
   int smem_sz = params.split_seq * sizeof(float2);
@@ -1115,7 +1129,7 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
       PADDLE_THROW(
           phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
   }
-*/
+*/   
   nvtxRangeEnd(post_kernel_id);
 }
 
