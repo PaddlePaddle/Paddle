@@ -99,6 +99,11 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
       shape_analysis->CreateDimExprBuilder().constraints();
+  VLOG(1) << "constraints size:" << dim_expr_constraints.size();
+  // VLOG(1) << "constraints :" << dim_expr_constraints;
+  // for(symbol::DimExprConstraint con : dim_expr_constraints){
+  //   VLOG(1) << "constraints :" << con;
+  // }
   const cinn::common::UnionFindSet<symbol::DimExpr>& union_find_set = [&]() {
     cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
     for (const auto& constraint : dim_expr_constraints) {
@@ -139,6 +144,11 @@ void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
       pir::ShapeAnalysisManager::Instance().Get(module_op.program());
   const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
       substitution_pattern = GetDimExprSubstitution(&shape_analysis);
+
+  for(auto pattern : substitution_pattern){
+    VLOG(1) << "substitution_pattern:" << pattern.first << " : " << pattern.second;
+  }
+  
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
       if (!shape_analysis.HasShapeOrDataForValue(value)) {
@@ -147,8 +157,10 @@ void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
       } else {
         const symbol::ShapeOrDataDimExprs& origin_shape_or_data =
             shape_analysis.GetShapeOrDataForValue(value);
+        VLOG(1) << op.name() << " origin_shape_or_data: " << origin_shape_or_data;
         const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
             SubstituteShapeOrData(origin_shape_or_data, substitution_pattern);
+        VLOG(1) << op.name() << " substituted_shape_or_data: " << substituted_shape_or_data;
         shape_analysis.SetShapeOrDataForValue(value, substituted_shape_or_data);
       }
     });
