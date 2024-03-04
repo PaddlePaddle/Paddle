@@ -122,7 +122,7 @@ inline std::vector<int64_t> ComputeOutputShape(
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -156,7 +156,7 @@ inline std::vector<int64_t> ComputeOutputShape(
         strides[i],
         0,
         phi::errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -166,10 +166,10 @@ inline std::vector<int64_t> ComputeOutputShape(
       strides.size() + 2U,
       phi::errors::InvalidArgument(
           "The difference of input's dimension and Attr(strides)'s "
-          "length must be euqal to 2 for Op(Conv). "
+          "length must be equal to 2 for Op(Conv). "
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
-          "difference of input's dimention and Attr(strides)'s length = %u.",
+          "difference of input's dimension and Attr(strides)'s length = %u.",
           in_dims.size(),
           in_dims,
           strides.size(),

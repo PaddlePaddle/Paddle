@@ -549,6 +549,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_with_switch_case(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -683,7 +684,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
             self.assertRaises(TypeError, type_error_cond_returns_not_variable)
 
-            # The type of `cond` returns in Op(while_loop) must be a bollean variable
+            # The type of `cond` returns in Op(while_loop) must be a boolean variable
             def type_error_cond_returns_not_boolean():
                 out = paddle.static.nn.while_loop(
                     cond_returns_not_bool_tensor, body, [data_1d]

@@ -16,7 +16,7 @@
 #include <memory>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
@@ -111,19 +111,20 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
   GetForceEventsToWaitInfo() {
-    return force_evnets_to_wait_;
+    return force_events_to_wait_;
   }
 
   void SetForceEventsToWaitInfo(
       std::unordered_map<std::string, std::shared_ptr<EventInter>>*
-          force_evnets_to_wait) {
-    force_evnets_to_wait_ = force_evnets_to_wait;
+          force_events_to_wait) {
+    force_events_to_wait_ = force_events_to_wait;
   }
 
  private:
   // build graph
   void UpdateSyncOpNum();
   void UpdateNcclOpNum();
+  void UpdateOneDNNOpNum();
   void AnalyseExecuteOrderForTrace(
       std::map<size_t, std::set<size_t>> op_downstream_map,
       InstructionSchedulingPriorityLess compare);
@@ -167,7 +168,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   ExecutionConfig execution_config_;
 
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
-      force_evnets_to_wait_;
+      force_events_to_wait_;
 
   VariableScope var_scope_;
   Scope* scope_{nullptr};
@@ -186,9 +187,9 @@ class PirInterpreter : public InterpreterBaseImpl {
   // var
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
-  // (*dependecy_count_)[i] contains the number of dependencies that the i-th op
-  // need to wait
-  std::shared_ptr<std::vector<size_t>> dependecy_count_;
+  // (*dependency_count_)[i] contains the number of dependencies that the i-th
+  // op need to wait
+  std::shared_ptr<std::vector<size_t>> dependency_count_;
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
@@ -196,6 +197,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   // used for Trace
   int64_t sync_op_num_{-1};
   int64_t nccl_op_num_{-1};
+  int64_t onednn_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
 
   std::vector<HookFunc> output_hookfuncs_;
@@ -243,7 +245,7 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   void RecordStreamForGC(InstructionBase* instr);
 
-  void SolvePersisableVarNames();
+  void SolvePersistableVarNames();
 
   const interpreter::PirDependencyBuilder& GetPirDependencyBuilder() const;
 

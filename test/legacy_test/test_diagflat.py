@@ -21,6 +21,7 @@ from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
+@test_with_pir_api
 class TestDiagFlatError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()

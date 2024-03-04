@@ -30,12 +30,12 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(enable_record_memory);
+COMMON_DECLARE_bool(enable_record_memory);
 
 #if defined(_WIN32) && defined(PHI_SHARED)
 phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;

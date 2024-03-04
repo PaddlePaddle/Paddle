@@ -56,10 +56,10 @@ class DygraphShardingOptimizer:
     """
 
     # TODO (JZ-LIANG)
-    # TO support following featrues in future:
+    # TO support following features in future:
     # 1. fused update parameter sync
     # 2. parameters_groups
-    # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
+    # 3. dynamic trainable params, which is the case between pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
     def __init__(self, optimizer, hcg):
@@ -73,9 +73,9 @@ class DygraphShardingOptimizer:
             optimizer._apply_optimize
         ):
             raise ValueError(
-                "the optimzier object should have _apply_optimize function"
+                "the optimizer object should have _apply_optimize function"
             )
-        # the self._parameter_list holds the whole model paramters
+        # the self._parameter_list holds the whole model parameters
         self._parameter_list = optimizer._parameter_list
         self._origin_parameter_list = self._parameter_list
         self._inner_opt = optimizer
@@ -161,12 +161,12 @@ class DygraphShardingOptimizer:
                     '_apply_decay_param_fun', apply_decay_param_fun
                 )
             # Note: during the tensor fusion for parameters, the allocator will apply for
-            # some extra GPU memory for the fused big paramters. This extra GPU memory will
+            # some extra GPU memory for the fused big parameters. This extra GPU memory will
             # be useless at once the fusion has done. But the Paddle's allocator won't
             # release those memory, it will hold that part in the memory poll. So after
             # tensor fusion, the 'reserved' memory will increase but the 'allocate' memory
             # won't change. To avoid failure on some other applications (such as some nvtx
-            # operations), here we manulay let the allocator release the cached memory.
+            # operations), here we manually let the allocator release the cached memory.
             paddle.device.cuda.empty_cache()
 
     def clear_grad(self, set_to_zero=True):
@@ -224,7 +224,7 @@ class DygraphShardingOptimizer:
         """
         # TODO(JZ-LIANG) support multiple partition methods
         # method1: greedy even but unorder
-        # method2: roughly even with oreder
+        # method2: roughly even with order
 
         mapping = {}
         for rank_ in range(self._sharding_world_size):
@@ -478,10 +478,10 @@ class DygraphShardingOptimizerV2:
     """
 
     # TODO (JZ-LIANG)
-    # TO support following featrues in future:
+    # TO support following features in future:
     # 1. fused update parameter sync
     # 2. parameters_groups
-    # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
+    # 3. dynamic trainable params, which is the case between pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
     # 5. do not shard small params
 
@@ -500,7 +500,7 @@ class DygraphShardingOptimizerV2:
             optimizer._apply_optimize
         ):
             raise ValueError(
-                "the optimzier object should have _apply_optimize function"
+                "the optimizer object should have _apply_optimize function"
             )
 
         self._inner_opt = optimizer
@@ -560,7 +560,7 @@ class DygraphShardingOptimizerV2:
         # Determine the use of pipeline parallelism
         self._use_pipeline_parallel = strategy.hybrid_configs["pp_degree"] > 1
 
-        # Ensure pipelie parallel and comm_overlap are not used together
+        # Ensure pipeline parallel and comm_overlap are not used together
         if self._use_pipeline_parallel:
             assert (
                 not self.comm_overlap

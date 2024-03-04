@@ -16,13 +16,16 @@
 
 #include <unordered_set>
 
+#include "paddle/common/ddim.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/op_operand.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/op_operand.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace {
 
@@ -59,7 +62,7 @@ void GetUsedExternalValueImpl(
 namespace pir {
 
 std::string GetParameterNameFromValue(pir::Value value) {
-  pir::Operation* owner = value.dyn_cast<OpResult>().owner();
+  pir::Operation* owner = value.defining_op();
   std::string name;
   if (owner->isa<ParameterOp>()) {
     pir::ParameterOp op = owner->dyn_cast<pir::ParameterOp>();
@@ -75,13 +78,17 @@ std::string GetParameterNameFromValue(pir::Value value) {
   return name;
 }
 
-const phi::DDim& GetShapeFromValue(pir::Value value) {
-  // TODO(dev): Support other types like DenseTensor.
-  PADDLE_ENFORCE_EQ(
-      value.type().isa<paddle::dialect::DenseTensorType>(),
-      true,
-      phi::errors::InvalidArgument("Value's type must be a DenseTensorType."));
-  return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+std::vector<int64_t> GetShapeFromValue(pir::Value value) {
+  if (value.type().isa<paddle::dialect::DenseTensorType>()) {
+    return phi::vectorize(
+        value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+  } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
+    return phi::vectorize(
+        value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dims());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense_tensor or selected_rows."));
+  }
 }
 
 pir::Type GetDataTypeFromValue(pir::Value value) {
@@ -98,7 +105,7 @@ Operation* GetDefiningOpForInput(const Operation* op, uint32_t index) {
       index < op->num_operands() && op->operand_source(index),
       true,
       phi::errors::InvalidArgument("Intput operand's index must be valid."));
-  return op->operand_source(index).dyn_cast<OpResult>().owner();
+  return op->operand_source(index).defining_op();
 }
 
 std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
@@ -110,7 +117,7 @@ std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
   auto result = op->result(index);
   std::vector<std::pair<Operation*, int32_t>> use_ops;
   for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-    use_ops.push_back(std::make_pair(it->owner(), it->index()));
+    use_ops.emplace_back(it->owner(), it->index());
   }
   return use_ops;
 }
@@ -130,6 +137,26 @@ std::vector<pir::Value> GetUsedExternalValue(const pir::Block& block) {
     GetUsedExternalValueImpl(defined_values, used_values, op);
   }
   return used_values;
+}
+
+bool ValueIsPersitable(pir::Value value) {
+  if (!value.defining_op()) {
+    return false;
+  }
+  if (value.defining_op()->num_operands() > 0) {
+    for (const auto& source_value : value.defining_op()->operands_source()) {
+      if (!ValueIsPersitable(source_value)) {
+        return false;
+      }
+    }
+  } else {
+    if (!value.defining_op()->isa<pir::ParameterOp>() &&
+        !value.defining_op()->isa<paddle::dialect::FullOp>() &&
+        !value.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace pir

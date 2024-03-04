@@ -164,7 +164,7 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
             check_dygraph=False,
         )
 
-    def test_check_grad_ingore_input(self):
+    def test_check_grad_ignore_input(self):
         self.check_grad(
             ['HiddenPrev', 'Weight', 'Bias'],
             ['Hidden'],

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
@@ -22,7 +23,6 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
@@ -213,7 +213,7 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       std::vector<phi::DDim> shapes;
       auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
       for (size_t j = duplicable_input_pair.first;
@@ -406,7 +406,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       std::vector<phi::DataType> dtypes;
       auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
       for (size_t j = duplicable_input_pair.first;
@@ -570,7 +570,7 @@ std::vector<std::vector<phi::DDim>> RunInferShapeFn(
       out_dims.size(),
       ctx.OutputRange().size(),
       phi::errors::InvalidArgument(
-          "Custome op infer_shape return size should be %d, but got %d.",
+          "Custom op infer_shape return size should be %d, but got %d.",
           ctx.OutputRange().size(),
           out_dims.size()));
 
@@ -603,7 +603,7 @@ std::vector<std::vector<phi::DataType>> RunInferDtypeFn(
       out_dtypes.size(),
       ctx.OutputRange().size(),
       phi::errors::InvalidArgument(
-          "Custome op infer_dtype return size should be %d, but got %d.",
+          "Custom op infer_dtype return size should be %d, but got %d.",
           ctx.OutputRange().size(),
           out_dtypes.size()));
   return out_dtypes;
@@ -677,7 +677,7 @@ std::
       PADDLE_ENFORCE_EQ(
           out_dim.size(),
           pair.second - pair.first,
-          phi::errors::InvalidArgument("custome op infer_shape result[%d]'s "
+          phi::errors::InvalidArgument("custom op infer_shape result[%d]'s "
                                        "size should be %d, but got %d.",
                                        i,
                                        pair.second - pair.first,
@@ -685,7 +685,7 @@ std::
       PADDLE_ENFORCE_EQ(
           out_dtype.size(),
           pair.second - pair.first,
-          phi::errors::InvalidArgument("custome op infer_shape result[%d]'s "
+          phi::errors::InvalidArgument("custom op infer_shape result[%d]'s "
                                        "size should be %d, but got %d.",
                                        i,
                                        pair.second - pair.first,

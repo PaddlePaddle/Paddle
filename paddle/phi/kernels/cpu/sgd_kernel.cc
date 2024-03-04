@@ -177,7 +177,7 @@ void SGDSparseParamSparseGradKernel(
         id_index,
         static_cast<int64_t>(0),
         phi::errors::InvalidArgument(
-            "The id in SgdOp should be >= 0. But recevied id_index is [%s]",
+            "The id in SgdOp should be >= 0. But received id_index is [%s]",
             id_index));
     for (int64_t j = 0; j < grad_row_width; j++) {
       out_data[id_index * grad_row_width + j] -=

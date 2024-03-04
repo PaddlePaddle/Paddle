@@ -18,11 +18,11 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/common/memory_utils.h"
 
-PD_DECLARE_string(selected_gpus);
+COMMON_DECLARE_string(selected_gpus);
 
 namespace phi {
 namespace backends {

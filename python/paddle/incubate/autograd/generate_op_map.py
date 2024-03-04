@@ -55,7 +55,7 @@ def generate_code(
     ops_yaml_path, ops_legacy_yaml_path, ops_compat_yaml_path, phi_ops_map_path
 ):
     """
-    Generate dictiorary and save to file phi_ops_map.py. The target file records gap
+    Generate dictionary and save to file phi_ops_map.py. The target file records gap
     of description between current op and standard ones.
     """
     dct = {}

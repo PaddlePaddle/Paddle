@@ -383,7 +383,7 @@ class CustomDevice : public DeviceInterface {
     void* ptr = nullptr;
     const auto device = &devices_pool[dev_id];
 
-    if (!pimpl_->unified_memory_allocate) {
+    if (!pimpl_->host_memory_allocate) {
       PADDLE_THROW(phi::errors::Unavailable(
           "MemoryAllocateHost is not supported on %s.", Type()));
     } else {
@@ -577,6 +577,7 @@ class CustomDevice : public DeviceInterface {
       return_result(CCL_DATA_TYPE_FP64, FLOAT64);
       return_result(CCL_DATA_TYPE_FP32, FLOAT32);
       return_result(CCL_DATA_TYPE_FP16, FLOAT16);
+      return_result(CCL_DATA_TYPE_BF16, BFLOAT16);
       return_result(CCL_DATA_TYPE_INT64, INT64);
       return_result(CCL_DATA_TYPE_INT32, INT32);
       return_result(CCL_DATA_TYPE_INT16, INT16);

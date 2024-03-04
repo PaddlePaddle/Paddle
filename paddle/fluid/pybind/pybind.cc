@@ -193,6 +193,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/rpc.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -207,13 +208,12 @@ limitations under the License. */
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/common/type_promotion.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -720,7 +720,7 @@ void BindVjp(pybind11::module *m) {
             vjp_interface,
             phi::errors::InvalidArgument(
                 "The vjp function is not registered in %s op ", fwd_op.name()));
-        std::vector<std::vector<pir::OpResult>> vjp_res = vjp_interface.Vjp(
+        std::vector<std::vector<pir::Value>> vjp_res = vjp_interface.Vjp(
             &fwd_op, inputs, outputs, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
@@ -787,14 +787,14 @@ void BindVjp(pybind11::module *m) {
 void BindDecomp(pybind11::module *m) {
   m->def("sinking_decomp",
          [](pir::Program *program,
-            std::vector<pir::OpResult> &src_vars,
+            std::vector<pir::Value> &src_vars,
             std::set<std::string> &blacklist,
             std::set<std::string> &whitelist) {
            VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
            py::list res;
            DecompProgram decomp_object(program, src_vars, blacklist, whitelist);
            decomp_object.decomp_program();
-           std::vector<pir::OpResult> tar_vars = decomp_object.get_dst_vars();
+           std::vector<pir::Value> tar_vars = decomp_object.get_dst_vars();
            for (size_t i = 0; i < tar_vars.size(); ++i) {
              if (!tar_vars[i]) {
                res.append(nullptr);
@@ -808,8 +808,7 @@ void BindDecomp(pybind11::module *m) {
 
   m->def("call_decomp", [](pir::Operation &fwd_op) {
     py::list res;
-    std::vector<std::vector<pir::OpResult>> decomp_res =
-        call_decomp_rule(&fwd_op);
+    std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(&fwd_op);
     for (size_t i = 0; i < decomp_res.size(); ++i) {
       py::list sub_res;
       for (size_t j = 0; j < decomp_res[i].size(); ++j) {
@@ -2242,7 +2241,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindProgramDesc(&m);
   BindBlockDesc(&m);
-  BindVarDsec(&m);
+  BindVarDesc(&m);
   BindOpDesc(&m);
   BindCostModel(&m);
   BindConstValue(&m);
@@ -2274,8 +2273,7 @@ All parameter, weight, gradient are variables in Paddle.
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
   pylodtensorarray
-      .def("__init__",
-           [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
+      .def(py::init([]() { return std::make_unique<LoDTensorArray>(); }))
       .def(
           "__getitem__",
           [](LoDTensorArray &self, size_t i) { return &self.at(i); },

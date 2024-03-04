@@ -63,7 +63,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
         if base.framework.in_dygraph_mode():
             return
         with base.dygraph.guard():
-            in_x = base.dygraph.to_variable(
+            in_x = paddle.to_tensor(
                 np.random.random((self.batch_size, self.feature_size)).astype(
                     'float32'
                 )
@@ -108,7 +108,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
         if base.framework.in_dygraph_mode():
             return
         with base.dygraph.guard():
-            in_x = base.dygraph.to_variable(
+            in_x = paddle.to_tensor(
                 np.random.random((self.batch_size, self.feature_size)).astype(
                     'float32'
                 )
@@ -145,7 +145,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
         if base.framework.in_dygraph_mode():
             return
         with base.dygraph.guard():
-            in_x = base.dygraph.to_variable(
+            in_x = paddle.to_tensor(
                 np.random.random((self.batch_size, self.feature_size)).astype(
                     'float32'
                 )
@@ -216,7 +216,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             )
 
             for i in range(5):
-                in_x = base.dygraph.to_variable(
+                in_x = paddle.to_tensor(
                     np.random.random(
                         (self.batch_size, self.feature_size)
                     ).astype('float32')
@@ -241,7 +241,7 @@ class TestOutVarWithNoneErrMsg(unittest.TestCase):
 
 
 class TestTracedLayerSaveInferenceModel(unittest.TestCase):
-    """test save_inference_model will automaticlly create non-exist dir"""
+    """test save_inference_model will automatically create non-exist dir"""
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

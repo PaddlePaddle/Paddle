@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 import paddle.version as paddle_version
 
 from .. import pir
@@ -55,6 +56,17 @@ GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _global_flags_ = core.globals()
+
+SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
+    "elementwise_add": ['X', 'Y'],
+    "elementwise_add_grad": ['X', 'Y'],
+    "elementwise_sub": ['X', 'Y'],
+    "elementwise_sub_grad": ['X', 'Y'],
+    "elementwise_mul": ['X', 'Y'],
+    "elementwise_mul_grad": ['X', 'Y'],
+    "where": ['X', 'Y'],
+    "where_grad": ['X', 'Y'],
+}
 
 
 def _global_flags():
@@ -233,11 +245,6 @@ paddle_type_to_proto_type = {
     DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
     DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
 }
-
-
-# FIXME(dev): We haven't fully verified eager mode on XPU et.al but
-# only GPU/CPU. Remove this after we improve this feature.
-_is_first_import_ = True
 
 
 def in_dygraph_mode():
@@ -626,10 +633,10 @@ def _set_pipeline_stage(stage):
 
 # NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
 # used to make Variable and Tensor has same interfaces, like numpy. Since Tensor is not exposed in our
-# official docments, logically, we want to keep Tensor and logically consistent. While, actually,
+# official documents, logically, we want to keep Tensor and logically consistent. While, actually,
 # in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
 # So, those APIs are listed under class Variable to generate docs only.
-# TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheritting
+# TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheriting
 # same base class.
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
@@ -804,7 +811,7 @@ def disable_signal_handler():
 
     Paddle installs signal handlers at C++ level to log debug information upon failing.
     However, conflicts can happen if another python module is making use of such signal.
-    Such being the case, one may disblae paddle signal handler via this interface.
+    Such being the case, one may disable paddle signal handler via this interface.
 
     Known frameworks that require disabling signal handler includes:
     1. TVM
@@ -1367,7 +1374,7 @@ def wrap_as_scalar(number):
 
 def wrap_as_scalars(array):
     """This function is used to convert flat list, or numpy array(not
-    necesarily flat) to list of core.Scalar, which correspond to
+    necessarily flat) to list of core.Scalar, which correspond to
     std::vector<paddle::experimental::Scalar> in operator runtime.
 
     Args:
@@ -1499,9 +1506,10 @@ class Variable(metaclass=VariableMetaClass):
 
             >>> import paddle.base as base
             >>> import numpy as np
+            >>> import paddle
 
             >>> with base.dygraph.guard():
-            ...     new_variable = base.dygraph.to_variable(np.arange(10))
+            ...     new_variable = paddle.to_tensor(np.arange(10))
 
     """
 
@@ -1687,14 +1695,13 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 >>> import paddle.base as base
-                >>> from paddle.base.dygraph.base import to_variable
                 >>> from paddle.nn import Linear
                 >>> import numpy as np
 
                 >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 >>> with base.dygraph.guard():
                 ...     linear = Linear(32, 64)
-                ...     data = to_variable(data)
+                ...     data = paddle.to_tensor(data)
                 ...     x = linear(data)
                 ...     print(x.numpy())
 
@@ -1712,7 +1719,7 @@ class Variable(metaclass=VariableMetaClass):
         Args:
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
-                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
                 Defaults to False.
 
         Returns:
@@ -1773,7 +1780,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> with base.dygraph.guard():
                 ...     inputs2 = []
                 ...     for _ in range(10):
-                ...         tmp = base.dygraph.base.to_variable(x)
+                ...         tmp = paddle.to_tensor(x)
                 ...         tmp.stop_gradient=False
                 ...         inputs2.append(tmp)
                 ...     ret2 = paddle.add_n(inputs2)
@@ -1791,7 +1798,7 @@ class Variable(metaclass=VariableMetaClass):
                 ...         sparse=True)
                 ...     x_data = np.arange(12).reshape(4, 3).astype('int64')
                 ...     x_data = x_data.reshape((-1, 3, 1))
-                ...     x = base.dygraph.base.to_variable(x_data)
+                ...     x = paddle.to_tensor(x_data)
                 ...     out = embedding(x)
                 ...     out.backward()
                 ...     print(embedding.weight.gradient())
@@ -1821,7 +1828,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> x = np.ones([2, 2], np.float32)
                 >>> inputs2 = []
                 >>> for _ in range(10):
-                >>>     tmp = base.dygraph.base.to_variable(x)
+                >>>     tmp = paddle.to_tensor(x)
                 >>>     tmp.stop_gradient=False
                 >>>     inputs2.append(tmp)
                 >>> ret2 = paddle.add_n(inputs2)
@@ -2046,9 +2053,9 @@ class Variable(metaclass=VariableMetaClass):
                 ...     value2 = np.arange(10).reshape(2, 5).astype("float32")
                 ...     linear = paddle.nn.Linear(13, 5)
                 ...     linear2 = paddle.nn.Linear(3, 3)
-                ...     a = base.dygraph.to_variable(value0)
-                ...     b = base.dygraph.to_variable(value1)
-                ...     c = base.dygraph.to_variable(value2)
+                ...     a = paddle.to_tensor(value0)
+                ...     b = paddle.to_tensor(value1)
+                ...     c = paddle.to_tensor(value2)
                 ...     out1 = linear(a)
                 ...     out2 = linear2(b)
                 ...     out1.stop_gradient = True
@@ -2123,7 +2130,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating name of current Variable
 
-        **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** Dygraph **mode. This is how we achieve Parameter sharing**
+        **Notes: If it has two or more Variable share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** Dygraph **mode. This is how we achieve Parameter sharing**
 
         Examples:
             .. code-block:: python
@@ -2235,7 +2242,7 @@ class Variable(metaclass=VariableMetaClass):
                 LoD Level of current Var is: 0
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
-            raise Exception("SelectedRows DO NOT supprt lod")
+            raise Exception("SelectedRows DO NOT support lod")
         if self.type == core.VarDesc.VarType.STRINGS:
             return None
         return self.desc.lod_level()
@@ -2621,7 +2628,7 @@ class Variable(metaclass=VariableMetaClass):
                 ...         var.set_value(t_load)
         """
         # The 'framework' is a low-level module, and 'executor'
-        # can not be imported at the begainning of this file.
+        # can not be imported at the beginning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
 
@@ -2688,7 +2695,7 @@ class Variable(metaclass=VariableMetaClass):
         '''
 
         # The 'framework' is a low-level module, and 'executor'
-        # can not be imported at the begainning of this file.
+        # can not be imported at the beginning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
 
@@ -3863,7 +3870,7 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                     and inplace_map.get("Input", None) == "Out"
                 ):
                     raise ValueError(
-                        'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                        'Sorry about what\'s happened. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
                             op_type, k
                         )
                     )
@@ -4423,7 +4430,7 @@ class Block:
         else:
             param = Parameter(global_block, *args, **kwargs)
         # NOTE(Aurelius84): we deliver stop_gradient in append_op, so we
-        # need recorde it state and reset it back after calling this API
+        # need record it state and reset it back after calling this API
         stop_gradient = param.stop_gradient
 
         if 'initializer' in kwargs:
@@ -5649,8 +5656,7 @@ class IrGraph:
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
             exited_code = subprocess.call(
-                'dot -Tpdf ' + dot_file_path + ' -o ' + pdf_save_path,
-                shell=True,
+                ['dot', '-Tpdf', dot_file_path, '-o', pdf_save_path]
             )
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
@@ -5805,7 +5811,7 @@ class Program:
         # the distributed lookup table names
         self._distributed_lookup_table = None
 
-        # use Deep gradient comrepssion or not
+        # use Deep gradient compression or not
         self._enable_dgc = False
         self._use_lamb = False
 
@@ -6267,7 +6273,7 @@ class Program:
         """
         .. note:::
             1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` .
-            2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` .
+            2. Recommend you to use :code:`clone` before using :code:`Optimizer.minimize` .
             3. This API has no effect in Dygraph Mode.
 
         Create a new Program with forward content of original one when ``for_test=True``.
@@ -6281,8 +6287,8 @@ class Program:
         * Set for_test to False when you want to clone the program for training.
         * Set for_test to True when you want to clone the program for testing.
           We will prune the backward and optimize part of the program when you
-          use :code:`clone` after :code:`Opimizer.minimize`, but we still
-          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
+          use :code:`clone` after :code:`Optimizer.minimize`, but we still
+          recommend you to use :code:`clone` before using :code:`Optimizer.minimize`.
 
         Examples:
             .. code-block:: python
@@ -6582,7 +6588,7 @@ class Program:
                         "Variable or Operator, but received %s." % type(t)
                     )
 
-                # NOTEZ(zhiqiu): For variable to be fed in fetch_list, there two cases:
+                # NOTE(zhiqiu): For variable to be fed in fetch_list, there two cases:
                 # (1) the variable is leaf, it has no op that generates it;
                 # (2) the variable is not leaf, and we need to prune the op that generates it.
                 # In both cases, wo can just skip target_op of that it.
@@ -6804,7 +6810,7 @@ class Program:
 
         Args:
 
-            binary_str_type (str): the binary prootbuf string.
+            binary_str_type (str): the binary protobuf string.
 
         Returns:
             Program: A deserialized Program.
@@ -6963,7 +6969,7 @@ class Program:
         Get the :code:`index`  :ref:`api_guide_Block_en`  of this Program
 
         Args:
-            index (int) - The index of  :ref:`api_guide_Block_en`  to get
+            index (int): The index of  :ref:`api_guide_Block_en`  to get
 
         Returns:
             :ref:`api_guide_Block_en`: The :code:`index` block
@@ -7192,7 +7198,7 @@ class Program:
         Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
 
         Returns:
-            list[ :ref:`api_guide_parameter_en` ]: The list contians all parameters in this program.
+            list[ :ref:`api_guide_parameter_en` ]: The list contains all parameters in this program.
 
         Examples:
             .. code-block:: python
@@ -7244,7 +7250,7 @@ class Program:
                 obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
                 Default: None
 
-        Retruns:
+        Returns:
             dict: a dict contains the parameters and persistable buffers.
 
         Examples:
@@ -7268,7 +7274,7 @@ class Program:
                 >>> paddle.save(prog.state_dict(), path)
         """
         # The 'framework' is a low-level module, and 'executor'
-        # can not be imported at the begainning of this file.
+        # can not be imported at the beginning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
 
@@ -7421,7 +7427,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
-        need_clip (bool): Whether the parameter gradient need to be cliped
+        need_clip (bool): Whether the parameter gradient need to be clipped
             in optimizer. Default is True.
     """
 
@@ -7537,7 +7543,7 @@ class EagerParamBase(core.eager.Tensor):
             be applied on the EagerParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this EagerParamBase.
-        need_clip (bool): Whether the parameter gradient need to be cliped
+        need_clip (bool): Whether the parameter gradient need to be clipped
             in optimizer. Default is True.
     """
 
@@ -8081,12 +8087,12 @@ def _get_paddle_place(place):
         return core.Place()
 
     # GPU
-    avaliable_gpu_place = re.match(r'gpu:\d+', place)
-    if place == "gpu_pinned" or place == "gpu" or avaliable_gpu_place:
+    available_gpu_place = re.match(r'gpu:\d+', place)
+    if place == "gpu_pinned" or place == "gpu" or available_gpu_place:
         if not core.is_compiled_with_cuda():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with CUDA".format(avaliable_gpu_place.group())
+                "not compiled with CUDA".format(available_gpu_place.group())
             )
         if place == "gpu_pinned":
             return core.CUDAPinnedPlace()
@@ -8099,12 +8105,12 @@ def _get_paddle_place(place):
             return core.CUDAPlace(device_id)
 
     # XPU
-    avaliable_xpu_place = re.match(r'xpu:\d+', place)
-    if avaliable_xpu_place:
+    available_xpu_place = re.match(r'xpu:\d+', place)
+    if available_xpu_place:
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with XPU".format(avaliable_xpu_place.group())
+                "not compiled with XPU".format(available_xpu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -8112,12 +8118,12 @@ def _get_paddle_place(place):
         return core.XPUPlace(device_id)
 
     # IPU
-    avaliable_ipu_place = re.match(r'ipu:\d+', place)
-    if avaliable_ipu_place:
+    available_ipu_place = re.match(r'ipu:\d+', place)
+    if available_ipu_place:
         if not core.is_compiled_with_ipu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with IPU".format(avaliable_ipu_place.group())
+                "not compiled with IPU".format(available_ipu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -8146,3 +8152,99 @@ def _get_paddle_place_list(places):
         ret.append(p)
 
     return ret
+
+
+def dtype_to_str(in_dtype):
+    if in_dtype == paddle.float16:
+        return "fp16"
+    elif in_dtype == paddle.bfloat16:
+        return "bf16"
+    elif in_dtype == paddle.float32:
+        return "fp32"
+    elif in_dtype == paddle.float64:
+        return "fp64"
+    else:
+        return None
+
+
+def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
+    op_device = op.attr('op_device')
+    cast_name = var_name.name + '.cast_' + dtype_to_str(out_dtype)
+    out_var = block.create_var(
+        name=cast_name,
+        dtype=out_dtype,
+        persistable=False,
+        stop_gradient=var_name.stop_gradient,
+    )
+    op_role = (
+        int(core.op_proto_and_checker_maker.OpRole.Forward)
+        if not op.has_attr('op_role')
+        else op.attr('op_role')
+    )
+    block._insert_op_without_sync(
+        idx,
+        type="cast",
+        inputs={"X": var_name},
+        outputs={"Out": out_var},
+        attrs={
+            "in_dtype": var_name.dtype,
+            "out_dtype": out_var.dtype,
+            "op_device": op_device,
+            "op_role": op_role,
+        },
+    )
+    op.desc._rename_input(var_name.name, out_var.name)
+
+
+def process_type_promotion(program):
+    org_program = program
+    if program is None:
+        program = default_main_program()
+    # not support pir for now
+    if not isinstance(program, Program):
+        return org_program
+    global_block = program.global_block()
+    all_params = global_block.all_parameters()
+    for block in program.blocks:
+        ops = block.ops
+        idx = 0
+        while idx < len(ops):
+            op = ops[idx]
+            var_name = None
+            all_dtypes = []
+            all_input_name_need_cast = []
+
+            need_transed_var_names = SUPPORT_PROMOTION_OPS_AND_INPUTNAME.get(
+                op.type, None
+            )
+            # type promotion only support some dyadic api
+            if need_transed_var_names is None:
+                idx += 1
+                continue
+
+            # get all dtype and input_name
+            for input_idx in range(len(op.input_arg_names)):
+                if op.input_names[input_idx] in need_transed_var_names:
+                    input_arg_name = op.input_arg_names[input_idx]
+                    all_dtypes.append(
+                        op.block._var_recursive(input_arg_name).dtype
+                    )
+                    all_input_name_need_cast.append(input_arg_name)
+
+            # only support promote between float
+            if core.need_type_promotion(*all_dtypes):
+                common_dtype = core.get_promote_dtype(op.type, *all_dtypes)
+                for input_name_need_cast in all_input_name_need_cast:
+                    var_name = op.block._var_recursive(input_name_need_cast)
+                    if var_name.dtype != common_dtype:
+                        # add cast op for different dtype
+                        add_cast_for_type_promotion(
+                            op,
+                            block,
+                            idx,
+                            var_name,
+                            common_dtype,
+                        )
+                        idx += 1
+            idx += 1
+    return program

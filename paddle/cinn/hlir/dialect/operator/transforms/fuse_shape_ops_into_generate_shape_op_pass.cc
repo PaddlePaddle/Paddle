@@ -25,13 +25,14 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/match_context.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -59,14 +60,24 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
           Visit(owner->operand_source(i));
         }
       };
-  const auto& IsDimTensor = [&](pir::Value value) -> bool {
-    return ShapeOrDataDimExprs4Value(value).data().has_value();
+  const auto& IsDimTensorOrListDimExpr = symbol::Overloaded{
+      [](const symbol::TensorShapeOrDataDimExprs& dim_expr) {
+        return dim_expr.data().has_value();
+      },
+      [](const symbol::TensorListShapeOrDataDimExprs& dim_expr) {
+        return true;
+      }};
+  // For TensorListShapeOrDataDimExprs case, we should recursivly visit its
+  // each dim_expr, which is automatically in next step.
+  const auto& NeedTrackUpstream = [&](pir::Value value) -> bool {
+    const auto& sym_shape = ShapeOrDataDimExprs4Value(value);
+    return std::visit(IsDimTensorOrListDimExpr, sym_shape.variant());
   };
   const auto& ForEachInputDimTensor =
       [&](pir::Value value, const std::function<void(pir::Value)>& Visit) {
         // find input dimension tensor;
         ForEachInputValue(value, [&](pir::Value input) {
-          if (IsDimTensor(input)) {
+          if (NeedTrackUpstream(input)) {
             Visit(input);
           }
         });
@@ -76,7 +87,7 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     size_t input_cnt = 0;
     ForEachInputValue(value, [&](pir::Value input) {
       ++input_cnt;
-      if (IsDimTensor(input)) return;
+      if (NeedTrackUpstream(input)) return;
       Emplace(input);
     });
     if (input_cnt == 0) {
@@ -107,7 +118,7 @@ bool MakeGenerateShapeOpAttribute(
                                       symbol_bindings);
 }
 
-std::optional<pir::Value> GetOutOfRewritedGenerateShapeOp(
+std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
     pir::Value shape,
     pir::PatternRewriter* rewriter,
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
@@ -130,24 +141,35 @@ std::optional<pir::Value> GetOutOfRewritedGenerateShapeOp(
       .out();
 }
 
-bool ProcessOp(paddle::dialect::ExpandOp op, pir::PatternRewriter* rewriter) {
-  if (op.shape().defining_op()->isa<cinn::dialect::GenerateShapeOp>()) {
+bool ReplaceShapeOpsToGenerateShape(
+    pir::Value shape_operand,
+    pir::PatternRewriter* rewriter,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  if (shape_operand.defining_op()->isa<cinn::dialect::GenerateShapeOp>()) {
     return false;
   }
-  const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value =
-      [&op](pir::Value value) -> symbol::ShapeOrDataDimExprs {
-    pir::ShapeConstraintIRAnalysis& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(
-            op.x().defining_op()->GetParentProgram());
-
-    return shape_analysis.GetShapeOrDataForValue(value);
+  auto ShapeOrDataDimExprs4Value =
+      [&shape_analysis](
+          pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+    CHECK(shape_analysis->HasShapeOrDataForValue(value));
+    return shape_analysis->GetShapeOrDataForValue(value);
   };
   std::optional<pir::Value> opt_generated_shape =
-      GetOutOfRewritedGenerateShapeOp(
-          op.shape(), rewriter, ShapeOrDataDimExprs4Value);
+      GetOutOfRewrittenGenerateShapeOp(
+          shape_operand, rewriter, ShapeOrDataDimExprs4Value);
   if (!opt_generated_shape.has_value()) return false;
-  op->operand(1).set_source(opt_generated_shape.value());
+  shape_analysis->SetShapeOrDataForValue(
+      opt_generated_shape.value(), ShapeOrDataDimExprs4Value(shape_operand));
+  rewriter->ReplaceAllUsesWith(shape_operand, opt_generated_shape.value());
   return true;
+}
+
+template <typename OP_TYPE>
+bool ProcessOp(OP_TYPE op,
+               pir::PatternRewriter* rewriter,
+               pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  return ReplaceShapeOpsToGenerateShape(
+      op->operand_source(1), rewriter, shape_analysis);
 }
 
 }  // namespace
@@ -161,26 +183,35 @@ class FuseShapeOpsIntoGenerateShapeOpPattern
 
   bool MatchAndRewrite(OPTYPE op,
                        pir::PatternRewriter& rewriter) const override {
-    return ProcessOp(op, &rewriter);
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    return ProcessOp(op, &rewriter, &shape_analysis);
   }
 };
 
-FuseShapeOpsIntoGenerateShapeOpPass::FuseShapeOpsIntoGenerateShapeOpPass()
-    : pir::PatternRewritePass("fuse_shape_ops_into_generate_shape_op_pass", 1) {
-}
+class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
+ public:
+  FuseShapeOpsIntoGenerateShapeOpPass()
+      : pir::PatternRewritePass("fuse_shape_ops_into_generate_shape_op_pass",
+                                1) {}
 
-pir::RewritePatternSet FuseShapeOpsIntoGenerateShapeOpPass::InitializePatterns(
-    pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
-  // elementwise ops
-  ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ExpandOp>>(
-      context);
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ExpandOp>>(
+        context);
+    ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ReshapeOp>>(
+        context);
 
-  return ps;
-}
+    return ps;
+  }
 
-bool FuseShapeOpsIntoGenerateShapeOpPass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateFuseShapeOpsIntoGenerateShapeOpPass() {
+  return std::make_unique<FuseShapeOpsIntoGenerateShapeOpPass>();
 }
 
 }  // namespace ir

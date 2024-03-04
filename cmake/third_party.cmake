@@ -13,7 +13,7 @@
 # limitations under the License.
 
 include(ExternalProject)
-# Creat a target named "third_party", which can compile external dependencies on all platform(windows/linux/mac)
+# Create a target named "third_party", which can compile external dependencies on all platform(windows/linux/mac)
 
 set(THIRD_PARTY_PATH
     "${CMAKE_BINARY_DIR}/third_party"
@@ -33,19 +33,30 @@ if(NOT WITH_SETUP_INSTALL)
   #NOTE(risemeup1):Initialize any submodules.
   message(
     STATUS
-      "Check submodules of paddle, and run 'git submodule update --init --recursive'"
+      "Check submodules of paddle, and run 'git submodule sync --recursive && git submodule update --init --recursive'"
   )
+
+  # execute_process does not support sequential commands, so we execute echo command separately
+  execute_process(
+    COMMAND git submodule sync --recursive
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+    RESULT_VARIABLE result_var)
+  if(NOT result_var EQUAL 0)
+    message(FATAL_ERROR "Failed to sync submodule, please check your network !")
+  endif()
+
   execute_process(
     COMMAND git submodule update --init --recursive
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
     RESULT_VARIABLE result_var)
   if(NOT result_var EQUAL 0)
-    message(FATAL_ERROR "Failed to get submodule, please check your network !")
+    message(
+      FATAL_ERROR "Failed to update submodule, please check your network !")
   endif()
 
 endif()
-# cache funciton to avoid repeat download code of third_party.
-# This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
+# cache function to avoid repeat download code of third_party.
+# This function has 4 parameters, URL / REPOSITORY / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
 # 2. REPOSITORY:    specify git REPOSITORY of 3rd party
 # 3. TAG:           specify git tag/branch/commitID of 3rd party
@@ -53,7 +64,7 @@ endif()
 #
 # The function Return 1 PARENT_SCOPE variables:
 #  - ${TARGET}_DOWNLOAD_CMD: Simply place "${TARGET}_DOWNLOAD_CMD" in ExternalProject_Add,
-#                            and you no longer need to set any donwnload steps in ExternalProject_Add.
+#                            and you no longer need to set any download steps in ExternalProject_Add.
 # For example:
 #    Cache_third_party(${TARGET}
 #            REPOSITORY ${TARGET_REPOSITORY}
@@ -134,10 +145,10 @@ macro(UNSET_VAR VAR_NAME)
   unset(${VAR_NAME})
 endmacro()
 
-# Funciton to Download the dependencies during compilation
+# Function to Download the dependencies during compilation
 # This function has 2 parameters, URL / DIRNAME:
 # 1. URL:           The download url of 3rd dependencies
-# 2. NAME:          The name of file, that determin the dirname
+# 2. NAME:          The name of file, that determine the dirname
 #
 function(file_download_and_uncompress URL NAME)
   set(options "")

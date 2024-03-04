@@ -70,7 +70,7 @@ void BatchNormKernel(const Context& ctx,
       5,
       phi::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
-          "But received: the size of input X's dimensionss is [%d]",
+          "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
   const int N = static_cast<int>(x_dims[0]);
   const int C = static_cast<int>(

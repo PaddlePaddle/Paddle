@@ -58,10 +58,10 @@ void ArrayToTensorKernel(const Context& dev_ctx,
                          DenseTensor* out_index);
 
 template <typename T, typename Context>
-void TensorToArrayKernel(const Context& dev_ctx,
-                         const TensorArray& x,
-                         const DenseTensor& out_grad,
-                         int axis,
-                         bool use_stack,
-                         TensorArray* x_grad);
+void ArrayPopKernel(const Context& dev_ctx,
+                    const TensorArray& array,
+                    int index,
+                    TensorArray* array_out,
+                    DenseTensor* out);
+
 }  // namespace phi

@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from itertools import product
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -29,7 +32,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], batch, channel):
+        def generate_input1(attrs: list[dict[str, Any]], batch, channel):
             if attrs[0]['iou_aware']:
                 return np.ones([batch, 3 * (channel + 6), 13, 13]).astype(
                     np.float32
@@ -39,76 +42,88 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
                     np.float32
                 )
 
-        def generate_input2(attrs: List[Dict[str, Any]], batch):
+        def generate_input2(attrs: list[dict[str, Any]], batch):
             return np.random.random([batch, 2]).astype(np.int32)
 
-        for batch in [1, 4]:
-            for class_num in [80, 30]:
-                for anchors in [[10, 13, 16, 30, 33, 23]]:
-                    for downsample_ratio in [32, 16]:
-                        for conf_thresh in [0.01, 0.02]:
-                            for clip_bbox in [True, False]:
-                                for scale_x_y in [1.0, 0.9]:
-                                    for iou_aware in [False, True]:
-                                        for iou_aware_factor in [0.5]:
-                                            dics = [
-                                                {
-                                                    "class_num": class_num,
-                                                    "anchors": anchors,
-                                                    "downsample_ratio": downsample_ratio,
-                                                    "conf_thresh": conf_thresh,
-                                                    "clip_bbox": clip_bbox,
-                                                    "scale_x_y": scale_x_y,
-                                                    "iou_aware": iou_aware,
-                                                    "iou_aware_factor": iou_aware_factor,
-                                                },
-                                                {},
-                                            ]
-                                            ops_config = [
-                                                {
-                                                    "op_type": "yolo_box",
-                                                    "op_inputs": {
-                                                        "X": ["yolo_box_input"],
-                                                        "ImgSize": ["imgsize"],
-                                                    },
-                                                    "op_outputs": {
-                                                        "Boxes": ["boxes"],
-                                                        "Scores": ["scores"],
-                                                    },
-                                                    "op_attrs": dics[0],
-                                                }
-                                            ]
-                                            ops = self.generate_op_config(
-                                                ops_config
-                                            )
-                                            program_config = ProgramConfig(
-                                                ops=ops,
-                                                weights={},
-                                                inputs={
-                                                    "yolo_box_input": TensorConfig(
-                                                        data_gen=partial(
-                                                            generate_input1,
-                                                            dics,
-                                                            batch,
-                                                            class_num,
-                                                        )
-                                                    ),
-                                                    "imgsize": TensorConfig(
-                                                        data_gen=partial(
-                                                            generate_input2,
-                                                            dics,
-                                                            batch,
-                                                        )
-                                                    ),
-                                                },
-                                                outputs=["boxes", "scores"],
-                                            )
+        for (
+            batch,
+            class_num,
+            anchors,
+            downsample_ratio,
+            conf_thresh,
+            clip_bbox,
+            scale_x_y,
+            iou_aware,
+            iou_aware_factor,
+        ) in product(
+            [1, 4],
+            [80, 30],
+            [[10, 13, 16, 30, 33, 23]],
+            [32, 16],
+            [0.01, 0.02],
+            [True, False],
+            [1.0, 0.9],
+            [False, True],
+            [0.5],
+        ):
+            dics = [
+                {
+                    "class_num": class_num,
+                    "anchors": anchors,
+                    "downsample_ratio": downsample_ratio,
+                    "conf_thresh": conf_thresh,
+                    "clip_bbox": clip_bbox,
+                    "scale_x_y": scale_x_y,
+                    "iou_aware": iou_aware,
+                    "iou_aware_factor": iou_aware_factor,
+                },
+                {},
+            ]
+            ops_config = [
+                {
+                    "op_type": "yolo_box",
+                    "op_inputs": {
+                        "X": ["yolo_box_input"],
+                        "ImgSize": ["imgsize"],
+                    },
+                    "op_outputs": {
+                        "Boxes": ["boxes"],
+                        "Scores": ["scores"],
+                    },
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "yolo_box_input": TensorConfig(
+                        data_gen=partial(
+                            generate_input1,
+                            dics,
+                            batch,
+                            class_num,
+                        )
+                    ),
+                    "imgsize": TensorConfig(
+                        data_gen=partial(
+                            generate_input2,
+                            dics,
+                            batch,
+                        )
+                    ),
+                },
+                outputs=["boxes", "scores"],
+            )
 
-                                            yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> Generator[
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+    ]:
         def generate_dynamic_shape(attrs):
             if attrs[0]['iou_aware']:
                 channel = 3 * (attrs[0]['class_num'] + 6)

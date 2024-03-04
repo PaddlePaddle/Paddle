@@ -198,7 +198,7 @@ void SerializationLogger::LogHostTraceEventNode(
       OperatorSupplementEventProto::input_shape_proto::shape_vector*
           shape_vectors_proto = input_shape_proto->add_shape_vecs();
       auto shape_vectors = item.second;
-      for (auto shape_vector : shape_vectors) {
+      for (auto const& shape_vector : shape_vectors) {
         OperatorSupplementEventProto::input_shape_proto::shape_vector::shape*
             shape_proto = shape_vectors_proto->add_shapes();
         for (auto& shape_item : shape_vector) {

@@ -35,10 +35,12 @@ def set_global_mesh(mesh):
     _global_mesh = mesh
 
 
-def get_mesh(pp_idx=0):
+def get_mesh(pp_idx=None):
     global _global_mesh
     mesh = _global_mesh
     assert _global_mesh is not None, "_global_mesh is not initialized!"
+    if pp_idx is None:
+        return mesh
     if "pp" in _global_mesh.dim_names:
         mesh = _global_mesh.get_mesh_with_dim("pp")[pp_idx]
     return mesh
@@ -483,7 +485,7 @@ class LlamaModelAuto(nn.Layer):
         )
         self.embed_tokens.weight = dist.shard_tensor(
             self.embed_tokens.weight,
-            get_mesh(),
+            get_mesh(0),
             [dist.Replicate(), dist.Shard(1)],
         )
 
@@ -517,7 +519,7 @@ class LlamaModelAuto(nn.Layer):
 
     @staticmethod
     def _prepare_decoder_attention_mask(
-        attention_mask, input_shape, past_key_values_length, dtype
+        attention_mask, input_shape, past_key_values_length, dtype, mesh
     ):
         if attention_mask is not None:
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
@@ -533,8 +535,8 @@ class LlamaModelAuto(nn.Layer):
                     )
                     combined_attention_mask = dist.shard_tensor(
                         combined_attention_mask,
-                        get_mesh(),
-                        [dist.Replicate(), dist.Replicate()],
+                        mesh,
+                        [dist.Replicate() for _ in range(len(mesh._shape))],
                     )
                     expanded_attn_mask = (
                         expanded_attn_mask & combined_attention_mask
@@ -577,6 +579,14 @@ class LlamaModelAuto(nn.Layer):
             use_cache if use_cache is not None else self.config.use_cache
         )
 
+        if (
+            not paddle.in_dynamic_mode()
+            and getattr(self.config, "virtual_pp_degree", 1) > 1
+        ):
+            # NOTE: temprorary method to guarantee the later ops are placed on all ranks until meeting new annotaion.
+            full = dist.shard_op(paddle.full, get_mesh())
+            full(shape=[1], fill_value=0)
+
         # retrieve input_ids and inputs_embeds
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError(
@@ -600,8 +610,31 @@ class LlamaModelAuto(nn.Layer):
             cache_length = paddle.shape(past_key_values[0][0])[1]
             seq_length_with_past += cache_length
 
+        if (
+            not paddle.in_dynamic_mode()
+            and getattr(self.config, "virtual_pp_degree", 1) > 1
+        ):
+            # NOTE: temprorary method to guarantee the later ops are placed on pp stage 0 until meeting new annotaion.
+            full = dist.shard_op(paddle.full, get_mesh(0))
+            full(shape=[1], fill_value=0)
+
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input_ids)
+
+        if self.config.sequence_parallel:
+            # [B, S, H] -> [S, B, H]
+            inputs_embeds = paddle.transpose(inputs_embeds, [1, 0, 2])
+
+        if (
+            not paddle.in_dynamic_mode()
+            and getattr(self.config, "virtual_pp_degree", 1) > 1
+        ):
+            # NOTE: temprorary method to guarantee the later ops are placed on all ranks until meeting new annotaion.
+            full = dist.shard_op(paddle.full, get_mesh())
+            full(shape=[1], fill_value=0)
+            mesh = get_mesh()
+        else:
+            mesh = get_mesh(0)
 
         # embed positions
         if attention_mask is None:
@@ -615,25 +648,26 @@ class LlamaModelAuto(nn.Layer):
                 (batch_size, seq_length)
             )
             position_ids = dist.shard_tensor(
-                position_ids, get_mesh(), [dist.Replicate(), dist.Replicate()]
+                position_ids,
+                mesh,
+                [dist.Replicate() for _ in range(len(mesh._shape))],
             )
-
-        if self.config.sequence_parallel:
-            # [B, S, H] -> [S, B, H]
-            inputs_embeds = paddle.transpose(inputs_embeds, [1, 0, 2])
 
         attention_mask = self._prepare_decoder_attention_mask(
             attention_mask,
             (batch_size, seq_length),
             cache_length,
             inputs_embeds.dtype,
+            mesh,
         )  # [bs, 1, seq_len, seq_len]
         if self.config.use_flash_attention:
             is_casual = is_casual_mask(attention_mask)
             if is_casual:
                 attention_mask = None
         hidden_states = inputs_embeds
-        hidden_states = dist.reshard(hidden_states, get_mesh(), self.placements)
+        hidden_states = dist.reshard(
+            hidden_states, get_mesh(0), self.placements
+        )
 
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
@@ -649,23 +683,35 @@ class LlamaModelAuto(nn.Layer):
             )
 
             has_gradient = not hidden_states.stop_gradient
+            ipp = decoder_layer.ipp
 
-            if decoder_layer.ipp is not None and pre_ipp != decoder_layer.ipp:
-                hidden_states = dist.reshard(
-                    hidden_states,
-                    get_mesh(decoder_layer.ipp),
-                    self.placements,
-                )
-                position_ids = dist.reshard(
-                    position_ids,
-                    get_mesh(decoder_layer.ipp),
-                    [dist.Shard(0), dist.Replicate()],
-                )
-                attention_mask = dist.reshard(
-                    attention_mask,
-                    get_mesh(decoder_layer.ipp),
-                    [dist.Shard(0), dist.Replicate()],
-                )
+            if ipp is not None and pre_ipp != ipp:
+                if (
+                    not paddle.in_dynamic_mode()
+                    and getattr(self.config, "virtual_pp_degree", 1) > 1
+                ):
+                    hidden_states = dist.reshard(
+                        hidden_states,
+                        get_mesh(ipp),
+                        self.placements,
+                    )
+                    decoder_layer = dist.shard_op(decoder_layer, get_mesh(ipp))
+                else:
+                    hidden_states = dist.reshard(
+                        hidden_states,
+                        get_mesh(ipp),
+                        self.placements,
+                    )
+                    position_ids = dist.reshard(
+                        position_ids,
+                        get_mesh(ipp),
+                        [dist.Shard(0), dist.Replicate()],
+                    )
+                    attention_mask = dist.reshard(
+                        attention_mask,
+                        get_mesh(ipp),
+                        [dist.Shard(0), dist.Replicate()],
+                    )
 
             if (
                 self.config.recompute
@@ -690,7 +736,7 @@ class LlamaModelAuto(nn.Layer):
                     past_key_value,
                     use_cache,
                 )
-            pre_ipp = decoder_layer.ipp
+            pre_ipp = ipp
 
             if type(layer_outputs) is tuple:
                 hidden_states = layer_outputs[0]
@@ -755,10 +801,6 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
         )
 
     def forward(self, prediction_scores, masked_lm_labels):
-        masked_lm_labels = dist.shard_tensor(
-            masked_lm_labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
-        )
-
         # Force Replicated to match dy & st
         prediction_scores1 = dist.reshard(
             prediction_scores,
@@ -817,10 +859,6 @@ class LlamaForCausalLMAuto(nn.Layer):
         output_hidden_states=None,
     ):
         input_ids.stop_gradient = True
-
-        input_ids = dist.shard_tensor(
-            input_ids, get_mesh(), [dist.Shard(0), dist.Replicate()]
-        )
 
         output_attentions = (
             output_attentions if output_attentions is not None else False
@@ -1016,11 +1054,11 @@ def scaled_dot_product_attention(
     else:
         #  [ bz, seqlen, nhead, head_dim] -> [bs, nhead, seq_len, head_dim]
         query_states = paddle.transpose(query_states, [0, 2, 1, 3])
-        # merge with the next tranpose
+        # merge with the next transpose
         key_states = paddle.transpose(key_states, [0, 2, 1, 3])
         value_states = paddle.transpose(value_states, [0, 2, 1, 3])
 
-        # matmul and devide by sqrt(head_dim)
+        # matmul and divide by sqrt(head_dim)
         attn_weights = paddle.matmul(
             query_states / math.sqrt(head_dim),
             key_states.transpose([0, 1, 3, 2]),

@@ -118,6 +118,11 @@ void LogDeviceMemoryStats(const platform::Place& place,
                    "Allocated", place.device)) /
                    1024 / 1024
             << " MB, "
+            << "memory_reserved: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Reserved", place.device)) /
+                   1024 / 1024
+            << " MB, "
             << "max_memory_allocated: "
             << static_cast<double>(memory::DeviceMemoryStatPeakValue(
                    "Allocated", place.device)) /

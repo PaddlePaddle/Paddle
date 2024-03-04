@@ -142,7 +142,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       static_cast<phi::DataType>(Get<int>("model_precision"));
   if (model_precision == phi::DataType::BFLOAT16) {
     LOG(WARNING)
-        << "Paddle-TRT not support bf16 mixed precison, just fallback.";
+        << "Paddle-TRT not support bf16 mixed precision, just fallback.";
     return;
   }
 
@@ -183,6 +183,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       graph,
       teller,
       Get<int>("min_subgraph_size") /*min subgraph size*/,
+      Get<std::vector<std::string>>("trt_exclude_var_names"),
       "tensorrt_engine");
   fuser();
 
@@ -233,7 +234,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               .Has(name),
           true,
           platform::errors::PreconditionNotMet(
-              "TRTEnegineManager shoud has engine %s, but not found.", name));
+              "TRTEngineManager should has engine %s, but not found.", name));
       paddle::inference::Singleton<
           inference::tensorrt::TRTEngineManager>::Global()
           .Get(name)
@@ -243,7 +244,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
 
   // some ops are only implemented in paddle-trt,
   // but not in paddle ,we should revert it.
-  for (auto *op_node : framework::ir::TopologyVarientSort(
+  for (auto *op_node : framework::ir::TopologyVariantSort(
            *graph, static_cast<framework::ir::SortKind>(0))) {
     if (op_node->Op()->Type() == "matrix_multiply") {
       auto origin_type =
@@ -281,7 +282,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   engine_hash_key += precision;
 
   engine_hash_key += "#";
-  engine_hash_key += use_cuda_graph;
+  engine_hash_key += std::to_string(use_cuda_graph);
 
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
   VLOG(2) << "TRT engine hash key: " << engine_hash_key;
@@ -844,7 +845,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
             << GetTrtEngineSerializedPath(
                    Get<std::string>("model_opt_cache_dir"), engine_key)
             << ". Engine deserialization failed: Serialized Engine Version "
-               "does not match Current Version, TRT engine will be rebuilded";
+               "does not match Current Version, TRT engine will be rebuilt";
       }
     }
   }
@@ -856,7 +857,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   }
 
   // the following code will NOT run in following situation:
-  // 1. calibraion mode (generate trt int8 calibraiton table data)
+  // 1. calibration mode (generate trt int8 calibration table data)
   // 2. already load serialized trt engine info.
   LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                "kernel etc). This process may cost a lot of time.";

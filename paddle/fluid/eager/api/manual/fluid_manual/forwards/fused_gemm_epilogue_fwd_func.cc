@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/amp_auto_cast.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 paddle::Tensor fused_gemm_epilogue_dygraph_function(
@@ -39,8 +39,8 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{X}, {Y}, {Bias}};
 
-    auto amp_dst_dtype =
-        egr::GetAmpDestDtype("fused_gemm_epilogue", amp_tensors_vector);
+    auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
+        "fused_gemm_epilogue", amp_tensors_vector);
 
     auto NEW_X = egr::AmpAutoCast("X", X, amp_dst_dtype, "fused_gemm_epilogue");
     auto NEW_Y = egr::AmpAutoCast("Y", Y, amp_dst_dtype, "fused_gemm_epilogue");
@@ -49,7 +49,7 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return fused_gemm_epilogue_dygraph_function(
           NEW_X, NEW_Y, NEW_Bias, attr_map);
@@ -111,8 +111,8 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
       grad_node->SetDefaultAttrMap(std::move(default_attrs));
 
       // Set Tensor Wrappers
-      grad_node->SetTensorWrapperX(X);
-      grad_node->SetTensorWrapperY(Y);
+      grad_node->SetTensorWrapper_X(X);
+      grad_node->SetTensorWrapper_Y(Y);
 
       grad_node->SetGradOutMeta(X, 0);
       grad_node->SetGradOutMeta(Y, 1);

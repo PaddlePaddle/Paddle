@@ -31,8 +31,8 @@ namespace ir {
  */
 #define CINN_IR_SCHEDULE_END(err_msg_level)                    \
   }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  catch (const utils::ErrorHandler& err_handler) {             \
+    CINN_THROW(err_handler.FormatErrorMessage(err_msg_level)); \
   }
 
 void DyScheduleImpl::MutateForType(const Expr& loop,
@@ -111,11 +111,6 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   std::string primitive = "Bind";
   std::ostringstream os;
 
-  if (!loop.As<For>()->extent.is_constant()) {
-    os << "The extent of loop to be binded should be constant!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-
   static std::set<std::string> thread_axes = {"blockIdx.x",
                                               "blockIdx.y",
                                               "blockIdx.z",
@@ -132,8 +127,9 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
   const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
   auto check_offset = [&](const char& c) -> bool {
-    auto extent = loop.As<ir::For>()->extent.as_int32();
-    return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
+    // TODO(BiynXu): rewrite the function after we have a mechanism to calculate
+    // the upper bound of symbols.
+    return true;
   };
   if (thread_axis[0] == 'b') {
     if (!check_offset(thread_axis[0])) {
@@ -210,7 +206,7 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
   const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
   auto check_offset = [&](const char& c) -> bool {
-    auto extent = loop.As<ir::For>()->extent.as_int32();
+    auto extent = loop.As<ir::For>()->extent.as_int64();
     return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
   };
   if (thread_axis[0] == 'b') {

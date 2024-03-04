@@ -25,9 +25,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/pass/pass.h"
 
 namespace {
 
@@ -89,6 +89,10 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
           param_tensor->clear();
           paddle::framework::TensorCopySync(temp_tensor, place_, param_tensor);
           num_rewrites_++;
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "params_sync_among_devices_pass only support DenseTensor type of "
+              "parameter var."));
         }
       }
     }

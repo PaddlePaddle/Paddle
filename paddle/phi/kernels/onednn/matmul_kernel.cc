@@ -23,7 +23,6 @@ using dnnl::engine;
 using dnnl::inner_product_forward;
 using dnnl::memory;
 using dnnl::prop_kind;
-using phi::ReshapeToMatrix;
 
 namespace phi {
 

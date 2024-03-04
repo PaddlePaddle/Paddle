@@ -115,6 +115,12 @@ ir::Tensor BroadcastTo(
     const std::vector<int>& broadcast_axes,
     const std::string& out_name = cinn::common::UniqName("T_broadcast_to_out"));
 
+ir::Tensor BroadcastTo(
+    const ir::Tensor& A,
+    const std::vector<ir::Expr>& out_shape,
+    const std::vector<int>& broadcast_axes,
+    const std::string& out_name = cinn::common::UniqName("T_broadcast_to_out"));
+
 // This operator checks if all x and y satisfy the condition: |x - y| <= atol +
 // rtol * |y|
 ir::Tensor IsClose(

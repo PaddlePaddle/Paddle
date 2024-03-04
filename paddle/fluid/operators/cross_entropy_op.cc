@@ -252,7 +252,7 @@ CrossEntropy Operator.
 The input 'X' and 'Label' will first be logically flattened to 2-D matrixs.
 The matrix's second dimension(row length) is as same as the original last
 dimension, and the first dimension(column length) is the product of all other
-original dimensions. Then the softmax computation will take palce on each raw
+original dimensions. Then the softmax computation will take place on each raw
 of flattened matrixs.
 
 It supports both standard cross-entropy and soft-label cross-entropy loss
@@ -387,7 +387,7 @@ Hard-label CrossEntropy Operator.
 The input 'X' and 'Label' will first be logically flattened to 2-D matrixs.
 The matrix's second dimension(row length) is as same as the original last
 dimension, and the first dimension(column length) is the product of all other
-original dimensions. Then the softmax computation will take palce on each raw
+original dimensions. Then the softmax computation will take place on each raw
 of flattened matrixs.
 
 Only support hard label.

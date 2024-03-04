@@ -80,9 +80,9 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_x2 = np.random.rand(*shape).astype(np.float32)
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
-        tesnor_x1 = paddle.to_tensor(np_x1)
-        tesnor_x2 = paddle.to_tensor(np_x2)
-        y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = F.cosine_similarity(tensor_x1, tensor_x2, axis=axis, eps=eps)
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
@@ -97,9 +97,9 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_x2 = np.random.rand(*shape).astype(np.float32)
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
-        tesnor_x1 = paddle.to_tensor(np_x1)
-        tesnor_x2 = paddle.to_tensor(np_x2)
-        y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = F.cosine_similarity(tensor_x1, tensor_x2, axis=axis, eps=eps)
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
@@ -115,9 +115,9 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_x2 = np.random.rand(*shape2).astype(np.float32)
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
-        tesnor_x1 = paddle.to_tensor(np_x1)
-        tesnor_x2 = paddle.to_tensor(np_x2)
-        y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = F.cosine_similarity(tensor_x1, tensor_x2, axis=axis, eps=eps)
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
@@ -134,9 +134,9 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
         cos_sim_func = nn.CosineSimilarity(axis=axis, eps=eps)
-        tesnor_x1 = paddle.to_tensor(np_x1)
-        tesnor_x2 = paddle.to_tensor(np_x2)
-        y = cos_sim_func(tesnor_x1, tesnor_x2)
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = cos_sim_func(tensor_x1, tensor_x2)
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 

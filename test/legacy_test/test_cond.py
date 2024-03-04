@@ -711,7 +711,8 @@ class TestCondBackward(unittest.TestCase):
                     name='image', shape=[-1, 9], dtype='float32'
                 )
                 img.stop_gradient = False
-                img.persistable = True
+                if paddle.framework.in_pir_mode():
+                    img.persistable = True
                 label = paddle.static.data(
                     name='label', shape=[-1, 1], dtype='int64'
                 )
@@ -798,12 +799,13 @@ class TestCondBackward(unittest.TestCase):
         with paddle.static.scope_guard(paddle.static.Scope()):
             with paddle.static.program_guard(main_program, startup_program):
                 img = paddle.static.data(
-                    name='image', shape=[-1, 784], dtype='float32'
+                    name='image', shape=[16, 784], dtype='float32'
                 )
                 img.stop_gradient = False
-                img.persistable = True
+                if paddle.framework.in_pir_mode():
+                    img.persistable = True
                 label = paddle.static.data(
-                    name='label', shape=[-1, 1], dtype='int64'
+                    name='label', shape=[16, 1], dtype='int64'
                 )
                 i = paddle.static.data(name="i", shape=[1], dtype='int32')
                 loss = cond_func(i, img, label)
@@ -829,7 +831,7 @@ class TestCondBackward(unittest.TestCase):
                     fetch_list=[loss],
                 )
 
-    @test_with_pir_api
+    @compare_legacy_with_pt
     def test_cond_backward(self):
         paddle.enable_static()
 
@@ -940,6 +942,7 @@ class TestCondWithError(unittest.TestCase):
 
 
 class TestCondWithDict(unittest.TestCase):
+    @test_with_pir_api
     @compare_legacy_with_pt
     def test_input_with_dict(self):
         paddle.enable_static()
@@ -965,16 +968,29 @@ class TestCondWithDict(unittest.TestCase):
             y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
             pred = paddle.less_than(x=x, y=y, name=None)
             ret = paddle.static.nn.cond(pred, true_func, false_func)
-            self.assertEqual(
-                ret['1'].shape,
-                (3, -1),
-                f"The shape is not correct, expects (3, -1) but gets {ret['1'].shape}.",
-            )
-            self.assertEqual(
-                ret['2'].shape,
-                (-1, -1),
-                f"The shape is not correct, expects (-1, -1) but gets {ret['2'].shape}.",
-            )
+
+            if paddle.framework.in_pir_mode():
+                self.assertEqual(
+                    ret['1'].shape,
+                    [3, -1],
+                    f"The shape is not correct, expects [3, -1] but gets {ret['1'].shape}.",
+                )
+                self.assertEqual(
+                    ret['2'].shape,
+                    [-1, -1],
+                    f"The shape is not correct, expects [-1, -1] but gets {ret['2'].shape}.",
+                )
+            else:
+                self.assertEqual(
+                    ret['1'].shape,
+                    (3, -1),
+                    f"The shape is not correct, expects (3, -1) but gets {ret['1'].shape}.",
+                )
+                self.assertEqual(
+                    ret['2'].shape,
+                    (-1, -1),
+                    f"The shape is not correct, expects (-1, -1) but gets {ret['2'].shape}.",
+                )
 
 
 if __name__ == '__main__':

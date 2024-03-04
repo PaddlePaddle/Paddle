@@ -443,7 +443,7 @@ def _print_operator_stats(op_count_dict):
                 called = value.split(",")
             else:
                 raise ValueError(
-                    "Input {} is expected to be a list of str, but recieved {}.".format(
+                    "Input {} is expected to be a list of str, but received {}.".format(
                         value, type(value)
                     )
                 )
@@ -585,7 +585,7 @@ def compare_accuracy(
     Args:
         dump_path(str): The path of the running log, such as the log for execution using the float32 data type.
         another_dump_path(str): the path of another running log ,such as the log for execution using the float16 data type.
-        output_filename(str): the excel file nmae of compare output.
+        output_filename(str): the excel file name of compare output.
         loss_scale(float, optional): the loss_scale during the training phase. Default is 1.
         dump_all_tensors(bool, optional): dump all tensor, It is currently not support. Default is False.
 

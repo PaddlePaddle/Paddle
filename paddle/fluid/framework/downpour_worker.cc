@@ -116,7 +116,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
             << dest_table;
     copy_dense_tables_.emplace_back(src_table, dest_table);
   }
-  for (auto& m : copy_table_config_.table_denpendency_map()) {
+  for (auto& m : copy_table_config_.table_dependency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
       // currently only support one dependency
       for (auto& value : m.values()) {

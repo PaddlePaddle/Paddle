@@ -431,7 +431,7 @@ class QuantConfig:
 
     def details(self) -> str:
         r"""
-        Get the formated details of current config.
+        Get the formatted details of current config.
         """
         if self._model is None:
             return self.__str__()

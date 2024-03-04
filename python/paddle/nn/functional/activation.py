@@ -31,7 +31,7 @@ def celu(x, alpha=1.0, name=None):
     r"""
     celu activation.
 
-    Apply the following operation to each element of the input Tensor accroding to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
+    Apply the following operation to each element of the input Tensor according to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
 
     .. math::
 
@@ -1743,7 +1743,7 @@ def glu(x, axis=-1, name=None):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A Tensor with the same data type as x. The size of the given aixs is
+        A Tensor with the same data type as x. The size of the given axis is
         halved.
 
     Examples:

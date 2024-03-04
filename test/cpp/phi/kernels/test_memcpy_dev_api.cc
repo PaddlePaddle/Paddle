@@ -27,7 +27,6 @@
 namespace phi {
 namespace tests {
 
-namespace framework = paddle::framework;
 using DDim = phi::DDim;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

@@ -37,6 +37,7 @@ class TestSemiAutoParallelMutualLoadBetweenDynamicAndStatic(
     def __init__(self):
         self._ckpt_path = os.environ.get("ckpt_path")
         self._seed = os.environ.get("seed", 123)
+        self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
     def create_data_loader(self):
         images = np.random.rand(BATCH_SIZE, IMAGE_SIZE).astype('float32')
@@ -65,11 +66,13 @@ class TestSemiAutoParallelMutualLoadBetweenDynamicAndStatic(
     def run_dy2static(self, layer, opt, data_loader):
         # create loss
         loss_fn = nn.MSELoss()
-
-        # static training
-        dist_model, dist_loader = dist.to_static(
-            layer, data_loader, loss_fn, opt
+        dist_loader = dist.shard_dataloader(
+            dataloader=data_loader,
+            meshes=[self.mesh],
+            shard_dims=None,
         )
+        # static training
+        dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
         loss_list = []
         dist_model.train()
         for epoch in range(5):
@@ -86,18 +89,21 @@ class TestSemiAutoParallelMutualLoadBetweenDynamicAndStatic(
 
     def test_dygraph_save_static_load(self):
         paddle.disable_static()
-        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         # set seed to promise the same input for different tp rank
         self.set_random_seed(self._seed)
         data_loader = self.create_data_loader()
-
+        dist_loader = dist.shard_dataloader(
+            dataloader=data_loader,
+            meshes=[self.mesh],
+            shard_dims=None,
+        )
         dy_layer = dist.shard_layer(
-            DemoNet("dp_mp_hybrid_strategy"), mesh, self.shard_fn
+            DemoNet("dp_mp_hybrid_strategy"), self.mesh, self.shard_fn
         )
         dy_opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=dy_layer.parameters()
         )
-        dy_losses = self.run_dynamic(dy_layer, dy_opt, data_loader)
+        dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_loader)
         saved_dy_layer_state_dict = dy_layer.state_dict()
         ckpt_path = os.path.join(
             self._ckpt_path, "test_dygraph_save_static_load"
@@ -110,8 +116,8 @@ class TestSemiAutoParallelMutualLoadBetweenDynamicAndStatic(
         )
 
         loss_fn = nn.MSELoss()
-        dist_model, _ = dist.to_static(
-            dy_layer, data_loader, loss_fn, dy2static_opt
+        dist_model = dist.to_static(
+            dy_layer, dist_loader, loss_fn, dy2static_opt
         )
         need_load_state_dict = {}
         expected_state_dict = {}
@@ -149,13 +155,12 @@ class TestSemiAutoParallelMutualLoadBetweenDynamicAndStatic(
 
     def test_static_save_dynamic_load(self):
         paddle.disable_static()
-        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         # set seed to promise the same input for different tp rank
         self.set_random_seed(self._seed)
         data_loader = self.create_data_loader()
 
         dy_layer = dist.shard_layer(
-            DemoNet("dp_mp_hybrid_strategy"), mesh, self.shard_fn
+            DemoNet("dp_mp_hybrid_strategy"), self.mesh, self.shard_fn
         )
 
         dy2static_opt = paddle.optimizer.SGD(

@@ -27,11 +27,11 @@ template <typename T, typename Context>
 void ShadowFeedKernel(const Context& ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
-  ctx.template Alloc<T>(out);
   if (!x.initialized()) {
+    ctx.template Alloc<T>(out);
     return;
   }
-  if (x.place() == out->place()) {
+  if (x.place() == ctx.GetPlace()) {
     out->ShareDataWith(x);
     out->set_lod(x.lod());
   } else {

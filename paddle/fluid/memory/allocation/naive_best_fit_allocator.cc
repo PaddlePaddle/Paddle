@@ -38,9 +38,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     "To find this error in time, we use init_allocated_mem to indicate "
     "that initializing the allocated memory with a small value "
     "during unit testing.");
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PD_DECLARE_bool(benchmark);
 
 namespace paddle {
@@ -302,7 +302,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
     PADDLE_THROW(platform::errors::ResourceExhausted(
-        "Cannot allocate %s in GPU %d, avaliable %s, total %s, GpuMinChunkSize "
+        "Cannot allocate %s in GPU %d, available %s, total %s, GpuMinChunkSize "
         "%s, GpuMaxChunkSize %s, GPU memory used: %s.",
         string::HumanReadableSize(size),
         place.device,
@@ -503,7 +503,7 @@ void *Alloc<platform::CustomPlace>(const platform::CustomPlace &place,
     size_t avail, total;
     phi::DeviceManager::MemoryStats(place, &total, &avail);
     PADDLE_THROW(platform::errors::ResourceExhausted(
-        "Cannot allocate %s in %s:%d, avaliable %s, total %s, used "
+        "Cannot allocate %s in %s:%d, available %s, total %s, used "
         "%s. ",
         string::HumanReadableSize(size),
         place.GetDeviceType(),

@@ -89,6 +89,7 @@ if not defined TEST_INFERENCE set TEST_INFERENCE=ON
 
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
+set UPLOAD_TP_CODE=OFF
 
 set error_code=0
 type %cache_dir%\error_code.txt
@@ -111,6 +112,10 @@ if "%WITH_PYTHON%" == "ON" (
     where pip
     python -m pip install --upgrade pip
     python -m pip install -r %work_dir%\paddle\scripts\compile_requirements.txt
+    if !ERRORLEVEL! NEQ 0 (
+        echo pip install compile_requirements.txt failed!
+        exit /b 5
+    )
     python -m pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
@@ -353,9 +358,17 @@ set PreferredToolArchitecture=x64
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2
 set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%
 
+@ECHO ON
+if "%WITH_GPU%"=="ON" (
+    set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%
+    if "!cuda_version!"=="12.0" (
+        set "PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64;%PATH%"
+    )
+) 
+echo %PATH%
 rem CUDA_TOOLKIT_ROOT_DIR in cmake must use / rather than \
 set TENSORRT_ROOT=%TENSORRT_ROOT:\=/%
 set CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%
@@ -429,6 +442,11 @@ if !ERRORLEVEL! EQU 0 (
     )
 ) else (
     git submodule update --init --recursive
+    if !errorlevel! EQU 0 (
+        set UPLOAD_TP_CODE=ON
+    )
+)
+if "%UPLOAD_TP_CODE%"=="ON" (
     set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
     echo Uploading source code of third_party: checking bce ...
     if not exist %cache_dir%\bce-python-sdk-new (
@@ -470,32 +488,6 @@ echo %task_name%|findstr build >nul && (
 ) || (
     echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both.
 )
-
-if not exist %THIRD_PARTY_PATH% (
-    echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
-    pip install wget
-    if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
-    cd /d %THIRD_PARTY_HOME%
-    echo Getting third party: downloading ...
-    python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party/%sub_dir%/%md5%.tar.gz')" 2>nul
-    if !ERRORLEVEL! EQU 0 (
-        echo Getting third party: extracting ...
-        tar -xf %md5%.tar.gz
-        if !ERRORLEVEL! EQU 0 (
-            echo Get third party from bos successfully.
-        ) else (
-            echo Get third party failed, reason: extract failed, will build locally.
-        )
-        del %md5%.tar.gz
-    ) else (
-        echo Get third party failed, reason: download failed, will build locally.
-    )
-    if not exist %THIRD_PARTY_PATH% set UPLOAD_TP_FILE=ON
-    cd /d %work_dir%\%BUILD_DIR%
-) else (
-    echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
-)
-
 
 :cmake_impl
 cd /d %work_dir%\%BUILD_DIR%
@@ -621,40 +613,6 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
-if "%UPLOAD_TP_FILE%"=="ON" (
-    set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
-    echo Uploading third_party: checking bce ...
-    if not exist %cache_dir%\bce-python-sdk-new (
-        echo There is no bce in this PC, will install bce.
-        cd /d %cache_dir%
-        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
-        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
-        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
-    )
-    python -m pip install pycryptodome
-    python -m pip install bce-python-sdk==0.8.74
-    if !errorlevel! EQU 0 (
-        cd /d %THIRD_PARTY_HOME%
-        echo Uploading third_party: compressing ...
-        tar -zcf %md5%.tar.gz %md5%
-        if !errorlevel! EQU 0 (
-            echo Uploading third_party: uploading ...
-            python !BCE_FILE! %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
-            if !errorlevel! EQU 0 (
-                echo Upload third party %md5% to bos paddle-windows/third_party/%sub_dir% successfully.
-            ) else (
-                echo Failed upload third party to bos, reason: upload failed.
-            )
-        ) else (
-            echo Failed upload third party to bos, reason: compress failed.
-        )
-        del %md5%.tar.gz
-    ) else (
-        echo Failed upload third party to bos, reason: install bce failed.
-    )
-    cd /d %work_dir%\%BUILD_DIR%
-)
-
 echo Build Paddle successfully!
 echo 0 > %cache_dir%\error_code.txt
 type %cache_dir%\error_code.txt
@@ -737,7 +695,6 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
 set FLAGS_call_stack_level=2
-set FLAGS_set_to_1d=False
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin

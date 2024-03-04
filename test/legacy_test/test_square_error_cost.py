@@ -60,6 +60,7 @@ class TestSquareErrorCost(unittest.TestCase):
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         def test_invalid_input():
             input = [256, 3]

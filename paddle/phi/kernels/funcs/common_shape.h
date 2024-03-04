@@ -177,7 +177,7 @@ static inline std::vector<int64_t> MatrixGetBroadcastBatchPortion(
 
 // Just For Matrix OP, for example:
 // x's dim = [5, 3, 2, M, M] ; y's dim = [3, 1, M, N]
-// out shoule be [5, 3, 2, M, M] + [5, 3, 2, M, N], and [5, 3, 2] is
+// out should be [5, 3, 2, M, M] + [5, 3, 2, M, N], and [5, 3, 2] is
 // batch_size of matrix
 static inline std::tuple<std::vector<int64_t>, std::vector<int64_t>>
 MatrixGetBroadcastDims(const DenseTensor &x, const DenseTensor &y) {

@@ -34,6 +34,7 @@ from .fused_transformer import (
     fused_multi_transformer,
 )
 from .masked_multihead_attention import masked_multihead_attention
+from .swiglu import swiglu
 from .variable_length_memory_efficient_attention import (
     variable_length_memory_efficient_attention,
 )
@@ -54,4 +55,5 @@ __all__ = [
     "fused_layer_norm",
     "masked_multihead_attention",
     "block_multihead_attention",
+    "swiglu",
 ]

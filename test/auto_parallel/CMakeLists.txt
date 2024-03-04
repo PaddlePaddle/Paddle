@@ -120,9 +120,12 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   endif()
   py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
   set_tests_properties(test_reshard_r_to_p
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_reshard_x_to_r MODULES test_reshard_x_to_r)
   set_tests_properties(test_reshard_x_to_r
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_reshard_r_to_x MODULES test_reshard_r_to_x)
+  set_tests_properties(test_reshard_r_to_x
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_reshard_nd_mesh MODULES test_reshard_nd_mesh)
   set_tests_properties(test_reshard_nd_mesh
@@ -163,6 +166,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_single_strategy)
   set_tests_properties(test_semi_auto_parallel_single_strategy
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
+  py_test_modules(test_semi_auto_parallel_sharding_strategy MODULES
+                  test_semi_auto_parallel_sharding_strategy)
+  set_tests_properties(test_semi_auto_parallel_sharding_strategy
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_semi_auto_parallel_lazy_init MODULES
                   test_semi_auto_parallel_lazy_init)
   set_tests_properties(test_semi_auto_parallel_lazy_init

@@ -105,7 +105,7 @@ CONDITION_FUNC(elementwise_fuse_broadcast) {
   return true;
 }
 
-CONDITION_FUNC(honrizontal_elementwise_fuse_reduce) {
+CONDITION_FUNC(horizontal_elementwise_fuse_reduce) {
   std::shared_ptr<Graph::Group> ele_group, reduce_group;
   if (first->op_pattern_kind == framework::kReduction) {
     ele_group = second;

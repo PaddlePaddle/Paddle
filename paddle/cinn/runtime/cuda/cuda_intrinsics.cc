@@ -440,8 +440,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .SetRetType<void>()
       .AddInputType<int>()
       .AddInputType<int>()
-      .AddInputType<int32_t>()
-      .AddInputType<int32_t **>()
+      .AddInputType<int64_t>()
+      .AddInputType<int64_t **>()
       .End();
 
   using cinn::runtime::cuda::cinn_call_cuda_kernel;
@@ -457,6 +457,7 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .AddInputType<int>()     // block_x
       .AddInputType<int>()     // block_y
       .AddInputType<int>()     // block_z
+      .AddInputType<int>()     // shared_mem
       .AddInputType<void *>()  // stream
       .End();
 

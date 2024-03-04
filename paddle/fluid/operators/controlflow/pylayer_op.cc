@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/operators/controlflow/pylayer_op.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

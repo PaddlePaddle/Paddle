@@ -133,7 +133,7 @@ TEST(DeviceEvent, CPU) {
 
   // TODO(Aurelius84): All DeviceContext should has Record/Wait
   event.Record(context);
-  event.SetFininshed();
+  event.SetFinished();
   bool status = event.Query();
   ASSERT_EQ(status, true);
 

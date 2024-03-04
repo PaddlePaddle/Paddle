@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/adt/tree.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn::common {
 
@@ -32,7 +32,5 @@ using BroadcastTree = adt::Tree<BroadcastBranch, BroadcastLeaf>;
 BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves);
 
 std::string ToTxtString(const BroadcastTree&);
-
-std::ostream& operator<<(std::ostream& os, const BroadcastTree& tree);
 
 }  // namespace cinn::common

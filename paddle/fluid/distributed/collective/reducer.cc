@@ -13,20 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/reducer.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/core/flags.h"
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {
 
 static bool IsStreamSafeAllocator() {
-  return FLAGS_allocator_strategy == "auto_growth" &&
-         FLAGS_use_stream_safe_cuda_allocator;
+  return (FLAGS_allocator_strategy == "auto_growth" &&
+          FLAGS_use_stream_safe_cuda_allocator);
 }
 
 static Backend TransToBackend(platform::Place place) {
@@ -905,7 +905,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         grad_tensor.is_selected_rows(),
         true,
         platform::errors::PreconditionNotMet(
-            "The sparse parameter[%d][%s] must have a selectedrows gradient. "
+            "The sparse parameter[%d][%s] must have a selected rows gradient. "
             "Before forward pass, the parameter type is inferred to be "
             "SelectedRows, but after backward pass, its actual type becomes "
             "LodTensor. It is currently not supported by DataParallel. "

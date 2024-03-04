@@ -323,6 +323,24 @@ struct ReciprocalGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct ReciprocalGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<ComplexType<T>>(-1) *
+                   (out * out).unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 // 1st reverse grad
 // y = cos(x)
 // x --> y
@@ -380,7 +398,7 @@ struct CosDoubleGradFunctor : public BaseActivationFunctor<T> {
                   const DenseTensor* ddX,
                   DenseTensor* dX,
                   DenseTensor* ddOut) const {
-    auto* d = dev.eigen_device();
+    auto* device = dev.eigen_device();
     auto d2d1x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "d2d1x", "CosDoubleGrad"));
     auto x = EigenVector<T>::Flatten(
@@ -389,21 +407,17 @@ struct CosDoubleGradFunctor : public BaseActivationFunctor<T> {
     // calculate d2x first, so d2d1y can inplace d2d1x
     auto d2x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dX, "Output", "d2x", "CosDoubleGrad"));
-    if (ddOut) {
-      if (dOut) {
-        auto d1y = EigenVector<T>::Flatten(
-            GET_DATA_SAFELY(dOut, "Output", "d1y", "CosDoubleGrad"));
-        d2x.device(*d) = -d2d1x * x.unaryExpr(Cosine<T>()) * d1y;
-      } else {
-        d2x.device(*d) = x * static_cast<T>(0);
-      }
+    if (dX) {
+      auto d1y = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "d1y", "CosDoubleGrad"));
+      d2x.device(*device) = -d2d1x * x.unaryExpr(Cosine<T>()) * d1y;
     }
 
-    if (dX) {
+    if (ddOut) {
       // calculate d2d1y
       auto d2d1y = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "d2d1y", "CosDoubleGrad"));
-      d2d1y.device(*d) = -d2d1x * x.unaryExpr(Sine<T>());
+      d2d1y.device(*device) = -d2d1x * x.unaryExpr(Sine<T>());
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -699,6 +713,22 @@ struct SquareGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
     dx.device(d) = dout * static_cast<T>(2) * x;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct SquareGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * static_cast<ComplexType<T>>(2) * x.unaryExpr(Conj<T>());
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -3221,6 +3251,20 @@ struct CudaSquareGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaSquareGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> two = static_cast<ComplexType<T>>(2.0f);
+
+  // dx = dout * 2 * x
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return static_cast<ComplexType<T>>(dout * two * conj(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct CudaExpGradFunctor : public BaseActivationFunctor<T> {
   // dx = dout * out
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
@@ -3261,6 +3305,20 @@ struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
   // dx = -dout * out^2
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
     return -dout * out * out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaReciprocalGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // dx = -dout * out^2
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> out) const {
+    return -dout * conj(out * out);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -4948,6 +5006,40 @@ struct CudaCELUGradFunctor : public BaseActivationFunctor<T> {
 };
 
 #endif
+
+template <typename T>
+struct SwiGLUFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  HOSTDEVICE T operator()(T x, T y) const {
+    MPType mp_x = static_cast<MPType>(x);
+    MPType mp_y = static_cast<MPType>(y);
+    MPType one = static_cast<MPType>(1);
+    return static_cast<T>(mp_y * mp_x / (one + exp(-mp_x)));
+  }
+};
+
+template <typename T, bool HasDX = true, bool HasDY = true>
+struct SwiGLUGradFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  HOSTDEVICE void operator()(T x, T y, T dz, T* dx, T* dy) const {
+    MPType one = static_cast<MPType>(1);
+
+    MPType mp_x = static_cast<MPType>(x);
+    MPType mp_dz = static_cast<MPType>(dz);
+
+    MPType sigmoid = one / (one + exp(-mp_x));
+    MPType tmp = mp_x * sigmoid;
+    if (HasDX) {
+      MPType mp_y = static_cast<MPType>(y);
+      *dx = static_cast<T>(mp_dz * mp_y * sigmoid * (one + mp_x - tmp));
+    }
+    if (HasDY) {
+      *dy = static_cast<T>(mp_dz * tmp);
+    }
+  }
+};
 
 }  // namespace funcs
 }  // namespace phi

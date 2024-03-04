@@ -131,6 +131,26 @@ class ReduceBlockCreater {
         body = Block::Make({new_init_block_realize_, body});
         has_add_init_block = true;
       }
+      // Add If
+      if (original_loops_[i].As<For>()->body.As<IfThenElse>()) {
+        const IfThenElse* original_if =
+            original_loops_[i].As<For>()->body.As<IfThenElse>();
+        body = IfThenElse::Make(original_if->condition, body);
+      }
+      if (original_loops_[i].As<For>()->body.As<Block>() &&
+          original_loops_[i].As<For>()->body.As<Block>()->stmts.size() == 1 &&
+          original_loops_[i]
+              .As<For>()
+              ->body.As<Block>()
+              ->stmts[0]
+              .As<IfThenElse>()) {
+        const IfThenElse* original_if = original_loops_[i]
+                                            .As<For>()
+                                            ->body.As<Block>()
+                                            ->stmts[0]
+                                            .As<IfThenElse>();
+        body = IfThenElse::Make(original_if->condition, body);
+      }
       // Add loops
       Var loop_var = ir_utils::IRCopy(original_loops_[i].As<For>()->loop_var);
       Expr min = ir_utils::IRCopy(original_loops_[i].As<For>()->min);

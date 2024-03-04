@@ -513,7 +513,7 @@ std::string FindOrdinaryParent(
 
 // When TracerOption is KDefault, OpDetail will be recorded but only default
 // profile result will be printed.
-// GpuMemcpy should be printed in kDefault setting, however it offten occurs
+// GpuMemcpy should be printed in kDefault setting, however it often occurs
 // during 'compute' or 'prepare data' process, so the elements of sub_child_map
 // need to be changed before being inserted into child_map. for instance:
 // it->first: OpType/compute => OpType

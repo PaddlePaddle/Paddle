@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/inference/analysis/argument.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace inference {

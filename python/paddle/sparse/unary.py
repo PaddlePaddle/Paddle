@@ -953,7 +953,7 @@ def slice(x, axes, starts, ends, name=None):
     ``starts`` or ``ends`` such as :math:`-i`, it represents the reverse position of
     the axis :math:`i-1` (here 0 is the initial position).
     If the value passed to ``starts`` or ``ends`` is greater than the number of elements
-    in the dimenstion (n), it represents n.
+    in the dimension (n), it represents n.
     For slicing to the end of a dimension with unknown size, it is recommended to pass
     in INT_MAX. The size of ``axes`` must be equal to ``starts`` and ``ends``.
 
@@ -1039,7 +1039,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[N, M]`,
-            N and M can be arbitraty positive number.
+            N and M can be arbitrary positive number.
             The data type of x should be float32 or float64.
         q (int, optional): a slightly overestimated rank of :math:`X`.
             Default value is :math:`q=min(6,N,M)`.

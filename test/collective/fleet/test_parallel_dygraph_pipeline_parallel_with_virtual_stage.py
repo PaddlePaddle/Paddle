@@ -14,22 +14,24 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestHybridPipeParallelWithVirtualStage(TestMultipleGpus):
+class TestHybridPipeParallelWithVirtualStage(TestMultipleAccelerators):
     def test_hybrid_parallel_pp_layer_with_virtual_stage(self):
-        # self.run_mnist_2gpu('hybrid_parallel_pp_layer_with_virtual_stage.py')
+        # self.run_mnist_2accelerators('hybrid_parallel_pp_layer_with_virtual_stage.py')
         pass
 
     def test_hybrid_parallel_pp_transformer_with_virtual_stage(self):
-        # self.run_mnist_2gpu(
+        # self.run_mnist_2accelerators(
         #    'hybrid_parallel_pp_transformer_with_virtual_stage.py'
         # )
         pass
 
     def test_hybrid_parallel_save_load_with_virtual_stage(self):
-        # self.run_mnist_2gpu(
+        # self.run_mnist_2accelerators(
         #    'hybrid_parallel_pp_save_load_with_virtual_stage.py'
         # )
         pass

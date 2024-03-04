@@ -25,7 +25,7 @@ class SimpleFCLayer(paddle.nn.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
         super().__init__()
         self._linear = paddle.nn.Linear(feature_size, fc_size)
-        self._offset = base.dygraph.to_variable(
+        self._offset = paddle.to_tensor(
             np.random.random((batch_size, fc_size)).astype('float32')
         )
 
@@ -55,7 +55,7 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
             }
 
             for _ in range(10):
-                in_x = base.dygraph.to_variable(
+                in_x = paddle.to_tensor(
                     np.random.random((batch_size, feature_size)).astype(
                         'float32'
                     )
