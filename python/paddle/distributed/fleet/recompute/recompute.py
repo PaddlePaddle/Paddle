@@ -517,6 +517,9 @@ def recompute(function, *args, **kwargs):
             recompute as static_auto_recompute,
         )
 
+        # Remove it when static_auto_recompute supports use_reentrant.
+        kwargs.pop('use_reentrant')
+
         return static_auto_recompute(function)(*args, **kwargs)
 
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
