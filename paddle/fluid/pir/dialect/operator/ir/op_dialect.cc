@@ -159,6 +159,103 @@ struct ShadowOutputOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct SplitOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    VLOG(0) << "InferSymbolicShape of SplitOp!";
+    // x
+    IR_ENFORCE(!op->operand_source(0).data().has_value(),
+               "Currently InferSymbolicShape of SplitOp only support "
+               "input without value.");
+    auto x_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+    std::vector<symbol::DimExpr> x_dims_sym = x_shape_or_data.shape();
+
+    // axis
+    CHECK(op->operand_source(2).defining_op()->isa<paddle::dialect::FullOp>());
+
+    int64_t axis = op->operand_source(2)
+                       .defining_op<paddle::dialect::FullOp>()
+                       .attributes()
+                       .at("value")
+                       .dyn_cast<paddle::dialect::ScalarAttribute>()
+                       .data()
+                       .to<int64_t>();
+
+    // sections or num
+    if (op->operand_source(1).defining_op()->isa<paddle::dialect::FullOp>()) {
+      // num
+      VLOG(0) << "Num!";
+      int64_t num = op->operand_source(1)
+                        .defining_op<paddle::dialect::FullOp>()
+                        .attributes()
+                        .at("value")
+                        .dyn_cast<paddle::dialect::ScalarAttribute>()
+                        .data()
+                        .to<int64_t>();
+      x_dims_sym[axis] = x_dims_sym[axis] / num;
+
+      // all the result have the same shape
+      for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
+        shape_analysis->SetShapeOrDataForValue(
+            op->result(rst_idx),
+            symbol::ShapeOrDataDimExprs{
+                symbol::TensorShapeOrDataDimExprs(x_dims_sym)});
+      }
+    } else {
+      // sections
+      VLOG(0) << "Sections!";
+      auto sections_shape_or_data =
+          shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+      std::vector<symbol::DimExpr> sections_sym;
+      if (sections_shape_or_data.data().has_value()) {
+        sections_sym = sections_shape_or_data.data().value();
+      } else {
+        sections_sym = sections_shape_or_data.shape();
+      }
+
+      const auto& GetSum = [&](const auto& dim_exprs, const auto& Filter) {
+        symbol::DimExpr sum{1};
+        for (const auto& dim_expr : dim_exprs) {
+          if (Filter(dim_expr)) {
+            sum = sum + dim_expr;
+          }
+        }
+        return product;
+      };
+
+      const auto& IsNotMinusOne = [&](const symbol::DimExpr& dim_expr) {
+        if (dim_expr.isa<int64_t>()) {
+          return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
+        }
+        return true;
+      };
+
+      const auto& sum_exclude_minus_one =
+          GetSum(operand_shape_or_data.data().value(), IsNotMinusOne);
+
+      symbol::DimExpr x_ori_dim_on_axis = x_dims_sym[axis];
+
+      for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
+        auto section_sym = sections_sym[rst_idx];
+        x_dims_sym[axis] = IsNotMinusOne(section_sym)
+                               ? section_sym
+                               : x_ori_dim_on_axis - sum_exclude_minus_one;
+
+        shape_analysis->SetShapeOrDataForValue(
+            op->result(rst_idx),
+            symbol::ShapeOrDataDimExprs{
+                symbol::TensorShapeOrDataDimExprs(x_dims_sym)});
+      }
+    }
+    return true;
+  }
+
+  SplitOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 struct YieldOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
@@ -195,6 +292,11 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
       std::move(pir::InterfaceValue::Get<
                 InferSymbolicShapeInterface,
                 ShadowOutputOpInferSymbolicShapeInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::SplitOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               SplitOpInferSymbolicShapeInterfaceModel>()));
 
   info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
   info.AttachInterface(std::move(
