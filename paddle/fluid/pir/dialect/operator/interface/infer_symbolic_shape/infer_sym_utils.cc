@@ -35,18 +35,18 @@ bool ReduceInferDim(pir::Operation *op,
   auto x = op->operand_source(0);
   int x_rank = x.type().dyn_cast<pir::DenseTensorType>().dims().size();
 
-  const std::vector<int64_t> formated_axis = [&] {
-    std::vector<int64_t> formated_axis = axis;
+  const std::vector<int64_t> formatted_axis = [&] {
+    std::vector<int64_t> formatted_axis = axis;
     for (size_t i = 0; i < axis.size(); ++i) {
       if (axis[i] < 0) {
-        formated_axis[i] = axis[i] + x_rank;
+        formatted_axis[i] = axis[i] + x_rank;
       }
     }
-    return formated_axis;
+    return formatted_axis;
   }();
 
   bool full_dim = true;
-  std::set<int64_t> dims_set(formated_axis.begin(), formated_axis.end());
+  std::set<int64_t> dims_set(formatted_axis.begin(), formatted_axis.end());
   for (int64_t i = 0; i < x_rank; ++i) {
     if (dims_set.find(i) == dims_set.end()) {
       full_dim = false;
