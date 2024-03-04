@@ -79,12 +79,12 @@ class TestMultiAdd(unittest.TestCase):
 
     def test_eval(self):
         dy_outs = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_outs = self.eval(use_cinn=True)
-            for dy_out, cinn_out in zip(dy_outs, cinn_outs):
-                np.testing.assert_allclose(
-                    cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-                )
+        # if utils.unittest_use_cinn():
+        cinn_outs = self.eval(use_cinn=True)
+        for dy_out, cinn_out in zip(dy_outs, cinn_outs):
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+            )
 
 
 if __name__ == '__main__':

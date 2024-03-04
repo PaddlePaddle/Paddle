@@ -119,6 +119,7 @@ void ApplyBuildGroupOpPass(
   if (HasDynamicShape(*program)) {
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
   }
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
