@@ -33,6 +33,7 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_scatter_rule MODULES test_scatter_rule)
   py_test_modules(test_gather_rule MODULES test_gather_rule)
   py_test_modules(test_cumsum_rule MODULES test_cumsum_rule)
+  py_test_modules(test_argmax_rule MODULES test_argmax_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
