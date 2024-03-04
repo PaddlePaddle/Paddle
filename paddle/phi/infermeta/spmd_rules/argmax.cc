@@ -14,10 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/argmax.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
-#include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
@@ -29,19 +30,38 @@ SpmdInfo ArgMaxInferSpmdBase(const DistMetaTensor& x,
                              bool keepdims,
                              bool flatten) {
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
-  std::vector<int64_t> axis_vec;
+  axis = axis < 0 ? x_ndim + axis : axis;
 
+  std::vector<int64_t> x_dims_mapping_dst(x_dims_mapping_src);
+  std::vector<int64_t> out_dims_mapping;
   if (flatten) {
-    axis_vec.reserve(x_ndim);
-    for (int i = 0; i < x_ndim; ++i) {
-      axis_vec.push_back(i);
+    x_dims_mapping_dst.assign(x_ndim, -1);
+    if (keepdims) {
+      out_dims_mapping.assign(x_ndim, -1);
+    } else {
+      out_dims_mapping.push_back(-1);
     }
   } else {
-    axis = axis < 0 ? x_ndim + axis : axis;
-    axis_vec.push_back(axis);
+    x_dims_mapping_dst[axis] = -1;
+    out_dims_mapping.assign(x_dims_mapping_dst.begin(),
+                            x_dims_mapping_dst.end());
+    if (!keepdims) {
+      out_dims_mapping.erase(out_dims_mapping.begin() + axis);
+    }
   }
 
-  return ReductionInferSpmd(x, axis_vec, keepdims);
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  out_dist_attr.set_dims_mapping(out_dims_mapping);
+
+  VLOG(4) << "ArgMaxInferSpmd:";
+  VLOG(4) << "x:";
+  VLOG(4) << "src_dist_attr: [" << x_dist_attr_src.to_string() << "] "
+          << "dst_dist_attr: [" << x_dist_attr_dst.to_string() << "]";
+  VLOG(4) << "out:";
+  VLOG(4) << "dist_attr: [" << out_dist_attr.to_string() << "]" << std::endl;
+  return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo ArgMaxInferSpmdReverseBase(const DistMetaTensor& x,
@@ -50,19 +70,41 @@ SpmdInfo ArgMaxInferSpmdReverseBase(const DistMetaTensor& x,
                                     bool keepdims,
                                     bool flatten) {
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
-  std::vector<int64_t> axis_vec;
+  EXTRACT_SHAPE_AND_DIST_ATTR(out);
+  axis = axis < 0 ? x_ndim + axis : axis;
+  std::vector<int64_t> x_dims_mapping_dst;
+  std::vector<int64_t> out_dims_mapping_dst(out_dims_mapping_src);
 
   if (flatten) {
-    axis_vec.reserve(x_ndim);
-    for (int i = 0; i < x_ndim; ++i) {
-      axis_vec.push_back(i);
+    if (keepdims) {
+      out_dims_mapping_dst.assign(x_ndim, -1);
+    } else {
+      out_dims_mapping_dst.push_back(-1);
     }
+    x_dims_mapping_dst.assign(x_ndim, -1);
   } else {
-    axis = axis < 0 ? x_ndim + axis : axis;
-    axis_vec.push_back(axis);
+    x_dims_mapping_dst.assign(out_dims_mapping_dst.begin(),
+                              out_dims_mapping_dst.end());
+    if (!keepdims) {
+      x_dims_mapping_dst.insert(x_dims_mapping_dst.begin() + axis, -1);
+    }
   }
 
-  return ReductionInferSpmdReverse(x, out, axis_vec, keepdims);
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
+  TensorDistAttr out_dist_attr_dst =
+      CopyTensorDistAttrForOutput(out_dist_attr_src);
+  out_dist_attr_dst.set_dims_mapping(out_dims_mapping_dst);
+
+  VLOG(4) << "ArgMaxInferSpmdReverse:";
+  VLOG(4) << "out:";
+  VLOG(4) << "src_dist_attr: [" << out_dist_attr_src.to_string() << "] "
+          << "dst_dist_attr: [" << out_dist_attr_dst.to_string() << "]";
+  VLOG(4) << "x:";
+  VLOG(4) << "src_dist_attr: [" << x_dist_attr_src.to_string() << "] "
+          << "dst_dist_attr: [" << x_dist_attr_dst.to_string() << "]"
+          << std::endl;
+  return {{x_dist_attr_dst}, {out_dist_attr_dst}};
 }
 
 SpmdInfo ArgMaxInferSpmdDynamic(const DistMetaTensor& x,
