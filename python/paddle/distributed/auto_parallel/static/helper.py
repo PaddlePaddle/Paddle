@@ -347,6 +347,8 @@ class ProgramHelper:
             return
 
         is_comm = False
+        # NOTE(zhengzhonghui): concrete_program.parameters is unordered, it must be sorted, because The param reshard will hang if the calling order of different ranks is not the same.
+        self.concrete_program.parameters.sort(key=lambda x: x.name)
         for param in self.concrete_program.parameters:
             if param.is_dist():
                 serial_main_program = self.concrete_program.main_program
