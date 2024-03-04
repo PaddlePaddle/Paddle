@@ -1274,6 +1274,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_with_interleaved_{false};
   bool trt_mark_output_{false};
   bool trt_forbid_dynamic_op_{false};
+
   std::vector<std::string> trt_output_tensor_names_{};
   std::vector<std::string> trt_exclude_var_names_{};
   std::string tensorrt_transformer_posid_{""};

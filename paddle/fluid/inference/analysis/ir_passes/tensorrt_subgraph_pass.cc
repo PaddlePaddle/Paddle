@@ -160,6 +160,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
              trt_disabled_ops.end(),
              node->Op()->Type()) != trt_disabled_ops.end()) {
       VLOG(3) << node->Op()->Type().c_str()
+
               << " is diabled by config in TensorRT";
       return false;
     }

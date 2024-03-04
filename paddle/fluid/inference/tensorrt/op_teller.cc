@@ -105,7 +105,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (forbid_dynamic_op_enter_into_trt) {
-      LOG(INFO) << "forbid_dynamic_op_enter_into_trt is open";
+      VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
       auto* block = desc.Block();
       auto inputs = desc.Inputs();
       for (auto iter : inputs) {
@@ -3248,7 +3248,7 @@ struct GenericPluginTeller : public Teller {
     }
 
     if (forbid_dynamic_op_enter_into_trt) {
-      LOG(INFO) << "forbid_dynamic_op_enter_into_trt is open";
+      VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
       auto* block = desc.Block();
       auto inputs = desc.Inputs();
       for (auto iter : inputs) {
@@ -3364,9 +3364,8 @@ struct CustomPluginTeller : public Teller {
       return false;
     }
 
-
     if (forbid_dynamic_op_enter_into_trt) {
-      LOG(INFO) << "forbid_dynamic_op_enter_into_trt is open";
+      VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
       auto* block = desc.Block();
       auto inputs = desc.Inputs();
       for (auto iter : inputs) {
@@ -3437,7 +3436,7 @@ struct CustomGenericPluginTeller : public Teller {
     }
 
     if (forbid_dynamic_op_enter_into_trt) {
-      LOG(INFO) << "forbid_dynamic_op_enter_into_trt is open";
+      VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
       auto* block = desc.Block();
       auto inputs = desc.Inputs();
       for (auto iter : inputs) {

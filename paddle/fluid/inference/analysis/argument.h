@@ -251,6 +251,7 @@ struct Argument {
                       TRTExcludeVarNames,
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(trt_forbid_dynamic_op, TRTForbidDynamicOp, bool);
+
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
                       std::vector<std::string>);

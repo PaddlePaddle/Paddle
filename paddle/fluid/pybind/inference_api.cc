@@ -926,6 +926,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::EnableTunedTensorRtDynamicShape,
            py::arg("shape_range_info_path") = "",
+
            py::arg("allow_build_at_runtime") = true)
       .def("tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::tuned_tensorrt_dynamic_shape)
