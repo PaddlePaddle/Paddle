@@ -268,6 +268,9 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
             time_major=True,
         )
 
+        self.check_placements(dist_out_q, [dist.Shard(0)])
+        self.check_placements(dist_out_k, [dist.Shard(0)])
+
         self.check_tensor_eq(out_q, dist_out_q)
         self.check_tensor_eq(out_k, dist_out_k)
 
