@@ -1239,7 +1239,7 @@ def top_p_sampling(
     topp_seed=None,
     seed=-1,
     k=1,
-    mode="truncate",
+    mode="truncated",
     return_top=False,
     name=None,
 ):
@@ -1256,7 +1256,8 @@ def top_p_sampling(
             used to specify the random seed for each query.
         seed(int, optional): the random seed. Default is -1,
         k(int): the number of top_k scores/ids to be returned. Default is 1.
-        mode(str): The mode to choose sampling strategy. Default is `truncate`.
+        mode(str): The mode to choose sampling strategy. If the mode is `truncated`, sampling will truncate the probability at top_p_value.
+            If the mode is `non-truncated`, it will not be truncated. Default is `truncated`.
         return_top(bool): Whether to return the top_k scores and ids. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`.
             Generally, no setting is required. Default: None.

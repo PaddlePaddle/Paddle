@@ -467,20 +467,20 @@ template <typename T,
           int TopPBeamTopK,
           int BlockSize,
           bool INFER_SEEDS>
-__global__ void KeMatrixTopPBeamTopKFt(const T* src,
-                                       const T* threshold,
-                                       T* top_ps,
-                                       int64_t* out_id,  // topk id
-                                       T* out_val,       // topk val
-                                       int64_t* topk_ids,
-                                       T* topk_scores,
-                                       int vocab_size,
-                                       const int64_t* seed,
-                                       const uint64_t seed_num,
-                                       const uint64_t seed_offset,
-                                       int* count_iter,
-                                       int* count_iter_begin,
-                                       const int k) {
+__global__ void KeMatrixTopPBeamTopKTruncated(const T* src,
+                                              const T* threshold,
+                                              T* top_ps,
+                                              int64_t* out_id,  // topk id
+                                              T* out_val,       // topk val
+                                              int64_t* topk_ids,
+                                              T* topk_scores,
+                                              int vocab_size,
+                                              const int64_t* seed,
+                                              const uint64_t seed_num,
+                                              const uint64_t seed_offset,
+                                              int* count_iter,
+                                              int* count_iter_begin,
+                                              const int k) {
   const int tid = threadIdx.x;
   const int wid = tid / 32;
   const int lane = tid % 32;
@@ -637,15 +637,15 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
                                   const int bs,
                                   const std::string& mode) {
   int BlockSize = GetBlockSize(vocab_size);
-  if (mode == "truncate") {
+  if (mode == "truncated") {
     if (seed) {
       switch (BlockSize) {
         FIXED_BLOCK_DIM(
-            KeMatrixTopPBeamTopKFt<T,
-                                   TopKMaxLength,
-                                   TopPBeamTopK,
-                                   kBlockDim,
-                                   true>
+            KeMatrixTopPBeamTopKTruncated<T,
+                                          TopKMaxLength,
+                                          TopPBeamTopK,
+                                          kBlockDim,
+                                          true>
             <<<bs, kBlockDim, 0, dev_ctx.stream()>>>(src,
                                                      threshold,
                                                      top_ps,
@@ -667,11 +667,11 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
     } else {
       switch (BlockSize) {
         FIXED_BLOCK_DIM(
-            KeMatrixTopPBeamTopKFt<T,
-                                   TopKMaxLength,
-                                   TopPBeamTopK,
-                                   kBlockDim,
-                                   false>
+            KeMatrixTopPBeamTopKTruncated<T,
+                                          TopKMaxLength,
+                                          TopPBeamTopK,
+                                          kBlockDim,
+                                          false>
             <<<bs, kBlockDim, 0, dev_ctx.stream()>>>(src,
                                                      threshold,
                                                      top_ps,
@@ -923,19 +923,19 @@ __global__ void topp_sampling(T* sorted_probs,
 }
 
 template <typename T, int BLOCK_SIZE, bool INFER_SEEDS>
-__global__ void topp_sampling_ft(T* sorted_probs,
-                                 int64_t* sorted_id,
-                                 T* out_val,
-                                 int64_t* out_id,
-                                 const T* top_ps,
-                                 const T* threshold,
-                                 const int64_t* seed,
-                                 const uint64_t seed_num,
-                                 const uint64_t seed_offset,
-                                 const int p_num,
-                                 const int vocab_size,
-                                 int* count_iter,
-                                 int* count_iter_begin) {
+__global__ void topp_sampling_truncated(T* sorted_probs,
+                                        int64_t* sorted_id,
+                                        T* out_val,
+                                        int64_t* out_id,
+                                        const T* top_ps,
+                                        const T* threshold,
+                                        const int64_t* seed,
+                                        const uint64_t seed_num,
+                                        const uint64_t seed_offset,
+                                        const int p_num,
+                                        const int vocab_size,
+                                        int* count_iter,
+                                        int* count_iter_begin) {
   __shared__ int stop_shared;
   __shared__ float rand_p;
   const int tid = threadIdx.x;
@@ -1115,11 +1115,11 @@ void DispatchTopPSampling(const Context& dev_ctx,
                           int* count_iter_begin,
                           const std::string& mode) {
   int BlockSize = GetBlockSize(vocab_size);
-  if (mode == "truncate") {
+  if (mode == "truncated") {
     if (seed) {
       switch (BlockSize) {
         FIXED_BLOCK_DIM(
-            topp_sampling_ft<T, kBlockDim, true>
+            topp_sampling_truncated<T, kBlockDim, true>
             <<<bs, kBlockDim, 0, dev_ctx.stream()>>>(sorted_probs,
                                                      sorted_id,
                                                      out_val,
@@ -1140,7 +1140,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
     } else {
       switch (BlockSize) {
         FIXED_BLOCK_DIM(
-            topp_sampling_ft<T, kBlockDim, false>
+            topp_sampling_truncated<T, kBlockDim, false>
             <<<bs, kBlockDim, 0, dev_ctx.stream()>>>(sorted_probs,
                                                      sorted_id,
                                                      out_val,

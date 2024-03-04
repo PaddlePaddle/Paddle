@@ -4833,6 +4833,9 @@ void TopPSamplingInferMeta(const MetaTensor& x,
                         "But received x_dims[0] = %d and ps_dims[0] = %d.",
                         x_dims[0],
                         ps_dims[0]));
+  PADDLE_ENFORCE(
+      mode == "truncated" || mode == "non-truncated",
+      errors::InvalidArgument("mode must be 'truncated' or 'non-truncated'."));
 
   ids->set_dims(phi::make_ddim({bsz, 1}));
   ids->set_dtype(DataType::INT64);
