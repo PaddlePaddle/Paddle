@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import platform
 import site
 import sys
-import os
 import warnings
-import platform
 
 has_paddle_dy_lib = False
 
@@ -29,6 +29,7 @@ current_path = os.path.abspath(os.path.dirname(__file__))
 if os.path.exists(current_path + os.sep + dy_lib_name + '.' + dy_lib_suffix):
     has_paddle_dy_lib = True
 
+
 try:
     if os.name == 'nt':
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
@@ -40,18 +41,16 @@ try:
         # Note: from python3.8, PATH will not take effect
         # https://github.com/python/cpython/pull/12302
         # Use add_dll_directory to specify dll resolution path
-        if sys.version_info[:2] >= (3, 8):
-            os.add_dll_directory(third_lib_path)
+        os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+            f"""NOTE: You may need to run \"set PATH={executable_path};%PATH%\"
         if you encounters \"DLL load failed\" errors. If you have python
-        installed in other directory, replace \"%s\" with your own
-        directory. The original error is: \n %s"""
-            % (executable_path, executable_path, str(e))
+        installed in other directory, replace \"{executable_path}\" with your own
+        directory. The original error is: \n {str(e)}"""
         )
     else:
         raise ImportError(
@@ -197,7 +196,7 @@ def run_shell_command(cmd):
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
         return run_shell_command(
-            "ldd %s|grep %s|awk '{print $3}'" % (core_so, dso_name)
+            f"ldd {core_so}|grep {dso_name}|awk '{{print $3}}'"
         )
     else:
         return None
@@ -210,7 +209,7 @@ def load_dso(dso_absolute_path):
 
             cdll.LoadLibrary(dso_absolute_path)
         except:
-            warnings.warn("Load {} failed".format(dso_absolute_path))
+            warnings.warn(f"Load {dso_absolute_path} failed")
 
 
 def pre_load(dso_name):
@@ -237,8 +236,8 @@ def less_than_ver(a, b):
     if a is None or b is None:
         return False
 
-    import re
     import operator
+    import re
 
     def to_list(s):
         s = re.sub(r'(\.0+)+$', '', s)
@@ -250,7 +249,7 @@ def less_than_ver(a, b):
 # NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22,
 # the error message of which is "dlopen: cannot load any more object with static TLS".
 # This happens when:
-# (1) the number of dynamic shared librarys (DSO) loaded > 14,
+# (1) the number of dynamic shared libraries (DSO) loaded > 14,
 # (2) after that, load a dynamic shared library (DSO) with static TLS.
 # For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
 # So, here is a tricky way to solve the problem by pre load 'libgomp' before 'libpaddle.so'.
@@ -278,7 +277,7 @@ try:
     # assign tensor alias
     libpaddle.LoDTensor = libpaddle.Tensor
 
-    from .libpaddle import *
+    from .libpaddle import *  # noqa: F403
     from .libpaddle import (  # noqa: F401
         __doc__,
         __file__,
@@ -287,70 +286,79 @@ try:
         __unittest_throw_exception__,
         _append_python_callable_object_and_return_id,
         _cleanup,
-        _Scope,
-        _get_use_default_grad_op_desc_maker_ops,
-        _get_all_register_op_kernels,
-        _get_registered_phi_kernels,
-        _is_program_version_supported,
-        _set_eager_deletion_mode,
-        _get_eager_deletion_vars,
-        _set_fuse_parameter_group_size,
-        _set_fuse_parameter_memory_size,
-        _is_dygraph_debug_enabled,
-        _dygraph_debug_level,
-        _switch_tracer,
-        _set_paddle_lib_path,
         _create_loaded_parameter,
         _cuda_synchronize,
-        _test_enforce_gpu_success,
-        _is_compiled_with_heterps,
-        _promote_types_if_complex_exists,
-        _set_cached_executor_build_strategy,
         _device_synchronize,
-        _xpu_device_synchronize,
+        _dygraph_debug_level,
+        _get_all_register_op_kernels,
+        _get_amp_attrs,
+        _get_amp_op_list,
         _get_current_stream,
+        _get_eager_deletion_vars,
+        _get_phi_kernel_name,
+        _get_registered_phi_kernels,
+        _get_use_default_grad_op_desc_maker_ops,
+        _is_compiled_with_heterps,
+        _is_dygraph_debug_enabled,
+        _is_program_version_supported,
         _Profiler,
         _ProfilerResult,
+        _promote_types_if_complex_exists,
         _RecordEvent,
+        _Scope,
+        _set_amp_op_list,
+        _set_cached_executor_build_strategy,
         _set_current_stream,
-        _get_phi_kernel_name,
+        _set_eager_deletion_mode,
+        _set_fuse_parameter_group_size,
+        _set_fuse_parameter_memory_size,
+        _set_paddle_lib_path,
+        _switch_tracer,
+        _test_enforce_gpu_success,
+        _xpu_device_synchronize,
+    )
+
+    # isort: off
+
+    # custom device
+    from .libpaddle import (  # noqa: F401
+        CustomDeviceEvent,
+        CustomDeviceStream,
+        _get_current_custom_device_stream,
+        _set_current_custom_device_stream,
+        _synchronize_custom_device,
     )
 
     # prim controller flags
     from .libpaddle import (  # noqa: F401
-        __set_bwd_prim_enabled,
-        _is_bwd_prim_enabled,
-        __set_fwd_prim_enabled,
-        _is_fwd_prim_enabled,
         __set_all_prim_enabled,
-        _is_eager_prim_enabled,
+        __set_bwd_prim_enabled,
         __set_eager_prim_enabled,
-        _set_prim_target_grad_name,
+        __set_fwd_prim_enabled,
         _add_skip_comp_ops,
-        _set_bwd_prim_blacklist,
+        _is_bwd_prim_enabled,
+        _is_eager_prim_enabled,
+        _is_fwd_prim_enabled,
         _remove_skip_comp_ops,
+        _set_bwd_prim_blacklist,
+        _set_prim_target_grad_name,
     )
 
-    # custom devivce
-    from .libpaddle import (  # noqa: F401
-        _get_current_custom_device_stream,
-        _set_current_custom_device_stream,
-        _synchronize_custom_device,
-        CustomDeviceStream,
-        CustomDeviceEvent,
-    )
+    # type promotion
+    from .libpaddle import need_type_promotion, get_promote_dtype  # noqa: F401
 
+    # isort: on
     if sys.platform != 'win32':
         from .libpaddle import (  # noqa: F401
-            _set_process_pids,
-            _erase_process_pids,
-            _set_process_signal_handler,
-            _throw_error_if_process_failed,
-            _convert_to_tensor_list,
             _array_to_share_memory_tensor,
             _cleanup_mmap_fds,
+            _convert_to_tensor_list,
+            _erase_process_pids,
             _remove_tensor_list_mmap_fds,
             _set_max_memory_map_allocation_pool_size,
+            _set_process_pids,
+            _set_process_signal_handler,
+            _throw_error_if_process_failed,
         )
 
     # CINN
@@ -475,7 +483,7 @@ def _test_use_sync(value):
     __sync_stat_with_flag(value)
 
 
-# ops in forward_blacklisk will not be replaced by composite ops.
+# ops in forward_blacklist will not be replaced by composite ops.
 prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
 
 
@@ -501,13 +509,42 @@ ops_contain_none = {
 }
 
 
+# some intermediate outputs like xshape will no longer used after decomp, but return none to keep output num the same as origin op
+# key is the name of op, and value is the index of output in op.outputs
+decomp_ops_contain_unused_output = {
+    "pd_op.squeeze": [1],
+    "pd_op.unsqueeze": [1],
+    "pd_op.batch_norm": [5],
+}
+
+
+# This api is used for development for dynamic shape in prim, and will be removed in future.
+def _enable_prim_skip_dynamic_shape():
+    flag = os.getenv("FLAGS_prim_skip_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+def _enable_prim_dynamic_shape():
+    flag = os.getenv("FLAGS_prim_enable_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
 def _set_prim_forward_blacklist(*args):
     for item in args:
         if not isinstance(item, str):
             raise TypeError("ops set in forward_blacklist must belong to str")
         else:
             prim_config["forward_blacklist"].add(item)
-    return
+
+
+def _reset_prim_forward_blacklist():
+    prim_config["forward_blacklist"] = set()
 
 
 def _set_prim_backward_blacklist(*args):
@@ -516,7 +553,6 @@ def _set_prim_backward_blacklist(*args):
         if not isinstance(item, str):
             raise TypeError("all items in set must belong to string")
     _set_bwd_prim_blacklist(ops)
-    return
 
 
 def _set_prim_backward_enabled(value):

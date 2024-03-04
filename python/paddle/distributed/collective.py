@@ -14,6 +14,7 @@
 
 import datetime
 import hashlib
+import os
 
 import paddle
 
@@ -22,18 +23,20 @@ from paddle.base import core
 from paddle.framework import in_dynamic_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
-from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
-from .fleet.layers.mpu.mp_ops import split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import (  # noqa: F401
+    _c_concat,
+    _c_identity,
+    _c_lookup_table,
+    _c_softmax_with_cross_entropy,
+    _c_split,
+    _Linear,
+    _linear,
+    _mp_allreduce,
+    _parallel_embedding,
+    _parallel_linear,
+    _set_var_distributed,
+    split,
+)
 
 __all__ = []
 
@@ -151,8 +154,9 @@ def _new_process_group_impl(
     if backend == "gloo":
         pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
-        pg = core.ProcessGroupNCCL.create(store, rank, world_size, group_id)
-
+        pg = core.ProcessGroupNCCL.create(
+            store, rank, world_size, group_id, genv.pg_timeout
+        )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
             store, genv.device_type, rank, world_size, group_id
@@ -239,11 +243,13 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # three in the future.
         _add_new_group(group)
 
-        # TODO(shenliang03): This is a temporary solution to solve the problem of
-        # hang caused by tcp
-        paddle.distributed.barrier(group=group)
-        if paddle.distributed.get_world_size() > 1:
-            paddle.distributed.barrier()
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.float32),
+                group=group,
+                sync_op=True,
+            )
+
         return group
 
     if not backend:
@@ -347,4 +353,16 @@ def _init_parallel_env(backend):
         paddle.device.set_device(f"{dev_type}:{dev_id}")
         core.CommContextManager.create_xccl_comm_context(
             store, "0", rank, world_size, dev_type
+        )
+    elif backend == "bkcl":
+        endpoints_str = ""
+        for endpoint in global_env.trainer_endpoints:
+            endpoints_str += endpoint
+        endpoints_str += "ring_id:{}".format("0")
+        endpoints_str_hash = hashlib.md5(
+            endpoints_str.encode(encoding='UTF-8')
+        ).hexdigest()
+        core.CommContextManager.set_device_id(dev_id)
+        core.CommContextManager.create_bkcl_comm_context(
+            store, "0", rank, world_size, endpoints_str_hash
         )

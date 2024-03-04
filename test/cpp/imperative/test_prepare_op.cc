@@ -34,10 +34,6 @@ PD_DECLARE_KERNEL(relu, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(relu, GPU, ALL_LAYOUT);
 #endif
 
-namespace imperative = paddle::imperative;
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
-
 namespace paddle {
 namespace imperative {
 
@@ -138,7 +134,7 @@ TEST(test_prepare_op, test_prepare_data) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<phi::DenseTensor>();
-  vin_tensor->Resize(phi::make_ddim(dims));
+  vin_tensor->Resize(common::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place,
                        vin_mutable_tensor,
@@ -196,7 +192,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<phi::DenseTensor>();
-  vin_tensor->Resize(phi::make_ddim(dims));
+  vin_tensor->Resize(common::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place,
                        vin_mutable_tensor,

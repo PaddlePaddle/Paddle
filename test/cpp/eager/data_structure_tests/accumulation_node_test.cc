@@ -32,11 +32,11 @@ using namespace egr;  // NOLINT
 TEST(AccumulationNode, SelectedRowsAddToTensor) {
   // Construct Eager Tensor
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::vector<int64_t> rows = {0};
   std::shared_ptr<phi::SelectedRows> sr0 =
       std::make_shared<phi::SelectedRows>(rows, 1);
-  sr0->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  sr0->mutable_value()->Resize(common::make_ddim({1, 1}));
   sr0->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor et0 = paddle::Tensor(sr0);
@@ -59,7 +59,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
   // Initialize Grad Tensor
   std::shared_ptr<phi::SelectedRows> grad_dt =
       std::make_shared<phi::SelectedRows>(rows, 1);
-  grad_dt->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  grad_dt->mutable_value()->Resize(common::make_ddim({1, 1}));
   grad_dt->mutable_value()->mutable_data<float>(
       paddle::platform::CPUPlace())[0] = static_cast<float>(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
@@ -97,17 +97,17 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
 TEST(AccumulationNode, SelectedRowsMerge) {
   // Construct Eager Tensor
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::vector<int64_t> rows = {0};
   std::shared_ptr<phi::SelectedRows> sr0 =
       std::make_shared<phi::SelectedRows>(rows, 1);
-  sr0->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  sr0->mutable_value()->Resize(common::make_ddim({1, 1}));
   sr0->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor et0 = paddle::Tensor(sr0);
   std::shared_ptr<phi::SelectedRows> sr1 =
       std::make_shared<phi::SelectedRows>(rows, 1);
-  sr1->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  sr1->mutable_value()->Resize(common::make_ddim({1, 1}));
   sr1->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(20.0f);
   paddle::Tensor et1 = paddle::Tensor(sr1);
@@ -122,7 +122,7 @@ TEST(AccumulationNode, SelectedRowsMerge) {
   // Initialize Grad Tensor
   std::shared_ptr<phi::SelectedRows> grad_dt =
       std::make_shared<phi::SelectedRows>(rows, 1);
-  grad_dt->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  grad_dt->mutable_value()->Resize(common::make_ddim({1, 1}));
   grad_dt->mutable_value()->mutable_data<float>(
       paddle::platform::CPUPlace())[0] = static_cast<float>(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
@@ -162,17 +162,17 @@ TEST(AccumulationNode, SelectedRowsMerge) {
 TEST(AccumulationNode, SelectedRowsAddTensor) {
   // Construct Eager Tensor
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::vector<int64_t> rows = {0};
   std::shared_ptr<phi::SelectedRows> sr0 =
       std::make_shared<phi::SelectedRows>(rows, 1);
-  sr0->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  sr0->mutable_value()->Resize(common::make_ddim({1, 1}));
   sr0->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor et0 = paddle::Tensor(sr0);
   std::shared_ptr<phi::SelectedRows> sr1 =
       std::make_shared<phi::SelectedRows>(rows, 1);
-  sr1->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  sr1->mutable_value()->Resize(common::make_ddim({1, 1}));
   sr1->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(20.0f);
   paddle::Tensor et1 = paddle::Tensor(sr1);
@@ -229,7 +229,7 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
 TEST(AccumulationNode, Tensor) {
   // Construct Eager Tensor
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT16, phi::make_ddim({1, 1}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT16, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt0 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())

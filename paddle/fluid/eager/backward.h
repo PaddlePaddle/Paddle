@@ -16,17 +16,18 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/utils/test_macros.h"
 
 namespace egr {
 
 // Backward():
 // tensors corresponds to those lived in the backward graph
 // each grad_tensors[i] keeps the value for its corresponding tensors[i]
-void Backward(const std::vector<paddle::Tensor>& tensors,
-              const std::vector<paddle::Tensor>& grad_tensors,
-              bool retain_graph = false);
+TEST_API void Backward(const std::vector<paddle::Tensor>& tensors,
+                       const std::vector<paddle::Tensor>& grad_tensors,
+                       bool retain_graph = false);
 
-std::vector<paddle::Tensor> Grad(
+TEST_API std::vector<paddle::Tensor> Grad(
     const std::vector<paddle::Tensor>& tensors,
     const std::vector<paddle::Tensor>& inputs,
     const std::vector<paddle::Tensor>& grad_tensors = {},

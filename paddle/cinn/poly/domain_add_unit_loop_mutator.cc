@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -46,7 +46,7 @@ void DomainAddUnitLoopMutator::Visit(const ir::For* op, Expr* expr) {
   if (parent_for_.size() < dim_names_.size()) {
     std::string check_name = dim_names_[parent_for_.size()];
     std::tuple<int, int, int> t = dim_min_max_[parent_for_.size()];
-    if (!utils::Startswith(node->loop_var->name, check_name) &&
+    if (!utils::StartsWith(node->loop_var->name, check_name) &&
         (std::get<2>(t) - std::get<1>(t) == 0)) {
       ir::Expr unit_loop = ir::For::Make(ir::Var(check_name),
                                          ir::Expr(0),
@@ -96,7 +96,7 @@ void DomainAddUnitLoopMutator::Visit(const ir::PolyFor* op, Expr* expr) {
   if (parent_poly_for_.size() < dim_names_.size()) {
     std::string check_name = dim_names_[parent_poly_for_.size()];
     std::tuple<int, int, int> t = dim_min_max_[parent_poly_for_.size()];
-    if (!utils::Startswith(node->iterator->name, check_name) &&
+    if (!utils::StartsWith(node->iterator->name, check_name) &&
         (std::get<2>(t) - std::get<1>(t) == 0)) {
       ir::Expr unit_loop =
           ir::PolyFor::Make(ir::Var(check_name),
@@ -153,7 +153,7 @@ void DomainAddUnitLoopMutator::MutateAfterVisit(ir::Expr* expr) {
     std::tuple<int, int, int> t = dim_min_max_[i];
     if (longest_loop_[i].As<ir::For>()) {
       const ir::For* node = longest_loop_[i].As<ir::For>();
-      if (utils::Startswith(node->loop_var->name, dim_names_[i]) &&
+      if (utils::StartsWith(node->loop_var->name, dim_names_[i]) &&
           node->min.is_constant() && node->min.as_int32() == std::get<1>(t) &&
           node->extent.is_constant() &&
           node->extent.as_int32() == std::get<2>(t)) {
@@ -164,7 +164,7 @@ void DomainAddUnitLoopMutator::MutateAfterVisit(ir::Expr* expr) {
       }
     } else if (longest_loop_[i].As<ir::PolyFor>()) {
       const ir::PolyFor* node = longest_loop_[i].As<ir::PolyFor>();
-      if (utils::Startswith(node->iterator->name, dim_names_[i]) &&
+      if (utils::StartsWith(node->iterator->name, dim_names_[i]) &&
           node->init.is_constant() && node->init.as_int32() == std::get<1>(t) &&
           node->condition ==
               ir::LE::Make(ir::Var(dim_names_[i]), ir::Expr(std::get<2>(t)))) {

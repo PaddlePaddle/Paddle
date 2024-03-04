@@ -15,7 +15,7 @@
 #pragma once
 #include <cstdint>
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/kernels/funcs/jit/macro.h"
 
 namespace phi {

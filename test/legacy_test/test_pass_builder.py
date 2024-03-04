@@ -117,7 +117,7 @@ class TestPassBuilder(unittest.TestCase):
             )
             try:
                 os.stat(graph_viz_path)
-            except os.error:
+            except OSError:
                 self.assertFalse(True)
 
 

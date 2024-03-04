@@ -25,7 +25,6 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
-
 namespace paddle {
 namespace prim {
 
@@ -109,7 +108,7 @@ class StaticCompositeContext {
   static thread_local bool enable_bwd_prim_;
   static thread_local bool enable_fwd_prim_;
   static thread_local bool enable_eager_prim_;
-  static StaticCompositeContext* static_composite_context_;
+  TEST_API static StaticCompositeContext* static_composite_context_;
   DISABLE_COPY_AND_ASSIGN(StaticCompositeContext);
 };
 

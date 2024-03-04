@@ -22,13 +22,14 @@
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/packed_func.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
 // Elementwise/Broadcast/Injective,Reduce,OutEWiseFusable,NonFusible.
-// Elementwise/Broadcast/Injective Ops is with same shcedule.
+// Elementwise/Broadcast/Injective Ops is with same schedule.
 // Reduce,OutEWiseFusable,NonFusible are using different schedule.
 
 namespace cinn {
@@ -36,7 +37,7 @@ namespace hlir {
 namespace framework {
 
 using GroupPtr = std::shared_ptr<Graph::Group>;
-using common::Target;
+using cinn::common::Target;
 class OpLowererImpl;
 
 typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(Node*);
@@ -56,7 +57,19 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    */
   std::vector<ir::LoweredFunc> Lower(const GroupPtr& group,
                                      bool apply_op_schedule = true,
-                                     bool apply_group_schedule = true);
+                                     bool apply_group_schedule = true,
+                                     bool apply_pass = true);
+
+  BucketLoweredFuncsWrapper BucketLower(const GroupPtr& group,
+                                        bool apply_op_schedule = false,
+                                        bool apply_group_schedule = true,
+                                        bool apply_pass = true) {
+    CINN_NOT_IMPLEMENTED;
+  }
+
+  void InsertNameGeneToScope(std::shared_ptr<Scope> scope) {
+    CINN_NOT_IMPLEMENTED;
+  }
 
  private:
   /**
@@ -72,6 +85,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       const GroupPtr& group,
       bool apply_op_schedule,
       bool apply_group_schedule,
+      bool apply_pass,
       ScheduleDetermineFunction schedule_determine_func);
 
   /**
@@ -96,6 +110,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       const GroupPtr& group,
       const std::unordered_map<std::string, ir::Tensor>& tensor_map,
       bool done_op_schedule,
+      bool apply_pass,
       ir::IRSchedule* ir_sch,
       std::vector<ir::Tensor>* group_func_arg_tensors);
 
@@ -168,7 +183,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   const absl::flat_hash_map<std::string, Type>& type_dict_;
   const absl::flat_hash_map<std::string, shape_t>& shape_dict_;
 
-  // fucntion name prefix
+  // function name prefix
   const std::string func_name_prefix = "fn_";
 };
 

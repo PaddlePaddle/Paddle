@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using phi::vectorize;
+using common::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;
@@ -681,14 +681,14 @@ class MultiGRUHandler {
   const phi::Vector<size_t>& x_lod_;
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const bool force_fp32_output =
         ctx.HasAttr("force_fp32_output") && ctx.Attr<bool>("force_fp32_output");
 
-    if (force_fp32_output) {
+    if (force_fp32_output) {  // NOLINT
       RunKernel<float>(ctx);
     } else {
       RunKernel<T>(ctx);
@@ -706,7 +706,7 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
       auto gru_out_L2R = handler.executeSingleGru(input_mem, layer, L2R);
       handler.reorderInputL2RtoR2L(input_mem, layer);
       auto gru_out_R2L = handler.executeSingleGru(input_mem, layer, R2L);
-      if (layer < layers - 1)
+      if (layer < layers - 1)  // NOLINT
         handler.template reorderOutputR2LtoL2R<T>(gru_out_R2L, layer);
       else
         handler.template reorderOutputR2LtoL2R<Tout>(gru_out_R2L, layer);
@@ -720,8 +720,6 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(multi_gru,
-                   MKLDNN,
-                   phi::CPUPlace,
-                   ops::MultiGRUMKLDNNKernel<float>,
-                   ops::MultiGRUMKLDNNKernel<uint8_t>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    multi_gru, OneDNN, ONEDNN, ops::MultiGRUMKLDNNKernel, float, uint8_t) {}

@@ -141,7 +141,7 @@ TEST(lower, temp_buffer_collects) {
   auto output = Compute(
       {M}, [&](Expr i) -> Expr { return D(i); }, "output");
 
-  ir::Module::Builder b("somemodule", common::DefaultHostTarget());
+  ir::Module::Builder b("somemodule", cinn::common::DefaultHostTarget());
 
   auto stages = CreateStages({B, C, D, output});
 
@@ -159,6 +159,7 @@ TEST(lower, temp_buffer_collects) {
 }
 
 TEST(lower_to_ast, basic) {
+  Context::Global().ResetNameId();
   auto M = Expr(100);
   auto N = Expr(15);
 
@@ -169,22 +170,122 @@ TEST(lower_to_ast, basic) {
 
   ast_gen_ius::TensorGroup tensor_group({B});
 
-  auto lower_funcs = LowerToAst("cal_B", {A, B}, &tensor_group);
+  ir::LoweredFunc lower_func = LowerToAst("cal_B", {A, B}, &tensor_group);
 
-  LOG(INFO) << "lower_func " << lower_funcs;
+  LOG(INFO) << "lower_func " << lower_func;
 
   auto out = R"ROC(
+function cal_B (_A, _B)
 {
-  serial for (i, 0, 100)
+  ScheduleBlock(root)
   {
-    serial for (j, 0, 15)
+    serial for (i, 0, 100)
     {
-      B[i, j] = (A[i, j] + 1.00000000f)
+      serial for (j, 0, 15)
+      {
+        ScheduleBlock(B)
+        {
+          i0, i1 = axis.bind(i, j)
+          B[i0, i1] = (A[i0, i1] + 1.00000000f)
+        }
+      }
     }
   }
 }
 )ROC";
-  TEST_SOUTPUT(lower_funcs->body, out);
+  TEST_SOUTPUT(lower_func, out);
+}
+
+TEST(lower_to_ast, three_dim) {
+  Context::Global().ResetNameId();
+  Expr M(100);
+  Expr N(15);
+  Expr K(200);
+
+  Placeholder<float> A("A", {Expr(M), Expr(N)});
+  Placeholder<float> B("B", {Expr(N), Expr(K)});
+
+  auto C = Compute(
+      {M, N, K},
+      [=](Var i, Var j, Var k) -> Expr { return A(i, j) * B(j, k); },
+      "C");
+
+  ast_gen_ius::TensorGroup tensor_group({C});
+
+  ir::LoweredFunc lower_func = LowerToAst("cal_C", {A, B, C}, &tensor_group);
+
+  LOG(INFO) << "func:\n" << lower_func << std::endl;
+
+  auto out = R"ROC(
+function cal_C (_A, _B, _C)
+{
+  ScheduleBlock(root)
+  {
+    serial for (i, 0, 100)
+    {
+      serial for (j, 0, 15)
+      {
+        serial for (k, 0, 200)
+        {
+          ScheduleBlock(C)
+          {
+            i0, i1, i2 = axis.bind(i, j, k)
+            C[i0, i1, i2] = (A[i0, i1] * B[i1, i2])
+          }
+        }
+      }
+    }
+  }
+}
+)ROC";
+  TEST_SOUTPUT(lower_func, out);
+}
+
+TEST(lower_to_ast, matmul_with_reduce_sum) {
+  Context::Global().ResetNameId();
+  Placeholder<float> A("A", {Expr(100), Expr(20)});
+  Placeholder<float> B("B", {Expr(20), Expr(50)});
+
+  Target target{};
+  // C = A * B
+  Var k(20, "k0");
+  Tensor C = Compute(
+      {Expr(100), Expr(50)},
+      [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
+
+  ast_gen_ius::TensorGroup tensor_group({C});
+  ir::LoweredFunc lower_func = LowerToAst("matmul", {A, B, C}, &tensor_group);
+  LOG(INFO) << "func:\n" << lower_func << std::endl;
+
+  auto out = R"ROC(
+function matmul (_A, _B, _C)
+{
+  ScheduleBlock(root)
+  {
+    serial for (i, 0, 100)
+    {
+      serial for (j, 0, 50)
+      {
+        ScheduleBlock(C__reduce_init)
+        {
+          i0, i1 = axis.bind(i, j)
+          C__reduce_init[i0, i1] = 0.00000000f
+        }
+        serial for (k0, 0, 20)
+        {
+          ScheduleBlock(C)
+          {
+            i0_0, i1_0, i2 = axis.bind(i, j, k0)
+            C[i0_0, i1_0] = (C[i0_0, i1_0] + (A[i0_0, i2] * B[i2, i1_0]))
+          }
+        }
+      }
+    }
+  }
+}
+)ROC";
+  TEST_SOUTPUT(lower_func, out);
 }
 
 }  // namespace lang

@@ -30,14 +30,15 @@ namespace cinn::frontend::paddle {
 namespace framework_proto = ::cinn::frontend::paddle::proto;
 
 // Read a model and files of parameters in pb format.
-void LoadModelPb(const std::string& model_dir,
-                 const std::string& model_file,
-                 const std::string& param_file,
-                 hlir::framework::Scope* scope,
-                 cpp::ProgramDesc* cpp_prog,
-                 bool combined = true,
-                 bool model_from_memory = false,
-                 const common::Target& target = common::DefaultHostTarget());
+void LoadModelPb(
+    const std::string& model_dir,
+    const std::string& model_file,
+    const std::string& param_file,
+    hlir::framework::Scope* scope,
+    cpp::ProgramDesc* cpp_prog,
+    bool combined = true,
+    bool model_from_memory = false,
+    const cinn::common::Target& target = cinn::common::DefaultHostTarget());
 
 // Read a __model__ file.
 std::unique_ptr<framework_proto::ProgramDesc> LoadProgram(
@@ -45,7 +46,7 @@ std::unique_ptr<framework_proto::ProgramDesc> LoadProgram(
 
 void LoadLoDTensor(std::istream& is,
                    hlir::framework::Variable* var,
-                   const common::Target& target);
+                   const cinn::common::Target& target);
 
 // Read a single file containing all the parameters.
 void LoadParams(const std::string& path);
@@ -53,21 +54,21 @@ void LoadParams(const std::string& path);
 // Load a single parameter to an output tensor.
 void LoadParam(const std::string& path,
                hlir::framework::Variable* out,
-               const common::Target& target);
+               const cinn::common::Target& target);
 
 void LoadCombinedParamsPb(
     const std::string& path,
     hlir::framework::Scope* scope,
     const pb::ProgramDesc& prog,
     bool params_from_memory = false,
-    const common::Target& target = common::DefaultHostTarget());
+    const cinn::common::Target& target = cinn::common::DefaultHostTarget());
 
 // LoDTensor to ostream
 void TensorToStream(std::ostream& os, const hlir::framework::_Tensor_& tensor);
 void TensorFromStream(
     std::istream& is,
     hlir::framework::_Tensor_* tensor,
-    const common::Target& target = common::DefaultHostTarget());
+    const cinn::common::Target& target = cinn::common::DefaultHostTarget());
 void ReadBinaryFile(const std::string& filename, std::string* contents);
 
 }  // namespace cinn::frontend::paddle

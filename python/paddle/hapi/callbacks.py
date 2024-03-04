@@ -882,7 +882,7 @@ class EarlyStopping(Callback):
 
 class VisualDL(Callback):
     """
-    VisualDL callback function.
+    VisualDL callback class. After storing the loss values and evaluation metrics in a log file during the training time , the panel is launched to view the visual results.
 
     Args:
         log_dir (str): The directory to save visualdl log file.
@@ -1279,10 +1279,10 @@ class ReduceLROnPlateau(Callback):
             self.mode == 'auto' and 'acc' not in self.monitor
         ):
             self.monitor_op = lambda a, b: np.less(a, b - self.min_delta)
-            self.best = np.Inf
+            self.best = np.inf
         else:
             self.monitor_op = lambda a, b: np.greater(a, b + self.min_delta)
-            self.best = -np.Inf
+            self.best = -np.inf
         self.cooldown_counter = 0
         self.wait = 0
 
@@ -1300,16 +1300,12 @@ class ReduceLROnPlateau(Callback):
                 lr = self.model._optimizer._learning_rate
                 if not isinstance(lr, float):
                     warnings.warn(
-                        'Expected learning_rate be float, bug got {}.'.format(
-                            type(lr)
-                        )
+                        f'Expected learning_rate be float, bug got {type(lr)}.'
                     )
                     return
             except Exception as e:
                 warnings.warn(
-                    'There are something wrong when get learning_rate from optimizer: {}.'.format(
-                        e
-                    )
+                    f'There are something wrong when get learning_rate from optimizer: {e}.'
                 )
                 return
 

@@ -301,7 +301,12 @@ class OptimizerWithMixedPrecision:
         self._to_fp16_var_names = None
 
     def amp_init(
-        self, place, scope=None, test_program=None, use_fp16_test=False
+        self,
+        place,
+        scope=None,
+        test_program=None,
+        use_fp16_test=False,
+        rewrite_master_weight=False,
     ):
         """
         Init the amp training, such as cast fp32 parameters to fp16 type.
@@ -348,7 +353,7 @@ class OptimizerWithMixedPrecision:
                 ...         init_loss_scaling=128.0,
                 ...         use_dynamic_loss_scaling=True,
                 ...         use_pure_fp16=True)
-                ...     # If you don't use the default_startup_program(), you sholud pass
+                ...     # If you don't use the default_startup_program(), you should pass
                 ...     # your defined `startup_program` into `minimize`.
                 ...     optimizer.minimize(loss)
                 ...     exe.run(paddle.static.default_startup_program())
@@ -369,6 +374,8 @@ class OptimizerWithMixedPrecision:
                 scope,
                 self._to_fp16_var_names,
                 self._amp_vartype,
+                rewrite_master_weight,
+                self._optimizer._master_weights,
             )
         if test_program is not None:
             if self._use_pure_fp16:
@@ -473,7 +480,7 @@ class OptimizerWithMixedPrecision:
         found_inf = self._check_finite_and_unscale(params_grads)
         if (
             self._use_dynamic_loss_scaling
-            and self._amp_vartype == core.VarDesc.VarType.FP16
+            and self._amp_vartype == paddle.float16
         ):
             self._add_dynamic_loss_scaling(params_grads, found_inf)
 
@@ -500,7 +507,7 @@ class OptimizerWithMixedPrecision:
 
     def _split_grads(self, params_grads):
         grads = [g for _, g in params_grads]
-        fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
+        fp32_grads = [g for g in grads if g.dtype == paddle.float32]
         fp16_grads = [g for g in grads if g.dtype == self._amp_vartype]
         assert len(fp32_grads) + len(fp16_grads) == len(
             grads
@@ -771,7 +778,7 @@ def decorate(
             ...         init_loss_scaling=128.0,
             ...         use_dynamic_loss_scaling=True,
             ...         use_pure_fp16=True)
-            ...     # If you don't use the default_startup_program(), you sholud pass
+            ...     # If you don't use the default_startup_program(), you should pass
             ...     # your defined `startup_program` into `minimize`.
             ...     optimizer.minimize(loss)
             ...     exe.run(paddle.static.default_startup_program())
@@ -839,10 +846,10 @@ def decorate(  # noqa: F811
              will be converted to float16/bfloat16, and that have any float32 input will be converted to float32. For the OD level, operators in
              default white list will compute in float16/bfloat16, and the others will compute in float32. Default is O1.
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision
+        master_weight(bool, optional): For level='O2', whether to use multi-precision
             during weight updating. If master_weight is None, in O2 level optimizer
             will use multi-precision. Default is None.
-        master_grad(bool, optinal): For level='O2', whether to use master_grad
+        master_grad(bool, optional): For level='O2', whether to use master_grad
             during weight updating. If master_grad is False, in O2 level optimizer
             will not use master grad. Default is False.
         init_loss_scaling(float, optional): The initial loss scaling factor.
@@ -909,7 +916,7 @@ def decorate(  # noqa: F811
     """
     # check amp_level: O0-O2
     level = level.upper()
-    if not (level in ['O0', 'OD', 'O1', 'O2']):
+    if level not in ['O0', 'OD', 'O1', 'O2']:
         raise ValueError("level should be O0, OD, O1 or O2.")
 
     amp_dtype = check_amp_dtype(dtype)
@@ -928,7 +935,7 @@ def decorate(  # noqa: F811
 
     if optimizer is not None:
         # support master_weight
-        multi_precision = not (master_weight is False)
+        multi_precision = master_weight is not False
         _set_multi_precision(optimizer, multi_precision)
 
     mp_optimizer = OptimizerWithMixedPrecision(

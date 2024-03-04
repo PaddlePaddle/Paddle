@@ -29,7 +29,7 @@ endif()
 cc_test(
   jit_kernel_test
   SRCS test.cc
-  DEPS phi)
+  DEPS phi common)
 
 if(NOT WIN32)
   set(cuda_less12_and_gcc_greater12 false)
@@ -40,7 +40,7 @@ if(NOT WIN32)
     endif()
   endif()
   if(NOT cuda_less12_and_gcc_greater12)
-    cc_binary(jit_kernel_benchmark SRCS benchmark.cc DEPS phi)
+    cc_binary(jit_kernel_benchmark SRCS benchmark.cc DEPS phi common)
   endif()
 endif()
 if(WITH_TESTING AND TEST jit_kernel_test)

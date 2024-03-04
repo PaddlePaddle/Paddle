@@ -14,17 +14,11 @@
 
 import sys
 import warnings
-from . import framework
-from .framework import cuda_places, cpu_places, xpu_places
-from . import core
 
-__all__ = [
-    'CompiledProgram',
-    'ExecutionStrategy',
-    'BuildStrategy',
-    'IpuCompiledProgram',
-    'IpuStrategy',
-]
+from . import core, framework
+from .framework import cpu_places, cuda_places, xpu_places
+
+__all__ = []
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
@@ -206,9 +200,9 @@ class CompiledProgram:
             assert scope is not None, ""
             self._local_scopes = []
 
-        assert isinstance(places, tuple) or isinstance(
-            places, list
-        ), "Currently , The places type can only be list or tuple, but the input type is {}.".format(
+        assert isinstance(
+            places, (list, tuple)
+        ), "Currently, The places type can only be list or tuple, but the input type is {}.".format(
             type(places)
         )
 
@@ -275,7 +269,7 @@ class CompiledProgram:
             ), "DGC only used under CUDA environment."
             assert (
                 self._build_strategy.num_trainers * len(places) > 1
-            ), "DGC is not avaliable for single card training."
+            ), "DGC is not available for single card training."
             assert (
                 self._build_strategy.reduce_strategy
                 == BuildStrategy.ReduceStrategy.AllReduce
@@ -399,10 +393,11 @@ class IpuDynamicPatcher:
         """
         Convert the ConcreteProgram to IPUConcreteProgram.
         """
-        from ..base.dygraph.base import switch_to_static_graph
-        from ..base import backward
-        from ..base.framework import device_guard
         import paddle
+
+        from ..base import backward
+        from ..base.dygraph.base import switch_to_static_graph
+        from ..base.framework import device_guard
 
         inputs = concrete_program.inputs
         outputs = concrete_program.outputs
@@ -500,7 +495,7 @@ class IpuDynamicPatcher:
 
     @staticmethod
     def patch_program_cache(ipu_strategy):
-        """Monkey patch ProgramCache discriptor to support dynamic2static in IPU.
+        """Monkey patch ProgramCache descriptor to support dynamic2static in IPU.
 
         Args:
             ipu_strategy: The ipu_strategy used in dynamic graph.
@@ -508,14 +503,12 @@ class IpuDynamicPatcher:
         Returns:
             None
         """
+        from paddle.jit.dy2static import logging_utils
+        from paddle.jit.dy2static.partial_program import partial_program_from
         from paddle.jit.dy2static.program_translator import (
+            MAX_TRACED_PROGRAM_COUNT,
             CacheKey,
             ProgramCache,
-            MAX_TRACED_PROGRAM_COUNT,
-        )
-        from paddle.jit.dy2static import logging_utils
-        from paddle.jit.dy2static.partial_program import (
-            partial_program_from,
         )
 
         old_getter = ProgramCache.__getitem__
@@ -535,7 +528,7 @@ class IpuDynamicPatcher:
                     )
                 if self._caches and not ipu_strategy.need_compile:
                     logging_utils.warn(
-                        "dynamic2static on IPU doesn't support mutiple caches. Please make sure"
+                        "dynamic2static on IPU doesn't support multiple caches. Please make sure"
                         "dynamic inputs is not used."
                     )
                 concrete_program, _ = self._build_once(item)
@@ -561,7 +554,7 @@ class IpuDynamicPatcher:
 
             return self._caches[item_id]
 
-        setattr(ProgramCache, '__getitem__', patch_getter)
+        ProgramCache.__getitem__ = patch_getter
         IpuDynamicPatcher.patcher_cache.append(
             [ProgramCache, '__getitem__', old_getter]
         )
@@ -578,7 +571,7 @@ class IpuDynamicPatcher:
             old_step(self, epoch)
             ipu_strategy.set_options({"lr": self.last_lr})
 
-        setattr(LRScheduler, 'step', patch_step)
+        LRScheduler.step = patch_step
         IpuDynamicPatcher.patcher_cache.append([LRScheduler, 'step', old_step])
 
     @staticmethod
@@ -638,7 +631,7 @@ class IpuStrategy:
 
     def register_patch(self):
         """
-        Register patchs function to support dynamic to static on IPU. This operation would break the dy2static functionality on CPU.
+        Register patch function to support dynamic to static on IPU. This operation would break the dy2static functionality on CPU.
         Use `release_patch` to release the patch.
 
         Examples:
@@ -758,7 +751,7 @@ class IpuStrategy:
             num_ipus (int, optional): Number of IPU devices. Default 1, which means only use 1 IPU.
             is_training (bool, optional): True is training graph, False is inference graph. Default True, which means is training mode.
             batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
-                if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamice.
+                if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamic.
             enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True.
                 Default False, which means disabled.
 

@@ -18,6 +18,7 @@ import hashlib
 import importlib
 import os
 import pickle
+import re
 import shutil
 import sys
 import tempfile
@@ -71,6 +72,11 @@ def md5file(fname):
 
 
 def download(url, module_name, md5sum, save_name=None):
+    module_name = re.match("^[a-zA-Z0-9_/\\-]+$", module_name).group()
+    if isinstance(save_name, str):
+        save_name = re.match(
+            "^(?:(?!\\.\\.)[a-zA-Z0-9_/\\.-])+$", save_name
+        ).group()
     dirname = os.path.join(DATA_HOME, module_name)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
@@ -91,9 +97,7 @@ def download(url, module_name, md5sum, save_name=None):
             retry += 1
         else:
             raise RuntimeError(
-                "Cannot download {} within retry limit {}".format(
-                    url, retry_limit
-                )
+                f"Cannot download {url} within retry limit {retry_limit}"
             )
         sys.stderr.write(
             f"Cache file {filename} not found, downloading {url} \n"
@@ -211,8 +215,7 @@ def cluster_files_reader(
         for fn in my_file_list:
             with open(fn, "r") as f:
                 lines = loader(f)
-                for line in lines:
-                    yield line
+                yield from lines
 
     return reader
 

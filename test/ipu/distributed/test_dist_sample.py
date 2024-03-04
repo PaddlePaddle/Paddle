@@ -13,7 +13,7 @@
 # limitations under the License.
 '''
 Single host:
-python3.7 -m paddle.distributed.launch \
+python3.8 -m paddle.distributed.launch \
 --devices=4 \
 ipu \
 --hosts=localhost \
@@ -29,11 +29,11 @@ poprun \
 --num-replicas=4 \
 --ipus-per-replica=1 \
 --print-topology=yes \
-python3.7 test/ipu/distributed/test_dist_sample.py
+python3.8 test/ipu/distributed/test_dist_sample.py
 '''
 '''
 Multi hosts:
-python3.7 -m paddle.distributed.launch \
+python3.8 -m paddle.distributed.launch \
 --devices=4 \
 ipu \
 --hosts=host1,host2 \
@@ -49,7 +49,7 @@ poprun \
 --num-replicas=4 \
 --ipus-per-replica=1 \
 --print-topology=yes \
-python3.7 test/ipu/distributed/test_dist_sample.py
+python3.8 test/ipu/distributed/test_dist_sample.py
 '''
 
 import os
@@ -70,8 +70,7 @@ def Test(use_dist, file_name):
     scope = paddle.base.core.Scope()
     main_prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
-    main_prog.random_seed = 42
-    startup_prog.random_seed = 42
+    paddle.seed(42)
 
     with paddle.base.scope_guard(scope):
         with paddle.static.program_guard(main_prog, startup_prog):
@@ -186,7 +185,7 @@ if __name__ == "__main__":
             global DISTRIBUTED_COMM
             if DISTRIBUTED_COMM is None:
                 raise RuntimeError(
-                    "Distributed Commumication not setup. Please run setup_comm(MPI.COMM_WORLD) first."
+                    "Distributed Communication not setup. Please run setup_comm(MPI.COMM_WORLD) first."
                 )
             return DISTRIBUTED_COMM
 

@@ -13,35 +13,37 @@
 # limitations under the License.
 """Definition of TrainerFactory."""
 
+import logging
 import threading
 import time
-import logging
+
 import numpy as np
+
 from paddle.base.log_helper import get_logger
 
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-from .trainer_desc import (  # noqa: F401
-    MultiTrainer,
-    DistMultiTrainer,
-    PipelineTrainer,
-    HeterXpuTrainer,
-    PSGPUTrainer,
-    HeterPipelineTrainer,
-)
 from .device_worker import (  # noqa: F401
-    Hogwild,
-    DownpourSGD,
     DownpourLite,
-    Section,
+    DownpourSGD,
     DownpourSGDOPT,
     HeterSection,
+    Hogwild,
+    Section,
 )
 from .framework import Variable
+from .trainer_desc import (  # noqa: F401
+    DistMultiTrainer,
+    HeterPipelineTrainer,
+    HeterXpuTrainer,
+    MultiTrainer,
+    PipelineTrainer,
+    PSGPUTrainer,
+)
 
-__all__ = ["TrainerFactory", "FetchHandlerMonitor"]
+__all__ = []
 
 
 class TrainerFactory:
@@ -90,6 +92,8 @@ class TrainerFactory:
                     and len(opt_info.get("dump_fields_path")) != 0
                 ):
                     trainer._set_dump_fields_path(opt_info["dump_fields_path"])
+                if opt_info.get("dump_fields_mode") is not None:
+                    trainer._set_dump_fields_mode(opt_info["dump_fields_mode"])
                 if (
                     opt_info.get("user_define_dump_filename") is not None
                     and len(opt_info.get("user_define_dump_filename")) != 0
@@ -113,6 +117,10 @@ class TrainerFactory:
                 if opt_info.get("is_dump_in_simple_mode") is not None:
                     trainer._set_is_dump_in_simple_mode(
                         opt_info["is_dump_in_simple_mode"]
+                    )
+                if opt_info.get("dump_num_decimals") is not None:
+                    trainer._set_dump_num_decimals(
+                        opt_info["dump_num_decimals"]
                     )
                 if opt_info.get("enable_random_dump") is not None:
                     trainer._set_enable_random_dump(
@@ -179,14 +187,12 @@ class FetchHandlerMonitor:
             if isinstance(fetch_instance.var_dict[key], Variable):
                 var_name_to_key[fetch_instance.var_dict[key].name] = key
             else:
-                local_logger.warning(
-                    "the value of {} is not a Variable".format(key)
-                )
+                local_logger.warning(f"the value of {key} is not a Variable")
                 var_name_to_key["None.var"] = key
         elapsed_secs = 0
         while True:
             self.running_lock.acquire()
-            if self.running == False:
+            if self.running is False:
                 break
             if elapsed_secs < period_secs:
                 # TODO(guru4elephant): needs customized condition
@@ -200,9 +206,7 @@ class FetchHandlerMonitor:
                     fetch_dict[key] = var
                     if var is None:
                         local_logger.warning(
-                            "{} value currently not available".format(
-                                var_name_to_key[key]
-                            )
+                            f"{var_name_to_key[key]} value currently not available"
                         )
                 res_dict = {}
                 for key in fetch_dict:

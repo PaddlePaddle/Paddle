@@ -23,6 +23,7 @@ from test_sum_op import TestReduceOPTensorAxisBase
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -52,10 +53,10 @@ class TestMeanOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestMeanOp_ZeroDim(OpTest):
@@ -67,29 +68,36 @@ class TestMeanOp_ZeroDim(OpTest):
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestMeanOpError(unittest.TestCase):
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.int32)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
-
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
-            # The input dtype of mean_op must be float16, float32, float64.
-            input2 = paddle.static.data(
-                name='input2', shape=[-1, 12, 10], dtype="int32"
-            )
-            self.assertRaises(TypeError, paddle.mean, input2)
-            input3 = paddle.static.data(
-                name='input3', shape=[-1, 4], dtype="float16"
-            )
-            paddle.nn.functional.softmax(input3)
+
+            if paddle.is_compiled_with_cuda():
+                input3 = paddle.static.data(
+                    name='input3', shape=[-1, 4], dtype="float16"
+                )
+                paddle.nn.functional.softmax(input3)
+
         paddle.disable_static()
 
 
@@ -104,7 +112,7 @@ class TestFP16MeanOp(TestMeanOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, check_new_ir=True)
+            self.check_output_with_place(place, check_pir=True)
 
     def test_checkout_grad(self):
         place = core.CUDAPlace(0)
@@ -128,11 +136,11 @@ class TestBF16MeanOp(TestMeanOp):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output_with_place(core.CPUPlace(), check_new_ir=True)
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
 
     def test_checkout_grad(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', check_new_ir=True)
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
@@ -190,12 +198,15 @@ class TestReduceMeanOp(OpTest):
     def test_check_output(self):
         if self.dtype != 'float16':
             self.check_output(
-                check_prim=True, check_prim_pir=True, check_new_ir=True
+                check_prim=True, check_prim_pir=True, check_pir=True
             )
         else:
             place = paddle.CUDAPlace(0)
             self.check_output_with_place(
-                place=place, check_prim=True, check_new_ir=True
+                place=place,
+                check_prim=True,
+                check_prim_pir=True,
+                check_pir=True,
             )
 
     def test_check_grad(self):
@@ -205,7 +216,7 @@ class TestReduceMeanOp(OpTest):
                 ['Out'],
                 check_prim=True,
                 check_prim_pir=True,
-                check_new_ir=True,
+                check_pir=True,
             )
         else:
             place = paddle.CUDAPlace(0)
@@ -216,7 +227,7 @@ class TestReduceMeanOp(OpTest):
                 numeric_grad_delta=0.5,
                 check_prim=True,
                 check_prim_pir=True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
 
@@ -443,6 +454,7 @@ class TestMeanAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -497,7 +509,7 @@ class TestMeanAPI(unittest.TestCase):
 
         with base.dygraph.guard():
             x_np = np.random.rand(10, 10).astype(np.float32)
-            x = base.dygraph.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
             out = paddle.mean(x=x, axis=1)
         np.testing.assert_allclose(
             out.numpy(), np.mean(x_np, axis=1), rtol=1e-05
@@ -509,10 +521,6 @@ class TestMeanAPI(unittest.TestCase):
         x = paddle.to_tensor(x)
         self.assertRaises(Exception, paddle.mean, x, -3)
         self.assertRaises(Exception, paddle.mean, x, 2)
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', [10, 12], 'int32')
-            self.assertRaises(TypeError, paddle.mean, x)
 
 
 class TestMeanWithTensorAxis1(TestReduceOPTensorAxisBase):
@@ -541,9 +549,10 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
     def mean_wrapper(self, x):
         return paddle.mean(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -572,9 +581,10 @@ class TestMeanTripleGradCheck(unittest.TestCase):
     def mean_wrapper(self, x):
         return paddle.mean(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 

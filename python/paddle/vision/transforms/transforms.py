@@ -53,9 +53,7 @@ def _check_input(
     if isinstance(value, numbers.Number):
         if value < 0:
             raise ValueError(
-                "If {} is a single number, it must be non negative.".format(
-                    name
-                )
+                f"If {name} is a single number, it must be non negative."
             )
         value = [center - value, center + value]
         if clip_first_on_zero:
@@ -65,9 +63,7 @@ def _check_input(
             raise ValueError(f"{name} values should be between {bound}")
     else:
         raise TypeError(
-            "{} should be a single number or a list/tuple with lenght 2.".format(
-                name
-            )
+            f"{name} should be a single number or a list/tuple with length 2."
         )
 
     if value[0] == value[1] == center:
@@ -85,7 +81,7 @@ class Compose:
 
     Returns:
         A compose object which is callable, __call__ for this Compose
-        object will call each given :attr:`transforms` sequencely.
+        object will call each given :attr:`transforms` sequently.
 
     Examples:
 
@@ -113,8 +109,8 @@ class Compose:
             except Exception as e:
                 stack_info = traceback.format_exc()
                 print(
-                    "fail to perform transform [{}] with error: "
-                    "{} and stack:\n{}".format(f, e, str(stack_info))
+                    f"fail to perform transform [{f}] with error: "
+                    f"{e} and stack:\n{str(stack_info)}"
                 )
                 raise e
         return data
@@ -319,12 +315,13 @@ class ToTensor(BaseTransform):
 
         .. code-block:: python
 
-            >>> import numpy as np
             >>> from PIL import Image
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> import paddle.vision.transforms.functional as F
 
-            >>> fake_img = Image.fromarray((np.random.rand(4, 5, 3) * 255.).astype(np.uint8))
+            >>> img_arr = ((paddle.rand((4, 5, 3)) * 255.).astype('uint8')).numpy()
+            >>> fake_img = Image.fromarray(img_arr)
             >>> transform = T.ToTensor()
             >>> tensor = transform(fake_img)
             >>> print(tensor.shape)
@@ -415,7 +412,7 @@ class RandomResizedCrop(BaseTransform):
     """Crop the input data to random size and aspect ratio.
     A crop of random size (default: of 0.08 to 1.0) of the original size and a random
     aspect ratio (default: of 3/4 to 1.33) of the original aspect ratio is made.
-    After applying crop transfrom, the input data will be resized to given size.
+    After applying crop transform, the input data will be resized to given size.
 
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
@@ -667,7 +664,7 @@ class RandomHorizontalFlip(BaseTransform):
 
     Shape:
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        - output(PIL.Image|np.ndarray|Paddle.Tensor): A horiziotal flipped image.
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A horizontal flipped image.
 
     Returns:
         A callable object of RandomHorizontalFlip.
@@ -676,15 +673,21 @@ class RandomHorizontalFlip(BaseTransform):
 
         .. code-block:: python
 
-            >>> import numpy as np
-            >>> from PIL import Image
-            >>> from paddle.vision.transforms import RandomHorizontalFlip
+            >>> import paddle
+            >>> fake_img = paddle.to_tensor([[[0, 0, 1], [0, 0, 1], [1, 1, 1]]])
+            >>> print(fake_img)
+            Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[[0, 0, 1],
+                     [0, 0, 1],
+                     [1, 1, 1]]])
+            >>> transform = paddle.vision.transforms.RandomHorizontalFlip(prob=1)
+            >>> result = transform(fake_img)
+            >>> print(result)
+            Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[[1, 0, 0],
+                     [1, 0, 0],
+                     [1, 1, 1]]])
 
-            >>> transform = RandomHorizontalFlip(0.5)
-            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
-            >>> print(fake_img.size)
-            (320, 300)
     """
 
     def __init__(self, prob=0.5, keys=None):
@@ -729,14 +732,20 @@ class RandomVerticalFlip(BaseTransform):
 
         .. code-block:: python
 
-            >>> import numpy as np
-            >>> from PIL import Image
-            >>> from paddle.vision.transforms import RandomVerticalFlip
-            >>> transform = RandomVerticalFlip()
-            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
-            >>> print(fake_img.size)
-            (320, 300)
+            >>> import paddle
+            >>> fake_img = paddle.to_tensor([[[0, 0, 1], [0, 0, 1], [1, 1, 1]]])
+            >>> print(fake_img)
+            Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[[0, 0, 1],
+                     [0, 0, 1],
+                     [1, 1, 1]]])
+            >>> transform = paddle.vision.transforms.RandomVerticalFlip(prob=1)
+            >>> result = transform(fake_img)
+            >>> print(result)
+            Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[[1, 1, 1],
+                     [0, 0, 1],
+                     [0, 0, 1]]])
 
     """
 
@@ -888,7 +897,7 @@ class BrightnessTransform(BaseTransform):
 
     Shape:
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        - output(PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in brghtness.
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in brightness.
 
     Returns:
         A callable object of BrightnessTransform.
@@ -1298,7 +1307,7 @@ class Pad(BaseTransform):
 
     Shape:
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        - output(PIL.Image|np.ndarray|Paddle.Tensor): A paded image.
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A padded image.
 
     Returns:
         A callable object of Pad.
@@ -1832,7 +1841,7 @@ class RandomErasing(BaseTransform):
         ratio (sequence, optional): Aspect ratio range of the erased area. Default: (0.3, 3.3).
         value (int|float|sequence|str, optional): The value each pixel in erased area will be replaced with.
                                If value is a single number, all pixels will be erased with this value.
-                               If value is a sequence with length 3, the R, G, B channels will be ereased
+                               If value is a sequence with length 3, the R, G, B channels will be erased
                                respectively. If value is set to "random", each pixel will be erased with
                                random values. Default: 0.
         inplace (bool, optional): Whether this transform is inplace. Default: False.
@@ -1911,7 +1920,7 @@ class RandomErasing(BaseTransform):
             scale (sequence, optional): The proportional range of the erased area to the input image.
             ratio (sequence, optional): Aspect ratio range of the erased area.
             value (sequence | None): The value each pixel in erased area will be replaced with.
-                               If value is a sequence with length 3, the R, G, B channels will be ereased
+                               If value is a sequence with length 3, the R, G, B channels will be erased
                                respectively. If value is None, each pixel will be erased with random values.
 
         Returns:
@@ -1961,7 +1970,7 @@ class RandomErasing(BaseTransform):
             scale (sequence, optional): The proportional range of the erased area to the input image.
             ratio (sequence, optional): Aspect ratio range of the erased area.
             value (sequence | None): The value each pixel in erased area will be replaced with.
-                               If value is a sequence with length 3, the R, G, B channels will be ereased
+                               If value is a sequence with length 3, the R, G, B channels will be erased
                                respectively. If value is None, each pixel will be erased with random values.
 
         Returns:

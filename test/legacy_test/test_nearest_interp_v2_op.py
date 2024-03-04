@@ -107,12 +107,12 @@ def nearest_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, float) or isinstance(scale, int):
+    if isinstance(scale, (float, int)):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, list) or isinstance(scale, tuple):
+    elif isinstance(scale, (list, tuple)):
         scale = list(map(float, scale))
     if SizeTensor is not None:
         if not isinstance(SizeTensor, list) and not isinstance(
@@ -302,7 +302,7 @@ class TestNearestInterpOp(OpTest):
         scale_h = 0
         scale_w = 0
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -374,7 +374,7 @@ class TestNearestInterpOp(OpTest):
                 'data_layout': self.data_layout,
             }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -383,10 +383,10 @@ class TestNearestInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         create_test_case0(self)
@@ -445,10 +445,10 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
 
 class TestNearestInterpOpFP16(TestNearestInterpOp):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         create_test_case0(self)
@@ -528,7 +528,7 @@ class TestNearestInterpOpBF16(OpTest):
         scale_h = 0
         scale_w = 0
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -600,7 +600,7 @@ class TestNearestInterpOpBF16(OpTest):
                 'data_layout': self.data_layout,
             }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -609,10 +609,10 @@ class TestNearestInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         create_test_case0(self)
@@ -697,7 +697,7 @@ class TestNearestInterpOpUint8(OpTest):
         ).astype("uint8")
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -731,7 +731,7 @@ class TestNearestInterpOpUint8(OpTest):
             'align_corners': self.align_corners,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -740,7 +740,9 @@ class TestNearestInterpOpUint8(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(place=core.CPUPlace(), atol=1)
+        self.check_output_with_place(
+            place=core.CPUPlace(), atol=1, check_pir=True
+        )
 
     def init_test_case(self):
         self.interp_method = 'nearest'
@@ -849,7 +851,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
             out_h = int(self.input_shape[2] * self.scale[0])
             out_w = int(self.input_shape[3] * self.scale[1])
         elif self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -876,7 +878,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -895,10 +897,10 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         self.interp_method = 'nearest'

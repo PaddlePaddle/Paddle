@@ -85,7 +85,7 @@ class PipelinePass(PassBase):
         else:
             raise ValueError(
                 "Now only 'F-then-B', '1F1B' and 'stream' are supported."
-                "The given value is {}.".format(self._mode)
+                f"The given value is {self._mode}."
             )
 
     def _insert_sync_ops_for_stream(self):
@@ -320,7 +320,7 @@ class PipelinePass(PassBase):
         recv_vars_name = {}
         for ib, src_block in enumerate(self._program.blocks):
             if ib == 0:
-                strat_block = start_prog.block(0)
+                start_block = start_prog.block(0)
                 end_block = end_prog.block(0)
 
                 is_after_while_op = False
@@ -333,7 +333,7 @@ class PipelinePass(PassBase):
 
                     if not is_after_while_op:
                         _create_program(
-                            src_block, strat_block, op, force_create=True
+                            src_block, start_block, op, force_create=True
                         )
                     else:
                         _create_program(
@@ -344,11 +344,11 @@ class PipelinePass(PassBase):
                 # The while block will be split to two separate blocks:
                 #     while{transformer_layer(send_block), generation_and_broadcast(recv_block)}
                 # The send_block:
-                #     include all ops about tansformer layers computation
-                #     execlude the nccl op about the while cond var(the last pp stage).
+                #     include all ops about transformer layers computation
+                #     exclude the nccl op about the while cond var(the last pp stage).
                 # The recv_block:
                 #     include all computation ops about generation and while cond var
-                #     execlude the nccl op about the while cond var(the pp stages exclude the last one)
+                #     exclude the nccl op about the while cond var(the pp stages exclude the last one)
                 # the nccl op about the while cond var:
                 #     put these varnames in the recv task node and do communication with brpc instead of nccl.
                 send_block = send_prog.block(0)

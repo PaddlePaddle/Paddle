@@ -30,7 +30,7 @@ void AllCloseKernel(const Context& dev_ctx,
                     const Scalar& atol,
                     bool equal_nan,
                     DenseTensor* out) {
-  double rtol_v, atol_v;
+  double rtol_v = NAN, atol_v = NAN;
   if (rtol.dtype() == DataType::FLOAT64) {
     rtol_v = rtol.to<double>();
   } else if (rtol.dtype() == DataType::FLOAT32) {
@@ -58,7 +58,7 @@ void AllCloseKernel(const Context& dev_ctx,
   auto num = x.numel();
   for (int64_t i = 0; i < num; ++i) {
     const T a = in_a[i], b = in_b[i];
-    bool val;
+    bool val = false;
     if (std::isnan(a) || std::isnan(b)) {
       val = equal_nan && std::isnan(a) == std::isnan(b);
     } else {

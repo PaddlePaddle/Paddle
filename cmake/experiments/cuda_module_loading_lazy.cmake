@@ -17,6 +17,12 @@
 # this experiment option makes Paddle supports lazy loading before CUDA 11.7.
 
 if(LINUX)
+  if(NOT WITH_NVCC_LAZY)
+    message(
+      "EXP_CUDA_MODULE_LOADING_LAZY only works with WITH_NVCC_LAZY=ON on Linux platforms"
+    )
+    return()
+  endif()
   if(NOT ON_INFER)
     message(
       "EXP_CUDA_MODULE_LOADING_LAZY only works with ON_INFER=ON on Linux platforms"

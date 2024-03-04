@@ -25,7 +25,7 @@ phi::KernelKey TransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   auto &data_format = ctx.Attr<std::string>("data_format");
-  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  phi::DataLayout layout_ = common::StringToDataLayout(data_format);
   return phi::KernelKey(
       ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
 }
@@ -101,7 +101,7 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     std::string data_format = ctx.Attr<std::string>("data_format");
-    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = common::StringToDataLayout(data_format);
     return phi::KernelKey(
         ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }
@@ -121,7 +121,7 @@ void Transpose2Op::InferShape(framework::InferShapeContext *ctx) const {
   for (int i = 0; i < in_dims.size(); ++i) {
     x_shape_dim[i + 1] = in_dims[i];
   }
-  ctx->SetOutputDim("XShape", phi::make_ddim(x_shape_dim));
+  ctx->SetOutputDim("XShape", common::make_ddim(x_shape_dim));
   ctx->ShareLoD("X", /*->*/ "XShape");
 }
 
@@ -129,7 +129,7 @@ phi::KernelKey Transpose2Op::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   auto &data_format = ctx.Attr<std::string>("data_format");
-  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  phi::DataLayout layout_ = common::StringToDataLayout(data_format);
   return phi::KernelKey(
       ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
 }
@@ -202,7 +202,7 @@ class Transpose2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::string dx_name = this->GetOutputName(dx);
     std::vector<int> axis =
         static_cast<std::vector<int>>(this->Attr<std::vector<int>>("axis"));
-    VLOG(6) << "Runing transpose2_grad composite func";
+    VLOG(6) << "Running transpose2_grad composite func";
     prim::transpose_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
     this->RecoverOutputName(dx, dx_name);
   }
@@ -233,7 +233,7 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx,
                                                 framework::GradVarName("Out"));
     std::string data_format = ctx.Attr<std::string>("data_format");
-    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = common::StringToDataLayout(data_format);
     return phi::KernelKey(
         ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }

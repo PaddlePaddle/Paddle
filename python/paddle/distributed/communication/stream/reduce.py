@@ -73,7 +73,6 @@ def _reduce_in_static_mode(
             'root_id': dst_rank_in_group,
         },
     )
-    return None
 
 
 def reduce(
@@ -86,7 +85,7 @@ def reduce(
 ):
     """
 
-    Perform specific reduction (for example, sum, max) on a tensor across devices and send to the destintion device.
+    Perform specific reduction (for example, sum, max) on a tensor across devices and send to the destination device.
 
     Args:
         tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support

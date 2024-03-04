@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"

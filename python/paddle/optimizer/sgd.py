@@ -14,7 +14,7 @@
 
 import warnings
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 
 from ..base import framework
 from ..base.dygraph import no_grad
@@ -40,15 +40,15 @@ class SGD(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It can be a float value as coeff of L2 regularization or \
-            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_base_ParamAttr` already, \
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
-            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
@@ -93,17 +93,17 @@ class SGD(Optimizer):
         self._master_weights = {}
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)

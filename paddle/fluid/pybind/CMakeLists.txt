@@ -4,7 +4,7 @@ set(PYBIND_DEPS
     pybind
     python
     proto_desc
-    memory
+    standalone_executor
     executor
     fleet_wrapper
     box_wrapper
@@ -19,6 +19,7 @@ set(PYBIND_DEPS
     layer
     tracer
     engine
+    common
     scope_pool
     analysis_predictor
     imperative_profiler
@@ -34,22 +35,24 @@ set(PYBIND_DEPS
     cost_model
     cuda_graph_with_memory_pool
     fleet_executor
-    plan
     global_utils
     phi_utils
     phi
-    phi_kernel_adaptor
-    pd_op_dialect
+    op_dialect_vjp
     program_translator
-    pd_inplace_pass
-    pir
+    pir_transforms
     new_profiler
-    jit_layer
-    jit_property
+    fluid_jit
     prim_utils
+    detail_op_handle
     static_tensor_operants
     type_info
     auto_parallel)
+
+if(WITH_CINN)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
+                  sub_graph_checker add_cinn_pass)
+endif()
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -58,7 +61,8 @@ if(WITH_PSCORE)
   endif()
 endif()
 if(WITH_RPC)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
+                  common)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -107,16 +111,16 @@ if(NOT WIN32)
 endif()
 
 if(WITH_PYTHON)
-  list(APPEND PYBIND_DEPS py_func_op)
+  # list(APPEND PYBIND_DEPS py_func_op)
+  set(PYBIND_DEPS ${PYBIND_DEPS} py_func_op)
 endif()
 
 set(PYBIND_SRCS
     pybind.cc
     imperative.cc
     inference_api.cc
-    ops_api.cc
-    static_op_function.cc
-    ir.cc
+    control_flow_api.cc
+    pir.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc
@@ -144,7 +148,19 @@ set(PYBIND_SRCS
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
-    auto_parallel_py.cc)
+    auto_parallel_py.cc
+    eval_frame_tools.cc
+    cpython_internals.c
+    eval_frame.c)
+
+if(NOT WITH_SHARED_IR)
+  # Note: We want to compile pir source into paddle.so directly, because
+  # we can't get all pir symbols when link pir static lib
+  file(GLOB_RECURSE PIR_CPP_SOURCES "${CMAKE_SOURCE_DIR}/paddle/pir/*.cc")
+  set(PYBIND_SRCS ${PYBIND_SRCS} ${PIR_CPP_SOURCES})
+else()
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir)
+endif()
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
@@ -184,7 +200,7 @@ if(WITH_GLOO)
 endif()
 
 if(WITH_CRYPTO)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
+  set(PYBIND_DEPS ${PYBIND_DEPS} framework_io)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif()
 
@@ -216,6 +232,10 @@ if(WITH_PSCORE)
   list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
+endif()
+
+if(WITH_CINN)
+  set(PYBIND_SRCS ${PYBIND_SRCS} test.cc)
 endif()
 
 if(WITH_RPC)
@@ -274,8 +294,12 @@ if(WITH_PYTHON)
 
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
-  target_link_libraries(eager_legacy_op_function_generator
-                        ${OP_FUNCTION_GENERETOR_DEPS})
+  set(GENERATOR_DEPS ${PYBIND_DEPS})
+  list(REMOVE_DUPLICATES GENERATOR_DEPS)
+  if(WIN32)
+    list(REMOVE_ITEM GENERATOR_DEPS python)
+  endif()
+  target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     target_link_libraries(kernel_signature_generator
@@ -347,6 +371,12 @@ if(WITH_PYTHON)
         DEPENDS pir)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
+
+    add_custom_command(
+      OUTPUT ${op_impl_path}/common.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${COMMON_LIB} ${op_impl_path}
+      DEPENDS common)
+    list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/common.dll)
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(
@@ -467,8 +497,6 @@ if(WITH_PYTHON)
                       DEPENDS ${eager_impl_file})
   endif()
 
-  list(APPEND PYBIND_DEPS standalone_executor staticgraph_executor_statistics)
-
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_functions.cc ${PYBIND_SRCS})
@@ -479,11 +507,14 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_legacy_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS ops_api.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS static_op_function.cc ${PYBIND_SRCS})
     list(APPEND PYBIND_DEPS eager_api)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)
     list(APPEND PYBIND_DEPS grad_node_info)
     list(APPEND PYBIND_DEPS phi)
+    list(APPEND PYBIND_DEPS common)
     list(APPEND PYBIND_DEPS final_dygraph_function)
     list(APPEND PYBIND_DEPS final_dygraph_node)
     list(APPEND PYBIND_DEPS dygraph_function)

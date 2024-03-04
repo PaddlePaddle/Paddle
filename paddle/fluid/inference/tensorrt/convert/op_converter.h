@@ -70,7 +70,7 @@ class OpConverter {
                             1UL,
                             platform::errors::InvalidArgument(
                                 "The input op's Input(\"Y\")."
-                                "size() should equal to 1, but reveceid "
+                                "size() should equal to 1, but received "
                                 "Input(\"Y\").size() = %u.",
                                 op_desc.Input("Y").size()));
           int op_type_len = op_desc.Type().size();
@@ -157,6 +157,13 @@ class OpConverter {
         it = Registry<OpConverter>::Global().Lookup("custom_plugin_creater");
         break;
 
+      case OpConverterType::CustomGenericPluginCreater:
+        LOG(INFO) << "There is no OpConverter for type " << op_desc.Type()
+                  << ", now use custom_generic_plugin_creater!";
+        it = Registry<OpConverter>::Global().Lookup(
+            "custom_generic_plugin_creater");
+        break;
+
       default:
         CHECK(false) << "no OpConverter for optype " << op_desc.Type();
     }
@@ -172,7 +179,7 @@ class OpConverter {
     (*it)(op, scope, test_mode);
 
     size_t output_num = op_desc.OutputNames().size();
-    // only one out settensordynamicRange
+    // only one out SetTensorDynamicRange
     if (op_desc.HasAttr("out_threshold")) {
       float out_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -195,7 +202,7 @@ class OpConverter {
       VLOG(1) << "Set out scale = " << out_scale << " for tensor "
               << output_name << ".";
     }
-    // outs settensordynamicRange
+    // outs SetTensorDynamicRange
     for (size_t i = 0; i < output_num; ++i) {
       if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
         float out_scale = PADDLE_GET_CONST(
@@ -369,6 +376,23 @@ class OpConverter {
 
     engine->FreezeNetwork();
     engine->ClearWeights();
+  }
+
+  void SupportFP32MixPrecision(const std::string& output_name,
+                               const std::string& op_type,
+                               nvinfer1::ILayer* layer) {
+    if (engine_->OpIsRunFloat(output_name) || engine_->OpIsRunFloat(op_type)) {
+#if IS_TRT_VERSION_GE(8210)
+      VLOG(3) << op_type << "(output: " << output_name << ")"
+              << " is forced to run in FP32 precision.";
+      layer->resetPrecision();
+      layer->setPrecision(nvinfer1::DataType::kFLOAT);
+#else
+      VLOG(3)
+          << op_type << "(output: " << output_name << ")"
+          << ": Set layer precision needs TensorRT version 8.2.1 and after.";
+#endif
+    }
   }
 
   nvinfer1::ITensor* Cast(nvinfer1::ITensor* input, nvinfer1::DataType dtype) {
@@ -627,6 +651,23 @@ class OpConverter {
             ->getOutput(0);
     return tensor;
   }
+
+  // Create an constant layer with shape_tensor and value
+  template <typename T>
+  nvinfer1::ITensor* FillConstantLayer(nvinfer1::ITensor* shape_tensor,
+                                       int tensor_rank,
+                                       T value) {
+    auto fill_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Fill, nvinfer1::Dims{}, nvinfer1::FillOperation::kLINSPACE);
+    fill_layer->setInput(0, *shape_tensor);
+    std::vector<T> beta_vec(tensor_rank);
+    std::vector<T> value_vec(1, value);
+    fill_layer->setInput(1, *Add1DConstantLayer(value_vec, "value_vec", true));
+    fill_layer->setInput(2, *Add1DConstantLayer(beta_vec, "beta_vec", false));
+    auto tensor = fill_layer->getOutput(0);
+    return tensor;
+  }
+
   template <typename T>
   // Create and add Multi-D constant float/int32 layer
   nvinfer1::ITensor* AddConstantLayer(const T* data,
@@ -719,7 +760,7 @@ class OpConverter {
     return Add1DConstantLayer(input_data, weight_name, scalar);
   }
 
-  void RreplenishLayerAndOutput(
+  void ReplenishLayerAndOutput(
       nvinfer1::ILayer* layer,
       const std::string& layer_type,
       const std::vector<std::string>& output_tensor_names,

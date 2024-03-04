@@ -35,7 +35,7 @@ void ReduceOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto x = ctx.GetVar(x_name);
 
-  VLOG(4) << "Reudce " << reduce_type << " x:" << x_name << " from shape ("
+  VLOG(4) << "Reduce " << reduce_type << " x:" << x_name << " from shape ("
           << cinn::utils::Join(x->shape, ",") << "), with dim=["
           << cinn::utils::Join(axis, ",") << "], keepdim=" << keepdim
           << ", reduce_all=" << reduce_all;
@@ -85,7 +85,7 @@ void ReduceOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto dtype = utils::GetPaddleDtype(
       op_desc, "out_dtype", static_cast<paddle::cpp::VarDescAPI::Type>(-1));
-  if (!dtype.empty() && common::Type2Str(out.value()->type) != dtype) {
+  if (!dtype.empty() && cinn::common::Type2Str(out.value()->type) != dtype) {
     out = ctx.Builder()->Cast(out.value(), dtype);
   }
 

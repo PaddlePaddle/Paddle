@@ -48,6 +48,7 @@ class TestMultinomialOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
+        self.python_api = paddle.multinomial
         self.init_data()
         self.inputs = {"X": self.input_np}
 
@@ -58,7 +59,7 @@ class TestMultinomialOp(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -109,6 +110,7 @@ class TestMultinomialFP16Op(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
+        self.python_api = paddle.multinomial
         self.dtype = np.float16
         self.init_data()
         self.inputs = {"X": self.input_np}
@@ -120,7 +122,7 @@ class TestMultinomialFP16Op(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -176,6 +178,7 @@ class TestMultinomialBF16OP(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
+        self.python_api = paddle.multinomial
         self.dtype = np.uint16
         self.init_data()
         self.inputs = {"X": convert_float_to_uint16(self.input_np)}
@@ -188,7 +191,9 @@ class TestMultinomialBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place_customized(self.verify_output, place)
+        self.check_output_with_place_customized(
+            self.verify_output, place, check_pir=True
+        )
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -450,9 +455,10 @@ class TestMultinomialTensorNumSamples(UnittestBase):
         return out
 
     def test_static(self):
+        paddle.enable_static()
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([3, 4])
             x.stop_gradient = False
@@ -463,7 +469,7 @@ class TestMultinomialTensorNumSamples(UnittestBase):
             self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[feat, out])
             paddle.static.save_inference_model(
                 self.save_path, [x], [feat, out], exe
@@ -473,6 +479,7 @@ class TestMultinomialTensorNumSamples(UnittestBase):
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
             np.testing.assert_equal(infer_outs[1].shape, (3, 3))
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

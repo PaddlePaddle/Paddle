@@ -149,7 +149,7 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
           }
         }
       }
-      decltype(op_attrs)* attr;
+      decltype(op_attrs)* attr = nullptr;
       if (marked_nodes.count(n)) {
         attr = &marked_var_attrs;
       } else if (const_cast<Node*>(n)->Var() &&

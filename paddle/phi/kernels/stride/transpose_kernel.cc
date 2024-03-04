@@ -24,25 +24,24 @@ void TransposeStridedKernel(const Context& ctx,
                             const std::vector<int>& axis,
                             DenseTensor* out) {
   size_t x_rank = x.dims().size();
-  std::vector<int> formated_axis = axis;
+  std::vector<int> formatted_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = static_cast<int>(axis[i] + x_rank);
+      formatted_axis[i] = static_cast<int>(axis[i] + x_rank);
     }
   }
 
   auto meta = out->meta();
   auto in_stride = x.strides();
-  auto in_dims = x.dims();
   meta.strides = in_stride;
-  for (int i = 0; i < static_cast<int>(formated_axis.size()); i++) {
-    meta.strides[i] = in_stride[formated_axis[i]];
-    meta.dims[i] = in_dims[formated_axis[i]];
+  for (int i = 0; i < static_cast<int>(formatted_axis.size()); i++) {
+    meta.strides[i] = in_stride[formatted_axis[i]];
   }
   meta.offset = x.offset();
 
   out->set_meta(meta);
   out->ResetHolder(x.Holder());
+  out->ShareInplaceVersionCounterWith(x);
 }
 
 }  // namespace phi

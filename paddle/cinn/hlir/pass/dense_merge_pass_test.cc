@@ -34,7 +34,7 @@ void RunModelTest(Program& program,  // NOLINT
         &inputs_data.back(), inputs_data.back().size(), 0.0f, 1.0f, 1e-3);
   }
 
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   std::unordered_map<std::string,
                      std::pair<std::vector<float>, std::vector<float>>>
       outputs;

@@ -19,6 +19,12 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
+#include "paddle/phi/kernels/funcs/quant_dequant.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
+
 namespace phi {
 namespace funcs {
 
@@ -367,5 +373,88 @@ template class FCFunctor<GPUContext, float16>;
 template class FCFunctor<GPUContext, float>;
 template class FCFunctor<GPUContext, double>;
 
+#ifndef PADDLE_WITH_HIP
+template <typename DeviceContext, typename T>
+void FCInt8Functor<DeviceContext, T>::operator()(
+    const DeviceContext& context,
+    const int M,
+    const int N,
+    const int K,
+    const T* X,
+    const DenseTensor* w_tensor,
+    T* Y,
+    float scale_in,
+    std::vector<float> scale_weights,
+    int quant_round_type,
+    float quant_max_bound,
+    float quant_min_bound,
+    const T* B,
+    bool relu,
+    bool padding_weights) {
+  PADDLE_ENFORCE_EQ(padding_weights,
+                    false,
+                    errors::PermissionDenied(
+                        "Weight padding in fc can not be used in GPU scope."));
+  const int8_t* W = w_tensor->data<int8_t>();
+
+  DenseTensor quant_x_tensor, quant_y_tensor;
+  quant_x_tensor.Resize(common::make_ddim({M, K}));
+  quant_y_tensor.Resize(common::make_ddim({M, N}));
+  context.template Alloc<int8_t>(&quant_x_tensor,
+                                 quant_x_tensor.numel() * sizeof(int8_t));
+  context.template Alloc<int32_t>(&quant_y_tensor,
+                                  quant_y_tensor.numel() * sizeof(int32_t));
+  LaunchQuantKernelWithVecSize<T>(X,
+                                  quant_x_tensor.data<int8_t>(),
+                                  scale_in,
+                                  M,
+                                  K,
+                                  quant_round_type,
+                                  quant_max_bound,
+                                  quant_min_bound,
+                                  context.stream());
+
+  MatmulKernel<int8_t, GPUContext>(
+      context, quant_x_tensor, *w_tensor, false, false, &quant_y_tensor);
+
+  DenseTensor scale_weights_dev;
+  scale_weights_dev.Resize(common::make_ddim({N}));
+  context.template Alloc<float>(&scale_weights_dev,
+                                scale_weights_dev.numel() * sizeof(float));
+  float* scale_weights_dev_ptr = scale_weights_dev.data<float>();
+  cudaMemcpyAsync(scale_weights_dev_ptr,
+                  scale_weights.data(),
+                  N * sizeof(float),
+                  cudaMemcpyHostToDevice);
+
+  phi::backends::gpu::GpuLaunchConfig config;
+  if (N % DequantKernelVecSize == 0) {
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        context, M * N, DequantKernelVecSize);
+  } else {
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(context, M * N, 1);
+  }
+  LaunchDequantKernelWithScaleOfInputAndWeight(quant_y_tensor.data<int32_t>(),
+                                               Y,
+                                               M,
+                                               N,
+                                               context.stream(),
+                                               &config,
+                                               scale_in,
+                                               scale_weights_dev_ptr,
+                                               quant_max_bound);
+
+  if (B == NULL) {
+    return;
+  }
+
+  // M * N
+  AddReluKernel(context.stream(), M, N, Y, B, relu);
+}
+
+template class FCInt8Functor<GPUContext, float16>;
+template class FCInt8Functor<GPUContext, float>;
+template class FCInt8Functor<GPUContext, double>;
+#endif
 }  // namespace funcs
 }  // namespace phi

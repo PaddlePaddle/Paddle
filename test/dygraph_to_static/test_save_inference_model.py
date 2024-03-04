@@ -17,19 +17,30 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+    test_legacy_only,
+)
 
 import paddle
 from paddle import base
-from paddle.jit.api import to_static
+from paddle.autograd import PyLayer
+from paddle.framework import use_pir_api
 from paddle.jit.dy2static.partial_program import partial_program_from
+from paddle.jit.dy2static.pir_partial_program import (
+    partial_program_from as pir_partial_program_from,
+)
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
 np.random.seed(SEED)
 
-place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
+place = (
+    paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+)
 
 
 class SimpleFcLayer(paddle.nn.Layer):
@@ -37,7 +48,6 @@ class SimpleFcLayer(paddle.nn.Layer):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
 
-    @to_static
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
@@ -45,39 +55,65 @@ class SimpleFcLayer(paddle.nn.Layer):
         return out, y
 
 
-class TestDyToStaticSaveInferenceModel(unittest.TestCase):
+class cus_tanh(PyLayer):
+    @staticmethod
+    def forward(ctx, x):
+        y = paddle.tanh(x)
+        ctx.save_for_backward(y)
+        return y
+
+    @staticmethod
+    def backward(ctx, dy):
+        (y,) = ctx.saved_tensor()
+        grad = dy * (1 - paddle.square(y))
+        return grad
+
+
+class SimplePyLayerNet(paddle.nn.Layer):
+    def __init__(self, fc_size):
+        super().__init__()
+        self._linear = paddle.nn.Linear(fc_size, fc_size)
+
+    def forward(self, x):
+        y = self._linear(x)
+        out = cus_tanh.apply(y)
+        loss = paddle.mean(out)
+        return loss, out
+
+
+class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @ast_only_test
+    @test_ast_only
     def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
-        with base.dygraph.guard(place):
-            base.default_startup_program().random_seed = SEED
-            base.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
 
-            x = base.dygraph.to_variable(x_data)
-            layer = SimpleFcLayer(fc_size)
-            adam = paddle.optimizer.SGD(
-                learning_rate=0.1, parameters=layer.parameters()
-            )
+        x = paddle.to_tensor(x_data)
+        layer = paddle.jit.to_static(SimpleFcLayer(fc_size))
+        adam = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=layer.parameters()
+        )
 
-            for i in range(5):
-                loss, pred = layer(x)
-                loss.backward()
-                adam.minimize(loss)
-                layer.clear_gradients()
-            # test for saving model in dygraph.guard
-            infer_model_prefix = os.path.join(
-                self.temp_dir.name, "test_dy2stat_inference_in_guard/model"
-            )
-            infer_model_dir = os.path.join(
-                self.temp_dir.name, "test_dy2stat_inference_in_guard"
-            )
+        for i in range(5):
+            loss, pred = layer(x)
+            loss.backward()
+            adam.minimize(loss)
+            layer.clear_gradients()
+        # test for saving model in dygraph.guard
+        infer_model_prefix = os.path.join(
+            self.temp_dir.name, "test_dy2stat_inference_in_guard/model"
+        )
+        infer_model_dir = os.path.join(
+            self.temp_dir.name, "test_dy2stat_inference_in_guard"
+        )
+        # TODO(pir-save-load): Fix this after we support save/load in PIR
+        if not use_pir_api():
             paddle.jit.save(
                 layer=layer,
                 path=infer_model_prefix,
@@ -86,13 +122,59 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             )
             # Check the correctness of the inference
             dygraph_out, _ = layer(x)
-        self.check_save_inference_model(layer, [x_data], dygraph_out.numpy())
-        self.check_save_inference_model(
-            layer, [x_data], dygraph_out.numpy(), fetch=[loss]
+            self.check_save_inference_model(
+                layer, [x_data], dygraph_out.numpy()
+            )
+            self.check_save_inference_model(
+                layer, [x_data], dygraph_out.numpy(), fetch=[loss]
+            )
+            self.check_save_inference_model(
+                layer, [x_data], dygraph_out.numpy(), feed=[x]
+            )
+
+    # TODO(MarioLulab): Disable PT test until we support PIR PyLayer
+    @test_ast_only
+    @test_legacy_only
+    def test_save_pylayer_model(self):
+        fc_size = 20
+        x_data = np.random.random((fc_size, fc_size)).astype('float32')
+        paddle.framework._set_expected_place(place)
+
+        paddle.seed(SEED)
+        x = paddle.to_tensor(x_data)
+        layer = paddle.jit.to_static(SimplePyLayerNet(fc_size))
+        adam = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=layer.parameters()
         )
-        self.check_save_inference_model(
-            layer, [x_data], dygraph_out.numpy(), feed=[x]
+
+        for i in range(5):
+            loss, pred = layer(x)
+            loss.backward()
+            adam.minimize(loss)
+            layer.clear_gradients()
+
+        infer_model_prefix = os.path.join(
+            self.temp_dir.name, "test_dy2stat_inference_in_guard/model_pylayer"
         )
+        # TODO(pir-save-load): Fix this after we support save/load in PIR
+        if not use_pir_api():
+            paddle.jit.save(
+                layer=layer,
+                path=infer_model_prefix,
+                input_spec=[x],
+                output_spec=[pred],
+            )
+            # Check the correctness of the inference
+            loss_out, _ = layer(x)
+
+            loss_out_numpy = float(loss_out)
+            self.check_save_inference_model(layer, [x_data], loss_out_numpy)
+            self.check_save_inference_model(
+                layer, [x_data], loss_out_numpy, fetch=[loss]
+            )
+            self.check_save_inference_model(
+                layer, [x_data], loss_out_numpy, feed=[x]
+            )
 
     def check_save_inference_model(
         self, model, inputs, gt_out, feed=None, fetch=None
@@ -113,10 +195,10 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             input_spec=feed if feed else None,
             output_spec=fetch if fetch else None,
         )
-        # Check the correctness of the inference
         infer_out = self.load_and_run_inference(
             infer_model_dir, model_filename, params_filename, inputs
         )
+
         np.testing.assert_allclose(gt_out, infer_out, rtol=1e-05)
 
     def load_and_run_inference(
@@ -140,31 +222,36 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             fetch_list=fetch_targets,
         )
 
+        paddle.disable_static()
         return np.array(results[0])
 
 
-class TestPartialProgramRaiseError(unittest.TestCase):
-    @ast_only_test
+class TestPartialProgramRaiseError(Dy2StTestBase):
+    @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_param_type(self):
-        paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')
 
-        with base.dygraph.guard(base.CPUPlace()):
-            net = SimpleFcLayer(20)
-            x = base.dygraph.to_variable(x_data)
-            out = net(x)
+        net = paddle.jit.to_static(SimpleFcLayer(20))
+        x = paddle.to_tensor(x_data)
+        out = net(x)
 
-            program_cache = net.forward.program_cache
-            _, (concrete_program, _) = program_cache.last()
+        program_cache = net.forward.program_cache
+        _, (concrete_program, _) = program_cache.last()
 
-            params = concrete_program.parameters
+        params = concrete_program.parameters
 
-            concrete_program.parameters = params[0]
-            # TypeError: Type of self._params should be list or tuple,
-            # but received <class 'paddle.base.framework.EagerParamBase'>.
-            with self.assertRaises(TypeError):
+        concrete_program.parameters = params[0]
+        # TypeError: Type of self._params should be list or tuple,
+        # but received <class 'paddle.base.framework.EagerParamBase'>.
+        with self.assertRaises(TypeError):
+            if use_pir_api():
+                pir_partial_program_from(concrete_program)
+            else:
                 partial_program_from(concrete_program)
 
+        # Under PIR, params are tuples and cannot be modified
+        if not use_pir_api():
             params[0] = "linear.w.0"
             concrete_program.parameters = params
             # TypeError: Type of self._params[0] should be framework.EagerParamBase,

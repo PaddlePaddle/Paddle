@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/arange_kernel.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
@@ -20,37 +21,34 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out) {
+void ArangeTensorKernel(const Context& dev_ctx,
+                        const DenseTensor& start,
+                        const DenseTensor& end,
+                        const DenseTensor& step,
+                        DenseTensor* out) {
   T start_value = GetValue<T, Context>(dev_ctx, start);
   T end_value = GetValue<T, Context>(dev_ctx, end);
   T step_value = GetValue<T, Context>(dev_ctx, step);
 
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
-  out->Resize(phi::make_ddim({size}));
-  dev_ctx.template Alloc<T>(out);
+  out->Resize(common::make_ddim({size}));
+  auto* out_data = dev_ctx.template Alloc<T>(out);
 
-  DenseTensor out_cpu;
-  out_cpu.Resize({out->numel()});
-  dev_ctx.template HostAlloc<T>(&out_cpu);
-  T* out_cpu_data = out_cpu.data<T>();
-
-  T value = start_value;
-  for (int64_t i = 0; i < size; ++i) {
-    out_cpu_data[i] = value;
-    value += step_value;
-  }
-  phi::Copy(dev_ctx, out_cpu, out->place(), true, out);
+  int ret = xpu::range<T>(
+      dev_ctx.x_context(), out_data, start_value, step_value, size);
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    arange, XPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int, int64_t) {
+PD_REGISTER_KERNEL(arange_tensor,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ArangeTensorKernel,
+                   float,
+                   int,
+                   int64_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);

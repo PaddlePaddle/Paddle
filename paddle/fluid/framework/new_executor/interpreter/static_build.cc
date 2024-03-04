@@ -15,14 +15,28 @@
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
+#include "paddle/fluid/platform/flags.h"
 
-// These Ops is OperatorBase, but we have been handle them in static build
-std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
+COMMON_DECLARE_bool(cache_inference_while_scope);
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
+
+std::set<std::string> OpsHandledInStaticBuild = {"conditional_block",
+                                                 "fused_rms_norm",
+                                                 "fused_rms_norm_grad",
+                                                 "read",
+                                                 "while"};
 
 std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "c_comm_init",
@@ -38,11 +52,11 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "create_py_reader",
     "depend",
     "fetch_v2",
+    "print",
     "send_v2",
     "nop"};
 
 std::set<std::string> StaticBuildBlackList = {
-    "batch_norm" /*: to handle reserve_space output*/,
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
@@ -53,15 +67,77 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
+using InterpreterCore = framework::InterpreterCore;
+
+static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  phi::DataType dtype = phi::DataType::UNDEFINED;
+  phi::Place place = phi::Place();
+  if (var == nullptr) {
+    return VarMetaInfo(name, dtype, place);
+  }
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    if (!UNLIKELY(!tensor.IsInitialized())) {
+      dtype = tensor.dtype();
+      place = tensor.place();
+    }
+  } else if (var->IsType<phi::SelectedRows>()) {
+    auto tensor = var->Get<phi::SelectedRows>().value();
+    if (!UNLIKELY(!tensor.IsInitialized())) {
+      dtype = tensor.dtype();
+      place = tensor.place();
+    }
+  }
+  return VarMetaInfo(name, dtype, place);
+}
+
+std::vector<VarMetaInfo> GetVarsInfo(const Scope* scope,
+                                     VariableNameMap var_map,
+                                     const OperatorBase& op) {
+  std::vector<VarMetaInfo> var_info;
+
+  const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
+  if (op.Info().NoNeedBufferVarsInferer()) {
+    no_need_buffer_vars = &(op.Info().NoNeedBufferVarsInferer()(
+        op.Inputs(), op.Outputs(), op.Attrs()));
+    if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
+  }
+  for (auto it = var_map.begin(); it != var_map.end();) {
+    auto& var = *it;
+    bool is_no_need_buffer_var =
+        (no_need_buffer_vars && no_need_buffer_vars->count(var.first) > 0);
+    std::string var_name;
+    var_info.reserve(var_info.size() + var.second.size());
+    for (size_t i = 0; i < var.second.size(); ++i) {
+      auto var_name = var.second[i];
+      if (scope && is_no_need_buffer_var) {
+        var_info.emplace_back(GetVarMetaInfo(*scope, var_name));
+      } else {
+        var_info.emplace_back(var_name);
+      }
+    }
+    ++it;
+  }
+  return var_info;
+}
+
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
-  // in_black_list = (kernelCode >> 7) & 1
-  // is_operator_base = (kernelCode >> 6) & 1
-  // is_custom_op = (kernelCode >> 5) & 1
-  // use_mkldnn = (kernelCode >> 4) & 1
+  // in_black_list = (kernelCode >> 5) & 1
+  // is_operator_base = (kernelCode >> 4) & 1
+  // is_custom_op = (kernelCode >> 3) & 1
+  // use_mkldnn = (kernelCode >> 2) & 1
+  // sub_block_can_not_static_build = (kernelCode >> 1) & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
+    if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type) ||
+        OpsHandledInStaticBuild.count(op_type)) {
+      continue;
+    }
+
     const framework::OpInfo& info = OpInfoMap::Instance().Get(op_type);
     auto op_base =
         info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());
@@ -77,19 +153,21 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
       use_mkldnn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
                                      : PADDLE_GET_CONST(bool, attr);
     }
-    bool has_structured_kernel =
-        phi::KernelFactory::Instance().HasStructuredKernel(op_type);
+
+    bool sub_block_can_not_static_build = false;
+    if (op->HasAttr("sub_block")) {
+      auto* sub_block =
+          PADDLE_GET_CONST(framework::BlockDesc*, op->GetAttr("sub_block"));
+      sub_block_can_not_static_build = !BlockCanBeStaticBuilt(*sub_block);
+    }
 
     KernelCode kernel_code = static_cast<KernelCode>(
-        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
-        (use_mkldnn << 4) + (has_structured_kernel << 2));
-    if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
-      if (in_black_list ||
-          (is_operator_base &&
-           !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn) {
-        invalid_ops.insert(std::make_pair(op_type, kernel_code));
-      }
+        (in_black_list << 5) + (is_operator_base << 4) + (is_custom_op << 3) +
+        (use_mkldnn << 2) + (sub_block_can_not_static_build << 1));
+
+    if (in_black_list || is_operator_base || is_custom_op || use_mkldnn ||
+        sub_block_can_not_static_build) {
+      invalid_ops.insert(std::make_pair(op_type, kernel_code));
     }
   }
 
@@ -97,11 +175,12 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [in_black_list = " << (item.second >> 7 & 1)
-         << ", is_operator_base = " << (item.second >> 6 & 1)
-         << ", is_custom_op = " << (item.second >> 5 & 1)
-         << ", use_mkldnn = " << (item.second >> 4 & 1)
-         << (item.second >> 2 & 1) << "]\n";
+      ss << item.first << " [in_black_list = " << (item.second >> 5 & 1)
+         << ", is_operator_base = " << (item.second >> 4 & 1)
+         << ", is_custom_op = " << (item.second >> 3 & 1)
+         << ", use_mkldnn = " << (item.second >> 2 & 1)
+         << ", sub_block_can_not_static_build = " << (item.second >> 1 & 1)
+         << "]\n";
     }
     VLOG(1) << ss.str();
   }
@@ -126,6 +205,14 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
   if (op_type == "adam" || op_type == "adamw" || op_type == "merged_adam") {
     if (op.Attr<bool>("use_global_beta_pow") &&
         (parameter_name == "Beta1PowOut" || parameter_name == "Beta2PowOut")) {
+      VLOG(2) << "Skip fake initialization for: " << parameter_name;
+      return false;
+    }
+  }
+
+  if (op_type == "batch_norm" && parameter_name == "ReserveSpace") {
+    if (dynamic_cast<const OperatorWithKernel*>(&op)->kernel_type()->place_ ==
+        phi::CPUPlace()) {
       VLOG(2) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
@@ -175,6 +262,12 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     }
   }
 
+  if ((op_type == "flatten" || op_type == "flatten_contiguous_range") &&
+      parameter_name == "XShape") {
+    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    return false;
+  }
+
   if (op_type == "segment_pool" && parameter_name == "SummedIds") {
     return op.Attr<std::string>("pooltype") == "MEAN" &&
            dynamic_cast<const OperatorWithKernel*>(&op)
@@ -197,10 +290,8 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
       return var->template GetMutable<phi::TensorArray>();
     } else if (var->template IsType<framework::Strings>()) {
       return var->template GetMutable<framework::Strings>();
-    } else if (var->template IsType<paddle::framework::RawTensor>()) {
-      return var->template GetMutable<paddle::framework::RawTensor>();
-    } else if (!var->IsInitialized()) {
-      // The following is for RAW type of var
+    } else if (var->template IsType<paddle::framework::RawTensor>() ||
+               !var->IsInitialized()) {
       return var->template GetMutable<paddle::framework::RawTensor>();
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -244,7 +335,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 
   // set place
   if (tensor->initialized()) {  // avoid overwriting valid data
-    platform::DeviceContext* dev_ctx_for_copy;
+    platform::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
       dev_ctx_for_copy = platform::DeviceContextPool::Instance().Get(place);
     } else {
@@ -318,9 +409,246 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
   }
 }
 
-void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
-                                          const phi::Place& place,
-                                          Scope* scope) {
+void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
+                                       const platform::Place& dev_place,
+                                       const OperatorBase& op) {
+  auto* scope_var = scope.FindVar(op.Output("Scope"));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope_var,
+      platform::errors::PreconditionNotMet(
+          "Expect Scope variable to be set in conditional_block_op, but "
+          "got a null Scope variable. Please set the Scope variable."));
+
+  auto* scopes = scope_var->GetMutable<std::vector<framework::Scope*>>();
+  scopes->resize(1);
+  scopes->front() = &scope.NewScope();
+
+  auto& cur_scope = *scopes->front();
+#ifdef PADDLE_WITH_DNNL
+  // Executor on being destroyed clears oneDNN cache and resets
+  // registered model data layout. This is unwanted for nested
+  // Executors (executors declared inside control ops)
+  platform::DontClearMKLDNNCache(dev_place);
+#endif
+  auto* block = op.Attr<framework::BlockDesc*>("sub_block");
+  VLOG(3) << "Conditional block.idx = " << block->ID()
+          << ", scope = " << &cur_scope;
+
+  auto& skip_vars =
+      op.Attr<std::vector<std::string>>("skip_eager_deletion_vars");
+
+  std::unique_ptr<InterpreterCore> core;
+  LOG_FIRST_N(INFO, 1)
+      << "[ControlFlow][ConditionalBlock] New Executor is Running.";
+
+  VLOG(10) << "[interpreterCore cache]" << core.get();
+  VLOG_IF(10, core) << platform::is_same_place(core->GetPlace(), dev_place);
+
+  framework::interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
+  execution_config.used_for_control_flow_op = true;
+  execution_config.skip_gc_vars =
+      std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
+  core.reset(
+      new InterpreterCore(dev_place, *block, &cur_scope, execution_config));
+
+  std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+  core->Build({}, &op_func_nodes);
+}
+
+void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
+                                 const platform::Place& dev_place,
+                                 const OperatorBase& op) {
+  PADDLE_ENFORCE_NOT_NULL(
+      scope.FindVar(op.Input("Condition")),
+      platform::errors::NotFound("Input(Condition) of WhileOp is not found."));
+
+#ifdef PADDLE_WITH_DNNL
+  // Executor on being destroyed clears oneDNN cache and resets
+  // registered model data layout. This is unwanted for nested
+  // Executors (executors declared inside control ops)
+  platform::DontClearMKLDNNCache(dev_place);
+#endif
+  auto* block = op.Attr<framework::BlockDesc*>("sub_block");
+
+  // get device context from pool
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(dev_place);
+
+  bool is_test = op.Attr<bool>("is_test");
+
+  std::set<std::string> no_copy_var_names;
+  if (!is_test) {
+    // set all persistable parameters into no_copy_var_names.
+    auto* global_block = block;
+
+    while (global_block->ID() != 0) global_block = global_block->ParentBlock();
+    auto all_vars = global_block->AllVars();
+    std::for_each(all_vars.begin(),
+                  all_vars.end(),
+                  [&no_copy_var_names](framework::VarDesc* var) {
+                    if (var->IsParameter())
+                      no_copy_var_names.insert(var->Name());
+                  });
+
+    const std::vector<framework::OpDesc*>& all_ops = block->AllOps();
+    for (const framework::OpDesc* item : all_ops) {
+      const framework::VariableNameMap& input_var_names = item->Inputs();
+      const framework::VariableNameMap& output_var_names = item->Outputs();
+      for (auto& ipt : input_var_names) {
+        for (const std::string& var_name : ipt.second) {
+          if (operators::StrInVaraiableNameMap(var_name, output_var_names)) {
+            no_copy_var_names.insert(var_name);
+          }
+        }
+      }
+    }
+  }
+
+  auto step_scopes = scope.FindVar(op.Output("StepScopes"))
+                         ->GetMutable<std::vector<framework::Scope*>>();
+
+  if (!step_scopes->empty()) {
+    platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
+    for (auto& s : *step_scopes) {
+      if (scope.HasKid(s)) {
+        scope.DeleteScope(s);
+      }
+    }
+    step_scopes->clear();
+  }
+
+  PADDLE_ENFORCE_EQ(step_scopes->size(),
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "The Output(StepScope) of WhileOp should be empty."));
+
+  auto& skip_vars =
+      op.Attr<std::vector<std::string>>("skip_eager_deletion_vars");
+
+  // note(lvyongkang): The assign op in while loop may change the place of
+  // variable. However, InterpreterCore fix the kernel of every ops during its
+  // first run. A cpu tensor may become gpu tensor after first run. This will
+  // lead to segmetation fault when it's used in a cpu kernel. Here we record
+  // the place of every inputs and restore their place after
+  // InterpreterCore.run().
+  std::map<std::string, phi::Place> input_var_original_places;
+  for (const auto& in_name : op.Inputs("X")) {
+    framework::Variable* var = scope.FindVar(in_name);
+    if (var == nullptr) {
+      VLOG(4) << "[while op]"
+              << "input not found:" << in_name;
+    }
+
+    if (var->Type() == framework::proto::VarType::LOD_TENSOR) {
+      input_var_original_places[in_name] =
+          (var->Get<phi::DenseTensor>()).place();
+    } else {
+      VLOG(10) << "[while op]"
+               << "skip backup input " << in_name << " type:"
+               << framework::TransToPhiDataType(
+                      framework::ToVarType(var->Type()));
+    }
+  }
+
+  LOG_FIRST_N(INFO, 1) << "[ControlFlow][WhileOp] New Executor is Running.";
+  std::unique_ptr<InterpreterCore> core;
+
+  framework::Scope placeholder;  // Don't care if it's valid, just for
+                                 // initialize InterpreterCore
+  framework::interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
+  execution_config.used_for_control_flow_op = true;
+  execution_config.skip_gc_vars =
+      std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
+  core.reset(new framework::InterpreterCore(
+      dev_place, *block, &placeholder, execution_config));
+
+  if (!is_test) {
+    auto& current_scope = scope.NewScope();
+    step_scopes->push_back(&current_scope);
+
+    std::vector<std::string> rename_vars;
+    for (const std::string& input_var_name : op.Inputs("X")) {
+      if (no_copy_var_names.find(input_var_name) == no_copy_var_names.end()) {
+        std::string input_var_rename = input_var_name + "@TMP_COPY";
+        framework::Variable* input_var = scope.FindVar(input_var_name);
+        if (input_var->IsType<phi::DenseTensor>()) {
+          rename_vars.push_back(input_var_rename);
+          auto input_var_tensor = input_var->Get<phi::DenseTensor>();
+          auto* rename_input_var_tensor = current_scope.Var(input_var_rename)
+                                              ->GetMutable<phi::DenseTensor>();
+          framework::TensorCopy(
+              input_var_tensor, dev_place, rename_input_var_tensor);
+          rename_input_var_tensor->set_lod(input_var_tensor.lod());
+        }
+      }
+    }
+
+    operators::BuildScopeForControlFlowOp(*core, *block, &current_scope);
+    core->reset_scope(&current_scope);
+
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+    core->Build({}, &op_func_nodes);
+
+    // restore inputs place
+    for (const auto& n : input_var_original_places) {
+      const std::string& in_name = n.first;
+      const phi::Place& original_place = n.second;
+      // input vars exist in `scope` not `current_scope`
+      operators::TransferVariablePlace(
+          &scope, in_name, original_place, dev_ctx);
+    }
+
+    for (auto& var_rename : rename_vars) {
+      std::string input_var_name =
+          var_rename.substr(0, var_rename.size() - strlen("@TMP_COPY"));
+      current_scope.Rename(var_rename, input_var_name);
+    }
+  } else {
+    framework::Scope* current_scope = nullptr;
+    if (!FLAGS_cache_inference_while_scope) {
+      current_scope = &(scope.NewScope());
+      operators::BuildScopeForControlFlowOp(*core, *block, current_scope);
+      core->reset_scope(current_scope);
+    } else {
+      auto cached_inference_scope = &(scope.NewScope());
+      operators::BuildScopeForControlFlowOp(
+          *core, *block, cached_inference_scope);
+      core->reset_scope(cached_inference_scope);
+      current_scope = cached_inference_scope;
+    }
+
+    for (auto& name : current_scope->LocalVarNames()) {
+      auto* var = current_scope->Var(name);
+      if (var->IsType<phi::DenseTensor>()) {
+        // Clear all lod information for all lod_tensors.
+        auto* t = var->GetMutable<phi::DenseTensor>();
+        framework::LoD empty_lod;
+        t->set_lod(empty_lod);
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // Clear elements of all tensor arrays.
+        auto* t = var->GetMutable<framework::LoDTensorArray>();
+        t->clear();
+      }
+    }
+
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+    core->Build({}, &op_func_nodes);
+
+    if (!FLAGS_cache_inference_while_scope) {
+      scope.DeleteScope(current_scope);
+    }
+  }
+}
+
+void FakeInitializeOutputsForOperatorBase(
+    const OperatorBase& op,
+    const phi::Place& place,
+    Scope* scope,
+    std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   const std::string& op_type = op.Type();
   if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
     return;
@@ -329,7 +657,65 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
   phi::DeviceContext* dev_ctx =
       platform::DeviceContextPool::Instance().Get(place);
 
-  if (op_type == "read") {
+  if (op_type == "conditional_block" || op_type == "while") {
+    // Note(sonder): skip fake init for conditional_block when there is no
+    // op with kernel after it.
+    bool skip_fake_init = true;
+    std::unordered_set<std::string> following_input_vars;
+
+    for (size_t i = 0; i < following_ops.size(); ++i) {
+      if (dynamic_cast<framework::OperatorWithKernel*>(
+              following_ops[i].get()) != nullptr) {
+        VLOG(4) << "Find op with kernel after " << op_type << ": "
+                << following_ops[i]->Type();
+        skip_fake_init = false;
+        auto input_vars_info = GetVarsInfo(
+            scope, following_ops[i]->Inputs(), *following_ops[i].get());
+        for (auto& input_var_info : input_vars_info) {
+          following_input_vars.insert(input_var_info.name_);
+        }
+      }
+    }
+
+    if (skip_fake_init) {
+      return;
+    }
+
+    const std::vector<VarMetaInfo> out_var_info_before_build =
+        GetVarsInfo(scope, op.Outputs(), op);
+
+    if (op_type == "conditional_block") {
+      RunConditionalBlockPreStaticBuild(*scope, place, op);
+    } else {
+      RunWhileBlockPreStaticBuild(*scope, place, op);
+    }
+
+    const std::vector<VarMetaInfo> out_var_info_after_build =
+        GetVarsInfo(scope, op.Outputs(), op);
+
+    // Note(sonder): static_build is not supported if the output of
+    // conditional_block is changed after static build.
+    for (size_t i = 0; i < out_var_info_before_build.size(); ++i) {
+      // static build is supported in case of the output's dtype/place
+      // is changed but the following op is not use this output
+      if (out_var_info_before_build[i] != out_var_info_after_build[i]) {
+        auto var_name = out_var_info_before_build[i].name_;
+        if (following_input_vars.count(var_name)) {
+          PADDLE_THROW(phi::errors::PreconditionNotMet(
+              "The output %s s' dtype/place of %s is "
+              "changed after static build. Befer static build, the "
+              "dtype is %s, place is %s. After static "
+              "build, the dtype is %s, place is %s.",
+              op_type,
+              var_name,
+              out_var_info_before_build[i].dtype_,
+              out_var_info_before_build[i].place_,
+              out_var_info_after_build[i].dtype_,
+              out_var_info_after_build[i].place_));
+        }
+      }
+    }
+  } else if (op_type == "read") {
     const std::string& reader_name = op.Input("Reader");
     framework::ReaderHolder* reader =
         GET_DATA_SAFELY(scope->FindVar(reader_name), "Input", "Reader", "Read")
@@ -448,6 +834,18 @@ void FakeInitializeOutputsForFunctionKernel(
             if (beta1_pow->place() == beta2_pow->place()) {
               backend = phi::TransToPhiBackend(beta1_pow->place());
             }
+          } else if (op_type == "lamb") {
+            phi::TensorBase* beta1_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
+            phi::TensorBase* beta2_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
+            if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
+                beta1_pow->place().GetType() == AllocationType::CPU &&
+                beta2_pow->place().GetType() == AllocationType::CPU) {
+              backend = phi::Backend::CPU;
+            } else {
+              backend = phi::TransToPhiBackend(dev_ctx.GetPlace());
+            }
           } else if (op_type == "reshape2") {
             phi::TensorBase* x =
                 GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
@@ -476,6 +874,8 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
+          } else if (op_type == "dequantize_linear") {
+            dtype = GetInputDType(runtime_ctx, "Scale");
           } else if (op_type == "lamb") {
             bool multi_precision = op.Attr<bool>("multi_precision");
             dtype = GetInputDType(runtime_ctx, "Moment1");
@@ -548,14 +948,36 @@ void FakeInitializeOutputsForStructureKernel(
 
   const VariableNameMap& outputs = op.Outputs();
   for (auto& item : outputs) {
-    const std::string& parameter_name = item.first;
-    auto multi_output_var = execution_context->MultiOutputVar(parameter_name);
+    const std::string& output_parameter_name = item.first;
+    auto multi_output_var =
+        execution_context->MultiOutputVar(output_parameter_name);
     for (Variable* var : multi_output_var) {
       phi::TensorBase* out_tensor = GetTensorFormVar(var);
-      if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
+      if (TensorShouldBeFakeInitialized(
+              op, output_parameter_name, out_tensor)) {
         phi::Place place = execution_context->GetPlace();
         phi::DataType dtype =
             phi::TransToPhiDataType(op_kernel_type.data_type_);
+        // temporarily hack for extern op fused_rms_norm
+        if (op.Type() == "fused_rms_norm") {
+          if (output_parameter_name == "invvar") {
+            dtype = DataType::FLOAT32;
+          } else if (output_parameter_name == "y") {
+            dtype = GetInputDType(execution_context->Context(), "x");
+          }
+          VLOG(4) << "Set fused_rms_norm output " << output_parameter_name
+                  << " to " << dtype;
+        }
+        if (op.Type() == "fused_rms_norm_grad") {
+          if (output_parameter_name == paddle::Grad("x")) {
+            dtype = GetInputDType(execution_context->Context(), "x");
+          } else if (output_parameter_name == paddle::Grad("scale")) {
+            dtype = GetInputDType(execution_context->Context(), "scale");
+          }
+          VLOG(4) << "Set fused_rms_norm_grad output " << output_parameter_name
+                  << " to " << dtype;
+        }
+
         phi::DataLayout layout = out_tensor->layout();
         FakeInitializeTensorBase(execution_context->device_context(),
                                  place,

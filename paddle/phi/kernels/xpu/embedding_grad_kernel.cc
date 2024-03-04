@@ -28,6 +28,7 @@ void EmbeddingGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
                          int64_t padding_idx,
                          DenseTensor* weight_grad) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   DDim table_dim;
   table_dim = weight.dims();
 
@@ -62,14 +63,15 @@ void EmbeddingGradKernel(const Context& ctx,
   int ym = static_cast<int>(ids_numel);
   int n = d_table_t->dims()[1];
 
-  int r = xpu::embedding_grad<T, int64_t>(dev_ctx.x_context(),
-                                          d_output_data,
-                                          ids_data,
-                                          d_table_data,
-                                          xm,
-                                          n,
-                                          ym,
-                                          padding_idx);
+  int r = xpu::embedding_grad<XPUType, int64_t>(
+      dev_ctx.x_context(),
+      reinterpret_cast<const XPUType*>(d_output_data),
+      ids_data,
+      reinterpret_cast<XPUType*>(d_table_data),
+      xm,
+      n,
+      ym,
+      padding_idx);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");
 }
 
@@ -107,7 +109,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
     ids = CopyIdsToVector<int, int64_t>(ids_cpu);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64"));
+        "embedding input only support int32 and int64"));
   }
 
   auto ids_num = static_cast<int64_t>(input.numel());
@@ -148,8 +150,13 @@ void EmbeddingSparseGradKernel(const Context& ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    embedding_grad, XPU, ALL_LAYOUT, phi::EmbeddingGradKernel, float) {}
+PD_REGISTER_KERNEL(embedding_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::EmbeddingGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    XPU,
                    ALL_LAYOUT,

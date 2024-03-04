@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/send_uv_kernel.h"
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_ue_recv_funcs.h"
 #include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
@@ -62,7 +62,7 @@ void GraphSendUVOpKernelLaunchHelper(const Context& ctx,
       index_size,
       0,
       errors::InvalidArgument("The first dimension of src_index or dst_index "
-                              "shoule be greater than 0, but received %d.",
+                              "should be greater than 0, but received %d.",
                               index_size));
 
   auto out_dims = out->dims();

@@ -22,6 +22,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/auto_schedule/auto_tuner.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/target.h"
@@ -33,6 +34,7 @@
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -48,14 +50,12 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/utils/flags.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
-PHI_DECLARE_bool(enable_pe_launch_cinn);
-PHI_DECLARE_bool(enable_cinn_auto_tune);
-PHI_DECLARE_string(cinn_subgraph_graphviz_dir);
+COMMON_DECLARE_bool(enable_pe_launch_cinn);
+COMMON_DECLARE_bool(enable_cinn_auto_tune);
+COMMON_DECLARE_string(cinn_subgraph_graphviz_dir);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
@@ -343,7 +343,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(auto_tuner),
-                   std::move(compiled_res.runtime_program),
+                   std::move(compiled_res.RuntimeProgram()),
                    scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;

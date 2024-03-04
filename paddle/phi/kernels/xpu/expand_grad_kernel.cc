@@ -30,8 +30,8 @@ void ExpandGradKernel(const Context& ctx,
                       DenseTensor* in_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_grad_data = ctx.template Alloc<T>(in_grad);
-  auto out_grad_dims = phi::vectorize<int64_t>(out_grad.dims());
-  auto in_grad_dims = phi::vectorize<int64_t>(in_grad->dims());
+  auto out_grad_dims = common::vectorize<int64_t>(out_grad.dims());
+  auto in_grad_dims = common::vectorize<int64_t>(in_grad->dims());
   in_grad_dims.insert(
       in_grad_dims.begin(), out_grad.dims().size() - in_grad->dims().size(), 1);
 

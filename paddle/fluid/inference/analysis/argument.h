@@ -165,6 +165,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(save_optimized_model, SaveOptimizedModel, bool);
+  DECL_ARGUMENT_FIELD(optimized_model_save_path,
+                      OptimizedModelSavePath,
+                      std::string);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 
@@ -224,6 +227,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_cutlass, UseCutlass, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+  DECL_ARGUMENT_FIELD(use_pir, UsePIR, bool);
 
   // Usually use for trt dynamic shape.
   // TRT will select the best kernel according to opt shape
@@ -241,9 +245,11 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int64_t);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(trt_mark_output, TRTMarkOutput, bool);
-  DECL_ARGUMENT_FIELD(trt_mark_output_with_id, TRTMarkOutputWithId, bool);
   DECL_ARGUMENT_FIELD(trt_output_tensor_names,
                       TRTOutputTensorNames,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_exclude_var_names,
+                      TRTExcludeVarNames,
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
@@ -272,9 +278,18 @@ struct Argument {
                       TensorRtAllowBuildAtRuntime,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_inspector, TensorRtUseInspector, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_inspector_serialize,
+                      TensorRtInspectorSerialize,
+                      bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_explicit_quantization,
                       TensorRtUseExplicitQuantization,
                       bool);
+  DECL_ARGUMENT_FIELD(tensorrt_optimization_level,
+                      TensorRtOptimizationLevel,
+                      int);
+  DECL_ARGUMENT_FIELD(tensorrt_ops_run_float,
+                      TensorRtOpsRunFloat,
+                      std::unordered_set<std::string>);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
@@ -325,6 +340,10 @@ struct Argument {
                       XpuFcAutotuneFileWriteback,
                       bool);
   DECL_ARGUMENT_FIELD(xpu_gemm_compute_precision, XpuGemmComputePrecision, int);
+  using quant_post_type = std::map<std::string, int>;
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_weight_methods,
+                      XpuQuantPostDynamicWeightMethods,
+                      quant_post_type);
   DECL_ARGUMENT_FIELD(xpu_transformer_softmax_optimize_level,
                       XpuTransformerSoftmaxOptimizeLevel,
                       int);

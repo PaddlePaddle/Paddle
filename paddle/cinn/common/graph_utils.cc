@@ -76,7 +76,7 @@ Graph::topological_order() const {
   std::vector<GraphEdge *> edge_order;
   std::deque<GraphNode *> queue;
 
-  // collect indegreee.
+  // collect indegree.
   std::map<std::string, int> indegree;
   for (auto *n : nodes()) {
     indegree[n->id()] = n->inlinks().size();
@@ -211,7 +211,7 @@ bool GraphEdgeCompare::operator()(const Shared<GraphEdge> &a,
 }
 
 std::set<GraphNode *> Graph::CollectNodes(
-    std::function<bool(const common::GraphNode *)> &&teller) {
+    std::function<bool(const cinn::common::GraphNode *)> &&teller) {
   std::set<GraphNode *> res;
   for (auto *node : nodes()) {
     if (teller(node)) res.insert(node);

@@ -26,20 +26,26 @@ import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
-from paddle.framework import IrGraph
-from paddle.framework import _current_expected_place as _get_device
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    IrGraph,
+    _current_expected_place as _get_device,
+    core,
+    in_dynamic_mode,
+)
 from paddle.metric import Metric
 from paddle.static import InputSpec, Operator, Variable, global_scope
+from paddle.static.amp.fp16_utils import _convert_float_to_bfloat16
 
 from ...utils.log_utils import get_logger
 from ..interface import CollectionNames, fetch, get_collection
+from ..static.dist_tensor import DistributedTensor
 from ..strategy import Strategy
 from .callbacks import config_callbacks
 from .cluster import Cluster, get_default_cluster
 from .converter import Converter
 from .cost.estimate_cost import get_cost_from_engine
 from .dist_context import DistributedContext, get_default_distributed_context
+from .dist_input_spec import DistributedInputSpec
 from .dist_loader import (
     DistributedDataLoader,
     DistributedDataLoaderFromGenerator,
@@ -54,7 +60,7 @@ from .process_group import get_all_process_groups, new_process_group
 
 class Engine:
     """
-    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inferenced (engine.predict).
+    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inference (engine.predict).
     Static graph mode is supported natively, Dynamic graph mode is also supported under `@to_static <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/jit/to_static_cn.html#to-static>`_ .
 
     Args:
@@ -158,9 +164,7 @@ class Engine:
         for metric in auto_utils.to_list(metrics):
             if metric and not isinstance(metric, Metric):
                 raise TypeError(
-                    "{} is not sub class of Metric".format(
-                        metric.__class__.__name__
-                    )
+                    f"{metric.__class__.__name__} is not sub class of Metric"
                 )
         self._metrics = auto_utils.to_list(metrics)
 
@@ -253,6 +257,62 @@ class Engine:
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
+        if auto_utils.use_new_executor():
+            is_pir_mode = os.environ.get("FLAGS_enable_pir_in_executor", None)
+            if is_pir_mode is None:
+                paddle.framework.set_flags({'FLAGS_enable_pir_in_executor': 1})
+
+        self.enable_job_schedule_profiler = False
+
+    # get dist input spec from shard dataloader
+    def _prepare_data_spec_from_dataloader(self, dataloader):
+        inputs_spec = []
+        labels_spec = []
+        data = next(iter(dataloader))
+        if isinstance(data, dict):
+            data = tuple(data.values())
+            if len(data) != 2:
+                raise ValueError(
+                    "Data should be a dict with two keys, but received {}.".format(
+                        len(data)
+                    )
+                )
+            inputs, labels = data
+        elif isinstance(data, (list, tuple)):
+            if len(data) != 2:
+                raise ValueError(
+                    "Data should be a list or tuple with two elements, but received {}.".format(
+                        len(data)
+                    )
+                )
+            inputs, labels = data
+        else:
+            raise TypeError(
+                f"Data should be a dict or list, but received {type(data)}."
+            )
+
+        inputs = auto_utils.to_list(inputs)
+        labels = auto_utils.to_list(labels)
+
+        if inputs is not None:
+            for i, item in enumerate(inputs):
+                assert item is not None, "Receive None input."
+                name = "input" + str(i)
+                inputs_spec.append(
+                    DistributedInputSpec.from_dtensor(item, name)
+                )
+        if labels is not None:
+            for i, item in enumerate(labels):
+                assert item is not None, "Receive None input."
+                name = "label" + str(i)
+                labels_spec.append(
+                    DistributedInputSpec.from_dtensor(item, name)
+                )
+
+        inputs_spec = self._validate_spec(inputs_spec)
+        labels_spec = self._validate_spec(labels_spec)
+        return inputs_spec, labels_spec
+
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
         labels_spec = []
@@ -331,9 +391,7 @@ class Engine:
         if inputs_spec:
             assert isinstance(
                 inputs_spec, list
-            ), "inputs should be list, but received {}".format(
-                type(inputs_spec)
-            )
+            ), f"inputs should be list, but received {type(inputs_spec)}"
             assert isinstance(
                 inputs, list
             ), f"inputs should be list, but received {type(inputs)}"
@@ -346,9 +404,7 @@ class Engine:
         if labels_spec:
             assert isinstance(
                 labels_spec, list
-            ), "labels should be list, but received {}".format(
-                type(labels_spec)
-            )
+            ), f"labels should be list, but received {type(labels_spec)}"
             assert isinstance(
                 labels, list
             ), f"labels should be list, but received {type(labels)}"
@@ -457,9 +513,7 @@ class Engine:
         if user_feeds is not None:
             assert isinstance(
                 user_feeds, dict
-            ), "user_feeds must be a dict, but receive {}".format(
-                type(user_feeds).__name__
-            )
+            ), f"user_feeds must be a dict, but receive {type(user_feeds).__name__}"
             for name, data in user_feeds.items():
                 feeds[name] = data
         return feeds
@@ -468,9 +522,7 @@ class Engine:
         if user_fetches is not None:
             assert isinstance(
                 user_fetches, list
-            ), "user_fetches must be a list, but receive {}".format(
-                type(user_fetches).__name__
-            )
+            ), f"user_fetches must be a list, but receive {type(user_fetches).__name__}"
         fetch_names = []
         fetch_indices = []
 
@@ -572,10 +624,34 @@ class Engine:
         self._parallel(mode)
         # Init comm
         self._init_comm()
-        if init_parameters:
-            # startup program
-            self._initialize(mode)
+        # startup program
+        self._initialize(mode, init_parameters)
+        # mark main program for further decompose
+        self._mark_prim(mode)
         self._has_prepared[mode] = True
+
+    def _process_dist_input_specs(self):
+        if isinstance(self._inputs_spec[0], DistributedInputSpec):
+
+            def _create_dist_input_var(input_var, input_spec):
+                dist_tensor = DistributedTensor(input_var)
+
+                dist_tensor.dist_attr.process_mesh = input_spec.mesh
+                dist_tensor.dist_attr.dims_mapping = input_spec.dims_mapping
+                dist_tensor.dist_attr.mark_annotated("process_mesh")
+                dist_tensor.dist_attr.mark_annotated("dims_mapping")
+                default_dist_ctx = get_default_distributed_context()
+                default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
+
+            for index in range(len(self._inputs)):
+                input_var = self._inputs[index]
+                input_spec = self._inputs_spec[index]
+                _create_dist_input_var(input_var, input_spec)
+
+            for index in range(len(self._labels)):
+                input_var = self._labels[index]
+                input_spec = self._labels_spec[index]
+                _create_dist_input_var(input_var, input_spec)
 
     def _build(self, mode):
         if in_dynamic_mode() or self._dygraph_mode:
@@ -600,6 +676,7 @@ class Engine:
 
             self._inputs = self.program_helper.input_vars
             self._labels = self.program_helper.label_vars
+            self._process_dist_input_specs()
             outputs = self.program_helper.output_vars
             self._losses = self.program_helper.loss_vars
             metrics = self.program_helper.metric_vars
@@ -739,7 +816,7 @@ class Engine:
     def _plan(self, mode):
         if self._planned_mode is None:
             self._planned_mode = mode
-        else:
+        elif self._strategy.auto_mode != "semi":
             self._init_dist_context(mode)
 
         self._planners[mode] = Planner(mode, self._dist_contexts[mode])
@@ -755,14 +832,19 @@ class Engine:
             if var.name in block.vars:
                 feed_list.append(block.vars[var.name])
 
-        self._dp_world_sizes = []
-        self._dp_ranks = []
-        for feed_var in feed_list:
-            dp_world_size, dp_rank = auto_utils.get_input_split_info(
-                self._cur_rank, feed_var, self._dist_contexts[mode]
-            )
-            self._dp_world_sizes.append(dp_world_size)
-            self._dp_ranks.append(dp_rank)
+        self._dp_world_sizes = getattr(self, "_dp_world_sizes", [])
+        self._dp_ranks = getattr(self, "_dp_ranks", [])
+        if mode in ['eval', 'predice'] or (
+            not self._dp_world_sizes and not self._dp_ranks
+        ):
+            self._dp_world_sizes = []
+            self._dp_ranks = []
+            for feed_var in feed_list:
+                dp_world_size, dp_rank = auto_utils.get_input_split_info(
+                    self._cur_rank, feed_var, self._dist_contexts[mode]
+                )
+                self._dp_world_sizes.append(dp_world_size)
+                self._dp_ranks.append(dp_rank)
 
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
@@ -814,7 +896,7 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
-    def _initialize(self, mode):
+    def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(
@@ -827,11 +909,41 @@ class Engine:
             random.seed(self._strategy.seed + self._dp_ranks[0])
 
         dist_context = self._dist_contexts[mode]
+        dist_main_program = dist_context.dist_main_programs[self._cur_rank]
         if self._dygraph_mode:
-            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
             self.program_helper.init(
                 dist_main_program, self._place, dist_context
             )
+            # The model's instance variables (not parameters), used in forward function,
+            # have been initialized when initialize model in dynamic mode.
+            if self._model and len(self._model.buffers()) > 0:
+                for buffer in self._model.buffers():
+                    if dist_main_program.global_block().has_var(buffer.name):
+                        dest_type = (
+                            dist_main_program.global_block()
+                            .var(buffer.name)
+                            .dtype
+                        )
+                        scope_var = global_scope().find_var(buffer.name)
+                        buffer_tensor = (
+                            global_scope().var(buffer.name).get_tensor()
+                        )
+                        if scope_var and buffer_tensor._is_initialized():
+                            continue
+                        # for amp
+                        if dest_type == paddle.bfloat16:
+                            buffer_tensor.set(
+                                _convert_float_to_bfloat16(
+                                    self._place, buffer.numpy()
+                                ),
+                                self._place,
+                            )
+                        elif dest_type == paddle.float16:
+                            buffer_tensor.set(
+                                np.float16(buffer.numpy()), self._place
+                            )
+                        else:
+                            buffer_tensor.set(buffer.numpy(), self._place)
 
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
@@ -859,6 +971,27 @@ class Engine:
                 self._cur_rank
             ]
             self._executor.run(dist_startup_prog)
+
+    # distributed training combined with prim mechanism (prim is behind of distributed)
+    # for local main subprogram after distributed partition,
+    # mark _need_decomp=True to tag this program needs to be decomposed
+    # get _grad_var_to_var from distributed context and set it to main program for futher decomposing in static executor
+    def _mark_prim(self, mode):
+        if os.getenv("FLAGS_enable_prim_after_distribute") in [
+            'True',
+            'true',
+            '1',
+        ]:
+            dist_context = self._dist_contexts[mode]
+            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
+            dist_main_program._need_decomp = True
+            grad_var_to_var = auto_utils.get_grad_var_to_var(
+                dist_context,
+            )
+            auto_utils.update_grad_var_to_var(
+                dist_main_program, self._strategy, grad_var_to_var
+            )
+            dist_main_program._grad_var_to_var = grad_var_to_var
 
     def fit(
         self,
@@ -948,11 +1081,10 @@ class Engine:
         """
         self._mode = 'train'
 
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            train_data, train_sample_split, batch_size
-        )
-
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                train_data, train_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1031,6 +1163,7 @@ class Engine:
                                 use_program_cache=self._strategy.use_cache,
                                 return_numpy=self._strategy.return_numpy,
                             )
+
                             lr = auto_utils.get_lr(self.optimizer)
                             logs = self._prepare_logger(
                                 outs,
@@ -1132,51 +1265,77 @@ class Engine:
 
         """
         self._mode = 'eval'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            valid_data, valid_sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                valid_data, valid_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        micro_batch_size = self._validate_batch_size(batch_size)
-        valid_dataloader = self._prepare_dataloader_from_generator(
-            dataset=valid_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            steps_per_epoch=steps,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = self._validate_batch_size(batch_size)
+            valid_dataloader = self._prepare_dataloader(
+                valid_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = len(valid_dataloader) if steps is None else steps
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            valid_dataloader = self._prepare_dataloader_from_generator(
+                dataset=valid_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                steps_per_epoch=steps,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = valid_dataloader._steps
+            local_batch_size = micro_batch_size
+            if self._strategy.pipeline.enable:
+                local_batch_size = micro_batch_size * self._acc_steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         cbks = config_callbacks(
             callbacks,
             engine=self,
-            batch_size=micro_batch_size,
+            batch_size=local_batch_size,
             log_freq=log_freq,
             verbose=verbose,
             metrics=self._metrics_name(),
         )
 
-        eval_steps = valid_dataloader._steps
+        eval_steps = steps_per_epoch
         cbks.on_begin(
             'eval', {'steps': eval_steps, 'metrics': self._metrics_name()}
         )
         logs = {}
-        for step, _ in enumerate(valid_dataloader):
-            cbks.on_batch_begin('eval', step, logs)
+        for step, batch in enumerate(valid_dataloader):
+            if auto_utils.use_new_executor():
+                batches = self._validate_batch(batch)
+            else:
+                batches = [{}]
+
             try:
-                outs = self._executor.run(
-                    self.main_program,
-                    fetch_list=fetch_names,
-                    use_program_cache=self._strategy.use_cache,
-                    return_numpy=self._strategy.return_numpy,
-                )
+                for micro_batch in batches:
+                    cbks.on_batch_begin('eval', step, logs)
+                    outs = self._executor.run(
+                        self.main_program,
+                        feed=micro_batch,
+                        fetch_list=fetch_names,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy,
+                    )
             except core.EOFException:
+                break
+
+            if steps_per_epoch and step >= steps_per_epoch:
+                if not auto_utils.use_new_executor():
+                    valid_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
@@ -1240,42 +1399,65 @@ class Engine:
                 >>> engine.predict(valid_dataset, batch_size=64)
         """
         self._mode = 'predict'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            test_data, test_sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                test_data, test_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        micro_batch_size = self._validate_batch_size(batch_size)
-        test_dataloader = self._prepare_dataloader_from_generator(
-            dataset=test_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            steps_per_epoch=steps,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = self._validate_batch_size(batch_size)
+            test_dataloader = self._prepare_dataloader(
+                test_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = len(test_dataloader) if steps is None else steps
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            test_dataloader = self._prepare_dataloader_from_generator(
+                dataset=test_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                steps_per_epoch=steps,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = test_dataloader._steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         outputs = []
         cbks = config_callbacks(callbacks, engine=self, verbose=verbose)
-        test_steps = test_dataloader._steps
+        test_steps = steps_per_epoch
         cbks.on_begin('predict', {'steps': test_steps})
         logs = {}
-        for step, _ in enumerate(test_dataloader):
-            cbks.on_batch_begin('predict', step, logs)
+        for step, batch in enumerate(test_dataloader):
+            if auto_utils.use_new_executor():
+                batches = self._validate_batch(batch)
+            else:
+                batches = [{}]
+
             try:
-                outs = self._executor.run(
-                    self.main_program,
-                    fetch_list=fetch_names,
-                    use_program_cache=self._strategy.use_cache,
-                    return_numpy=self._strategy.return_numpy,
-                )
+                for micro_batch in batches:
+                    cbks.on_batch_begin('predict', step, logs)
+                    outs = self._executor.run(
+                        self.main_program,
+                        feed=micro_batch,
+                        fetch_list=fetch_names,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy,
+                    )
             except core.EOFException:
+                break
+
+            if steps_per_epoch and step >= steps_per_epoch:
+                if not auto_utils.use_new_executor():
+                    test_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
@@ -1290,7 +1472,7 @@ class Engine:
         dataset,
         batch_size=1,
         shuffle=False,
-        drop_last=False,
+        drop_last=True,
         collate_fn=None,
         num_workers=0,
         use_buffer_reader=True,
@@ -1306,11 +1488,10 @@ class Engine:
         if mode is not None:
             self.to_mode(mode)
 
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
-
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1351,11 +1532,11 @@ class Engine:
     ):
         if mode is not None:
             self.to_mode(mode)
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
 
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
@@ -1442,6 +1623,11 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
+
+        self._executor.enable_job_schedule_profiler = (
+            self.enable_job_schedule_profiler
+        )
+
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
@@ -1454,13 +1640,36 @@ class Engine:
         )
         return logs
 
+    def get_feed_list(self):
+        dist_context = self._dist_contexts[self._mode]
+        dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
+        dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
+        dist_main_block = dist_main_prog.global_block()
+
+        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
+        # Cause predict_program does not contain labels var,
+        # then we will add labels var from serial_program to dist_program,
+        # that maintains the length of feed_list equal to the length of dataset's values.
+        inputs_var = dist_context.serial_feed_vars["inputs"]
+        labels_var = dist_context.serial_feed_vars["labels"]
+        feed_list = []
+        for var in inputs_var + labels_var:
+            if var.name in dist_main_block.vars:
+                feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
+
+        return feed_list
+
     def _prepare_dataloader(
         self,
         dataset,
         return_list=True,
         batch_size=1,
         shuffle=False,
-        drop_last=False,
+        drop_last=True,
         collate_fn=None,
         num_workers=0,
         use_buffer_reader=True,
@@ -1612,7 +1821,7 @@ class Engine:
             return [None]
 
         if self._strategy.pipeline.enable or self._acc_steps == 1:
-            # pp with schedule or navie-pp
+            # pp with schedule or naive-pp
             return batch
         else:
             # split feed data with gradient_merge k_steps
@@ -1633,15 +1842,15 @@ class Engine:
         specs = auto_utils.to_list(specs)
         if specs is not None:
             for i, spec in enumerate(specs):
-                if not isinstance(spec, InputSpec):
+                if not isinstance(spec, InputSpec) and not isinstance(
+                    spec, DistributedInputSpec
+                ):
                     raise TypeError(
-                        "'spec' must be object of class `paddle.static.InputSpec`."
+                        "'spec' must be object of class `paddle.static.InputSpec` or `DistributedInputSpec`."
                     )
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".format(
-                            i, spec
-                        )
+                        f"Requires Input[{i}].name != None, but receive `None` with {spec}."
                     )
                 if self._acc_steps > 1:
                     shape = list(spec.shape)
@@ -1869,7 +2078,7 @@ class Engine:
         # Check parallel mode
         if self._strategy.auto_mode == "full":
             self._logger.info(
-                "The cost will be calcudated in the search process when the auto mode is full."
+                "The cost will be calculated in the search process when the auto mode is full."
             )
             return
 
@@ -1911,6 +2120,18 @@ class Engine:
         global_cost, max_memory = get_cost_from_engine(self, mode)
 
         return global_cost.time, max_memory
+
+    def get_dist_main_program(self, mode):
+        return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
+
+    def get_dist_startup_program(self, mode):
+        return self._dist_contexts[mode].dist_startup_programs[self._cur_rank]
+
+    def get_serial_main_program(self, mode):
+        return self._dist_contexts[mode].serial_main_program
+
+    def get_serial_startup_program(self, mode):
+        return self._dist_contexts[mode].serial_startup_program
 
     @property
     def main_program(self):

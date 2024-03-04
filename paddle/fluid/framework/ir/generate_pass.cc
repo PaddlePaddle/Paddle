@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/ir/generate_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -46,6 +48,12 @@ class element_visitor {
  private:
   int index_;
 };
+
+template <>
+Attribute element_visitor::operator()(
+    const std::vector<::pir::Value>& attr UNUSED) const {
+  PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
+}
 
 class operation_visitor {
  public:
@@ -278,7 +286,7 @@ GraphPatternDetector::handle_t GetGenerateDelete(
         for (const std::unique_ptr<PDNode>& pdnode : pattern.nodes()) {
           remove_nodes.emplace(subgraph.at(pdnode.get()));
         }
-        for (auto iter : var_node_maps) {
+        for (auto const& iter : var_node_maps) {
           remove_nodes.erase(iter.second);
         }
         GraphSafeRemoveNodes(graph, remove_nodes);
@@ -340,7 +348,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
             std::vector<std::string> arguments;
             for (const std::string& argument : var.arguments()) {
               // The input may be mapped on the operator of pattern subgraph.
-              if (var_node_maps[argument].size() == 0) {
+              if (var_node_maps[argument].empty()) {
                 VarDesc var_desc(patterns::UniqueKey(argument));
                 var_node_maps[argument].emplace_back(
                     graph->CreateVarNode(&var_desc));
@@ -355,7 +363,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
             std::vector<std::string> arguments;
             for (const std::string& argument : var.arguments()) {
               // The output may be mapped on the operator of pattern subgraph.
-              if (var_node_maps[argument].size() == 0) {
+              if (var_node_maps[argument].empty()) {
                 VarDesc var_desc(patterns::UniqueKey(argument));
                 var_node_maps[argument].emplace_back(
                     graph->CreateVarNode(&var_desc));
@@ -416,7 +424,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
         for (const std::unique_ptr<PDNode>& pdnode : pattern.nodes()) {
           remove_nodes.emplace(subgraph.at(pdnode.get()));
         }
-        for (auto iter : var_node_maps) {
+        for (auto const& iter : var_node_maps) {
           for (auto& node : iter.second) {
             remove_nodes.erase(node);
           }

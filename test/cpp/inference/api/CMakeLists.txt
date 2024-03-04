@@ -7,12 +7,12 @@ set(inference_api_tester_deps paddle_inference_api analysis_config)
 cc_test(
   test_paddle_inference_api
   SRCS api_tester.cc
-  DEPS ${inference_api_tester_deps})
+  DEPS ${inference_api_tester_deps} common)
 
 cc_test(
   inference_api_helper_test
   SRCS helper_test.cc
-  DEPS ${inference_api_tester_deps})
+  DEPS ${inference_api_tester_deps} common)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
@@ -21,13 +21,6 @@ if(WITH_ONNXRUNTIME AND WIN32)
 endif()
 
 if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
-  if(WIN32)
-    set(INFERENCE_C_EXTRA_DEPS paddle_inference_shared
-                               paddle_inference_c_shared)
-  else()
-    set(INFERENCE_C_EXTRA_DEPS paddle_inference_shared paddle_inference_c)
-  endif()
-
   function(download_data install_dir data_file check_sum)
     string(REGEX MATCH "[^/\\]+$" file_name ${data_file})
     if(NOT EXISTS ${install_dir}/${file_name})
@@ -127,8 +120,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       ${filename}
       EXTRA_DEPS
+      common
       paddle_inference_shared
-      python
       ARGS
       --infer_model=${install_dir}/model
       --infer_data=${install_dir}/data.txt
@@ -141,8 +134,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       ${filename}
       EXTRA_DEPS
+      common
       paddle_inference_shared
-      python
       ARGS
       --infer_model=${install_dir}/model
       --infer_data=${install_dir}/data.txt
@@ -159,8 +152,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       ${filename}
       EXTRA_DEPS
+      common
       paddle_inference_shared
-      python
       ARGS
       --infer_model=${install_dir}/mobilenet_v2_models/1
       --infer_model2=${install_dir}/mobilenet_v2_models/xx
@@ -169,7 +162,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   function(inference_analysis_api_test_build TARGET_NAME filename)
     inference_analysis_test_build(${TARGET_NAME} SRCS ${filename} EXTRA_DEPS
-                                  paddle_inference_shared python)
+                                  common paddle_inference_shared)
   endfunction()
 
   function(inference_analysis_api_int8_test_run TARGET_NAME test_binary
@@ -229,7 +222,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   function(inference_analysis_api_test_with_fake_data_build TARGET_NAME
            filename)
     inference_analysis_test_build(${TARGET_NAME} SRCS ${filename} EXTRA_DEPS
-                                  paddle_inference_shared python)
+                                  common paddle_inference_shared)
   endfunction()
 
   function(inference_analysis_api_test_with_fake_data_run TARGET_NAME
@@ -335,7 +328,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     download_model_and_data_without_verify(
       ${RNN1_INSTALL_DIR} "rnn1/model.tar.gz" "rnn1/data.txt.tar.gz")
     inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR}
-                                analyzer_rnn1_tester.cc)
+                                analyzer_rnn1_tester.cc EXTRA_DEPS common)
 
     # seq_pool1
     set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
@@ -344,19 +337,19 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       "seq_pool1_data.txt.tar.gz")
     inference_analysis_api_test(
       test_analyzer_seq_pool1_compare_determine ${SEQ_POOL1_INSTALL_DIR}
-      analyzer_seq_pool1_compare_determine_tester.cc)
+      analyzer_seq_pool1_compare_determine_tester.cc EXTRA_DEPS common)
     inference_analysis_api_test(
       test_analyzer_seq_pool1 ${SEQ_POOL1_INSTALL_DIR}
-      analyzer_seq_pool1_compare_tester.cc)
+      analyzer_seq_pool1_compare_tester.cc EXTRA_DEPS common)
     inference_analysis_api_test(
       test_analyzer_seq_pool1_fuse_compare_zero_copy ${SEQ_POOL1_INSTALL_DIR}
-      analyzer_seq_pool1_fuse_compare_zero_copy_tester.cc)
+      analyzer_seq_pool1_fuse_compare_zero_copy_tester.cc EXTRA_DEPS common)
     inference_analysis_api_test(
       test_analyzer_seq_pool1_fuse_statis ${SEQ_POOL1_INSTALL_DIR}
-      analyzer_seq_pool1_fuse_statis_tester.cc)
+      analyzer_seq_pool1_fuse_statis_tester.cc EXTRA_DEPS common)
     inference_analysis_api_test(
       test_analyzer_seq_pool1_profile ${SEQ_POOL1_INSTALL_DIR}
-      analyzer_seq_pool1_profile_tester.cc)
+      analyzer_seq_pool1_profile_tester.cc EXTRA_DEPS common)
     if(NOT WIN32)
       set_tests_properties(test_analyzer_seq_pool1_compare_determine
                            PROPERTIES TIMEOUT 120)
@@ -386,7 +379,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   download_model_and_data_without_verify(
     ${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
   inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR}
-                              analyzer_rnn2_tester.cc)
+                              analyzer_rnn2_tester.cc EXTRA_DEPS common)
 
   # TODO(luotao, Superjom) Disable DAM test, temporarily fix
   # https://github.com/PaddlePaddle/Paddle/issues/15032#issuecomment-455990914.
@@ -395,7 +388,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
   download_model_and_data_without_verify(${DAM_INSTALL_DIR} "DAM_model.tar.gz"
                                          "DAM_data.txt.tar.gz")
-  #inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator)
+  #inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator common)
 
   # small DAM
   set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
@@ -408,14 +401,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_dam_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
-    python
+    common
     ARGS
     --infer_model=${DAM_SMALL_INSTALL_DIR}/model
     --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt)
 
   #save model
   inference_analysis_api_test(test_analyzer_save_model ${DAM_SMALL_INSTALL_DIR}
-                              analyzer_save_model_tester.cc)
+                              analyzer_save_model_tester.cc EXTRA_DEPS common)
 
   # chinese_ner
   set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
@@ -423,7 +416,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ${CHINESE_NER_INSTALL_DIR} "chinese_ner_model.tar.gz"
     "chinese_ner-data.txt.tar.gz")
   inference_analysis_api_test(test_analyzer_ner ${CHINESE_NER_INSTALL_DIR}
-                              analyzer_ner_tester.cc)
+                              analyzer_ner_tester.cc EXTRA_DEPS common)
 
   # lac
   set(LAC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lac")
@@ -431,7 +424,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ${LAC_INSTALL_DIR} "lac_model.tar.gz" 419ca6eb85f57a01bfe173591910aec5
     "lac_data.txt.tar.gz" 9983539cd6b34fbdc411e43422776bfd)
   inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR}
-                              analyzer_lac_tester.cc)
+                              analyzer_lac_tester.cc EXTRA_DEPS common)
 
   # Ernie
   set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
@@ -442,13 +435,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                   73beea65abda2edb61c1662cd3180c62)
   if(WITH_GPU)
     inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR}
-                                analyzer_ernie_tester.cc)
+                                analyzer_ernie_tester.cc EXTRA_DEPS common)
     inference_analysis_api_test(gpu_ernie_half_test ${ERNIE_INSTALL_DIR}
-                                gpu_ernie_half_test.cc)
+                                gpu_ernie_half_test.cc EXTRA_DEPS common)
     set_tests_properties(gpu_ernie_half_test PROPERTIES TIMEOUT 60)
   endif()
   inference_analysis_api_int8_test(
-    test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR} analyzer_ernie_int8_tester.cc)
+    test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR} analyzer_ernie_int8_tester.cc
+    EXTRA_DEPS common)
 
   # Ernie large
   set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
@@ -464,7 +458,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_ernie_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
-    python
+    common
     ARGS
     --infer_model=${ERNIE_INSTALL_DIR}/model
     --infer_data=${ERNIE_INSTALL_DIR}/data.txt
@@ -489,7 +483,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     36ae620020cc3377f45ed330dd36238f)
   inference_analysis_api_test(
     test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
-    analyzer_text_classification_tester.cc)
+    analyzer_text_classification_tester.cc EXTRA_DEPS common)
 
   # seq_conv1
   set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
@@ -497,7 +491,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz"
     "seq_conv1_data.txt.tar.gz")
   inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR}
-                              analyzer_seq_conv1_tester.cc)
+                              analyzer_seq_conv1_tester.cc EXTRA_DEPS common)
 
   # transformer, the dataset only works on batch_size=8 now
   set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
@@ -509,8 +503,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_transformer_compare_tester.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
-    python
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -521,8 +515,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_transformer_fuse_tester.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
-    python
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -533,8 +527,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_transformer_profile_tester.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
-    python
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -552,8 +546,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_vit_ocr_tester.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
-    python
     ARGS
     --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr/model
     --infer_data=${VIT_OCR_INSTALL_DIR}/vit_ocr/datavit.txt)
@@ -566,7 +560,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       "inference-vis-demos/ocr.tar.gz")
   endif()
   inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR}
-                              analyzer_vis_tester.cc)
+                              analyzer_vis_tester.cc EXTRA_DEPS common)
 
   # densebox
   set(DENSEBOX_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/densebox")
@@ -576,8 +570,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_detect_functional_mkldnn_tester.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
-    python
     ARGS
     --infer_model=${DENSEBOX_INSTALL_DIR}/model
     --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
@@ -590,8 +584,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
       "inference-vis-demos/mobilenet.tar.gz")
   endif()
-  inference_analysis_api_test(test_analyzer_mobilenet_transpose
-                              ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
+  inference_analysis_api_test(
+    test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR}
+    analyzer_vis_tester.cc EXTRA_DEPS common)
 
   ### Image classification tests with fake data
   set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
@@ -930,7 +925,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   download_model_and_data_without_verify(
     ${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
   inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
-                              analyzer_bert_tester.cc)
+                              analyzer_bert_tester.cc EXTRA_DEPS common)
 
   # multiple models prediction
   set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
@@ -938,7 +933,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                PaddleInference/mobilenet_v2_models.tar.gz)
   inference_multiple_models_analysis_api_test(
     test_analyzer_multi_model_prediction ${MMP_INSTALL_DIR}
-    analyzer_mmp_tester.cc)
+    analyzer_mmp_tester.cc EXTRA_DEPS common)
 
   if(WITH_GPU AND TENSORRT_FOUND)
     set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt_models")
@@ -959,22 +954,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       trt_mobilenet_test.cc
       EXTRA_DEPS
-      paddle_inference_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    inference_analysis_test(
-      trt_resnet50_test
-      SRCS
-      trt_resnet50_test.cc
-      EXTRA_DEPS
-      paddle_inference_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    inference_analysis_test(
-      trt_resnext_test
-      SRCS
-      trt_resnext_test.cc
-      EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -983,14 +963,16 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       trt_mark_trt_engine_outputs_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
     inference_analysis_test(
-      trt_fc_prelu_test
+      trt_disable_tensorrt_half_ops_test
       SRCS
-      trt_fc_prelu_test.cc
+      trt_disable_tensorrt_half_ops_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -999,6 +981,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       trt_cascade_rcnn_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -1008,6 +991,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       trt_split_converter_test.cc
       EXTRA_DEPS
       paddle_inference_shared
+      common
       ARGS
       --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
     inference_analysis_test(
@@ -1015,30 +999,19 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       analyzer_capi_exp_gpu_tester.cc
       EXTRA_DEPS
-      ${INFERENCE_C_EXTRA_DEPS}
+      common
+      paddle_inference_c_shared
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    if(WIN32)
-      target_link_libraries(test_analyzer_capi_exp_gpu
-                            paddle_inference_c_shared)
-    else()
-      target_link_libraries(test_analyzer_capi_exp_gpu paddle_inference_c)
-    endif()
     inference_analysis_test(
       test_analyzer_capi_exp_xpu
       SRCS
       analyzer_capi_exp_xpu_tester.cc
       EXTRA_DEPS
-      ${INFERENCE_C_EXTRA_DEPS}
+      common
+      paddle_inference_c_shared
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    if(WIN32)
-      target_link_libraries(test_analyzer_capi_exp_xpu
-                            paddle_inference_c_shared)
-    else()
-      target_link_libraries(test_analyzer_capi_exp_xpu paddle_inference_c)
-    endif()
-
     #TODO(inference): windows encounter a SEH error, we need to fix it.
     if(NOT WIN32)
       inference_analysis_test(
@@ -1046,6 +1019,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
         SRCS
         trt_rebind_stream_test.cc
         EXTRA_DEPS
+        common
         paddle_inference_shared
         ARGS
         --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -1063,6 +1037,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       trt_quant_int8_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
@@ -1079,6 +1054,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       trt_quant_int8_yolov3_r50_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TRT_MODEL_QUANT_YOLOV3_DIR})
@@ -1103,6 +1079,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       trt_dynamic_shape_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR})
@@ -1119,6 +1096,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       trt_dynamic_shape_ernie_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
@@ -1137,6 +1115,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       trt_dynamic_shape_transformer_prune_test.cc
       EXTRA_DEPS
       paddle_inference_shared
+      common
       ARGS
       --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
 
@@ -1151,6 +1130,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       trt_dynamic_shape_ernie_serialize_deserialize_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
@@ -1166,6 +1146,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       trt_dynamic_shape_ernie_fp16_serialize_deserialize_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_fp16_unserialized)
@@ -1180,8 +1161,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     lite_mul_model_test.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
-    python
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
   inference_analysis_test(
@@ -1189,8 +1170,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     lite_resnet50_test.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
-    python
     ARGS
     --infer_model=${RESNET50_MODEL_DIR})
 
@@ -1199,47 +1180,27 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_capi_exp_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_C_EXTRA_DEPS}
-    python
+    paddle_inference_c_shared
     ARGS
     --infer_model=${RESNET50_MODEL_DIR}/model)
-  if(WIN32)
-    target_link_libraries(test_analyzer_capi_exp paddle_inference_c_shared)
-  else()
-    target_link_libraries(test_analyzer_capi_exp paddle_inference_c)
-  endif()
 
   inference_analysis_test(
     test_analyzer_capi_exp_pd_config
     SRCS
     analyzer_capi_exp_pd_config_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_C_EXTRA_DEPS}
-    python
+    paddle_inference_c_shared
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
-  if(WIN32)
-    target_link_libraries(test_analyzer_capi_exp_pd_config
-                          paddle_inference_c_shared)
-  else()
-    target_link_libraries(test_analyzer_capi_exp_pd_config paddle_inference_c)
-  endif()
 
   inference_analysis_test(
     test_analyzer_capi_exp_pd_tensor
     SRCS
     analyzer_capi_exp_pd_tensor_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_C_EXTRA_DEPS}
-    python
+    paddle_inference_c_shared
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
-  if(WIN32)
-    target_link_libraries(test_analyzer_capi_exp_pd_tensor
-                          paddle_inference_c_shared)
-  else()
-    target_link_libraries(test_analyzer_capi_exp_pd_tensor paddle_inference_c)
-  endif()
 
   if(NOT APPLE AND NOT WIN32)
     inference_analysis_test(
@@ -1247,17 +1208,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       analyzer_capi_exp_pd_threads_tester.cc
       EXTRA_DEPS
-      ${INFERENCE_C_EXTRA_DEPS}
-      python
+      paddle_inference_c_shared
       ARGS
       --infer_model=${MOBILENET_INSTALL_DIR}/model)
-    if(WIN32)
-      target_link_libraries(test_analyzer_capi_exp_pd_threads
-                            paddle_inference_c_shared)
-    else()
-      target_link_libraries(test_analyzer_capi_exp_pd_threads
-                            paddle_inference_c)
-    endif()
   endif()
 
   inference_analysis_test(
@@ -1265,8 +1218,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_zerocopy_tensor_tester.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
-    python
     ARGS
     --infer_model=${OCR_INSTALL_DIR}/model)
 
@@ -1276,8 +1229,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       analyzer_dist_model_tester.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
-      python
       ARGS
       --infer_model=${OCR_INSTALL_DIR}/model)
   endif()
@@ -1291,8 +1244,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       analyzer_dist_model_xpu_tester.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
-      python
       ARGS
       --infer_model=${OCR_INSTALL_DIR}/model)
   endif()
@@ -1302,8 +1255,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_paddle_tensor_tester.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
-    python
     ARGS
     --infer_model=${OCR_INSTALL_DIR}/model
     --infer_data=${OCR_INSTALL_DIR}/data.txt
@@ -1315,15 +1268,10 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       analyzer_capi_exp_int_tester.cc
       EXTRA_DEPS
-      ${INFERENCE_C_EXTRA_DEPS}
+      common
+      paddle_inference_c_shared
       ARGS
       --infer_model=${INT8_DATA_DIR}/resnet50/model)
-    if(WIN32)
-      target_link_libraries(test_analyzer_capi_exp_int
-                            paddle_inference_c_shared)
-    else()
-      target_link_libraries(test_analyzer_capi_exp_int paddle_inference_c)
-    endif()
   endif()
 
   inference_analysis_test(
@@ -1331,15 +1279,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_capi_exp_ner_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_C_EXTRA_DEPS}
-    python
+    paddle_inference_c_shared
     ARGS
     --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
-  if(WIN32)
-    target_link_libraries(test_analyzer_capi_exp_ner paddle_inference_c_shared)
-  else()
-    target_link_libraries(test_analyzer_capi_exp_ner paddle_inference_c)
-  endif()
 
   if(WITH_GPU)
     inference_analysis_test(
@@ -1347,6 +1289,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       paddle_infer_api_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
@@ -1356,6 +1299,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       paddle_infer_api_copy_tensor_tester.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
@@ -1366,12 +1310,10 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   cc_test(
     paddle_infer_api_errors_test
     SRCS paddle_infer_api_errors_tester.cc
-    DEPS ${inference_api_tester_deps})
+    DEPS ${inference_api_tester_deps} common)
 
   if(WITH_GPU AND TENSORRT_FOUND)
-    set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 300)
     set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 400)
-    set_tests_properties(trt_resnet50_test PROPERTIES TIMEOUT 300)
     set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser
                          PROPERTIES TIMEOUT 300)
@@ -1380,6 +1322,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 480)
     set_tests_properties(trt_mark_trt_engine_outputs_test PROPERTIES TIMEOUT
                                                                      300)
+    set_tests_properties(trt_disable_tensorrt_half_ops_test PROPERTIES TIMEOUT
+                                                                       300)
   endif()
 
   if(WITH_MKLDNN)
@@ -1437,6 +1381,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       ipu_word2vec_sample.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${WORD2VEC_INSTALL_DIR})
@@ -1444,11 +1389,23 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     # ERNIE
     set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
     inference_analysis_api_test(
-      ipu_ernie_test ${ERNIE_INSTALL_DIR} ipu_ernie_test.cc ARGS --warmup=true
-      --repeat=10)
+      ipu_ernie_test
+      ${ERNIE_INSTALL_DIR}
+      ipu_ernie_test.cc
+      ARGS
+      --warmup=true
+      --repeat=10
+      EXTRA_DEPS
+      common)
     inference_analysis_api_test(
-      ipu_ernie_fp16_test ${ERNIE_INSTALL_DIR} ipu_ernie_fp16_test.cc ARGS
-      --warmup=true --repeat=10)
+      ipu_ernie_fp16_test
+      ${ERNIE_INSTALL_DIR}
+      ipu_ernie_fp16_test.cc
+      ARGS
+      --warmup=true
+      --repeat=10
+      EXTRA_DEPS
+      common)
 
     # Resnet50
     set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
@@ -1457,6 +1414,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       ipu_resnet50_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${RESNET50_MODEL_DIR}
@@ -1467,6 +1425,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       ipu_resnet50_fp16_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
       ARGS
       --infer_model=${RESNET50_MODEL_DIR}
@@ -1482,7 +1441,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --model_name="Resnet50"
       --infer_model=${RESNET50_MODEL_DIR}
       --warmup=true
-      --repeat=10)
+      --repeat=10
+      EXTRA_DEPS
+      common)
   endif()
 
   if(WITH_XPU)
@@ -1491,8 +1452,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       xpu_config_resnet50_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
-      python
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
     inference_analysis_test(
@@ -1500,76 +1461,50 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       SRCS
       xpu_runtime_config_resnet50_test.cc
       EXTRA_DEPS
+      common
       paddle_inference_shared
-      python
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
   endif()
 
-  set(inference_deps ${analysis_deps} ${inference_api_tester_deps} analysis
-                     naive_executor ${GLOB_PASS_LIB})
-
   if(WITH_TESTING)
-    if(NOT APPLE AND NOT WIN32)
+    if(NOT APPLE)
       inference_base_test(
         test_api_impl
         SRCS
         api_impl_tester.cc
         DEPS
+        common
         paddle_inference_shared
-        python
-        ARGS
-        --word2vec_dirname=${WORD2VEC_MODEL_DIR}
-        --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
-    elseif(WIN32)
-      inference_base_test(
-        test_api_impl
-        SRCS
-        api_impl_tester.cc
-        DEPS
-        ${inference_deps}
         ARGS
         --word2vec_dirname=${WORD2VEC_MODEL_DIR}
         --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
     endif()
   endif()
 
-  if(NOT APPLE AND NOT WIN32)
-    cc_test_old(
+  if(NOT APPLE)
+    inference_base_test(
       test_analysis_predictor
       SRCS
       analysis_predictor_tester.cc
       DEPS
       paddle_inference_shared
-      python
-      ARGS
-      --dirname=${WORD2VEC_MODEL_DIR})
-  elseif(WIN32)
-    cc_test_old(
-      test_analysis_predictor
-      SRCS
-      analysis_predictor_tester.cc
-      DEPS
-      analysis_predictor
-      benchmark
-      ${inference_deps}
+      common
       ARGS
       --dirname=${WORD2VEC_MODEL_DIR})
   endif()
 
   if(WITH_TESTING AND WITH_MKLDNN)
-    if(NOT APPLE AND NOT WIN32)
-      cc_test(
+    if(NOT APPLE)
+      inference_base_test(
         test_mkldnn_quantizer
-        SRCS mkldnn_quantizer_tester.cc
-        DEPS paddle_inference_shared python ARGS
-             --dirname=${WORD2VEC_MODEL_DIR})
-    elseif(WIN32)
-      cc_test(
-        test_mkldnn_quantizer
-        SRCS mkldnn_quantizer_tester.cc
-        DEPS analysis_predictor benchmark ${inference_deps} ARGS
-             --dirname=${WORD2VEC_MODEL_DIR})
+        SRCS
+        mkldnn_quantizer_tester.cc
+        DEPS
+        paddle_inference_shared
+        common
+        ARGS
+        --dirname=${WORD2VEC_MODEL_DIR})
     endif()
   endif()
 

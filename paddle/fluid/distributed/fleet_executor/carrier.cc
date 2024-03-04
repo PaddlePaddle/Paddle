@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -28,14 +29,13 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/flags.h"
-#include "paddle/utils/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     fleet_executor_with_standalone,
     false,
     "Use standalone executor to run ops. Temporary FLAGS, will be removed "
     "after all fleet executor cases are modified to run ops with standalone "
     "executor.");
-PHI_DECLARE_bool(cache_inference_while_scope);
+COMMON_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace distributed {
@@ -121,7 +121,7 @@ void Carrier::CopyParameters(
     const framework::ProgramDesc& program,
     const std::vector<std::string>& inference_root_scope_vars) {
   std::map<std::string, int> inference_root_scope_var_map;
-  for (auto var_name : inference_root_scope_vars) {
+  for (auto const& var_name : inference_root_scope_vars) {
     inference_root_scope_var_map.insert({var_name, 1});
   }
   for (size_t i = 0; i < program.Size(); ++i) {
@@ -392,6 +392,7 @@ void Carrier::CreateInterceptors(
         }
       }
 
+      cores.reserve(microbatch_scopes_.size());
       for (framework::Scope* scope : microbatch_scopes_) {
         cores.push_back(std::make_shared<InterpreterCore>(
             place_, task_node->program()->Block(0), scope, execution_config));

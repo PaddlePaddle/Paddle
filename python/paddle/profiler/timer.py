@@ -388,9 +388,8 @@ class Benchmark:
             message += ' {}: {:.5f} s'.format('batch_cost', batch_average)
         speed_average = self.current_event.speed_average()
         if speed_average:
-            message += ' ips: {:.3f} {}'.format(
-                speed_average,
-                self.current_event.speed_unit,
+            message += (
+                f' ips: {speed_average:.3f} {self.current_event.speed_unit}'
             )
         self.current_event.reset()
         return message
@@ -426,7 +425,7 @@ class Benchmark:
                 self.current_event.reader.__dict__['_dataset']
                 != reader.__dict__['_dataset']
             ):
-                # enter a new task but not calling beign() to record it.
+                # enter a new task but not calling begin() to record it.
                 # we pause the timer until the end of new task, so that
                 # the cost of new task is not added to the current event.
                 # eg. start evaluation in the training task

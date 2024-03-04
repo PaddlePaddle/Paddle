@@ -15,12 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/send_v2_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -225,8 +225,8 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
               x.data<T>(), numel, dtype, peer, comm->comm(), stream));
         }
-        VLOG(3) << "rank " << comm->rank() << " send " << phi::product(x.dims())
-                << " to " << peer;
+        VLOG(3) << "rank " << comm->rank() << " send "
+                << common::product(x.dims()) << " to " << peer;
       }
       return;
     }
@@ -251,8 +251,8 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
           platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
           x->data<T>(), numel, dtype, peer, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " send " << phi::product(x->dims())
-              << " to " << peer;
+      VLOG(3) << "rank " << comm->rank() << " send "
+              << common::product(x->dims()) << " to " << peer;
     }
 #else
     PADDLE_THROW(platform::errors::Unavailable(

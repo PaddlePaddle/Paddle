@@ -18,6 +18,7 @@ import multiprocessing
 import os
 import re
 import shutil
+import subprocess
 import time
 
 # (TODO: GhostScreaming) It will be removed later.
@@ -117,15 +118,17 @@ class LocalFS(FS):
     Examples:
         .. code-block:: python
 
-            from paddle.distributed.fleet.utils import LocalFS
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> from paddle.distributed.fleet.utils import LocalFS
 
-            client = LocalFS()
-            subdirs, files = client.ls_dir("./")
+            >>> client = LocalFS()
+            >>> subdirs, files = client.ls_dir("./")
+
     """
 
     def ls_dir(self, fs_path):
         """
-        List directorys and files under `fs_path` .
+        List directories and files under `fs_path` .
 
         Args:
             fs_path(str): The local file path.
@@ -137,10 +140,12 @@ class LocalFS(FS):
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                subdirs, files = client.ls_dir("./")
+                >>> client = LocalFS()
+                >>> subdirs, files = client.ls_dir("./")
+
         """
         if not self.is_exist(fs_path):
             return [], []
@@ -165,15 +170,15 @@ class LocalFS(FS):
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                client.mkdirs("test_mkdirs")
-                client.delete("test_mkdirs")
+                >>> client = LocalFS()
+                >>> client.mkdirs("test_mkdirs")
+                >>> client.delete("test_mkdirs")
+
         """
-        assert not os.path.isfile(fs_path), "{} is already a file".format(
-            fs_path
-        )
+        assert not os.path.isfile(fs_path), f"{fs_path} is already a file"
         os.makedirs(fs_path, exist_ok=True)
 
     def rename(self, fs_src_path, fs_dst_path):
@@ -187,15 +192,20 @@ class LocalFS(FS):
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                client.touch("test_rename_src")
-                print(client.is_exists("test_rename_src")) # True
-                client.rename("test_rename_src", "test_rename_dst")
-                print(client.is_exists("test_rename_src")) # False
-                print(client.is_exists("test_rename_dst")) # True
-                client.delete("test_rename_dst")
+                >>> client = LocalFS()
+                >>> client.touch("test_rename_src")
+                >>> print(client.is_exist("test_rename_src"))
+                True
+                >>> client.rename("test_rename_src", "test_rename_dst")
+                >>> print(client.is_exist("test_rename_src"))
+                False
+                >>> print(client.is_exist("test_rename_dst"))
+                True
+                >>> client.delete("test_rename_dst")
+
         """
         os.rename(fs_src_path, fs_dst_path)
 
@@ -215,11 +225,13 @@ class LocalFS(FS):
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                client.mkdirs("test_localFS_mkdirs")
-                client.delete("test_localFS_mkdirs")
+                >>> client = LocalFS()
+                >>> client.mkdirs("test_localFS_mkdirs")
+                >>> client.delete("test_localFS_mkdirs")
+
         """
         if not self.is_exist(fs_path):
             return
@@ -245,12 +257,15 @@ class LocalFS(FS):
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                client.touch("test_is_file")
-                print(client.is_file("test_is_file")) # True
-                client.delete("test_is_file")
+                >>> client = LocalFS()
+                >>> client.touch("test_is_file")
+                >>> print(client.is_file("test_is_file"))
+                True
+                >>> client.delete("test_is_file")
+
         """
         return os.path.isfile(fs_path)
 
@@ -267,12 +282,15 @@ class LocalFS(FS):
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                client.mkdirs("test_is_dir")
-                print(client.is_dir("test_is_file")) # True
-                client.delete("test_is_dir")
+                >>> client = LocalFS()
+                >>> client.mkdirs("test_is_dir")
+                >>> print(client.is_dir("test_is_dir"))
+                True
+                >>> client.delete("test_is_dir")
+
         """
         return os.path.isdir(fs_path)
 
@@ -284,16 +302,18 @@ class LocalFS(FS):
             fs_path(str): The local file path.
 
         Returns:
-            Bool: Wheter it's a file or directory, return true if the path exists,
+            Bool: Whether it's a file or directory, return true if the path exists,
             otherwise return false.
 
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                ret = local_fs.is_exist("test_is_exist")
+                >>> local_fs = LocalFS()
+                >>> ret = local_fs.is_exist("test_is_exist")
+
         """
         return os.path.exists(fs_path)
 
@@ -309,11 +329,13 @@ class LocalFS(FS):
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                client.touch("test_touch")
-                client.delete("test_touch")
+                >>> client = LocalFS()
+                >>> client.touch("test_touch")
+                >>> client.delete("test_touch")
+
         """
         if self.is_exist(fs_path):
             if exist_ok:
@@ -334,12 +356,14 @@ class LocalFS(FS):
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                client.touch("test_mv_src")
-                client.mv("test_mv_src", "test_mv_dst")
-                client.delete("test_mv_dst")
+                >>> client = LocalFS()
+                >>> client.touch("test_mv_src")
+                >>> client.mv("test_mv_src", "test_mv_dst")
+                >>> client.delete("test_mv_dst")
+
         """
         if not self.is_exist(src_path):
             raise FSFileNotExistsError
@@ -354,7 +378,7 @@ class LocalFS(FS):
 
     def list_dirs(self, fs_path):
         """
-        Only list directorys under `fs_path` .
+        Only list directories under `fs_path` .
 
         Args:
             fs_path(str): The local file path.
@@ -365,10 +389,12 @@ class LocalFS(FS):
         Examples:
             .. code-block:: python
 
-                from paddle.distributed.fleet.utils import LocalFS
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import LocalFS
 
-                client = LocalFS()
-                subdirs = client.list_dirs("./")
+                >>> client = LocalFS()
+                >>> subdirs = client.list_dirs("./")
+
         """
         if not self.is_exist(fs_path):
             return []
@@ -401,9 +427,7 @@ def _handle_errors(max_time_out=None):
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
                         raise FSTimeOut(
-                            "args:{} timeout:{}".format(
-                                args, time.time() - start
-                            )
+                            f"args:{args} timeout:{time.time() - start}"
                         )
 
                     time.sleep(inter)
@@ -432,18 +456,21 @@ class HDFSClient(FS):
 
     Examples:
 
-        .. code-block:: text
+        .. code-block:: python
 
-            from paddle.distributed.fleet.utils import HDFSClient
-            hadoop_home = "/home/client/hadoop-client/hadoop/"
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> from paddle.distributed.fleet.utils import HDFSClient
+            >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
 
-            configs = {
-                "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                "hadoop.job.ugi": "hello,hello123"
-            }
+            >>> configs = {
+            ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+            ...     "hadoop.job.ugi": "hello,hello123"
+            ... }
 
-            client = HDFSClient(hadoop_home, configs)
-            client.ls_dir("hdfs:/test_hdfs_client")
+            >>> client = HDFSClient(hadoop_home, configs)
+            >>> client.ls_dir("hdfs:/test_hdfs_client")
+            ([], [])
+
     """
 
     def __init__(
@@ -487,10 +514,38 @@ class HDFSClient(FS):
 
         return ret, output.splitlines()
 
+    def _run_safe_cmd(self, cmd, redirect_stderr=False, retry_times=5):
+        exe_cmd = [self._base_cmd] + cmd.split()
+        ret = 0
+        output = ""
+        retry_sleep_second = 3
+        for x in range(retry_times + 1):
+            try:
+                process = subprocess.run(
+                    exe_cmd,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT
+                    if redirect_stderr
+                    else subprocess.PIPE,
+                    text=True,
+                )
+                output = process.stdout
+                break
+            except subprocess.CalledProcessError as e:
+                ret = e.returncode
+                output = e.output
+                time.sleep(retry_sleep_second)
+            except Exception as e:
+                break
+
+        if ret == 134:
+            raise FSShellCmdAborted(cmd)
+
     @_handle_errors()
     def list_dirs(self, fs_path):
         """
-        Only list directorys under `fs_path` .
+        Only list directories under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -500,18 +555,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                subdirs = client.list_dirs("hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> subdirs = client.list_dirs("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return []
@@ -522,7 +579,7 @@ class HDFSClient(FS):
     @_handle_errors()
     def ls_dir(self, fs_path):
         """
-        List directorys and files under `fs_path` .
+        List directories and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -533,18 +590,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                subdirs, files = client.ls_dir("hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> subdirs, files = client.ls_dir("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return [], []
@@ -552,8 +611,8 @@ class HDFSClient(FS):
         return self._ls_dir(fs_path)
 
     def _ls_dir(self, fs_path):
-        cmd = f"ls {fs_path}"
-        ret, lines = self._run_cmd(cmd)
+        cmd = ["-ls", fs_path]
+        ret, lines = self._run_safe_cmd(cmd)
 
         if ret != 0:
             raise ExecuteError(cmd)
@@ -594,18 +653,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                ret = client.is_file("hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> ret = client.is_file("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return False
@@ -638,18 +699,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                ret = client.is_file("hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> ret = client.is_file("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return False
@@ -670,18 +733,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                ret = client.is_exist("hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> ret = client.is_exist("hdfs:/test_hdfs_client")
+
         """
         cmd = f"test -e {fs_path} "
         ret, out = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
@@ -722,18 +787,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +SKIP('depend on external file')
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                client.upload("test_hdfs_client", "hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> client.upload("test_hdfs_client", "hdfs:/test_hdfs_client")
+
         """
 
         def __subprocess_upload(hdfs_path_single, datas):
@@ -812,18 +879,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +SKIP('depend on external file')
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                client.download("hdfs:/test_hdfs_client", "./")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> client.download("hdfs:/test_hdfs_client", "./")
+
         """
 
         def __subprocess_download(local_path, datas):
@@ -881,18 +950,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +SKIP('depend on external file')
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                client.mkdirs("hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> client.mkdirs("hdfs:/test_hdfs_client")
+
         """
         if self.is_exist(fs_path):
             return
@@ -923,22 +994,24 @@ class HDFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Exception.
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +SKIP('depend on external file')
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
+
         """
         if overwrite and self.is_exist(fs_dst_path):
             self.delete(fs_dst_path)
@@ -987,18 +1060,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                client.delete("hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> client.delete("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return
@@ -1020,18 +1095,20 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +SKIP('depend on external file')
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                client.touch("hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> client.touch("hdfs:/test_hdfs_client")
+
         """
         if self.is_exist(fs_path):
             if exist_ok:
@@ -1062,18 +1139,21 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> from paddle.distributed.fleet.utils import HDFSClient
 
-                hadoop_home = "/home/client/hadoop-client/hadoop/"
-                configs = {
-                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                    "hadoop.job.ugi": "hello,hello123"
-                }
+                >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
-                client = HDFSClient(hadoop_home, configs)
-                client.cat("hdfs:/test_hdfs_client")
+                >>> client = HDFSClient(hadoop_home, configs)
+                >>> client.cat("hdfs:/test_hdfs_client")
+                ''
+
         """
         if self.is_file(fs_path):
             output = self._try_cat(fs_path)
@@ -1097,7 +1177,7 @@ class HDFSClient(FS):
             trainer_id(int): trainer mpi rank id
             trainers(int): all trainers num
         Returns:
-            fileist(list): file list of current trainer
+            filelist(list): file list of current trainer
         """
         remainder = len(files) % trainers
         blocksize = len(files) // trainers
@@ -1120,7 +1200,7 @@ class HDFSClient(FS):
         Args:
             path_list(list): file list
         Returns:
-            fileist(list): file list with file path and size
+            filelist(list): file list with file path and size
         """
         if len(path_list) <= 0:
             return []
@@ -1155,12 +1235,15 @@ class AFSClient(FS):
 
     Examples:
 
-        .. code-block:: text
+        .. code-block:: python
 
-            from paddle.distributed.fleet.utils import AFSClient
-            client = AFSClient()
-            client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-            client.ls_dir("hdfs:/test_hdfs_client")
+            >>> # doctest: +SKIP('depend on WITH_PSLIB')
+            >>> from paddle.distributed.fleet.utils.fs import AFSClient
+
+            >>> client = AFSClient()
+            >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+            >>> client.ls_dir("hdfs:/test_hdfs_client")
+
     """
 
     def __init__(self, time_out=5 * 60 * 1000, sleep_inter=1000):  # ms  # ms
@@ -1172,7 +1255,7 @@ class AFSClient(FS):
 
     def list_dirs(self, fs_path):
         """
-        Only list directorys under `fs_path` .
+        Only list directories under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -1182,13 +1265,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                subdirs = client.list_dirs("hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> subdirs = client.list_dirs("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return []
@@ -1198,7 +1283,7 @@ class AFSClient(FS):
 
     def ls_dir(self, fs_path):
         """
-        List directorys and files under `fs_path` .
+        List directories and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -1209,13 +1294,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                subdirs, files = client.ls_dir("hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> subdirs, files = client.ls_dir("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return [], []
@@ -1239,13 +1326,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                ret = client.is_file("hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> ret = client.is_dir("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return False
@@ -1271,13 +1360,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                ret = client.is_file("hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> ret = client.is_file("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return False
@@ -1297,13 +1388,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                ret = client.is_exist("hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> ret = client.is_exist("hdfs:/test_hdfs_client")
+
         """
         return self._fs.exist(fs_path)
 
@@ -1339,13 +1432,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                client.upload("test_hdfs_client", "hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> client.upload("test_hdfs_client", "hdfs:/test_hdfs_client")
+
         """
 
         local = LocalFS()
@@ -1366,13 +1461,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                client.download("hdfs:/test_hdfs_client", "./")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> client.download("hdfs:/test_hdfs_client", "./")
+
         """
 
         def __subprocess_download(local_path, datas):
@@ -1415,13 +1512,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                client.mkdirs("hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> client.mkdirs("hdfs:/test_hdfs_client")
+
         """
         if self.is_exist(fs_path):
             return
@@ -1435,17 +1534,19 @@ class AFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Exception.
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
+
         """
         if overwrite and self.is_exist(fs_dst_path):
             self.delete(fs_dst_path)
@@ -1468,15 +1569,16 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import HDFSClient
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                client.delete("hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> client.delete("hdfs:/test_hdfs_client")
+
         """
         if not self.is_exist(fs_path):
             return
@@ -1493,13 +1595,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                client.touch("hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> client.touch("hdfs:/test_hdfs_client")
+
         """
         if self.is_exist(fs_path):
             if exist_ok:
@@ -1523,13 +1627,15 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                from paddle.distributed.fleet.utils import AFSClient
+                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
-                client = AFSClient()
-                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
-                client.cat("hdfs:/test_hdfs_client")
+                >>> client = AFSClient()
+                >>> client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                >>> client.cat("hdfs:/test_hdfs_client")
+
         """
         if self.is_file(fs_path):
             return self._fs.cat(fs_path)
@@ -1544,7 +1650,7 @@ class AFSClient(FS):
             trainer_id(int): trainer mpi rank id
             trainers(int): all trainers num
         Returns:
-            fileist(list): file list of current trainer
+            filelist(list): file list of current trainer
         """
         remainder = len(files) % trainers
         blocksize = len(files) // trainers

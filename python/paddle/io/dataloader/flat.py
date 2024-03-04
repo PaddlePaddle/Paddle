@@ -96,7 +96,7 @@ def _flatten_batch(batch):
 def _restore_batch(flat_batch, structure):
     """
     After reading list of Tensor data from lod_blocking_queue outputs,
-    use this function to restore the batch data structrue, replace
+    use this function to restore the batch data structure, replace
     :attr:`_paddle_field_x` with data from flat_batch
     """
 
@@ -143,8 +143,8 @@ def _restore_batch(flat_batch, structure):
 
     # sample only contains single fields
     if isinstance(structure, (str, bytes)):
-        assert structure == '{}{}'.format(
-            FIELD_PREFIX, 0
+        assert (
+            structure == f'{FIELD_PREFIX}{0}'
         ), f"invalid structure: {structure}"
         return flat_batch[0]
     field_idx = _restore(structure, 0)

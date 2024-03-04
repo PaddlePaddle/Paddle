@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/limit_by_capacity_kernel.h"
-#include "paddle/phi/core/errors.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_GLOO)

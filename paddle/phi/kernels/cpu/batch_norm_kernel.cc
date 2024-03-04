@@ -37,8 +37,8 @@ void BatchNormKernel(const Context& ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
                      bool is_test,
                      float momentum,
                      float epsilon,
@@ -55,7 +55,7 @@ void BatchNormKernel(const Context& ctx,
 
   bool global_stats = test_mode || use_global_stats;
 
-  auto data_layout = phi::StringToDataLayout(data_layout_str);
+  auto data_layout = common::StringToDataLayout(data_layout_str);
 
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(
@@ -70,7 +70,7 @@ void BatchNormKernel(const Context& ctx,
       5,
       phi::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
-          "But received: the size of input X's dimensionss is [%d]",
+          "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
   const int N = static_cast<int>(x_dims[0]);
   const int C = static_cast<int>(
@@ -83,6 +83,10 @@ void BatchNormKernel(const Context& ctx,
   ctx.template Alloc<T>(variance_out);
   ctx.template Alloc<T>(saved_mean);
   ctx.template Alloc<T>(saved_variance);
+  if (reserve_space != nullptr) {
+    reserve_space->Resize({0});
+    ctx.template Alloc<T>(reserve_space);
+  }
 
   // input dimension is 2 and the format is NCHW. The input can be regarded
   // as NHWC format
@@ -97,6 +101,9 @@ void BatchNormKernel(const Context& ctx,
         ctx.template Alloc<T>(saved_variance), C);
     saved_mean_e.setZero();
     saved_variance_e.setZero();
+    EigenVectorArrayMap<T> reserve_space_e(ctx.template Alloc<T>(reserve_space),
+                                           0);
+    reserve_space_e.setZero();
 
     EigenVectorArrayMap<T> running_mean_arr(ctx.template Alloc<T>(mean_out), C);
     EigenVectorArrayMap<T> running_var_arr(ctx.template Alloc<T>(variance_out),
@@ -152,7 +159,7 @@ void BatchNormKernel(const Context& ctx,
 
   // use SavedMean and SavedVariance to do normalize
   Eigen::Array<T, Eigen::Dynamic, 1> inv_std(C);
-  if (global_stats) {
+  if (global_stats) {  // NOLINT
     ConstEigenVectorArrayMap<T> var_arr(variance.data<T>(), C);
     inv_std = (var_arr + epsilon).sqrt().inverse();
   } else {
@@ -167,11 +174,27 @@ void BatchNormKernel(const Context& ctx,
   //   ((x - est_mean) * (inv_var) * scale + bias
   //   formula transform ====>
   //   (x * inv_var * scale) + (bias - est_mean * inv_var * scale)
-  ConstEigenVectorArrayMap<T> scale_arr(scale.data<T>(), C);
-  ConstEigenVectorArrayMap<T> bias_arr(bias.data<T>(), C);
-  Eigen::Array<T, Eigen::Dynamic, 1> new_scale = inv_std * scale_arr;
-  Eigen::Array<T, Eigen::Dynamic, 1> new_bias =
-      bias_arr - mean_arr * inv_std * scale_arr;
+  auto* Scale = scale.get_ptr();
+  auto* Bias = bias.get_ptr();
+  Eigen::Array<T, Eigen::Dynamic, 1> new_scale(C);
+  Eigen::Array<T, Eigen::Dynamic, 1> new_bias(C);
+  if (Scale && Bias) {  // NOLINT
+    ConstEigenVectorArrayMap<T> scale_arr(Scale->data<T>(), C);
+    ConstEigenVectorArrayMap<T> bias_arr(Bias->data<T>(), C);
+    new_scale = inv_std * scale_arr;
+    new_bias = bias_arr - mean_arr * inv_std * scale_arr;
+  } else if (Scale) {
+    ConstEigenVectorArrayMap<T> scale_arr(Scale->data<T>(), C);
+    new_scale = inv_std * scale_arr;
+    new_bias = -(mean_arr * inv_std * scale_arr);
+  } else if (Bias) {
+    ConstEigenVectorArrayMap<T> bias_arr(Bias->data<T>(), C);
+    new_scale = inv_std;
+    new_bias = bias_arr - mean_arr * inv_std;
+  } else {
+    new_scale = inv_std;
+    new_bias = -(mean_arr * inv_std);
+  }
 
   switch (data_layout) {
     case DataLayout::kNCHW: {

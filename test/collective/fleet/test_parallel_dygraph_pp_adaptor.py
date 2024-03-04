@@ -16,7 +16,9 @@ import os
 import shutil
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 import paddle
 from paddle.distributed.fleet.utils.pp_parallel_adaptor import (
@@ -27,7 +29,7 @@ from paddle.distributed.fleet.utils.pp_parallel_adaptor import (
 )
 
 
-class TestPPAdaptor(TestMultipleGpus):
+class TestPPAdaptor(TestMultipleAccelerators):
     def test_parse_args(self):
         args = parse_args()
         self.assertEqual(args.src_mp, args.dst_mp)
@@ -36,8 +38,8 @@ class TestPPAdaptor(TestMultipleGpus):
 
     def test_hybrid_parallel_transformer_unbalanced_data(self):
         print(f"pwd {os.getcwd()}")
-        self.run_mnist_2gpu('hybrid_parallel_pp_transformer_save.py')
-        self.run_mnist_2gpu(
+        self.run_mnist_2accelerators('hybrid_parallel_pp_transformer_save.py')
+        self.run_mnist_2accelerators(
             'hybrid_parallel_pp_transformer_save_with_virtual_stage.py'
         )
         # test pp adaptor
@@ -64,14 +66,10 @@ class TestPPAdaptor(TestMultipleGpus):
             # expected model, which does not hinder model recovering
             for i in range(p_config1.pp):
                 sub_converted_model_dir = (
-                    "{}/mp_00_sharding_00_pp_{:0>2d}".format(
-                        converted_model_dir, i
-                    )
+                    f"{converted_model_dir}/mp_00_sharding_00_pp_{i:0>2d}"
                 )
                 sub_expected_model_dir = (
-                    "{}/mp_00_sharding_00_pp_{:0>2d}".format(
-                        expected_model_dir, i
-                    )
+                    f"{expected_model_dir}/mp_00_sharding_00_pp_{i:0>2d}"
                 )
                 print(
                     f"converted_model_dir: {sub_converted_model_dir}; expected_model_dir: {sub_expected_model_dir}"

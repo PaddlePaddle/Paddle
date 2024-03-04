@@ -12,24 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import inspect
 import logging
 from collections import defaultdict
 
+import numpy as np
+
+import paddle
 from paddle.jit import not_to_static, to_static
-from paddle.jit.dy2static.program_translator import StaticFunction
+from paddle.jit.dy2static.program_translator import (
+    ProgramTranslator,
+    StaticFunction,
+)
 from paddle.jit.dy2static.utils import as_not_paddle_func
 from paddle.nn import Layer
 from paddle.static import Parameter, global_scope, program_guard
+from paddle.static.amp.fp16_utils import (
+    DEFAULT_AMP_OPTIONS,
+    _convert_float_to_bfloat16,
+    prepare_op_amp_options,
+)
 
 from .converter import Converter
+from .process_group import get_world_process_group
 from .utils import get_logger, to_list
 
 
 class ProxyLayer(Layer):
     """
     ProxyLayer implements all logic for converting dygraph model into
-    static Program IR. Meanwhile, it provides conviential interfaces for
+    static Program IR. Meanwhile, it provides conventional interfaces for
     auto parallel to visit feed/fetch/loss/metric variables.
     """
 
@@ -202,8 +215,8 @@ class ProgramHelper:
 
     def __init__(self, layer, loss_func, metrics, inputs_spec, labels_spec):
         # original model config information
-        # TODO(Aurelius84): Implenet append_backward and optimizer in ProxyLayer
-        # after distribute engine satisify basic condition.
+        # TODO(Aurelius84): Implement append_backward and optimizer in ProxyLayer
+        # after distribute engine satisfy basic condition.
         self.proxy_layer = ProxyLayer(layer, loss_func, metrics)
         self.inputs_spec = inputs_spec
         self.labels_spec = labels_spec
@@ -235,24 +248,34 @@ class ProgramHelper:
 
         self._logger.info("start to build program for mode = %s." % mode)
         input_spec = [self.inputs_spec, self.labels_spec]
-        static_func = to_static(self.static_func(), input_spec=input_spec)
+        static_func = to_static(
+            self.static_func(), input_spec=input_spec, full_graph=True
+        )
 
         func_name = '_' + mode
         setattr(self.proxy_layer, func_name, static_func)
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        getattr(self.proxy_layer, func_name).concrete_program  # noqa: B018
-
+        concrete_program = getattr(
+            self.proxy_layer, func_name
+        ).concrete_program  # noqa: B018
+        prepare_op_amp_options(
+            concrete_program.main_program,
+            ProgramTranslator.get_instance()._amp_records,
+            DEFAULT_AMP_OPTIONS,
+        )
         self._build_startup_program()
 
     def _build_startup_program(self):
         """
         Create and Sync parameters into startup program.
         """
-        if len(self.startup_program.global_block().ops) > 1:
+        startup_program = self.startup_program
+        if len(startup_program.global_block().ops) > 1:
             self.lazy_init = True
             return
+
         for param in self.concrete_program.parameters:
             Parameter(
                 name=param.name,
@@ -261,7 +284,7 @@ class ProgramHelper:
                 shape=param.shape,
                 dtype=param.dtype,
                 stop_gradient=param.stop_gradient,
-                block=self.startup_program.global_block(),
+                block=startup_program.global_block(),
             )
 
     def apply_optimizer(self, optimizer):
@@ -322,25 +345,111 @@ class ProgramHelper:
     def init(self, main_program, place, dist_context):
         if self.lazy_init:
             return
+
+        is_comm = False
         for param in self.concrete_program.parameters:
+            if param.is_dist():
+                serial_main_program = self.concrete_program.main_program
+                var = serial_main_program.global_block().vars[param.name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                is_comm = True
+                tmp = paddle.base.core.reshard(param, var_dist_attr)
+                if tmp._is_initialized():
+                    param.get_tensor()._share_data_with(tmp.get_tensor())
+                else:
+                    param = None
+            paddle.device.synchronize()
+
             # create var in scope and share parameters to scope
+            if param is None:
+                continue
             if param.name not in main_program.global_block().vars:
                 continue
-            # get param_var's dist_attr
-            var = main_program.global_block().vars[param.name]
-            var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
-            dist_attr = {
-                "dims_mapping": var_dist_attr.dims_mapping,
-                "process_shape": var_dist_attr.process_mesh.shape,
-                "process_group": var_dist_attr.process_mesh.process_ids,
-            }
-            # slice param_value with dist_attr
-            # share sliced_param_value with param_tensor in global_scope
-            param_tensor = global_scope().var(param.name).get_tensor()
-            sliced_param = Converter.slice_with_dist_attr(
-                param.numpy(), dist_attr
+            if param.is_dense():
+                # get param_var's dist_attr
+                var = main_program.global_block().vars[param.name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                dist_attr = {
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                    "process_shape": var_dist_attr.process_mesh.shape,
+                    "process_group": var_dist_attr.process_mesh.process_ids,
+                }
+                # slice param_value with dist_attr
+                # share sliced_param_value with param_tensor in global_scope
+                param_tensor = global_scope().var(param.name).get_tensor()
+                sliced_param = Converter.slice_with_dist_attr(
+                    param.numpy(), dist_attr
+                )
+                param_tensor.set(sliced_param, place)
+            elif param.is_dist():
+                dense_tensor = global_scope().var(param.name).get_tensor()
+                dense_tensor._share_data_with(param.get_tensor().get_tensor())
+
+        # transform the parameter in eager mode for amp.
+        amp_stragety = dist_context.strategy.amp
+        amp_config = copy.deepcopy(amp_stragety.to_dict())
+        if amp_stragety.enable and amp_config["level"] in ["o2", "o3"]:
+            for param in self.concrete_program.parameters:
+                amp_dtype = amp_config["dtype"]
+                scope_var = global_scope().find_var(param.name)
+                scope_tensor = global_scope().var(param.name).get_tensor()
+                # The parameter is not in this rank.
+                if not scope_var:
+                    continue
+                # The parameter do not need to transform
+                if param.dtype in [paddle.float16, paddle.bfloat16]:
+                    continue
+                assert (
+                    scope_var and scope_tensor._is_initialized()
+                ), f"Parameter: {param.name} is not put into global_scope or not initialized."
+                var = main_program.global_block().vars[param.name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                dist_attr = {
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                    "process_shape": var_dist_attr.process_mesh.shape,
+                    "process_group": var_dist_attr.process_mesh.process_ids,
+                }
+                if amp_dtype == "float16":
+                    if param.is_dist():
+                        sliced_param = np.float16(param._local_value().numpy())
+                    else:
+                        sliced_param = Converter.slice_with_dist_attr(
+                            np.float16(param.numpy()), dist_attr
+                        )
+                    scope_tensor.set(sliced_param, place)
+                elif amp_dtype == "bfloat16":
+                    if param.is_dist():
+                        sliced_param = _convert_float_to_bfloat16(
+                            place, param._local_value().numpy()
+                        )
+                    else:
+                        sliced_param = Converter.slice_with_dist_attr(
+                            _convert_float_to_bfloat16(place, param.numpy()),
+                            dist_attr,
+                        )
+                    scope_tensor.set(
+                        sliced_param,
+                        place,
+                    )
+
+        world_group = get_world_process_group()
+        if (
+            is_comm
+            and world_group.nranks > 1
+            and paddle.distributed.get_world_size() > 1
+        ):
+            paddle.disable_static()
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', 0
             )
-            param_tensor.set(sliced_param, place)
+            paddle.enable_static()
 
     @property
     def concrete_program(self):
@@ -355,7 +464,9 @@ class ProgramHelper:
         try:
             return self.proxy_layer.startup_program
         except Exception as err:
-            self._logger.warning("`lazy init` failed.")
+            self._logger.warning(
+                "The startup_program is not built by `lazy init`."
+            )
             if isinstance(err, AssertionError):
                 return self.concrete_program.startup_program
             raise err
@@ -379,3 +490,11 @@ class ProgramHelper:
     @property
     def metric_vars(self):
         return to_list(self.proxy_layer.metric_vars)
+
+    def named_parameters(self):
+        static_func = self.static_func()
+        partial_program = static_func.get_concrete_program(
+            self.inputs_spec, self.labels_spec
+        )[-1]
+        # TODO(xiongkun): support pir in the feature.
+        return {param.name: param for param in partial_program._params}

@@ -202,7 +202,7 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     if (dequant_scale == quant_scale && dequant_shift == quant_shift) {
       // squash dequantize-quantize to nothing
       auto quant_out_var_name = quant_out->Name();
-      for (auto input_name : next_op_desc->InputNames()) {
+      for (auto const& input_name : next_op_desc->InputNames()) {
         auto& input_names = next_op_desc->MutableInputs()->at(input_name);
         std::replace(input_names.begin(),
                      input_names.end(),
@@ -426,7 +426,8 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
                       platform::errors::InvalidArgument(
                           "Quantize scale(%f) should not be equal 0.", scale));
 
-    for (int iter = prev_out->outputs.size() - 1; iter >= 0; iter--) {
+    for (int iter = static_cast<int>(prev_out->outputs.size()) - 1; iter >= 0;
+         iter--) {
       auto quant_op = prev_out->outputs[iter];
       if (quant_op->IsOp() && quant_op->Op()->Type() == "quantize" &&
           quant_op->id() != first_quant_op->id() &&

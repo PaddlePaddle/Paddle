@@ -58,7 +58,6 @@ struct EmbeddingGradCPUFunctor {
       auto* d_table_data = weight_grad_->data<T>();
 
       memset(d_table_data, 0, weight_grad_->numel() * sizeof(T));
-
       for (int64_t i = 0; i < ids_num; ++i) {
         if (padding_idx_ != kNoPadding && ids_data[i] == padding_idx_) {
           // the gradient of padding_idx should be 0, already done by memset, so
@@ -116,7 +115,7 @@ void EmbeddingGradKernel(const Context& ctx,
     functor.template apply<int64_t>();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64"));
+        "embedding input only support int32 and int64"));
   }
 }
 
@@ -197,7 +196,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
     functor.template apply<int64_t>();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64"));
+        "embedding input only support int32 and int64"));
   }
 }
 
@@ -209,6 +208,7 @@ PD_REGISTER_KERNEL(embedding_grad,
                    phi::EmbeddingGradKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(embedding_sparse_grad,

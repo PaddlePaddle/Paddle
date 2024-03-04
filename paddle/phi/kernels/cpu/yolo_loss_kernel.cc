@@ -229,7 +229,7 @@ void YoloLossKernel(const Context& dev_ctx,
   gt_match_mask->Resize({n, b});
   int* gt_match_mask_data = dev_ctx.template Alloc<int>(gt_match_mask);
 
-  const T* gt_score_data;
+  const T* gt_score_data = nullptr;
   DenseTensor gtscore;
   if (!(gt_score.is_initialized())) {
     gtscore.Resize({n, b});

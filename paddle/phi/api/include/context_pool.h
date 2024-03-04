@@ -16,9 +16,8 @@ limitations under the License. */
 
 #include <mutex>
 
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace phi {
@@ -70,6 +69,8 @@ class PADDLE_API DeviceContextPool {
   const phi::DeviceContext* Get(const Place& place);
 
   phi::DeviceContext* GetMutable(const Place& place);
+
+  void SyncDeviceContext(const Place& place);
 
   template <AllocationType T>
   const typename DefaultDeviceContextType<T>::TYPE* Get(const Place& place) {

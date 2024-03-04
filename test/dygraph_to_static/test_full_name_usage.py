@@ -15,15 +15,17 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
-from paddle import base
 
 
-@paddle.jit.to_static
 def dygraph_decorated_func(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     if paddle.mean(x) > 0:
         x_v = x - 1
     else:
@@ -31,9 +33,9 @@ def dygraph_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def jit_decorated_func(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     if paddle.mean(x) > 0:
         x_v = x - 1
     else:
@@ -41,42 +43,44 @@ def jit_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def decorated_call_decorated(x):
     return jit_decorated_func(x)
 
 
 class DoubleDecorated:
     @classmethod
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def double_decorated_func1(self, x):
-        return dygraph_decorated_func(x)
+        return paddle.jit.to_static(dygraph_decorated_func)(x)
 
     @classmethod
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def double_decorated_func2(self, x):
         return jit_decorated_func(x)
 
 
-class TestFullNameDecorator(unittest.TestCase):
-    @ast_only_test
+class TestFullNameDecorator(Dy2StTestBase):
+    @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_run_success(self):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")
-        with base.dygraph.guard():
-            np.testing.assert_allclose(
-                dygraph_decorated_func(x).numpy(), answer, rtol=1e-05
-            )
-            np.testing.assert_allclose(
-                jit_decorated_func(x).numpy(), answer, rtol=1e-05
-            )
-            np.testing.assert_allclose(
-                decorated_call_decorated(x).numpy(), answer, rtol=1e-05
-            )
-            with self.assertRaises((NotImplementedError, TypeError)):
-                DoubleDecorated().double_decorated_func1(x)
-            with self.assertRaises((NotImplementedError, TypeError)):
-                DoubleDecorated().double_decorated_func2(x)
+        np.testing.assert_allclose(
+            paddle.jit.to_static(dygraph_decorated_func)(x).numpy(),
+            answer,
+            rtol=1e-05,
+        )
+        np.testing.assert_allclose(
+            jit_decorated_func(x).numpy(), answer, rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            decorated_call_decorated(x).numpy(), answer, rtol=1e-05
+        )
+        with self.assertRaises((NotImplementedError, TypeError)):
+            DoubleDecorated().double_decorated_func1(x)
+        with self.assertRaises((NotImplementedError, TypeError)):
+            DoubleDecorated().double_decorated_func2(x)
 
 
 if __name__ == '__main__':

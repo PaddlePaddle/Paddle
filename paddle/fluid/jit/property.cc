@@ -18,10 +18,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace jit {
@@ -99,7 +99,7 @@ std::unordered_map<std::string, std::shared_ptr<Variable>> Property::Values() {
         case ValueProto::STRING:
           *var->GetMutable<paddle::framework::String>() = GetString(n);
           break;
-        case ValueProto::FLOATS:
+        case ValueProto::FLOATS:  // NOLINT
           *var->GetMutable<std::vector<float>>() = GetFloats(n);
           break;
         case ValueProto::INTS:
@@ -340,7 +340,7 @@ void Property::SetStrings(const std::vector<std::string> &v) {
   auto type = proto::ValueProto::STRINGS;
   auto entry = property_.add_entrys();
   entry->set_type(type);
-  for (auto i : v) {
+  for (auto const &i : v) {
     entry->add_strings(i);
   }
   VLOG(3) << "Property: set_strings " << v.size();
@@ -352,7 +352,7 @@ void Property::SetStrings(const std::string &name,
   auto entry = property_.add_entrys();
   entry->set_name(name);
   entry->set_type(type);
-  for (auto i : v) {
+  for (auto const &i : v) {
     entry->add_strings(i);
   }
   VLOG(3) << "Property: set_strings " << v[0] << " name: " << name;

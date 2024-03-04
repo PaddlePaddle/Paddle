@@ -20,42 +20,42 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/include/core/block_argument.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
 namespace framework {
 
-std::vector<int> GetValueIds(
-    pir::Value value,
-    Scope* inner_scope,
-    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name) {
+std::vector<int> GetValueIds(pir::Value value,
+                             const ValueExecutionInfo& value_exec_info) {
   std::vector<int> ids;
-  auto& var_name = value_2_var_name.at(value);
-  ids.push_back(var_name_2_id.at(var_name));
+  ids.push_back(value_exec_info.GetVarId(value));
   // NOTE(zhangbo): Value maybe a VariableRefArray
-  auto var = inner_scope->FindVar(var_name);
+  auto var =
+      value_exec_info.GetScope()->FindVar(value_exec_info.GetVarName(value));
   if (var->IsType<paddle::framework::VariableRefArray>()) {
     auto& var_array = var->Get<paddle::framework::VariableRefArray>();
     for (auto item : var_array) {
-      ids.push_back(var_name_2_id.at(variable_2_var_name.at(item)));
+      ids.push_back(value_exec_info.GetVarId(item));
     }
   }
   return ids;
@@ -91,13 +91,13 @@ platform::DeviceContext* ParseDeviceContext(
       return dev_ctx;
     }
 
-    if (op_name == interpreter::kMemcpyD2H) {
+    if (op_name.compare(paddle::dialect::MemcpyD2hOp::name()) == 0) {
       dev_ctx = ctx_manager.Get(std::string(kD2HStream), place, stream_priority)
                     .get()
                     .get();
       interpreter::SetDeviceCommContext(op, dev_ctx);
       return dev_ctx;
-    } else if (op_name == interpreter::kMemcpyH2D) {
+    } else if (op_name.compare(paddle::dialect::MemcpyH2dOp::name()) == 0) {
       dev_ctx = ctx_manager.Get(std::string(kH2DStream), place, stream_priority)
                     .get()
                     .get();
@@ -114,9 +114,11 @@ platform::DeviceContext* ParseDeviceContext(
     // DeviceContext passed from executor (see CAllReduceOpCUDAKernel in
     // c_allreduce_op.h). Now it is just a temporary solution for ONLY
     // c_allreduce_sum which is used in ResNet50 distributed training.
-    if (op_name == "c_allreduce_sum" && op_attributes.at("use_calc_stream")
-                                                .dyn_cast<pir::BoolAttribute>()
-                                                .data() == false) {
+    if ((op_name.compare(paddle::dialect::CAllreduceSumOp::name()) == 0 ||
+         op_name.compare(paddle::dialect::CAllreduceSum_Op::name()) == 0) &&
+        op_attributes.at("use_calc_stream")
+                .dyn_cast<pir::BoolAttribute>()
+                .data() == false) {
       int ring_id =
           op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
       if (FLAGS_dynamic_static_unified_comm) {
@@ -147,43 +149,295 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
     return OpFuncType::kCpuSync;
   }
 
-  auto kernel_key = op->attributes()
-                        .at("kernel_key")
-                        .dyn_cast<dialect::KernelAttribute>()
-                        .data();
-  if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
-      phi::AllocationType::CPU) {
-    return OpFuncType::kCpuSync;
-  }
-
   PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
                     true,
                     phi::errors::Fatal("Unsupported current place %s", place));
+
+  auto& op_attributes = op->attributes();
+
+  if ((op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
+       0) &&
+      (op_attributes.count("kernel_key") > 0)) {
+    auto kernel_key = op_attributes.at("kernel_key")
+                          .dyn_cast<dialect::KernelAttribute>()
+                          .data();
+    if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
+        phi::AllocationType::CPU) {
+      return OpFuncType::kCpuSync;
+    }
+  }
 
   // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
   // computing. They execute serially in device thread and block CUDA kernel
   // launching in other GPU OPs. To improve performance, set them as kGpuSync
   // and so that they would be dispatched to host thread.
-  auto& op_attributes = op->attributes();
-  auto op_name =
-      op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  if (op_name == "pd_op.coalesce_tensor" &&
-      (!platform::is_xpu_place(place) ||
-       op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
-      op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
-      op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
-    return OpFuncType::kGpuSync;
+  if ((op->dialect()->name() == "pd_kernel") &&
+      (op_attributes.count("op_name") > 0)) {
+    auto op_name =
+        op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+    if (op_name == "pd_op.coalesce_tensor" &&
+        (!platform::is_xpu_place(place) ||
+         op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
+        op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
+        op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
+      return OpFuncType::kGpuSync;
+    }
+
+    if (platform::is_gpu_place(place) &&
+        (op_name == "pd_op.memcpy_d2h" ||
+         op_name == "pd_op.memcpy_d2h_multi_io")) {
+      return OpFuncType::kGpuSync;
+    }
+
+    if (op_name.compare(paddle::dialect::ShapeOp::name()) == 0) {
+      return OpFuncType::kGpuSync;
+    }
   }
 
-  // for memcpy explicitly called by user
-  if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
-    return OpFuncType::kGpuSync;
-  }
-
-  if (op_name == "pd_op.shape") {
-    return OpFuncType::kGpuSync;
-  }
   return OpFuncType::kGpuAsync;
+}
+
+std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
+  std::vector<pir::Value> vec_res;
+
+  if (block && !block->empty() && block->back().isa<pir::YieldOp>()) {
+    auto& op = block->back();
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      vec_res.emplace_back(op.operand_source(i));
+    }
+  }
+  return vec_res;
+}
+
+void GetInputIds(pir::Operation* op,
+                 const ValueExecutionInfo& value_exec_info,
+                 std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    pir::Value value = op->operand_source(i);
+    if (value && value.type()) {
+      PADDLE_ENFORCE_EQ(
+          value_exec_info.HasValue(value),
+          true,
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              "if op"));
+      input_ids->emplace(value, GetValueIds(value, value_exec_info));
+    }
+  }
+}
+
+std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
+  std::unordered_set<pir::Value> inner_outputs;
+  for (size_t arg_id = 0; arg_id < block->args_size(); ++arg_id) {
+    inner_outputs.insert(block->arg(arg_id));
+  }
+  for (auto& op : *block) {
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
+                    .at("op_name")
+                    .dyn_cast<pir::StrAttribute>()
+                    .AsString();
+    }
+    VLOG(8) << "GetInternalOutputs of " << op_name;
+    if (op.num_regions()) {
+      for (size_t i = 0; i < op.num_regions(); ++i) {
+        for (auto& sub_block : op.region(i)) {
+          std::unordered_set<pir::Value> sub_set =
+              GetInternalOutputs(&sub_block);
+          inner_outputs.insert(sub_set.begin(), sub_set.end());
+        }
+      }
+    }
+
+    for (size_t i = 0; i < op.num_results(); ++i) {
+      inner_outputs.insert(op.result(i));
+      VLOG(10) << op_name << "'s inner_output: " << op.result(i).impl();
+    }
+  }
+  return inner_outputs;
+}
+
+std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
+  std::unordered_set<pir::Value> inner_inputs;
+  for (auto& op : *block) {
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
+                    .at("op_name")
+                    .dyn_cast<pir::StrAttribute>()
+                    .AsString();
+    }
+    VLOG(8) << "GetInternalInputs of " << op_name;
+    if (op.num_regions()) {
+      for (size_t i = 0; i < op.num_regions(); ++i) {
+        for (auto& sub_block : op.region(i)) {
+          std::unordered_set<pir::Value> sub_set =
+              GetInternalInputs(&sub_block);
+          inner_inputs.insert(sub_set.begin(), sub_set.end());
+        }
+      }
+    }
+    if (op.isa<pir::TuplePopOp>()) {
+      auto tuple_pop_op = op.dyn_cast<pir::TuplePopOp>();
+      inner_inputs.insert(tuple_pop_op.container());
+    }
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      inner_inputs.insert(op.operand_source(i));
+      VLOG(10) << op_name << "'s inner_input: " << op.operand_source(i).impl();
+    }
+  }
+  return inner_inputs;
+}
+
+std::vector<pir::Value> GetExternalInputs(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+  std::unordered_set<pir::Value> inner_outputs;
+  inner_outputs = GetInternalOutputs(block);
+
+  std::unordered_set<pir::Value> inner_inputs;
+  inner_inputs = GetInternalInputs(block);
+
+  std::vector<pir::Value> outside_op_inputs;
+  for (pir::Value value : inner_inputs) {
+    if (value && (!inner_outputs.count(value))) {
+      PADDLE_ENFORCE_EQ(value_exec_info.HasValue(value),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "input %s should be in name map", value.impl()));
+      input_ids->emplace(value, GetValueIds(value, value_exec_info));
+      outside_op_inputs.push_back(value);
+      VLOG(6) << "GetExternalInputs of " << value.impl();
+    }
+  }
+  return outside_op_inputs;
+}
+
+std::unordered_set<pir::Value> GetTuplePushContainer(pir::Block* block) {
+  std::unordered_set<pir::Value> inner_outputs;
+  for (auto& op : *block) {
+    VLOG(8) << "GetTuplePushContainer of " << op.name();
+    if (op.num_regions()) {
+      for (size_t i = 0; i < op.num_regions(); ++i) {
+        for (auto& sub_block : op.region(i)) {
+          std::unordered_set<pir::Value> sub_set =
+              GetTuplePushContainer(&sub_block);
+          inner_outputs.insert(sub_set.begin(), sub_set.end());
+        }
+      }
+    }
+    if (op.isa<pir::TuplePushOp>()) {
+      auto tuple_push_op = op.dyn_cast<pir::TuplePushOp>();
+      inner_outputs.insert(tuple_push_op.container());
+    }
+  }
+  return inner_outputs;
+}
+
+void InsertTuplePushContinerToOuts(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs) {
+  std::unordered_set<pir::Value> inner_stack_outputs;
+  inner_stack_outputs = GetTuplePushContainer(block);
+
+  for (pir::Value value : inner_stack_outputs) {
+    outputs->emplace(value, GetValueIds(value, value_exec_info));
+    VLOG(6) << "InsertTuplePushContinerToOuts of " << value.impl();
+  }
+}
+
+void InsertInplacedExternalInputsToOuts(
+    pir::Block* block,
+    const std::vector<pir::Value>& external_inputs,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs) {
+  for (auto& op : *block) {
+    if (op.attributes().count("is_inplace") != 0 &&
+        op.attributes()
+            .at("is_inplace")
+            .dyn_cast<pir::BoolAttribute>()
+            .data()) {
+      std::string op_name = op.name();
+      if (op.attributes().count("op_name")) {
+        op_name = op.attributes()
+                      .at("op_name")
+                      .dyn_cast<pir::StrAttribute>()
+                      .AsString();
+      }
+      pir::OpInfo op_info =
+          pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+      paddle::dialect::OpYamlInfoParser yaml_parser(
+          op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+              ->get_op_info_(op_name),
+          paddle::dialect::IsLegacyOp(op_name));
+
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        pir::Value value = op.result(i);
+        if (!IsInvalid(value)) {
+          VLOG(8) << "Number " << i << " result of " << op_name
+                  << " is not invalid, so skip build a variable.";
+          continue;
+        }
+        std::string value_name = yaml_parser.OutputNames()[i];
+        if (yaml_parser.HasInplace(value_name)) {
+          const std::string& inplace_name = yaml_parser.InplaceName(value_name);
+          pir::Value inplace_value =
+              op.operand_source(yaml_parser.InputName2Id().at(inplace_name));
+          if (std::find(external_inputs.begin(),
+                        external_inputs.end(),
+                        inplace_value) != external_inputs.end()) {
+            outputs->emplace(value,
+                             GetValueIds(inplace_value, value_exec_info));
+          }
+        }
+      }
+    }
+  }
+}
+
+bool GetCondData(const phi::DenseTensor& cond) {
+  if (paddle::platform::is_cpu_place(cond.place())) {
+    return cond.data<bool>()[0];
+  }
+  // when platform::is_gpu_place(cond.place()) or
+  // platform::is_xpu_place(cond.place()) is true
+  std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+  paddle::framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+#else
+  PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      "This version of PaddlePaddle does NOT support GPU/XPU but got "
+      "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
+      "WITH_XPU option."));
+#endif
+  return cpu_cond->data<bool>()[0];
+}
+
+void CopyBranchOutput(const std::vector<std::string>& var_names,
+                      const std::vector<Variable*>& output_vars,
+                      Scope* inner_scope) {
+  for (size_t i = 0; i < var_names.size(); ++i) {
+    auto* inner_var = inner_scope->GetVar(var_names[i]);
+
+    if (inner_var->IsType<phi::DenseTensor>()) {
+      output_vars[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          inner_var->Get<phi::DenseTensor>());
+
+    } else if (inner_var->IsType<phi::TensorArray>()) {
+      const auto& inner_array = inner_var->Get<phi::TensorArray>();
+      auto* output_array = output_vars[i]->GetMutable<phi::TensorArray>();
+      // output_array->clear();
+      *output_array = inner_array;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
+  }
 }
 
 }  // namespace framework

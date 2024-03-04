@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import core
-from ..framework import (
-    convert_np_dtype_to_dtype_,
-)
-from .. import framework
-
 import numpy as np
+
 from paddle import _C_ops, _legacy_C_ops
+
+from .. import core, framework
+from ..framework import convert_np_dtype_to_dtype_
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -152,7 +150,7 @@ def monkey_patch_math_tensor():
         return int(np.array(var))
 
     @property
-    def _ndim_(var):
+    def _ndim(var):
         return len(var.shape)
 
     def ndimension(var):
@@ -169,9 +167,7 @@ def monkey_patch_math_tensor():
     def _T_(var):
         if len(var.shape) == 1:
             return var
-        perm = []
-        for i in range(len(var.shape)):
-            perm.insert(0, i)
+        perm = list(reversed(range(len(var.shape))))
         out = _C_ops.transpose(var, perm)
         return out
 
@@ -185,7 +181,7 @@ def monkey_patch_math_tensor():
         ('astype', astype),
         ('dim', dim),
         ('ndimension', ndimension),
-        ('ndim', _ndim_),
+        ('ndim', _ndim),
         ('size', _size_),
         ('T', _T_),
         # for logical compare

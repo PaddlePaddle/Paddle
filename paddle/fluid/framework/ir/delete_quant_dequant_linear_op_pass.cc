@@ -19,6 +19,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/ir/quantize_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -85,7 +86,7 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
 }
 // Delete quantize_linear_op dequantize_linear_op, then add input_scales
 void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
-  const std::string pattern_name = "delete_quantdequant_linear_op_pattern";
+  const std::string pattern_name = "delete_quant_dequant_linear_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
@@ -94,6 +95,19 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       scope,
       platform::errors::InvalidArgument(
           "Scope in DeleteQuantDequantLinearOpPass should not be null."));
+
+  VLOG(3) << "Running delete_quant_dequant_linear_op_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running delete_quant_dequant_linear_op_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running delete_quant_dequant_linear_op_pass is: "
+        << graph->GetBlockId();
+  }
+
+  std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
+
   // Create pattern
   patterns::DeleteQuantDequantLinearOpPattern pattern(gpd.mutable_pattern(),
                                                       pattern_name);
@@ -110,6 +124,17 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     */
+    // Scale and ZeroPoint tensor should be removed in save_optimized_model_pass
+    std::vector<std::string> vars2rm = {};
+    vars2rm.emplace_back(quantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(quantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    vars2rm.emplace_back(dequantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(dequantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    auto& scale_and_zero_point_param = g->GetOrInit<std::vector<std::string>>(
+        framework::ir::kScaleAndZeroPointParamAttr);
+    scale_and_zero_point_param.insert(
+        scale_and_zero_point_param.end(), vars2rm.begin(), vars2rm.end());
+
     std::unordered_set<const Node*> nodes2rm = {};
 
     // Get input scale from tensor
@@ -122,7 +147,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
 
-    float input_scale;
+    float input_scale = NAN;
     if (input_scale_tensor.dtype() == phi::DataType::FLOAT32) {
       const float* input_scale_data = input_scale_tensor.data<float>();
       input_scale = input_scale_data[0];
@@ -141,7 +166,11 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
       any_op_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
                            input_scale);
-
+      if (!var_quant_scales.count(quantize_linear_op_x->Var()->Name())) {
+        var_quant_scales.insert(
+            std::make_pair(quantize_linear_op_x->Var()->Name(),
+                           std::vector<float>({input_scale})));
+      }
       // link x to any_op2
       any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
                                quantize_linear_op_x->Var()->Name());
@@ -161,6 +190,9 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_count);
+
+  SaveQuantInfoInTheGraph(
+      graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 
 }  // namespace ir

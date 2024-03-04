@@ -16,7 +16,6 @@ import hashlib
 import os
 import os.path as osp
 import shutil
-import subprocess
 import sys
 import tarfile
 import time
@@ -38,9 +37,7 @@ except:
             if self.total is None:
                 sys.stderr.write(f"\r{self.n:.1f} bytes")
             else:
-                sys.stderr.write(
-                    "\r{:.1f}%".format(100 * self.n / float(self.total))
-                )
+                sys.stderr.write(f"\r{100 * self.n / float(self.total):.1f}%")
             sys.stderr.flush()
 
         def __enter__(self):
@@ -172,8 +169,8 @@ def _get_download(url, fullname):
         ) as req:
             if req.status_code != 200:
                 raise RuntimeError(
-                    "Downloading from {} failed with code "
-                    "{}!".format(url, req.status_code)
+                    f"Downloading from {url} failed with code "
+                    f"{req.status_code}!"
                 )
 
             tmp_fullname = fullname + "_tmp"
@@ -193,41 +190,12 @@ def _get_download(url, fullname):
 
     except Exception as e:  # requests.exceptions.ConnectionError
         logger.info(
-            "Downloading {} from {} failed with exception {}".format(
-                fname, url, str(e)
-            )
+            f"Downloading {fname} from {url} failed with exception {str(e)}"
         )
         return False
 
 
-def _wget_download(url, fullname):
-    # using wget to download url
-    tmp_fullname = fullname + "_tmp"
-    # –user-agent
-    command = 'wget -O {} -t {} {}'.format(
-        tmp_fullname, DOWNLOAD_RETRY_LIMIT, url
-    )
-    subprc = subprocess.Popen(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    _ = subprc.communicate()
-
-    if subprc.returncode != 0:
-        raise RuntimeError(
-            '{} failed. Please make sure `wget` is installed or {} exists'.format(
-                command, url
-            )
-        )
-
-    shutil.move(tmp_fullname, fullname)
-
-    return fullname
-
-
-_download_methods = {
-    'get': _get_download,
-    'wget': _wget_download,
-}
+_download_methods = {'get': _get_download}
 
 
 def _download(url, path, md5sum=None, method='get'):
@@ -240,9 +208,7 @@ def _download(url, path, md5sum=None, method='get'):
     method (str): which download method to use. Support `wget` and `get`. Default is `get`.
 
     """
-    assert method in _download_methods, 'make sure `{}` implemented'.format(
-        method
-    )
+    assert method in _download_methods, f'make sure `{method}` implemented'
 
     if not osp.exists(path):
         os.makedirs(path)
@@ -258,7 +224,7 @@ def _download(url, path, md5sum=None, method='get'):
             retry_cnt += 1
         else:
             raise RuntimeError(
-                "Download from {} failed. " "Retry limit reached".format(url)
+                f"Download from {url} failed. " "Retry limit reached"
             )
 
         if not _download_methods[method](url, fullname):
@@ -281,8 +247,8 @@ def _md5check(fullname, md5sum=None):
 
     if calc_md5sum != md5sum:
         logger.info(
-            "File {} md5 check failed, {}(calc) != "
-            "{}(base)".format(fullname, calc_md5sum, md5sum)
+            f"File {fullname} md5 check failed, {calc_md5sum}(calc) != "
+            f"{md5sum}(base)"
         )
         return False
     return True
@@ -311,7 +277,10 @@ def _decompress(fname):
 
 def _uncompress_file_zip(filepath):
     with zipfile.ZipFile(filepath, 'r') as files:
-        file_list = files.namelist()
+        file_list_tmp = files.namelist()
+        file_list = []
+        for file in file_list_tmp:
+            file_list.append(file.replace("../", ""))
 
         file_dir = os.path.dirname(filepath)
 
@@ -340,7 +309,13 @@ def _uncompress_file_zip(filepath):
 
 def _uncompress_file_tar(filepath, mode="r:*"):
     with tarfile.open(filepath, mode) as files:
-        file_list = files.getnames()
+        file_list_tmp = files.getnames()
+        file_list = []
+        for file in file_list_tmp:
+            assert (
+                file[0] != "/"
+            ), f"uncompress file path {file} should not start with /"
+            file_list.append(file.replace("../", ""))
 
         file_dir = os.path.dirname(filepath)
 

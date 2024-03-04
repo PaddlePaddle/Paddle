@@ -57,11 +57,19 @@ class PhiVector : public phi::ExtendedTensor,
 
   size_t size() const { return data_.size(); }
 
+  bool empty() const { return data_.empty(); }
+
+  const T& back() const { return data_.back(); }
+
+  T& back() { return data_.back(); }
+
   void resize(size_t size) { data_.resize(size); }
 
   void clear() { data_.clear(); }
 
   void emplace_back(const T& feed_data) { data_.emplace_back(feed_data); }
+
+  void pop_back() { data_.pop_back(); }
 
   const T& operator[](size_t index) const { return data_[index]; }
 

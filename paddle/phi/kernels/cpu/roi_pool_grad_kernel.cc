@@ -37,7 +37,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     DenseTensor box_batch_id_list = Empty<int>(dev_ctx, {rois_num});
     int* box_batch_id_data = box_batch_id_list.data<int>();
 
-    int boxes_batch_size;
+    int boxes_batch_size = 0;
     if (boxes_num) {
       boxes_batch_size = static_cast<int>(boxes_num->numel());
       auto* boxes_num_data = boxes_num->data<int>();
@@ -66,10 +66,10 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dx, static_cast<T>(0));
 
-    auto in_stride = phi::stride(x.dims());
-    auto arg_max_stride = phi::stride(arg_max.dims());
-    auto roi_stride = phi::stride(boxes.dims());
-    auto out_stride = phi::stride(out_grad.dims());
+    auto in_stride = common::stride(x.dims());
+    auto arg_max_stride = common::stride(arg_max.dims());
+    auto roi_stride = common::stride(boxes.dims());
+    auto out_stride = common::stride(out_grad.dims());
 
     int channels = static_cast<int>(x.dims()[1]);
 

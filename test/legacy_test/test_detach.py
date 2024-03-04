@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import Linear
 
 
@@ -68,7 +67,7 @@ class Test_Detach(unittest.TestCase):
                 weight_attr=linear2_w_param_attrs,
                 bias_attr=linear2_b_param_attrs,
             )
-            data = to_variable(data)
+            data = paddle.to_tensor(data)
             x = linear(data)
             x1 = linear1(x)
             x2 = linear2(x)
@@ -104,7 +103,7 @@ class Test_Detach(unittest.TestCase):
                 weight_attr=linear1_w_param_attrs,
                 bias_attr=linear1_b_param_attrs,
             )
-            data = to_variable(data)
+            data = paddle.to_tensor(data)
             x = linear(data)
             x.retain_grads()
             x1 = linear1(x)
@@ -152,7 +151,7 @@ class Test_Detach(unittest.TestCase):
                 weight_attr=linear2_w_param_attrs,
                 bias_attr=linear2_b_param_attrs,
             )
-            data = to_variable(data)
+            data = paddle.to_tensor(data)
             x = linear(data)
             x.retain_grads()
             x_detach = x.detach()
@@ -214,9 +213,7 @@ class TestInplace(unittest.TestCase):
             loss = paddle.nn.functional.relu(var_c + var_d)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
+                f"received tensor_version:{1} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 

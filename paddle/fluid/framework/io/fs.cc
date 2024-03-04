@@ -399,13 +399,12 @@ void hdfs_mv(const std::string& src, const std::string& dest) {
 }
 
 int fs_select_internal(const std::string& path) {
-  if (fs_begin_with_internal(path, "hdfs:")) {
+  if (fs_begin_with_internal(path, "hdfs:") ||
+      fs_begin_with_internal(path, "afs:")) {
     return 1;
-  } else if (fs_begin_with_internal(path, "afs:")) {
-    return 1;
+  } else {
+    return 0;
   }
-
-  return 0;
 }
 
 std::shared_ptr<FILE> fs_open_read(const std::string& path,

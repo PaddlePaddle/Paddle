@@ -12,12 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..utils import compute_compatible_and_update_dim_mapping, is_dim_shard
+from ..completion import get_phi_spmd_rule
+from ..utils import (
+    compute_compatible_and_update_dim_mapping,
+    get_dist_tensor_spec,
+    is_dim_shard,
+)
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    get_default_distributed_operator_impl,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    update_op_dims_mapping,
 )
 from .dist_default import DistributedDefaultImpl0
 
@@ -26,8 +33,71 @@ class DistributedSplit(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
 
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+        op_desc = dist_op.serial_op.desc
+
+        x_name = op_desc.input('X')[0]
+        assert (
+            len(op_desc.input('AxisTensor')) == 0
+        ), "Attribute AxisTensor is not supported by dist split."
+        assert (
+            len(op_desc.input('SectionsTensorList')) == 0
+        ), "Attribute SectionsTensorList is not supported by dist split."
+        output_arg_names = op_desc.output('Out')
+
+        num = op_desc.attr('num')
+        sections = op_desc.attr('sections')
+        if num is not None:
+            assert (sections is None) or (
+                len(sections) == 0
+            ), f"Both Attributes of num: {num} and sections: {sections} are specified."
+            first_attr = num
+            rule_type = "split_with_num"
+        else:
+            assert (
+                num is None
+            ), f"Both Attributes of num: {num} and sections: {sections} are specified."
+            first_attr = sections
+            rule_type = "split"
+        axis = op_desc.attr('axis')
+
+        x_spec = get_dist_tensor_spec(dist_op, x_name)
+        num_outputs = len(output_arg_names)
+        output_specs = []
+        for i in range(num_outputs):
+            output_specs.append(
+                get_dist_tensor_spec(dist_op, output_arg_names[i], False)
+            )
+
+        # step2: infer spmd
+        rule = get_phi_spmd_rule(rule_type)
+        # tensor order following order in PHI definition
+        fw_results = rule.infer_forward(x_spec, first_attr, axis)
+        bw_results = rule.infer_backward(x_spec, output_specs, first_attr, axis)
+
+        # step3: update dist_attr
+        # tensor order following order in PHI definition
+        changed = update_op_dims_mapping(
+            dist_op, [x_name], output_arg_names, fw_results, bw_results
+        )
+
+        return changed
+
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        # all split op use default dist operator impl.
+        op_dist_attr = dist_op.dist_attr
+        default_impl = get_default_distributed_operator_impl()
+        op_dist_attr.impl_type = default_impl.type
+        op_dist_attr.impl_idx = default_impl.idx
+
+        return False
+
 
 register_distributed_operator_impl_container(DistributedSplit("split"))
+register_distributed_operator_impl_container(DistributedSplit("split_with_num"))
 
 
 class DistributedSplitImpl(DistributedOperatorImpl):

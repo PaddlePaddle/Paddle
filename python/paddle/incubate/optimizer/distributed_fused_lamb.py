@@ -77,7 +77,12 @@ def init_communicator(block, rank, ranks, ring_id):
         type='c_comm_init',
         inputs={'X': comm_id_var},
         outputs={},
-        attrs={'nranks': len(ranks), 'rank': local_rank, 'ring_id': ring_id},
+        attrs={
+            'nranks': len(ranks),
+            'rank': local_rank,
+            'ring_id': ring_id,
+            'endpoints': ','.join(eps),
+        },
     )
     tmp_var = block.create_var(name=unique_name.generate('tmp'))
     block.append_op(
@@ -242,14 +247,14 @@ class DistributedFusedLamb(Optimizer):
         assert master_param is not None
 
         master_param_t = scope.find_var(master_param).get_tensor()
-        assert master_param_t._dtype() == core.VarDesc.VarType.FP32
+        assert master_param_t._dtype() == paddle.float32
 
         param_t = scope.find_var(name).get_tensor()
-        if param_t._dtype() == core.VarDesc.VarType.FP32:
+        if param_t._dtype() == paddle.float32:
             assert param_t._ptr() == master_param_t._ptr()
             return param_t, None
         else:
-            assert param_t._dtype() == core.VarDesc.VarType.FP16
+            assert param_t._dtype() == paddle.float16
             assert param_t.shape() == master_param_t.shape()
             return param_t, master_param_t
 

@@ -16,11 +16,11 @@
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
 
@@ -41,7 +41,7 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
  private:
   void Visit(const ir::_Var_* expr, Expr* op) override {
     if (expr->name == var_->name && (do_replace_ || visit_all_)) {
-      auto copied = IRCopy(expr_);
+      auto copied = ir::ir_utils::IRCopy(expr_);
       *op = copied;
     }
   }
@@ -158,7 +158,7 @@ std::vector<std::vector<Expr>> CollectTensorIndex(
   std::vector<std::vector<Expr>> result = mutator(source);
   for (auto& i : result) {
     for (auto& j : i) {
-      j = common::AutoSimplify(j);
+      j = cinn::common::AutoSimplify(j);
     }
   }
   return result;

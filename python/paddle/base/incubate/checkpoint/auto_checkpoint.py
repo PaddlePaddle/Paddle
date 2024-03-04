@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import logging
 import json
+import logging
 import os
+import sys
 import time
 from threading import current_thread
 
-from paddle.base import unique_name, compiler
-from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
-from paddle.base.framework import in_dygraph_mode, Program
+from paddle.base import compiler, unique_name
+from paddle.base.framework import Program, in_dygraph_mode
+
+from .checkpoint_saver import CheckpointSaver, PaddleModel, SerializableBase
 
 g_train_epoch_range = None
 g_checker = None
@@ -114,21 +115,17 @@ class AutoCheckpointChecker:
                 ), "hdfs environ must set"
 
         except Exception as e:
-            logger.fatal("exception:{}".format(e))
+            logger.fatal(f"exception:{e}")
             sys.exit(1)
 
     def get_range_checkpoint_path(self, name):
-        return "{}/{}/range/{}".format(
-            self.hdfs_checkpoint_path, self.job_id, name
-        )
+        return f"{self.hdfs_checkpoint_path}/{self.job_id}/range/{name}"
 
     def get_exe_checkpoint_path(self, name):
-        return "{}/{}/exe/{}".format(
-            self.hdfs_checkpoint_path, self.job_id, name
-        )
+        return f"{self.hdfs_checkpoint_path}/{self.job_id}/exe/{name}"
 
     def get_job_path(self):
-        return "{}/{}".format(self.hdfs_checkpoint_path, self.job_id)
+        return f"{self.hdfs_checkpoint_path}/{self.job_id}"
 
     @property
     def save_checkpoint_inter(self):
@@ -234,7 +231,7 @@ class ExeTrainStatus(SerializableBase):
         return not self == t
 
     def serialize(self, path):
-        file_name = "{}/{}".format(path, self._file_name)
+        file_name = f"{path}/{self._file_name}"
         with open(file_name, 'w') as f:
             s = self._serialize()
             f.write(s)
@@ -247,7 +244,7 @@ class ExeTrainStatus(SerializableBase):
 
     def deserialize(self, path):
         d = None
-        file_name = "{}/{}".format(path, self._file_name)
+        file_name = f"{path}/{self._file_name}"
         with open(file_name, 'r') as f:
             s = f.read()
             self._deserialize(s)
@@ -296,7 +293,7 @@ class TrainEpochRange(SerializableBase):
             self._save_checkpoint_inter = self._checker.save_checkpoint_inter
         assert (
             self._save_checkpoint_inter >= 0
-        ), "checkpointer:{} must >=0".format(self._save_checkpoint_inter)
+        ), f"checkpoint inter:{self._save_checkpoint_inter} must >=0"
         self._last_checkpoint_time = time.time()
 
         self._load_cp_nos = None
@@ -343,7 +340,7 @@ class TrainEpochRange(SerializableBase):
                 local_cache_path=self._checker._fs_cache,
             )
             cps.append(t)
-            logger.debug("look for valid:{} t:{}".format(i, t._serialize()))
+            logger.debug(f"look for valid:{i} t:{t._serialize()}")
             if epoch_no < 0:
                 epoch_no = t._epoch_no
             else:
@@ -353,7 +350,7 @@ class TrainEpochRange(SerializableBase):
 
     def _get_last_valid_checkpoint(self):
         self._load_cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
-        logger.info("find checkpoint nos:{}".format(self._load_cp_nos))
+        logger.info(f"find checkpoint nos:{self._load_cp_nos}")
 
         if len(self._load_cp_nos) < 1:
             self._restored_from = CONST_MEMORYINIT
@@ -370,9 +367,7 @@ class TrainEpochRange(SerializableBase):
             self._restored_from = CONST_CHECKPOINT
             self._checkpoint_epoch_no = self._epoch_no
 
-            logger.info(
-                "load tain_epoch_range checkpoint:{}".format(self._serialize())
-            )
+            logger.info(f"load tain_epoch_range checkpoint:{self._serialize()}")
 
         elif g_acp_type == CONST_DACP_TYPE:
             t, i = self._look_for_valid(self._load_cp_nos)
@@ -390,11 +385,9 @@ class TrainEpochRange(SerializableBase):
 
             self._restored_from = CONST_CHECKPOINT
             self._checkpoint_epoch_no = self._epoch_no
-            logger.info(
-                "load tain_epoch_range checkpoint:{}".format(self._serialize())
-            )
+            logger.info(f"load tain_epoch_range checkpoint:{self._serialize()}")
         else:
-            raise AssertionError("not supported acp_type:{}".format(g_acp_type))
+            raise AssertionError(f"not supported acp_type:{g_acp_type}")
 
     def _to_dict(self):
         d = {
@@ -415,7 +408,7 @@ class TrainEpochRange(SerializableBase):
         return self._name
 
     def serialize(self, path):
-        file_name = "{}/{}".format(path, self._file_name)
+        file_name = f"{path}/{self._file_name}"
         with open(file_name, 'w') as f:
             s = self._serialize()
             f.write(s)
@@ -426,7 +419,7 @@ class TrainEpochRange(SerializableBase):
         for k in pop_keys:
             d.pop(k, None)
 
-        # registerd exes
+        # registered exes
         d["exe_status"] = {}
         e = d["exe_status"]
         for k, t in self._exe_status.items():
@@ -439,7 +432,7 @@ class TrainEpochRange(SerializableBase):
 
     def deserialize(self, path):
         d = None
-        file_name = "{}/{}".format(path, self._file_name)
+        file_name = f"{path}/{self._file_name}"
         with open(file_name, 'r') as f:
             d = json.load(f)
 
@@ -462,16 +455,14 @@ class TrainEpochRange(SerializableBase):
         if self._max_epoch_num < 0:
             self._max_epoch_num = sys.maxint
 
-        assert self._epoch_no >= -1, "self._epoch_no:{} must >=-1".format(
-            self._epoch_no
-        )
+        assert (
+            self._epoch_no >= -1
+        ), f"self._epoch_no:{self._epoch_no} must >=-1"
 
         self._last_checkpoint_time = time.time()
         start = self._epoch_no + 1
         logger.info(
-            "started epoch_no:{} max_epoch_num:{}".format(
-                start, self._max_epoch_num
-            )
+            f"started epoch_no:{start} max_epoch_num:{self._max_epoch_num}"
         )
 
         for i in range(start, self._max_epoch_num):
@@ -500,9 +491,7 @@ class TrainEpochRange(SerializableBase):
                 elif g_acp_type == CONST_DACP_TYPE:
                     self._save_checkpoint()
                 else:
-                    raise AssertionError(
-                        "not supported acp_type:{}".format(g_acp_type)
-                    )
+                    raise AssertionError("not supported acp_type:{g_acp_type}")
             self._last_checkpoint_time = time.time()
 
     def _save_checkpoint(self):
@@ -530,7 +519,7 @@ class TrainEpochRange(SerializableBase):
 
             e[t._key] = t
 
-            logger.debug("save executor checkpoint:{}".format(t._serialize()))
+            logger.debug(f"save executor checkpoint:{t._serialize()}")
 
         if len(self._exe_status) > 0:
             self._cper.save_checkpoint(
@@ -539,7 +528,7 @@ class TrainEpochRange(SerializableBase):
                 local_cache_path=self._checker._fs_cache,
             )
             logger.info(
-                "save train_epoch_range checkpoint:{}".format(self._serialize())
+                f"save train_epoch_range checkpoint:{self._serialize()}"
             )
 
             self._generate_flag()
@@ -606,9 +595,7 @@ def _can_auto_checkpoint(prog):
         g_program_attr[program._auto_checkpoint_name] = ret
         if not ret:
             logger.debug(
-                "program {} need't to auto checkpoint".format(
-                    program._auto_checkpoint_name
-                )
+                f"program {program._auto_checkpoint_name} need't to auto checkpoint"
             )
             return False
 
@@ -616,7 +603,7 @@ def _can_auto_checkpoint(prog):
 
 
 def _get_running_key(exe_name, program_name):
-    return "{}_{}".format(exe_name, program_name)
+    return f"{exe_name}_{program_name}"
 
 
 def _get_checker():
@@ -631,17 +618,14 @@ def _get_checker():
 def _normal_yield(max_epoch_num):
     if max_epoch_num < 0:
         max_epoch_num = sys.maxint
-    for i in range(0, max_epoch_num):
-        yield i
-
-    return
+    yield from range(0, max_epoch_num)
 
 
 def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
     global g_acp_type
     if not _get_checker().valid():
         logger.warning(
-            "auto checkpoint will take effect  automaticly on PaddleCloud"
+            "auto checkpoint will take effect automatically on PaddleCloud"
         )
         for i in _normal_yield(max_epoch_num):
             yield i
@@ -655,7 +639,7 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
         return
 
     g_acp_type = CONST_ACP_TYPE
-    logger.info("acp_type:{}".format(g_acp_type))
+    logger.info(f"acp_type:{g_acp_type}")
 
     global g_train_epoch_range
     try:
@@ -696,9 +680,7 @@ def _auto_checkpoint(exe, prog):
     if g_train_epoch_range.restored_from == CONST_CHECKPOINT:
         assert (
             key in exe_status
-        ), "when restored key:{} must be in train_epoch_range:{}".format(
-            key, g_train_epoch_range
-        )
+        ), f"when restored key:{key} must be in train_epoch_range:{g_train_epoch_range}"
 
     t = None
     if key in exe_status:
@@ -714,7 +696,7 @@ def _auto_checkpoint(exe, prog):
                 local_cache_path=g_checker._fs_cache,
             )
             t._restored_from = CONST_CHECKPOINT
-            logger.info("load executor checkpoint {}".format(t))
+            logger.info(f"load executor checkpoint {t}")
         t._exe = exe
         t._program = program
         t._epoch_no = g_train_epoch_range.get()

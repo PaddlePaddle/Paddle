@@ -21,7 +21,6 @@ from utils import DyGraphProgramDescTracerTestHelper
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 from paddle.base.layer_helper import LayerHelper
 from paddle.nn import BatchNorm
 
@@ -171,9 +170,7 @@ class ResNet(paddle.nn.Layer):
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 50:
             depth = [3, 4, 6, 3]
@@ -244,13 +241,13 @@ class ResNet(paddle.nn.Layer):
 
 class TestDygraphResnet(unittest.TestCase):
     def reader_decorator(self, reader):
-        def _reader_imple():
+        def _reader_simple():
             for item in reader():
                 doc = np.array(item[0]).reshape(3, 224, 224)
                 label = np.array(item[1]).astype('int64').reshape(1)
                 yield doc, label
 
-        return _reader_imple
+        return _reader_simple
 
     def test_resnet_float32(self):
         seed = 90
@@ -295,8 +292,8 @@ class TestDygraphResnet(unittest.TestCase):
                     .reshape(batch_size, 1)
                 )
 
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = paddle.to_tensor(dy_x_data)
+                label = paddle.to_tensor(y_data)
                 label.stop_gradient = True
 
                 out = None

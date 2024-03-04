@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/interpolate_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
@@ -658,7 +658,7 @@ static void Interpolate1DCUDAFwd(
     DenseTensor* output) {
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -772,7 +772,7 @@ static void Interpolate2DCUDAFwd(
     DenseTensor* output) {
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1024,7 +1024,7 @@ static void Interpolate3DCUDAFwd(
     DenseTensor* output) {
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 

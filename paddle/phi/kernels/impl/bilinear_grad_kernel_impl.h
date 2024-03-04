@@ -42,13 +42,13 @@ void BilinearGradKernel(const Context& ctx,
   auto& place = *ctx.eigen_device();
   // Create the intermediate variable to calculate the Output(Y@Grad).
   DenseTensor x_scale;
-  x_scale.Resize(make_ddim({batch_size, x_dim}));
+  x_scale.Resize(common::make_ddim({batch_size, x_dim}));
   ctx.template Alloc<T>(&x_scale);
   auto x_scale_mat = EigenMatrix<T>::From(x_scale);
 
   // Create the intermediate variable to calculate the Output(X@Grad).
   DenseTensor y_scale;
-  y_scale.Resize(make_ddim({batch_size, y_dim}));
+  y_scale.Resize(common::make_ddim({batch_size, y_dim}));
   ctx.template Alloc<T>(&y_scale);
   auto y_scale_mat = EigenMatrix<T>::From(y_scale);
 
@@ -70,7 +70,7 @@ void BilinearGradKernel(const Context& ctx,
 
   auto blas = funcs::GetBlas<Context, T>(ctx);
 
-  // Caculate the Output(X@Grad) and Output(Y@Grad).
+  // Calculate the Output(X@Grad) and Output(Y@Grad).
   if (dx || dy || dweight) {
     Eigen::DSizes<int, 2> bcast_for_x(1, y_dim);
     Eigen::DSizes<int, 2> bcast_for_y(1, x_dim);
@@ -78,7 +78,7 @@ void BilinearGradKernel(const Context& ctx,
 
     for (int i = 0; i < out_dim; ++i) {
       DenseTensor weight_i =
-          weight.Slice(i, i + 1).Resize(make_ddim({x_dim, y_dim}));
+          weight.Slice(i, i + 1).Resize(common::make_ddim({x_dim, y_dim}));
       auto output_vec = dout_mat.chip(i, 1);
 
       if (dx) {
@@ -116,8 +116,8 @@ void BilinearGradKernel(const Context& ctx,
                     dy->data<T>());
         }
         if (dweight) {
-          DenseTensor dweight_i =
-              dweight->Slice(i, i + 1).Resize(make_ddim({x_dim, y_dim}));
+          DenseTensor dweight_i = dweight->Slice(i, i + 1).Resize(
+              common::make_ddim({x_dim, y_dim}));
           blas.GEMM(CblasTrans,
                     CblasNoTrans,
                     x_dim,

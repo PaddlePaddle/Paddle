@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "paddle/cinn/ast_gen_ius/ast_gen.h"
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
@@ -36,7 +37,8 @@ TEST(AstGen, Build) {
       shape,
       [&](const std::vector<Expr>& indice) { return lang::Relu(A(indice), 0); },
       "relu_test");
-  Expr out = AstGen::Build(B);
+  TensorGroup tensor_group({B});
+  Expr out = AstGen::Build(B, &tensor_group);
   LOG(INFO) << out;
 }
 

@@ -30,7 +30,7 @@ class CinnJitInstruction : public InstructionBase {
   CinnJitInstruction(size_t id,
                      const platform::Place& place,
                      ::pir::Operation* op,
-                     Scope* scope);
+                     const ValueExecutionInfo* value_exec_info);
 
   // TODO(Aurelius84): Only implement core interface and need implement GC and
   // Event logic.
@@ -41,8 +41,18 @@ class CinnJitInstruction : public InstructionBase {
   ::pir::Operation* Operation() const override { return op_; }
 
  private:
-  class Impl;
-  std::shared_ptr<Impl> impl_{nullptr};
+  class FnPtrImpl;
+
+  std::shared_ptr<FnPtrImpl> fn_ptr_impl_{nullptr};
+
+  platform::Place place_;
+
+  phi::DeviceContext* dev_ctx_;
+
+  int32_t input_tensor_size;
+  int32_t output_tensor_size;
+
+  std::vector<phi::DenseTensor*> tensor_args_;
 
   ::pir::Operation* op_{nullptr};  // not owned
 };

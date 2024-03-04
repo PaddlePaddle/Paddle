@@ -24,7 +24,8 @@ namespace cinn::frontend {
 
 TEST(Interpreter, basic) {
   Interpreter executor({"A"}, {{1, 30}});
-  executor.LoadPaddleModel(FLAGS_model_dir, common::DefaultTarget(), true);
+  executor.LoadPaddleModel(
+      FLAGS_model_dir, cinn::common::DefaultTarget(), true);
   executor.Run();
   // fc_0.tmp_2 is eliminated by OpFusion, so here
   // change to get tenor of the out variable

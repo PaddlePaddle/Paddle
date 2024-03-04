@@ -270,7 +270,13 @@ class TestDistributedFusedLamb(unittest.TestCase):
         paddle.enable_static()
         paddle.set_flags({'FLAGS_cudnn_deterministic': True})
         _clip_by_global_norm_using_mp_type(True)
-        fleet.init(role_maker=get_role_maker())
+        if (
+            os.environ.get("FLAGS_dynamic_static_unified_comm", "false").lower()
+            == "true"
+        ):
+            paddle.distributed.collective._init_parallel_env("nccl")
+        else:
+            fleet.init(role_maker=get_role_maker())
 
     def config(self):
         clip_after_allreduce = bool(

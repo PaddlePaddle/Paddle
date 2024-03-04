@@ -16,24 +16,25 @@
 #include <vector>
 
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 
 namespace cinn {
 namespace ir {
+namespace ir_utils {
 
-// Determine whether two ir AST trees are euqal by comparing their struct and
+// Determine whether two ir AST trees are equal by comparing their struct and
 // fields of each node through dfs visitor
 class IrEqualVisitor : public IRVisitorRequireReImpl<bool, const Expr*> {
  public:
-  explicit IrEqualVisitor(bool allow_name_suffix_diff = false)
-      : allow_name_suffix_diff_(allow_name_suffix_diff) {}
-  // Return true if they are euqal, otherwise false;
+  explicit IrEqualVisitor(bool allow_name_suffix_diff = false,
+                          bool only_compare_structure = false)
+      : allow_name_suffix_diff_(allow_name_suffix_diff),
+        only_compare_structure_(only_compare_structure) {}
+  // Return true if they are equal, otherwise false;
   bool Compare(const Expr& lhs, const Expr& rhs);
 
  private:
-  bool Compare(const std::string& lhs,
-               const std::string& rhs,
-               bool allow_name_suffix_diff = false);
+  bool Compare(const std::string& lhs, const std::string& rhs);
   bool Compare(const std::map<std::string, attr_t>& lhs,
                const std::map<std::string, attr_t>& rhs);
   template <typename T>
@@ -45,7 +46,14 @@ class IrEqualVisitor : public IRVisitorRequireReImpl<bool, const Expr*> {
 
   // whether allowing name suffix ends with "_[0-9]+" different
   bool allow_name_suffix_diff_ = false;
+  // not compare name field of Expr
+  bool only_compare_structure_ = false;
 };
 
+bool IRCompare(const Expr& lhs,
+               const Expr& rhs,
+               bool allow_name_suffix_diff = false);
+
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

@@ -55,9 +55,9 @@ inline std::string demangle(std::string name) {
 inline std::string demangle(std::string name) { return name; }
 #endif
 
-static std::string GetErrorSumaryString(const std::string& what,
-                                        const char* file,
-                                        int line) {
+static std::string GetErrorSummaryString(const std::string& what,
+                                         const char* file,
+                                         int line) {
   std::ostringstream sout;
   sout << "\n----------------------\nError Message "
           "Summary:\n----------------------\n";
@@ -99,7 +99,7 @@ static std::string GetCurrentTraceBackString() {
 static std::string GetTraceBackString(const std::string& what,
                                       const char* file,
                                       int line) {
-  return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
+  return GetCurrentTraceBackString() + GetErrorSummaryString(what, file, line);
 }
 
 struct EnforceNotMet : public std::exception {
@@ -113,9 +113,6 @@ struct EnforceNotMet : public std::exception {
   std::string err_str_;
 };
 
-#ifdef PADDLE_THROW
-#define CINN_THROW PADDLE_THROW
-#else
 #define CINN_THROW(...)                                                     \
   do {                                                                      \
     try {                                                                   \
@@ -125,7 +122,6 @@ struct EnforceNotMet : public std::exception {
       throw;                                                                \
     }                                                                       \
   } while (0)
-#endif
 }  // namespace enforce
 
 /**
@@ -165,6 +161,9 @@ class ErrorHandler {
    * \brief Format the error message.
    */
   std::string FormatErrorMessage(const ErrorMessageLevel& err_msg_level) const;
+
+ protected:
+  const std::string indent_str_{"  "};
 };
 
 }  // namespace utils

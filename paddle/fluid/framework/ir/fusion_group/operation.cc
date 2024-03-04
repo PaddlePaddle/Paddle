@@ -21,7 +21,7 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-OperationMap* OperationMap::map = nullptr;
+OperationMap *OperationMap::map = nullptr;
 
 OperationMap::OperationMap() {
   InsertUnaryElementwiseOperations();
@@ -31,7 +31,7 @@ OperationMap::OperationMap() {
 
 std::unordered_set<std::string> OperationMap::Find(int type) {
   std::unordered_set<std::string> res;
-  for (auto& t : operations_) {
+  for (auto &t : operations_) {
     if (t.second.type == type) {
       res.insert(t.first);
     }
@@ -60,15 +60,15 @@ void OperationMap::Insert(int type,
     // grad_inputs = inputs + outputs + grad of outputs
     std::vector<std::string> grad_input_names = input_names;
 
-    for (auto name : output_names) {
+    for (auto const &name : output_names) {
       grad_input_names.push_back(name);
     }
-    for (auto name : output_names) {
+    for (auto const &name : output_names) {
       grad_input_names.push_back(GradVarName(name));
     }
     // grad_output = grad of inputs
     std::vector<std::string> grad_output_names;
-    for (auto name : input_names) {
+    for (auto const &name : input_names) {
       grad_output_names.push_back(GradVarName(name));
     }
     Operation grad_op(type,
@@ -96,8 +96,8 @@ void OperationMap::InsertUnaryElementwiseOperations() {
                             std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = 1;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
+    int num_operands = 1;
+    Insert(type, num_operands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
   // relu:
@@ -152,7 +152,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
-  // For binary elementwise oprations:
+  // For binary elementwise operations:
   //  ${0} - x
   //  ${1} - y
   //  ${2} - out
@@ -161,8 +161,8 @@ void OperationMap::InsertBinaryElementwiseOperations() {
                             std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = 2;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X", "Y"}, {"Out"});
+    int num_operands = 2;
+    Insert(type, num_operands, op_type, expr, grad_exprs, {"X", "Y"}, {"Out"});
   };
 
   // elementwise_add:
@@ -209,8 +209,8 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
                             std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = -1;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
+    int num_operands = -1;
+    Insert(type, num_operands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
   // sum:
@@ -226,8 +226,8 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
                                           std::string expr,
                                           std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = 0;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {}, {"Out"});
+    int num_operands = 0;
+    Insert(type, num_operands, op_type, expr, grad_exprs, {}, {"Out"});
   };
   // fill_constant:
   insert_handler_without_input("fill_constant", "${str_value}", {});

@@ -14,11 +14,12 @@
 
 import copy
 import logging
+import os
 import time
 
 from paddle.distributed.passes import PassManager, new_pass
+from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
-from paddle.utils import unique_name
 
 from ...utils.log_utils import get_logger
 from ..random import init_auto_parallel_rng
@@ -28,9 +29,14 @@ from .reshard import Resharder
 from .utils import (
     get_pp_stage,
     is_sequential_run,
-    set_grad_var_shape,
     use_new_executor,
 )
+
+NEW_IR_PASS = [
+    'fused_gemm_epilogue_pass',
+    'fused_linear_param_grad_add_pass',
+    'fused_dropout_add_pass',
+]
 
 
 class Parallelizer:
@@ -121,7 +127,7 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
-            set_grad_var_shape(dist_main_prog, self._dist_context)
+
             resharder = Resharder(
                 dist_main_prog,
                 dist_startup_prog,
@@ -225,7 +231,7 @@ class Parallelizer:
         # NOTE(zhaoyinglia):
         # Guarantee the order of params_grads is same between dynamic mode and static mode
         # by making parameter_list equal to model.parameters(),
-        # because the order affact the result of ClipGradByGLobalNorm.
+        # because the order affect the result of ClipGradByGLobalNorm.
         # If parameter_list is not None, the order of params_grads is same with parameter_list.
         # If parameter_list is None, params_grads will be as prog.global_block().all_parameters().
         with program_guard(main_program, startup_program):
@@ -246,14 +252,15 @@ class Parallelizer:
         #    but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
         # 2. lr_scheduler cannot be deepcopy, cause 'deepcopy' will lead to difference of learning_rate between executor and engine.
         learning_rate = optimizer._learning_rate
-        optimizer = copy.deepcopy(optimizer)
+        new_optimizer = copy.deepcopy(optimizer)
+        new_optimizer._learning_rate = learning_rate
+        new_optimizer._sorted = False
         self._dist_context._serial_optimizer = optimizer
         self._dist_context._serial_optimizer._learning_rate = learning_rate
-        optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
-            with unique_name.guard("opt_"):
-                optimizer_ops = optimizer.apply_gradients(params_grads)
+            with main_program.switch_name_generator_guard("opt_"):
+                optimizer_ops = new_optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
 
@@ -329,11 +336,74 @@ class Parallelizer:
 
         return main_program, startup_program, params_grads
 
+    def _check_dist_attr(self, program, num_model_chunks, dist_context):
+        for _, block in enumerate(program.blocks):
+            for _, op in enumerate(block.ops):
+                op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+                if op_dist_attr is None:
+                    raise ValueError(
+                        f"There is not dist_attr for op[{op.type}]."
+                    )
+
     def _apply_post_optimization(
         self, main_program, startup_program, rank, params_grads
     ):
         if self._strategy is None:
             return
+
+        # sequence parallel optimization
+        if self._strategy.sp_optimization.enable:
+            config = copy.deepcopy(self._strategy.sp_optimization.to_dict())
+            config["dist_context"] = self._dist_context
+            config["global_rank"] = rank
+            sp_pass = new_pass(
+                "auto_parallel_sequence_parallel_optimization", config
+            )
+            sp_pass.apply([main_program], [startup_program], self._pass_context)
+
+        # apply fused linear promotion pass
+        if (
+            self.is_train
+            and self._strategy.fused_linear_promotion.enable
+            and self._strategy.fused_passes.enable
+        ):
+            if (
+                len(self._strategy.fused_passes.fused_passes_list) > 0
+                and "fuse_gemm_epilogue"
+                in self._strategy.fused_passes.fused_passes_list
+            ):
+                amp_config = None
+                if self._strategy.amp.enable:
+                    amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+                config = {}
+                config["dist_context"] = self._dist_context
+                config["global_rank"] = rank
+                config["enable_sp"] = self._strategy.sp_optimization.enable
+                config["params_grads"] = params_grads
+                config["amp_level"] = (
+                    amp_config['level'] if amp_config is not None else "o0"
+                )
+                fused_linear_promotion_pass = new_pass(
+                    "auto_parallel_fused_linear_promotion", config
+                )
+                fused_linear_promotion_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+
+        # apply master grad pass
+        if self._strategy.amp.enable:
+            amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+            config = {}
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["completer"] = self._completer
+            if amp_config['level'] == "o2" and amp_config["use_master_grad"]:
+                master_grad_pass = new_pass(
+                    "auto_parallel_master_grad_pass", config
+                )
+                master_grad_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
 
         # data parallel optimization
         if self._strategy.dp_optimization.enable:
@@ -351,6 +421,9 @@ class Parallelizer:
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["global_rank"] = rank
+            if self._strategy.amp.enable:
+                amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+                config["amp_dtype"] = amp_config['dtype']
             auto_parallel_sharding_pass = new_pass(
                 "auto_parallel_sharding", config
             )
@@ -358,6 +431,24 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
             params_grads = self._pass_context.get_attr("params_grads")
+
+        if self._strategy.mp_optimization.allreduce_matmul_grad_overlapping:
+            if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+                self._logger.warning(
+                    "You set mp_optimization.allreduce_matmul_grad_overlapping=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+
+            config = {
+                "dist_context": self._dist_context,
+            }
+            allreduce_matmul_grad_overlapping_pass = new_pass(
+                "allreduce_matmul_grad_overlapping", config
+            )
+            allreduce_matmul_grad_overlapping_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
 
         if self.is_train:
             # GradClip is train-only optimization
@@ -412,23 +503,55 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+        if use_new_executor():
+            self._check_dist_attr(
+                main_program,
+                self._strategy.pipeline.vpp_degree,
+                self._dist_context,
+            )
+
+        enable_ir = get_flags("FLAGS_enable_pir_in_executor")[
+            'FLAGS_enable_pir_in_executor'
+        ]
+        ir_pass_list = []
         if self.is_train and self._strategy.fused_passes.enable:
             if len(self._strategy.fused_passes.fused_passes_list) > 0:
                 new_pass_list = []
-                for op in self._strategy.fused_passes.fused_passes_list:
-                    new_pass_list.append(new_pass(op))
+                for p in self._strategy.fused_passes.fused_passes_list:
+                    if p in NEW_IR_PASS and enable_ir:
+                        ir_pass_list.append(p)
+                    else:
+                        new_pass_list.append(new_pass(p))
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
+
+        main_program._pass_opt = {}
+        main_program._pass_opt['pass_list'] = ir_pass_list
 
         if (
             self.is_train
             and self._strategy.pipeline.enable
             and use_new_executor()
         ):
+            enable_send_recv_overlap = (
+                self._strategy.pipeline.enable_send_recv_overlap
+            )
+            if (
+                enable_send_recv_overlap
+                and int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1
+            ):
+                self._logger.warning(
+                    "You set pipeline.enable_send_recv_overlap=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
+                "enable_send_recv_overlap": enable_send_recv_overlap,
                 "schedule_mode": self._strategy.pipeline.schedule_mode,
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
                 "pp_degree": len(self._dist_context.process_meshes),
                 "pp_stage": get_pp_stage(self._dist_context, rank),
+                "vpp_degree": self._strategy.pipeline.vpp_degree,
+                "dist_context": self._dist_context,
             }

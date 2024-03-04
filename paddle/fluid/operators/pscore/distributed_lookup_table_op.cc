@@ -64,12 +64,12 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
 
     for (auto &ids_dim : ids_dims) {
       if (lookup_table_version == "lookup_table") {
-        outputs_dims.push_back(phi::make_ddim({ids_dim[0], table_dims[1]}));
+        outputs_dims.push_back(common::make_ddim({ids_dim[0], table_dims[1]}));
       } else if (lookup_table_version == "lookup_table_v2") {
         outputs_dims.push_back(
-            phi::make_ddim({static_cast<int64_t>(ids_dim[0]),
-                            static_cast<int64_t>(ids_dim[1]),
-                            static_cast<int64_t>(table_dims[1])}));
+            common::make_ddim({static_cast<int64_t>(ids_dim[0]),
+                               static_cast<int64_t>(ids_dim[1]),
+                               static_cast<int64_t>(table_dims[1])}));
       }
     }
 
@@ -132,7 +132,7 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
 
     AddComment(R"DOC(
-Lookup Tablel Prefetch Operator.
+Lookup Table Prefetch Operator.
 This operator is used to perform lookup on parameter W,
 then concatenated into a sparse tensor.
 The type of Ids(Input) is SelectedRows, the rows of Ids contains

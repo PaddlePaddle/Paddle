@@ -30,7 +30,7 @@
 
 namespace cinn::frontend {
 
-TEST(GemmRwriter, BatchedTransLeft) {
+TEST(GemmRewriter, BatchedTransLeft) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -43,7 +43,7 @@ TEST(GemmRwriter, BatchedTransLeft) {
   auto out = builder.Add(d, e);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), e.id()},
                     std::back_inserter(input_ids),
@@ -54,7 +54,7 @@ TEST(GemmRwriter, BatchedTransLeft) {
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
-TEST(GemmRwriter, BatchedTransRight) {
+TEST(GemmRewriter, BatchedTransRight) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -67,7 +67,7 @@ TEST(GemmRwriter, BatchedTransRight) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -78,7 +78,7 @@ TEST(GemmRwriter, BatchedTransRight) {
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
-TEST(GemmRwriter, BatchedTransTwo) {
+TEST(GemmRewriter, BatchedTransTwo) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -92,7 +92,7 @@ TEST(GemmRwriter, BatchedTransTwo) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -103,7 +103,7 @@ TEST(GemmRwriter, BatchedTransTwo) {
   CompareResult(&program, target, input_ids, {out->id}, 2, passes, 123, true);
 }
 
-TEST(GemmRwriter, BatchedNoTrans) {
+TEST(GemmRewriter, BatchedNoTrans) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -115,7 +115,7 @@ TEST(GemmRwriter, BatchedNoTrans) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -126,7 +126,7 @@ TEST(GemmRwriter, BatchedNoTrans) {
   CompareResult(&program, target, input_ids, {out->id}, 0, passes, 123, true);
 }
 
-TEST(GemmRwriter, TransLeft) {
+TEST(GemmRewriter, TransLeft) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -139,7 +139,7 @@ TEST(GemmRwriter, TransLeft) {
   auto out = builder.Add(d, e);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), e.id()},
                     std::back_inserter(input_ids),
@@ -150,7 +150,7 @@ TEST(GemmRwriter, TransLeft) {
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
-TEST(GemmRwriter, TransRight) {
+TEST(GemmRewriter, TransRight) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -163,7 +163,7 @@ TEST(GemmRwriter, TransRight) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -174,7 +174,7 @@ TEST(GemmRwriter, TransRight) {
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
-TEST(GemmRwriter, TransTwo) {
+TEST(GemmRewriter, TransTwo) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -188,7 +188,7 @@ TEST(GemmRwriter, TransTwo) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -199,7 +199,7 @@ TEST(GemmRwriter, TransTwo) {
   CompareResult(&program, target, input_ids, {out->id}, 2, passes, 123, true);
 }
 
-TEST(GemmRwriter, NoTrans) {
+TEST(GemmRewriter, NoTrans) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -211,7 +211,7 @@ TEST(GemmRwriter, NoTrans) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -222,7 +222,7 @@ TEST(GemmRwriter, NoTrans) {
   CompareResult(&program, target, input_ids, {out->id}, 0, passes, 123, true);
 }
 
-TEST(GemmRwriter, BatchedComplex) {
+TEST(GemmRewriter, BatchedComplex) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -245,7 +245,7 @@ TEST(GemmRwriter, BatchedComplex) {
   auto out = builder.Add(p, q);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{d.id(), z.id()},
                     std::back_inserter(input_ids),
@@ -256,7 +256,7 @@ TEST(GemmRwriter, BatchedComplex) {
   CompareResult(&program, target, input_ids, {out->id}, 4, passes, 123, false);
 }
 
-TEST(GemmRwriter, Complex) {
+TEST(GemmRewriter, Complex) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -276,7 +276,7 @@ TEST(GemmRwriter, Complex) {
   auto out = builder.Add(p, q);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{c.id(), z.id()},
                     std::back_inserter(input_ids),

@@ -51,7 +51,7 @@ class FuseAllReduceOpPass : public ir::Pass {
     size_t num_of_all_reduce = params_grads.size();
     std::unordered_set<std::string> grads;
     grads.reserve(num_of_all_reduce);
-    for (auto p_g : params_grads) {
+    for (auto const &p_g : params_grads) {
       grads.insert(p_g.second);
     }
 

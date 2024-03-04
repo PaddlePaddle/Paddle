@@ -16,12 +16,12 @@
 #include <random>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
-#include "paddle/utils/flags.h"
 
 PD_DEFINE_int32(burning, 10, "Burning times.");
 PD_DEFINE_int32(repeat, 3000, "Repeat times.");
@@ -113,7 +113,8 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   BenchFunc<KernelTuple, Args...> benchmark;
   std::vector<std::pair<std::string, double>> infos;
   auto funcs = jit::GetAllCandidateFuncsWithTypes<KernelTuple, PlaceType>(attr);
-  for (auto f : funcs) {
+  infos.reserve(funcs.size());
+  for (auto const& f : funcs) {
     infos.push_back(std::make_pair(f.first, benchmark(f.second, args...)));
   }
 
@@ -128,7 +129,7 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   std::ostringstream loginfos;
   loginfos << "Kernel Type " << jit::to_string(KernelTuple::kernel_type) << ": "
            << attr << ": ";
-  for (auto pair : infos) {
+  for (auto const& pair : infos) {
     loginfos << pair.first << " takes " << pair.second << " us; ";
   }
   LOG(INFO) << loginfos.str();

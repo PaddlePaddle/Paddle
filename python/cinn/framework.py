@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .core_api.framework import (  # noqa: F401
+    Instruction,
     NodeAttr,
     Operator,
     OpValueType,

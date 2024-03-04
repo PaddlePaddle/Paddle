@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
 
 #if !defined(_WIN32)
 #include <dirent.h>
@@ -183,7 +184,7 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                    phi::CppTypeToDataType<T>::Type(),
                    numel,
                    alpha,
-                   reinterpret_cast<void*>(const_cast<T*>(x)),
+                   reinterpret_cast<void*>(const_cast<T*>(x)),  // NOLINT
                    beta,
                    reinterpret_cast<void*>(y));
 }
@@ -322,6 +323,7 @@ std::vector<std::string> DeviceManager::GetAllDeviceTypes() {
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
+  devices.reserve(dev_impl_map.size());
   for (const auto& map_item : dev_impl_map) {
     devices.push_back(map_item.first);
   }
@@ -494,7 +496,7 @@ std::vector<size_t> DeviceManager::GetSelectedDeviceList(
     auto FLAGS_selected_devices = getenv(FLAGS.c_str());
     if (FLAGS_selected_devices) {
       auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
-      for (auto id : devices_str) {
+      for (auto const& id : devices_str) {
         device_list.push_back(atoi(id.c_str()));
       }
     } else {
@@ -697,8 +699,11 @@ DeviceManager& DeviceManager::Instance() {
 }
 
 void DeviceManager::Release() {
-  stream::Stream::ReleaseAll();
   event::Event::ReleaseAll();
+  stream::Stream::ReleaseAll();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  phi::distributed::XCCLCommContext::ReleaseAll();
+#endif
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();
 }

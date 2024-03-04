@@ -55,10 +55,21 @@ class TestSqueezeOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_prim=True)
+        self.check_output(
+            no_check_set=['XShape'],
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -186,8 +197,8 @@ class TestSqueeze2AxesTensor(UnittestBase):
 
     def test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -203,7 +214,7 @@ class TestSqueeze2AxesTensor(UnittestBase):
             self.assertTrue("Var[" in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[feat, out, out2])
             self.assertEqual(res[0].shape, (1, 2, 1, 3, 10))
             self.assertEqual(res[1].shape, (2, 3, 10))
@@ -222,8 +233,8 @@ class TestSqueeze2AxesTensorList(UnittestBase):
 
     def test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -242,7 +253,7 @@ class TestSqueeze2AxesTensorList(UnittestBase):
             self.assertTrue("Vars[" in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[feat, out, out2])
             self.assertEqual(res[0].shape, (1, 2, 1, 3, 10))
             self.assertEqual(res[1].shape, (2, 3, 10))
@@ -277,6 +288,16 @@ class TestSqueezeAPI(unittest.TestCase):
         def test_axes_type():
             x2 = paddle.static.data(name="x2", shape=[2, 1, 25], dtype="int32")
             self.squeeze(x2, axis=2.1)
+
+        self.assertRaises(TypeError, test_axes_type)
+
+    def test_pir_error(self):
+        def test_axes_type():
+            with paddle.pir_utils.IrGuard():
+                x2 = paddle.static.data(
+                    name="x2", shape=[2, 1, 25], dtype="int32"
+                )
+                self.squeeze(x2, axis=2.1)
 
         self.assertRaises(TypeError, test_axes_type)
 

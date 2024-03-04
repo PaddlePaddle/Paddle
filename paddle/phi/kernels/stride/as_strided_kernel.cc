@@ -24,10 +24,13 @@ void AsStridedKernel(const Context& dev_ctx,
                      const std::vector<int64_t>& stride,
                      int64_t offset,
                      DenseTensor* out) {
-  out->Resize(DDim(dims.data(), static_cast<int>(dims.size())));
-  out->set_strides(DDim(stride.data(), static_cast<int>(stride.size())));
-  out->set_offset(offset);
+  auto meta = out->meta();
+  meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
+  meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
+  meta.offset = offset;
+  out->set_meta(meta);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 }  // namespace phi

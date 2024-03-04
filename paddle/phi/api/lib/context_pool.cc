@@ -26,6 +26,18 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
+void DeviceContextPool::SyncDeviceContext(const Place& place) {
+  if (!phi::DeviceContextPool::IsInitialized()) {
+    phi::memory_utils::InitDevices();
+  }
+  // only when we need the specific DeviceContext, get and cache it
+  auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    context_map_[place] = dev_ctx;
+  }
+}
+
 DeviceContextPool& DeviceContextPool::Instance() {
   static DeviceContextPool g_device_context_pool;
   return g_device_context_pool;
@@ -49,7 +61,7 @@ const phi::DeviceContext* DeviceContextPool::Get(const Place& place) {
 }
 
 phi::DeviceContext* DeviceContextPool::GetMutable(const Place& place) {
-  return const_cast<phi::DeviceContext*>(Get(place));
+  return const_cast<phi::DeviceContext*>(Get(place));  // NOLINT
 }
 
 }  // namespace experimental
@@ -60,7 +72,7 @@ namespace paddle {
 PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place) {
   const phi::DeviceContext* dev_ctx =
       paddle::experimental::DeviceContextPool::Instance().Get(place);
-  return const_cast<phi::Allocator*>(&dev_ctx->GetAllocator());
+  return const_cast<phi::Allocator*>(&dev_ctx->GetAllocator());  // NOLINT
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

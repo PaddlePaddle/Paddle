@@ -34,12 +34,12 @@ enum BroadcastType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
 template <typename OutT, typename Functor, int Arity, int NumOuts>
 struct BroadcastTypeClassifier {
   int64_t numel{0};
-  int broadcast_num{0};                   // Not used for XPU
-  bool all_elementwise{true};             // Not used for XPU
-  phi::Array<bool, Arity> use_broadcast;  // Not used for XPU
-  phi::Array<kps::details::BroadcastConfig, Arity> configs;
-  phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
-  phi::Array<_ptr_ OutT *, NumOuts> outs_data;
+  int broadcast_num{0};              // Not used for XPU
+  bool all_elementwise{true};        // Not used for XPU
+  Array<bool, Arity> use_broadcast;  // Not used for XPU
+  Array<kps::details::BroadcastConfig, Arity> configs;
+  Array<const _ptr_ char *__restrict__, Arity> ins_data;
+  Array<_ptr_ OutT *, NumOuts> outs_data;
 
   BroadcastTypeClassifier() {}
   BroadcastTypeClassifier(const std::vector<const DenseTensor *> &ins,
@@ -289,11 +289,11 @@ template <typename OutT,
           bool IsBoundary,
           int LoadType>
 __device__ void VectorizedBroadcastKernelImpl(
-    const phi::Array<const _ptr_ char *__restrict__, Arity> &ins,
-    phi::Array<_ptr_ OutT *, NumOuts> outs,
-    const phi::Array<bool, Arity> &use_broadcast,
+    const Array<const _ptr_ char *__restrict__, Arity> &ins,
+    Array<_ptr_ OutT *, NumOuts> outs,
+    const Array<bool, Arity> &use_broadcast,
     const uint32_t numel,
-    const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
+    const Array<kps::details::BroadcastConfig, Arity> &configs,
     int num,
     int block_offset,
     int read_lens,
@@ -349,11 +349,11 @@ template <typename Functor,
           int VecSize,
           int LoadType>
 __global__ void VectorizedBroadcastKernel(
-    phi::Array<const _ptr_ char *__restrict__, Arity> ins,
-    phi::Array<_ptr_ OutT *, NumOuts> outs,
-    phi::Array<bool, Arity> use_broadcast,
+    Array<const _ptr_ char *__restrict__, Arity> ins,
+    Array<_ptr_ OutT *, NumOuts> outs,
+    Array<bool, Arity> use_broadcast,
     uint32_t numel,
-    phi::Array<kps::details::BroadcastConfig, Arity> configs,
+    Array<kps::details::BroadcastConfig, Arity> configs,
     int main_offset,
     int tail_tid,
     int read_lens,
@@ -511,318 +511,6 @@ void LaunchBroadcastKernel(
 #endif
 }
 
-#ifndef PADDLE_WITH_XPU_KP
-HOSTDEVICE static int64_t ConvertSrcIdxToDstIdx(
-    int64_t src_idx,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &src_strides,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &dst_strides,
-    int rank) {
-  int64_t dst_idx = 0;
-  int64_t old_src_idx = src_idx;
-  for (int k = 0; k < rank; ++k) {
-    auto local_idx = src_idx / src_strides[k + 1];
-    src_idx -= local_idx * src_strides[k + 1];
-
-    if (dst_strides[k] != dst_strides[k + 1]) {
-      dst_idx += local_idx * dst_strides[k + 1];
-    }
-  }
-  return dst_idx;
-}
-
-template <int N>
-struct MaxWithOne {
-  static constexpr auto kValue = (N >= 1 ? N : 1);
-};
-
-template <int Index, int VecSize>
-struct ReadVecDataWithInt64Index {
-  template <typename Array1, typename Array2, typename Array3, typename ArgsT>
-  static __device__ __forceinline__ void Apply(
-      const Array1 &in,
-      ArgsT *args,
-      int64_t idx,
-      const Array2 &need_broadcast,
-      const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &src_strides,
-      const Array3 &dst_strides,
-      int rank,
-      bool is_boundary) {
-    using Type = std::tuple_element_t<Index, ArgsT>;
-    if (is_boundary) {
-#pragma unroll
-      for (int i = 0; i < VecSize; ++i) {
-        std::get<Index>(args[i]) = in[Index][ConvertSrcIdxToDstIdx(
-            idx + i, src_strides, dst_strides[Index], rank)];
-      }
-    } else {
-      if (!need_broadcast[Index]) {
-        kps::ReadData<Type, VecSize, 1, ArgsT, Index, false>(
-            args, reinterpret_cast<const _ptr_ Type *>(in[Index]) + idx, 1);
-      } else {
-#pragma unroll
-        for (int i = 0; i < VecSize; ++i) {
-          std::get<Index>(args[i]) = in[Index][ConvertSrcIdxToDstIdx(
-              idx + i, src_strides, dst_strides[Index], rank)];
-        }
-      }
-    }
-  }
-};
-
-template <typename OutT, typename Functor, int VecSize, int NumIns>
-__global__ void BroadcastKernelWithInt64Index(
-    const phi::Array<const _ptr_ char *__restrict__, MaxWithOne<NumIns>::kValue>
-        &ins,
-    OutT *out,
-    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank + 1>,
-               MaxWithOne<NumIns>::kValue> ins_strides,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> out_strides,
-    phi::Array<bool, MaxWithOne<NumIns>::kValue> need_broadcasts,
-    int rank,
-    Functor functor) {
-  int64_t numel = out_strides[0];
-  int64_t idx =
-      (static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x) * VecSize;
-  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x * VecSize;
-  int64_t limit = numel - VecSize;
-
-  using Traits = phi::funcs::FunctionTraits<Functor>;
-  using ArgsT = typename Traits::ArgsTuple;
-
-  ArgsT args[VecSize];
-  phi::AlignedVector<OutT, VecSize> out_vec;
-  for (; idx <= limit; idx += stride) {
-    Unroller<ReadVecDataWithInt64Index, VecSize, NumIns>::step(
-        ins, args, idx, need_broadcasts, out_strides, ins_strides, rank, false);
-
-#pragma unroll
-    for (int i = 0; i < VecSize; ++i) {
-      out_vec[i] = static_cast<OutT>(Apply(functor, args[i]));
-    }
-    phi::Store<OutT, VecSize>(out_vec, out + idx);
-  }
-
-  if (idx < numel) {
-    int remain = numel - idx;  // remain is always less than VecSize, therefore
-                               // `int` is enough here
-    Unroller<ReadVecDataWithInt64Index, VecSize, NumIns>::step(
-        ins, args, idx, need_broadcasts, out_strides, ins_strides, rank, true);
-    for (int i = 0; i < remain; ++i) {
-      out_vec[idx + i] = static_cast<OutT>(Apply(functor, args[i]));
-    }
-  }
-}
-
-template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
-struct LaunchBroadcastKernelWithInt64IndexHelper {
-  static void Run(const KPDevice &ctx,
-                  const std::vector<const DenseTensor *> &ins,
-                  std::vector<DenseTensor *> *outs,
-                  int axis,
-                  Functor functor) {
-    PADDLE_THROW(phi::errors::PermissionDenied(
-        "Unreachable code branch. This may be a bug."));
-  }
-};
-
-template <typename OutT, typename Functor, int Arity, int VecSize>
-struct LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                 Functor,
-                                                 Arity,
-                                                 /*NumOuts=*/1,
-                                                 VecSize> {
-  static void Run(const KPDevice &ctx,
-                  const std::vector<const DenseTensor *> &ins,
-                  std::vector<DenseTensor *> *outs,
-                  int axis,
-                  Functor functor) {
-    using Traits = phi::funcs::FunctionTraits<Functor>;
-    using ArgsT = typename Traits::ArgsTuple;
-    ArgsT arg;
-    phi::Array<const _ptr_ char *__restrict__, MaxWithOne<Arity>::kValue>
-        ins_ptrs;
-    UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, arg, &ins_ptrs);
-
-    auto *out_tensor = (*outs)[0];
-    auto *out_ptr = ctx.Alloc<OutT>(out_tensor);
-
-    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank>,
-               MaxWithOne<Arity>::kValue>
-        ins_expand_dims;
-    phi::Array<int64_t, phi::DDim::kMaxRank> broadcast_out_dims;
-    int rank;
-    if (Arity == 1) {
-      rank = ins[0]->dims().size();
-      for (int i = 0; i < rank; ++i) {
-        broadcast_out_dims[i] = ins[0]->dims()[i];
-      }
-      ins_expand_dims[0] = broadcast_out_dims;
-    } else if (Arity >= 2) {
-      CalculateBroadcastDims(ins[0]->dims().Get(),
-                             ins[1]->dims().Get(),
-                             ins[0]->dims().size(),
-                             ins[1]->dims().size(),
-                             axis,
-                             ins_expand_dims[0].GetMutable(),
-                             ins_expand_dims[1].GetMutable(),
-                             broadcast_out_dims.GetMutable(),
-                             &rank);
-      for (int i = 2; i < Arity; ++i) {
-        auto tmp_dims = broadcast_out_dims;
-        phi::Array<int64_t, phi::DDim::kMaxRank> tmp_expand_dims;
-        int tmp_rank;
-        PADDLE_ENFORCE_GE(rank,
-                          ins[i]->dims().size(),
-                          phi::errors::InvalidArgument(
-                              "Unsupported reverse broadcast when the input "
-                              "tensor number is larger than 2."));
-        CalculateBroadcastDims(tmp_dims.Get(),
-                               ins[i]->dims().Get(),
-                               rank,
-                               ins[i]->dims().size(),
-                               axis,
-                               tmp_expand_dims.GetMutable(),
-                               ins_expand_dims[i].GetMutable(),
-                               broadcast_out_dims.GetMutable(),
-                               &tmp_rank);
-        PADDLE_ENFORCE_EQ(rank,
-                          tmp_rank,
-                          phi::errors::InvalidArgument(
-                              "Wrong broadcast algorithm. This may be a bug."));
-      }
-    }
-
-    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank + 1>,
-               MaxWithOne<Arity>::kValue>
-        ins_strides;
-    phi::Array<bool, MaxWithOne<Arity>::kValue> need_broadcasts;
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> out_strides;
-    const auto &out_dims = out_tensor->dims();
-    if (rank <= out_dims.size()) {
-      out_strides = ShapeToStride(out_dims.Get(), rank);
-    } else {
-      out_strides = ShapeToStride(broadcast_out_dims.Get(), rank);
-    }
-
-    for (int i = 0; i < Arity; ++i) {
-      ins_strides[i] = ShapeToStride(ins_expand_dims[i].Get(), rank);
-      need_broadcasts[i] =
-          !IsSameShape(out_strides.Get(), ins_strides[i].Get(), rank + 1);
-    }
-
-    int64_t numel = out_strides[0];
-    auto gpu_config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
-
-    BroadcastKernelWithInt64Index<OutT, Functor, VecSize, Arity>
-        <<<gpu_config.block_per_grid,
-           gpu_config.thread_per_block,
-           0,
-           ctx.stream()>>>(ins_ptrs,
-                           out_ptr,
-                           ins_strides,
-                           out_strides,
-                           need_broadcasts,
-                           rank,
-                           functor);
-  }
-
- private:
-  static void CalculateBroadcastDims(const int64_t *x_dims,
-                                     const int64_t *y_dims,
-                                     int nx,
-                                     int ny,
-                                     int axis,
-                                     int64_t *x_out_dims,
-                                     int64_t *y_out_dims,
-                                     int64_t *broadcast_out_dims,
-                                     int *length) {
-    PADDLE_ENFORCE_GE(
-        axis, 0, phi::errors::InvalidArgument("Invalid axis value: %d", axis));
-    if (nx == ny) {
-      *length = nx;
-      for (int i = 0; i < nx; ++i) {
-        if (x_dims[i] != y_dims[i]) {
-          PADDLE_ENFORCE_EQ(
-              x_dims[i] == 1 || y_dims[i] == 1,
-              true,
-              phi::errors::InvalidArgument("Cannot broadcast input shape where "
-                                           "x_dims[%d] = %d, y_dims[%d] = %d.",
-                                           i,
-                                           x_dims[i],
-                                           i,
-                                           y_dims[i]));
-        }
-        broadcast_out_dims[i] = std::max(x_dims[i], y_dims[i]);
-        x_out_dims[i] = x_dims[i];
-        y_out_dims[i] = y_dims[i];
-      }
-    } else if (nx > ny) {
-      *length = nx;
-      for (int i = nx - axis; i < ny; ++i) {
-        PADDLE_ENFORCE_EQ(
-            y_dims[i],
-            1,
-            phi::errors::InvalidArgument(
-                "The trailing Y.shape[%d] should be 1 but got %d.",
-                i,
-                y_dims[i]));
-      }
-
-      for (int i = 0; i < nx; ++i) {
-        if (i >= axis && i - axis < ny) {
-          if (x_dims[i] != y_dims[i - axis]) {
-            PADDLE_ENFORCE_EQ(x_dims[i] == 1 || y_dims[i - axis] == 1,
-                              true,
-                              phi::errors::InvalidArgument(
-                                  "Cannot broadcast input shape where "
-                                  "x_dims[%d] = %d, y_dims[%d] = %d.",
-                                  i,
-                                  x_dims[i],
-                                  i - axis,
-                                  y_dims[i - axis]));
-          }
-          broadcast_out_dims[i] = std::max(x_dims[i], y_dims[i - axis]);
-          x_out_dims[i] = x_dims[i];
-          y_out_dims[i] = y_dims[i - axis];
-        } else {
-          broadcast_out_dims[i] = x_dims[i];
-          x_out_dims[i] = x_dims[i];
-          y_out_dims[i] = 1;
-        }
-      }
-    } else {
-      CalculateBroadcastDims(y_dims,
-                             x_dims,
-                             ny,
-                             nx,
-                             axis,
-                             y_out_dims,
-                             x_out_dims,
-                             broadcast_out_dims,
-                             length);
-    }
-  }
-
-  static bool IsSameShape(const int64_t *x, const int64_t *y, int rank) {
-    for (int i = 0; i < rank; ++i) {
-      if (x[i] != y[i]) return false;
-    }
-    return true;
-  }
-
-  static phi::Array<int64_t, phi::DDim::kMaxRank + 1> ShapeToStride(
-      const int64_t *arr, int rank) {
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> strides;
-    strides[rank] = 1;
-    for (int i = rank - 1; i >= 0; --i) {
-      strides[i] = strides[i + 1] * arr[i];
-    }
-    return strides;
-  }
-};
-#endif
-
 template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
 typename std::enable_if<!NeedVectorized<OutT>::value, void>::type
 BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
@@ -830,25 +518,6 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
                                    std::vector<DenseTensor *> *outs,
                                    int axis,
                                    Functor func) {
-#ifndef PADDLE_WITH_XPU_KP
-  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && Arity <= 3);
-  bool use_int64_index_kernel =
-      kEnabledInt64IndexKernel &&
-      (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
-  if (use_int64_index_kernel) {
-    LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                              Functor,
-                                              Arity,
-                                              NumOuts,
-                                              VecSizeS>::Run(ctx,
-                                                             ins,
-                                                             outs,
-                                                             axis,
-                                                             func);
-    return;
-  }
-#endif
-
   auto classifier =
       BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeS>(
@@ -869,59 +538,6 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
 #else
   // Calculate the max vec_size for all ins and outs.
   int vec_size = GetVectorizedSizeForTensors(ins, *outs);
-#endif
-
-#ifndef PADDLE_WITH_XPU_KP
-  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && Arity <= 3);
-  bool use_int64_index_kernel =
-      kEnabledInt64IndexKernel &&
-      (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
-  if (use_int64_index_kernel) {
-    switch (vec_size) {
-      case VecSizeL: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  Arity,
-                                                  NumOuts,
-                                                  VecSizeL>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
-        break;
-      }
-      case VecSizeM: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  Arity,
-                                                  NumOuts,
-                                                  VecSizeM>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
-        break;
-      }
-      case VecSizeS: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  Arity,
-                                                  NumOuts,
-                                                  VecSizeS>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
-        break;
-      }
-      default: {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "Unsupported vectorized size: %d!", vec_size));
-        break;
-      }
-    }
-    return;
-  }
 #endif
 
   auto classifier =
@@ -948,6 +564,195 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
       break;
     }
   }
+}
+
+static void updateStridesDims(std::vector<int64_t> *strides,
+                              std::vector<int64_t> *dims) {
+  for (int i = 1; i < strides->size(); i++) {
+    (*strides)[i] = (*strides)[i - 1] * (*dims)[i - 1];
+  }
+  // reverse origin_in_dim and origin_in_stride if in's dim_size > 0
+  std::reverse(strides->begin(), strides->end());
+  std::reverse(dims->begin(), dims->end());
+}
+
+static void SliceTensor(DenseTensor *x,
+                        const DenseTensor *share,
+                        const std::vector<int64_t> &out_compute_dims,
+                        int64_t offset) {
+  auto new_dim = common::make_ddim(out_compute_dims);
+  DenseTensorMeta meta(share->dtype(),
+                       new_dim,
+                       share->layout(),
+                       offset * SizeOf(share->dtype()));
+  x->set_meta(meta);
+  x->ShareBufferWith(*(share), true);
+  x->Resize(new_dim);
+}
+
+template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
+void BroadcastKernelSplit(const KPDevice &ctx,
+                          const std::vector<const DenseTensor *> &ins,
+                          std::vector<DenseTensor *> *outs,
+                          int axis,
+                          Functor func,
+                          const int64_t compute_size) {
+  const auto dims_simplifier =
+      BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+  if (VLOG_IS_ON(6)) {
+    DimsSimplifiedLogger<int64_t>::Log(
+        ins, outs, dims_simplifier, "GPU Broadcast");
+  }
+
+  int all_rank = dims_simplifier.rank;
+  std::vector<int64_t> origin_out_strides(all_rank, 1);
+  auto origin_in_dims = dims_simplifier.in_dims;
+  auto origin_out_dims = dims_simplifier.out_dims;
+  auto origin_in_strides = dims_simplifier.in_dims;
+
+  // for split
+  std::vector<int64_t> loop_num_out(all_rank, 1);
+  std::vector<int64_t> loop_num_out_stride(all_rank, 1);
+
+  // for input's offset
+  std::vector<int64_t> ins_offset(kArity, 0);
+  std::vector<int64_t> ins_scale_for_dim(kArity, 0);
+
+  // init offset and check in's dim
+  for (int k = 0; k < kArity; k++) {
+    ins_scale_for_dim[k] = ins[k]->dims().size() == 0 ? 0 : 1;
+    if (ins_scale_for_dim[k]) {
+      origin_in_strides[k][0] = 1;
+    }
+  }
+
+  updateStridesDims(&origin_out_strides, &origin_out_dims);
+  for (int k = 0; k < kArity; k++) {
+    if (ins_scale_for_dim[k]) {
+      updateStridesDims(&origin_in_strides[k], &origin_in_dims[k]);
+    }
+  }
+
+  // init out_split_dim and in_split_dims
+  auto out_split_dim = origin_out_dims;
+  auto in_split_dims = origin_in_dims;
+
+  // init
+  int64_t loop_num = 1;
+  int64_t split_idx = 0;
+
+  for (int r = 0; r < all_rank; r++) {
+    // if the compute_size was too small the split_size must be 0, but the
+    // dim_num must ge 1
+    int64_t split_size = compute_size / origin_out_strides[r];
+    out_split_dim[r] = std::max(split_size, static_cast<int64_t>(1));
+    loop_num_out[r] =
+        (origin_out_dims[r] + out_split_dim[r] - 1) / out_split_dim[r];
+    loop_num *= loop_num_out[r];
+
+    for (int k = 0; k < kArity; k++) {
+      if (ins_scale_for_dim[k]) {
+        in_split_dims[k][r] = std::min(origin_in_dims[k][r], out_split_dim[r]);
+      }
+    }
+
+    // split_idx is the index for lash split dim
+    if (split_size != 0) {
+      split_idx = r;
+      break;
+    }
+  }
+
+  loop_num_out_stride[all_rank - 1] = 1;
+  for (int r = all_rank - 2; r >= 0; r--) {
+    loop_num_out_stride[r] = loop_num_out_stride[r + 1] * loop_num_out[r + 1];
+  }
+
+  // compute
+
+  for (int iter = 0; iter < loop_num; iter++) {
+    std::vector<const DenseTensor *> new_ins = {};
+    std::vector<DenseTensor *> new_outs = {};
+    phi::DenseTensor tmp_in[kArity];
+    DenseTensor tmp_out[NumOuts];
+
+    int64_t tmp_size = iter;
+    int64_t out_offset = 0;
+    // compute the offset before  last split dim
+    for (int i = 0; i < split_idx; i++) {
+      auto repeat_times = tmp_size / loop_num_out_stride[i];
+      out_offset += repeat_times * origin_out_strides[i];
+      for (int k = 0; k < kArity; k++) {
+        if (ins_scale_for_dim[k]) {
+          ins_offset[k] +=
+              (repeat_times % origin_in_dims[k][i]) * origin_in_strides[k][i];
+        }
+      }
+      tmp_size = tmp_size % loop_num_out_stride[i];
+    }
+    // tmp_size is the last split_dims's repeat idx
+    auto pre_deal_size = tmp_size * out_split_dim[split_idx];
+    out_offset += pre_deal_size * origin_out_strides[split_idx];
+    // compute_size
+    auto remainder_size = origin_out_dims[split_idx] - pre_deal_size;
+
+    // get current compute size
+    auto out_compute_dims = out_split_dim;
+    out_compute_dims[split_idx] =
+        std::min(out_split_dim[split_idx], remainder_size);
+
+    // in + compute_size
+    auto in_compute_dims = in_split_dims;
+    for (int k = 0; k < kArity; k++) {
+      if (ins_scale_for_dim[k]) {
+        auto split_repeat =
+            origin_in_dims[k][split_idx] == origin_out_dims[split_idx]
+                ? tmp_size
+                : 0;
+        ins_offset[k] += split_repeat * in_split_dims[k][split_idx] *
+                         origin_in_strides[k][split_idx];
+        in_compute_dims[k][split_idx] =
+            std::min(in_split_dims[k][split_idx], out_compute_dims[split_idx]);
+      }
+      SliceTensor(&tmp_in[k],
+                  ins[k],
+                  in_compute_dims[k],
+                  ins_scale_for_dim[k] * ins_offset[k]);
+      new_ins.emplace_back(&tmp_in[k]);
+      ins_offset[k] = 0;
+    }
+
+    for (int n = 0; n < NumOuts; n++) {
+      SliceTensor(&tmp_out[n], (*outs)[n], out_compute_dims, out_offset);
+      new_outs.emplace_back(&tmp_out[n]);
+    }
+
+    BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
+        ctx, new_ins, &new_outs, axis, func);
+  }
+}
+
+template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
+void BroadcastKernelApply(const KPDevice &ctx,
+                          const std::vector<const DenseTensor *> &ins,
+                          std::vector<DenseTensor *> *outs,
+                          int axis,
+                          Functor func) {
+#ifndef PADDLE_WITH_XPU_KP
+  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity <= 3);
+  // check whether need broadcast
+  auto compute_size = std::numeric_limits<int32_t>::max();
+  bool use_int64_index_kernel =
+      kEnabledInt64IndexKernel && (*outs)[0]->numel() >= compute_size;
+
+  if (use_int64_index_kernel) {  // use_int64_index_kernel
+    BroadcastKernelSplit<OutT, Functor, kArity, NumOuts>(
+        ctx, ins, outs, axis, func, compute_size);
+    return;
+  }
+#endif
+  BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
+      ctx, ins, outs, axis, func);
 }
 
 template <typename OutT, typename Functor, int NumOuts = 1>
@@ -1014,7 +819,7 @@ void BroadcastKernel(const KPDevice &ctx,
     max_rank = std::max(max_rank, (*outs)[0]->dims().size());
   }
   axis = axis == -1 ? max_rank - min_rank : axis;
-  BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
+  BroadcastKernelApply<OutT, Functor, kArity, NumOuts>(
       ctx, ins, outs, axis, func);
 }
 

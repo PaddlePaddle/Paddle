@@ -68,7 +68,7 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
           op_desc, "num_or_sections"));
 
   CHECK(!num_or_sections.empty())
-      << "The Split op cannot found [num_or_sections] attrbute!  ! Please "
+      << "The Split op cannot found [num_or_sections] attribute!  ! Please "
          "check.";
 
   auto axis =
@@ -254,7 +254,7 @@ void ReduceOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto x = ctx.GetVar(x_name);
 
-  VLOG(4) << "Reudce " << reduce_type << " x:" << x_name << " from shape ("
+  VLOG(4) << "Reduce " << reduce_type << " x:" << x_name << " from shape ("
           << cinn::utils::Join(x->shape, ",") << "), with axis ["
           << cinn::utils::Join(axis, ",") << "], keepdim " << keepdim;
 
@@ -413,7 +413,7 @@ void CastOpMapper(const paddle::cpp::OpDesc& op_desc,
       op_desc, "dtype", static_cast<int>(paddle::cpp::VarDescAPI::Type::FP32));
   auto dtype_pd = static_cast<paddle::cpp::VarDescAPI::Type>(dtype_id);
   auto dtype_cinn = utils::CppVarType2CommonType(dtype_pd);
-  auto dtype = common::Type2Str(dtype_cinn);
+  auto dtype = cinn::common::Type2Str(dtype_cinn);
 
   VLOG(4) << out_name << " = cast(" << x_name << ", dtype=" << dtype << ")";
 

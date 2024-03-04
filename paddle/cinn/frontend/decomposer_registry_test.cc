@@ -21,7 +21,7 @@
 namespace cinn::frontend {
 
 TEST(InstrDecomposerRegistry, basic) {
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
   ASSERT_EQ(InstrDecomposerRegistry::Global()->Find("conv", target), nullptr);
   ASSERT_NE(InstrDecomposerRegistry::Global()->Find("relu", target), nullptr);
 }

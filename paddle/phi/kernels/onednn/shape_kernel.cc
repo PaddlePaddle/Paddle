@@ -30,9 +30,9 @@ void ShapeKernel(const Context& dev_ctx,
   // allocated
   if (OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::kNHWC &&
       x_dims.size() >= 3) {
-    auto rdims = vectorize<int>(x_dims);
+    auto rdims = common::vectorize<int>(x_dims);
     std::rotate(rdims.begin() + 1, rdims.begin() + 2, rdims.end());
-    x_dims = make_ddim(rdims);
+    x_dims = common::make_ddim(rdims);
   }
 
   out->Resize({x_dims.size()});
@@ -42,7 +42,7 @@ void ShapeKernel(const Context& dev_ctx,
   }
 
   dnnl::memory::desc out_mem_desc(
-      vectorize(out->dims()),
+      common::vectorize(out->dims()),
       funcs::ToOneDNNDataType(out->dtype()),
       funcs::GetPlainOneDNNFormat(out->dims().size()));
   out->set_mem_desc(out_mem_desc);

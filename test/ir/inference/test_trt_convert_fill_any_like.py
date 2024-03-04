@@ -81,12 +81,12 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
                     ]
                     self.dims = dims
                     self.dtype = dtype
-                    dics_intput = [{"X": ["fill_any_like_input"]}]
+                    dics_input = [{"X": ["fill_any_like_input"]}]
 
                     ops_config = [
                         {
                             "op_type": "fill_any_like",
-                            "op_inputs": dics_intput[0],
+                            "op_inputs": dics_input[0],
                             "op_outputs": {"Out": ["fill_any_like_out"]},
                             "op_attrs": dics[0],
                         }
@@ -167,12 +167,10 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
 
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
@@ -180,12 +178,10 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5

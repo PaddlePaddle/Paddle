@@ -103,7 +103,7 @@ void NMSKernel(const Context& dev_ctx,
       }
     }
   }
-  output->Resize(phi::make_ddim({last_box_num}));
+  output->Resize(common::make_ddim({last_box_num}));
   auto* output_data = dev_ctx.template Alloc<int64_t>(output);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      output_data,

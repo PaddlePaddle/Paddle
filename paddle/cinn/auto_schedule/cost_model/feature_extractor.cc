@@ -33,9 +33,9 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 
 namespace cinn {
@@ -50,7 +50,7 @@ void FeatureExtractor::Visit(const Expr *x) {
 }
 
 Feature FeatureExtractor::Extract(const ir::ModuleExpr &mod_expr,
-                                  const common::Target &target) {
+                                  const cinn::common::Target &target) {
   feature_ = Feature(target);
   for (const ir::Expr &e : mod_expr.GetExprs()) {
     Visit(&e);
@@ -82,6 +82,7 @@ VisitDoNothing(ScheduleBlockRealize);
 VisitDoNothing(Ramp);
 VisitDoNothing(_Buffer_);
 VisitDoNothing(_BufferRange_);
+VisitDoNothing(_Dim_);
 
 #define NotVisitExprFields(NodeType) \
   void FeatureExtractor::Visit(const NodeType *x) {}
@@ -90,8 +91,9 @@ NotVisitExprFields(_Tensor_)
 
 #define VisitForDtypePattern(NodeType, member)                         \
   void FeatureExtractor::Visit(const NodeType *x) {                    \
-    if (x->type() == common::F32() || x->type() == common::F16() ||    \
-        x->type() == common::F64()) {                                  \
+    if (x->type() == cinn::common::F32() ||                            \
+        x->type() == cinn::common::F16() ||                            \
+        x->type() == cinn::common::F64()) {                            \
       feature_.CurrentLoopBlock().float_##member += x->type().lanes(); \
     } else {                                                           \
       feature_.CurrentLoopBlock().int_##member += x->type().lanes();   \
@@ -124,8 +126,9 @@ VisitForDtypePattern(Let, other_call);
 
 #define VisitForMultiOperandsDtypePattern(NodeType, member)                   \
   void FeatureExtractor::Visit(const NodeType *x) {                           \
-    if (x->type() == common::F32() || x->type() == common::F16() ||           \
-        x->type() == common::F64()) {                                         \
+    if (x->type() == cinn::common::F32() ||                                   \
+        x->type() == cinn::common::F16() ||                                   \
+        x->type() == cinn::common::F64()) {                                   \
       feature_.CurrentLoopBlock().float_##member +=                           \
           (x->operands().size() - 1);                                         \
     } else {                                                                  \
@@ -218,7 +221,7 @@ void FeatureExtractor::Visit(const For *x) {
 }
 
 void FeatureExtractor::Visit(const PolyFor *x) {
-  Expr copy = optim::IRCopy(Expr(x));
+  Expr copy = ir::ir_utils::IRCopy(Expr(x));
   feature_.IntoLoopBlock();
   optim::TransformPolyForToFor(&copy);
   ir::For *loop = copy.As<For>();
@@ -230,8 +233,8 @@ void FeatureExtractor::Visit(const PolyFor *x) {
 /* Visit for Reduce and Broadcast */
 
 void FeatureExtractor::Visit(const Reduce *x) {
-  if (x->type() == common::F32() || x->type() == common::F16() ||
-      x->type() == common::F64()) {
+  if (x->type() == cinn::common::F32() || x->type() == cinn::common::F16() ||
+      x->type() == cinn::common::F64()) {
     switch (x->reduce_type) {
       case Reduce::ReduceType::kSum:
         feature_.CurrentLoopBlock().float_reduce_sum_or_sub +=

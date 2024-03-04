@@ -177,7 +177,7 @@ void DownpourWorkerOpt::Initialize(const TrainerDesc& desc) {
             << dest_table;
     copy_dense_tables_.emplace_back(src_table, dest_table);
   }
-  for (auto& m : copy_table_config_.table_denpendency_map()) {
+  for (auto& m : copy_table_config_.table_dependency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
       // currently only support one dependency
       for (auto& value : m.values()) {
@@ -262,7 +262,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
     uint64_t tid =
         static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(i));
     TableParameter table;
-    for (auto j : param_.sparse_table()) {
+    for (auto const& j : param_.sparse_table()) {
       if (j.table_id() == tid) {
         table = j;
         break;
@@ -307,7 +307,7 @@ void DownpourWorkerOpt::TrainFiles() {
   platform::SetNumThreads(1);
   device_reader_->Start();
   int batch_cnt = 0;
-  int cur_batch;
+  int cur_batch = 0;
   std::future<int32_t> pull_async_status;
   std::string async_wait_name = "";
   for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
@@ -315,7 +315,7 @@ void DownpourWorkerOpt::TrainFiles() {
     uint64_t tid =
         static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(i));
     TableParameter table;
-    for (auto j : param_.sparse_table()) {
+    for (auto const& j : param_.sparse_table()) {
       if (j.table_id() == tid) {
         table = j;
         break;
@@ -344,7 +344,7 @@ void DownpourWorkerOpt::TrainFiles() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto j : param_.sparse_table()) {
+      for (auto const& j : param_.sparse_table()) {
         if (j.table_id() == tid) {
           table = j;
           break;
@@ -455,7 +455,7 @@ void DownpourWorkerOpt::TrainFiles() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_sparse_table_id(i));
         TableParameter table;
-        for (auto i : param_.sparse_table()) {
+        for (auto const& i : param_.sparse_table()) {
           if (i.table_id() == tid) {
             table = i;
             break;

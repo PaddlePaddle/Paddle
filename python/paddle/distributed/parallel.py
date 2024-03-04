@@ -19,8 +19,7 @@ import time
 import warnings
 from collections import OrderedDict, namedtuple
 from contextlib import contextmanager
-from multiprocessing import Manager  # noqa: F401
-from multiprocessing import Process  # noqa: F401
+from multiprocessing import Manager, Process
 
 import numpy as np
 
@@ -43,15 +42,18 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     is_initialized,
 )
-from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
+from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.fleet.launch_utils import check_backend
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.framework import _set_expected_place
-from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    _set_expected_place,
+    base as imperative_base,
+    core,
+    in_dynamic_mode,
+)
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
@@ -182,7 +184,6 @@ def sync_params_buffers(
             paddle.distributed.broadcast(
                 coalesced_var, src=src_rank, group=comm_group, sync_op=True
             )
-
         for coalesced_var, origin_vars, var_shapes in coalesced_vars:
             var_len = [np.prod(v_shape) for v_shape in var_shapes]
             paddle.base.framework._dygraph_tracer().trace_op(
@@ -248,114 +249,100 @@ class DataParallel(layers.Layer):
         .. code-block:: python
             :name: dp-example
 
-            # required: distributed
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.optimizer as opt
+            >>> import paddle.distributed as dist
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear1 = nn.Linear(10, 10)
+            ...         self._linear2 = nn.Linear(10, 1)
+            ...     def forward(self, x):
+            ...         return self._linear2(self._linear1(x))
 
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+            >>> def train():
+            ...     # 1. initialize parallel environment
+            ...     dist.init_parallel_env()
+            ...     # 2. create data parallel layer & optimizer
+            ...     layer = LinearNet()
+            ...     dp_layer = paddle.DataParallel(layer)
+            ...     loss_fn = nn.MSELoss()
+            ...     adam = opt.Adam(
+            ...         learning_rate=0.001, parameters=dp_layer.parameters())
+            ...     # 3. run layer
+            ...     inputs = paddle.randn([10, 10], 'float32')
+            ...     outputs = dp_layer(inputs)
+            ...     labels = paddle.randn([10, 1], 'float32')
+            ...     loss = loss_fn(outputs, labels)
+            ...     loss.backward()
+            ...     adam.step()
+            ...     adam.clear_grad()
 
-            def train():
-                # 1. initialize parallel environment
-                dist.init_parallel_env()
-
-                # 2. create data parallel layer & optimizer
-                layer = LinearNet()
-                dp_layer = paddle.DataParallel(layer)
-
-                loss_fn = nn.MSELoss()
-                adam = opt.Adam(
-                    learning_rate=0.001, parameters=dp_layer.parameters())
-
-                # 3. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
-
-                loss.backward()
-
-                adam.step()
-                adam.clear_grad()
-
-            if __name__ == '__main__':
-                # 1. start by ``paddle.distributed.spawn`` (default)
-                dist.spawn(train, nprocs=2)
-                # 2. start by ``paddle.distributed.launch``
-                # train()
-
+            >>> if __name__ == '__main__':
+            ...     # 1. start by ``paddle.distributed.spawn`` (default)
+            ...     dist.spawn(train, nprocs=2)
+            ...     # 2. start by ``paddle.distributed.launch``
+            ...     # train()
 
     .. note::
         ``PyLayer`` is not supported in DataParallel. To solve problems of this kind,
         it's recommended to skip gradient synchronization among multiple cards by 'no_sync',
         and manually implement 'all_reduce' before model optimization. There is an example
-        showing specific implemetation processing.
+        showing specific implementation processing.
 
     Examples:
 
         .. code-block:: python
             :name: dp-pylayer-example
 
-            # required: distributed
-            import numpy
-            import paddle
-            import paddle.distributed as dist
-            from paddle.autograd import PyLayer
-            from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import numpy
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle.autograd import PyLayer
+            >>> from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
 
-            class cus_tanh(PyLayer):
-                @staticmethod
-                def forward(ctx, x):
-                    y = paddle.tanh(x)
-                    ctx.save_for_backward(y)
-                    return y
+            >>> class cus_tanh(PyLayer):
+            ...     @staticmethod
+            ...     def forward(ctx, x):
+            ...         y = paddle.tanh(x)
+            ...         ctx.save_for_backward(y)
+            ...         return y
+            ...     @staticmethod
+            ...     def backward(ctx, dy):
+            ...         y, = ctx.saved_tensor()
+            ...         grad = dy * (1 - paddle.square(y))
+            ...         return grad
 
-                @staticmethod
-                def backward(ctx, dy):
-                    y, = ctx.saved_tensor()
-                    grad = dy * (1 - paddle.square(y))
-                    return grad
+            >>> class SimpleNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.linear = paddle.nn.Linear(2, 2)
+            ...     def forward(self, inputs):
+            ...         inputs = cus_tanh.apply(inputs)
+            ...         return self.linear(inputs)
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self.linear = paddle.nn.Linear(2, 2)
-
-                def forward(self, inputs):
-                    inputs = cus_tanh.apply(inputs)
-                    return self.linear(inputs)
-
-            if __name__ == '__main__':
-                dist.init_parallel_env()
-
-                model = SimpleNet()
-                model = paddle.DataParallel(model)
-                opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
-
-                for step in range(10):
-                    x_data = numpy.random.randn(2, 2).astype(numpy.float32)
-                    x = paddle.to_tensor(x_data)
-                    x.stop_gradient = False
-
-                    # step 1 : skip gradient synchronization by 'no_sync'
-                    with model.no_sync():
-                        y_pred = model(x)
-                        loss = y_pred.mean()
-                        loss.backward()
-
-                    # step 2 : fuse + allreduce manually before optimization
-                    fused_allreduce_gradients(list(model.parameters()), None)
-
-                    opt.step()
-                    opt.clear_grad()
+            >>> if __name__ == '__main__':
+            ...     dist.init_parallel_env()
+            ...     model = SimpleNet()
+            ...     model = paddle.DataParallel(model)
+            ...     opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+            ...     for step in range(10):
+            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32)
+            ...         x = paddle.to_tensor(x_data)
+            ...         x.stop_gradient = False
+            ...         # step 1 : skip gradient synchronization by 'no_sync'
+            ...         with model.no_sync():
+            ...             y_pred = model(x)
+            ...             loss = y_pred.mean()
+            ...             loss.backward()
+            ...         # step 2 : fuse + allreduce manually before optimization
+            ...         fused_allreduce_gradients(list(model.parameters()), None)
+            ...         opt.step()
+            ...         opt.clear_grad()
 
     """
 
@@ -503,32 +490,31 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                # required: distributed
-                import paddle
-                import paddle.nn as nn
-                import paddle.distributed as dist
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> import paddle
+                >>> import paddle.nn as nn
+                >>> import paddle.distributed as dist
 
-                class SimpleNet(nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._linear = nn.Linear(10, 1)
+                >>> class SimpleNet(nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = nn.Linear(10, 1)
+                ...     def forward(self, x):
+                ...         return self._linear(x)
 
-                    def forward(self, x):
-                        return self._linear(x)
+                >>> dist.init_parallel_env()
+                >>> model = SimpleNet()
+                >>> dp_model = paddle.DataParallel(model)
 
-                dist.init_parallel_env()
-                model = SimpleNet()
-                dp_model = paddle.DataParallel(model)
+                >>> inputs_1 = paddle.randn([10, 10], 'float32')
+                >>> inputs_2 = paddle.ones([10, 10], 'float32')
 
-                inputs_1 = paddle.randn([10, 10], 'float32')
-                inputs_2 = paddle.ones([10, 10], 'float32')
+                >>> with dp_model.no_sync():
+                ...     # gradients will not be synchronized
+                ...     dp_model(inputs_1).backward()
 
-                with dp_model.no_sync():
-                    # gradients will not be synchronized
-                    dp_model(inputs_1).backward()
-
-                # synchronization happens here
-                dp_model(inputs_2).backward()
+                >>> # synchronization happens here
+                >>> dp_model(inputs_2).backward()
 
         """
         tmp_grad_need_sync = self.grad_need_sync
@@ -581,22 +567,23 @@ class DataParallel(layers.Layer):
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
 
-        Retruns:
+        Returns:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
             .. code-block:: python
 
-                import paddle
-                import paddle.distributed as dist
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> import paddle
+                >>> import paddle.distributed as dist
 
-                dist.init_parallel_env()
+                >>> dist.init_parallel_env()
 
-                emb = paddle.nn.Embedding(10, 10)
-                emb = paddle.DataParallel(emb)
+                >>> emb = paddle.nn.Embedding(10, 10)
+                >>> emb = paddle.DataParallel(emb)
 
-                state_dict = emb.state_dict()
-                paddle.save(state_dict, "paddle_dy.pdparams")
+                >>> state_dict = emb.state_dict()
+                >>> paddle.save(state_dict, "paddle_dy.pdparams")
 
         '''
 
@@ -621,19 +608,20 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle
-                import paddle.distributed as dist
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> import paddle
+                >>> import paddle.distributed as dist
 
-                dist.init_parallel_env()
+                >>> dist.init_parallel_env()
 
-                emb = paddle.nn.Embedding(10, 10)
-                emb = paddle.DataParallel(emb)
+                >>> emb = paddle.nn.Embedding(10, 10)
+                >>> emb = paddle.DataParallel(emb)
 
-                state_dict = emb.state_dict()
-                paddle.save(state_dict, "paddle_dy.pdparams")
+                >>> state_dict = emb.state_dict()
+                >>> paddle.save(state_dict, "paddle_dy.pdparams")
 
-                para_state_dict = paddle.load("paddle_dy.pdparams")
-                emb.set_state_dict(para_state_dict)
+                >>> para_state_dict = paddle.load("paddle_dy.pdparams")
+                >>> emb.set_state_dict(para_state_dict)
 
         '''
 
@@ -665,43 +653,46 @@ class ParallelEnv:
     or ``paddle.distributed.spawn`` .
 
     Examples:
-      .. code-block:: python
+        .. code-block:: python
 
-        import paddle
-        import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-        def train():
-            # 1. initialize parallel environment
-            dist.init_parallel_env()
+            >>> def train():
+            ...     # 1. initialize parallel environment
+            ...     dist.init_parallel_env()
+            ...     # 2. get current ParallelEnv
+            ...     parallel_env = dist.ParallelEnv()
+            ...     print("rank: ", parallel_env.rank)
+            ...     print("world_size: ", parallel_env.world_size)
 
-            # 2. get current ParallelEnv
-            parallel_env = dist.ParallelEnv()
-            print("rank: ", parallel_env.rank)
-            print("world_size: ", parallel_env.world_size)
+            >>> if __name__ == '__main__':
+            ...     # 1. start by ``paddle.distributed.spawn`` (default)
+            ...     dist.spawn(train, nprocs=2)
+            ...     # 2. start by ``paddle.distributed.launch``
+            ...     train()
 
-            # print result in process 1:
-            # rank: 1
-            # world_size: 2
-            # print result in process 2:
-            # rank: 2
-            # world_size: 2
+            # Print result in process 1:
+            rank: 1
+            world_size: 2
 
-        if __name__ == '__main__':
-            # 1. start by ``paddle.distributed.spawn`` (default)
-            dist.spawn(train, nprocs=2)
-            # 2. start by ``paddle.distributed.launch``
-            # train()
+            # Print result in process 2:
+            rank: 2
+            world_size: 2
+
     """
 
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
         self._device_type = str(os.getenv("PADDLE_XCCL_BACKEND", ""))
+        self._pg_timeout = int(os.getenv("PADDLE_PG_TIMEOUT", "1800000"))
 
         # imperative only support one gpu or xpu
         if self._device_type != "":
-            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-                self._device_type
+            FLAGS_selected_custom_devices = (
+                f'FLAGS_selected_{self._device_type}s'
             )
             selected_custom_devices = os.getenv(
                 FLAGS_selected_custom_devices, "0"
@@ -735,14 +726,16 @@ class ParallelEnv:
         Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` . The default value is 0.
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            # execute this command in terminal: export PADDLE_TRAINER_ID=0
-            import paddle.distributed as dist
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # execute this command in terminal: export PADDLE_TRAINER_ID=0
+                >>> import paddle.distributed as dist
 
-            env = dist.ParallelEnv()
-            print("The rank is %d" % env.rank)
-            # The rank is 0
+                >>> env = dist.ParallelEnv()
+                >>> print("The rank is %d" % env.rank)
+                The rank is 0
+
         """
         return self._rank
 
@@ -754,14 +747,16 @@ class ParallelEnv:
         Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . The default value is 1.
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
-            import paddle.distributed as dist
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
+                >>> import paddle.distributed as dist
 
-            env = dist.ParallelEnv()
-            print("The world_size is %d" % env.world_size)
-            # The world_size is 4
+                >>> env = dist.ParallelEnv()
+                >>> print("The world_size is %d" % env.world_size)
+                The world_size is 4
+
         """
         return self._world_size
 
@@ -773,14 +768,15 @@ class ParallelEnv:
         Its value is equal to the value of the environment variable ``FLAGS_selected_gpus`` . The default value is 0.
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            # execute this command in terminal: export FLAGS_selected_gpus=1
-            import paddle.distributed as dist
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # execute this command in terminal: export FLAGS_selected_gpus=1
+                >>> import paddle.distributed as dist
 
-            env = dist.ParallelEnv()
-            print("The device id are %d" % env.device_id)
-            # The device id are 1
+                >>> env = dist.ParallelEnv()
+                >>> print("The device id are %d" % env.device_id)
+                The device id are 1
         """
         return self._device_id
 
@@ -802,14 +798,15 @@ class ParallelEnv:
         Its value is equal to the value of the environment variable ``PADDLE_CURRENT_ENDPOINT`` . The default value is "".
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            # execute this command in terminal: export PADDLE_CURRENT_ENDPOINT=127.0.0.1:6170
-            import paddle.distributed as dist
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # execute this command in terminal: export PADDLE_CURRENT_ENDPOINT=127.0.0.1:6170
+                >>> import paddle.distributed as dist
 
-            env = dist.ParallelEnv()
-            print("The current endpoint are %s" % env.current_endpoint)
-            # The current endpoint are 127.0.0.1:6170
+                >>> env = dist.ParallelEnv()
+                >>> print("The current endpoint are %s" % env.current_endpoint)
+                The current endpoint are 127.0.0.1:6170
         """
         return self._current_endpoint
 
@@ -822,14 +819,16 @@ class ParallelEnv:
         Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ENDPOINTS`` . The default value is "".
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            # execute this command in terminal: export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171
-            import paddle.distributed as dist
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # execute this command in terminal: export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171
+                >>> import paddle.distributed as dist
 
-            env = dist.ParallelEnv()
-            print("The trainer endpoints are %s" % env.trainer_endpoints)
-            # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
+                >>> env = dist.ParallelEnv()
+                >>> print("The trainer endpoints are %s" % env.trainer_endpoints)
+                The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
+
         """
         return self._trainer_endpoints
 
@@ -841,16 +840,35 @@ class ParallelEnv:
         Its value is equal to the value of the environment variable ``FLAGS_nccl_nrings`` . The default value is 1.
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            # execute this command in terminal: export FLAGS_nccl_nrings=1
-            import paddle.distributed as dist
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # execute this command in terminal: export FLAGS_nccl_nrings=1
+                >>> import paddle.distributed as dist
 
-            env = dist.ParallelEnv()
-            print("The nrings is %d" % env.nrings)
-            # the number of ring is 1
+                >>> env = dist.ParallelEnv()
+                >>> print("The nrings is %d" % env.nrings)
+                The nrings is 1
         """
         return self._nrings
+
+    @property
+    def pg_timeout(self):
+        """
+        timeout of process group.
+
+        Its value is equal to the value of the environment variable ``PADDLE_PG_TIMEOUT`` . The default value is 30 minutes.
+
+        Examples:
+            .. code-block:: python
+
+                >>> # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
+                >>> import paddle.distributed as dist
+
+                >>> env = dist.ParallelEnv()
+                >>> # the pg_timeout of process group 1800000
+        """
+        return self._pg_timeout
 
     # [aliases] Compatible with old method names
     local_rank = rank
@@ -941,46 +959,40 @@ def init_parallel_env():
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env:GPU, env:DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.optimizer as opt
+            >>> import paddle.distributed as dist
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear1 = nn.Linear(10, 10)
+            ...         self._linear2 = nn.Linear(10, 1)
+            ...     def forward(self, x):
+            ...         return self._linear2(self._linear1(x))
 
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+            >>> def train():
+            ...     # 1. initialize parallel environment
+            ...     dist.init_parallel_env()
+            ...     # 2. create data parallel layer & optimizer
+            ...     layer = LinearNet()
+            ...     dp_layer = paddle.DataParallel(layer)
+            ...     loss_fn = nn.MSELoss()
+            ...     adam = opt.Adam(
+            ...         learning_rate=0.001, parameters=dp_layer.parameters())
+            ...     # 3. run layer
+            ...     inputs = paddle.randn([10, 10], 'float32')
+            ...     outputs = dp_layer(inputs)
+            ...     labels = paddle.randn([10, 1], 'float32')
+            ...     loss = loss_fn(outputs, labels)
+            ...     loss.backward()
+            ...     adam.step()
+            ...     adam.clear_grad()
 
-            def train():
-                # 1. initialize parallel environment
-                dist.init_parallel_env()
-
-                # 2. create data parallel layer & optimizer
-                layer = LinearNet()
-                dp_layer = paddle.DataParallel(layer)
-
-                loss_fn = nn.MSELoss()
-                adam = opt.Adam(
-                    learning_rate=0.001, parameters=dp_layer.parameters())
-
-                # 3. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
-
-                loss.backward()
-
-                adam.step()
-                adam.clear_grad()
-
-            if __name__ == '__main__':
-                dist.spawn(train)
+            >>> if __name__ == '__main__':
+            ...     dist.spawn(train)
 
     """
 
@@ -999,7 +1011,7 @@ def init_parallel_env():
         )
         return
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to
-    #                 enable cpu only gloo prarllel training)
+    #                 enable cpu only gloo parallel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
@@ -1014,8 +1026,8 @@ def init_parallel_env():
         )
 
     if backend == "xccl":
-        FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-            parallel_env.device_type
+        FLAGS_selected_custom_devices = (
+            f'FLAGS_selected_{parallel_env.device_type}s'
         )
         _check_var_exists(FLAGS_selected_custom_devices)
     else:
@@ -1107,16 +1119,22 @@ def init_parallel_env():
         # TODO(mine): support XPU and other backends.
         if backend in ["nccl", 'xccl', 'bkcl']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
-        paddle.distributed.barrier(group=group)
+
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.float32),
+                group=group,
+                sync_op=True,
+            )
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}
-    # 3: init gloo context (step 1: httpsever start)
+    # 3: init gloo context (step 1: httpserver start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
     if is_cpu_only or init_gloo or backend == "heter":
         ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
         manager = Manager()
-        # glboal dict to store status
+        # global dict to store status
         http_server_d = manager.dict()
         http_server_d["running"] = False
         if parallel_env.rank == 0:
@@ -1169,7 +1187,7 @@ def init_parallel_env():
     parallel_helper._init_parallel_ctx()
 
     # 5: init gloo context (step 2: gloo init)
-    # dividing init_gloo into two part beacause nccl and gloo
+    # dividing init_gloo into two part because nccl and gloo
     # are separately looking for free ports which sometimes
     # leads to port-conflict.
     if (is_cpu_only or backend == "heter") and parallel_env.rank == 0:
@@ -1214,13 +1232,15 @@ def get_rank(group=None):
     Examples:
         .. code-block:: python
 
-            # Execute this script using distributed launch with one card configs.
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # Execute this script using distributed launch with one card configs.
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            print("The rank is %d" % dist.get_rank())
-            # The rank is 0
+            >>> dist.init_parallel_env()
+            >>> print("The rank is %d" % dist.get_rank())
+            The rank is 0
+
     """
     if in_dynamic_mode() and group:
         return group.rank
@@ -1246,13 +1266,15 @@ def get_world_size(group=None):
     Examples:
         .. code-block:: python
 
-            # Execute this script using distributed launch with one card configs.
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # Execute this script using distributed launch with one card configs.
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            print("The world_size is %d" % dist.get_world_size())
-            # The world_size is 1
+            >>> dist.init_parallel_env()
+            >>> print("The world_size is %d" % dist.get_world_size())
+            The world_size is 1
+
     """
     if in_dynamic_mode() and (group is None):
         if is_initialized():

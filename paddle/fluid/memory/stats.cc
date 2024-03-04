@@ -14,9 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/stats.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/fluid/platform/flags.h"
 
+PADDLE_DEFINE_EXPORTED_bool(
+    log_memory_stats,
+    false,
+    "Log memory stats after each op runs, just used for debug.");
 namespace paddle {
 namespace memory {
 
@@ -31,7 +36,7 @@ class StatRegistry {
     auto it = stat_map_.find(GetStatKey(stat_type, dev_id));
     if (it == stat_map_.end()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "The STAT type \"%s\" for device %d has not been regeistered.",
+          "The STAT type \"%s\" for device %d has not been registered.",
           stat_type.c_str(),
           dev_id));
     }
@@ -104,6 +109,33 @@ void HostMemoryStatUpdate(const std::string& stat_type,
   StatRegistry::GetInstance()->Update("Host" + stat_type, dev_id, increment);
 }
 
+void LogDeviceMemoryStats(const platform::Place& place,
+                          const std::string& op_name) {
+  if (FLAGS_log_memory_stats && platform::is_gpu_place(place)) {
+    VLOG(0) << "After launching op_name: " << op_name << ", "
+            << "memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB, "
+            << "memory_reserved: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Reserved", place.device)) /
+                   1024 / 1024
+            << " MB, "
+            << "max_memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB, "
+            << "max_memory_reserved: "
+            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                   "Reserved", place.device)) /
+                   1024 / 1024
+            << " MB";
+  }
+}
+
 #define DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, id) \
   StatRegistry::GetInstance()->Register(              \
       "Device" #item, id, Stat<DeviceMemoryStat##item##id>::GetInstance());
@@ -139,7 +171,7 @@ int RegisterAllStats() {
   return 0;
 }
 
-UNUSED static int regiester_all_stats = RegisterAllStats();
+UNUSED static int register_all_stats = RegisterAllStats();
 
 }  // namespace memory
 }  // namespace paddle

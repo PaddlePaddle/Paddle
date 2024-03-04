@@ -21,6 +21,7 @@ limitations under the License. */
 //
 
 #include "paddle/phi/common/place.h"
+#include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace platform {
 
@@ -43,10 +44,10 @@ class PlaceHelper {
 };
 #endif
 
-bool is_gpu_place(const Place &);
+TEST_API bool is_gpu_place(const Place &);
 bool is_xpu_place(const Place &);
 bool is_ipu_place(const Place &);
-bool is_cpu_place(const Place &);
+TEST_API bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
 bool is_custom_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);

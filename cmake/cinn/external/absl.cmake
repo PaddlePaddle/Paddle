@@ -5,7 +5,7 @@ set(ABSL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/absl)
 set(ABSL_PREFIX_DIR ${THIRD_PARTY_PATH}/absl)
 set(ABSL_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
-set(ABSL_REPOSITORY "https://github.com/abseil/abseil-cpp.git")
+set(ABSL_REPOSITORY "${GIT_URL}/abseil/abseil-cpp.git")
 set(ABSL_TAG "20210324.2")
 
 set(OPTIONAL_ARGS
@@ -50,7 +50,7 @@ ExternalProject_Add(
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_variant_access.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_raw_hash_set.a)
 
-# It may be more convinent if we just include all absl libs
+# It may be more convenient if we just include all absl libs
 set(ABSL_LIB_NAMES
     hash
     wyhash

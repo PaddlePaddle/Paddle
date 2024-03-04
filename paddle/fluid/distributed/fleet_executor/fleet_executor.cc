@@ -82,7 +82,7 @@ void PreventVarsDelete(
   for (const auto& pair : *unused_vars) {
     const framework::OperatorBase* op = pair.first;
     std::vector<std::string> cur_unused = pair.second;
-    for (auto name : vars_not_gc) {
+    for (auto const& name : vars_not_gc) {
       auto iter = std::find(cur_unused.begin(), cur_unused.end(), name);
       if (iter != cur_unused.end()) {
         VLOG(3) << "Removing var: [" << name
@@ -165,7 +165,7 @@ void FleetExecutor::Init(
       while_block_vars = GetUnusedVarsAfterWhile(
           program_desc, task_node, inference_root_scope_vars);
       VLOG(3) << "Vars will be gced after while op";
-      for (auto var : while_block_vars) {
+      for (auto const& var : while_block_vars) {
         VLOG(3) << var;
       }
       task_node->SetWhileBlockVars(while_block_vars);

@@ -71,7 +71,7 @@ pybind11::array VectorToNumpy(const std::vector<std::vector<Dtype>>& vec) {
 // Something may be wrong when users use virtual Python environment.
 void AddDistPkgToPythonSysPath() {
   pybind11::module sys_py_mod = pybind11::module::import("sys");
-  // short version such as "3.7", "3.8", ...
+  // short version such as "3.8", "3.9", ...
   std::string py_short_version =
       sys_py_mod.attr("version").cast<std::string>().substr(0, 3);
 
@@ -96,7 +96,7 @@ void AddDistPkgToPythonSysPath() {
 }
 
 XgbCostModel::XgbCostModel() {
-  common::PythonInterpreterGuard::Guard();
+  cinn::common::PythonInterpreterGuard::Guard();
   int previous = xgb_cost_model_count_.fetch_add(1);
   if (previous == 0) {
     AddDistPkgToPythonSysPath();

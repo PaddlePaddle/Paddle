@@ -53,6 +53,7 @@ PD_REGISTER_KERNEL(p_send,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}
 
@@ -66,5 +67,6 @@ PD_REGISTER_KERNEL(p_send_array,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}

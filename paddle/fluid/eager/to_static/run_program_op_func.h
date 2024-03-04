@@ -20,7 +20,12 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
@@ -90,14 +95,55 @@ static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
   return filter_x;
 }
 
+static std::vector<paddle::Tensor> pir_filter_unused_input_var_in_backward(
+    const std::vector<paddle::Tensor>& x,
+    const std::string x_key_name,
+    const paddle::framework::AttributeMap& attrs) {
+  auto values =
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at(x_key_name));
+  auto filter_x = std::vector<paddle::Tensor>(x);
+  for (size_t i = 0; i < x.size(); i++) {
+    if (values[i].impl() == nullptr) {
+      auto fake = paddle::Tensor(std::make_shared<phi::DenseTensor>());
+      fake.set_name(paddle::framework::kFakeVarName);
+      filter_x[i] = fake;
+    }
+  }
+  return filter_x;
+}
+
+static std::vector<paddle::Tensor> Trans2ContiguousTensors(
+    const std::vector<paddle::Tensor>& tensors) {
+  std::vector<paddle::Tensor> res;
+  for (const auto& t : tensors) {
+    if (t.is_initialized() && t.is_dense_tensor() &&
+        !std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())
+             ->meta()
+             .is_contiguous()) {
+      res.emplace_back(
+          std::make_shared<phi::DenseTensor>(
+              std::move(paddle::experimental::Trans2Contiguous(
+                  *(std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()))))),
+          t.mutable_autograd_meta());
+    } else {
+      res.emplace_back(t);
+    }
+  }
+  return res;
+}
+
+int64_t hash_with_seed(int64_t value, int64_t seed) {
+  return seed + 0x9e3779b9 + (value << 6) + (value >> 2);
+}
+
 inline void run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
     std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    std::vector<paddle::Tensor*>& dout,                  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
+  VLOG(2) << "start run run_program ad function.";
   auto deref_out = details::DereferenceTensors(out);
   std::vector<egr::AutogradMeta*> p_autograd_x =
       egr::EagerUtils::nullable_autograd_meta(x);
@@ -112,18 +158,36 @@ inline void run_program_ad_func(
 
   VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad;
+  auto x_tmp = Trans2ContiguousTensors(x);
+  auto params_tmp = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
+  int64_t place_hash_key = 0;
+  for (const paddle::Tensor& tensor : x) {
+    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
+    place_hash_key = hash_with_seed(place_hash_key, device_type);
+  }
+  RunProgramAPI(x_tmp,
+                params_tmp,
+                out,
+                step_scope,
+                require_any_grad,
+                attrs,
+                place_hash_key);
   VLOG(2) << "start run run_program grad";
-
-  if (require_any_grad) {
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
+  if (!is_test && require_any_grad) {
     auto x_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
 
-    egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
+
+    // Set place hash keys for backward
+    grad_node->SetPlaceHashKey(place_hash_key);
 
     // Set Attributes
     grad_node->SetAttrMap(attrs);
@@ -133,30 +197,17 @@ inline void run_program_ad_func(
     auto* backward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
     // Clear unused x vars
-    auto filter_x =
-        filter_unused_input_var_in_backward(x, x_names, backward_global_block);
+    auto filter_x = filter_unused_input_var_in_backward(
+        x_tmp, x_names, backward_global_block);
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
     // Clear unused out vars
     clear_unused_out_var_in_backward(out, backward_global_block, step_scope[0]);
 
-    grad_node->SetFwdParams(params);
+    grad_node->SetFwdParams(params_tmp);
     grad_node->SetStepScope(step_scope);
 
-    // Set Grad out rank as same as fwd input and set stop gradient to bwd
-    // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
-    // gradient. for example: x[1] is not used for output, the x[1] is ignored.
-
-    std::vector<const paddle::Tensor*> x_require_grad;
-    for (size_t i = 0; i < x.size(); ++i) {
-      auto& name = x_names[i];
-      if (forward_global_block->HasVar(name) ||
-          backward_global_block->HasVar(name)) {
-        x_require_grad.push_back(&x[i]);
-      }
-    }
-
-    grad_node->SetGradOutMeta(x_require_grad, /*slot id*/ 0);
+    grad_node->SetGradOutMeta(x, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
     VLOG(2) << "clear_no_grad_edges.";
@@ -165,6 +216,134 @@ inline void run_program_ad_func(
                                            backward_global_block,
                                            grad_node.get(),
                                            /*slot id*/ 1);
+
+    grad_node->SetGradInMeta(deref_out, 0);
+
+    egr::EagerUtils::SetOutRankWithSlot(&p_autograd_outs, 0);
+
+    // Set History for output set current Grad Node for
+    egr::EagerUtils::SetHistory(&p_autograd_outs, grad_node);
+  }
+}
+
+inline void pir_run_program_ad_func(
+    const std::vector<paddle::Tensor>& x,
+    const std::vector<paddle::Tensor>& params,
+    std::vector<paddle::Tensor*>& out,                   // NOLINT
+    std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
+    const paddle::framework::AttributeMap& attrs) {
+  // Prepare Autograd Meta
+  VLOG(2) << "start run pir run_program ad function.";
+  auto deref_out = details::DereferenceTensors(out);
+  std::vector<egr::AutogradMeta*> p_autograd_x =
+      egr::EagerUtils::nullable_autograd_meta(x);
+  std::vector<egr::AutogradMeta*> p_autograd_params =
+      egr::EagerUtils::nullable_autograd_meta(params);
+  std::vector<egr::AutogradMeta*> p_autograd_outs =
+      egr::EagerUtils::nullable_autograd_meta(deref_out);
+
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
+      trace_backward, &p_autograd_x, &p_autograd_params);
+
+  // Create Middle Output for GradNode.
+  auto middle_values =
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm"));
+  auto middle_size = middle_values.size();
+  auto output_size =
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo")).size();
+  auto middles = std::vector<paddle::Tensor*>();
+
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
+  std::shared_ptr<PirGradNodeRunProgram> grad_node;
+  VLOG(2) << "start run run_program with require_any_grad = "
+          << require_any_grad << ", is_test = " << is_test;
+
+  if (!is_test && require_any_grad) {
+    // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
+    grad_node = std::make_shared<PirGradNodeRunProgram>(1, 2);
+    grad_node->GetMiddle().resize(middle_size);
+    grad_node->GetOutputs().resize(output_size);
+    for (size_t i = 0; i < middle_size; ++i) {
+      auto middle_value = middle_values[i];
+      if (middle_value.type().isa<pir::DenseTensorType>()) {
+        grad_node->GetMiddle()[i] =
+            paddle::Tensor(std::make_shared<phi::DenseTensor>());
+      } else if (middle_value.type().isa<pir::OutletType>()) {
+        grad_node->GetMiddle()[i] = paddle::Tensor(
+            std::make_shared<paddle::framework::VariableRefArray>());
+      }
+      middles.push_back(&grad_node->GetMiddle()[i]);
+    }
+
+    auto backward_outs =
+        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo"));
+    for (size_t i = 0; i < output_size; ++i) {
+      if (backward_outs[i] != nullptr) {
+        grad_node->GetOutputs()[i] = *out[i];
+      } else {  // not used by backward program
+        auto fake = paddle::Tensor(std::make_shared<phi::DenseTensor>());
+        fake.set_name(paddle::framework::kFakeVarName);
+        grad_node->GetOutputs()[i] = fake;
+      }
+    }
+  }
+
+  // Call forward function
+  // if require_any_grad is False, don't save any middle vars.
+  int64_t place_hash_key = 0x9e3779b9;
+  for (const paddle::Tensor& tensor : x) {
+    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
+    place_hash_key = hash_with_seed(place_hash_key, device_type);
+  }
+  auto x_tmp = Trans2ContiguousTensors(x);
+  auto params_tmp = Trans2ContiguousTensors(params);
+  PirRunProgramAPI(x_tmp,
+                   params_tmp,
+                   out,
+                   middles,
+                   step_scope,
+                   require_any_grad,
+                   attrs,
+                   place_hash_key);
+  if (!is_test && require_any_grad) {
+    // Set place hash keys for backward
+    grad_node->SetPlaceHashKey(place_hash_key);
+
+    // Set Attributes
+    grad_node->SetAttrMap(attrs);
+
+    // Clear unused x vars
+    auto filter_x = pir_filter_unused_input_var_in_backward(x_tmp, "bx", attrs);
+    // Set TensorWrappers
+    grad_node->SetFwdX(filter_x);
+
+    grad_node->SetFwdParams(params_tmp);
+
+    grad_node->SetStepScope(step_scope);  // just for set useable.
+
+    // Set Grad out rank as same as fwd input and set stop gradient to bwd
+    // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
+    // gradient. for example: x[1] is not used for output, the x[1] is ignored.
+
+    std::vector<const paddle::Tensor*> x_require_grad;
+    for (size_t i = 0; i < x.size(); ++i) {
+      x_require_grad.push_back(&x[i]);
+    }
+
+    grad_node->SetGradOutMeta(x_require_grad, /*slot id*/ 0);
+    grad_node->SetGradOutMeta(params, /*slot id*/ 1);
+
+    // TODO(@xiongkun): rewrite by new ir representation.
+    // VLOG(2) << "clear_no_grad_edges.";
+    // clear_no_grad_edges_with_partial_block(params,
+    // forward_global_block,
+    // backward_global_block,
+    // grad_node.get(),
+    // [>slot id<] 1);
 
     grad_node->SetGradInMeta(deref_out, 0);
 

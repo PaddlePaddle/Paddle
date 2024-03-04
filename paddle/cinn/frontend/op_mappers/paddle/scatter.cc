@@ -40,10 +40,12 @@ void ScatterOpMapper(const paddle::cpp::OpDesc& op_desc,
   const auto& updates = ctx.GetVar(updates_name);
   CHECK(input->type == updates->type)
       << "checks whether the type of the input and the updates are the same.";
-  CHECK(indices->type == common::Int(32) || indices->type == common::Int(64))
+  CHECK(indices->type == cinn::common::Int(32) ||
+        indices->type == cinn::common::Int(64))
       << "checks whether the data type of the indices is either int32 or int64";
-  if (indices->type == common::Int(64)) {
-    indices = ctx.Builder()->Cast(indices, common::Type2Str(common::Int(32)));
+  if (indices->type == cinn::common::Int(64)) {
+    indices = ctx.Builder()->Cast(
+        indices, cinn::common::Type2Str(cinn::common::Int(32)));
   }
   CHECK_LE(indices->shape.size(), 2) << "Ids should be 0, 1 or 2 in scatter_op";
   if (indices->shape.size() == 0) {
@@ -61,8 +63,8 @@ void ScatterOpMapper(const paddle::cpp::OpDesc& op_desc,
     const auto& zeros =
         ctx.Builder()->FillConstant(updates->shape,
                                     0,
-                                    common::UniqName("scatter_zeros"),
-                                    common::Type2Str(updates->type));
+                                    cinn::common::UniqName("scatter_zeros"),
+                                    cinn::common::Type2Str(updates->type));
     out = ctx.Builder()->ScatterAssign(input, zeros, indices);
     out = ctx.Builder()->ScatterAdd(out, updates, indices);
   }

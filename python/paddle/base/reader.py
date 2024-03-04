@@ -12,49 +12,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
+import logging
+import multiprocessing
+import queue
 import sys
-import numpy as np
 import threading
-import paddle
+import warnings
 
+import numpy as np
+
+import paddle
+from paddle.base.framework import _set_expected_place
+
+from . import core
+from .data_feeder import BatchedTensorProvider, DataFeeder
+from .executor import global_scope
 from .framework import (
     Program,
-    program_guard,
+    _current_expected_place,
+    _get_paddle_place,
+    _get_paddle_place_list,
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
-    _current_expected_place,
-)
-from .executor import global_scope
-from .data_feeder import DataFeeder, BatchedTensorProvider
-from .multiprocess_utils import (
-    multiprocess_queue_set,  # noqa: F401
-    CleanupFuncRegistrar,
-    _cleanup_mmap,
-    _cleanup,  # noqa: F401
-    _set_SIGCHLD_handler,
+    program_guard,
 )
 from .layers.io import (
-    monkey_patch_reader_methods,
-    _copy_reader_var_,
     __create_unshared_decorated_reader__,
+    _copy_reader_var_,
+    monkey_patch_reader_methods,
+)
+from .multiprocess_utils import (  # noqa: F401
+    CleanupFuncRegistrar,
+    _cleanup,
+    _cleanup_mmap,
+    _set_SIGCHLD_handler,
+    multiprocess_queue_set,
 )
 from .unique_name import UniqueNameGenerator
-from .framework import _get_paddle_place, _get_paddle_place_list
-from paddle.base.framework import _set_expected_place
-import logging
-import warnings
-
-### Dygraph DataLoader configs ###
-import multiprocessing
-
-import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
 
-__all__ = ['PyReader', 'DataLoader']
+__all__ = []
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
@@ -137,7 +137,7 @@ class DataLoaderBase:
         arr = np.asarray(item)
         if arr.dtype == np.object_:
             raise TypeError(
-                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                "\n\tFailed to convert input data to a regular ndarray :\n\t* Usually "
                 "this means the input data contains nested lists with different lengths. "
                 "\n\t* Check the reader function passed to 'decorate_batch_generator'"
                 " to locate the data causes this issue.\n\t* Please consider using "
@@ -217,199 +217,197 @@ class DataLoader:
         Returns:
             loader (DataLoader): the created DataLoader object.
 
-        Examples 1:
+        Examples:
+            .. code-block:: python
+                :name: example_1
+
+                >>> # Example in static graph mode
+
+                >>> import numpy as np
+
+                >>> import paddle
+                >>> import paddle.static as static
+                >>> import paddle.nn.functional as F
+
+
+                >>> BATCH_NUM = 10
+                >>> BATCH_SIZE = 16
+                >>> EPOCH_NUM = 4
+
+                >>> CLASS_NUM = 10
+
+                >>> ITERABLE = True # whether the created DataLoader object is iterable
+                >>> USE_GPU = False # whether to use GPU
+
+                >>> DATA_FORMAT = 'batch_generator' # data format of data source user provides
+
+                >>> paddle.enable_static()
+
+                >>> def simple_net(image, label):
+                ...     fc_tmp = static.nn.fc(image, size=CLASS_NUM)
+                ...     cross_entropy = F.softmax_with_cross_entropy(image, label)
+                ...     loss = paddle.mean(cross_entropy)
+                ...     sgd = paddle.optimizer.SGD(learning_rate=1e-3)
+                ...     sgd.minimize(loss)
+                ...     return loss
+                ...
+                >>> def get_random_images_and_labels(image_shape, label_shape):
+                ...     image = np.random.random(size=image_shape).astype('float32')
+                ...     label = np.random.random(size=label_shape).astype('int64')
+                ...     return image, label
+                ...
+                >>> # If the data generator yields one sample each time,
+                >>> # use DataLoader.set_sample_generator to set the data source.
+                >>> def sample_generator_creator():
+                ...     def __reader__():
+                ...         for _ in range(BATCH_NUM * BATCH_SIZE):
+                ...             image, label = get_random_images_and_labels([784], [1])
+                ...             yield image, label
+                ...
+                ...     return __reader__
+                ...
+                >>> # If the data generator yield list of samples each time,
+                >>> # use DataLoader.set_sample_list_generator to set the data source.
+                >>> def sample_list_generator_creator():
+                ...     def __reader__():
+                ...         for _ in range(BATCH_NUM):
+                ...             sample_list = []
+                ...             for _ in range(BATCH_SIZE):
+                ...                 image, label = get_random_images_and_labels([784], [1])
+                ...                 sample_list.append([image, label])
+                ...
+                ...             yield sample_list
+                ...
+                ...     return __reader__
+                ...
+                >>> # If the data generator yields a batch each time,
+                >>> # use DataLoader.set_batch_generator to set the data source.
+                >>> def batch_generator_creator():
+                ...     def __reader__():
+                ...         for _ in range(BATCH_NUM):
+                ...             batch_image, batch_label = get_random_images_and_labels([BATCH_SIZE, 784], [BATCH_SIZE, 1])
+                ...             yield batch_image, batch_label
+                ...
+                ...     return __reader__
+                ...
+                >>> # If DataLoader is iterable, use for loop to train the network
+                >>> def train_iterable(exe, prog, loss, loader):
+                ...     for _ in range(EPOCH_NUM):
+                ...         for data in loader():
+                ...             exe.run(prog, feed=data, fetch_list=[loss])
+                ...
+                >>> # If DataLoader is not iterable, use start() and reset() method to control the process
+                >>> def train_non_iterable(exe, prog, loss, loader):
+                ...     for _ in range(EPOCH_NUM):
+                ...         loader.start() # call DataLoader.start() before each epoch starts
+                ...         try:
+                ...             while True:
+                ...                 exe.run(prog, fetch_list=[loss])
+                ...         except paddle.core.EOFException:
+                ...             loader.reset() # call DataLoader.reset() after catching EOFException
+                ...
+                >>> def set_data_source(loader, places):
+                ...     if DATA_FORMAT == 'sample_generator':
+                ...         loader.set_sample_generator(sample_generator_creator(), batch_size=BATCH_SIZE, drop_last=True, places=places)
+                ...     elif DATA_FORMAT == 'sample_list_generator':
+                ...         loader.set_sample_list_generator(sample_list_generator_creator(), places=places)
+                ...     elif DATA_FORMAT == 'batch_generator':
+                ...         loader.set_batch_generator(batch_generator_creator(), places=places)
+                ...     else:
+                ...         raise ValueError('Unsupported data format')
+                ...
+                >>> image = static.data(name='image', shape=[None, 784], dtype='float32')
+                >>> label = static.data(name='label', shape=[None, 1], dtype='int64')
+
+                >>> # Define DataLoader
+                >>> loader = paddle.base.io.DataLoader.from_generator(feed_list=[image, label], capacity=16, iterable=ITERABLE)
+
+                >>> # Define network
+                >>> loss = simple_net(image, label)
+
+                >>> places = static.cuda_places() if USE_GPU else static.cpu_places()
+                >>> set_data_source(loader, places)
+
+                >>> exe = static.Executor(places[0])
+                >>> exe.run(static.default_startup_program())
+
+                >>> prog = static.CompiledProgram(static.default_main_program())
+                >>> if loader.iterable:
+                ...     train_iterable(exe, prog, loss, loader)
+                >>> else:
+                ...     train_non_iterable(exe, prog, loss, loader)
 
             .. code-block:: python
+                :name: example_2
 
-                '''
-                Example in static graph mode
-                '''
-                import numpy as np
+                >>> # Example in dynamic graph mode.
 
-                import paddle
-                import paddle.static as static
-                import paddle.nn.functional as F
+                >>> import numpy as np
 
+                >>> import paddle
+                >>> import paddle.nn as nn
+                >>> import paddle.optimizer as opt
+                >>> import paddle.distributed as dist
 
-                BATCH_NUM = 10
-                BATCH_SIZE = 16
-                EPOCH_NUM = 4
+                >>> BATCH_SIZE = 16
+                >>> BATCH_NUM = 4
+                >>> EPOCH_NUM = 4
 
-                CLASS_NUM = 10
+                >>> IMAGE_SIZE = 784
+                >>> CLASS_NUM = 10
 
-                ITERABLE = True # whether the created DataLoader object is iterable
-                USE_GPU = False # whether to use GPU
+                >>> USE_GPU = False # whether to use GPU
 
-                DATA_FORMAT = 'batch_generator' # data format of data source user provides
+                >>> def _get_random_images_and_labels(image_shape):
+                ...         image = np.random.random(size=image_shape).astype('float32')
+                ...         label = np.random.randint(0, CLASS_NUM, size=BATCH_SIZE).astype('int64')
+                ...         return image, label
+                ...
+                >>> def __reader__():
+                ...         for _ in range(BATCH_NUM):
+                ...             batch_image, batch_label = _get_random_images_and_labels(
+                ...                 [BATCH_SIZE, IMAGE_SIZE])
+                ...             yield batch_image, batch_label
+                ...
+                >>> def random_batch_reader():
+                ...     return __reader__
+                ...
+                >>> class LinearNet(nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+                ...
+                ...     @paddle.jit.to_static
+                ...     def forward(self, x):
+                ...         return self._linear(x)
+                ...
+                >>> # set device
+                >>> paddle.set_device('gpu' if USE_GPU else 'cpu')
 
-                paddle.enable_static()
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
+                >>> # create network
+                >>> layer = LinearNet()
+                >>> dp_layer = paddle.DataParallel(layer)
+                >>> loss_fn = nn.CrossEntropyLoss()
+                >>> adam = opt.Adam(learning_rate=0.001, parameters=dp_layer.parameters())
 
-                def simple_net(image, label):
-                    fc_tmp = static.nn.fc(image, size=CLASS_NUM)
-                    cross_entropy = F.softmax_with_cross_entropy(image, label)
-                    loss = paddle.mean(cross_entropy)
-                    sgd = paddle.optimizer.SGD(learning_rate=1e-3)
-                    sgd.minimize(loss)
-                    return loss
+                >>> # create data loader
+                >>> loader = paddle.base.io.DataLoader.from_generator(capacity=5)
+                >>> loader.set_batch_generator(random_batch_reader())
 
-                def get_random_images_and_labels(image_shape, label_shape):
-                    image = np.random.random(size=image_shape).astype('float32')
-                    label = np.random.random(size=label_shape).astype('int64')
-                    return image, label
-
-                # If the data generator yields one sample each time,
-                # use DataLoader.set_sample_generator to set the data source.
-                def sample_generator_creator():
-                    def __reader__():
-                        for _ in range(BATCH_NUM * BATCH_SIZE):
-                            image, label = get_random_images_and_labels([784], [1])
-                            yield image, label
-
-                    return __reader__
-
-                # If the data generator yield list of samples each time,
-                # use DataLoader.set_sample_list_generator to set the data source.
-                def sample_list_generator_creator():
-                    def __reader__():
-                        for _ in range(BATCH_NUM):
-                            sample_list = []
-                            for _ in range(BATCH_SIZE):
-                                image, label = get_random_images_and_labels([784], [1])
-                                sample_list.append([image, label])
-
-                            yield sample_list
-
-                    return __reader__
-
-                # If the data generator yields a batch each time,
-                # use DataLoader.set_batch_generator to set the data source.
-                def batch_generator_creator():
-                    def __reader__():
-                        for _ in range(BATCH_NUM):
-                            batch_image, batch_label = get_random_images_and_labels([BATCH_SIZE, 784], [BATCH_SIZE, 1])
-                            yield batch_image, batch_label
-
-                    return __reader__
-
-                # If DataLoader is iterable, use for loop to train the network
-                def train_iterable(exe, prog, loss, loader):
-                    for _ in range(EPOCH_NUM):
-                        for data in loader():
-                            exe.run(prog, feed=data, fetch_list=[loss])
-
-                # If DataLoader is not iterable, use start() and reset() method to control the process
-                def train_non_iterable(exe, prog, loss, loader):
-                    for _ in range(EPOCH_NUM):
-                        loader.start() # call DataLoader.start() before each epoch starts
-                        try:
-                            while True:
-                                exe.run(prog, fetch_list=[loss])
-                        except paddle.core.EOFException:
-                            loader.reset() # call DataLoader.reset() after catching EOFException
-
-                def set_data_source(loader, places):
-                    if DATA_FORMAT == 'sample_generator':
-                        loader.set_sample_generator(sample_generator_creator(), batch_size=BATCH_SIZE, drop_last=True, places=places)
-                    elif DATA_FORMAT == 'sample_list_generator':
-                        loader.set_sample_list_generator(sample_list_generator_creator(), places=places)
-                    elif DATA_FORMAT == 'batch_generator':
-                        loader.set_batch_generator(batch_generator_creator(), places=places)
-                    else:
-                        raise ValueError('Unsupported data format')
-
-                image = static.data(name='image', shape=[None, 784], dtype='float32')
-                label = static.data(name='label', shape=[None, 1], dtype='int64')
-
-                # Define DataLoader
-                loader = paddle.base.io.DataLoader.from_generator(feed_list=[image, label], capacity=16, iterable=ITERABLE)
-
-                # Define network
-                loss = simple_net(image, label)
-
-                places = static.cuda_places() if USE_GPU else static.cpu_places()
-                set_data_source(loader, places)
-
-                exe = static.Executor(places[0])
-                exe.run(static.default_startup_program())
-
-                prog = static.CompiledProgram(static.default_main_program())
-                if loader.iterable:
-                    train_iterable(exe, prog, loss, loader)
-                else:
-                    train_non_iterable(exe, prog, loss, loader)
-
-
-        Examples 2:
-
-            .. code-block:: python
-
-                '''
-                Example in dynamic graph mode.
-                '''
-                import numpy as np
-
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
-                import paddle.distributed as dist
-
-                BATCH_SIZE = 16
-                BATCH_NUM = 4
-                EPOCH_NUM = 4
-
-                IMAGE_SIZE = 784
-                CLASS_NUM = 10
-
-                USE_GPU = False # whether to use GPU
-
-                def _get_random_images_and_labels(image_shape, label_shape):
-                        image = np.random.random(size=image_shape).astype('float32')
-                        label = np.random.random(size=label_shape).astype('int64')
-                        return image, label
-
-                def __reader__():
-                        for _ in range(BATCH_NUM):
-                            batch_image, batch_label = _get_random_images_and_labels(
-                                [BATCH_SIZE, IMAGE_SIZE], [BATCH_SIZE, CLASS_NUM])
-                            yield batch_image, batch_label
-
-                def random_batch_reader():
-                    return __reader__
-
-                class LinearNet(nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
-                    @paddle.jit.to_static
-                    def forward(self, x):
-                        return self._linear(x)
-
-                # set device
-                paddle.set_device('gpu' if USE_GPU else 'cpu')
-
-                # create network
-                layer = LinearNet()
-                dp_layer = paddle.DataParallel(layer)
-                loss_fn = nn.CrossEntropyLoss()
-                adam = opt.Adam(learning_rate=0.001, parameters=dp_layer.parameters())
-
-                # create data loader
-                loader = paddle.base.io.DataLoader.from_generator(capacity=5)
-                loader.set_batch_generator(random_batch_reader())
-
-                for epoch_id in range(EPOCH_NUM):
-                    for batch_id, (image, label) in enumerate(loader()):
-                        out = layer(image)
-                        loss = loss_fn(out, label)
-
-                        loss.backward()
-
-                        adam.step()
-                        adam.clear_grad()
-                        print("Epoch {} batch {}: loss = {}".format(
-                            epoch_id, batch_id, np.mean(loss.numpy())))
-
+                >>> for epoch_id in range(EPOCH_NUM):
+                ...     for batch_id, (image, label) in enumerate(loader()):
+                ...         out = layer(image)
+                ...         loss = loss_fn(out, label)
+                ...
+                ...         loss.backward()
+                ...
+                ...         adam.step()
+                ...         adam.clear_grad()
+                ...         print("Epoch {} batch {}: loss = {}".format(
+                ...             epoch_id, batch_id, np.mean(loss.numpy())))
+                ...
+                >>> # doctest: -SKIP
         """
         if in_dygraph_mode():
             return DygraphGeneratorLoader(
@@ -534,7 +532,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         # NOTE: the C++ LoDTensorBlockingQueue instance
         self._blocking_queue = None
         # NOTE: 1. In multiprocess mode, this thread is used to get next batch data from
-        # self._data_queue, then push it into self._blocking_queue; 2. In singleprocess
+        # self._data_queue, then push it into self._blocking_queue; 2. In single process
         # mode, this thread is used to get next batch data from self._batch_reader, then
         # push it into self._blocking_queue
         self._thread = None
@@ -618,7 +616,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # or just hang, the main process will hang waiting for data, so here need to deal
             # with SIGSEGV and SIGBUS of child process; 2. if the main process end before child
             # process, it shuts the all its daemonic children down with a SIGTERM (instead of
-            # joining them without a timeout), so here nedd to deal with SIGTERM.
+            # joining them without a timeout), so here need to deal with SIGTERM.
             core._set_process_pids(id(self), [self._process.pid])
             _set_SIGCHLD_handler()
 
@@ -1104,7 +1102,7 @@ class GeneratorLoader(DataLoaderBase):
         else:
             if places is not None:
                 logging.info(
-                    'places would be ommited when DataLoader is not iterable'
+                    'places would be omitted when DataLoader is not iterable'
                 )
         return self
 
@@ -1154,6 +1152,7 @@ class PyReader(DataLoaderBase):
            the reader manually.
 
         .. code-block:: python
+            :name: example_1
 
             >>> import paddle
             >>> import paddle.base as base
@@ -1172,7 +1171,7 @@ class PyReader(DataLoaderBase):
             ...         input=predict, label=label,
             ...         reduction='none', use_softmax=False
             ...     )
-            ...
+
             >>> def reader_creator_random_image_and_label(height, width):
             ...     def reader():
             ...         for i in range(ITER_NUM):
@@ -1182,14 +1181,14 @@ class PyReader(DataLoaderBase):
             ...             fake_label = np.ones([1])
             ...             yield fake_image, fake_label
             ...     return reader
-            ...
+
             >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
 
             >>> reader = base.io.PyReader(feed_list=[image, label],
             ...                             capacity=4,
             ...                             iterable=False)
-            ...
+
             >>> user_defined_reader = reader_creator_random_image_and_label(784, 784)
             >>> reader.decorate_sample_list_generator(
             ...     paddle.batch(user_defined_reader, batch_size=BATCH_SIZE))
@@ -1204,7 +1203,6 @@ class PyReader(DataLoaderBase):
             ...         except base.core.EOFException:
             ...             reader.reset()
             ...             break
-            ...
 
         2. If iterable=True, the created PyReader object is decoupled with
            the program. No operator would be inserted into the program.
@@ -1213,6 +1211,7 @@ class PyReader(DataLoaderBase):
            object into :code:`Executor.run(feed=...)`.
 
         .. code-block:: python
+            :name: example_2
 
             >>> import paddle
             >>> import paddle.base as base
@@ -1231,7 +1230,7 @@ class PyReader(DataLoaderBase):
             ...         input=predict, label=label,
             ...         reduction='none', use_softmax=False
             ...     )
-            ...
+
             >>> def reader_creator_random_image(height, width):
             ...     def reader():
             ...         for i in range(ITER_NUM):
@@ -1239,7 +1238,7 @@ class PyReader(DataLoaderBase):
             ...             fake_label = np.ones([1])
             ...             yield fake_image, fake_label
             ...     return reader
-            ...
+
             >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True, return_list=False)
@@ -1248,7 +1247,7 @@ class PyReader(DataLoaderBase):
             >>> reader.decorate_sample_list_generator(
             ...     paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
             ...         base.core.CPUPlace())
-            ...
+
             >>> loss = network(image, label)
             >>> executor = base.Executor(base.CPUPlace())
             >>> executor.run(base.default_startup_program())
@@ -1256,12 +1255,12 @@ class PyReader(DataLoaderBase):
             >>> for _ in range(EPOCH_NUM):
             ...     for data in reader():
             ...         executor.run(feed=data, fetch_list=[loss])
-            ...
 
         3. If return_list=True, the return values would be presented as list instead of dict.
            This is usually used in dygraph mode.
 
         .. code-block:: python
+            :name: example_3
 
             >>> import paddle
             >>> import paddle.base as base
@@ -1276,7 +1275,7 @@ class PyReader(DataLoaderBase):
             ...             yield np.random.uniform(low=0, high=255, size=[height, width]), \
             ...                 np.random.random_integers(low=0, high=9, size=[1])
             ...     return reader
-            ...
+
             >>> place = base.CPUPlace()
             >>> with base.dygraph.guard(place):
             ...     py_reader = base.io.PyReader(capacity=2, return_list=True)
@@ -1333,12 +1332,12 @@ class PyReader(DataLoaderBase):
                 >>> def generator():
                 ...     for i in range(5):
                 ...         yield np.random.uniform(low=0, high=255, size=[784, 784]),
-                ...
+
                 >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 >>> reader = base.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 >>> reader.decorate_sample_list_generator(
                 ...     paddle.batch(generator, batch_size=BATCH_SIZE))
-                ...
+
                 >>> executor = base.Executor(base.CPUPlace())
                 >>> executor.run(base.default_startup_program())
                 >>> for i in range(3):
@@ -1349,7 +1348,6 @@ class PyReader(DataLoaderBase):
                 ...         except base.core.EOFException:
                 ...             reader.reset()
                 ...             break
-                ...
         '''
         self._loader.start()
 
@@ -1372,12 +1370,12 @@ class PyReader(DataLoaderBase):
                 >>> def generator():
                 ...     for i in range(5):
                 ...         yield np.random.uniform(low=0, high=255, size=[784, 784]),
-                ...
+
                 >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 >>> reader = base.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 >>> reader.decorate_sample_list_generator(
                 ...     paddle.batch(generator, batch_size=BATCH_SIZE))
-                ...
+
                 >>> executor = base.Executor(base.CPUPlace())
                 >>> executor.run(base.default_startup_program())
                 >>> for i in range(3):
@@ -1388,7 +1386,6 @@ class PyReader(DataLoaderBase):
                 ...         except base.core.EOFException:
                 ...             reader.reset()
                 ...             break
-                ...
         '''
         self._loader.reset()
 
@@ -1435,7 +1432,7 @@ class PyReader(DataLoaderBase):
                 ...         input=predict, label=label,
                 ...         reduction='none', use_softmax=False
                 ...     )
-                ...
+
                 >>> def random_image_and_label_generator(height, width):
                 ...     def generator():
                 ...         for i in range(ITER_NUM):
@@ -1445,7 +1442,7 @@ class PyReader(DataLoaderBase):
                 ...             fake_label = np.array([1])
                 ...             yield fake_image, fake_label
                 ...     return generator
-                ...
+
                 >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
@@ -1461,7 +1458,6 @@ class PyReader(DataLoaderBase):
                 >>> for _ in range(EPOCH_NUM):
                 ...     for data in reader():
                 ...         executor.run(feed=data, fetch_list=[loss])
-                ...
         '''
         self._loader.set_sample_generator(
             sample_generator, batch_size, drop_last, places
@@ -1502,7 +1498,7 @@ class PyReader(DataLoaderBase):
                 ...         input=predict, label=label,
                 ...         reduction='none', use_softmax=False
                 ...     )
-                ...
+
                 >>> def random_image_and_label_generator(height, width):
                 ...     def generator():
                 ...         for i in range(ITER_NUM):
@@ -1512,7 +1508,7 @@ class PyReader(DataLoaderBase):
                 ...             fake_label = np.ones([1])
                 ...             yield fake_image, fake_label
                 ...     return generator
-                ...
+
                 >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
@@ -1521,7 +1517,7 @@ class PyReader(DataLoaderBase):
                 >>> reader.decorate_sample_list_generator(
                 ...     paddle.batch(user_defined_generator, batch_size=BATCH_SIZE),
                 ...     base.core.CPUPlace())
-                ...
+
                 >>> loss = network(image, label)
                 >>> executor = base.Executor(base.core.CPUPlace())
                 >>> executor.run(base.default_startup_program())
@@ -1529,7 +1525,6 @@ class PyReader(DataLoaderBase):
                 >>> for _ in range(EPOCH_NUM):
                 ...     for data in reader():
                 ...         executor.run(feed=data, fetch_list=[loss])
-                ...
         '''
         self._loader.set_sample_list_generator(reader, places)
 
@@ -1568,7 +1563,7 @@ class PyReader(DataLoaderBase):
                 ...         input=predict, label=label,
                 ...         reduction='none', use_softmax=False
                 ...     )
-                ...
+
                 >>> def random_image_and_label_generator(height, width):
                 ...     def generator():
                 ...         for i in range(ITER_NUM):
@@ -1580,7 +1575,7 @@ class PyReader(DataLoaderBase):
                 ...             batch_label = batch_label.astype('int64')
                 ...             yield batch_image, batch_label
                 ...     return generator
-                ...
+
                 >>> image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
@@ -1595,7 +1590,6 @@ class PyReader(DataLoaderBase):
                 >>> for _ in range(EPOCH_NUM):
                 ...     for data in reader():
                 ...         executor.run(feed=data, fetch_list=[loss])
-                ...
         '''
         self._loader.set_batch_generator(reader, places)
 
@@ -1623,9 +1617,7 @@ class DatasetLoader(DataLoaderBase):
 
         if dataset.thread_num != 0 and dataset.thread_num != thread_num:
             logging.warn(
-                'thread_num {} which is set in Dataset is ignored'.format(
-                    dataset.thread_num
-                )
+                f'thread_num {dataset.thread_num} which is set in Dataset is ignored'
             )
 
         dataset._set_thread(thread_num)
@@ -1637,9 +1629,7 @@ class DatasetLoader(DataLoaderBase):
             and dataset.queue_num > thread_num
         ):
             logging.warn(
-                "queue_num {} which is set in Dataset is ignored".format(
-                    dataset.queue_num
-                )
+                f"queue_num {dataset.queue_num} which is set in Dataset is ignored"
             )
             dataset._set_queue_num(thread_num)
 

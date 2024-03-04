@@ -26,7 +26,7 @@ void PadGradKernel(const Context& dev_ctx,
                    DenseTensor* d_x) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<int> pad_left, pad_right;
-  std::vector<int> out_shape = vectorize<int>(d_out.dims());
+  std::vector<int> out_shape = common::vectorize<int>(d_out.dims());
   dev_ctx.template Alloc<T>(d_x);
 
   for (size_t i = 0; i < paddings.size() / 2; ++i) {

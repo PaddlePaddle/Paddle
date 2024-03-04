@@ -24,7 +24,7 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using common::Type;
+using cinn::common::Type;
 using framework::Graph;
 using framework::Node;
 using framework::NodeData;

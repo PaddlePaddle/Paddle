@@ -21,9 +21,11 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
+    @test_with_pir_api
     def test_main(self):
         dtypes = ['uint8', 'int8', 'int16', 'int32', 'int64']
         if paddle.in_dynamic_mode():
@@ -46,6 +48,8 @@ class TestStaticGraphSupportMultipleInt(unittest.TestCase):
 class TestLookupTableOp(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.nn.functional.embedding
         self.python_api = paddle.nn.functional.embedding
         self.init_dtype()
 
@@ -62,7 +66,7 @@ class TestLookupTableOp(OpTest):
         return "int64"
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -70,7 +74,7 @@ class TestLookupTableOp(OpTest):
             'Out',
             no_grad_set=set('Ids'),
             check_cinn=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -92,6 +96,8 @@ class TestLookupTableOpUInt8(OpTest):
 class TestLookupTableOpWithTensorIds(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.nn.functional.embedding
         self.python_api = paddle.nn.functional.embedding
         table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype("int32")
@@ -99,7 +105,7 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -107,7 +113,7 @@ class TestLookupTableOpWithTensorIds(OpTest):
             'Out',
             no_grad_set=set('Ids'),
             check_cinn=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -122,7 +128,7 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         padding_idx = np.random.choice(ids, 1)[0]
         self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True, check_prim_pir=True)
 
 
 @skip_check_grad_ci(
@@ -137,7 +143,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': padding_idx}
-        self.check_output(check_cinn=True, check_new_ir=True)
+        self.check_output(check_cinn=True, check_pir=True, check_prim_pir=True)
 
 
 class TestLookupTableWIsSelectedRows(unittest.TestCase):
@@ -320,6 +326,8 @@ class TestEmbedOpError(unittest.TestCase):
 class TestEmbeddingFP16OP(TestLookupTableOp):
     def setUp(self):
         self.op_type = "lookup_table_v2"
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.nn.functional.embedding
         self.python_api = paddle.nn.functional.embedding
         self.init_dtype()
 
@@ -336,11 +344,13 @@ class TestEmbeddingFP16OP(TestLookupTableOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestEmbeddingBF16OP(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.nn.functional.embedding
         self.python_api = paddle.nn.functional.embedding
         self.dtype = np.uint16
 
@@ -355,7 +365,9 @@ class TestEmbeddingBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=True, check_new_ir=True)
+        self.check_output_with_place(
+            place, check_cinn=True, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -365,7 +377,7 @@ class TestEmbeddingBF16OP(OpTest):
             'Out',
             no_grad_set=set('Ids'),
             check_cinn=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 

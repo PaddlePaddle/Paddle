@@ -62,7 +62,6 @@ USE_OP_ITSELF(sgd);
 USE_OP_ITSELF(squared_l2_norm);
 USE_OP_ITSELF(memcpy_h2d);
 USE_OP_ITSELF(memcpy_d2h);
-USE_OP_ITSELF(fetch_v2);
 
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform_raw, GPU, ALL_LAYOUT);
@@ -75,7 +74,6 @@ PD_DECLARE_KERNEL(concat_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_raw, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(divide, KPS, ALL_LAYOUT);
@@ -116,7 +114,7 @@ ProgramDesc load_from_file(const std::string& file_name) {
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
-  fin.read(&buffer[0], buffer.size());
+  fin.read(&buffer[0], buffer.size());  // NOLINT
   fin.close();
   ProgramDesc program_desc(buffer);
   return program_desc;
@@ -147,25 +145,28 @@ ProgramDesc GetLmMainProgram() {
 
 TEST(StandaloneExecutor, run) {
   auto place = platform::CUDAPlace(0);
-  ProgramDesc startup_prog = load_from_file("lm_startup_program");
-  ProgramDesc main_prog = GetLmMainProgram();
+  std::shared_ptr<ProgramDesc> p_startup_prog =
+      std::make_shared<ProgramDesc>(load_from_file("lm_startup_program"));
+  std::shared_ptr<ProgramDesc> p_main_prog =
+      std::make_shared<ProgramDesc>(GetLmMainProgram());
 
   Scope scope;
   std::shared_ptr<Job> startup_job = std::make_shared<Job>(Job("startup"));
   StandaloneExecutor startup_exec(
       place,
       Plan(std::vector<std::shared_ptr<Job>>({startup_job}),
-           std::unordered_map<std::string, ProgramDesc*>(
-               {{startup_job->Type(), &startup_prog}})),
+           std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>(
+               {{startup_job->Type(), p_startup_prog}})),
       &scope);
   startup_exec.Run({});
 
   std::shared_ptr<Job> main_job = std::make_shared<Job>(Job("main"));
-  StandaloneExecutor exec(place,
-                          Plan(std::vector<std::shared_ptr<Job>>({main_job}),
-                               std::unordered_map<std::string, ProgramDesc*>(
-                                   {{main_job->Type(), &main_prog}})),
-                          &scope);
+  StandaloneExecutor exec(
+      place,
+      Plan(std::vector<std::shared_ptr<Job>>({main_job}),
+           std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>(
+               {{main_job->Type(), p_main_prog}})),
+      &scope);
   exec.Run({});
   auto start = std::chrono::steady_clock::now();
 
@@ -283,17 +284,17 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   add->SetInput("Y", {"b"});
   add->SetOutput("Out", {"c"});
 
-  float data_a[] = {0, 1, 2, 3};
-  float data_b[] = {0.0, 0.1, 0.2, 0.3};
+  std::array<float, 4> data_a = {0, 1, 2, 3};
+  std::array<float, 4> data_b = {0.0, 0.1, 0.2, 0.3};
 
-  phi::DDim dims = phi::make_ddim({2, 2});
+  phi::DDim dims = common::make_ddim({2, 2});
   const platform::CPUPlace place = platform::CPUPlace();
 
   phi::DenseTensor tensor_a = phi::DenseTensor();
   phi::DenseTensor tensor_b = phi::DenseTensor();
 
-  std::copy_n(data_a, 4, tensor_a.mutable_data<float>(dims, place));
-  std::copy_n(data_b, 4, tensor_b.mutable_data<float>(dims, place));
+  std::copy_n(data_a.data(), 4, tensor_a.mutable_data<float>(dims, place));
+  std::copy_n(data_b.data(), 4, tensor_b.mutable_data<float>(dims, place));
 
   TestShareWorkQueue(
       program, {"a", "b"}, {tensor_a, tensor_b}, {"c"}, {0.0, 1.1, 2.2, 3.3});

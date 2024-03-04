@@ -69,7 +69,7 @@ class Converter:
         if not isinstance(pre_strategy, dict):
             raise TypeError(
                 "The type of 'pre_strategy' should be 'dict', "
-                "but got '{}'.".format(str(type(pre_strategy)))
+                f"but got '{str(type(pre_strategy))}'."
             )
         return pre_strategy
 
@@ -82,7 +82,7 @@ class Converter:
         if not isinstance(cur_strategy, dict):
             raise TypeError(
                 "The type of 'cur_strategy' should be 'dict', "
-                "but got '{}'.".format(str(type(cur_strategy)))
+                f"but got '{str(type(cur_strategy))}'."
             )
         return cur_strategy
 
@@ -105,9 +105,9 @@ class Converter:
                 >>> import numpy as np
                 >>> from paddle.distributed.auto_parallel.static.converter import Converter
                 >>> complete_tensors = np.arange(4).reshape([2, 2])
-                >>> partitial_tensors = np.split(complete_tensors, 2, axis=0)
+                >>> partial_tensors = np.split(complete_tensors, 2, axis=0)
                 >>> name = "tmp_0"
-                >>> tensors_dict = {name: partitial_tensors}
+                >>> tensors_dict = {name: partial_tensors}
                 >>> strategy_1 = {
                 ...     name: {
                 ...         "process_shape": [2],
@@ -229,9 +229,7 @@ class Converter:
                                 + str(err)
                             )
                         self._logger.info(
-                            "tensor [{}] is matched with tensor [{}]".format(
-                                cur_name, pre_name
-                            )
+                            f"tensor [{cur_name}] is matched with tensor [{pre_name}]"
                         )
                         tensor_match_with_pre.append(cur_name)
                         tensor_match_with_cur.append(pre_name)
@@ -259,7 +257,10 @@ class Converter:
         else:
             pre_dims_mapping = pre_dist_attr["dims_mapping"]
             cur_dims_mapping = cur_dist_attr["dims_mapping"]
-            if len(set(pre_dims_mapping)) > 1 or -1 not in pre_dims_mapping:
+
+            if len(pre_dims_mapping) and (
+                len(set(pre_dims_mapping)) > 1 or -1 not in pre_dims_mapping
+            ):
                 # merge tensor
                 tensor = Converter.merge_with_dist_attr(
                     tensor_list, pre_dist_attr
@@ -268,7 +269,9 @@ class Converter:
                 # skip merge tensor
                 tensor = tensor_list[0]
 
-            if len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping:
+            if len(cur_dims_mapping) and (
+                len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping
+            ):
                 # slice tensor
                 tensor = Converter.slice_with_dist_attr(tensor, cur_dist_attr)
 
@@ -288,7 +291,7 @@ class Converter:
         )
         # merge the tensor with dist_attr
         partition_tensor_list = []
-        merged_partiton = []
+        merged_partition = []
         for process in process_group:
             partition_index = Resharder.compute_partition_index(
                 process,
@@ -298,8 +301,8 @@ class Converter:
                 process_group,
             )
             index = process_group.index(process)
-            if partition_index not in merged_partiton:
-                merged_partiton.append(partition_index)
+            if partition_index not in merged_partition:
+                merged_partition.append(partition_index)
                 Converter.merge(
                     partition_tensor_list,
                     tensor_list[index],
@@ -309,9 +312,7 @@ class Converter:
 
         if len(partition_tensor_list) != 1:
             raise ValueError(
-                "Fail to merge tensor with dist_attr '{}'.".format(
-                    str(dist_attr)
-                )
+                f"Fail to merge tensor with dist_attr '{str(dist_attr)}'."
             )
         complete_tensor = partition_tensor_list[0][0]
         return complete_tensor
@@ -336,9 +337,7 @@ class Converter:
         )
         if sliced_tensor_index not in range(len(sliced_tensor_list)):
             raise ValueError(
-                "Fail to slice tensor with dist_attr '{}'.".format(
-                    str(dist_attr)
-                )
+                f"Fail to slice tensor with dist_attr '{str(dist_attr)}'."
             )
         sliced_tensor = sliced_tensor_list[sliced_tensor_index]
         return sliced_tensor
@@ -346,7 +345,7 @@ class Converter:
     @staticmethod
     def merge(partition_tensor_list, tensor, partition_index, complete_shape):
         """
-        Merge partitial tensors to a complete.
+        Merge partial tensors to a complete.
 
         Returns:
             None

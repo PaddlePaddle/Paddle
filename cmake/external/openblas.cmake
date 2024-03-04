@@ -19,12 +19,16 @@ set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 set(CBLAS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
 set(CBLAS_TAG v0.3.7)
 
-# OpenBLAS support Raptor Lake from v0.3.22
-if(UNIX
-   AND NOT APPLE
-   AND NOT WITH_ROCM
+# Why use v0.3.18?  The IDG business line encountered a random openblas error,
+# which can be resolved after upgrading openblas.
+# And why compile when gcc>8.2? Please refer to
+# https://github.com/spack/spack/issues/19932#issuecomment-733452619
+# v0.3.18 only support gcc>=8.3 or gcc>=7.4
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 8.2
    AND NOT WITH_XPU)
-  set(CBLAS_TAG v0.3.23)
+  # We only compile with openblas 0.3.18 when gcc >= 8.3
+  set(CBLAS_TAG v0.3.18)
 endif()
 
 if(APPLE AND WITH_ARM)
@@ -42,9 +46,8 @@ endif()
 file(GLOB CBLAS_SOURCE_FILE_LIST ${CBLAS_SOURCE_DIR})
 list(LENGTH CBLAS_SOURCE_FILE_LIST RES_LEN)
 if(RES_LEN EQUAL 0)
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} clone -b ${CBLAS_TAG}
-            "https://github.com/xianyi/OpenBLAS.git" ${CBLAS_SOURCE_DIR})
+  execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${CBLAS_TAG}
+                          "${GIT_URL}/xianyi/OpenBLAS.git" ${CBLAS_SOURCE_DIR})
 else()
   # check git tag
   execute_process(

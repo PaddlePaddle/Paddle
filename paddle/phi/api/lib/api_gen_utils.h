@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -139,25 +140,53 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
 phi::distributed::DistMetaTensor MakeDistMetaTensor(
     const phi::TensorBase& tensor);
 
+std::vector<phi::distributed::DistMetaTensor> MakeDistMetaTensor(
+    const std::vector<const phi::TensorBase*>& tensors);
+
 phi::distributed::DistTensor* SetKernelDistOutput(
     Tensor* out,
-    const phi::distributed::TensorDistAttr& dist_attr =
+    const phi::distributed::ArgDistAttr& dist_attr =
         phi::distributed::TensorDistAttr());
 
-std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
-    const phi::distributed::TensorDistAttr& dist_attr);
-
+// For backward
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     std::vector<Tensor*> out);
 
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     size_t out_size, std::vector<Tensor>* out);
 
-std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
-    size_t out_size, std::vector<Tensor>* out);
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
+    const phi::distributed::ArgDistAttr& dist_attr, std::vector<Tensor>* out);
 
-std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
-    size_t out_size, paddle::optional<std::vector<Tensor>> out);
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out,
+    bool set_dist_output_as_tensor_impl,
+    const phi::distributed::TensorDistAttr& dist_attr);
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out,
+    bool set_dist_output_as_tensor_impl,
+    const phi::distributed::ArgDistAttr& dist_attr =
+        phi::distributed::TensorDistAttr());
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+CreateKernelDistOutput(std::vector<Tensor*> out,
+                       bool set_dist_output_as_tensor_impl,
+                       const phi::distributed::ArgDistAttr& dist_attr);
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+CreateKernelDistOutput(std::vector<Tensor*> out,
+                       bool set_dist_output_as_tensor_impl);
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr);
+
+// DistTensor need to set initial dist attr after the dims setted, it is
+// constructed based dims and current process mesh, before calling this
+// function, the out should hold correct dims
+void SetReplicatedDistAttrForOutput(
+    phi::distributed::DistTensor* out,
+    const phi::distributed::ProcessMesh& process_mesh);
 
 }  // namespace experimental
 }  // namespace paddle

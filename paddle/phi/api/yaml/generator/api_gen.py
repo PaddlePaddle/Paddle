@@ -165,6 +165,29 @@ class ForwardAPI(BaseAPI):
                 ]
             return 'return std::make_tuple(' + ", ".join(selected_code) + ');'
 
+    def gene_fallback_code_after_gene_output_of_vector(
+        self, code_indent, output_idx, is_inplace, is_optional
+    ):
+        fallback_code = ""
+        if is_inplace and is_optional:
+            fallback_code = f"""
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    for (size_t i = 0; i < kernel_out_{output_idx}.size(); ++i) {{
+{code_indent}      kernel_out_{output_idx}[i] = const_cast<phi::DenseTensor*>({PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][output_idx]]}->at(i));
+{code_indent}    }}
+{code_indent}  }}"""
+        elif is_inplace:
+            fallback_code = f"""
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    for (size_t i = 0; i < kernel_out_{output_idx}.size(); ++i) {{
+{code_indent}      kernel_out_{output_idx}[i] = const_cast<phi::DenseTensor*>({PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][output_idx]]}[i]);
+{code_indent}    }}
+{code_indent}  }}"""
+        else:
+            fallback_code = ""
+
+        return fallback_code
+
     def gene_output(
         self,
         out_dtype_list,
@@ -271,11 +294,29 @@ class ForwardAPI(BaseAPI):
                                 "SetInplaceOptionalVectorKernelOutput"
                             )
                             get_out_code = f"std::get<{i}>(api_output)"
-                    output_create = (
-                        output_create
-                        + f"""
+                            output_create = (
+                                output_create
+                                + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
-                    )
+                                + self.gene_fallback_code_after_gene_output_of_vector(
+                                    code_indent, i, True, True
+                                )
+                            )
+                        else:
+                            output_create = (
+                                output_create
+                                + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+                                + self.gene_fallback_code_after_gene_output_of_vector(
+                                    code_indent, i, True, False
+                                )
+                            )
+                    else:
+                        output_create = (
+                            output_create
+                            + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+                        )
 
                 else:
                     output_create = (
@@ -305,9 +346,7 @@ class ForwardAPI(BaseAPI):
                         )
         else:
             raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
+                f"{self.api} : Output error: the output should not be empty."
             )
 
         return kernel_output, output_names, output_create
@@ -360,7 +399,7 @@ def source_include(header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -375,16 +414,18 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/infermeta/fusion.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #endif
 
 PD_DECLARE_bool(conv2d_disable_cudnn);
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -407,6 +448,9 @@ def declare_extension_api():
     return """
 namespace paddle {
 PD_DECLARE_API(from_blob);
+#ifdef PADDLE_WITH_DISTRIBUTE
+PD_DECLARE_API(reshard);
+#endif
 }  // namespace paddle
 """
 
@@ -450,12 +494,18 @@ def generate_api(
     source_file.write(namespace[0])
 
     for api in apis:
-        foward_api = ForwardAPI(api)
-        if foward_api.is_dygraph_api:
-            foward_api.is_dygraph_api = False
+        forward_api = ForwardAPI(api)
+        if forward_api.is_dygraph_api and not is_fused_ops_yaml:
+            forward_api.is_dygraph_api = False
 
-        header_file.write(foward_api.gene_api_declaration())
-        source_file.write(foward_api.gene_api_code())
+        if forward_api.is_dygraph_api and is_fused_ops_yaml:
+            forward_api.is_dygraph_api = False
+            header_file.write(forward_api.gene_api_declaration())
+            source_file.write(forward_api.gene_api_code())
+            forward_api.is_dygraph_api = True
+
+        header_file.write(forward_api.gene_api_declaration())
+        source_file.write(forward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

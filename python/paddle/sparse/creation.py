@@ -155,9 +155,7 @@ def sparse_coo_tensor(
             shape = list(shape)
             if shape < min_shape:
                 raise ValueError(
-                    "the minimun shape required is {}, but get {}".format(
-                        min_shape, shape
-                    )
+                    f"the minimum shape required is {min_shape}, but get {shape}"
                 )
             if len(shape) != sparse_dim + dense_dim:
                 raise ValueError(
@@ -190,7 +188,7 @@ def sparse_csr_tensor(
     r"""
     Constructs a sparse ``paddle.Tensor`` in CSR(Compressed Sparse Row) format according to the
     ``crows``, ``cols`` and ``values``.
-    Currently, the crows and cols of each batch must be incrementd.
+    Currently, the crows and cols of each batch must be incremented.
 
     Args:
         crows(list|tuple|ndarray|Tensor): 1-D array, each element in the rows represents the
@@ -247,9 +245,7 @@ def sparse_csr_tensor(
 
     if len(shape) != 2 and len(shape) != 3:
         raise ValueError(
-            "SparseCsrTensor only support 2-D or 3-D matrix. but get shape {}".format(
-                shape
-            )
+            f"SparseCsrTensor only support 2-D or 3-D matrix. but get shape {shape}"
         )
     rows = shape[len(shape) - 2]
 

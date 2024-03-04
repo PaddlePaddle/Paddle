@@ -14,14 +14,14 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/verify.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/verify.h"
 
 TEST(ir_op_info_test, op_op_info_test) {
   pir::IrContext* context = pir::IrContext::Instance();
@@ -32,15 +32,15 @@ TEST(ir_op_info_test, op_op_info_test) {
   builder.Build<pir::ConstantOp>(pir::Int32Attribute::get(context, 5),
                                  pir::Int32Type::get(context));
 
-  pir::Operation* op = block->back();
+  auto& op = block->back();
 
-  EXPECT_EQ(block->end(), ++pir::Block::Iterator(*op));
+  EXPECT_EQ(block->end(), ++pir::Block::Iterator(op));
 
   auto& info_map = context->registered_op_info_map();
   EXPECT_FALSE(info_map.empty());
 
-  void* info_1 = op->info().AsOpaquePointer();
-  auto info_2 = pir::OpInfo::RecoverFromOpaquePointer(info_1);
-  EXPECT_EQ(op->info(), info_2);
+  void* info_1 = op.info();
+  auto info_2 = pir::OpInfo::RecoverFromVoidPointer(info_1);
+  EXPECT_EQ(op.info(), info_2);
   pir::Verify(program.module_op());
 }

@@ -59,7 +59,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
       paddle::platform::errors::PreconditionNotMet(
           "No tensor called [%s] in the runtime scope", name_));
   auto *tensor = var->GetMutable<phi::DenseTensor>();
-  tensor->Resize(phi::make_ddim(shape));
+  tensor->Resize(common::make_ddim(shape));
 }
 
 void Tensor::ReshapeStrings(const size_t &shape) {
@@ -115,7 +115,7 @@ T *Tensor::mutable_data(PlaceType place) {
       auto *dev_ctxs = reinterpret_cast<const std::map<
           phi::Place,
           std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-          device_contexs_);
+          device_contexts_);
       auto *dev_ctx =
           static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
       return dev_ctx->Alloc<T>(tensor, tensor->numel() * sizeof(T));
@@ -214,7 +214,7 @@ void Tensor::CopyFromCpu(const T *data) {
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place,
         std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        device_contexs_);
+        device_contexts_);
     auto *dev_ctx =
         static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     auto *t_data = dev_ctx->Alloc<T>(tensor, tensor->numel() * sizeof(T));
@@ -337,7 +337,7 @@ void Tensor::ShareExternalData(const T *data,
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()) *
       sizeof(T);
   phi::DenseTensorMeta meta(
-      DataTypeInfo<T>().TYPE, phi::make_ddim(shape), LayoutConvert(layout));
+      DataTypeInfo<T>().TYPE, common::make_ddim(shape), LayoutConvert(layout));
   if (place == PlaceType::kCPU) {
     phi::DenseTensor dtensor(
         std::make_shared<phi::Allocation>(
@@ -429,7 +429,7 @@ void Tensor::CopyToCpuImpl(T *data,
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place,
         std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        device_contexs_);
+        device_contexts_);
     auto *dev_ctx =
         static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -672,7 +672,7 @@ template PD_INFER_DECL bfloat16 *Tensor::mutable_data<bfloat16>(
 template PD_INFER_DECL bool *Tensor::mutable_data<bool>(PlaceType place);
 
 Tensor::Tensor(void *scope, const void *device_contexts)
-    : scope_{scope}, device_contexs_(device_contexts) {}
+    : scope_{scope}, device_contexts_(device_contexts) {}
 
 template <typename T>
 void *Tensor::FindTensor() const {
@@ -733,18 +733,19 @@ std::vector<int> Tensor::shape() const {
     // at last nhwC, so for dim==2 these layouts are the same and nothing should
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
-    if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
+    if (tensor->dims().size() < 3)
+      return common::vectorize<int>(tensor->dims());
     if (out_layout == phi::DataLayout::kNHWC ||
         out_layout == phi::DataLayout::kNDHWC) {
-      auto dims = phi::vectorize<int>(tensor->dims());
+      auto dims = common::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;
     } else {
-      return phi::vectorize<int>(tensor->dims());
+      return common::vectorize<int>(tensor->dims());
     }
   }
 #endif
-  return phi::vectorize<int>(tensor->dims());
+  return common::vectorize<int>(tensor->dims());
 }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {

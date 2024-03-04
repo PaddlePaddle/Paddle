@@ -74,13 +74,13 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
         )
 
@@ -165,13 +165,13 @@ def grad(outputs, inputs, grad_outputs=None):
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
         )
 
@@ -256,17 +256,17 @@ def to_prim(
         )
     if not isinstance(blacklist, (set, frozenset)):
         raise TypeError(
-            f'Expected type of blacklisst is set|frozenset, but got {type(blacklist)}.'
+            f'Expected type of blacklist is set|frozenset, but got {type(blacklist)}.'
         )
     if not isinstance(whitelist, (set, frozenset)):
         raise TypeError(
-            f'Expected type of whiltelist is set|frozenset, but got {type(whitelist)}.'
+            f'Expected type of whitelist is set|frozenset, but got {type(whitelist)}.'
         )
 
     blacklist = prim_config["forward_blacklist"] | blacklist
 
     with framework.program_guard(main_program):
-        print("Lowering composite forward ops begin...", flush=True)
+        logging.info("Lowering composite forward ops begin...")
 
         if len(blacklist) > 0 and len(whitelist) > 0:
             filter_ = lambda x: x.type in whitelist and x.type not in blacklist
@@ -283,6 +283,4 @@ def to_prim(
             backward_length=backward_length,
         )
         replace_ops = prim_config["composite_ops_record"]
-        print(
-            f"Lowering composite forward ops finish: {replace_ops}", flush=True
-        )
+        logging.info(f"Lowering composite forward ops finish: {replace_ops}")

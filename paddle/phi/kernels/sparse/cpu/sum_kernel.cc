@@ -44,10 +44,10 @@ void SumCooCPUKernel(const Context& dev_ctx,
   if (n_dim == 0) {
     std::vector<int64_t> out_indices_shape;
     if (keep_dim) {
-      out_dims = make_ddim(std::vector<int64_t>(x_dims.size(), 1));
+      out_dims = common::make_ddim(std::vector<int64_t>(x_dims.size(), 1));
       out_indices_shape = {sparse_dim, 1};
     } else {
-      out_dims = make_ddim({1});
+      out_dims = common::make_ddim({1});
       out_indices_shape = {1};
     }
     out_indices = Empty<IntT, Context>(dev_ctx, out_indices_shape);
@@ -70,7 +70,7 @@ void SumCooCPUKernel(const Context& dev_ctx,
       dims.emplace_back(1);
     }
   }
-  out_dims = make_ddim(dims);
+  out_dims = common::make_ddim(dims);
 
   if (dim >= sparse_dim) {
     out_indices = x_indices;
@@ -160,9 +160,9 @@ void SumCsrKernel(const Context& dev_ctx,
   DDim out_dims;
   if (n_dim == 0) {
     if (keep_dim && x.dims().size() == 3) {
-      out_dims = make_ddim({1, 1, 1});
+      out_dims = common::make_ddim({1, 1, 1});
     } else {
-      out_dims = make_ddim({1, 1});
+      out_dims = common::make_ddim({1, 1});
     }
     out_crows = Empty<int64_t, Context>(dev_ctx, {2});  // crows = [0, 1]
     auto* out_crows_data = out_crows.data<int64_t>();
@@ -184,7 +184,7 @@ void SumCsrKernel(const Context& dev_ctx,
     std::vector<T> out_data;
     if (x.dims().size() == 2) {
       out_crows_data[0] = 0;
-      out_dims = make_ddim({x.dims()[0], 1});
+      out_dims = common::make_ddim({x.dims()[0], 1});
       for (int i = 0; i < x.dims()[0]; ++i) {
         if (x_crows_data[i] != x_crows_data[i + 1]) {
           T sum_value = 0;
@@ -199,9 +199,9 @@ void SumCsrKernel(const Context& dev_ctx,
       }
     } else {
       if (keep_dim) {
-        out_dims = make_ddim({x.dims()[0], x.dims()[1], 1});
+        out_dims = common::make_ddim({x.dims()[0], x.dims()[1], 1});
       } else {
-        out_dims = make_ddim({x.dims()[0], x.dims()[1]});
+        out_dims = common::make_ddim({x.dims()[0], x.dims()[1]});
       }
       int j = 0;
       for (int batch = 0; batch < x.dims()[0]; ++batch) {

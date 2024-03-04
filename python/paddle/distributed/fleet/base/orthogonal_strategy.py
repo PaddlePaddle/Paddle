@@ -23,10 +23,10 @@ from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
 class OrthogonalStrategy:
     """
     A hybrid of multiple distributed strategies. Strategies need to be orthogonal, means the ranks are organized like
-    a square if there are two strategies, a cube if there aree three strategies, etc.
+    a square if there are two strategies, a cube if there are three strategies, etc.
 
     Args:
-        list_of_strategy(list): Stategy in the list should be represented as tuple, format as (strategy_name, degree, strategy_class).
+        list_of_strategy(list): Strategy in the list should be represented as tuple, format as (strategy_name, degree, strategy_class).
         fused_strategy_dict(dict, optional): Exist strategies can be fused to new strategy. Use the name of new strategy as key, a list of
             strategy names you want to fuse as value.
 
@@ -47,11 +47,16 @@ class OrthogonalStrategy:
 
     """
 
-    def __init__(self, list_of_strategy, fused_strategy_dict={}):
+    def __init__(
+        self, list_of_strategy, fused_strategy_dict={}, strategy_rank_list=None
+    ):
         self._list_of_strategy = list_of_strategy
         self._fused_strategy_dict = fused_strategy_dict
-        self._rank = dist.get_rank()
-        self._rank_list_dict = {}
+        self._strategy_rank_list = (
+            strategy_rank_list
+            if strategy_rank_list is not None
+            else list(range(dist.get_world_size()))
+        )
         self._name_to_group_dict = {}
         self._name_to_degree_dict = {}
         self._list_of_strategy_name = [
@@ -67,16 +72,17 @@ class OrthogonalStrategy:
         list_of_coord = [
             self._coordinate(*coord) for coord in itertools.product(*ranges)
         ]
+
         self._coord_to_rank_dict = dict(
-            zip(list_of_coord, range(len(list_of_coord)))
+            zip(list_of_coord, self._strategy_rank_list)
         )
 
         for idx, strategy in enumerate(list_of_strategy):
             strategy_name = strategy[0]
             self._name_to_degree_dict[strategy_name] = strategy[1]
-            self._rank_list_dict[strategy_name] = self._calc_rank_list(idx)
+            rank_list = self._calc_rank_list(idx)
             self._name_to_group_dict[strategy_name] = strategy[2](
-                self._rank_list_dict[strategy_name]
+                rank_list,
             )
 
         self._name_to_fused_group_dict = {}
@@ -130,24 +136,22 @@ class OrthogonalStrategy:
     def _check_valid_strategy(self):
         assert len(self._list_of_strategy_name) == len(
             set(self._list_of_strategy_name)
-        ), "Defined duplicated strategies: {}".format(
-            self._list_of_strategy_name
-        )
+        ), f"Defined duplicated strategies: {self._list_of_strategy_name}"
         num_of_ranks = functools.reduce(
             lambda x, y: x * y, self._list_of_degree
         )
-        assert (
-            num_of_ranks == dist.get_world_size()
+
+        assert num_of_ranks == len(
+            self._strategy_rank_list
         ), "There are total {} ranks, but need {} ranks in this strategy.".format(
-            dist.get_world_size(), num_of_ranks
+            len(self._strategy_rank_list), num_of_ranks
         )
+
         for fused_strategy in self._fused_strategy_dict.values():
             for strategy in fused_strategy:
                 assert (
                     strategy in self._list_of_strategy_name
-                ), "Can not fuse strategy {} without defined previous.".format(
-                    strategy
-                )
+                ), f"Can not fuse strategy {strategy} without defined previous."
 
     def _create_fused_group(self):
         for name in self._fused_strategy_dict:

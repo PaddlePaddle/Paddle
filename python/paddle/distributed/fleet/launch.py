@@ -115,8 +115,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--backend",
         type=str,
         default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
-        help="Specifize the backend, can be gloo|nccl|bkcl|auto|heter. "
-        "Default value is auto which perfers nccl or bkcl.",
+        help="Specify the backend, can be gloo|nccl|bkcl|auto|heter. "
+        "Default value is auto which prefers nccl or bkcl.",
     )
     base_group.add_argument(
         "--nproc_per_node",
@@ -274,9 +274,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
     node_rank = node_ips.index(node_ip)
 
     logger.debug(
-        "parsed from args: node_ips:{} node_ip:{} node_rank:{}".format(
-            node_ips, node_ip, node_rank
-        )
+        f"parsed from args: node_ips:{node_ips} node_ip:{node_ip} node_rank:{node_rank}"
     )
 
     free_ports = None
@@ -331,7 +329,7 @@ def get_cluster_info(args):
         )
     trainers_num = cloud_utils.get_trainers_num()
     logger.debug(
-        "parsed from args trainerss_num:{} mode:{} devices:{}".format(
+        "parsed from args trainers_num:{} mode:{} devices:{}".format(
             trainers_num, device_mode, devices_per_proc
         )
     )
@@ -348,7 +346,7 @@ def get_cluster_info(args):
     if args.enable_auto_mapping:
         assert (
             args.cluster_topo_path is not None
-        ), "The cluster topology must be provied when enabling auto mapping."
+        ), "The cluster topology must be provided when enabling auto mapping."
         rank_mapping_path = args.rank_mapping_path or os.getenv(
             "PADDLE_RANK_MAPPING_PATH"
         )

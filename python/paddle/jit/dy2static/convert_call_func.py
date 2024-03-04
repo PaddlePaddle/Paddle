@@ -18,7 +18,7 @@ import functools
 import inspect
 import logging
 import os
-import pdb
+import pdb  # noqa: T100
 import re
 from typing import Any, List
 
@@ -40,7 +40,7 @@ from .program_translator import (
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import is_builtin, is_paddle_func, unwrap
+from .utils import is_builtin, is_paddle_func
 
 __all__ = []
 
@@ -69,7 +69,7 @@ class ConversionOptions:
             setattr(func, CONVERSION_OPTIONS, self)
         else:
             translator_logger.warn(
-                "Only support @not_to_static to type(function) or type(method), but recevied {}".format(
+                "Only support @not_to_static to type(function) or type(method), but received {}".format(
                     type(func)
                 )
             )
@@ -124,9 +124,7 @@ def is_unsupported(func):
             if func is v:
                 translator_logger.log(
                     2,
-                    "Whitelist: {} is part of built-in module and does not have to be transformed.".format(
-                        func
-                    ),
+                    f"Whitelist: {func} is part of built-in module and does not have to be transformed.",
                 )
                 return True
 
@@ -142,9 +140,8 @@ def is_unsupported(func):
     if is_paddle_func(func):
         translator_logger.log(
             2,
-            "Whitelist: {} is part of Paddle module and does not have to be transformed.".format(
-                func
-            ),
+            "Whitelist: %s is part of Paddle module and does not have to be transformed.",
+            func,
         )
         return True
 
@@ -162,7 +159,7 @@ def convert_call(func):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
             >>> from paddle.jit.dy2static import Call
 
@@ -186,7 +183,7 @@ def convert_call(func):
              [1. 1. 1.]]
 
     """
-    translator_logger.log(1, f"Convert callable object: convert {func}.")
+    translator_logger.log(1, "Convert callable object: convert %s.", func)
     func_self = None
     converted_call = None
 
@@ -198,9 +195,8 @@ def convert_call(func):
     if options is not None and options.not_convert:
         translator_logger.log(
             2,
-            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".format(
-                func
-            ),
+            "%s is not converted when it is decorated by 'paddle.jit.not_to_static'.",
+            func,
         )
         return func
 
@@ -224,7 +220,7 @@ def convert_call(func):
 
     if inspect.isgeneratorfunction(func):
         # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function.
-        # If we don't deal generatorfunction here, we will regard it as normal function and get errors in some
+        # If we don't deal generator function here, we will regard it as normal function and get errors in some
         # occasion.
         number_of_stars = 30
         translator_logger.warn(
@@ -256,7 +252,7 @@ def convert_call(func):
             # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
             # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
             # `foo` function. So `isinstance(fn, StaticFunction)` is added here.
-            _origfunc = unwrap(func)
+            _origfunc = inspect.unwrap(func)
             global_functions = set()
             for fn in _origfunc.__globals__.values():
                 if inspect.isfunction(fn):
@@ -280,9 +276,8 @@ def convert_call(func):
                 # If func is not in __globals__, it does not need to be transformed
                 # because it has been transformed before.
                 translator_logger.warn(
-                    "{} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is.".format(
-                        func
-                    )
+                    "%s doesn't have to be transformed to static function because it has been transformed before, it will be run as-is.",
+                    func,
                 )
                 converted_call = func
         except AttributeError:
@@ -309,7 +304,7 @@ def convert_call(func):
                 _, forward_func = unwrap_decorators(func.forward)
                 func._original_funcs['forward'] = forward_func.__func__
                 forward_func = convert_to_static(forward_func)
-                # Bound mothod will be convert into plain function after `convert_to_static`.
+                # Bound method will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
                 func.forward = forward_func.__get__(func)
@@ -334,9 +329,8 @@ def convert_call(func):
 
     if converted_call is None:
         translator_logger.warn(
-            "{} doesn't have to be transformed to static function, and it will be run as-is.".format(
-                func
-            )
+            "%s doesn't have to be transformed to static function, and it will be run as-is.",
+            func,
         )
         return func
 

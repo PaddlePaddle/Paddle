@@ -13,20 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/reducer.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/core/flags.h"
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {
 
 static bool IsStreamSafeAllocator() {
-  return FLAGS_allocator_strategy == "auto_growth" &&
-         FLAGS_use_stream_safe_cuda_allocator;
+  return (FLAGS_allocator_strategy == "auto_growth" &&
+          FLAGS_use_stream_safe_cuda_allocator);
 }
 
 static Backend TransToBackend(platform::Place place) {
@@ -571,7 +571,7 @@ void EagerReducer::InitializeGroups(
       tensor_locator.inside_group_index = inside_group_index++;
       variable_locators_[var_index] = tensor_locator;
     }
-    group.tensor_indices_ = std::move(tensor_indices_);
+    group.tensor_indices_ = tensor_indices_;
     groups_.emplace_back(std::move(group));
 
     VLOG(3) << "The Group[" << group_index << "]:" << groups_.back();
@@ -757,9 +757,7 @@ void EagerReducer::AddDistHook(size_t var_index) {
     auto *autograd_meta = tensors_[var_index].get_autograd_meta();
     auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
 
-    if (!HasGrad(var_index)) {
-      group_tensor.ShareDataWith(phi::DenseTensor());
-    } else {
+    if (HasGrad(var_index)) {
       auto grad_dense_tensor =
           *(std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl()));
       group_tensor.ShareDataWith(grad_dense_tensor);
@@ -881,7 +879,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         auto *dev_ctx =
             platform::DeviceContextPool::Instance().Get(inner_place_);
         group_tensor.Resize({static_cast<int64_t>(length)});
-        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0f);
       }
     }
   } else {
@@ -896,7 +894,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
             "The sparse parameter[%d][%s] should have gradient. "
             "Currently, DataParallel does not support sparse "
             "parameters without generating gradients during training. "
-            "For example, if is_sparese=True is used in Embedding, "
+            "For example, if is_sparse=True is used in Embedding, "
             "the current step of this parameter cannot generate gradient "
             "because of stop_gradient/detach, where error will occur.",
             var_index,
@@ -907,7 +905,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         grad_tensor.is_selected_rows(),
         true,
         platform::errors::PreconditionNotMet(
-            "The sparse parameter[%d][%s] must have a selectedrows gradient. "
+            "The sparse parameter[%d][%s] must have a selected rows gradient. "
             "Before forward pass, the parameter type is inferred to be "
             "SelectedRows, but after backward pass, its actual type becomes "
             "LodTensor. It is currently not supported by DataParallel. "
@@ -987,6 +985,7 @@ void EagerReducer::ProcessUnusedDenseVars() {
   opts.reduce_op = ReduceOp::SUM;
   std::vector<Tensor> reduce_tensors = {global_used_vars_};
   std::vector<phi::DenseTensor> in_out;
+  in_out.reserve(reduce_tensors.size());
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -1083,6 +1082,7 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
   // all_reduce
   std::vector<Tensor> reduce_tensors = {group->dense_contents_};
   std::vector<phi::DenseTensor> in_out;
+  in_out.reserve(reduce_tensors.size());
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -1109,7 +1109,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
   VLOG(3) << "sparse_group [" << curr_group_index << "] start allreduce.";
 
-  auto *dev_ctx = platform::DeviceContextPool::Instance().Get(inner_place_);
+  auto *dev_ctx =
+      platform::DeviceContextPool::Instance().Get(inner_place_);  // NOLINT
   if (platform::is_gpu_place(inner_place_)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     dev_ctx = static_cast<phi::GPUContext *>(
@@ -1167,6 +1168,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   opts.reduce_op = ReduceOp::SUM;
   std::vector<Tensor> reduce_tensors = {rows_num_tensor};
   std::vector<phi::DenseTensor> in_out;
+  in_out.reserve(reduce_tensors.size());
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -1215,6 +1217,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     std::vector<Tensor> dst_rows_tensors = {dst_rows_tensor};
     std::vector<phi::DenseTensor> in;
     std::vector<phi::DenseTensor> out;
+    in.reserve(src_rows_tensors.size());
+    out.reserve(dst_rows_tensors.size());
     for (auto &t : src_rows_tensors) {
       in.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
     }
@@ -1246,6 +1250,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     std::vector<Tensor> dst_value_tensors = {dst_value_tensor};
     std::vector<phi::DenseTensor> src_dense;
     std::vector<phi::DenseTensor> dst_dense;
+    src_dense.reserve(src_value_tensors.size());
+    dst_dense.reserve(dst_value_tensors.size());
     for (auto &t : src_value_tensors) {
       src_dense.push_back(
           *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));

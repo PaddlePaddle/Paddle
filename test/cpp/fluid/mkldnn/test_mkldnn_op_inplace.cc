@@ -26,13 +26,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(elementwise_add);
 PD_DECLARE_KERNEL(add_raw, OneDNN, ONEDNN);
-USE_OP_ITSELF(relu);
-PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
-USE_OP_ITSELF(softmax);
-PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
-PD_DECLARE_KERNEL(softmax, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace operators {
@@ -69,7 +63,7 @@ bool TestMain(const platform::Place &place,
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
                                          static_cast<T>(20.0));
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(phi::product(dims));
+  size_t numel = static_cast<size_t>(common::product(dims));
   for (int i = 0; i < num_inputs; ++i) {
     input_names[i].tensor->Resize(dims);
     auto data_ptr = input_names[i].tensor->mutable_data<T>(place);

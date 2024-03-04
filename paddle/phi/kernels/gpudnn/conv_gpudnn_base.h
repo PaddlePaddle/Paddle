@@ -54,11 +54,11 @@ static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
         memory_utils::DeviceMemoryStatCurrentValue("Allocated", device_id);
     int64_t reserved =
         memory_utils::DeviceMemoryStatCurrentValue("Reserved", device_id);
-    int64_t availble = phi::backends::gpu::GpuAvailableMemToAlloc();
+    int64_t available = phi::backends::gpu::GpuAvailableMemToAlloc();
     VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
             << " MB, reserved=" << ToMegaBytes(reserved)
-            << " MB, available_to_alloc=" << ToMegaBytes(availble) << " MB.";
-    return std::max(availble, reserved - allocated);
+            << " MB, available_to_alloc=" << ToMegaBytes(available) << " MB.";
+    return std::max(available, reserved - allocated);
   } else {
     return FLAGS_conv_workspace_size_limit * 1024 * 1024;
   }
@@ -146,8 +146,8 @@ struct ConvArgsBase {
 
   template <typename T>
   phi::autotune::ConvCacheKey ConvertToConvCacheKey() const {
-    auto x_shape = phi::vectorize(x->dims());
-    auto w_shape = phi::vectorize(w->dims());
+    auto x_shape = common::vectorize(x->dims());
+    auto w_shape = common::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
              << ", data=" << phi::CppTypeToDataType<T>::Type()

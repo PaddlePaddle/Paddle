@@ -11,8 +11,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/array.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
@@ -55,7 +55,7 @@ using InverseDivFunctor = phi::funcs::InverseDivideFunctor<T>;
 template <typename T>
 using MaxFunctor = phi::funcs::MaximumFunctor<T>;
 
-// Minmum
+// Minimum
 template <typename T>
 using MinFunctor = phi::funcs::MinimumFunctor<T>;
 

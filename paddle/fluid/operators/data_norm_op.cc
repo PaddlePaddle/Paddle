@@ -66,8 +66,8 @@ class DataNormOp : public framework::OperatorWithKernel {
     }
 
     const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout =
-        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+    const DataLayout data_layout = common::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
 
     PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5,
                       true,
@@ -81,28 +81,28 @@ class DataNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize").size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The input dim of BatchSize shouold be 1"));
+                          "The input dim of BatchSize should be 1"));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum").size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The input dim of BatchSum shouold be 1"));
+                          "The input dim of BatchSum should be 1"));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum").size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The input dim of BatchSquareSum shouold be 1"));
+                          "The input dim of BatchSquareSum should be 1"));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize")[0],
                         C,
                         platform::errors::InvalidArgument(
-                            "The input dim[0] of BatchSize shouold be C"));
+                            "The input dim[0] of BatchSize should be C"));
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum")[0],
                         C,
                         platform::errors::InvalidArgument(
-                            "The input dim[0] of BatchSum shouold be C"));
+                            "The input dim[0] of BatchSum should be C"));
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum")[0],
                         C,
                         platform::errors::InvalidArgument(
-                            "The input dim[0] of BatchSqureSum shouold be C"));
+                            "The input dim[0] of BatchSquareSum should be C"));
     }
 
     if (enable_scale_and_shift) {
@@ -112,10 +112,10 @@ class DataNormOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           scale_dim.size(),
           1UL,
-          platform::errors::InvalidArgument("the dimensionof scale"
+          platform::errors::InvalidArgument("the dimension of scale"
                                             "must equal to 1. But received: "
                                             "the shape of scale is [%s], "
-                                            "the dimensionof scale is [%d]",
+                                            "the dimension of scale is [%d]",
                                             scale_dim,
                                             scale_dim.size()));
       PADDLE_ENFORCE_EQ(
@@ -130,7 +130,7 @@ class DataNormOp : public framework::OperatorWithKernel {
 
       bool check = true;
       if ((!ctx->IsRuntime()) &&
-          (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+          (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
         check = false;
       }
 
@@ -272,7 +272,7 @@ class DataNormKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     // const bool is_test = ctx.Attr<bool>("is_test");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<phi::DenseTensor>("X");
     const auto &x_dims = x->dims();
@@ -452,8 +452,8 @@ class DataNormGradOp : public framework::OperatorWithKernel {
                    "DataNormGrad");
 
     const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout =
-        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+    const DataLayout data_layout = common::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
     const int C = static_cast<int>(data_layout == DataLayout::kNCHW
                                        ? x_dims[1]
                                        : x_dims[x_dims.size() - 1]);
@@ -495,8 +495,6 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     const phi::DenseTensor *t = nullptr;
     if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
-    } else if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -518,7 +516,7 @@ class DataNormGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
     const auto *means = ctx.Input<phi::DenseTensor>("Means");
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -693,7 +691,7 @@ class DataNormGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
             }
           }
         } else {
-          // calculate data sum and squre sum
+          // calculate data sum and square sum
           Eigen::Array<T, Eigen::Dynamic, 1> sample_sum(C);
           Eigen::Array<T, Eigen::Dynamic, 1> sample_square_sum(C);
           // calculate data sample sum and square sum
@@ -771,7 +769,7 @@ PD_REGISTER_STRUCT_KERNEL(
 
 REGISTER_OP_VERSION(data_norm).AddCheckpoint(
     R"ROC(
-              upgrad data_norm op by adding scale_w to support scale and shift.)ROC",
+              upgrade data_norm op by adding scale_w to support scale and shift.)ROC",
     paddle::framework::compatible::OpVersionDesc().NewInput(
         "scale_w",
-        "scale_w is used to do scale duirng data_norm like batchnorm "));
+        "scale_w is used to do scale during data_norm like batchnorm "));

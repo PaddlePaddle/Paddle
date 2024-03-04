@@ -19,7 +19,7 @@ from .utils import _value_and_gradient
 
 def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
     r"""Cubic interpolation between (x1, f1, g1) and (x2, f2, g2).
-        Use two points and their gradient to determine a cubic function and get the minimun point
+        Use two points and their gradient to determine a cubic function and get the minimum point
         between them in the cubic curve.
 
     Reference:
@@ -30,7 +30,7 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
         x1, f1, g1: point1's position, value and gradient.
         x2, f2, g2: point2's position, value and gradient.
     Returns:
-        min_pos: the minimun point between the specified points in the cubic curve.
+        min_pos: the minimum point between the specified points in the cubic curve.
     """
     xmin, xmax = paddle.static.nn.cond(
         x1 <= x2, lambda: (x1, x2), lambda: (x2, x1)
@@ -212,7 +212,7 @@ def strong_wolfe(
             phi_j, derf_j, derphi_j = phi_and_derphi(aj)
 
             def true_fn():
-                # use assing to modify the variable in-place
+                # use assign to modify the variable in-place
                 paddle.assign(aj, a_hi)
                 paddle.assign(phi_j, phi_hi)
                 paddle.assign(derphi_j, derphi_hi)

@@ -46,7 +46,7 @@ class NumberCountOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("numbers", "(Tensor) The input gate index tensor.");
     AddOutput("Out", "(Tensor) The output number count tensor.");
-    AddAttr<int>("upper_range", "（int), The number of different numbers.");
+    AddAttr<int>("upper_range", "(int), The number of different numbers.");
 
     AddComment(R"DOC(number_count Operator.count numbers.)DOC");
   }

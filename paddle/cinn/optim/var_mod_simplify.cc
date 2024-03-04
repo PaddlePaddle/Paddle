@@ -17,8 +17,8 @@
 #include <absl/container/flat_hash_map.h>
 
 #include "paddle/cinn/common/cas.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn::optim {
 
@@ -80,11 +80,11 @@ struct ReplaceVarWithDivMutator : public ir::IRMutator<> {
 }  // namespace
 
 void VarModSimplify(Expr* e) {
-  *e = common::AutoSimplify(*e);
+  *e = cinn::common::AutoSimplify(*e);
   ReplaceModWithDivMutator()(e);
   ReplaceDivWithVarMutator mutator;
   mutator(e);
-  *e = common::AutoSimplify(*e);
+  *e = cinn::common::AutoSimplify(*e);
   auto div_var_map = mutator.div_var_map_;
   ReplaceVarWithDivMutator()(e, mutator.div_var_map_);
 }

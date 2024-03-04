@@ -20,15 +20,19 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_default_and_pir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
-from paddle.base.dygraph.base import to_variable
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
+from paddle.static import InputSpec
 
 SEED = 2020
 np.random.seed(SEED)
@@ -38,13 +42,15 @@ EPOCH_NUM = 1
 PRINT_STEP = 2
 STEP_NUM = 10
 
-place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
+place = (
+    paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+)
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if base.is_compiled_with_cuda():
-    base.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 train_parameters = {
     "learning_strategy": {
@@ -224,9 +230,7 @@ class SeResNeXt(paddle.nn.Layer):
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 50:
             cardinality = 32
@@ -318,7 +322,7 @@ class SeResNeXt(paddle.nn.Layer):
             ),
         )
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, inputs, label):
         if self.layers == 50 or self.layers == 101:
             y = self.conv0(inputs)
@@ -348,7 +352,7 @@ class SeResNeXt(paddle.nn.Layer):
         return out, avg_loss, acc_top1, acc_top5
 
 
-class TestSeResnet(unittest.TestCase):
+class TestSeResnet(Dy2StTestBase):
     def setUp(self):
         self.train_reader = paddle.batch(
             paddle.dataset.flowers.train(use_xmap=False, cycle=True),
@@ -371,8 +375,6 @@ class TestSeResnet(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def train(self, train_reader, to_static):
-        paddle.jit.enable_to_static(to_static)
-
         np.random.seed(SEED)
 
         with base.dygraph.guard(place):
@@ -400,8 +402,8 @@ class TestSeResnet(unittest.TestCase):
                         .reshape(BATCH_SIZE, 1)
                     )
 
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
+                    img = paddle.to_tensor(dy_x_data)
+                    label = paddle.to_tensor(y_data)
                     label.stop_gradient = True
 
                     pred, avg_loss, acc_top1, acc_top5 = se_resnext(img, label)
@@ -448,13 +450,23 @@ class TestSeResnet(unittest.TestCase):
 
                     step_idx += 1
                     if step_idx == STEP_NUM:
-                        if to_static:
+                        # TODO(@xiongkun): open after save / load supported in pir.
+                        if (
+                            to_static
+                            and not paddle.base.framework.use_pir_api()
+                        ):
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
-                                [img, label],
                                 output_spec=[pred],
-                                input_names_after_prune=[img.name],
+                                input_names_after_prune=['x'],
+                                input_spec=[
+                                    InputSpec(
+                                        shape=[None, 3, 224, 224], name='x'
+                                    ),
+                                    InputSpec(shape=[None, 1], name='y'),
+                                ],
+                                clip_extra=False,
                             )
                         else:
                             paddle.save(
@@ -470,20 +482,22 @@ class TestSeResnet(unittest.TestCase):
             )
 
     def predict_dygraph(self, data):
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(place):
-            se_resnext = SeResNeXt()
+        with enable_to_static_guard(False):
+            with base.dygraph.guard(place):
+                se_resnext = SeResNeXt()
 
-            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
-            se_resnext.set_dict(model_dict)
-            se_resnext.eval()
+                model_dict = paddle.load(
+                    self.dy_state_dict_save_path + '.pdparams'
+                )
+                se_resnext.set_dict(model_dict)
+                se_resnext.eval()
 
-            label = np.random.random([1, 1]).astype("int64")
-            img = base.dygraph.to_variable(data)
-            label = base.dygraph.to_variable(label)
-            pred_res, _, _, _ = se_resnext(img, label)
+                label = np.random.random([1, 1]).astype("int64")
+                img = paddle.to_tensor(data)
+                label = paddle.to_tensor(label)
+                pred_res, _, _, _ = se_resnext(img, label)
 
-            return pred_res.numpy()
+                return pred_res.numpy()
 
     def predict_static(self, data):
         paddle.enable_static()
@@ -542,9 +556,7 @@ class TestSeResnet(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
 
         flat_st_pre = st_pre.flatten()
@@ -560,11 +572,12 @@ class TestSeResnet(unittest.TestCase):
                 ),
             )
 
-    @ast_only_test
+    @test_default_and_pir
     def test_check_result(self):
-        pred_1, loss_1, acc1_1, acc5_1 = self.train(
-            self.train_reader, to_static=False
-        )
+        with enable_to_static_guard(False):
+            pred_1, loss_1, acc1_1, acc5_1 = self.train(
+                self.train_reader, to_static=False
+            )
         pred_2, loss_2, acc1_2, acc5_2 = self.train(
             self.train_reader, to_static=True
         )
@@ -594,7 +607,9 @@ class TestSeResnet(unittest.TestCase):
             err_msg=f'static acc5: {acc5_1} \ndygraph acc5: {acc5_2}',
         )
 
-        self.verify_predict()
+        # TODO(@xiongkun): open after save / load supported in pir.
+        if not paddle.base.framework.use_pir_api():
+            self.verify_predict()
 
 
 if __name__ == '__main__':

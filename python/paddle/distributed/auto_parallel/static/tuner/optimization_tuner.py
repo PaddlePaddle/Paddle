@@ -38,13 +38,9 @@ from paddle.distributed.auto_parallel.static.process_group import (
     new_process_group,
 )
 from paddle.distributed.auto_parallel.static.reshard import Resharder
-from paddle.distributed.auto_parallel.static.utils import (
-    debug_program,
-    set_grad_var_shape,
-)
+from paddle.distributed.auto_parallel.static.utils import debug_program
 from paddle.distributed.passes import PassContext, new_pass
 from paddle.static import append_backward, program_guard
-from paddle.utils import unique_name
 
 from ..utils import get_logger
 from .algorithms import new_algorithm
@@ -92,20 +88,20 @@ def get_metric(results):
     assert isinstance(
         results, dict
     ), f"results should be type of dictionary, but got {type(results)}."
-    if 'Throughtput' in results and isinstance(results['Throughtput'], float):
-        return float(results['Throughtput'])
+    if 'Throughput' in results and isinstance(results['Throughput'], float):
+        return float(results['Throughput'])
     else:
         return -1.0
 
 
 def parse_results(results):
-    if results['Throughtput'] > 0:
-        return "Throughtput: {} step / s.".format(results['Throughtput'])
+    if results['Throughput'] > 0:
+        return "Throughput: {} step / s.".format(results['Throughput'])
     et = results.get("ErrorType", None)
     if et == "ResourceExhaustedError":
         return "Fail with OOM"
     else:
-        return "Fail with UNKWON ERROR"
+        return "Fail with UNKNOWN ERROR"
 
 
 # TODO only dependent on dist context
@@ -245,7 +241,7 @@ class OptimizationTuner:
     def device_id(self):
         return paddle.distributed.ParallelEnv().device_id
 
-    # TODO Generate compelet program with all parts like forward, backward, update
+    # TODO Generate complete program with all parts like forward, backward, update
     # as well as parallelism transformation.
     def _build_programs_without_optimization(self):
         serial_main_program = self._baseline_dist_context.serial_main_program
@@ -347,14 +343,12 @@ class OptimizationTuner:
         # Generate optimizer
         # FIXME should be remove from apply pass after pass support optimizers
         with program_guard(dist_main_prog, dist_startup_prog):
-            with unique_name.guard("opt_"):
+            with dist_main_prog.switch_name_generator_guard("opt_"):
                 optimizer_ops = dist_context.serial_optimizer.apply_gradients(
                     dist_params_grads
                 )
         completer.complete_update_annotation(dist_main_prog)
 
-        # Do reshard process
-        set_grad_var_shape(dist_main_prog, dist_context)
         resharder = Resharder(
             dist_main_prog,
             dist_startup_prog,
@@ -518,7 +512,7 @@ class OptimizationTuner:
                 results = json.load(fp)
             return results
         except FileNotFoundError:
-            Error_results = {"Throughtput": -1, "ErrorType": 'FatalError'}
+            Error_results = {"Throughput": -1, "ErrorType": 'FatalError'}
             return Error_results
 
     def _evaluate_trial(self, trial):
@@ -538,18 +532,16 @@ class OptimizationTuner:
             )
 
         self._logger.info(
-            "Trial {} evaluation finish with {}.".format(
-                trial.name, parse_results(results)
-            )
+            f"Trial {trial.name} evaluation finish with {parse_results(results)}."
         )
         return results
 
     def _update(self, i, trial, results):
         self._finished_trials.append(trial)
 
-        cur_mertic = get_metric(results)
-        if self._best_metric is None or cur_mertic > self._best_metric:
-            self._best_metric = cur_mertic
+        cur_metric = get_metric(results)
+        if self._best_metric is None or cur_metric > self._best_metric:
+            self._best_metric = cur_metric
             self._best_iter = i
 
     def _get_trial_dir(self, trial):

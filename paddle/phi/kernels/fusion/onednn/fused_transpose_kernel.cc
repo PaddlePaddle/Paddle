@@ -34,7 +34,7 @@ void SetInMemDescWithSqueeze2FuseSupport(
   int j = 0;
   for (size_t i = 0; i < x_vec_dims.size(); ++i) {
     if (squeeze2_axes_set.count(i) ||
-        squeeze2_axes_set.count(i - x_vec_dims.size())) {
+        squeeze2_axes_set.count(i - x_vec_dims.size())) {  // NOLINT
       PADDLE_ENFORCE_EQ(
           x_vec_dims[i],
           1,
@@ -48,7 +48,7 @@ void SetInMemDescWithSqueeze2FuseSupport(
   }
 
   in->set_mem_desc(in_md.reshape(squeezed_op_tz));
-  in->Resize(make_ddim(squeezed_op_tz));
+  in->Resize(common::make_ddim(squeezed_op_tz));
 }
 
 template <typename T, typename Context>
@@ -68,15 +68,15 @@ void FusedTransposeKernel(const Context& dev_ctx,
   if ((x_dims.size() >= 3) &&
       (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
        phi::DataLayout::kNHWC)) {
-    int axis_size = axis.size();
-    std::vector<int> formated_axis = axis;
+    int axis_size = static_cast<int>(axis.size());
+    std::vector<int> formatted_axis = axis;
     std::vector<int> count(axis_size, 0);
     for (int i = 0; i < axis_size; i++) {
       if (axis[i] < 0) {
-        formated_axis[i] = axis[i] + axis_size;
+        formatted_axis[i] = axis[i] + axis_size;
       }
     }
-    auto dims = phi::vectorize<int>(x_dims);
+    auto dims = common::vectorize<int>(x_dims);
 
     std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
     x_dims = x_dims.reshape(dims);
@@ -85,7 +85,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
 
     phi::DDim out_dims(x_dims);
     for (size_t i = 0; i < axis.size(); i++) {
-      out_dims[i] = x_dims[formated_axis[i]];
+      out_dims[i] = x_dims[formatted_axis[i]];  // NOLINT
     }
     out->Resize(out_dims);
   }
@@ -96,8 +96,9 @@ void FusedTransposeKernel(const Context& dev_ctx,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
   if (!(fused_squeeze2_axes.empty())) {
-    SetInMemDescWithSqueeze2FuseSupport(
-        fused_squeeze2_axes, const_cast<DenseTensor*>(&x), x.mem_desc());
+    SetInMemDescWithSqueeze2FuseSupport(fused_squeeze2_axes,
+                                        const_cast<DenseTensor*>(&x),
+                                        x.mem_desc());  // NOLINT
   }
 
   if (axis.size() == 1) {
@@ -106,7 +107,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
     return;
   }
 
-  auto x_vec_dims = vectorize(x.dims());
+  auto x_vec_dims = common::vectorize(x.dims());
   auto x_type = funcs::ToOneDNNDataType(x.dtype());
 
   dnnl::primitive_attr attrs;
@@ -158,7 +159,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
     auto scales_md = dnnl::memory::desc(
         {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
     auto scales = dnnl::memory(
-        scales_md, dev_ctx.GetEngine(), const_cast<float*>(&scale));
+        scales_md, dev_ctx.GetEngine(), const_cast<float*>(&scale));  // NOLINT
     args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scales});
   }
 
@@ -187,7 +188,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
         fused_reshape2_shape, out, out_md);
   } else if (!fused_squeeze2_axes.empty()) {
     out->set_mem_desc(out_md);
-    out->Resize(make_ddim(out_md.get_dims()));
+    out->Resize(common::make_ddim(out_md.get_dims()));
   } else {
     out->set_mem_desc(out_md);
   }

@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/thread_data_registry.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -32,6 +33,18 @@ using phi::ThreadDataRegistry;
 struct ThreadLocalStatBase {
   int64_t current{0};
   int64_t peak{0};
+
+  ThreadLocalStatBase operator+=(const ThreadLocalStatBase& other) {
+    current += other.current;
+    peak = std::max({current, peak, other.peak});
+    return *this;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const ThreadLocalStatBase& stat) {
+    os << "{current : " << stat.current << ", peak : " << stat.peak << "}";
+    return os;
+  }
 };
 
 class StatBase {
@@ -76,8 +89,7 @@ class Stat : public StatBase {
     thread_local_stat->current += increment;
 
     VLOG(8) << string::split_string(
-                   phi::enforce::demangle(typeid(*thread_local_stat).name()),
-                   "::")
+                   common::demangle(typeid(*thread_local_stat).name()), "::")
                    .back()
             << ": Update current_value with " << increment
             << ", after update, current value = " << GetCurrentValue();
@@ -90,8 +102,7 @@ class Stat : public StatBase {
              !peak_value_.compare_exchange_weak(prev_value, current_value)) {
       }
       VLOG(8) << string::split_string(
-                     phi::enforce::demangle(typeid(*thread_local_stat).name()),
-                     "::")
+                     common::demangle(typeid(*thread_local_stat).name()), "::")
                      .back()
               << ": Update current_value with " << increment
               << ", after update, peak_value = " << peak_value_.load()
@@ -122,7 +133,10 @@ void HostMemoryStatUpdate(const std::string& stat_type,
                           int dev_id,
                           int64_t increment);
 
-#define DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)              \
+void LogDeviceMemoryStats(const platform::Place& place,
+                          const std::string& op_name);
+
+#define DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, id)               \
   case id:                                                          \
     stat = paddle::memory::Stat<                                    \
         paddle::memory::DeviceMemoryStat##item##id>::GetInstance(); \
@@ -132,22 +146,22 @@ void HostMemoryStatUpdate(const std::string& stat_type,
   [&] {                                                                       \
     paddle::memory::StatBase* stat = nullptr;                                 \
     switch (id) {                                                             \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 0);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 1);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 2);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 3);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 4);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 5);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 6);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 7);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 8);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 9);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 10);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 11);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 12);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 13);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 14);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 15);                         \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 0);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 1);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 2);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 3);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 4);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 5);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 6);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 7);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 8);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 9);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 10);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 11);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 12);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 13);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 14);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 15);                          \
       default:                                                                \
         PADDLE_THROW(paddle::platform::errors::OutOfRange(                    \
             "Only support device id between [0, 15] for device memory stats," \

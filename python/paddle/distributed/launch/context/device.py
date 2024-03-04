@@ -132,8 +132,8 @@ class Device:
             custom_device_type = os.getenv('PADDLE_XCCL_BACKEND')
             dev._dtype = DeviceType.CUSTOM_DEVICE
             num = get_custom_devices_count(custom_device_type)
-            visible_devices_str = '{}_VISIBLE_DEVICES'.format(
-                custom_device_type.upper()
+            visible_devices_str = (
+                f'{custom_device_type.upper()}_VISIBLE_DEVICES'
             )
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)

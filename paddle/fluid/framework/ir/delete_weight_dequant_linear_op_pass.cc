@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/delete_weight_dequant_linear_op_pass.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/quantize_helper.h"
 
 #include "glog/logging.h"
 
@@ -36,16 +37,29 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                     platform::errors::InvalidArgument(
                         "Graph must have kParamScopeAttr attribute."));
 
+  VLOG(3) << "Running delete_weight_dequant_linear_op_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running delete_weight_dequant_linear_op_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running delete_weight_dequant_linear_op_pass is: "
+        << graph->GetBlockId();
+  }
+
   auto& scope = graph->Get<framework::Scope>(kParamScopeAttr);
   bool is_int8 = false;
 
   std::unordered_set<const Node*> nodes2rm;
+  std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
 
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
       if (op->Type() == "dequantize_linear") {
-        Node *weight_var_node, *calcu_op_node, *while_op_node;
+        Node* weight_var_node = nullptr;
+        Node* calcu_op_node = nullptr;
+        Node* while_op_node = nullptr;
         Node *dequantized_weight_var_node = nullptr, *scale_var_node = nullptr;
         // 1. Judge whether for dequant weight and find
         // weight_var_node/scale_var_node
@@ -58,8 +72,11 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
               scale_var_node = input_node;
             }
           } else {
-            return;
+            break;
           }
+        }
+        if (weight_var_node == nullptr || scale_var_node == nullptr) {
+          continue;
         }
         // 2. Find next_op_node
         // For while op: delete its input which is related to dequantized
@@ -105,7 +122,7 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                     }
                   } else {
                     PADDLE_THROW(platform::errors::Unimplemented(
-                        "The dtype of quantization scale must be FP32/16, "
+                        "The dtype of quantization scale must be FP32/FP16, "
                         "but received %d, which is not supported.",
                         weight_scale_tensor->dtype()));
                   }
@@ -124,14 +141,34 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
 
                     calcu_op_desc->SetAttr("weight_scale", weight_scale[0]);
                   } else {
-                    PADDLE_THROW(platform::errors::Unimplemented(
-                        "Delete Weight Dequant Linear Op Pass is not supported "
-                        "for "
-                        "per-channel quantization"));
+                    std::vector<int64_t> weights_shape =
+                        weight_var_node->Var()->GetShape();
+                    quant_axis = quant_axis >= 0
+                                     ? quant_axis
+                                     : quant_axis + weights_shape.size();
+                    PADDLE_ENFORCE_EQ(
+                        weight_scale_nums,
+                        weights_shape[quant_axis],
+                        platform::errors::InvalidArgument(
+                            "When quant_axis != -1, it means using per_channel "
+                            "dequantization. In this situation, the number of "
+                            "weight_scale should be equal with "
+                            "weights_shape[quant_axis=%d]=%ld , but received "
+                            "%d.",
+                            quant_axis,
+                            weights_shape[quant_axis],
+                            weight_scale_nums));
+                    calcu_op_desc->SetAttr("weight_scale", weight_scale);
                   }
+                  if (!var_quant_scales.count(weight_var_node->Var()->Name())) {
+                    var_quant_scales.insert(std::make_pair(
+                        weight_var_node->Var()->Name(), weight_scale));
+                  }
+
                   calcu_op_desc->RenameInput(
                       dequantized_weight_var_node->Var()->Name(),
                       weight_var_node->Var()->Name());
+                  calcu_op_desc->Flush();
                 }
               }
             }
@@ -152,6 +189,8 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
   }
 
   GraphSafeRemoveNodes(graph, nodes2rm);
+  SaveQuantInfoInTheGraph(
+      graph, "has_quant_info", "var_quant_scales", var_quant_scales);
   graph->Set("enable_int8", new bool(is_int8));
 }
 }  // namespace ir

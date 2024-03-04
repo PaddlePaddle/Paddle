@@ -59,7 +59,6 @@ def _recv_in_static_mode(
             'use_calc_stream': sync_op,
         },
     )
-    return None
 
 
 def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):

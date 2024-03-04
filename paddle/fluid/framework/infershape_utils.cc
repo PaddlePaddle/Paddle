@@ -218,7 +218,7 @@ DDim CompatMetaTensor::dims() const {
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // use tensor array size as dims
       auto& tensor_array = var->Get<framework::LoDTensorArray>();
-      return phi::make_ddim({static_cast<int64_t>(tensor_array.size())});
+      return common::make_ddim({static_cast<int64_t>(tensor_array.size())});
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Currently, only can get dims from DenseTensor or SelectedRows or "
@@ -227,9 +227,9 @@ DDim CompatMetaTensor::dims() const {
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
 
-    return phi::make_ddim(var->GetShape());
-    // return var->GetShape().empty() ? phi::make_ddim({0UL}) :
-    // phi::make_ddim(var->GetShape());
+    return common::make_ddim(var->GetShape());
+    // return var->GetShape().empty() ? common::make_ddim({0UL}) :
+    // common::make_ddim(var->GetShape());
   }
 }
 
@@ -316,7 +316,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
     if (var) {
-      var->SetShape(vectorize(dims));
+      var->SetShape(common::vectorize(dims));
     }
   }
 }
@@ -505,8 +505,7 @@ CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
       result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
-    return paddle::optional<std::vector<const phi::MetaTensor*>>(
-        std::move(result));
+    return paddle::optional<std::vector<const phi::MetaTensor*>>(result);
   }
   return paddle::none;
 }
@@ -637,11 +636,11 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             if (ctx->IsRuntime()) {
               Variable* var = PADDLE_GET_CONST(Variable*, infershape_input[0]);
               infer_meta_context.EmplaceBackAttr(
-                  std::move(framework::MakePhiScalarFromVar(*var)));
+                  framework::MakePhiScalarFromVar(*var));
             } else {
               phi::Scalar tensor_scalar(-1);
               tensor_scalar.SetFromTensor(true);
-              infer_meta_context.EmplaceBackAttr(std::move(tensor_scalar));
+              infer_meta_context.EmplaceBackAttr(tensor_scalar);
             }
           } else {
             PADDLE_THROW(platform::errors::InvalidArgument(
@@ -659,7 +658,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         if (attr_ptr && !is_attr_var) {
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
-            case framework::proto::AttrType::INTS:
+            case framework::proto::AttrType::INTS:  // NOLINT
               infer_meta_context.EmplaceBackAttr(std::move(
                   phi::IntArray(PADDLE_GET_CONST(std::vector<int32_t>, attr))));
               break;
@@ -837,7 +836,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                       attr_names[i]));
               }
               break;
-            case phi::AttributeType::FLOAT32S:
+            case phi::AttributeType::FLOAT32S:  // NOLINT
               infer_meta_context.EmplaceBackAttr(
                   PADDLE_GET_CONST(std::vector<float>, attr));
               break;
@@ -860,7 +859,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   attr_names[i]));
           }
         } else {
-          // do nothing, skip currnet attr
+          // do nothing, skip current attr
         }
     }
   }

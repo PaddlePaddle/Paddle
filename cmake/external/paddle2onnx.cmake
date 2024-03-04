@@ -71,19 +71,19 @@ endif()
 
 if(WIN32)
   set(PADDLE2ONNX_URL
-      "https://github.com/PaddlePaddle/Paddle2ONNX/releases/download/v${PADDLE2ONNX_VERSION}/paddle2onnx-win-x64-${PADDLE2ONNX_VERSION}.zip"
+      "${GIT_URL}/PaddlePaddle/Paddle2ONNX/releases/download/v${PADDLE2ONNX_VERSION}/paddle2onnx-win-x64-${PADDLE2ONNX_VERSION}.zip"
   )
   set(PADDLE2ONNX_URL_MD5 "122b864cb57338191a7e9ef5f607c4ba")
   set(PADDLE2ONNX_CACHE_EXTENSION "zip")
 elseif(APPLE)
   set(PADDLE2ONNX_URL
-      "https://github.com/PaddlePaddle/Paddle2ONNX/releases/download/v${PADDLE2ONNX_VERSION}/paddle2onnx-osx-x86_64-${PADDLE2ONNX_VERSION}.tgz"
+      "${GIT_URL}/PaddlePaddle/Paddle2ONNX/releases/download/v${PADDLE2ONNX_VERSION}/paddle2onnx-osx-x86_64-${PADDLE2ONNX_VERSION}.tgz"
   )
   set(PADDLE2ONNX_URL_MD5 "32a4381ff8441b69d58ef0fd6fd919eb")
   set(PADDLE2ONNX_CACHE_EXTENSION "tgz")
 else()
   set(PADDLE2ONNX_URL
-      "https://github.com/PaddlePaddle/Paddle2ONNX/releases/download/v${PADDLE2ONNX_VERSION}/paddle2onnx-linux-x64-${PADDLE2ONNX_VERSION}.tgz"
+      "${GIT_URL}/PaddlePaddle/Paddle2ONNX/releases/download/v${PADDLE2ONNX_VERSION}/paddle2onnx-linux-x64-${PADDLE2ONNX_VERSION}.tgz"
   )
   set(PADDLE2ONNX_URL_MD5 "3fbb074987ba241327797f76514e937f")
   set(PADDLE2ONNX_CACHE_EXTENSION "tgz")

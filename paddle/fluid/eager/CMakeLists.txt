@@ -1,5 +1,6 @@
 set(eager_deps
     phi
+    common
     hook_utils
     utils
     global_utils
@@ -16,14 +17,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   set(eager_deps ${eager_deps} accumulation_node prim_utils)
 endif()
 
-set(fluid_deps
-    tracer
-    layer
-    proto_desc
-    operator
-    op_registry
-    variable_helper
-    memcpy)
+set(fluid_deps tracer layer proto_desc operator op_registry variable_helper)
 set(generated_deps final_dygraph_function final_dygraph_node dygraph_function
                    dygraph_node)
 
@@ -45,33 +39,38 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_library(
     backward
     SRCS backward.cc
-    DEPS grad_tensor_holder utils autograd_meta grad_node_info phi)
+    DEPS grad_tensor_holder utils autograd_meta grad_node_info phi common)
 endif()
 
 cc_library(
   eager_nan_inf_utils
   SRCS nan_inf_utils.cc
-  DEPS phi nan_inf_utils enforce)
+  DEPS phi common enforce)
 cc_library(
   grad_node_info
   SRCS grad_node_info.cc
-  DEPS phi)
+  DEPS phi common)
 
 cc_library(
   autograd_meta
   SRCS autograd_meta.cc
-  DEPS phi)
+  DEPS phi common)
 cc_library(
   utils
   SRCS utils.cc
   DEPS phi
+       common
        global_utils
        layer
        proto_desc
        operator
        op_registry
        variable_helper
-       memcpy
        generated_op
        autograd_meta
        hook_utils)
+
+# FIXME(Aurelius84): It seems utils library is depended in cycle, but
+# CMake only find it twice to deal cycle depend problem. If it is still
+# not found, ld error will be raised.
+set_target_properties(utils PROPERTIES LINK_INTERFACE_MULTIPLICITY 3)

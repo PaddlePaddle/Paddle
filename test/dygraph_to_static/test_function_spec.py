@@ -17,13 +17,16 @@ import unittest
 from test_declarative import foo_func
 
 import paddle
+from paddle.framework import in_pir_mode
 from paddle.jit.dy2static.function_spec import FunctionSpec
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import InputSpec
 
 paddle.enable_static()
 
 
 class TestFunctionSpec(unittest.TestCase):
+    @test_with_pir_api
     def test_constructor(self):
         foo_spec = FunctionSpec(foo_func)
         args_name = foo_spec.args_name
@@ -31,6 +34,7 @@ class TestFunctionSpec(unittest.TestCase):
         self.assertTrue(foo_spec.dygraph_function == foo_func)
         self.assertIsNone(foo_spec.input_spec)
 
+    @test_with_pir_api
     def test_verify_input_spec(self):
         a_spec = InputSpec([None, 10], name='a')
         b_spec = InputSpec([10], name='b')
@@ -42,6 +46,7 @@ class TestFunctionSpec(unittest.TestCase):
         foo_spec = FunctionSpec(foo_func, input_spec=[a_spec, b_spec])
         self.assertTrue(len(foo_spec.flat_input_spec) == 2)
 
+    @test_with_pir_api
     def test_unified_args_and_kwargs(self):
         foo_spec = FunctionSpec(foo_func)
         # case 1: foo(10, 20, c=4)
@@ -69,13 +74,13 @@ class TestFunctionSpec(unittest.TestCase):
         with self.assertRaises(ValueError):
             foo_spec.unified_args_and_kwargs([10], {'c': 4})
 
+    @test_with_pir_api
     def test_args_to_input_spec(self):
         a_spec = InputSpec([None, 10], name='a', stop_gradient=True)
         b_spec = InputSpec([10], name='b', stop_gradient=True)
 
         a_tensor = paddle.static.data(name='a_var', shape=[4, 10])
         b_tensor = paddle.static.data(name='b_var', shape=[4, 10])
-        kwargs = {'c': 1, 'd': 2}
 
         # case 1
         foo_spec = FunctionSpec(foo_func, input_spec=[a_spec, b_spec])
@@ -97,7 +102,12 @@ class TestFunctionSpec(unittest.TestCase):
         )
         self.assertTrue(len(input_with_spec) == 2)
         self.assertTrue(input_with_spec[0] == a_spec)  # a
-        self.assertTupleEqual(input_with_spec[1].shape, (4, 10))  # b.shape
+
+        if in_pir_mode():
+            self.assertEqual(input_with_spec[1].shape, [4, 10])  # b.shape
+        else:
+            self.assertTupleEqual(input_with_spec[1].shape, (4, 10))  # b.shape
+
         self.assertEqual(input_with_spec[1].name, 'b_var')  # b.name
 
         # case 3

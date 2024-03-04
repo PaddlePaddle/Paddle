@@ -22,6 +22,8 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.base.backward import _as_list
+from paddle.pir_utils import test_with_pir_api
 
 
 @skip_check_grad_ci(
@@ -58,7 +60,7 @@ class TestCholeskyOp(OpTest):
         self.outputs = {"Out": output_data}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         places = [base.CPUPlace()]
@@ -67,19 +69,76 @@ class TestCholeskyOp(OpTest):
         for p in places:
             self.func(p)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # use small size since Jacobian gradients is time consuming
         root_data = self.root_data[..., :3, :3]
-        prog = base.Program()
-        with base.program_guard(prog):
-            root = paddle.create_parameter(
-                dtype=root_data.dtype, shape=root_data.shape
-            )
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            if paddle.framework.in_pir_mode():
+                root = paddle.static.data(
+                    dtype=root_data.dtype, shape=root_data.shape, name="root"
+                )
+            else:
+                root = paddle.create_parameter(
+                    dtype=root_data.dtype, shape=root_data.shape
+                )
+            root.stop_gradient = False
+            root.persistable = True
             root_t = paddle.transpose(root, self.trans_dims)
             x = paddle.matmul(x=root, y=root_t) + 1e-05
             out = paddle.cholesky(x, upper=self.attrs["upper"])
-            grad_check(root, out, x_init=root_data, place=place)
+            # check input arguments
+            root = _as_list(root)
+            out = _as_list(out)
+
+            for u in out:
+                u.stop_gradient = False
+                u.persistable = True
+
+            # init variable in startup program
+            scope = base.executor.global_scope()
+            exe = base.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+
+            x_init = _as_list(root_data)
+            # init inputs if x_init is not None
+            if x_init:
+                if len(x_init) != len(root):
+                    raise ValueError(
+                        'len(x_init) (=%d) is not the same'
+                        ' as len(x) (= %d)' % (len(x_init), len(root))
+                    )
+                # init variable in main program
+                for var, arr in zip(root, x_init):
+                    assert tuple(var.shape) == tuple(arr.shape)
+                feeds = {k.name: v for k, v in zip(root, x_init)}
+                exe.run(prog, feed=feeds, scope=scope)
+            fetch_list = None
+            if paddle.framework.in_pir_mode():
+                dys = []
+                for i in range(len(out)):
+                    yi = out[i]
+                    dy = paddle.static.data(
+                        name='dys_%s' % i,
+                        shape=yi.shape,
+                        dtype=root_data.dtype,
+                    )
+                    dy.stop_gradient = False
+                    dy.persistable = True
+                    value = np.zeros(yi.shape, dtype=root_data.dtype)
+                    feeds.update({'dys_%s' % i: value})
+                    dys.append(dy)
+                fetch_list = base.gradients(out, root, dys)
+            grad_check(
+                x=root,
+                y=out,
+                fetch_list=fetch_list,
+                feeds=feeds,
+                place=place,
+                program=prog,
+            )
 
     def init_config(self):
         self._upper = True
@@ -114,8 +173,11 @@ class TestCholeskySingularAPI(unittest.TestCase):
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place, with_out=False):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float64"
             )
@@ -126,7 +188,6 @@ class TestCholeskySingularAPI(unittest.TestCase):
             exe = base.Executor(place)
             try:
                 fetches = exe.run(
-                    base.default_main_program(),
                     feed={"input": input_np},
                     fetch_list=[result],
                 )
@@ -148,7 +209,7 @@ class TestCholeskySingularAPI(unittest.TestCase):
                         [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
                     ]
                 ).astype("float64")
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 try:
                     result = paddle.cholesky(input)
                 except RuntimeError as ex:

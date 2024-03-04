@@ -35,7 +35,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype UNUSED,
                 DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 
@@ -45,51 +45,57 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype UNUSED,
                     DenseTensor* out) {
-  auto value = val.to<double>();
-  using CommonType = typename std::common_type<
-      float,
-      typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
-                                float,
-                                T>::type>::type;
+  if (!std::is_same<T, phi::dtype::complex<float>>::value &&
+      !std::is_same<T, phi::dtype::complex<double>>::value) {
+    auto value = val.to<double>();
+    using CommonType = typename std::common_type<
+        float,
+        typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
+                                  float,
+                                  T>::type>::type;
 
-  auto common_type_value = static_cast<CommonType>(value);
+    auto common_type_value = static_cast<CommonType>(value);
 
-  // Check whether the filled value is valid
-  bool is_out_range = true;
-  if (std::isinf(value) || std::isnan(value)) {
-    is_out_range = false;
+    // Check whether the filled value is valid
+    bool is_out_range = true;
+    if (std::isinf(value) || std::isnan(value)) {
+      is_out_range = false;
+    }
+
+    if ((common_type_value >=
+         static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
+        (common_type_value <=
+         static_cast<CommonType>(std::numeric_limits<T>::max()))) {
+      is_out_range = false;
+    }
+
+    PADDLE_ENFORCE_EQ(
+        is_out_range,
+        false,
+        phi::errors::InvalidArgument(
+            "The filled value is out of range for target type, "
+            "current kernel type is %s, the range should between %f "
+            "and %f, but now value is %f.",
+            typeid(T).name(),
+            static_cast<CommonType>(std::numeric_limits<T>::lowest()),
+            static_cast<CommonType>(std::numeric_limits<T>::max()),
+            static_cast<float>(value)));
+    FullValue<T>(dev_ctx, out, value);
+  } else {
+    FullValue<T>(dev_ctx, out, val.to<T>());
   }
-
-  if ((common_type_value >=
-       static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
-      (common_type_value <=
-       static_cast<CommonType>(std::numeric_limits<T>::max()))) {
-    is_out_range = false;
-  }
-
-  PADDLE_ENFORCE_EQ(
-      is_out_range,
-      false,
-      phi::errors::InvalidArgument(
-          "The filled value is out of range for target type, "
-          "current kernel type is %s, the range should between %f "
-          "and %f, but now value is %f.",
-          typeid(T).name(),
-          static_cast<CommonType>(std::numeric_limits<T>::lowest()),
-          static_cast<CommonType>(std::numeric_limits<T>::max()),
-          static_cast<float>(value)));
-  FullValue<T>(dev_ctx, out, value);
 }
 
 template <typename T, typename Context>
 void FullIntArrayKernel(const Context& dev_ctx,
-                        const IntArray& val,
+                        const std::vector<int64_t>& shape,
                         DataType dtype UNUSED,
                         DenseTensor* out) {
-  out->Resize(phi::make_ddim({static_cast<int64_t>(val.GetData().size())}));
+  out->Resize(common::make_ddim({static_cast<int64_t>(shape.size())}));
   T* out_data = dev_ctx.template Alloc<T>(out);
-  for (size_t i = 0; i < val.GetData().size(); ++i) {
-    out_data[i] = static_cast<T>(val.GetData()[i]);
+  for (size_t i = 0; i < shape.size(); ++i) {
+    int64_t val = shape[i];
+    out_data[i] = static_cast<T>(val);
   }
 }
 
@@ -118,6 +124,7 @@ PD_REGISTER_KERNEL(full_like,
                    phi::FullLikeKernel,
                    float,
                    double,
+                   uint8_t,
                    int16_t,
                    int,
                    int64_t,

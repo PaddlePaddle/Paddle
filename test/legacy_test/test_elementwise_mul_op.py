@@ -49,7 +49,8 @@ class ElementwiseMulOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(
             check_dygraph=(not self.use_mkldnn),
-            check_new_ir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_normal(self):
@@ -59,10 +60,12 @@ class ElementwiseMulOp(OpTest):
             'Out',
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
             ['Y'],
@@ -70,10 +73,12 @@ class ElementwiseMulOp(OpTest):
             no_grad_set=set("X"),
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
             ['X'],
@@ -81,7 +86,9 @@ class ElementwiseMulOp(OpTest):
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def init_input_output(self):
@@ -102,6 +109,7 @@ class ElementwiseMulOp(OpTest):
 class TestComplexElementwiseMulOpWithCheckGrad(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
         self.python_api = paddle.multiply
         self.public_python_api = paddle.multiply
         self.dtype = np.complex128
@@ -131,20 +139,26 @@ class TestComplexElementwiseMulOpWithCheckGrad(ElementwiseMulOp):
         self.check_grad(
             ['X', 'Y'],
             'Out',
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
             no_grad_set=set("X"),
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
             no_grad_set=set('Y'),
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -196,27 +210,40 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.if_enable_cinn()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
             no_grad_set=set("X"),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
             no_grad_set=set('Y'),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def if_enable_cinn(self):
@@ -273,7 +300,8 @@ class ElementwiseMulOp_broadcast(OpTest):
     def test_check_output(self):
         self.check_output(
             check_dygraph=self.check_dygraph,
-            check_prim=self.check_prim,
+            check_pir=self.check_dygraph,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_normal(self):
@@ -282,24 +310,30 @@ class ElementwiseMulOp_broadcast(OpTest):
             'Out',
             check_dygraph=self.check_dygraph,
             check_prim=self.check_prim,
+            check_pir=self.check_dygraph,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
             no_grad_set=set("X"),
             check_dygraph=self.check_dygraph,
             check_prim=self.check_prim,
+            check_pir=self.check_dygraph,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=self.check_dygraph,
             check_prim=self.check_prim,
+            check_pir=self.check_dygraph,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def init_input_attr_output(self):
@@ -418,7 +452,10 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(not self.use_mkldnn))
+        self.check_output(
+            check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -427,10 +464,12 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             'Out',
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
             ['Y'],
@@ -438,10 +477,12 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             no_grad_set=set("X"),
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
             ['X'],
@@ -449,7 +490,9 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -503,6 +546,7 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
 class TestComplexElementwiseMulOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
         self.python_api = paddle.multiply
         self.init_base_dtype()
         self.init_input_output()
@@ -527,26 +571,34 @@ class TestComplexElementwiseMulOp(OpTest):
         self.out = self.x * self.y
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
             no_grad_set=set("X"),
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
             no_grad_set=set('Y'),
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 

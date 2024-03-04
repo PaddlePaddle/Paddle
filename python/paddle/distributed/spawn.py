@@ -113,9 +113,7 @@ def _get_default_nprocs():
         return core.get_custom_device_count(device.split(":")[0])
     else:
         raise RuntimeError(
-            "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
-                device
-            )
+            f"`paddle.distributed.spawn` does not support parallel training on device `{device}` now."
         )
 
 
@@ -131,9 +129,7 @@ def _get_default_backend():
         return 'xccl'
     else:
         raise RuntimeError(
-            "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
-                device
-            )
+            f"`paddle.distributed.spawn` does not support parallel training on device `{device}` now."
         )
 
 
@@ -149,8 +145,8 @@ def _get_node_ip(ips):
 
 def _get_subprocess_env_list(nprocs, options):
     # NOTE (xiongkun03) Why put backend deduction  here ?
-    # Becase _get_subprocess_env_list is used by many testcases.
-    # So for campability, we put backend deduction here
+    # Because _get_subprocess_env_list is used by many testcases.
+    # So for compatibility, we put backend deduction here
 
     # logic for handle backend option
     if 'backend' not in options or options['backend'] == 'auto':
@@ -158,7 +154,7 @@ def _get_subprocess_env_list(nprocs, options):
     check_backend(options['backend'])
     block_windows_and_macos(options['backend'])
 
-    # contruct processes env list
+    # construct processes env list
     processes_env_list = []
 
     # get args from kwargs
@@ -494,79 +490,74 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.optimizer as opt
+            >>> import paddle.distributed as dist
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear1 = nn.Linear(10, 10)
+            ...         self._linear2 = nn.Linear(10, 1)
+            ...     def forward(self, x):
+            ...         return self._linear2(self._linear1(x))
 
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+            >>> def train(print_result=False):
+            ...     # 1. initialize parallel environment
+            ...     group = dist.init_parallel_env()
+            ...     process_group = group.process_group if group else None
+            ...     # 2. create data parallel layer & optimizer
+            ...     layer = LinearNet()
+            ...     dp_layer = paddle.DataParallel(layer, group = process_group)
+            ...     loss_fn = nn.MSELoss()
+            ...     adam = opt.Adam(
+            ...         learning_rate=0.001, parameters=dp_layer.parameters())
+            ...     # 3. run layer
+            ...     inputs = paddle.randn([10, 10], 'float32')
+            ...     outputs = dp_layer(inputs)
+            ...     labels = paddle.randn([10, 1], 'float32')
+            ...     loss = loss_fn(outputs, labels)
+            ...     if print_result is True:
+            ...         print("loss:", loss.numpy())
+            ...     loss.backward()
+            ...     adam.step()
+            ...     adam.clear_grad()
 
-            def train(print_result=False):
-                # 1. initialize parallel environment
-                group = dist.init_parallel_env()
-                process_group = group.process_group if group else None
+            >>> # Usage 1: only pass function.
+            >>> # If your training method no need any argument, and
+            >>> # use all visible devices for parallel training.
+            >>> if __name__ == '__main__':
+            ...     dist.spawn(train)
 
-                # 2. create data parallel layer & optimizer
-                layer = LinearNet()
-                dp_layer = paddle.DataParallel(layer, group = process_group)
+            >>> # Usage 2: pass function and arguments.
+            >>> # If your training method need some arguments, and
+            >>> # use all visible devices for parallel training.
+            >>> if __name__ == '__main__':
+            ...     dist.spawn(train, args=(True,))
 
-                loss_fn = nn.MSELoss()
-                adam = opt.Adam(
-                    learning_rate=0.001, parameters=dp_layer.parameters())
+            >>> # Usage 3: pass function, arguments and nprocs.
+            >>> # If your training method need some arguments, and
+            >>> # only use part of visible devices for parallel training.
+            >>> # If your machine hold 8 cards {0,1,2,3,4,5,6,7},
+            >>> # this case will use cards {0,1}; If you set
+            >>> # CUDA_VISIBLE_DEVICES=4,5,6,7, this case will use
+            >>> # cards {4,5}
+            >>> if __name__ == '__main__':
+            ...     dist.spawn(train, args=(True,), nprocs=2)
 
-                # 3. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
+            >>> # Usage 4: pass function, arguments, nprocs and gpus.
+            >>> # If your training method need some arguments, and
+            >>> # only use part of visible devices for parallel training,
+            >>> # but you can't set your machine's environment variable
+            >>> # CUDA_VISIBLE_DEVICES, such as it is None or all cards
+            >>> # {0,1,2,3,4,5,6,7}, you can pass `gpus` to
+            >>> # select the GPU cards you want to use. For example,
+            >>> # this case will use cards {4,5} if your machine hold 8 cards.
+            >>> if __name__ == '__main__':
+            ...     dist.spawn(train, args=(True,), nprocs=2, gpus='4,5')
 
-                if print_result is True:
-                    print("loss:", loss.numpy())
-
-                loss.backward()
-
-                adam.step()
-                adam.clear_grad()
-
-            # Usage 1: only pass function.
-            # If your training method no need any argument, and
-            # use all visible devices for parallel training.
-            if __name__ == '__main__':
-                dist.spawn(train)
-
-            # Usage 2: pass function and arguments.
-            # If your training method need some arguments, and
-            # use all visible devices for parallel training.
-            if __name__ == '__main__':
-                dist.spawn(train, args=(True,))
-
-            # Usage 3: pass function, arguments and nprocs.
-            # If your training method need some arguments, and
-            # only use part of visible devices for parallel training.
-            # If your machine hold 8 cards {0,1,2,3,4,5,6,7},
-            # this case will use cards {0,1}; If you set
-            # CUDA_VISIBLE_DEVICES=4,5,6,7, this case will use
-            # cards {4,5}
-            if __name__ == '__main__':
-                dist.spawn(train, args=(True,), nprocs=2)
-
-            # Usage 4: pass function, arguments, nprocs and gpus.
-            # If your training method need some arguments, and
-            # only use part of visible devices for parallel training,
-            # but you can't set your machine's environment variable
-            # CUDA_VISIBLE_DEVICES, such as it is None or all cards
-            # {0,1,2,3,4,5,6,7}, you can pass `gpus` to
-            # select the GPU cards you want to use. For example,
-            # this case will use cards {4,5} if your machine hold 8 cards.
-            if __name__ == '__main__':
-                dist.spawn(train, args=(True,), nprocs=2, gpus='4,5')
     """
     # Give an error hint when the users enter a configuration option
     # that does not exist

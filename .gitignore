@@ -33,6 +33,9 @@ paddle/phi/include/*
 paddle/phi/infermeta/generated.*
 paddle/fluid/prim/api/generated_prim/*.cc
 paddle/fluid/prim/api/generated_prim/*.h
+python/paddle/libs/bfloat16.h
+python/paddle/libs/cinn_cuda_runtime_source.cuh
+python/paddle/libs/float16.h
 *.DS_Store
 *.vs
 build/
@@ -41,6 +44,7 @@ build_doc/
 *.user
 *.tmp
 *.pyc
+*.log
 
 .vscode
 .idea
@@ -77,12 +81,12 @@ tools/nvcc_lazy
 paddle/phi/kernels/sparse/gpu/cutlass_generator/all_gemm_operations.h
 paddle/phi/kernels/sparse/gpu/cutlass_generator/configurations.h
 
-# these files (directories) are generated before build system generation
+#these files (directories) are generated before build system generation
 paddle/fluid/operators/generated_op*.cc
 paddle/fluid/operators/generated_sparse_op.cc
 paddle/fluid/operators/generated_static_op.cc
 paddle/fluid/operators/generated_fused_op.cc
-paddle/phi/ops/compat/generated_*.cc
+paddle/fluid/operators/ops_signature/generated_*.cc
 paddle/phi/api/yaml/parsed_apis/
 paddle/fluid/operators/generator/parsed_ops/
 paddle/fluid/pybind/tmp_eager_op_function_impl.h
@@ -95,8 +99,11 @@ paddle/fluid/framework/__init__.py
 paddle/phi/api/profiler/__init__.py
 python/paddle/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/phi/kernels/fusion/cutlass/conv2d/generated/*
+paddle/phi/kernels/fusion/cutlass/conv2d/generated_tmp/*
+paddle/phi/ops/compat/generated_*
 python/paddle/base/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/fluid/ir_adaptor/translator/op_compat_info.cc
 paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*
+paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen_tmp/*
 paddle/fluid/pybind/static_op_function.*
 paddle/fluid/pybind/ops_api.cc

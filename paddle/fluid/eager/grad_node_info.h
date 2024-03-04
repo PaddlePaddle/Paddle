@@ -21,6 +21,8 @@
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/utils/test_macros.h"
 
 namespace egr {
 /**
@@ -34,8 +36,8 @@ namespace egr {
  * TODO(yangzhanlue): GradNodeBase will also in charge of get the correct input
  * from GradOpDescMaker to GradNodeBase.
  *
- * NOTE: GradNodeBase has a method named run, this method should be overrided by
- * the specific derived class, it will prepare backward inputs and double
+ * NOTE: GradNodeBase has a method named run, this method should be overridden
+ *by the specific derived class, it will prepare backward inputs and double
  * backward's depends. Then, it will call C++ API of backward kernel functions
  * to finish backward computation.
  *
@@ -165,7 +167,19 @@ class GradSlotMeta {
 
   void SetDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
     dist_attr_ = dist_attr;
+    is_dist_meta_ = true;
   }
+
+  const phi::DDim& DistTensorGlobalDims() const {
+    return dist_tensor_global_dims_;
+  }
+
+  void SetDistTensorGlobalDims(const phi::DDim& dims) {
+    dist_tensor_global_dims_ = dims;
+    is_dist_meta_ = true;
+  }
+
+  bool IsDistMeta() const { return is_dist_meta_; }
 
  private:
   bool stop_gradient_{false};
@@ -176,18 +190,20 @@ class GradSlotMeta {
   // Save the dist attr of the forward input Tensor for proper resharding
   // operation when compute the input Tensor's gradient
   phi::distributed::TensorDistAttr dist_attr_;
+  phi::DDim dist_tensor_global_dims_;
+  bool is_dist_meta_{false};
 };
 
 class GradNodeBase {
  public:
   GradNodeBase() { VLOG(7) << "Construct GradNodeBase"; }
-  GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
+  TEST_API GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
   virtual ~GradNodeBase() { VLOG(7) << "Destruct GradNodeBase"; }
 
   /**
    * operator() designed to contain the real backward execution logic, it should
-   * be overrided by derived class defined for each operator. It accepts a
+   * be overridden by derived class defined for each operator. It accepts a
    * vector of Tensor which contains grads input of current operator
    *
    * Note: why we need backward inputs and outputs construct as vector of vector
@@ -216,12 +232,14 @@ class GradNodeBase {
 
   /**
    * Get Input Meta of current Grad node**/
-  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-  InputMeta() const;
+  TEST_API const
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      InputMeta() const;
   /**
    * Get Output Meta of current Grad node**/
-  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-  OutputMeta() const;
+  TEST_API const
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      OutputMeta() const;
 
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
   MutableOutputMeta();
@@ -237,7 +255,7 @@ class GradNodeBase {
                       size_t slot_rank);
   void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,
                       size_t slot_rank);
-  void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
+  TEST_API void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
   void SetGradOutMeta(const paddle::Tensor& fwd_in,
                       const AutogradMeta* fwd_in_other,
                       size_t slot_rank);
@@ -245,7 +263,7 @@ class GradNodeBase {
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
    * **/
-  void SetDefaultGradInOutMeta();
+  TEST_API void SetDefaultGradInOutMeta();
   /**
    * Register GradientHook
    * **/
@@ -266,21 +284,23 @@ class GradNodeBase {
 
   std::vector<std::shared_ptr<egr::GradNodeBase>> NextFunctions();
 
+  uintptr_t GetPtr() const;
+
   /**
    * Apply GradientHook
    * **/
   inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
 
   std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
-  GetGradientHookFuntions() {
-    VLOG(7) << "GetGradientHookFuntions ";
+  GetGradientHookFunctions() {
+    VLOG(7) << "GetGradientHookFunctions ";
     return gradient_hooks_;
   }
 
-  void SetGradientHookFuntions(
+  void SetGradientHookFunctions(
       std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
           hooks) {
-    VLOG(7) << "SetGradientHookFuntions ";
+    VLOG(7) << "SetGradientHookFunctions ";
     gradient_hooks_ = hooks;
   }
 

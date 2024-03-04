@@ -59,7 +59,7 @@ class OpMapperContext {
  public:
   OpMapperContext(
       const hlir::framework::Scope& scope,
-      const common::Target& target,
+      const cinn::common::Target& target,
       NetBuilder* builder,
       std::unordered_map<std::string, Variable>* var_map,
       std::unordered_map<std::string, std::string>* var_model_to_program_map,
@@ -99,7 +99,7 @@ class OpMapperContext {
 
   struct FeedInfo {
     std::vector<int> shape;
-    common::Type type;
+    cinn::common::Type type;
   };
 
   void AddFeedInfo(const std::string& name, const FeedInfo& info);
@@ -108,7 +108,7 @@ class OpMapperContext {
 
  private:
   const hlir::framework::Scope& scope_;
-  const common::Target& target_;
+  const cinn::common::Target& target_;
   NetBuilder* builder_{nullptr};
 
   std::unordered_map<std::string, Variable>* var_map_{nullptr};

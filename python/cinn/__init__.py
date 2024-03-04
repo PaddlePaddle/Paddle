@@ -14,6 +14,9 @@
 
 import os
 
+from .runtime.cinn_jit import to_cinn_llir  # noqa: F401
+from .version import full_version as __version__  # noqa: F401
+
 cinndir = os.path.dirname(os.path.abspath(__file__))
 runtime_include_dir = os.path.join(cinndir, "libs")
 cuhfile = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
@@ -21,6 +24,11 @@ cuhfile = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
 if os.path.exists(cuhfile):
     os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
+from .backends import (  # noqa: F401
+    Compiler,
+    ExecutionEngine,
+    ExecutionOptions,
+)
 from .common import (  # noqa: F401
     BFloat16,
     Bool,
@@ -48,21 +56,13 @@ from .common import (  # noqa: F401
     set_target,
     type_of,
 )
-from .backends import (  # noqa: F401
-    Compiler,
-    ExecutionEngine,
-    ExecutionOptions,
-)
-from .poly import (  # noqa: F401
-    Condition,
-    Iterator,
-    SharedStage,
-    SharedStageMap,
-    Stage,
-    StageMap,
-    create_stages,
-)
 from .ir import (  # noqa: F401
+    EQ,
+    GE,
+    GT,
+    LE,
+    LT,
+    NE,
     Add,
     And,
     Args,
@@ -90,8 +90,10 @@ from .ir import (  # noqa: F401
     Cast,
     ComputeOp,
     Div,
-    EQ,
     Expr,
+    ExprNode_Module_,
+    ExprNode_Tensor_,
+    ExprNode_Var_,
     ExprNodeAdd,
     ExprNodeAnd,
     ExprNodeBlock,
@@ -105,9 +107,9 @@ from .ir import (  # noqa: F401
     ExprNodeGT,
     ExprNodeIntImm,
     ExprNodeLE,
-    ExprNodeLT,
     ExprNodeLet,
     ExprNodeLoad,
+    ExprNodeLT,
     ExprNodeMax,
     ExprNodeMin,
     ExprNodeMinus,
@@ -124,20 +126,13 @@ from .ir import (  # noqa: F401
     ExprNodeSub,
     ExprNodeSum,
     ExprNodeUIntImm,
-    ExprNode_Module_,
-    ExprNode_Tensor_,
-    ExprNode_Var_,
     FloatImm,
     FracOp,
-    GE,
-    GT,
-    IRVisitor,
     IntImm,
     IrNode,
     IrNodeRef,
     IrNodeTy,
-    LE,
-    LT,
+    IRVisitor,
     Let,
     Load,
     LoadStoreAddrMnger,
@@ -147,7 +142,6 @@ from .ir import (  # noqa: F401
     Minus,
     Mod,
     Mul,
-    NE,
     Not,
     Operation,
     Or,
@@ -189,4 +183,12 @@ from .lang import (  # noqa: F401
     reduce_mul,
     reduce_sum,
 )
-from .version import full_version as __version__
+from .poly import (  # noqa: F401
+    Condition,
+    Iterator,
+    SharedStage,
+    SharedStageMap,
+    Stage,
+    StageMap,
+    create_stages,
+)

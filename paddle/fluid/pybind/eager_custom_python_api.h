@@ -25,17 +25,29 @@ static PyObject *eager_api_linear(PyObject *self,
                                   PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
-    auto x = GetTensorFromArgs("linear", "X", args, 0, false);
-    auto weight = GetTensorFromArgs("linear", "weight", args, 1, false);
-    auto bias = GetTensorFromArgs("linear", "Bias", args, 2, true);
+    auto &x = GetTensorFromArgs("linear", "X", args, 0, false);
+    auto &weight = GetTensorFromArgs("linear", "weight", args, 1, false);
+    auto &bias = GetTensorFromArgs("linear", "Bias", args, 2, true);
+
     tstate = PyEval_SaveThread();
+
     if (bias.initialized()) {
+      const phi::distributed::ProcessMesh *mesh = nullptr;
+      if (InputsContainDistTensor(&mesh, x, weight, bias)) {
+        ConvertAllInputsToDistTensor(mesh, x, weight, bias);
+      }
+
       auto mm_out = matmul_ad_func(x, weight, false, false);
       auto out = add_ad_func(mm_out, bias);
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(out);
     } else {
+      const phi::distributed::ProcessMesh *mesh = nullptr;
+      if (InputsContainDistTensor(&mesh, x, weight)) {
+        ConvertAllInputsToDistTensor(mesh, x, weight);
+      }
+
       auto mm_out = matmul_ad_func(x, weight, false, false);
       PyEval_RestoreThread(tstate);
       tstate = nullptr;

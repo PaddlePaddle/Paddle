@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 from paddle.distributed.launch import plugins
 
+from .args_envs import env_args_mapping, fetch_envs, parse_args
 from .node import Node
 from .status import Status
-from .args_envs import parse_args, fetch_envs, env_args_mapping
-
-import logging
 
 
 class Context:
@@ -80,6 +80,8 @@ class Context:
 
     def get_logger(self, level=logging.INFO):
         logger = logging.getLogger("LAUNCH")
+        # forbid the child logger pass on to its parent
+        logger.propagate = False
         logger.setLevel(self.args.log_level.upper() or level)
         formatter = logging.Formatter(
             fmt='%(name)s %(levelname)s %(asctime)s %(message)s'
@@ -89,7 +91,7 @@ class Context:
         logger.addHandler(ch)
         return logger
 
-    def continous_log(self) -> bool:
+    def continuous_log(self) -> bool:
         if self.args.log_level.upper() in ['DEBUG', 'ERROR']:
             return True
         else:
@@ -100,6 +102,6 @@ class Context:
             attr, attr_type = v
             if k in self.envs:
                 print(
-                    f"LAUNCH WARNNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
+                    f"LAUNCH WARNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
                 )
                 setattr(self.args, attr, attr_type(self.envs[k]))

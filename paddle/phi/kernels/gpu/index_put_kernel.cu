@@ -25,8 +25,8 @@ template <typename T>
 __global__ void IndexPutCudaKernel(const T* x,
                                    const T* vals,
                                    int64_t** indices,
-                                   phi::Array<int64_t, DDim::kMaxRank> stride,
-                                   phi::Array<int64_t, DDim::kMaxRank> shape,
+                                   Array<int64_t, DDim::kMaxRank> stride,
+                                   Array<int64_t, DDim::kMaxRank> shape,
                                    const int rank,
                                    const int64_t numel,
                                    const int64_t is_single_val_tensor,
@@ -41,7 +41,11 @@ __global__ void IndexPutCudaKernel(const T* x,
     return;
   }
   int64_t offset = 0;
-  for (int i = 0; i < rank; ++i) {
+#pragma unroll
+  for (int i = 0; i < DDim::kMaxRank; ++i) {
+    if (i >= rank) {
+      break;
+    }
     cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
     if (cur_ix < 0) {
       cur_ix += shape[i];
@@ -74,10 +78,10 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
 
   auto x_dims = x.dims();
   const int rank = x_dims.size();
-  auto x_stride = phi::stride(x_dims);
+  auto x_stride = common::stride(x_dims);
 
-  phi::Array<int64_t, DDim::kMaxRank> stride_array;
-  phi::Array<int64_t, DDim::kMaxRank> shape_array;
+  Array<int64_t, DDim::kMaxRank> stride_array;
+  Array<int64_t, DDim::kMaxRank> shape_array;
   for (int i = 0; i < rank; ++i) {
     stride_array[i] = x_stride[i];
     shape_array[i] = x_dims[i];
@@ -130,7 +134,7 @@ void IndexPutKernel(const Context& dev_ctx,
   }
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
-  std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
+  std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> tmp_value_v;
@@ -153,7 +157,7 @@ void IndexPutKernel(const Context& dev_ctx,
 
   if (value.numel() != 1) {
     tmp_value_v.emplace_back(
-        DenseTensor(value.dtype()).Resize(phi::make_ddim(res_dim_v)));
+        DenseTensor(value.dtype()).Resize(common::make_ddim(res_dim_v)));
     ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
     ptr_value = &tmp_value_v[0];
@@ -175,4 +179,10 @@ PD_REGISTER_KERNEL(index_put,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

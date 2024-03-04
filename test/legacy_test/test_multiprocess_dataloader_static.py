@@ -47,8 +47,7 @@ class RandomDataset(Dataset):
 def simple_fc_net_static():
     startup_prog = base.Program()
     main_prog = base.Program()
-    startup_prog.random_seed = 1
-    main_prog.random_seed = 1
+    paddle.seed(1)
 
     with base.unique_name.guard():
         with base.program_guard(main_prog, startup_prog):
@@ -137,9 +136,7 @@ class TestStaticDataLoader(unittest.TestCase):
             for _ in range(EPOCH_NUM):
                 step = 0
                 for d in dataloader:
-                    assert len(d) == len(places), "{} != {}".format(
-                        len(d), len(places)
-                    )
+                    assert len(d) == len(places), f"{len(d)} != {len(places)}"
                     for i, item in enumerate(d):
                         image = item['image']
                         label = item['label']
@@ -298,9 +295,7 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
             for _ in range(EPOCH_NUM):
                 step = 0
                 for d in dataloader:
-                    assert len(d) == len(places), "{} != {}".format(
-                        len(d), len(places)
-                    )
+                    assert len(d) == len(places), f"{len(d)} != {len(places)}"
                     for i, item in enumerate(d):
                         image = item['image']
                         label = item['label']

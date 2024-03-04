@@ -14,18 +14,26 @@
 
 import os
 import sys
-from .optimizer_factory import FLEET_GLOBAL_DICT  # noqa: F403
-from .optimizer_factory import DistributedAdam  # noqa: F403
+
 from google.protobuf import text_format
-from paddle.framework import core
-from paddle.incubate.distributed.fleet.base import Fleet
-from paddle.incubate.distributed.fleet.base import Mode
-from paddle.incubate.distributed.fleet.base import DistributedOptimizer
-from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
-from paddle.incubate.distributed.fleet.role_maker import HeterRoleMaker
-from paddle.common_ops_import import LayerHelper
 
 import paddle
+from paddle.common_ops_import import LayerHelper
+from paddle.framework import core
+from paddle.incubate.distributed.fleet.base import (
+    DistributedOptimizer,
+    Fleet,
+    Mode,
+)
+from paddle.incubate.distributed.fleet.role_maker import (
+    HeterRoleMaker,
+    MPISymetricRoleMaker,
+)
+
+from .optimizer_factory import (
+    FLEET_GLOBAL_DICT,
+    DistributedAdam,  # noqa: F401
+)
 
 
 class PSLib(Fleet):
@@ -1304,7 +1312,7 @@ class DownpourOptimizer(DistributedOptimizer):
 
     def _remove_collective_ops(self, program, name):
         """
-        colective init op should call once, so remove other call.
+        collective init op should call once, so remove other call.
         """
         block = program.global_block()
         for ids, op in list(enumerate(block.ops)):

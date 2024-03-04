@@ -147,9 +147,7 @@ class TensorRTPool3dTest(InferencePassTest):
         ):
             is_dynamic = True if dynamic_shape_options is not None else False
             with self.subTest(
-                'Precision: {}, Serialize: {}, Dynamic: {}'.format(
-                    precision, serialize, is_dynamic
-                )
+                f'Precision: {precision}, Serialize: {serialize}, Dynamic: {is_dynamic}'
             ):
                 self.precision = precision
                 self.serialize = serialize
@@ -258,9 +256,7 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
         ):
             is_dynamic = True if dynamic_shape_options is not None else False
             with self.subTest(
-                'Precision: {}, Serialize: {}, Dynamic: {}'.format(
-                    precision, serialize, is_dynamic
-                )
+                f'Precision: {precision}, Serialize: {serialize}, Dynamic: {is_dynamic}'
             ):
                 self.precision = precision
                 self.serialize = serialize
@@ -359,9 +355,7 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
         ):
             is_dynamic = True if dynamic_shape_options is not None else False
             with self.subTest(
-                'Precision: {}, Serialize: {}, Dynamic: {}'.format(
-                    precision, serialize, is_dynamic
-                )
+                f'Precision: {precision}, Serialize: {serialize}, Dynamic: {is_dynamic}'
             ):
                 self.precision = precision
                 self.serialize = serialize

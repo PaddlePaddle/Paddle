@@ -18,9 +18,9 @@
 #include <memory>
 #include <unordered_set>
 
+#include "paddle/common/layout.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/phi/common/layout.h"
 namespace paddle {
 namespace imperative {
 

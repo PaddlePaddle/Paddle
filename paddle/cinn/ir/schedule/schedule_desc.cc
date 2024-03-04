@@ -27,7 +27,7 @@
 namespace cinn {
 namespace ir {
 
-// ------ Following codes are about `Apply` functions registry of variaous types
+// ------ Following codes are about `Apply` functions registry of various types
 // of ScheduleDesc::Step
 class PackedStepContext;
 // uniformed function prototype of a scheduling operation in IRSchedule
@@ -118,7 +118,7 @@ class PackedStepContext {
       return absl::get<AttrType>(attrs_.at(idx));
     } catch (absl::bad_variant_access& ex) {
       LOG(FATAL) << "Attribute cast error, idx:" << idx
-                 << ", get tpye:" << typeid(AttrType).name()
+                 << ", get type:" << typeid(AttrType).name()
                  << ", real index:" << attrs_.at(idx).index();
       throw ex;
     }
@@ -197,7 +197,7 @@ struct FreeFuncConverter<Return (IRSchedule::*)(Args...) const, impl_fn> {
   }
 };
 
-// used for formatting scheduling functions with variaous function signatures to
+// used for formatting scheduling functions with various function signatures to
 // be uniformed form
 template <typename F, F f>
 struct ApplyFuncImpl;
@@ -422,6 +422,12 @@ CINN_BUILD_STEP_KIND(SetBuffer)
     .SetApplyFn(
         APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(&IRSchedule::SetBuffer)));
 
+CINN_BUILD_STEP_KIND(AddUnitLoop)
+    .Inputs({"block"})
+    .SetApplyFn(APPLY_FUNC_UNIFORM(
+        FREE_FUNCTION_CONVERTER(static_cast<Expr (IRSchedule::*)(const Expr&)>(
+            &IRSchedule::AddUnitLoop))));
+
 CINN_BUILD_STEP_KIND(Reorder).Inputs({"loops"}).SetApplyFn(
     APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(
         static_cast<Expr (IRSchedule::*)(const std::vector<Expr>&)>(
@@ -473,6 +479,12 @@ CINN_BUILD_STEP_KIND(Rfactor)
     .Attrs({"rf_axis"})
     .SetApplyFn(
         APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(&IRSchedule::Rfactor)));
+
+CINN_BUILD_STEP_KIND(FactorizeReduction)
+    .Inputs({"rf_loop"})
+    .Attrs({"rf_axis"})
+    .SetApplyFn(APPLY_FUNC_UNIFORM(
+        FREE_FUNCTION_CONVERTER(&IRSchedule::FactorizeReduction)));
 
 CINN_BUILD_STEP_KIND(MergeExprs)
     .SetApplyFn(
@@ -677,8 +689,8 @@ proto::ScheduleDesc ScheduleDesc::ToProto() const {
       }
     }
 
-    // each output Expr is represented by a formatted name, to be refered by
-    // suceeding steps
+    // each output Expr is represented by a formatted name, to be referred by
+    // succeeding steps
     for (auto&& expr : step.outputs) {
       std::string local_name = "e" + std::to_string(expr2name.size());
       expr2name.emplace(expr, local_name);
@@ -710,7 +722,7 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
   absl::flat_hash_map<std::string, Expr> name2expr;
   std::vector<Expr> last_outputs;
 
-  // resotre each scheduling step and apply to the new IRSchedule object
+  // restore each scheduling step and apply to the new IRSchedule object
   for (auto&& step_proto : desc_proto.steps()) {
     VLOG(4) << "Replay step:\n" << step_proto.DebugString();
     ScheduleDesc::Step step;

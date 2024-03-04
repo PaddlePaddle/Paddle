@@ -15,16 +15,52 @@
 #pragma once
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace primitive {
 
 template <typename T>
 void set_output(const Tensor& x_tmp, Tensor* x);
+
+template <typename T>
+void by_pass(const Tensor& x_tmp, Tensor* x);
+
+// This function determine whether dtype is in [float16, bfloat16, uint16]
+static bool is_half_dtype(const DataType& dtype) {
+  if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16 ||
+      dtype == phi::DataType::UINT16) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+// This function expands the dimension of origin Tensor based on the value of
+// axis
+static std::vector<int64_t> get_expand_dims(const Tensor& origin,
+                                            const std::vector<int64_t>& axis) {
+  std::vector<int64_t> result(origin.shape());
+  for (size_t i = 0; i < axis.size(); ++i) {
+    int64_t offset = axis[i];
+    if (offset < 0) {
+      offset += result.size() + 1;
+    }
+
+    PADDLE_ENFORCE_LE(
+        offset,
+        result.size(),
+        platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                     "elements in origin_dims[%lu].",
+                                     offset,
+                                     result.size()));
+    result.insert(result.begin() + offset, 1);
+  }
+  return result;
+}
 
 // This fucction compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
@@ -52,6 +88,47 @@ static std::vector<int64_t> get_unsqueeze_dims(
   return result;
 }
 
+// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
+                                             const std::vector<int64_t>& axis) {
+  auto origin_dims = origin.shape();
+  auto total_shape_size = origin_dims.size();
+  std::vector<int64_t> result;
+  for (size_t i = 0; i < total_shape_size; ++i) {
+    if (origin_dims[i] != 1) {
+      result.push_back(origin_dims[i]);
+    } else if (origin_dims[i] == 1 &&
+               std::find(axis.begin(), axis.end(), int64_t(i)) == axis.end()) {
+      result.push_back(1);
+    } else {
+      continue;
+    }
+  }
+  return result;
+}
+
+static std::vector<int64_t> process_dims(const Tensor& origin,
+                                         const std::vector<int64_t>& axis) {
+  auto origin_dims = origin.shape();
+  auto total_shape_size = origin_dims.size();
+  std::vector<int64_t> result;
+  auto axis_size = axis.size();
+  if (axis_size == 0) {
+    for (size_t i = 0; i < total_shape_size; ++i) {
+      result.push_back(i);
+    }
+  } else {
+    for (size_t i = 0; i < axis_size; ++i) {
+      if (axis[i] < 0) {
+        result.push_back(axis[i] + total_shape_size);
+      } else {
+        result.push_back(axis[i]);
+      }
+    }
+  }
+  return result;
+}
+
 // These method don't need to be specified
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
@@ -61,7 +138,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
     result.push_back(i);
   }
   for (int i = 0; i < in_dims.size(); ++i) {
-    if (in_dims[i] == 1) {
+    if (in_dims[i] == 1 && dout_dims[i] != 1) {
       result.push_back(i + bat);
     } else {
       PADDLE_ENFORCE_EQ(
@@ -79,7 +156,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
               i));
     }
   }
-  return phi::make_ddim(result);
+  return common::make_ddim(result);
 }
 
 static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
@@ -94,6 +171,22 @@ void SetEmptyGrad(const std::vector<std::vector<Tensor>>& outputs,
 std::vector<std::vector<Tensor>> ConstructVjpResultByStopGradients(
     const std::vector<std::vector<Tensor>>& outputs,
     const std::vector<std::vector<bool>>& stop_gradients);
+
+static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
+  if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+static bool has_dynamic_shape(const std::vector<int64_t>& vec) {
+  if (std::find(vec.begin(), vec.end(), -1) != vec.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 }  // namespace primitive
 }  // namespace paddle

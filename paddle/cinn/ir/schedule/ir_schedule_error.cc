@@ -14,23 +14,23 @@
 
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace ir {
 
 std::string IRScheduleErrorHandler::GeneralErrorMessage() const {
   std::ostringstream os;
-  os << "[IRScheduleError] An error occurred in the scheduel primitive < "
+  os << "[IRScheduleError] An error occurred in the schedule primitive < "
      << this->primitive_ << " >. " << std::endl;
-  os << this->err_msg_;
+  os << indent_str_ << "[Error info] " << this->err_msg_;
   return os.str();
 }
 
 std::string IRScheduleErrorHandler::DetailedErrorMessage() const {
   std::ostringstream os;
   os << GeneralErrorMessage();
-  os << "[Expr info] The Expr of current schedule is: "
+  os << indent_str_ << "[Expr info] The Expr of current schedule is:\n"
      << this->module_expr_.GetExprs() << std::endl;
   return os.str();
 }

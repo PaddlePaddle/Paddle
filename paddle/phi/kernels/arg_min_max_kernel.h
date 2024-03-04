@@ -25,7 +25,7 @@ void ArgMinKernel(const Context& dev_ctx,
                   const Scalar& axis,
                   bool keepdims,
                   bool flatten,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out);
 
 template <typename T, typename Context>
@@ -34,7 +34,7 @@ void ArgMaxKernel(const Context& dev_ctx,
                   const Scalar& axis,
                   bool keepdims,
                   bool flatten,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out);
 
 }  // namespace phi

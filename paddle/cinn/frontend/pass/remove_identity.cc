@@ -101,8 +101,8 @@ bool check_reduce_to_reshape(const Instruction& instr) {
     }
   }
 
-  for (auto aixs : dims) {
-    if (input_shape[aixs] != 1) {
+  for (auto axis : dims) {
+    if (input_shape[axis] != 1) {
       return false;
     }
   }
@@ -144,7 +144,7 @@ class RemoveIdentityPass : public ProgramPass {
  protected:
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) override {
+                 const cinn::common::Target& target) override {
     CollectInfo(*program, fetch_ids);
 
     VLOG(3) << "Total remove " << remove_idxs_.size() << " instructions.";

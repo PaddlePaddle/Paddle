@@ -15,15 +15,15 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/global_gather_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
-#include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle {
 namespace operators {
@@ -128,7 +128,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < local_count_len; ++i) {
       fwd_count += cpu_local_count_data[i];
     }
-    framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -268,7 +268,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < local_count_len; ++i) {
       fwd_count += cpu_local_count_data[i];
     }
-    framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -279,7 +279,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
     out->mutable_data<T>(out_dims, place);
 
     for (auto i = 0; i < n_expert; ++i) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+      distributed::ProcessGroupNCCL::GroupStart();
       for (auto j = 0; j < nranks; ++j) {
         int idx = i + j * n_expert;
         if (cpu_global_count_data[idx]) {
@@ -299,7 +299,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
                    /*sync_op*/ true);
         }
       }
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+      distributed::ProcessGroupNCCL::GroupEnd();
     }
 
 #ifdef PADDLE_WITH_CUDA
@@ -319,7 +319,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
   }
 };
 
-template <typename T, typename DeivceContext>
+template <typename T, typename DeviceContext>
 class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

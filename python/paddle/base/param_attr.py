@@ -13,13 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.regularizer import WeightDecayRegularizer
 from paddle.base.data_feeder import check_type
+from paddle.regularizer import WeightDecayRegularizer
 
-__all__ = [
-    'ParamAttr',
-    'WeightNormParamAttr',
-]
+__all__ = []
 
 
 class ParamAttr:
@@ -27,7 +24,7 @@ class ParamAttr:
 
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
         There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` ,
         :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
 
@@ -52,7 +49,7 @@ class ParamAttr:
         trainable (bool, optional): Whether this parameter is trainable. Default True.
         do_model_average (bool, optional): Whether this parameter should do model average
                 when model average is enabled. Only used in ExponentialMovingAverage. Default True.
-        need_clip (bool, optional): Whether the parameter gradient need to be cliped in optimizer. Default is True.
+        need_clip (bool, optional): Whether the parameter gradient need to be clipped in optimizer. Default is True.
 
     Returns:
        ParamAttr Object.
@@ -174,7 +171,7 @@ class ParamAttr:
         """
         if arg is None:
             return ParamAttr()
-        elif isinstance(arg, list) or isinstance(arg, tuple):
+        elif isinstance(arg, (list, tuple)):
             return [ParamAttr._to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
@@ -187,7 +184,7 @@ class ParamAttr:
         elif isinstance(arg, bool):
             return ParamAttr._to_attr(None) if arg else False
         else:
-            raise TypeError("{0} cast to ParamAttr".format(type(arg)))
+            raise TypeError(f"{type(arg)} cast to ParamAttr")
 
     def _to_kwargs(self, with_initializer=False):
         """
@@ -220,7 +217,7 @@ class WeightNormParamAttr(ParamAttr):
 
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
         There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` ,
         :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
 
@@ -248,13 +245,13 @@ class WeightNormParamAttr(ParamAttr):
         regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are
             two method: :ref:`api_paddle_regularizer_L1Decay` ,
             :ref:`api_paddle_regularizer_L2Decay`.
-            If regularizer isralso set in ``optimizer``
+            If regularizer is also set in ``optimizer``
             (such as :ref:`api_paddle_optimizer_SGD` ), that regularizer setting in
             optimizer will be ignored. Default None, meaning there is no regularization.
         trainable(bool, optional): Whether this parameter is trainable. Default True.
         do_model_average(bool, optional): Whether this parameter should do model average.
             Default False.
-        need_clip (bool, optional): Whether the parameter gradient need to be cliped in optimizer. Default is True.
+        need_clip (bool, optional): Whether the parameter gradient need to be clipped in optimizer. Default is True.
 
     Examples:
 
@@ -282,7 +279,7 @@ class WeightNormParamAttr(ParamAttr):
     # List to record the parameters reparameterized by weight normalization.
     # If these parameters are treated as Variable rather than Parameter,
     # it can be used to discriminate these parameters and help to serialize
-    # these paramters for inference.
+    # these parameters for inference.
     params_with_weight_norm = []
 
     def __init__(

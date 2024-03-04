@@ -200,7 +200,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         np.testing.assert_allclose(dy_out, pred_out, rtol=1e-05)
 
         # @to_static by InputSpec
-        net = paddle.jit.to_static(net, input_spec=specs)
+        net = paddle.jit.to_static(net, input_spec=specs, full_graph=True)
         st_out = net(self.x, *specs[1:])
 
         np.testing.assert_allclose(dy_out, st_out, rtol=1e-05)
@@ -217,7 +217,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         net = NetWithNonTensorSpec(self.in_num, self.out_num)
 
         specs = [self.x_spec, False, "bn", -10]
-        net = paddle.jit.to_static(net, input_spec=specs)
+        net = paddle.jit.to_static(net, input_spec=specs, full_graph=True)
         net.eval()
 
         path = os.path.join(self.temp_dir.name, './net_twice')
@@ -288,7 +288,7 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
         np.testing.assert_allclose(dy_out, pred_out, rtol=1e-05)
 
         # @to_static by InputSpec
-        net = paddle.jit.to_static(net, input_spec=specs)
+        net = paddle.jit.to_static(net, input_spec=specs, full_graph=True)
         st_out, _ = net(self.x, self.y, *specs[2:])
 
         np.testing.assert_allclose(dy_out, st_out, rtol=1e-05)
@@ -351,7 +351,9 @@ class TestNegSpecWithPrim(unittest.TestCase):
     def test_run(self):
         net = NegSpecNet()
         net = paddle.jit.to_static(
-            net, input_spec=[paddle.static.InputSpec(shape=[-1, 10])]
+            net,
+            input_spec=[paddle.static.InputSpec(shape=[-1, 10])],
+            full_graph=True,
         )
         x = paddle.randn([2, 10])
         out = net(x)

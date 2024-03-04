@@ -11,31 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
-import decorator
 import inspect
 import sys
-import numpy as np
-from paddle.base import core
-from paddle.base import framework
+import warnings
+
+import decorator
+
+import paddle
+from paddle.base import core, framework
 from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
-from .tracer import Tracer
-from ..data_feeder import convert_dtype
-import warnings
-from ..framework import _get_paddle_place
-import paddle
 
-__all__ = [
-    'no_grad',
-    'no_grad_',
-    'grad',
-    'guard',
-    'enable_dygraph',
-    'disable_dygraph',
-    'enabled',
-    'to_variable',
-]
+from ..framework import _get_paddle_place
+from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+from .tracer import Tracer
+
+__all__ = []
 
 NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
 
@@ -85,8 +76,10 @@ def _to_static_mode_guard_(is_to_static=True):
     global global_var
     original_val = global_var._in_to_static_mode_
     global_var._in_to_static_mode_ = is_to_static
-    yield
-    global_var._in_to_static_mode_ = original_val
+    try:
+        yield
+    finally:
+        global_var._in_to_static_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -125,6 +118,8 @@ def _convert_into_variable(tensor):
     """
     Convert Tensor into Variable.
     """
+    if paddle.framework.use_pir_api():
+        return paddle.pir.core._convert_into_value(tensor)
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
         new_var = tensor.block._find_var_recursive(tensor.name)
@@ -166,9 +161,8 @@ def _convert_into_variable(tensor):
 def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
-    You can enter dynamic graph mode with :ref:`api_base_dygraph_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_base_dygraph_enable_dygraph`
-    and :ref:`api_base_dygraph_disable_dygraph` api .
+    You can enable dynamic graph mode with :ref:`api_paddle_disable_static` api,
+    or disable dynamic graph mode with :ref:`api_paddle_enable_static` .
 
     **Note**:
         ``base.dygraph.enabled`` is the alias of ``base.in_dygraph_mode``, and
@@ -180,12 +174,14 @@ def enabled():
     Examples:
         .. code-block:: python
 
-            import paddle.base as base
+            >>> import paddle.base as base
 
-            base.enable_dygraph()  # Now we are in dygragh mode
-            print(base.dygraph.enabled())  # True
-            base.disable_dygraph()
-            print(base.dygraph.enabled())  # False
+            >>> base.enable_dygraph()  # Now we are in dygragh mode
+            >>> print(base.dygraph.enabled())
+            True
+            >>> base.disable_dygraph()
+            >>> print(base.dygraph.enabled())
+            False
     """
     # TODO(jiabin): Make this check as in_dygraph_mode when we support default eager mode.
     return framework.in_dygraph_mode()
@@ -210,14 +206,17 @@ def enable_dygraph(place=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
+            >>> import paddle
+            >>> print(paddle.in_dynamic_mode())
+            True
 
-            paddle.enable_static()
-            print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
+            >>> paddle.enable_static()
+            >>> print(paddle.in_dynamic_mode())
+            False
 
-            paddle.disable_static()
-            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+            >>> paddle.disable_static()
+            >>> print(paddle.in_dynamic_mode())
+            True
 
     """
     global global_var
@@ -245,14 +244,17 @@ def disable_dygraph():
     Examples:
         .. code-block:: python
 
-            import paddle
-            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
+            >>> import paddle
+            >>> print(paddle.in_dynamic_mode())
+            True
 
-            paddle.enable_static()
-            print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
+            >>> paddle.enable_static()
+            >>> print(paddle.in_dynamic_mode())
+            False
 
-            paddle.disable_static()
-            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+            >>> paddle.disable_static()
+            >>> print(paddle.in_dynamic_mode())
+            True
 
     """
     global global_var
@@ -286,40 +288,40 @@ def no_grad(func=None):
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import numpy as np
-        import paddle.base as base
+            >>> import numpy as np
+            >>> import paddle.base as base
 
-        # use as generator
+            >>> # use as generator
 
-        data = np.array([[2, 3], [4, 5]]).astype('float32')
-        with base.dygraph.guard():
-            l0 = base.Linear(2, 2)  # l0.weight.gradient() is None
-            l1 = base.Linear(2, 2)
-            with base.dygraph.no_grad():
-                # l1.weight.stop_gradient is False
-                tmp = l1.weight * 2  # tmp.stop_gradient is True
-            x = base.dygraph.to_variable(data)
-            y = l0(x) + tmp
-            o = l1(y)
-            o.backward()
-            print(tmp.gradient() is None)  # True
-            print(l0.weight.gradient() is None)  # False
+            >>> data = np.array([[2, 3], [4, 5]]).astype('float32')
+            >>> with base.dygraph.guard():
+            ...     l0 = paddle.nn.Linear(2, 2)  # l0.weight.gradient() is None
+            ...     l1 = paddle.nn.Linear(2, 2)
+            ...     with base.dygraph.no_grad():
+            ...         # l1.weight.stop_gradient is False
+            ...         tmp = l1.weight * 2  # tmp.stop_gradient is True
+            ...     x = base.dygraph.to_variable(data)
+            ...     y = l0(x) + tmp
+            ...     o = l1(y)
+            ...     o.backward()
+            ...     print(tmp.gradient() is None)
+            ...     print(l0.weight.gradient() is None)
+            True
+            False
 
-        # use as decorator
-
-        @base.dygraph.no_grad
-        def test_layer():
-            with base.dygraph.guard():
-                inp = np.ones([3, 1024], dtype='float32')
-                t = base.dygraph.base.to_variable(inp)
-                linear1 = base.Linear(1024, 4, bias_attr=False)
-                linear2 = base.Linear(4, 4)
-                ret = linear1(t)
-                dy_ret = linear2(ret)
-
-        test_layer()
+            >>> @base.dygraph.no_grad
+            >>> def test_layer():
+            ...     with base.dygraph.guard():
+            ...         inp = np.ones([3, 1024], dtype='float32')
+            ...         t = base.dygraph.base.to_variable(inp)
+            ...         linear1 = paddle.nn.Linear(1024, 4, bias_attr=False)
+            ...         linear2 = paddle.nn.Linear(4, 4)
+            ...         ret = linear1(t)
+            ...         dy_ret = linear2(ret)
+            ...
+            >>> test_layer()
 
     """
     if in_to_static_mode():
@@ -351,8 +353,7 @@ class _DecoratorContextManager:
         def _decorate_generator(func, *args, **kwargs):
             gen = func(*args, **kwargs)
             with self:
-                for x in gen:
-                    yield x
+                yield from gen
 
         if inspect.isgeneratorfunction(func):
             return _decorate_generator(func)
@@ -380,16 +381,19 @@ def is_grad_enabled():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # Dygraph gradient calculation mode is enabled by default.
-            paddle.is_grad_enabled() # True
+            >>> # Dygraph gradient calculation mode is enabled by default.
+            >>> paddle.is_grad_enabled()
+            True
 
-            with paddle.set_grad_enabled(False):
-                paddle.is_grad_enabled() # False
+            >>> with paddle.set_grad_enabled(False):
+            ...     paddle.is_grad_enabled()
+            False
 
-            paddle.enable_static()
-            paddle.is_grad_enabled() # False
+            >>> paddle.enable_static()
+            >>> paddle.is_grad_enabled()
+            False
     """
     tracer = framework._dygraph_tracer()
     return tracer._has_grad if tracer else False
@@ -414,20 +418,23 @@ class set_grad_enabled(_DecoratorContextManager):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([1.], stop_gradient=False)
-            is_train = False
-            with paddle.set_grad_enabled(is_train):
-                y = x * 2
-            assert(y.stop_gradient == True)
+            >>> import paddle
+            >>> x = paddle.to_tensor([1.], stop_gradient=False)
+            >>> is_train = False
+            >>> with paddle.set_grad_enabled(is_train):
+            ...     y = x * 2
+            >>> print(y.stop_gradient)
+            True
 
-            paddle.set_grad_enabled(True)
-            y = x * 2
-            assert(y.stop_gradient == False)
+            >>> paddle.set_grad_enabled(True)
+            >>> y = x * 2
+            >>> print(y.stop_gradient)
+            False
 
-            paddle.set_grad_enabled(False)
-            y = x * 2
-            assert(y.stop_gradient == True)
+            >>> paddle.set_grad_enabled(False)
+            >>> y = x * 2
+            >>> print(y.stop_gradient)
+            True
     """
 
     def __init__(self, mode):
@@ -457,38 +464,40 @@ class no_grad_(_DecoratorContextManager):
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import numpy as np
-        import paddle
+            >>> import numpy as np
+            >>> import paddle
 
-        # use as generator
+            >>> # use as generator
 
-        data = np.array([[2, 3], [4, 5]]).astype('float32')
-        l0 = paddle.nn.Linear(2, 2)  # l0.weight.gradient() is None
-        l1 = paddle.nn.Linear(2, 2)
-        with paddle.no_grad():
-            # l1.weight.stop_gradient is False
-            tmp = l1.weight * 2  # tmp.stop_gradient is True
-        x = paddle.to_tensor(data)
-        y = l0(x) + tmp
-        o = l1(y)
-        o.backward()
-        print(tmp.gradient() is None)  # True
-        print(l0.weight.gradient() is None)  # False
+            >>> data = np.array([[2, 3], [4, 5]]).astype('float32')
+            >>> l0 = paddle.nn.Linear(2, 2)  # l0.weight.gradient() is None
+            >>> l1 = paddle.nn.Linear(2, 2)
+            >>> with paddle.no_grad():
+            ...     # l1.weight.stop_gradient is False
+            ...     tmp = l1.weight * 2  # tmp.stop_gradient is True
+            >>> x = paddle.to_tensor(data)
+            >>> y = l0(x) + tmp
+            >>> o = l1(y)
+            >>> o.backward()
+            >>> print(tmp.gradient() is None)
+            True
+            >>> print(l0.weight.gradient() is None)
+            False
 
-        # use as decorator
+            >>> # use as decorator
 
-        @paddle.no_grad()
-        def test_layer():
-            inp = np.ones([3, 1024], dtype='float32')
-            t = paddle.to_tensor(inp)
-            linear1 = paddle.nn.Linear(1024, 4, bias_attr=False)
-            linear2 = paddle.nn.Linear(4, 4)
-            ret = linear1(t)
-            dy_ret = linear2(ret)
-
-        test_layer()
+            >>> @paddle.no_grad()
+            >>> def test_layer():
+            ...     inp = np.ones([3, 1024], dtype='float32')
+            ...     t = paddle.to_tensor(inp)
+            ...     linear1 = paddle.nn.Linear(1024, 4, bias_attr=False)
+            ...     linear2 = paddle.nn.Linear(4, 4)
+            ...     ret = linear1(t)
+            ...     dy_ret = linear2(ret)
+            ...
+            >>> test_layer()
     """
 
     def __enter__(self):
@@ -513,30 +522,30 @@ class enable_grad(_DecoratorContextManager):
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        # use as generator
+            >>> # use as generator
 
-        x = paddle.to_tensor([1.], stop_gradient=False)
-        with paddle.no_grad():
-            with paddle.enable_grad():
-                y = x * 2
-        assert(y.stop_gradient == False)
-        y.backward()
-        assert(x.grad is not None)
+            >>> x = paddle.to_tensor([1.], stop_gradient=False)
+            >>> with paddle.no_grad():
+            ...     with paddle.enable_grad():
+            ...         y = x * 2
+            >>> assert(y.stop_gradient == False)
+            >>> y.backward()
+            >>> assert(x.grad is not None)
 
-        # use as decorator
+            >>> # use as decorator
 
-        @paddle.enable_grad()
-        def double(x):
-            return x * 2
-
-        with paddle.no_grad():
-            z = double(x)
-
-        assert(z.stop_gradient == False)
+            >>> @paddle.enable_grad()
+            >>> def double(x):
+            ...     return x * 2
+            ...
+            >>> with paddle.no_grad():
+            ...     z = double(x)
+            ...
+            >>> assert(z.stop_gradient == False)
     """
 
     def __enter__(self):
@@ -565,19 +574,19 @@ def guard(place=None):
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import numpy as np
-        import paddle.base as base
+            >>> import numpy as np
+            >>> import paddle.base as base
 
-        with base.dygraph.guard():
-            inp = np.ones([3, 1024], dtype='float32')
-            t = base.dygraph.base.to_variable(inp)
-            linear1 = base.Linear(1024, 4, bias_attr=False)
-            linear2 = base.Linear(4, 4)
-            ret = linear1(t)
-            dy_ret = linear2(ret)
-
+            >>> with base.dygraph.guard():
+            ...     inp = np.ones([3, 1024], dtype='float32')
+            ...     t = base.dygraph.base.to_variable(inp)
+            ...     linear1 = paddle.nn.Linear(1024, 4, bias_attr=False)
+            ...     linear2 = paddle.nn.Linear(4, 4)
+            ...     ret = linear1(t)
+            ...     dy_ret = linear2(ret)
+            ...
     """
     train = framework.Program()
     startup = framework.Program()
@@ -586,7 +595,7 @@ def guard(place=None):
     if place is not None:
         expected_place = _get_paddle_place(place)
     else:
-        expected_place = framework._current_expected_place()
+        expected_place = framework._current_expected_place_()
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
@@ -658,79 +667,85 @@ def grad(
         .. code-block:: python
             :name: code-example-1
 
-            import paddle
+            >>> import paddle
 
-            def test_dygraph_grad(create_graph):
-                x = paddle.ones(shape=[1], dtype='float32')
-                x.stop_gradient = False
-                y = x * x
-
-                # Since y = x * x, dx = 2 * x
-                dx = paddle.grad(
-                        outputs=[y],
-                        inputs=[x],
-                        create_graph=create_graph,
-                        retain_graph=True)[0]
-
-                z = y + dx
-
-                # If create_graph = False, the gradient of dx
-                # would not be backpropagated. Therefore,
-                # z = x * x + dx, and x.gradient() = 2 * x = 2.0
-
-                # If create_graph = True, the gradient of dx
-                # would be backpropagated. Therefore,
-                # z = x * x + dx = x * x + 2 * x, and
-                # x.gradient() = 2 * x + 2 = 4.0
-
-                z.backward()
-                return x.gradient()
-
-            print(test_dygraph_grad(create_graph=False)) # [2.]
-            print(test_dygraph_grad(create_graph=True)) # [4.]
+            >>> def test_dygraph_grad(create_graph):
+            ...     x = paddle.ones(shape=[1], dtype='float32')
+            ...     x.stop_gradient = False
+            ...     y = x * x
+            ...
+            ...     # Since y = x * x, dx = 2 * x
+            ...     dx = paddle.grad(
+            ...             outputs=[y],
+            ...             inputs=[x],
+            ...             create_graph=create_graph,
+            ...             retain_graph=True)[0]
+            ...
+            ...     z = y + dx
+            ...
+            ...     # If create_graph = False, the gradient of dx
+            ...     # would not be backpropagated. Therefore,
+            ...     # z = x * x + dx, and x.gradient() = 2 * x = 2.0
+            ...
+            ...     # If create_graph = True, the gradient of dx
+            ...     # would be backpropagated. Therefore,
+            ...     # z = x * x + dx = x * x + 2 * x, and
+            ...     # x.gradient() = 2 * x + 2 = 4.0
+            ...
+            ...     z.backward()
+            ...     return x.gradient()
+            ...
+            >>> print(test_dygraph_grad(create_graph=False))
+            [2.]
+            >>> print(test_dygraph_grad(create_graph=True))
+            [4.]
 
         .. code-block:: python
             :name: code-example-2
 
-            import paddle
+            >>> import paddle
 
-            def test_dygraph_grad(grad_outputs=None):
-                x = paddle.to_tensor(2.0)
-                x.stop_gradient = False
+            >>> def test_dygraph_grad(grad_outputs=None):
+            ...     x = paddle.to_tensor(2.0)
+            ...     x.stop_gradient = False
+            ...
+            ...     y1 = x * x
+            ...     y2 = x * 3
+            ...
+            ...     # If grad_outputs=None, dy1 = [1], dy2 = [1].
+            ...     # If grad_outputs=[g1, g2], then:
+            ...     #    - dy1 = [1] if g1 is None else g1
+            ...     #    - dy2 = [1] if g2 is None else g2
+            ...
+            ...     # Since y1 = x * x, dx = 2 * x * dy1.
+            ...     # Since y2 = x * 3, dx = 3 * dy2.
+            ...     # Therefore, the final result would be:
+            ...     # dx = 2 * x * dy1 + 3 * dy2 = 4 * dy1 + 3 * dy2.
+            ...
+            ...     dx = paddle.grad(
+            ...         outputs=[y1, y2],
+            ...         inputs=[x],
+            ...         grad_outputs=grad_outputs)[0]
+            ...
+            ...     return dx.numpy()
+            ...
+            >>> grad_value = paddle.to_tensor(4.0)
+            >>> # dy1 = [1], dy2 = [1]
+            >>> print(test_dygraph_grad(None))
+            7.
 
-                y1 = x * x
-                y2 = x * 3
+            >>> # dy1 = [1], dy2 = [4]
+            >>> print(test_dygraph_grad([None, grad_value]))
+            16.
 
-                # If grad_outputs=None, dy1 = [1], dy2 = [1].
-                # If grad_outputs=[g1, g2], then:
-                #    - dy1 = [1] if g1 is None else g1
-                #    - dy2 = [1] if g2 is None else g2
+            >>> # dy1 = [4], dy2 = [1]
+            >>> print(test_dygraph_grad([grad_value, None]))
+            19.
 
-                # Since y1 = x * x, dx = 2 * x * dy1.
-                # Since y2 = x * 3, dx = 3 * dy2.
-                # Therefore, the final result would be:
-                # dx = 2 * x * dy1 + 3 * dy2 = 4 * dy1 + 3 * dy2.
-
-                dx = paddle.grad(
-                    outputs=[y1, y2],
-                    inputs=[x],
-                    grad_outputs=grad_outputs)[0]
-
-                return dx.numpy()
-
-            grad_value = paddle.to_tensor(4.0)
-            # dy1 = [1], dy2 = [1]
-            print(test_dygraph_grad(None)) # [7.]
-
-            # dy1 = [1], dy2 = [4]
-            print(test_dygraph_grad([None, grad_value])) # [16.]
-
-            # dy1 = [4], dy2 = [1]
-            print(test_dygraph_grad([grad_value, None])) # [19.]
-
-            # dy1 = [3], dy2 = [4]
-            grad_y1 = paddle.to_tensor(3.0)
-            print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
+            >>> # dy1 = [3], dy2 = [4]
+            >>> grad_y1 = paddle.to_tensor(3.0)
+            >>> print(test_dygraph_grad([grad_y1, grad_value]))
+            24.
     '''
     if in_to_static_mode():
         # In dy2static context, we call static interface `gradients`
@@ -746,19 +761,19 @@ def grad(
         return gradients(outputs, inputs, grad_outputs, no_grad_vars)
 
     def check_in_out(in_out_list, name):
-        assert in_out_list is not None, "{} should not be None".format(name)
+        assert in_out_list is not None, f"{name} should not be None"
 
         if isinstance(in_out_list, (list, tuple)):
-            assert len(in_out_list) > 0, "{} cannot be empty".format(name)
+            assert len(in_out_list) > 0, f"{name} cannot be empty"
             for each_var in in_out_list:
                 assert isinstance(
                     each_var, core.eager.Tensor
-                ), "Elements of {} must be Tensor".format(name)
+                ), f"Elements of {name} must be Tensor"
             return in_out_list
         else:
             assert isinstance(
                 in_out_list, core.eager.Tensor
-            ), "{} must be Tensor or list of Tensor".format(name)
+            ), f"{name} must be Tensor or list of Tensor"
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')
@@ -783,8 +798,6 @@ def grad(
 
     if no_grad_vars is None:
         no_grad_vars = []
-    elif isinstance(no_grad_vars, core.eager.Tensor):
-        no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, core.eager.Tensor):
         no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, (list, tuple, set)):
@@ -822,116 +835,3 @@ def grad(
         allow_unused,
         no_grad_vars,
     )
-
-
-@framework.dygraph_only
-def to_variable(value, name=None, zero_copy=None, dtype=None):
-    r"""
-    :api_attr: imperative
-
-    The API will create a ``Variable`` object from
-    tuple, list, numpy\.ndarray or Variable object.
-
-    Parameters:
-        value(tuple|list|ndarray|Variable|Tensor): Initial data.
-            Can be a list, tuple, NumPy ndarray, Variable, Tensor.
-            The shape can be multi-dimensional. The data type is one of
-            numpy\.{float16, float32, float64, int16, int32, int64,
-            uint8, uint16, complex64, complex128}.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name` .
-        zero_copy(bool, optional): Whether to share memory with the input numpy
-            array. This parameter only works with CPUPlace and will be set to
-            True when it is None. Default: None. (Note: zero_copy is discarded temporally for some reason.)
-        dtype(str, optional): The desired data type of returned ``Variable`` .
-            Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' ,
-            'int32' , 'int64' , 'uint8' . Default: None.
-
-    Returns:
-        Variable : If ``value`` is a tuple/list/numpy\.ndarray object,
-            return ``Tensor`` created from the corresponding numpy\.ndarray object, which has
-            same data type and shape with ``value``.
-
-
-    Examples:
-
-     .. code-block:: python
-
-        import numpy as np
-        import paddle.base as base
-
-        with base.dygraph.guard(base.CPUPlace()):
-            x = np.ones([2, 2], np.float32)
-            y = base.dygraph.to_variable(x, zero_copy=False)
-            x[0][0] = -1
-            y[0][0].numpy()  # array([1.], dtype=float32)
-            y = base.dygraph.to_variable(x)
-            x[0][0] = 0
-            y[0][0].numpy()  # array([0.], dtype=float32)
-            c = np.array([2+1j, 2])
-            z = base.dygraph.to_variable(c)
-            z.numpy() # array([2.+1.j, 2.+0.j])
-            z.dtype # 'complex128'
-
-            y = base.dygraph.to_variable([[0.1, 1.2], [2.2, 3.1], [4.9, 5.2]])
-            y.shape     # [3L, 2L]
-
-            y = base.dygraph.to_variable(((0.1, 1.2), (2.2, 3.1), (4.9, 5.2)), dtype='int32')
-            y.shape     # [3L, 2L]
-
-    """
-    support_type = (
-        list,
-        tuple,
-        np.ndarray,
-        core.eager.Tensor,
-        framework.Variable,
-        core.Tensor,
-        core.LoDTensor,
-    )
-    if not isinstance(value, support_type):
-        raise TypeError(
-            "The type of 'value' in base.dygraph.to_variable must be %s, but received %s."
-            % (support_type, type(value))
-        )
-    if isinstance(value, (core.eager.Tensor, framework.Variable)):
-        return value
-    elif isinstance(value, (core.Tensor, core.LoDTensor)):
-        return core.eager.Tensor(value)
-    else:
-        if isinstance(
-            framework._current_expected_place(), framework.core.CPUPlace
-        ):
-            # TODO(zhiqiu): we found two problems when enable zero_copy on CPUPlace.
-            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not statisfy.
-            # Details: https://eigen.tuxfamily.org/dox/group__TopicUnalignedArrayAssert.html
-            # (2): when used in flask framework, it may result in hang.
-            # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
-            # So, we temporally diable the zero_copy strategy.
-            if zero_copy == True:
-                warnings.warn(
-                    "Currently, zero_copy is not supported, and it will be discarded."
-                )
-                zero_copy = False
-        else:
-            assert (
-                not zero_copy
-            ), "zero_copy mode can only be used with CPUPlace"
-
-        if not isinstance(value, np.ndarray):
-            value = np.array(value)
-
-        if dtype is not None:
-            dtype = convert_dtype(dtype)
-            if value.dtype != dtype:
-                value = value.astype(dtype)
-
-        return core.eager.Tensor(
-            value,
-            framework._current_expected_place(),
-            False,
-            zero_copy,
-            name if name else None,
-            True,
-        )

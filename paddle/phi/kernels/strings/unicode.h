@@ -17,8 +17,8 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 
-#include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/hostdevice.h"
+#include "paddle/common/macros.h"
 
 namespace phi {
 namespace strings {
@@ -169,7 +169,7 @@ HOSTDEVICE inline uint32_t GetUTF8StrLen(const uint32_t* unicode_str,
   // +1 means '\0'
   return utf8_str_count + 1;
 }
-// Need to gurantee utf8_str has enough memory
+// Need to guarantee utf8_str has enough memory
 
 HOSTDEVICE inline void GetUTF8Str(const uint32_t* unicode_str,
                                   char* utf8_str,
@@ -186,12 +186,12 @@ HOSTDEVICE inline void GetUTF8Str(const uint32_t* unicode_str,
 }
 
 const uint8_t* GetUniFlagMap();
-const uint16_t* GetCharcasesMap();
+const uint16_t* GetCharCasesMap();
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 const uint8_t* GetGPUUniflagMap();
-const uint16_t* GetGPUCharcasesMap();
+const uint16_t* GetGPUCharCasesMap();
 #endif
 
 }  // namespace strings

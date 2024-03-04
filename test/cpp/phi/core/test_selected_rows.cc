@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <time.h>
+#include <ctime>
 
 #include <thread>  // NOLINT
 
@@ -31,7 +31,8 @@ class SelectedRowsTester : public ::testing::Test {
 
     phi::DenseTensor* value = selected_rows_->mutable_value();
     auto* data = value->mutable_data<float>(
-        phi::make_ddim({static_cast<int64_t>(rows.size()), row_numel}), place_);
+        common::make_ddim({static_cast<int64_t>(rows.size()), row_numel}),
+        place_);
     for (int64_t i = 0; i < value->numel(); ++i) {
       data[i] = static_cast<float>(i);
     }
@@ -45,11 +46,11 @@ class SelectedRowsTester : public ::testing::Test {
 TEST_F(SelectedRowsTester, height) { ASSERT_EQ(selected_rows_->height(), 10); }
 
 TEST_F(SelectedRowsTester, dims) {
-  ASSERT_EQ(selected_rows_->value().dims(), phi::make_ddim({3, 100}));
+  ASSERT_EQ(selected_rows_->value().dims(), common::make_ddim({3, 100}));
 }
 
 TEST_F(SelectedRowsTester, complete_dims) {
-  ASSERT_EQ(selected_rows_->GetCompleteDims(), phi::make_ddim({10, 100}));
+  ASSERT_EQ(selected_rows_->GetCompleteDims(), common::make_ddim({10, 100}));
 }
 
 TEST(SelectedRows, SparseTable) {
@@ -59,7 +60,8 @@ TEST(SelectedRows, SparseTable) {
   int64_t table_size = 100;
   int64_t embedding_width = 8;
   // initialize a sparse table
-  table.mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  table.mutable_value()->Resize(
+      common::make_ddim({table_size, embedding_width}));
   auto* data = table.mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -80,7 +82,7 @@ TEST(SelectedRows, SparseTable) {
   ASSERT_EQ(table.rows().size(), 3UL);
 
   phi::DenseTensor ids;
-  ids.Resize(phi::make_ddim({4}));
+  ids.Resize(common::make_ddim({4}));
   auto* ids_data = ids.mutable_data<int64_t>(cpu);
   ids_data[0] = static_cast<int64_t>(6);
   ids_data[1] = static_cast<int64_t>(6);
@@ -88,8 +90,8 @@ TEST(SelectedRows, SparseTable) {
   ids_data[3] = static_cast<int64_t>(10);
 
   phi::DenseTensor get_value;
-  auto* value_data =
-      get_value.mutable_data<float>(phi::make_ddim({4, embedding_width}), cpu);
+  auto* value_data = get_value.mutable_data<float>(
+      common::make_ddim({4, embedding_width}), cpu);
   table.Get(ids, &get_value);
 
   for (int j = 0; j < embedding_width; ++j) {
@@ -157,7 +159,8 @@ TEST(SelectedRows, MultiThreadAutoIndex) {
   int64_t table_size = 100000;
   int64_t embedding_width = 8;
   // initialize a sparse table
-  table.mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  table.mutable_value()->Resize(
+      common::make_ddim({table_size, embedding_width}));
   auto* data = table.mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {

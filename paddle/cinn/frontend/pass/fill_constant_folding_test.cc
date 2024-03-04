@@ -56,7 +56,7 @@ TEST(TransposeFolding, FoldTwoFillConstant) {
   auto transpose_y = builder.Transpose(y, {1, 0});
   auto out = builder.Add(transpose_x, transpose_y);
   auto program = builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   size_t origin_size = program.size();
   VLOG(1) << "Program Before FillConstantFolding:\n" << program;
@@ -97,7 +97,7 @@ TEST(TransposeFolding, FoldTwoFillConstantWithSameOuput) {
   auto transpose_x = builder.Transpose(x, {1, 0});
   auto out = builder.Add(y, y);
   auto program = builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   size_t origin_size = program.size();
   VLOG(1) << "Program Before FillConstantFolding:\n" << program;
@@ -136,7 +136,7 @@ TEST(TransposeFolding, FoldThreeFillConstant) {
   auto transpose_x = builder.Transpose(x, {1, 0});
   auto out = builder.Add(y, z);
   auto program = builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   size_t origin_size = program.size();
   VLOG(1) << "Program Before FillConstantFolding:\n" << program;
   // Program {
@@ -175,7 +175,7 @@ TEST(TransposeFolding, FoldThreeFillConstantWithOneDiff) {
   auto transpose_x = builder.Transpose(x, {1, 0});
   auto out = builder.Add(y, z);
   auto program = builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   auto scope = hlir::framework::BuildScope(target, graph);
 

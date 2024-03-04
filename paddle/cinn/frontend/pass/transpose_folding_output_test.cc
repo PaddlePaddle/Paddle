@@ -43,7 +43,7 @@ TEST(TransposeFoldingOutput, BatchedMatmulTransLeft) {
   auto out = builder.Subtract(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -71,7 +71,7 @@ TEST(TransposeFoldingOutput, BatchedGemmTransLeft) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -99,7 +99,7 @@ TEST(TransposeFoldingOutput, BatchedMatmulTransRight) {
   auto out = builder.Subtract(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -127,7 +127,7 @@ TEST(TransposeFoldingOutput, BatchedGemmTransRight) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -156,7 +156,7 @@ TEST(TransposeFoldingOutput, BatchedMatmulTransTwo) {
   auto out = builder.Subtract(f, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -185,7 +185,7 @@ TEST(TransposeFoldingOutput, BatchedGemmTransTwo) {
   auto out = builder.Add(f, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -212,7 +212,7 @@ TEST(TransposeFoldingOutput, BatchedMatmulNoTrans) {
   auto out = builder.Subtract(f, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -239,7 +239,7 @@ TEST(TransposeFoldingOutput, BatchedGemmNoTrans) {
   auto out = builder.Add(f, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -267,7 +267,7 @@ TEST(TransposeFoldingOutput, MatmulTransLeft) {
   auto out = builder.Subtract(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -295,7 +295,7 @@ TEST(TransposeFoldingOutput, GemmTransLeft) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -323,7 +323,7 @@ TEST(TransposeFoldingOutput, MatmulTransRight) {
   auto out = builder.Subtract(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -351,7 +351,7 @@ TEST(TransposeFoldingOutput, GemmTransRight) {
   auto out = builder.Add(e, f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -380,7 +380,7 @@ TEST(TransposeFoldingOutput, MatmulTransTwo) {
   auto out = builder.Subtract(f, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -409,7 +409,7 @@ TEST(TransposeFoldingOutput, GemmTransTwo) {
   auto out = builder.Add(f, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -436,7 +436,7 @@ TEST(TransposeFoldingOutput, MatmulNoTrans) {
   auto out = builder.Subtract(f, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -463,7 +463,7 @@ TEST(TransposeFoldingOutput, GemmNoTrans) {
   auto out = builder.Add(f, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
@@ -505,7 +505,7 @@ TEST(TransposeFoldingOutput, BatchedComplex) {
   auto out = builder.Add(i, j);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{d.id(), z.id()},
                     std::back_inserter(input_ids),
@@ -544,7 +544,7 @@ TEST(TransposeFoldingOutput, Complex) {
   auto out = builder.Add(i, j);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{c.id(), z.id()},
                     std::back_inserter(input_ids),
@@ -575,7 +575,7 @@ TEST(TransposeFoldingOutput, MultiTransCaseOne) {
   auto out = builder.Add(h, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(
       std::vector<absl::string_view>{a.id(), b.id(), e.id(), h.id()},
@@ -606,7 +606,7 @@ TEST(TransposeFoldingOutput, MultiTransCaseTwo) {
   auto out = builder.Add(h, g);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), h.id()},
                     std::back_inserter(input_ids),

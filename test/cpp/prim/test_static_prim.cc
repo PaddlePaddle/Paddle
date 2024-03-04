@@ -14,6 +14,7 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -25,52 +26,11 @@
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_bool(prim_enabled);
-PHI_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_string(tensor_operants_mode);
 
-PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(subtract, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_equal, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_than_raw, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(equal, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(not_equal, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(greater_equal, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(greater_than, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_and, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_or, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_xor, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_not, CPU, ALL_LAYOUT);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(tanh, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(tanh_grad, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(subtract, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_equal, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_than, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_than_raw, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(equal, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(not_equal, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(greater_equal, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(greater_than, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_and, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_or, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_xor, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_not, KPS, ALL_LAYOUT);
-#endif
 namespace paddle {
 namespace prim {
 
@@ -262,7 +222,7 @@ TEST(StaticPrim, TanhBackwardComposite) {
             static_cast<std::size_t>(1));
 }
 
-TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
+TEST(StaticCompositeGradMaker, TestMultiInputMethod) {
   // Initialized environment
   FLAGS_tensor_operants_mode = "static";
   paddle::OperantsManager::Instance().static_operants.reset(
@@ -306,22 +266,22 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
                                      target_block,
                                      grad_sub_block);
   test();
-  std::vector<paddle::Tensor> muti_fw_input = test.GetMultiForwardInput("X");
-  paddle::optional<std::vector<paddle::Tensor>> opt_muti_fw_input =
+  std::vector<paddle::Tensor> multi_fw_input = test.GetMultiForwardInput("X");
+  paddle::optional<std::vector<paddle::Tensor>> opt_multi_fw_input =
       test.GetOptionalMultiForwardInput("X");
-  std::vector<paddle::Tensor> opt_inner = opt_muti_fw_input.is_initialized()
-                                              ? opt_muti_fw_input.get()
+  std::vector<paddle::Tensor> opt_inner = opt_multi_fw_input.is_initialized()
+                                              ? opt_multi_fw_input.get()
                                               : std::vector<paddle::Tensor>{};
   paddle::Tensor fw_out = test.GetSingleForwardOutput("Out");
   paddle::Tensor* fw_out_ptr = test.GetOutputPtr(&fw_out);
   std::string fw_out_name = test.GetOutputName(fw_out);
 
-  ASSERT_EQ(muti_fw_input.size(), static_cast<std::size_t>(2));
+  ASSERT_EQ(multi_fw_input.size(), static_cast<std::size_t>(2));
   ASSERT_EQ(
-      static_cast<prim::DescTensor*>(muti_fw_input[0].impl().get())->Name(),
+      static_cast<prim::DescTensor*>(multi_fw_input[0].impl().get())->Name(),
       "x0");
   ASSERT_EQ(
-      static_cast<prim::DescTensor*>(muti_fw_input[1].impl().get())->Name(),
+      static_cast<prim::DescTensor*>(multi_fw_input[1].impl().get())->Name(),
       "x1");
   ASSERT_EQ(opt_inner.size(), static_cast<std::size_t>(2));
   ASSERT_EQ(static_cast<prim::DescTensor*>(opt_inner[0].impl().get())->Name(),
@@ -332,7 +292,7 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
   ASSERT_EQ(fw_out_name, "out");
 }
 
-TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
+TEST(StaticCompositeGradMaker, TestMultiOutputMethod) {
   // Initialized environment
   FLAGS_tensor_operants_mode = "static";
   paddle::OperantsManager::Instance().static_operants.reset(
@@ -569,20 +529,3 @@ TEST(StaticPrim, TestFlags) {
 
 }  // namespace prim
 }  // namespace paddle
-USE_OP_ITSELF(fill_constant);
-USE_OP_ITSELF(tanh);
-USE_OP_ITSELF(tanh_grad);
-USE_OP_ITSELF(elementwise_mul);
-USE_OP_ITSELF(elementwise_sub);
-USE_OP_ITSELF(elementwise_pow);
-USE_OP_ITSELF(scale);
-USE_OP_ITSELF(less_equal);
-USE_OP_ITSELF(less_than);
-USE_OP_ITSELF(equal);
-USE_OP_ITSELF(not_equal);
-USE_OP_ITSELF(greater_equal);
-USE_OP_ITSELF(greater_than);
-USE_OP_ITSELF(bitwise_xor);
-USE_OP_ITSELF(bitwise_and);
-USE_OP_ITSELF(bitwise_not);
-USE_OP_ITSELF(bitwise_or);

@@ -16,9 +16,7 @@ limitations under the License. */
 
 namespace phi {
 
-void InferMetaContext::SetMetaConfig(MetaConfig config) {
-  config_ = std::move(config);
-}
+void InferMetaContext::SetMetaConfig(MetaConfig config) { config_ = config; }
 
 void InferMetaContext::EmplaceBackInput(MetaTensor input) {
   int index = static_cast<int>(inputs_.size());
@@ -96,7 +94,7 @@ InferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
       result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
-    return paddle::optional<std::vector<const MetaTensor*>>(std::move(result));
+    return paddle::optional<std::vector<const MetaTensor*>>(result);
   }
   return paddle::none;
 }
@@ -155,7 +153,7 @@ template const std::vector<std::string>& InferMetaContext::AttrAt(
 template const Scalar& InferMetaContext::AttrAt(size_t idx) const;
 template const std::vector<Scalar>& InferMetaContext::AttrAt(size_t idx) const;
 template const IntArray& InferMetaContext::AttrAt(size_t idx) const;
-template const DataType& InferMetaContext::AttrAt(size_t idx) const;
+template TEST_API const DataType& InferMetaContext::AttrAt(size_t idx) const;
 template const DataLayout& InferMetaContext::AttrAt(size_t idx) const;
 template const Place& InferMetaContext::AttrAt(size_t idx) const;
 template const TensorRef& InferMetaContext::AttrAt(size_t idx) const;

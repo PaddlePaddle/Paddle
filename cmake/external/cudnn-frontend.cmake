@@ -34,7 +34,7 @@ if((NOT DEFINED CUDNN_FRONTEND_NAME) OR (NOT DEFINED CUDNN_FRONTEND_URL))
       "cudnn-frontend"
       CACHE STRING "" FORCE)
   set(CUDNN_FRONTEND_URL
-      "https://github.com/NVIDIA/cudnn-frontend/archive/refs/tags/${CUDNN_FRONTEND_VER}.tar.gz"
+      "${GIT_URL}/NVIDIA/cudnn-frontend/archive/refs/tags/${CUDNN_FRONTEND_VER}.tar.gz"
       CACHE STRING "" FORCE)
 endif()
 set(CUDNN_FRONTEND_CACHE_FILENAME "${CUDNN_FRONTEND_VER}.tar.gz")

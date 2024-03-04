@@ -36,7 +36,7 @@ void TransposeGradKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int64_t> out_grad_tz = vectorize(out_grad.dims());
+  std::vector<int64_t> out_grad_tz = common::vectorize(out_grad.dims());
   funcs::ReorderOneDNNHandler reorder_handler(
       out_grad_tz,
       out_grad.dtype(),

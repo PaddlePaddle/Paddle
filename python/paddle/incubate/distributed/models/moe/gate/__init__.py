@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .gshard_gate import GShardGate
-from .switch_gate import SwitchGate
-from .naive_gate import NaiveGate
-from .base_gate import BaseGate
+from .base_gate import BaseGate  # noqa: F401
+from .gshard_gate import GShardGate  # noqa: F401
+from .naive_gate import NaiveGate  # noqa: F401
+from .switch_gate import SwitchGate  # noqa: F401

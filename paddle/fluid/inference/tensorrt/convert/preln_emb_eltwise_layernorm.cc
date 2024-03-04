@@ -63,8 +63,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     framework::DDim bias_dims, scale_dims;
     TensorRTEngine::Weight bias_weight, scale_weight;
 
-    int64_t bias_size = phi::product(bias_dims);
-    int64_t scale_size = phi::product(scale_dims);
+    int64_t bias_size = common::product(bias_dims);
+    int64_t scale_size = common::product(scale_dims);
 
     std::vector<std::string> id_names = op_desc.Input("Ids");
     std::vector<std::string> emb_names = op_desc.Input("Embs");
@@ -103,7 +103,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                              slice_stride_dims);  // unuseful slice_start_dims
     slice_layer->setInput(1, *start_tensor);
     slice_layer->setInput(2, *size_tensor);
-    slice_layer->setName(("Embeltwise_slice_layer (Output: slice_max_seqlen " +
+    slice_layer->setName(("EmbEltwise_slice_layer (Output: slice_max_seqlen " +
                           op_desc.Output("Out")[0] + ")")
                              .c_str());
     engine_->SetTensorDynamicRange(slice_layer->getOutput(0), 1.0f);
@@ -114,7 +114,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     shape_dim.nbDims = 1;
     shape_dim.d[0] = -1;
     reshape_layer->setReshapeDimensions(shape_dim);
-    reshape_layer->setName(("Embeltwise_reshape_layer (Output: max_seqlen " +
+    reshape_layer->setName(("EmbEltwise_reshape_layer (Output: max_seqlen " +
                             op_desc.Output("Out")[0] + ")")
                                .c_str());
     engine_->SetTensorDynamicRange(reshape_layer->getOutput(0), 1.0f);
@@ -135,8 +135,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     }
     bias_weight = GetWeight(op_desc.Input("Bias").front(), &bias_dims);
     scale_weight = GetWeight(op_desc.Input("Scale").front(), &scale_dims);
-    bias_size = phi::product(bias_dims);
-    scale_size = phi::product(scale_dims);
+    bias_size = common::product(bias_dims);
+    scale_size = common::product(scale_dims);
     // other_id(except pos_id)
     engine_->SetITensor("word_id", input_ids[1]);
 

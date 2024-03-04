@@ -14,16 +14,16 @@
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/type.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/type.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "test/cpp/pir/tools/test_dialect.h"
 #include "test/cpp/pir/tools/test_op.h"
 
-TEST(shapedtype_test, shapedtype_test) {
+TEST(shape_dtype_test, shape_dtype_test) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<test::TestDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -35,25 +35,34 @@ TEST(shapedtype_test, shapedtype_test) {
   phi::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
 
-  pir::DenseTensorType shaped_type = pir::DenseTensorType::get(
+  pir::DenseTensorType dense_tensor_type = pir::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);
 
-  EXPECT_EQ(shaped_type.dtype().isa<pir::Float32Type>(), true);
-  EXPECT_EQ(shaped_type.dims(), dims);
-  EXPECT_EQ(shaped_type.data_layout(), data_layout);
-  EXPECT_EQ(shaped_type.lod(), lod);
-  EXPECT_EQ(shaped_type.offset(), offset);
+  EXPECT_EQ(dense_tensor_type.dtype().isa<pir::Float32Type>(), true);
+  EXPECT_EQ(dense_tensor_type.dims(), dims);
+  EXPECT_EQ(dense_tensor_type.data_layout(), data_layout);
+  EXPECT_EQ(dense_tensor_type.lod(), lod);
+  EXPECT_EQ(dense_tensor_type.offset(), offset);
 
-  pir::ShapedTypeInterface interface =
-      shaped_type.dyn_cast_interface<pir::ShapedTypeInterface>();
+  pir::ShapedTypeInterface dense_tensor_type_interface =
+      dense_tensor_type.dyn_cast<pir::ShapedTypeInterface>();
 
-  EXPECT_EQ(interface.getElementType().isa<pir::Float32Type>(), true);
-  EXPECT_EQ(interface.getShape(), dims);
-  EXPECT_EQ(interface.kDynamic, std::numeric_limits<int64_t>::min());
-  EXPECT_EQ(interface.getRank(), 2);
-  EXPECT_EQ(interface.isDynamic(2), false);
-  EXPECT_EQ(interface.isDynamicShape(dims), false);
-  EXPECT_EQ(interface.isDynamicDim(1), false);
-  EXPECT_EQ(interface.getNumDynamicDims(), 0);
-  EXPECT_EQ(interface.getDimSize(0), 2);
+  EXPECT_TRUE(dense_tensor_type_interface);
+  EXPECT_EQ(
+      dense_tensor_type_interface.GetElementType().isa<pir::Float32Type>(),
+      true);
+  EXPECT_EQ(dense_tensor_type_interface.GetShape(), dims);
+  EXPECT_EQ(dense_tensor_type_interface.kDynamic, std::int64_t(-1));
+  EXPECT_EQ(dense_tensor_type_interface.GetRank(), 2);
+  EXPECT_EQ(dense_tensor_type_interface.IsDynamic(2), false);
+  EXPECT_EQ(dense_tensor_type_interface.IsDynamicShape(), false);
+  EXPECT_EQ(dense_tensor_type_interface.IsDynamicDim(1), false);
+  EXPECT_EQ(dense_tensor_type_interface.GetNumDynamicDims(), 0);
+  EXPECT_EQ(dense_tensor_type_interface.GetDimSize(0), 2);
+
+  pir::Type fp32_type = pir::Float32Type::get(ctx);
+  pir::ShapedTypeInterface fp32_type_interface =
+      fp32_type.dyn_cast<pir::ShapedTypeInterface>();
+
+  EXPECT_FALSE(fp32_type_interface);
 }

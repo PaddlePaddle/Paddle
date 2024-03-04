@@ -37,7 +37,14 @@ from paddle.device import get_all_custom_device_type
 
 from ...base import dygraph_utils
 from ...base.data_feeder import check_variable_and_dtype
-from ...framework import ParamAttr, _global_flags, get_default_dtype, no_grad
+from ...framework import (
+    ParamAttr,
+    _global_flags,
+    get_default_dtype,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+    no_grad,
+)
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
 from ..initializer import Constant, Normal
@@ -50,7 +57,7 @@ class _InstanceNormBase(Layer):
     """
     This class is based class for InstanceNorm1D, 2d, 3d.
 
-    See InstaceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
+    See InstanceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
     """
 
     def __init__(
@@ -109,9 +116,7 @@ class _InstanceNormBase(Layer):
         )
 
     def extra_repr(self):
-        return 'num_features={}, epsilon={}'.format(
-            self._num_features, self._epsilon
-        )
+        return f'num_features={self._num_features}, epsilon={self._epsilon}'
 
 
 class InstanceNorm1D(_InstanceNormBase):
@@ -202,9 +207,7 @@ class InstanceNorm1D(_InstanceNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
-                'expected 2D or 3D input (got {}D input)'.format(
-                    len(input.shape)
-                )
+                f'expected 2D or 3D input (got {len(input.shape)}D input)'
             )
 
 
@@ -530,7 +533,7 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.group_norm(
                 input,
                 self.weight,
@@ -692,9 +695,7 @@ class LayerNorm(Layer):
         )
 
     def extra_repr(self):
-        return 'normalized_shape={}, epsilon={}'.format(
-            self._normalized_shape, self._epsilon
-        )
+        return f'normalized_shape={self._normalized_shape}, epsilon={self._epsilon}'
 
 
 class _BatchNormBase(Layer):
@@ -727,46 +728,25 @@ class _BatchNormBase(Layer):
         param_shape = [num_features]
 
         # create parameter
-        if weight_attr is False:
-            self.weight = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(1.0),
-            )
-            self.weight.stop_gradient = True
-        else:
+        if weight_attr is not False:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0),
             )
-            self.weight.stop_gradient = (
-                self._weight_attr is not None
-                and self._weight_attr.learning_rate == 0.0
-            )
 
-        if bias_attr is False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(0.0),
-                is_bias=True,
-            )
-            self.bias.stop_gradient = True
         else:
+            self.weight = None
+        if bias_attr is not False:
             self.bias = self.create_parameter(
                 attr=self._bias_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True,
             )
-            self.bias.stop_gradient = (
-                self._bias_attr is not None
-                and self._bias_attr.learning_rate == 0.0
-            )
+        else:
+            self.bias = None
 
         moving_mean_name = None
         moving_variance_name = None
@@ -799,7 +779,7 @@ class _BatchNormBase(Layer):
         )
         self._variance.stop_gradient = True
 
-        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        # TODO(qili93): temporary for ascend npu performance to be removed along with npu_identity op
         if (
             _global_flags()['FLAGS_npu_storage_format']
             and 'npu' in get_all_custom_device_type()
@@ -955,17 +935,13 @@ class BatchNorm(Layer):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
             >>> import paddle.nn as nn
-            >>> from paddle.base.dygraph.base import to_variable
+            >>> import paddle
             >>> import numpy as np
 
-
-            >>> x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-            >>> with base.dygraph.guard():
-            ...     x = to_variable(x)
-            ...     batch_norm = nn.layer.norm.BatchNorm(10)
-            ...     hidden1 = batch_norm(x)
+            >>> x = paddle.rand(shape=(3, 10, 3, 7), dtype="float32")
+            >>> batch_norm = nn.BatchNorm(10)
+            >>> hidden1 = batch_norm(x)
     """
 
     def __init__(
@@ -990,11 +966,6 @@ class BatchNorm(Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-
-        assert (
-            bias_attr is not False
-        ), "bias_attr should not be False in batch_norm."
 
         if dtype == "float16":
             self._dtype = "float32"
@@ -1004,25 +975,24 @@ class BatchNorm(Layer):
         param_shape = [num_channels]
 
         # create parameter
-        self.weight = self.create_parameter(
-            attr=self._param_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            default_initializer=Constant(1.0),
-        )
-        self.weight.stop_gradient = (
-            use_global_stats and self._param_attr.learning_rate == 0.0
-        )
-
-        self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            is_bias=True,
-        )
-        self.bias.stop_gradient = (
-            use_global_stats and self._param_attr.learning_rate == 0.0
-        )
+        if param_attr is not False:
+            self.weight = self.create_parameter(
+                attr=self._param_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+            )
+        else:
+            self.weight = None
+        if bias_attr is not False:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True,
+            )
+        else:
+            self.bias = None
 
         self._mean = self.create_parameter(
             attr=ParamAttr(
@@ -1048,7 +1018,7 @@ class BatchNorm(Layer):
         )
         self._variance.stop_gradient = True
 
-        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        # TODO(qili93): temporary for ascend npu performance to be removed along with npu_identity op
         if (
             _global_flags()['FLAGS_npu_storage_format']
             and 'npu' in get_all_custom_device_type()
@@ -1080,6 +1050,7 @@ class BatchNorm(Layer):
         self._fuse_with_relu = False
         self._use_global_stats = use_global_stats
         self._trainable_statistics = trainable_statistics
+        self.training = not self._is_test
 
     def forward(self, input):
         if in_dynamic_mode():
@@ -1099,8 +1070,27 @@ class BatchNorm(Layer):
             if self._act is None:
                 return batch_norm_out
             return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
+                batch_norm_out, act=self._act
             )
+        elif in_pir_mode():
+            batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm_(
+                input,
+                self._mean,
+                self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
+                self._momentum,
+                self._epsilon,
+                self._data_layout,
+                self._use_global_stats,
+                self._trainable_statistics,
+            )
+            if self._act is None:
+                return batch_norm_out
+
+            act_op = getattr(_C_ops, self._act)
+            return act_op(batch_norm_out)
         else:
             # create output
             # mean and mean_out share the same memory
@@ -1116,7 +1106,6 @@ class BatchNorm(Layer):
                 "epsilon": self._epsilon,
                 "is_test": self._is_test,
                 "data_layout": self._data_layout,
-                "use_mkldnn": False,
                 "fuse_with_relu": self._fuse_with_relu,
                 "use_global_stats": self._use_global_stats,
                 "trainable_statistics": self._trainable_statistics,
@@ -1168,7 +1157,7 @@ class BatchNorm(Layer):
 
 class BatchNorm1D(_BatchNormBase):
     r"""
-    Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
+    Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
@@ -1279,15 +1268,13 @@ class BatchNorm1D(_BatchNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
-                'expected 2D or 3D input (got {}D input)'.format(
-                    len(input.shape)
-                )
+                f'expected 2D or 3D input (got {len(input.shape)}D input)'
             )
 
 
 class BatchNorm2D(_BatchNormBase):
     r"""
-    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
+    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
@@ -1378,7 +1365,7 @@ class BatchNorm2D(_BatchNormBase):
 
 class BatchNorm3D(_BatchNormBase):
     r"""
-    Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
+    Applies Batch Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
@@ -1552,7 +1539,7 @@ class SyncBatchNorm(_BatchNormBase):
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of this layer. If it is set to None or one attribute of ParamAttr, this layerr
+             of this layer. If it is set to None or one attribute of ParamAttr, this layer
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with ones. If it is set to False,
              this layer will not have trainable scale parameter. Default: None.
@@ -1608,6 +1595,24 @@ class SyncBatchNorm(_BatchNormBase):
             None,
             name,
         )
+        param_shape = [num_features]
+        if weight_attr is False:
+            self.weight = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+            )
+            self.weight.stop_gradient = True
+        if bias_attr is False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(0.0),
+                is_bias=True,
+            )
+            self.bias.stop_gradient = True
 
     def _check_data_format(self):
         if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
@@ -1629,7 +1634,7 @@ class SyncBatchNorm(_BatchNormBase):
 
         # train mode: use mini-batch stats, eval mode: use global stats
         # use_global_stats only support False in sync_batch_norm
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
                 self._mean,
@@ -1657,7 +1662,6 @@ class SyncBatchNorm(_BatchNormBase):
             "epsilon": self._epsilon,
             "is_test": not self.training,
             "data_layout": self._data_format,
-            "use_mkldnn": False,
             "fuse_with_relu": False,
             "use_global_stats": False,
             "trainable_statistics": False,
@@ -1833,9 +1837,7 @@ class LocalResponseNorm(Layer):
         return out
 
     def extra_repr(self):
-        main_str = 'size={}, alpha={}, beta={}, k={}'.format(
-            self.size, self.alpha, self.beta, self.k
-        )
+        main_str = f'size={self.size}, alpha={self.alpha}, beta={self.beta}, k={self.k}'
         if self.data_format != 'NCHW':
             main_str += f', data_format={self.data_format}'
         if self.name is not None:
@@ -1922,7 +1924,7 @@ class SpectralNorm(Layer):
         assert dim < len(self._weight_shape), (
             "The input `dim` should be less than the "
             "length of `weight_shape`, but received dim="
-            "{}".format(dim)
+            f"{dim}"
         )
         h = self._weight_shape[self._dim]
         w = np.prod(self._weight_shape) // h
@@ -1945,7 +1947,7 @@ class SpectralNorm(Layer):
 
     def forward(self, x):
         weight = x
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.spectral_norm(
                 weight,
                 self.weight_u,

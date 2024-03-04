@@ -38,7 +38,7 @@ namespace ir {
 
 static const char kParamScopeAttr[] = "__param_scope__";  // NOLINT
 
-static const std::vector<std::string> support_subgraph_passes = {
+static const std::vector<std::string> gpu_support_subgraph_passes = {
     "simplify_with_basic_ops_pass",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
@@ -49,6 +49,14 @@ static const std::vector<std::string> support_subgraph_passes = {
     "fuse_multi_transformer_layer_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
+};
+
+static const std::vector<std::string> trt_support_subgraph_passes = {
+    "feed_fetch_subgraph_pass",
+    "set_subgraph_edge_pass",
+    "trt_map_ops_to_matrix_multiply_pass",
+    "tensorrt_subgraph_pass",
+    "simplify_with_basic_ops_pass",
 };
 
 static const std::vector<std::string> xpu_support_subgraph_passes = {
@@ -65,9 +73,11 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
     "multi_encoder_xpu_slice_fuse_pass",
     "fused_multi_transformer_cachekv_layout_trans_pass",
+    "fused_multi_transformer_int8_cachekv_layout_trans_pass",
     "one_beam_size_fuse_pass",
     "stack_fuse_pass",
     "fused_multi_transformer_xpu_pass",
+    "fused_multi_transformer_int8_xpu_quant_pass",
     "xpu_delete_cast_op_pass",
     "fc_xpu_fuse_pass",
     "link_xpu_op_max_pass",
@@ -121,12 +131,20 @@ Graph *Pass::Apply(Graph *graph) const {
 
   std::vector<std::string> subgraph_passes;
   bool use_xpu = Has("use_xpu") && Get<bool>("use_xpu");
+  bool use_tensorrt = Has("use_tensorrt") && Get<bool>("use_tensorrt");
+  bool all_blocks_convert = false;
   if (use_xpu) {
     subgraph_passes = xpu_support_subgraph_passes;
+    all_blocks_convert = FLAGS_convert_all_blocks;
+  } else if (use_tensorrt) {
+    subgraph_passes = trt_support_subgraph_passes;
+    all_blocks_convert =
+        FLAGS_all_blocks_convert_trt && FLAGS_convert_all_blocks;
   } else {
-    subgraph_passes = support_subgraph_passes;
+    subgraph_passes = gpu_support_subgraph_passes;
+    all_blocks_convert = FLAGS_convert_all_blocks;
   }
-  if (graph->IsMainGraph() &&
+  if (all_blocks_convert && graph->IsMainGraph() &&
       (std::count(subgraph_passes.begin(), subgraph_passes.end(), Type()) ||
        std::count(support_subgraph_generate_passes.begin(),
                   support_subgraph_generate_passes.end(),

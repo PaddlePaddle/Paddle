@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/utils/pybind.h"
-
+#include "paddle/common/flags.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_string(tensor_operants_mode);
 namespace paddle {
 namespace pybind {
 
@@ -44,7 +44,7 @@ void ShareTensor(PyObject* src, PyObject* dst) {
   }
 }
 
-paddle::Tensor CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos) {
+paddle::Tensor& CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, p_tensor_type) ||
       PyObject_TypeCheck(obj, p_string_tensor_type)) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;

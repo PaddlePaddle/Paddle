@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base import core
-from paddle.base.dygraph import to_variable
 from paddle.common_ops_import import dygraph_only
 from paddle.nn import clip
 
@@ -240,34 +239,47 @@ def GroupShardedScaler(scaler):
         ):
             for group in optimizer._optim._param_groups:
                 for param in group['params']:
-                    if param.grad is not None:
-                        param_grads.append(param.grad)
-                        if param.grad.dtype in [
+                    tgt_grad = None
+                    if (
+                        hasattr(param, "main_grad")
+                        and param.main_grad is not None
+                    ):
+                        tgt_grad = param.main_grad
+                    elif param.grad is not None:
+                        tgt_grad = param.grad
+                    if tgt_grad is not None:
+                        param_grads.append(tgt_grad)
+                        if tgt_grad.dtype in [
                             core.VarDesc.VarType.FP16,
                             paddle.float16,
                         ]:
-                            param_grads_fp16.append(param.grad)
-                        elif param.grad.dtype in [paddle.bfloat16]:
-                            param_grads_bfp16.append(param.grad)
+                            param_grads_fp16.append(tgt_grad)
+                        elif tgt_grad.dtype in [paddle.bfloat16]:
+                            param_grads_bfp16.append(tgt_grad)
                         else:
-                            param_grads_fp32.append(param.grad)
+                            param_grads_fp32.append(tgt_grad)
         else:
             for param in optimizer._optim._parameter_list:
-                if param.grad is not None:
-                    param_grads.append(param.grad)
-                    if param.grad.dtype in [
+                tgt_grad = None
+                if hasattr(param, "main_grad") and param.main_grad is not None:
+                    tgt_grad = param.main_grad
+                elif param.grad is not None:
+                    tgt_grad = param.grad
+                if tgt_grad is not None:
+                    param_grads.append(tgt_grad)
+                    if tgt_grad.dtype in [
                         core.VarDesc.VarType.FP16,
                         paddle.float16,
                     ]:
-                        param_grads_fp16.append(param.grad)
-                    elif param.grad.dtype in [paddle.bfloat16]:
-                        param_grads_bfp16.append(param.grad)
+                        param_grads_fp16.append(tgt_grad)
+                    elif tgt_grad.dtype in [paddle.bfloat16]:
+                        param_grads_bfp16.append(tgt_grad)
                     else:
-                        param_grads_fp32.append(param.grad)
+                        param_grads_fp32.append(tgt_grad)
 
-        temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
-        temp_found_inf_bfp16 = to_variable(np.array([0]).astype(np.bool_))
-        temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
+        temp_found_inf_fp16 = paddle.to_tensor(np.array([0]).astype(np.bool_))
+        temp_found_inf_bfp16 = paddle.to_tensor(np.array([0]).astype(np.bool_))
+        temp_found_inf_fp32 = paddle.to_tensor(np.array([0]).astype(np.bool_))
 
         device = paddle.get_device().split(":")[0]
         device = "cpu" if optimizer.offload else device
@@ -329,7 +341,10 @@ def cvt_to_device(x, dev_id, blocking=True):
     elif paddle.is_compiled_with_xpu():
         place = paddle.XPUPlace(dev_id)
     else:
-        raise OSError(
-            "Only supported compiled paddle with gpu/rocm and xpu , but current verison is compiled with cpu."
-        )
+        supported_custom_devices = ["npu"]
+        place = paddle.framework._current_expected_place()
+        if place.get_device_type() not in supported_custom_devices:
+            raise OSError(
+                "Only supported compiled paddle with gpu/rocm and xpu, but current version is compiled with cpu."
+            )
     return x._copy_to(place, blocking)

@@ -21,10 +21,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/mixed_vector.h"
 
@@ -67,7 +67,7 @@ LoD SliceInLevel(const LoD& in,
  */
 LoD ToAbsOffset(const LoD& in);
 
-bool operator==(const LoD& a, const LoD& b);
+TEST_API bool operator==(const LoD& a, const LoD& b);
 
 /*
  * Check whether this lod's format is valid.
@@ -166,8 +166,8 @@ std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
     const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
 /*
- * Serialize/Desiralize phi::DenseTensor to std::ostream
- * You can pass ofstream or ostringstream to serilize to file
+ * Serialize/Deserialize phi::DenseTensor to std::ostream
+ * You can pass ofstream or ostringstream to serialize to file
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
 void SerializeToStream(std::ostream& os,

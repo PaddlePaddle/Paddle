@@ -23,6 +23,7 @@ from get_test_cover_info import (
 )
 from op_test_xpu import XPUOpTest
 from test_attribute_var import UnittestBase
+from utils import static_guard
 
 import paddle
 from paddle.base import Program, program_guard
@@ -101,7 +102,7 @@ class XPUTestPadOp(XPUOpTestWrapper):
 
     class TestPadOpError(unittest.TestCase):
         def test_errors(self):
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 with program_guard(Program(), Program()):
                     input_data = np.random.random((2, 2)).astype("float32")
 
@@ -123,10 +124,10 @@ class XPUTestPadOp(XPUOpTestWrapper):
             )
 
         def test_static(self):
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 main_prog = Program()
-                starup_prog = Program()
-                with program_guard(main_prog, starup_prog):
+                startup_prog = Program()
+                with program_guard(main_prog, startup_prog):
                     fc = paddle.nn.Linear(4, 10)
                     x = paddle.randn([2, 4])
                     x.stop_gradient = False
@@ -138,7 +139,7 @@ class XPUTestPadOp(XPUOpTestWrapper):
                     sgd.minimize(paddle.mean(out))
                     self.assertTrue(self.var_prefix() in str(main_prog))
                     exe = paddle.static.Executor(paddle.XPUPlace(0))
-                    exe.run(starup_prog)
+                    exe.run(startup_prog)
                     res = exe.run(fetch_list=[feat, out])
                     gt = np.pad(
                         res[0], [1, 1], 'constant', constant_values=[1.0, 1.0]
@@ -182,11 +183,11 @@ class XPUTestPadOp(XPUOpTestWrapper):
 
     class TestPaddingValueTensor3(unittest.TestCase):
         def test_static(self):
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 np_x = np.random.random((16, 16)).astype('float32')
                 main_prog = Program()
-                starup_prog = Program()
-                with program_guard(main_prog, starup_prog):
+                startup_prog = Program()
+                with program_guard(main_prog, startup_prog):
                     x = paddle.assign(np_x).astype('float32')
                     pad_value = paddle.assign([0.0]).astype('float64')
                     y = paddle.nn.functional.pad(

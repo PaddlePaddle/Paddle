@@ -52,7 +52,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());
   DDim filter_data_dims = slice_ddim(filter_.dims(), 2, filter_.dims().size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 

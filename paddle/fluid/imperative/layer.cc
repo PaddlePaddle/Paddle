@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/imperative/layer.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -24,13 +25,12 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace imperative {
 
@@ -77,7 +77,7 @@ static framework::RuntimeContext PrepareRuntimeContext(
       out_ctx.emplace_back(out_var->MutableVar());
     }
   }
-  return framework::RuntimeContext(std::move(inputs), std::move(outputs));
+  return framework::RuntimeContext(inputs, outputs);
 }
 
 template <typename VarType>
@@ -242,7 +242,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
         if (set_to_zero) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
-          phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
+          phi::funcs::set_constant(*dev_ctx, grad_t, 0.0f);
         } else {
           grad_t->clear();
         }
@@ -251,7 +251,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
 #endif
       }
     }
-    // TODO(zhouwei): It's better to free memory of grad by grad_t->claer.
+    // TODO(zhouwei): It's better to free memory of grad by grad_t->clear.
     // But will have some bug on mac CPU of yolov3 model, why?
     // After fix this bug, function SetIsEmpty() isn't need
     grad_var_->SharedVar()->SetIsEmpty(true);
@@ -363,7 +363,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     SetDataType(src.DataType());
     SetType(src.Type());
     SetPersistable(src.Persistable());
-    InnerSetOverridedStopGradient(src.OverridedStopGradient());
+    InnerSetOverriddenStopGradient(src.OverriddenStopGradient());
   }
 
   platform::Place place = src.Place();

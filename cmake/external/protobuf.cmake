@@ -182,7 +182,7 @@ if(NOT "${PROTOBUF_ROOT}" STREQUAL "")
   endif()
 endif()
 
-function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
+function(build_protobuf TARGET_NAME)
   string(REPLACE "extern_" "" TARGET_DIR_NAME "${TARGET_NAME}")
   set(PROTOBUF_PREFIX_DIR ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME})
   set(PROTOBUF_SOURCE_DIR
@@ -210,22 +210,18 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
       PARENT_SCOPE)
 
   set(OPTIONAL_CACHE_ARGS "")
-  set(OPTIONAL_ARGS "")
-  if(BUILD_FOR_HOST)
-    set(OPTIONAL_ARGS "-Dprotobuf_WITH_ZLIB=OFF")
-  else()
-    set(OPTIONAL_ARGS
-        "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
-        "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
-        "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
-        "-DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}"
-        "-DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}"
-        "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
-        "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
-        "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
-        "-Dprotobuf_WITH_ZLIB=ON"
-        "-DZLIB_ROOT:FILEPATH=${ZLIB_ROOT}"
-        ${EXTERNAL_OPTIONAL_ARGS})
+  set(OPTIONAL_ARGS
+      "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+      "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
+      "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
+      "-DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}"
+      "-DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}"
+      "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+      "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
+      "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
+      "-Dprotobuf_WITH_ZLIB=ON"
+      ${EXTERNAL_OPTIONAL_ARGS})
+  if(NOT APPLE)
     set(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
   endif()
   if(WIN32)
@@ -241,11 +237,11 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
   elseif(WIN32)
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
     # Change the tag to support building with vs2019
-    set(PROTOBUF_TAG 01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
+    set(PROTOBUF_TAG v21.12)
   else()
     if(WITH_PSLIB)
-      set(PROTOBUF_REPOSITORY "https://github.com/google/protobuf.git")
-      set(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
+      set(PROTOBUF_REPOSITORY "${GIT_URL}/google/protobuf.git")
+      set(PROTOBUF_TAG v21.12)
     else()
       set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
       set(PROTOBUF_TAG v21.12)
@@ -326,8 +322,8 @@ if(WITH_IPU)
 elseif(WITH_ARM_BRPC)
   set(PROTOBUF_VERSION 21.12-baidu-ee-common)
 elseif(WIN32)
-  #Lower version prootbuf is used for widows
-  set(PROTOBUF_VERSION 3.2)
+  #Lower version protobuf is used for widows
+  set(PROTOBUF_VERSION 21.12)
 else()
   set(PROTOBUF_VERSION 21.12)
   if(WITH_GPU)
@@ -339,7 +335,7 @@ else()
 endif()
 
 if(NOT PROTOBUF_FOUND)
-  build_protobuf(extern_protobuf FALSE)
+  build_protobuf(extern_protobuf)
 
   set(PROTOBUF_INCLUDE_DIR
       ${extern_protobuf_INCLUDE_DIR}

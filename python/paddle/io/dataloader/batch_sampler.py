@@ -112,9 +112,7 @@ class BatchSampler(Sampler):
             ), "either dataset or sampler should be set"
             assert isinstance(
                 sampler, Sampler
-            ), "sampler should be a paddle.io.Sampler, but got {}".format(
-                type(sampler)
-            )
+            ), f"sampler should be a paddle.io.Sampler, but got {type(sampler)}"
             assert not shuffle, "shuffle should be False when sampler is set"
             self.sampler = sampler
         else:
@@ -124,9 +122,7 @@ class BatchSampler(Sampler):
             assert sampler is None, "should not set both dataset and sampler"
             assert isinstance(
                 shuffle, bool
-            ), "shuffle should be a boolean value, but got {}".format(
-                type(shuffle)
-            )
+            ), f"shuffle should be a boolean value, but got {type(shuffle)}"
             if shuffle:
                 self.sampler = RandomSampler(dataset)
             else:
@@ -134,15 +130,12 @@ class BatchSampler(Sampler):
 
         assert (
             isinstance(batch_size, int) and batch_size > 0
-        ), "batch_size should be a positive integer, but got {}".format(
-            batch_size
-        )
+        ), f"batch_size should be a positive integer, but got {batch_size}"
         self.batch_size = batch_size
+        self.shuffle = shuffle
         assert isinstance(
             drop_last, bool
-        ), "drop_last should be a boolean value, but got {}".format(
-            type(drop_last)
-        )
+        ), f"drop_last should be a boolean value, but got {type(drop_last)}"
         self.drop_last = drop_last
 
     def __iter__(self):
@@ -189,14 +182,14 @@ class DistributedBatchSampler(BatchSampler):
                      or other python object which implemented
                      `__len__` for BatchSampler to get indices of samples.
         batch_size(int): sample size of each mini-batch.
-        num_replicas(int, optional): porcess number in distributed training.
+        num_replicas(int, optional): process number in distributed training.
             If :attr:`num_replicas` is None, :attr:`num_replicas` will be
             retrieved from :ref:`api_paddle_distributed_ParallelEnv` .
             Default None.
         rank(int, optional): the rank of the current process among :attr:`num_replicas`
             processes. If :attr:`rank` is None, :attr:`rank` is retrieved from
             :ref:`api_paddle_distributed_ParallelEnv`. Default None.
-        shuffle(bool, optional): whther to shuffle indices order before genrating
+        shuffle(bool, optional): whether to shuffle indices order before generating
             batch indices. Default False.
         drop_last(bool, optional): whether drop the last incomplete(less than a mini-batch) batch dataset size.
             Default False.
@@ -279,7 +272,15 @@ class DistributedBatchSampler(BatchSampler):
     def __iter__(self):
         num_samples = len(self.dataset)
         indices = np.arange(num_samples).tolist()
-        indices += indices[: (self.total_size - len(indices))]
+        # add extra samples to make it evenly divisible
+        padding_size = self.total_size - len(indices)
+        if padding_size <= len(indices):
+            indices += indices[:padding_size]
+        else:
+            indices += (indices * math.ceil(padding_size / len(indices)))[
+                :padding_size
+            ]
+
         assert len(indices) == self.total_size
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)

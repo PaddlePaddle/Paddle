@@ -123,15 +123,6 @@ template struct ChannelDequantizeFunctorV2<phi::GPUContext, double>;
 
 namespace ops = paddle::operators;
 
-PD_REGISTER_STRUCT_KERNEL(dequantize_linear,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::DeQuantizeLinearKernel,
-                          float,
-                          float16,
-                          int8_t,
-                          double) {}
-
 PD_REGISTER_STRUCT_KERNEL(quantize_linear,
                           GPU,
                           ALL_LAYOUT,

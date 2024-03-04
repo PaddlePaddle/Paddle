@@ -36,10 +36,10 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
   const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+      common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
-    // top prority size
+    // top priority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
         inputs_name.size(),
@@ -61,7 +61,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  int out_w;
+  int out_w = 0;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
@@ -91,7 +91,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
         out_size_dim.size(),
         1,
         platform::errors::InvalidArgument(
-            "OutSize's dimension size must be 1, but got dimention = %d .",
+            "OutSize's dimension size must be 1, but got dimension = %d .",
             out_size_dim.size()));
     PADDLE_ENFORCE_EQ(
         out_size_dim[0],
@@ -125,10 +125,10 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
                         "Input(X) dimension is 4, but got method is %s.",
                         interp_method));
   const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+      common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
-    // top prority size
+    // top priority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
         inputs_name.size(),
@@ -151,7 +151,7 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  int out_h, out_w;
+  int out_h = 0, out_w = 0;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
@@ -220,10 +220,10 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
           "dimension is 5, but got method = %s .",
           interp_method));
   const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+      common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
-    // top prority size
+    // top priority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
         inputs_name.size(),
@@ -247,7 +247,7 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  int out_d, out_h, out_w;
+  int out_d = 0, out_h = 0, out_w = 0;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
@@ -353,7 +353,7 @@ class InterpolateOp : public framework::OperatorWithKernel {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_layout");
-      auto dl = phi::StringToDataLayout(data_format);
+      auto dl = common::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for pool
       // op. Treat this as NCHW (default data_format value)
       if (dl != phi::DataLayout::kAnyLayout) {

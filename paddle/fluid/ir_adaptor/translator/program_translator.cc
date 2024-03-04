@@ -14,27 +14,32 @@
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 
+#include <chrono>
 #include <unordered_map>
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/phi/core/utils/data_type.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace paddle {
 namespace translator {
@@ -43,136 +48,112 @@ using ProgramDesc = ::paddle::framework::ProgramDesc;
 using BlockDesc = ::paddle::framework::BlockDesc;
 using VarDesc = ::paddle::framework::VarDesc;
 
+using TCKey = TranslationContext::Key;
+using TCValue = TranslationContext::Value;
+using TCContainer = TranslationContext::Container;
+
 const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
     "feed",
     "fetch",
 };
 
 const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
-    "conditional_block_grad",
-    "while",
     "while_grad",
 };
 
-static std::vector<uint64_t> GetCondOpIds(const BlockDesc& src_block,
-                                          uint64_t first_id) {
-  std::vector<uint64_t> op_list = {first_id};
-  if (src_block.Op(first_id + 1)->Type() == "logical_not") {
-    op_list.emplace_back(first_id + 1);
+std::string nano_timestamp() {
+  auto ts =
+      std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  return std::to_string(ts);
+}
+
+const TCValue& TranslationContext::operator[](const TCKey& key) const {
+  return at(key);
+}
+
+const TCValue& TranslationContext::at(const TCKey& key) const {
+  auto it = container_.find(key);
+  if (it == container_.end() && parent_) {
+    return parent_->at(key);
   }
-  if (src_block.Op(first_id + 2)->Type() == "conditional_block") {
-    op_list.emplace_back(first_id + 2);
+  PADDLE_ENFORCE_NE(it,
+                    container_.end(),
+                    platform::errors::InvalidArgument(
+                        "param %s should exists in TranslationContext", key));
+  const auto& values = it->second;
+  PADDLE_ENFORCE_NE(
+      values.size(),
+      0,
+      platform::errors::InvalidArgument(
+          "param %s should have size > 0, but get:%d", key, values.size()));
+  return values.back();
+}
+
+bool TranslationContext::Has(const Key& key) const {
+  return container_.find(key) != container_.end() ||
+         (parent_ && parent_->Has(key));
+}
+
+size_t TranslationContext::count(const TCKey& key) const {
+  auto it = container_.find(key);
+  if (it == container_.end()) {
+    if (parent_) return parent_->count(key);
+    return 0u;
   }
-  if (src_block.Op(first_id + 3)->Type() == "cast") {
-    op_list.emplace_back(first_id + 3);
-  }
-  size_t output_size = src_block.Op(first_id)->Output("Out").size();
-  for (size_t i = 0; i < output_size; i++) {
-    if (src_block.Op(first_id + 4 + i)->Type() == "select_input") {
-      op_list.emplace_back(first_id + 4 + i);
+  const auto& values = it->second;
+  PADDLE_ENFORCE_NE(
+      values.size(),
+      0u,
+      platform::errors::InvalidArgument(
+          "param %s should have size > 0, but get:%d", key, values.size()));
+  return values.size();
+}
+
+void TranslationContext::PushValue(const Key& key, const Value& value) {
+  container_[key].push_back(value);
+}
+void TranslationContext::PopValue(const Key& key) {
+  container_[key].pop_back();
+}
+
+TranslationContext* TranslationContext::CreateInnerContext() {
+  sons_.emplace_back(std::make_unique<TranslationContext>(this));
+  return sons_.back().get();
+}
+
+static std::vector<std::string> GetExternalInputs(const BlockDesc& block) {
+  std::vector<std::string> external_inputs;
+  std::unordered_set<std::string> inner_outputs;
+  for (auto op_desc : block.AllOps()) {
+    for (const auto& n : op_desc->Inputs()) {
+      const auto& input_var_names = n.second;
+      for (const auto& var_name : input_var_names) {
+        if (inner_outputs.count(var_name) == 0) {
+          external_inputs.push_back(var_name);
+        }
+      }
     }
-  }
-  return op_list;
-}
-
-ConditionBlockCombination::ConditionBlockCombination(
-    const ::paddle::framework::BlockDesc& src_block,
-    const std::vector<uint64_t>& op_ids) {
-  for (auto op_id : op_ids) {
-    op_list_.emplace_back(src_block.Op(op_id));
-  }
-  PADDLE_ENFORCE(Verify(op_list_),
-                 platform::errors::NotFound(
-                     "There are cond operators in this program that do not "
-                     "meet the translation requirements. Please check the "
-                     "program based on the Verify function"));
-}
-
-const std::string& ConditionBlockCombination::CondVarName() const {
-  return op_list_[0]->Input("Cond")[0];
-}
-
-size_t ConditionBlockCombination::OutputSize() const {
-  return op_list_[0]->Output("Out").size();
-}
-
-std::vector<::paddle::framework::VarDesc*>
-ConditionBlockCombination::OutputVars() const {
-  std::vector<::paddle::framework::VarDesc*> outputs;
-  if (this->OutputSize() > 0) {
-    for (size_t i = 4; i < op_list_.size(); i++) {
-      outputs.emplace_back(op_list_[i]->Block()->FindVarRecursive(
-          op_list_[i]->Output("Out")[0]));
-    }
-  }
-  return outputs;
-}
-
-const std::vector<std::string>&
-ConditionBlockCombination::TrueBlockOutputVarNames() const {
-  return op_list_[0]->Output("Out");
-}
-
-int ConditionBlockCombination::TrueBlockId() const {
-  return op_list_[0]->GetBlockAttrId("sub_block");
-}
-
-std::vector<std::string> ConditionBlockCombination::FalseBlockOutputVarNames()
-    const {
-  if (op_list_.size() > 1) {
-    return op_list_[2]->Output("Out");
-  }
-  return {""};
-}
-
-int ConditionBlockCombination::FalseBlockId() const {
-  if (op_list_.size() > 1) {
-    return op_list_[2]->GetBlockAttrId("sub_block");
-  }
-  return -1;
-}
-
-bool ConditionBlockCombination::Verify(
-    const std::vector<::paddle::framework::OpDesc*>& op_list) {
-  for (size_t id = 0; id < op_list.size(); id++) {
-    if (id == 0) {
-      if (op_list[id]->Type() != "conditional_block") {
-        return false;
-      }
-      if (op_list.size() == 1 && op_list[id]->Output("Out").size() != 0) {
-        return false;
-      }
-    } else if (id == 1) {
-      if (op_list[id]->Type() != "logical_not") {
-        return false;
-      }
-      if (op_list[id]->Input("X")[0] != op_list[id - 1]->Input("Cond")[0]) {
-        return false;
-      }
-    } else if (id == 2) {
-      if (op_list[id]->Type() != "conditional_block") {
-        return false;
-      }
-      if (op_list[id]->Input("Cond")[0] != op_list[id - 1]->Output("Out")[0]) {
-        return false;
-      }
-    } else if (id == 3) {
-      if (op_list[id]->Type() != "cast") {
-        return false;
-      }
-      if (op_list[id]->Input("X")[0] != op_list[0]->Input("Cond")[0]) {
-        return false;
-      }
-    } else {
-      if (op_list[id]->Type() != "select_input") {
-        return false;
-      }
-      if (op_list[id]->Input("Mask")[0] != op_list[3]->Output("Out")[0]) {
-        return false;
+    for (const auto& n : op_desc->Outputs()) {
+      const auto& output_var_names = n.second;
+      for (const auto& var_name : output_var_names) {
+        inner_outputs.insert(var_name);
       }
     }
   }
-  return true;
+  return external_inputs;
+}
+
+static std::vector<std::string> GetInnerOutputs(const BlockDesc& block) {
+  std::vector<std::string> inner_outputs;
+  for (auto op_desc : block.AllOps()) {
+    for (const auto& n : op_desc->Outputs()) {
+      const auto& output_var_names = n.second;
+      for (const auto& var_name : output_var_names) {
+        inner_outputs.push_back(var_name);
+      }
+    }
+  }
+  return inner_outputs;
 }
 
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
@@ -185,9 +166,14 @@ ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
 void ProgramTranslator::Translate() {
   GetParameterForSingleBlock(legacy_program_->Block(0));
 
+  InsertDataOpForSingleBlock(legacy_program_->Block(0));
+
+  PreAnalysisForCond();
+
   TranslateBlock(legacy_program_->Block(0),
                  0,
                  legacy_program_->Block(0).OpSize(),
+                 &param_map_,
                  program_->block());
 
   SetParameterFromSingleBlock(legacy_program_->Block(0));
@@ -199,16 +185,16 @@ void ProgramTranslator::Translate() {
 
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
-    SetIsPersisableAttributeForAllValue(block);
+    SetIsPersistableAttributeForAllValue(block);
   }
 }
 
 void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                                        uint64_t start_id,
                                        uint64_t end_id,
-                                       pir::Block* dest_block,
-                                       bool for_cond_block) {
-  VLOG(8) << "=============>start to translate a block";
+                                       TranslationContext* translation_ctx,
+                                       pir::Block* dst_block) {
+  VLOG(8) << "=============>start to translate a block: " << &src_block;
   PADDLE_ENFORCE(
       (src_block.OpSize() >= end_id) && (start_id <= end_id),
       platform::errors::NotFound(
@@ -218,12 +204,9 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
           end_id,
           src_block.OpSize()));
 
-  std::unordered_map<uint64_t, bool> translate_completed;
+  std::map<std::string, std::string> assign_output_2_input;
   for (uint64_t op_id = start_id; op_id < end_id; op_id++) {
-    if (translate_completed.count(op_id) && translate_completed.at(op_id)) {
-      continue;
-    }
-    auto op = src_block.Op(op_id);
+    auto op = src_block.Op(static_cast<int>(op_id));
     VLOG(8) << "=============>start to translate a op: " << op->Type();
 
     PADDLE_ENFORCE_EQ(unsupported_ops.count(op->Type()),
@@ -232,118 +215,338 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                           "Not support translated %s op", op->Type()));
 
     if (op->Type() == "conditional_block") {
-      std::vector<const OpDesc*> cond_op_list = {op};
-      std::vector<uint64_t> cond_op_ids = GetCondOpIds(src_block, op_id);
-      ConditionBlockCombination cond_op_combination(src_block, cond_op_ids);
-      pir::Operation* if_op =
-          TranslateCondIfOperation(cond_op_combination, dest_block);
-      for (auto cond_id : cond_op_ids) {
-        translate_completed[cond_id] = true;
-      }
-      VLOG(10) << "[op translated][conditional_block]" << if_op;
+      TranslateIfOperation(op, translation_ctx, dst_block);
+    } else if (op->Type() == "conditional_block_grad") {
+      TranslateIfOperation(op, translation_ctx, dst_block, true);
+    } else if (op->Type() == "while") {
+      TranslateWhileOperation(op, translation_ctx, dst_block);
     } else {
-      TranslateGeneralOperation(op, dest_block);
-      translate_completed[op_id] = true;
+      TranslateGeneralOperation(op, translation_ctx, dst_block);
     }
-  }
-  // NOTE(zhangbo): If conditional_block operator has output, the cf.yeild
-  // operator needs to be inserted
-  if (for_cond_block) {
-    std::vector<pir::Value> yeild_inputs;
-    for (size_t id = end_id; id < src_block.OpSize(); id++) {
-      PADDLE_ENFORCE(
-          src_block.Op(id)->Type() == "assign",
-          "The operator at the end of the sub block needs to be assign");
-      yeild_inputs.emplace_back(
-          param_map_[src_block.Op(id)->Input("X")[0]].value);
-    }
-    pir::AttributeMap attribute_map;
-    auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-    pir::Operation* yeild_op =
-        pir::Operation::Create(yeild_inputs, attribute_map, {}, yeild_info);
-    dest_block->push_back(yeild_op);
   }
 }
 
-pir::Operation* ProgramTranslator::TranslateCondIfOperation(
-    const ConditionBlockCombination& cond_ops, pir::Block* dest_block) {
+pir::Operation* ProgramTranslator::InsertInitOpOrCreateArrayToBlock(
+    pir::Block* insert_block, pir::Type type) {
+  pir::Builder builder(ctx_, insert_block, insert_block->begin());
+  if (type.isa<paddle::dialect::DenseTensorType>()) {
+    auto tensor_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
+    std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
+    VLOG(10) << "[translator][data insertion] before type: " << tensor_type;
+    std::transform(shape.cbegin(), shape.cend(), shape.begin(), [](int64_t s) {
+      return abs(s);
+    });
+    auto normalized_tensor_type =
+        dialect::DenseTensorType::get(ctx_,
+                                      tensor_type.dtype(),
+                                      common::make_ddim(shape),
+                                      tensor_type.data_layout(),
+                                      tensor_type.lod(),
+                                      tensor_type.offset());
+    VLOG(10) << "[translator][data insertion] after type: "
+             << normalized_tensor_type;
+
+    auto init_op = builder.Build<paddle::dialect::FullOp>(
+        shape,
+        0.0,
+        paddle::dialect::TransToPhiDataType(normalized_tensor_type.dtype()),
+        phi::CPUPlace());
+    return init_op.operation();
+  } else if (type.isa<paddle::dialect::DenseTensorArrayType>()) {
+    auto array_type = type.dyn_cast<paddle::dialect::DenseTensorArrayType>();
+    paddle::dialect::CreateArrayOp array_op =
+        builder.Build<paddle::dialect::CreateArrayOp>(
+            paddle::dialect::TransToPhiDataType(array_type.dtype()));
+    array_op.out().set_type(type);
+    return array_op.operation();
+  }
+  return nullptr;
+}
+
+// NOTE(zhangbo): This function is used to analyze cond and cond_grad in
+// program, insert tuple_push and tuple_pop op for forward variables used in
+// backward operator.
+void ProgramTranslator::PreAnalysisForCond() {
+  const BlockDesc& block = legacy_program_->Block(0);
+  std::unordered_map<std::string, const OpDesc*> scope_var_to_cond;
+  for (uint64_t op_id = 0; op_id < block.OpSize(); op_id++) {
+    auto op = block.Op(static_cast<int>(op_id));
+    if (op->Type() == "conditional_block") {
+      scope_var_to_cond[op->Output("Scope")[0]] = op;
+    } else if (op->Type() == "conditional_block_grad") {
+      cond_grad_to_cond_[op] = scope_var_to_cond[op->Input("Scope")[0]];
+    }
+  }
+  for (auto& pair : cond_grad_to_cond_) {
+    const OpDesc* cond_op = pair.second;
+    const BlockDesc& cond_block =
+        legacy_program_->Block(cond_op->GetBlockAttrId("sub_block"));
+    const OpDesc* cond_grad_op = pair.first;
+    const BlockDesc& cond_grad_block =
+        legacy_program_->Block(cond_grad_op->GetBlockAttrId("sub_block"));
+
+    std::vector<std::string> cond_inner_outputs = GetInnerOutputs(cond_block);
+    auto cond_grad_external_inputs = GetExternalInputs(cond_grad_block);
+
+    std::vector<std::string> push_pop_vars;
+    for (auto& var : cond_grad_external_inputs) {
+      if (std::find(cond_inner_outputs.begin(),
+                    cond_inner_outputs.end(),
+                    var) != cond_inner_outputs.end()) {
+        push_pop_vars.emplace_back(var);
+      }
+    }
+    push_pop_var_names_[cond_op] = push_pop_vars;
+    push_pop_var_names_[cond_grad_op] = push_pop_vars;
+  }
+}
+
+// NOTE(zhangbo): All condition_block_op will be translated as an if_op with a
+// true branch and a fake false branch, fake false branch will insert some init
+// op such as full to facilitate alignment of the outputs of the true branch.
+void ProgramTranslator::TranslateIfOperation(
+    const OpDesc* op,
+    TranslationContext* translation_ctx,
+    pir::Block* dst_block,
+    bool for_bwd) {
+  LOG_FIRST_N(INFO, 1) << "Translate ConditionalBlockOp";
   auto& type_translator = TypeTranslator::instance();
-  auto op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::IfOp::name());
-  std::vector<pir::Value> op_inputs = {
-      param_map_[cond_ops.CondVarName()].value};
 
-  // NOTE(zhangbo): Now paddle::dialect::IfOp has 0 attribute
+  auto cond_op_cond = op->Input("Cond")[0];
+  auto& cond_op_inputs = op->Input("Input");
+  for (auto input_name : cond_op_inputs) {
+    VLOG(6) << "[general op][conditional_block][inputs: " << input_name << "]";
+    GetValueOrCreateInTop(input_name, translation_ctx);
+  }
+  if (for_bwd) {
+    auto& cond_op_outs = op->Input("Out");
+    for (auto out_name : cond_op_outs) {
+      VLOG(6) << "[general op][conditional_block][outs: " << out_name << "]";
+      GetValueOrCreateInTop(out_name, translation_ctx);
+    }
+    auto& cond_op_out_grads = op->Input("Out@GRAD");
+    for (auto out_grad_name : cond_op_out_grads) {
+      VLOG(6) << "[general op][conditional_block][out_grad: " << out_grad_name
+              << "]";
+      GetValueOrCreateInTop(out_grad_name, translation_ctx);
+    }
+  }
+
+  std::vector<std::string> cond_op_outputs =
+      for_bwd ? op->Output("Input@GRAD") : op->Output("Out");
+  cond_op_outputs.erase(
+      std::remove(cond_op_outputs.begin(), cond_op_outputs.end(), "@EMPTY@"),
+      cond_op_outputs.end());
+  std::vector<::paddle::framework::VarDesc*> cond_op_output_vars;
+  for (auto out_name : cond_op_outputs) {
+    cond_op_output_vars.emplace_back(op->Block()->FindVarRecursive(out_name));
+  }
+
+  std::vector<pir::Value> if_op_inputs = {
+      (*translation_ctx)[cond_op_cond].value};
   pir::AttributeMap attribute_map;
-
-  std::vector<pir::Type> op_output_types;
-  std::vector<::paddle::framework::VarDesc*> output_vardescs =
-      cond_ops.OutputVars();
-  for (auto var_desc : output_vardescs) {
+  std::vector<pir::Type> if_op_output_types;
+  for (auto var_desc : cond_op_output_vars) {
     IR_ENFORCE(var_desc != nullptr, "[control flow] Output should not be null");
     pir::Type translated_var_type =
         type_translator[var_desc->GetType()](ctx_, *var_desc);
-    op_output_types.emplace_back(translated_var_type);
+    if_op_output_types.emplace_back(translated_var_type);
   }
-  VLOG(4) << "[general op][conditional_block] IfOp preparation end.";
+  auto if_op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::IfOp::name());
+  pir::Operation* if_op = pir::Operation::Create(
+      if_op_inputs, attribute_map, if_op_output_types, if_op_info, 2);
 
-  pir::Operation* operation = pir::Operation::Create(
-      op_inputs, attribute_map, op_output_types, op_info, 2);
-
-  for (size_t i = 0; i < output_vardescs.size(); i++) {
-    param_map_[output_vardescs[i]->Name()] =
-        VariableDefiningInfo(operation->result(i));
+  // NOTE(zhangbo): If program has if_grad_op and if_grad_op sub_block use some
+  // value defined in if_op, we should insert tuple_push_op into if_op sub_block
+  // and tuple_pop_op into if_grad_op sub_block.
+  if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+    pir::Operation* create_stack_op = pir::Operation::Create(
+        {},
+        {},
+        {pir::StackType::get(ctx_),
+         pir::InletType::get(ctx_),
+         pir::OutletType::get(ctx_)},
+        ctx_->GetRegisteredOpInfo(pir::StackCreateOp::name()));
+    dst_block->push_back(create_stack_op);
+    cond_to_stack_value_[op] = {
+        create_stack_op->dyn_cast<pir::StackCreateOp>().inlet(),
+        create_stack_op->dyn_cast<pir::StackCreateOp>().outlet()};
   }
 
-  dest_block->push_back(operation);
+  dst_block->push_back(if_op);
   VLOG(4) << "[general op][conditional_block] IfOp creation end.";
 
-  if (cond_ops.TrueBlockId() != -1) {
-    const BlockDesc& true_sub_block =
-        legacy_program_->Block(cond_ops.TrueBlockId());
-    pir::Region& true_region = operation->region(0);
+  if (op->GetBlockAttrId("sub_block") != -1) {
+    // Translate true branch by sub_block.
+    auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
+    pir::Region& true_region = if_op->region(0);
     if (true_region.empty()) true_region.emplace_back();
-    TranslateBlock(true_sub_block,
+    auto* true_block_context = translation_ctx->CreateInnerContext();
+
+    // insert tuple_pop op to if_grad
+    if (for_bwd && push_pop_var_names_[op].size() != 0) {
+      pir::Operation* tuple_pop_op = pir::Operation::Create(
+          {cond_to_stack_value_[cond_grad_to_cond_[op]][1]},
+          {},
+          push_pop_var_types_[cond_grad_to_cond_[op]],
+          ctx_->GetRegisteredOpInfo(pir::TuplePopOp::name()));
+      true_region.front().push_back(tuple_pop_op);
+      for (size_t i = 0; i < push_pop_var_names_[op].size(); ++i) {
+        true_block_context->PushValue(
+            push_pop_var_names_[op][i],
+            VariableDefiningInfo(tuple_pop_op->result(i)));
+      }
+    }
+
+    TranslateBlock(sub_block,
                    0,
-                   true_sub_block.OpSize() - cond_ops.OutputSize(),
-                   true_region.front(),
-                   true);
+                   sub_block.OpSize(),
+                   true_block_context,
+                   &true_region.front());
+
+    // insert tuple_push op to true block before yield op
+    if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+      std::vector<pir::Value> local_values;
+      local_values.push_back(cond_to_stack_value_[op][0]);
+      for (auto& var_name : push_pop_var_names_[op]) {
+        local_values.push_back(true_block_context->at(var_name).value);
+        push_pop_var_types_[op].push_back(
+            true_block_context->at(var_name).value.type());
+      }
+      pir::Operation* tuple_push_op = pir::Operation::Create(
+          local_values,
+          {},
+          {},
+          ctx_->GetRegisteredOpInfo(pir::TuplePushOp::name()));
+      true_region.front().push_back(tuple_push_op);
+    }
+
+    // insert yield op to true block
+    auto yield_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+    std::vector<pir::Value> true_yield_inputs;
+    for (auto& out_name : cond_op_outputs) {
+      if (for_bwd && out_name.find("@RENAME@block") != std::string::npos) {
+        out_name = out_name.substr(0, out_name.find("@RENAME@block"));
+      }
+      true_yield_inputs.push_back(true_block_context->at(out_name).value);
+    }
+    true_region.front().push_back(
+        pir::Operation::Create(true_yield_inputs, {}, {}, yield_info));
+
+    // NOTE(zhangbo): The if_op of PIR requires that both true and false
+    // branches must exist, and the number of outputs and dtypes must be
+    // consistent. Only inconsistent shape is allowed. To be compatible with the
+    // old IR design, only true branches are allowed. The false branch may
+    // require yield some fake variables.
+    pir::Region& false_region = if_op->region(1);
+    if (false_region.empty()) false_region.emplace_back();
+    auto* false_block_context = translation_ctx->CreateInnerContext();
+    std::vector<pir::Value> false_yield_inputs;
+    for (size_t id = 0; id < cond_op_outputs.size(); id++) {
+      if (false_block_context->count(cond_op_outputs[id]) == 0) {
+        auto true_type = true_yield_inputs[id].type();
+        pir::Operation* init_op =
+            InsertInitOpOrCreateArrayToBlock(&false_region.front(), true_type);
+        PADDLE_ENFORCE_NOT_NULL(
+            init_op,
+            phi::errors::PreconditionNotMet(
+                "Only support insert full or data op for DenseTensor or "
+                "DenseTensorArray to false block failed."));
+        false_block_context->PushValue(
+            cond_op_outputs[id], VariableDefiningInfo(init_op->result(0)));
+      }
+      false_yield_inputs.push_back(
+          false_block_context->at(cond_op_outputs[id]).value);
+    }
+    false_region.front().push_back(
+        pir::Operation::Create(false_yield_inputs, {}, {}, yield_info));
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 
-  if (cond_ops.FalseBlockId() != -1) {
-    const BlockDesc& false_sub_block =
-        legacy_program_->Block(cond_ops.FalseBlockId());
-    pir::Region& false_region = operation->region(1);
-    if (false_region.empty()) false_region.emplace_back();
-    TranslateBlock(false_sub_block,
-                   0,
-                   false_sub_block.OpSize() - cond_ops.OutputSize(),
-                   false_region.front(),
-                   true);
+  for (size_t i = 0; i < cond_op_output_vars.size(); i++) {
+    translation_ctx->PushValue(cond_op_output_vars[i]->Name(),
+                               VariableDefiningInfo(if_op->result(i)));
+    VLOG(4) << "[general op][conditional_block] var "
+            << cond_op_output_vars[i]->Name() << " was mapped to If's " << i
+            << "-th output.";
   }
-  VLOG(4) << "[general op][conditional_block] IfOp false block translate end.";
+
+  if_op->Verify();
   VLOG(4) << "[general op][conditional_block] IfOp translate end.";
-  return operation;
 }
 
-void ProgramTranslator::TranslateGeneralOperation(const OpDesc* src_op,
-                                                  pir::Block* dest_block) {
+void ProgramTranslator::TranslateWhileOperation(
+    const OpDesc* op,
+    TranslationContext* translation_ctx,
+    pir::Block* dst_block) {
+  LOG_FIRST_N(INFO, 1) << "Translate WhileOp";
+  auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
+  auto& inputs = op->Output("Out");
+  auto& cond_var = op->Input("Condition")[0];
+  std::vector<std::string> loop_vars;
+  for (auto& var : inputs) {
+    if (var != cond_var) {
+      loop_vars.emplace_back(var);
+    }
+  }
+  auto op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::WhileOp::name());
+  std::vector<pir::Value> op_inputs{
+      GetValueOrCreateInTop(cond_var, translation_ctx).value};
+  std::vector<pir::Type> op_outputs_type;
+  auto body_block = new pir::Block();
+  auto* body_block_context = translation_ctx->CreateInnerContext();
+
+  for (auto& loop_var : loop_vars) {
+    auto& tc_value = GetValueOrCreateInTop(loop_var, translation_ctx);
+    auto val_type = tc_value.value.type();
+    op_inputs.push_back(tc_value.value);
+    op_outputs_type.push_back(val_type);
+    body_block_context->PushValue(loop_var, body_block->AddArg(val_type));
+  }
+
+  pir::Operation* while_op =
+      pir::Operation::Create(op_inputs, {}, op_outputs_type, op_info, 1);
+  dst_block->push_back(while_op);
+  while_op->region(0).push_back(body_block);
+
+  TranslateBlock(
+      sub_block, 0, sub_block.OpSize(), body_block_context, body_block);
+
+  auto yield_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+  std::vector<pir::Value> yield_inputs{body_block_context->at(cond_var).value};
+  for (auto& loop_var : loop_vars) {
+    yield_inputs.push_back(body_block_context->at(loop_var).value);
+  }
+  body_block->push_back(
+      pir::Operation::Create(yield_inputs, {}, {}, yield_info));
+  for (size_t idx = 0; idx < loop_vars.size(); ++idx) {
+    translation_ctx->PushValue(loop_vars[idx], while_op->result(idx));
+  }
+
+  while_op->Verify();
+  VLOG(8) << "=============>end to translate while op:" << op;
+}
+
+void ProgramTranslator::TranslateGeneralOperation(
+    const OpDesc* src_op,
+    TranslationContext* translation_ctx,
+    pir::Block* dst_block) {
   auto& op_translator = OpTranslator::instance();
   OpTranslateFn& fn = op_translator[src_op->Type()];
   if (src_op->Type() == "shadow_output") {
-    if (!param_map_.count(src_op->Input("x")[0])) {
+    if (!translation_ctx->count(src_op->Input("x")[0])) {
       return;
     }
   }
-  pir::Operation* operation = fn(ctx_, &param_map_, *src_op, dest_block);
-  VLOG(10) << "[op translated][special]" << operation << "end";
+  pir::Operation* operation = fn(ctx_, translation_ctx, *src_op, dst_block);
+  VLOG(10) << "[op translated][general]" << operation << "end";
 }
 
 inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
                                             const VarDesc* var) {
   auto& type_translator = TypeTranslator::instance();
-  std::string get_parameter_op_name(pir::GetParameterOp::name());
-  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
+  std::string parameter_op_name(pir::ParameterOp::name());
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(parameter_op_name);
   std::unordered_map<std::string, pir::Attribute> op_attribute_map = {
       {"parameter_name", pir::StrAttribute::get(ctx, var->Name())},
   };
@@ -355,7 +558,7 @@ inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
 }
 
 inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
-                                            pir::OpResult defining_op_result,
+                                            pir::Value defining_op_result,
                                             const VarDesc* var) {
   std::string set_parameter_op_name(pir::SetParameterOp::name());
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(set_parameter_op_name);
@@ -366,6 +569,20 @@ inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
   pir::Operation* operation = pir::Operation::Create(
       {defining_op_result}, op_attribute_map, {}, op_info);
   return operation;
+}
+
+void ProgramTranslator::InsertDataOpForSingleBlock(const BlockDesc& block) {
+  std::unordered_set<std::string> all_var_names;
+  for (auto& var : block.AllVars()) {
+    all_var_names.insert(var->Name());
+  }
+  auto external_inputs = GetExternalInputs(block);
+  for (auto& var_name : external_inputs) {
+    if (all_var_names.count(var_name) == 0) continue;
+    if (param_map_.count(var_name) != 0) continue;
+    if (no_cast_var_names.count(var_name) != 0) continue;
+    CreateUndefinedVariable(var_name, block);
+  }
 }
 
 void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
@@ -398,15 +615,15 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           var_desc = block.FindVarRecursive(var_name);
         }
 
-        bool need_get_parameter_op = is_parameter && is_unseen_variable;
-        if (need_get_parameter_op) {
+        bool need_parameter_op = is_parameter && is_unseen_variable;
+        if (need_parameter_op) {
           PADDLE_ENFORCE_NOT_NULL(
               var_desc,
               phi::errors::PreconditionNotMet(
                   "VarDesc of [%s] can not be nullptr", var_name));
           pir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
-          param_map_[var_name] = VariableDefiningInfo(op->result(0));
+          param_map_.PushValue(var_name, VariableDefiningInfo(op->result(0)));
           VLOG(10) << "[op translated][get parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
@@ -421,20 +638,6 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
         inner_defining_variables.insert(var_name);
       }
     }
-  }
-}
-
-void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
-  auto& op_translator = OpTranslator::instance();
-  for (auto op : block.AllOps()) {
-    OpTranslateFn& fn = op_translator[op->Type()];
-    if (op->Type() == "shadow_output") {
-      if (!param_map_.count(op->Input("x")[0])) {
-        continue;
-      }
-    }
-    pir::Operation* operation = fn(ctx_, &param_map_, *op, program_->block());
-    VLOG(10) << "[op translated][special]" << operation;
   }
 }
 
@@ -458,7 +661,8 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
         need_set_parameter_op &= (!set_input_var_names.count(var_name));
         if (need_set_parameter_op) {
-          pir::OpResult defining_op_result = param_map_[var_name].value;
+          pir::OpResult defining_op_result =
+              param_map_[var_name].value.dyn_cast<pir::OpResult>();
           if (!defining_op_result) {
             continue;
           }
@@ -469,7 +673,8 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
                                           program_->block(),
                                           param_map_[var_name],
                                           var_name);
-            defining_op_result = param_map_.at(var_name).value;
+            defining_op_result =
+                param_map_.at(var_name).value.dyn_cast<pir::OpResult>();
           }
 
           pir::Operation* op = InsertSetParamaterOp(
@@ -477,7 +682,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
 
           pir::Block* block = program_->block();
           pir::Block::Iterator insert_pos = std::find(
-              block->begin(), block->end(), defining_op_result.owner());
+              block->begin(), block->end(), *defining_op_result.owner());
 
           IR_ENFORCE(
               insert_pos != block->end(),
@@ -500,78 +705,116 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     const BlockDesc& block) {
   // Currently we set stop gradient for operation that generated a value
   // connected with VarDesc
-  for (const auto& [var_name, value_info] : param_map_) {
+  for (const auto& [var_name, value_list] : param_map_) {
     if (no_cast_var_names.count(var_name) != 0) continue;
     VLOG(10) << "[op translated][stop gradient]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
       continue;
     }
-    pir::OpResult value = value_info.value;
-    if (!value) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Value of [%s] can not ber None", var_name));
+    for (const auto& value_info : value_list) {
+      pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
+      if (!value) continue;
+      auto* defining_op = value.owner();
+      PADDLE_ENFORCE_NOT_NULL(
+          defining_op,
+          phi::errors::PreconditionNotMet(
+              "Defining operator of [%s] can not be nullptr", var_name));
+      VLOG(8) << "[op translated][stop gradient]" << var_name
+              << " from: " << defining_op->name();
+      std::vector<pir::Attribute> stop_gradients;
+      if (defining_op->HasAttribute(kAttrStopGradients)) {
+        stop_gradients = defining_op->attribute(kAttrStopGradients)
+                             .dyn_cast<pir::ArrayAttribute>()
+                             .AsVector();
+      } else {
+        stop_gradients = std::vector<pir::Attribute>(
+            defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
+      }
+      stop_gradients[value.index()] =
+          pir::BoolAttribute::get(ctx_, var->StopGradient());
+      defining_op->set_attribute(
+          kAttrStopGradients, pir::ArrayAttribute::get(ctx_, stop_gradients));
     }
-    auto* defining_op = value.owner();
-    PADDLE_ENFORCE_NOT_NULL(
-        defining_op,
-        phi::errors::PreconditionNotMet(
-            "Defining operator of [%s] can not be nullptr", var_name));
-    VLOG(8) << "[op translated][stop gradient]" << var_name
-            << " from: " << defining_op->name();
-    std::vector<pir::Attribute> stop_gradients;
-    if (defining_op->HasAttribute(kAttrStopGradients)) {
-      stop_gradients = defining_op->attribute(kAttrStopGradients)
-                           .dyn_cast<pir::ArrayAttribute>()
-                           .AsVector();
-    } else {
-      stop_gradients = std::vector<pir::Attribute>(
-          defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
-    }
-    stop_gradients[value.index()] =
-        pir::BoolAttribute::get(ctx_, var->StopGradient());
-    defining_op->set_attribute(kAttrStopGradients,
-                               pir::ArrayAttribute::get(ctx_, stop_gradients));
   }
 }
 
-void ProgramTranslator::SetIsPersisableAttributeForAllValue(
+const VariableDefiningInfo& ProgramTranslator::GetValueOrCreateInTop(
+    const std::string& var_name, TranslationContext* translation_ctx) {
+  if (translation_ctx->Has(var_name)) return translation_ctx->at(var_name);
+  return CreateUndefinedVariable(var_name, legacy_program_->Block(0));
+}
+
+const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
+    const std::string& var_name, const BlockDesc& block) {
+  VLOG(10) << "[undefined variable]" << var_name;
+  auto var_desc = block.FindVarRecursive(var_name);
+  pir::Builder builder(ctx_, program_->block(), program_->block()->begin());
+  auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
+  auto val = pir::Value(nullptr);
+  if (var_desc->GetType() ==
+      paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+    val = builder.Build<dialect::CreateArrayOp>(dtype).result(0);
+    VLOG(10) << "[undefined variable] " << var_name << " " << val.type();
+  } else {
+    auto shape = var_desc->GetShape();
+    val = builder
+              .Build<paddle::dialect::DataOp>(
+                  var_name, shape, dtype, phi::Place())
+              .out();
+    VLOG(10) << "[undefined variable] " << var_name << " " << val.type();
+  }
+  param_map_.PushValue(var_name, val);
+  return param_map_.at(var_name);
+}
+
+void ProgramTranslator::SetIsPersistableAttributeForAllValue(
     const BlockDesc& block) {
-  // Currently we set is persisable for operation that generated a value
+  // Currently we set is persistable for operation that generated a value
   // connected with VarDesc
-  for (const auto& [var_name, value_info] : param_map_) {
+  for (const auto& [var_name, value_list] : param_map_) {
     if (no_cast_var_names.count(var_name) != 0) continue;
-    VLOG(10) << "[op translated][is persisable]" << var_name;
+    VLOG(10) << "[op translated][is persistable]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
       continue;
     }
-    pir::OpResult value = value_info.value;
-    if (!value) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Value of [%s] can not ber None", var_name));
+    for (const auto& value_info : value_list) {
+      pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
+      if (!value) continue;
+      auto* defining_op = value.owner();
+      PADDLE_ENFORCE_NOT_NULL(
+          defining_op,
+          phi::errors::PreconditionNotMet(
+              "Defining operator of [%s] can not be nullptr", var_name));
+      VLOG(8) << "[op translated][is persistable]" << var_name
+              << " from: " << defining_op->name();
+      std::vector<pir::Attribute> is_persistable;
+      if (defining_op->HasAttribute(kAttrIsPersistable)) {
+        is_persistable = defining_op->attribute(kAttrIsPersistable)
+                             .dyn_cast<pir::ArrayAttribute>()
+                             .AsVector();
+      } else {
+        is_persistable = std::vector<pir::Attribute>(
+            defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
+      }
+      is_persistable[value.index()] =
+          pir::BoolAttribute::get(ctx_, var->Persistable());
+      defining_op->set_attribute(
+          kAttrIsPersistable, pir::ArrayAttribute::get(ctx_, is_persistable));
     }
-    auto* defining_op = value.owner();
-    PADDLE_ENFORCE_NOT_NULL(
-        defining_op,
-        phi::errors::PreconditionNotMet(
-            "Defining operator of [%s] can not be nullptr", var_name));
-    VLOG(8) << "[op translated][is persisable]" << var_name
-            << " from: " << defining_op->name();
-    std::vector<pir::Attribute> is_persisable;
-    if (defining_op->HasAttribute(kAttrIsPersisable)) {
-      is_persisable = defining_op->attribute(kAttrIsPersisable)
-                          .dyn_cast<pir::ArrayAttribute>()
-                          .AsVector();
-    } else {
-      is_persisable = std::vector<pir::Attribute>(
-          defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
-    }
-    is_persisable[value.index()] =
-        pir::BoolAttribute::get(ctx_, var->Persistable());
-    defining_op->set_attribute(kAttrIsPersisable,
-                               pir::ArrayAttribute::get(ctx_, is_persisable));
   }
+}
+
+std::unordered_map<std::string, std::vector<pir::Value>>
+ProgramTranslator::VarDesc2Value() {
+  std::unordered_map<std::string, std::vector<pir::Value>> var_desc_2_value;
+  for (const auto& [var_name, value_info_list] : param_map_) {
+    for (const auto& value_info : value_info_list) {
+      var_desc_2_value[var_name].push_back(value_info.value);
+    }
+  }
+  return var_desc_2_value;
 }
 
 }  // namespace translator

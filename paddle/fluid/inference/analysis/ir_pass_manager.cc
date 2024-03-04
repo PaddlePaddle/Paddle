@@ -22,13 +22,13 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/string/pretty_log.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace inference {
@@ -103,6 +103,7 @@ void IRPassManager::CreatePasses(Argument *argument,
         "mixed_white_list",
         new std::unordered_set<std::string>(argument->mixed_white_list()));
     pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
+    pass->Set("use_custom_device", new bool(argument->use_custom_device()));
     pass->Set("enable_custom_device_mixed",
               new bool(argument->enable_custom_device_mixed()));
     pass->Set("mixed_precision_mode",
@@ -113,6 +114,9 @@ void IRPassManager::CreatePasses(Argument *argument,
 
     // "use_xpu" is used for passes in subgraphs.
     pass->Set("use_xpu", new bool(argument->use_xpu()));
+
+    // "use_tensorrt" is used for passes in subgraphs.
+    pass->Set("use_tensorrt", new bool(argument->use_tensorrt()));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -163,11 +167,12 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
       pass->Set("mark_output", new bool(argument->trt_mark_output()));
-      pass->Set("mark_output_with_id",
-                new bool(argument->trt_mark_output_with_id()));
       pass->Set(
           "output_tensor_names",
           new std::vector<std::string>(argument->trt_output_tensor_names()));
+      pass->Set(
+          "trt_exclude_var_names",
+          new std::vector<std::string>(argument->trt_exclude_var_names()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
@@ -179,6 +184,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_cuda_graph",
                 new bool(argument->tensorrt_use_cuda_graph()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
+      bool inspector_serialize = argument->tensorrt_inspector_serialize();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
       bool int8_valid = !(model_from_memory && optim_cache_dir.empty() &&
@@ -212,7 +218,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                   optim_cache_dir));
         }
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
-      } else if (use_static_engine || enable_int8 || with_dynamic_shape) {
+      } else if (use_static_engine || enable_int8 || with_dynamic_shape ||
+                 inspector_serialize) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()
@@ -224,6 +231,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
+      pass->Set("inspector_serialize",
+                new bool(argument->tensorrt_inspector_serialize()));
+      pass->Set("trt_ops_run_float",
+                new std::unordered_set<std::string>(
+                    argument->tensorrt_ops_run_float()));
+      pass->Set("use_explicit_quantization",
+                new bool(argument->tensorrt_use_explicit_quantization()));
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",
@@ -235,6 +249,8 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::vector<std::string>(argument->tensorrt_disabled_ops()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
       pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
+      pass->Set("optimization_level",
+                new int(argument->tensorrt_optimization_level()));
 
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
       // not run fp16.
@@ -349,6 +365,20 @@ void IRPassManager::CreatePasses(Argument *argument,
           argument->xpu_quant_post_dynamic_weight_precision();
       if (quant_post_dynamic_weight_precision == 0) {
         pass->Set("quant_post_dynamic_weight_precision ", new int(0));
+      }
+    } else if (pass_name == "fc_xpu_fuse_pass") {
+      std::map<std::string, int> quant_post_type =
+          argument->xpu_quant_post_dynamic_weight_methods();
+      if (!quant_post_type.empty()) {
+        pass->Set("quant_post_dynamic_weight_methods",
+                  new std::map<std::string, int>(quant_post_type));
+      }
+    } else if (pass_name == "conv2d_xpu_fuse_pass") {
+      std::map<std::string, int> quant_post_type =
+          argument->xpu_quant_post_dynamic_weight_methods();
+      if (!quant_post_type.empty()) {
+        pass->Set("quant_post_dynamic_weight_methods",
+                  new std::map<std::string, int>(quant_post_type));
       }
     }
     pre_pass = pass_name;

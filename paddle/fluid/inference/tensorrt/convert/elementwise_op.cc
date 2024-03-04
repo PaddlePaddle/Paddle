@@ -33,7 +33,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     if (Y_v && !engine_->with_dynamic_shape()) {
       // Y is weight
       auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
-      std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
+      std::vector<int> dims_y = common::vectorize<int>(Y_t->dims());
       auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
 
       nvinfer1::Dims trt_dims_y;
@@ -162,8 +162,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                          *(less_layer->getOutput(0)),
                                          *(equal_layer->getOutput(0)),
                                          nvinfer1::ElementWiseOperation::kOR);
-
-      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else if (op_type_ == "greater_equal") {
       auto* greater_layer =
           TRT_ENGINE_ADD_LAYER(engine_,
@@ -182,8 +181,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                          *(greater_layer->getOutput(0)),
                                          *(equal_layer->getOutput(0)),
                                          nvinfer1::ElementWiseOperation::kOR);
-
-      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else if (op_type_ == "mod") {
       auto* div_layer =
           TRT_ENGINE_ADD_LAYER(engine_,
@@ -191,18 +189,21 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                *X,
                                *reshape_y_tensor,
                                nvinfer1::ElementWiseOperation::kFLOOR_DIV);
+      SupportFP32MixPrecision(output_name, op_desc.Type(), div_layer);
       auto* mul_layer =
           TRT_ENGINE_ADD_LAYER(engine_,
                                ElementWise,
                                *(div_layer->getOutput(0)),
                                *reshape_y_tensor,
                                nvinfer1::ElementWiseOperation::kPROD);
+      SupportFP32MixPrecision(output_name, op_desc.Type(), mul_layer);
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
                                          ElementWise,
                                          *X,
                                          *(mul_layer->getOutput(0)),
                                          nvinfer1::ElementWiseOperation::kSUB);
-      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
+      ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else {
       auto op_pair = ops.find(op_type_);
       PADDLE_ENFORCE_NE(
@@ -215,7 +216,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
 
       auto* layer = TRT_ENGINE_ADD_LAYER(
           engine_, ElementWise, *X, *reshape_y_tensor, op_pair->second);
-      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
+      ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     }
   }
 
@@ -347,7 +349,8 @@ class PowOpConverter : public OpConverter {
 
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, ElementWise, *X, *Y, nvinfer1::ElementWiseOperation::kPOW);
-    RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+    SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
+    ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
   }
 };
 

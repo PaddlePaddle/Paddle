@@ -16,6 +16,7 @@ import inspect
 import unittest
 
 import numpy as np
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle import base
@@ -30,35 +31,278 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a + b
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F2_F4(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F2_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F4_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F2_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np).astype('bfloat16')
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F4_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np).astype('bfloat16')
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F8_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float64)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np).astype('bfloat16')
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
     def test_sub(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a - b
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+
+    def test_type_promotion_sub_F2_F4(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F2_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F4_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F2_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np).astype('bfloat16')
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F4_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np).astype('bfloat16')
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F8_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float64)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np).astype('bfloat16')
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
 
     def test_mul(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a * b
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F2_F4(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F2_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F4_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F2_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np).astype('bfloat16')
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F4_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np).astype('bfloat16')
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F8_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float64)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np).astype('bfloat16')
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
     def test_div(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a / b
             # NOTE: Not sure why array_equal fails on windows, allclose is acceptable
             np.testing.assert_allclose(res.numpy(), a_np / b_np, rtol=1e-05)
@@ -66,7 +310,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_add_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             b = 0.1
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b)
@@ -74,7 +318,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_add_scalar_reverse(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             b = 0.1
             res = b + a
             np.testing.assert_array_equal(res.numpy(), b + a_np)
@@ -82,7 +326,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_sub_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             b = 0.1
             res = a - b
             np.testing.assert_array_equal(res.numpy(), a_np - b)
@@ -90,7 +334,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_sub_scalar_reverse(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             b = 0.1
             res = b - a
             np.testing.assert_array_equal(res.numpy(), b - a_np)
@@ -98,7 +342,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_mul_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             b = 0.1
             res = a * b
             np.testing.assert_array_equal(res.numpy(), a_np * b)
@@ -107,7 +351,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_div_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             b = 0.1
             res = a / b
             np.testing.assert_allclose(res.numpy(), a_np / b, rtol=1e-05)
@@ -117,8 +361,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a**b
             np.testing.assert_allclose(res.numpy(), a_np**b_np, rtol=1e-05)
 
@@ -126,8 +370,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.randint(1, 100, size=self.shape)
         b_np = np.random.randint(1, 100, size=self.shape)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a // b
             np.testing.assert_array_equal(res.numpy(), a_np // b_np)
 
@@ -135,8 +379,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.randint(1, 100, size=self.shape)
         b_np = np.random.randint(1, 100, size=self.shape)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a % b
             np.testing.assert_array_equal(res.numpy(), a_np % b_np)
 
@@ -171,9 +415,9 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         b_np = np.asarray([1, 2, 3, 4, 5])
         c_np = np.asarray([1, 2, 2, 4, 5])
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
-            c = base.dygraph.to_variable(c_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = paddle.to_tensor(c_np)
             res1 = a == b
             res2 = a == c
             np.testing.assert_array_equal(res1.numpy(), a_np == b_np)
@@ -184,9 +428,9 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         b_np = np.asarray([1, 2, 3, 4, 5])
         c_np = np.asarray([1, 2, 2, 4, 5])
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
-            c = base.dygraph.to_variable(c_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = paddle.to_tensor(c_np)
             res1 = a != b
             res2 = a != c
             np.testing.assert_array_equal(res1.numpy(), a_np != b_np)
@@ -196,8 +440,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a < b
             np.testing.assert_array_equal(res.numpy(), a_np < b_np)
 
@@ -205,8 +449,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a <= b
             np.testing.assert_array_equal(res.numpy(), a_np <= b_np)
 
@@ -214,8 +458,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a > b
             np.testing.assert_array_equal(res.numpy(), a_np > b_np)
 
@@ -223,21 +467,21 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a >= b
             np.testing.assert_array_equal(res.numpy(), a_np >= b_np)
 
     def test_neg(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             res = -a
             np.testing.assert_array_equal(res.numpy(), -a_np)
 
     def test_float_int_long(self):
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(np.array([100.1]))
+            a = paddle.to_tensor(np.array([100.1]))
             self.assertTrue(float(a) == 100.1)
             self.assertTrue(int(a) == 100)
             self.assertTrue(int(a) == 100)
@@ -250,12 +494,12 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_len(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             self.assertTrue(len(a) == 10)
 
     def test_index(self):
         with base.dygraph.guard():
-            var1 = base.dygraph.to_variable(np.array([2]))
+            var1 = paddle.to_tensor(np.array([2]))
             i_tmp = 0
             for i in range(var1):
                 self.assertTrue(i == i_tmp)
@@ -292,8 +536,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.random(self.shape).astype(np.float32)
         b_np = np.random.random(self.shape).astype(np.float16)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
@@ -309,10 +553,10 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_astype(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             res1 = a.astype(np.float16)
             res2 = a.astype('float16')
-            res3 = a.astype(base.core.VarDesc.VarType.FP16)
+            res3 = a.astype(paddle.float16)
 
             self.assertEqual(res1.dtype, res2.dtype)
             self.assertEqual(res1.dtype, res3.dtype)
@@ -324,10 +568,10 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.uniform(-1, 1, [10, 1, 10]).astype(self.dtype)
         b_np = np.random.uniform(-1, 1, [1, 1, 10]).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
-            b = base.dygraph.to_variable(b_np)
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
 
-            self.assertEqual((a != b).dtype, base.core.VarDesc.VarType.BOOL)
+            self.assertEqual((a != b).dtype, paddle.bool)
             np.testing.assert_array_equal((a != b).numpy(), a_np != b_np)
 
     def test_tensor_patch_method(self):
@@ -576,7 +820,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.remainder))
         self.assertTrue(inspect.ismethod(a.floor_mod))
         self.assertTrue(inspect.ismethod(a.multiply))
-        self.assertTrue(inspect.ismethod(a.logsumexp))
         self.assertTrue(inspect.ismethod(a.inverse))
         self.assertTrue(inspect.ismethod(a.log1p))
         self.assertTrue(inspect.ismethod(a.erf))
@@ -608,11 +851,38 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.mean))
         self.assertTrue(inspect.ismethod(a.std))
         self.assertTrue(inspect.ismethod(a.numel))
+        self.assertTrue(inspect.ismethod(x.asin_))
+        self.assertTrue(inspect.ismethod(x.atan2))
+        self.assertTrue(inspect.ismethod(x.atanh_))
+        self.assertTrue(inspect.ismethod(x.coalesce))
+        self.assertTrue(inspect.ismethod(x.diagflat))
+        self.assertTrue(inspect.ismethod(x.multinomial))
+        self.assertTrue(inspect.ismethod(x.pinv))
+        self.assertTrue(inspect.ismethod(x.renorm))
+        self.assertTrue(inspect.ismethod(x.renorm_))
+        self.assertTrue(inspect.ismethod(x.tan))
+        self.assertTrue(inspect.ismethod(x.tan_))
+        self.assertTrue(inspect.ismethod(x.tril))
+        self.assertTrue(inspect.ismethod(x.tril_))
+        self.assertTrue(inspect.ismethod(x.triu))
+        self.assertTrue(inspect.ismethod(x.triu_))
+        self.assertTrue(inspect.ismethod(x.stft))
+        self.assertTrue(inspect.ismethod(x.istft))
+        self.assertTrue(inspect.ismethod(x.abs_))
+        self.assertTrue(inspect.ismethod(x.acos_))
+        self.assertTrue(inspect.ismethod(x.atan_))
+        self.assertTrue(inspect.ismethod(x.cos_))
+        self.assertTrue(inspect.ismethod(x.cosh_))
+        self.assertTrue(inspect.ismethod(x.sin_))
+        self.assertTrue(inspect.ismethod(x.sinh_))
+        self.assertTrue(inspect.ismethod(x.acosh_))
+        self.assertTrue(inspect.ismethod(x.asinh_))
+        self.assertTrue(inspect.ismethod(x.diag))
 
     def test_complex_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with base.dygraph.guard():
-            a = base.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             res = 1j * a
             np.testing.assert_array_equal(res.numpy(), 1j * a_np)
 
@@ -626,6 +896,13 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             out = x @ y
             np.testing.assert_allclose(out.numpy(), except_out, atol=1e-03)
+
+    def test_coalesce(self):
+        indices = [[0, 0, 1], [1, 1, 2]]
+        values = [1.0, 2.0, 3.0]
+        sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
+        sp_x = sp_x.coalesce()
+        self.assertTrue(isinstance(sp_x, paddle.Tensor))
 
 
 if __name__ == '__main__':

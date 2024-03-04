@@ -293,11 +293,11 @@ void ComputeRowImpl(const Context& dev_ctx,
   // paddle/phi/kernels/impl/lamb_kernel_impl.h Please modify it together
 
   // DenseTensor p_norm_t;
-  // p_norm_t.Resize(phi::make_ddim({1}));
+  // p_norm_t.Resize(common::make_ddim({1}));
   // auto* p_norm_ptr = dev_ctx.template Alloc<MT>(&p_norm_t);
 
   // DenseTensor trust_ratio_div_norm_t;
-  // trust_ratio_div_norm_t.Resize(phi::make_ddim({1}));
+  // trust_ratio_div_norm_t.Resize(common::make_ddim({1}));
   // auto* trust_ratio_div_norm_ptr =
   //     dev_ctx.template Alloc<MT>(&trust_ratio_div_norm_t);
 
@@ -337,27 +337,27 @@ void ComputeRowImpl(const Context& dev_ctx,
             << " , tn = " << tn[0];
   }
 
-#define CALL_PADDLE_UPDATE_LAMB_PARAM_FUNC(__should_update_beta_pow)         \
-  do {                                                                       \
-    LambParamUpateFunctor<T, MT, IsMultiPrecision, __should_update_beta_pow> \
-        param_update_functor(lr.template data<MT>(),                         \
-                             static_cast<const T*>(param_ptr),               \
-                             static_cast<const MT*>(master_param_ptr),       \
-                             p_norm_ptr,                                     \
-                             trust_ratio_div_ptr,                            \
-                             trust_ratio_div_norm_ptr,                       \
-                             static_cast<T*>(param_out_ptr),                 \
-                             static_cast<MT*>(master_param_out_ptr),         \
-                             skip_update_flag);                              \
-    if (__should_update_beta_pow) {                                          \
-      param_update_functor.SetBetaPows(beta1_pow_ptr,                        \
-                                       beta2_pow_ptr,                        \
-                                       beta1_pow_out_ptr,                    \
-                                       beta2_pow_out_ptr,                    \
-                                       beta1,                                \
-                                       beta2);                               \
-    }                                                                        \
-    for_range(param_update_functor);                                         \
+#define CALL_PADDLE_UPDATE_LAMB_PARAM_FUNC(__should_update_beta_pow)          \
+  do {                                                                        \
+    LambParamUpdateFunctor<T, MT, IsMultiPrecision, __should_update_beta_pow> \
+        param_update_functor(lr.template data<MT>(),                          \
+                             static_cast<const T*>(param_ptr),                \
+                             static_cast<const MT*>(master_param_ptr),        \
+                             p_norm_ptr,                                      \
+                             trust_ratio_div_ptr,                             \
+                             trust_ratio_div_norm_ptr,                        \
+                             static_cast<T*>(param_out_ptr),                  \
+                             static_cast<MT*>(master_param_out_ptr),          \
+                             skip_update_flag);                               \
+    if (__should_update_beta_pow) {                                           \
+      param_update_functor.SetBetaPows(beta1_pow_ptr,                         \
+                                       beta2_pow_ptr,                         \
+                                       beta1_pow_out_ptr,                     \
+                                       beta2_pow_out_ptr,                     \
+                                       beta1,                                 \
+                                       beta2);                                \
+    }                                                                         \
+    for_range(param_update_functor);                                          \
   } while (0)
 
   if (should_update_beta_pow_later) {

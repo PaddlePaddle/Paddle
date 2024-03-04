@@ -23,7 +23,7 @@ from paddle import _C_ops
 from paddle.base import core
 from paddle.base.framework import dygraph_only
 
-from ..framework import LayerHelper, in_dynamic_mode
+from ..framework import LayerHelper, in_dynamic_or_pir_mode
 
 __all__ = [
     "DebugMode",
@@ -270,7 +270,7 @@ class TensorCheckerConfig:
             self.seed = self.initial_seed
 
         if self.seed > np.iinfo(np.uint32).max or self.seed < 0:
-            print("[Warnning: Seed must be between 0 and 2**32 - 1")
+            print("[Warning: Seed must be between 0 and 2**32 - 1")
             self.seed = 123
 
         # get random seed
@@ -372,7 +372,7 @@ def check_numerics(
     stack_height_limit = -1
     output_dir = ""
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.check_numerics(
             tensor,
             op_type,
@@ -443,7 +443,7 @@ def _print_operator_stats(op_count_dict):
                 called = value.split(",")
             else:
                 raise ValueError(
-                    "Input {} is expected to be a list of str, but recieved {}.".format(
+                    "Input {} is expected to be a list of str, but received {}.".format(
                         value, type(value)
                     )
                 )
@@ -466,6 +466,7 @@ def enable_operator_stats_collection():
     Examples:
 
         ..  code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')
@@ -584,7 +585,7 @@ def compare_accuracy(
     Args:
         dump_path(str): The path of the running log, such as the log for execution using the float32 data type.
         another_dump_path(str): the path of another running log ,such as the log for execution using the float16 data type.
-        output_filename(str): the excel file nmae of compare output.
+        output_filename(str): the excel file name of compare output.
         loss_scale(float, optional): the loss_scale during the training phase. Default is 1.
         dump_all_tensors(bool, optional): dump all tensor, It is currently not support. Default is False.
 
@@ -615,7 +616,7 @@ def compare_accuracy(
             ...             [1, 5, 2, 0], dtype="float32"
             ...         )
             ...         z1 = x + y
-            ...         out_excel = "compary_accuracy_out_excel.csv"
+            ...         out_excel = "compare_accuracy_out_excel.csv"
             ...         paddle.amp.debugging.compare_accuracy(
             ...             path, path, out_excel, loss_scale=1, dump_all_tensors=False
             ...         )

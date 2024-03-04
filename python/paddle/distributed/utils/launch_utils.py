@@ -35,9 +35,7 @@ def get_cluster_from_args(args, selected_gpus):
     node_rank = node_ips.index(node_ip)
 
     logger.debug(
-        "parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
-            node_ips, node_ip, node_rank
-        )
+        f"parsed from args:node_ips:{node_ips} node_ip:{node_ip} node_rank:{node_rank}"
     )
 
     free_ports = None
@@ -91,11 +89,9 @@ def get_gpus(selected_gpus):
                 for x in selected_gpus.split(',')
             ]
             logger.info(
-                "Change selected_gpus into reletive values. --ips:{} "
-                "will change into relative_ips:{} according to your "
-                "CUDA_VISIBLE_DEVICES:{}".format(
-                    selected_gpus, gpus, cuda_visible_devices_list
-                )
+                f"Change selected_gpus into relative values. --ips:{selected_gpus} "
+                f"will change into relative_ips:{gpus} according to your "
+                f"CUDA_VISIBLE_DEVICES:{cuda_visible_devices_list}"
             )
 
     return gpus
@@ -204,7 +200,7 @@ class JobServer:
         return f"{self.endpoint}"
 
     def __eq__(self, j):
-        return self.endpint == j.endpoint
+        return self.endpoint == j.endpoint
 
     def __ne__(self, j):
         return not self == j
@@ -217,9 +213,7 @@ class Trainer:
         self.rank = None
 
     def __str__(self):
-        return "gpu:{} endpoint:{} rank:{}".format(
-            self.gpus, self.endpoint, self.rank
-        )
+        return f"gpu:{self.gpus} endpoint:{self.endpoint} rank:{self.rank}"
 
     def __eq__(self, t):
         if len(self.gpus) != len(t.gpus):
@@ -335,12 +329,12 @@ def terminate_local_procs(procs):
                 p.log_fn.close()
             logger.debug(f"terminate process id:{p.proc.pid}")
 
-    # wait all process terminiated
+    # wait all process terminated
     time.sleep(3)
     for step in range(0, 50):
         alive = False
         for p in procs:
-            if p.proc.poll() is None:  # not termniate
+            if p.proc.poll() is None:  # not terminate
                 os.kill(p.proc.pid, signal.SIGKILL)
                 alive = True
 
@@ -404,7 +398,7 @@ def find_free_ports(num):
         step += 1
         if step > 100:
             print(
-                "can't find avilable port and use the specified static port now!"
+                "can't find available port and use the specified static port now!"
             )
             return None
 

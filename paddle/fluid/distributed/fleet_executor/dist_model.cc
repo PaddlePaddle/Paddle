@@ -46,8 +46,8 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  phi::DenseTensor *input_tensor,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
-  framework::DDim dims = phi::make_ddim(input_data.shape);
-  void *input_tensor_ptr;
+  framework::DDim dims = common::make_ddim(input_data.shape);
+  void *input_tensor_ptr = nullptr;
   if (input_data.dtype == DistModelDataType::INT64) {
     input_tensor_ptr = input_tensor->mutable_data<int64_t>(dims, place);
   } else if (input_data.dtype == DistModelDataType::FLOAT32) {
@@ -215,7 +215,7 @@ bool DistModel::Init() {
 }
 
 bool DistModel::PreparePlace() {
-  if (config_.place == "GPU") {
+  if (config_.place == "GPU") {  // NOLINT
     place_ = paddle::platform::CUDAPlace(config_.device_id);
   } else if (config_.place == "CPU") {
     place_ = paddle::platform::CPUPlace();
@@ -269,7 +269,7 @@ bool DistModel::CommInit() {
   }
   framework::NaiveExecutor e(place_);
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
-  e.Prepare(scope_.get(), *comm_init_program, 0, false);
+  e.Prepare(scope_.get(), *comm_init_program, 0);
   e.Run();
   VLOG(3) << "Comm init successful.";
   return true;
@@ -295,10 +295,14 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
      << ". The ring id is: " << ring_id << ". The group has: " << nranks
      << " ranks. Current rank in the group is: " << rank
      << ". The endpoint is: " << endpoint << ". Peer endpoints are: ";
-  for (auto ep : peer_endpoints) {
+  for (const auto &ep : peer_endpoints) {
     ss << ep << ", ";
   }
   VLOG(3) << ss.str();
+  std::string endpoints_str = config_.current_endpoint;
+  for (const auto &peer : peer_endpoints) {
+    endpoints_str += "," + peer;
+  }
   if (config_.place == "GPU") {
     framework::VarDesc *new_var = block->Var(tmp_var_name);
     new_var->SetType(framework::proto::VarType::RAW);
@@ -319,6 +323,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -342,6 +347,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -365,6 +371,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     comm_init_op->SetAttr("rank", rank);
     comm_init_op->SetAttr("nranks", nranks);
     comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("endpoints", endpoints_str);
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
@@ -461,7 +468,7 @@ bool DistModel::LoadParameters() {
   // Other non-persistable variables will be created in the micro scope
   // managed by fleet executor.
   e.CreateVariables(*program_, 0, true, scope_.get());
-  e.Prepare(scope_.get(), *load_program, 0, false);
+  e.Prepare(scope_.get(), *load_program, 0);
   e.Run();
   VLOG(3) << "After loading there are " << scope_->LocalVarNames().size()
           << " vars.";
@@ -638,7 +645,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
 template <typename T>
 bool DistModel::FetchResult(const phi::DenseTensor &fetch,
                             DistModelTensor *output_data) {
-  auto shape = phi::vectorize(fetch.dims());
+  auto shape = common::vectorize(fetch.dims());
   output_data->shape.assign(shape.begin(), shape.end());
   const T *data = fetch.data<T>();
   int64_t num_elems = fetch.numel();

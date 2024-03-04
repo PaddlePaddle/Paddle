@@ -56,8 +56,10 @@ template <typename Mma_,  ///! Threadblock-scoped matrix multiply-accumulate
           typename KernelArch,  ///! The Architecture this kernel is compiled
                                 /// for. Used since SIMT kernels lose top-level
                                 /// arch.
-          bool SplitKSerial     ///! If true, code supporting split-K via serial
+          bool SplitKSerial,    ///! If true, code supporting split-K via serial
                                 /// reduction is enabled.
+          bool Finegrained      ///! If true, finegrained mode is enabled.
+                                /// Currently only support groupwise.
           >
 struct GemmFpAIntB {
   using Mma = Mma_;
@@ -69,10 +71,10 @@ struct GemmFpAIntB {
   using ElementA = typename Mma::IteratorA::Element;
   using LayoutA = typename Mma::IteratorA::Layout;
   using ElementB = typename Mma::IteratorB::Element;
-  using LayoutB = typename Mma::IteratorB::Element;
+  using LayoutB = typename Mma::IteratorB::Layout;
   using ElementC = typename Epilogue::OutputTileIterator::Element;
   using LayoutC = typename Mma::LayoutC;
-  using ElementScale = float;
+  using ElementScale = typename Mma::IteratorA::Element;
 
   static ComplexTransform const kTransformA = Mma::kTransformA;
   static ComplexTransform const kTransformB = Mma::kTransformA;
@@ -103,6 +105,7 @@ struct GemmFpAIntB {
   /// Parameters structure
   struct Arguments : UniversalArgumentsBase {
     cutlass::gemm::GemmCoord problem_size;
+    int group_size;
     typename Mma::IteratorA::TensorRef ref_A;
     typename Mma::IteratorB::TensorRef ref_B;
     typename Mma::IteratorScale::TensorRef ref_scale;
@@ -125,6 +128,7 @@ struct GemmFpAIntB {
 
     CUTLASS_HOST_DEVICE
     Arguments(cutlass::gemm::GemmCoord const& problem_size,
+              int group_size,
               typename Mma::IteratorA::TensorRef ref_A,
               typename Mma::IteratorB::TensorRef ref_B,
               typename Mma::IteratorScale::TensorRef ref_scale,
@@ -143,6 +147,7 @@ struct GemmFpAIntB {
               problem_size,
               /*serial_split_k_factor=*/serial_split_k_factor,
               /*batch_stride_D=*/0),
+          group_size(group_size),
           ref_A(ref_A),
           ref_B(ref_B),
           ref_scale(ref_scale),
@@ -181,6 +186,7 @@ struct GemmFpAIntB {
     int const* gather_A_indices;
     int const* gather_B_indices;
     int const* scatter_D_indices;
+    int group_size;
 
     //
     // Methods
@@ -192,6 +198,7 @@ struct GemmFpAIntB {
     CUTLASS_HOST_DEVICE
     Params(Arguments const& args, int device_sms, int sm_occupancy)
         : ParamsBase(args, device_sms, sm_occupancy),
+          group_size(args.group_size),
           params_A(args.ref_A.layout()),
           ref_A(args.ref_A),
           params_B(args.ref_B.layout()),
@@ -276,6 +283,52 @@ struct GemmFpAIntB {
     return Status::kSuccess;
   }
 
+  // Initializes the fine grained scale+bias iterator. Needed since the fine
+  // grained iterator has a different constructor signature than a regular
+  // cutlass iterator
+
+  template <typename IteratorScale, bool FineGrained>
+  struct initialize_scale {
+    CUTLASS_DEVICE static IteratorScale apply(
+        typename IteratorScale::Params const& params,
+        typename IteratorScale::Pointer pointer_scale,
+        typename IteratorScale::TensorCoord extent,
+        int thread_id,
+        typename IteratorScale::TensorCoord const& threadblock_offset,
+        int group_size);
+  };
+
+  template <typename IteratorScale>
+  struct initialize_scale<IteratorScale, true> {
+    CUTLASS_DEVICE static IteratorScale apply(
+        typename IteratorScale::Params const& params,
+        typename IteratorScale::Pointer pointer_scale,
+        typename IteratorScale::TensorCoord extent,
+        int thread_id,
+        typename IteratorScale::TensorCoord const& threadblock_offset,
+        int group_size) {
+      return IteratorScale(params,
+                           pointer_scale,
+                           extent,
+                           thread_id,
+                           threadblock_offset,
+                           group_size);
+    }
+  };
+
+  template <typename IteratorScale>
+  struct initialize_scale<IteratorScale, false> {
+    CUTLASS_DEVICE static IteratorScale apply(
+        typename IteratorScale::Params const& params,
+        typename IteratorScale::Pointer pointer_scale,
+        typename IteratorScale::TensorCoord extent,
+        int thread_id,
+        typename IteratorScale::TensorCoord const& threadblock_offset,
+        int group_size) {
+      return IteratorScale(
+          params, pointer_scale, extent, thread_id, threadblock_offset);
+    }
+  };
   static size_t get_extra_workspace_size(
       Arguments const& args, cutlass::gemm::GemmCoord const& grid_tiled_shape) {
     return 0;
@@ -335,8 +388,12 @@ struct GemmFpAIntB {
           threadblock_tile_offset.k() * params.gemm_k_size * kInterleave,
           threadblock_tile_offset.n() * Mma::Shape::kN / kInterleave};
 
+      typename MatrixCoord::Index fg_row_offset =
+          threadblock_tile_offset.k() * params.gemm_k_size / 64;
+      typename MatrixCoord::Index scale_row_offset =
+          Finegrained == true ? fg_row_offset : 0;
       cutlass::MatrixCoord tb_offset_scale{
-          0, threadblock_tile_offset.n() * Mma::Shape::kN};
+          scale_row_offset, threadblock_tile_offset.n() * Mma::Shape::kN};
 
       // Problem size is a function of threadblock index in the K dimension
       int problem_size_k =
@@ -368,11 +425,16 @@ struct GemmFpAIntB {
           tb_offset_B,
           params.gather_B_indices);
 
-      typename Mma::IteratorScale iterator_scale(params.params_scale,
-                                                 params.ref_scale.data(),
-                                                 {1, params.problem_size.n()},
-                                                 thread_idx,
-                                                 tb_offset_scale);
+      typename MatrixCoord::Index scale_row_extent =
+          Finegrained == true ? problem_size_k / 64 : 1;
+      typename Mma::IteratorScale iterator_scale =
+          initialize_scale<typename Mma::IteratorScale, Finegrained>::apply(
+              params.params_scale,
+              params.ref_scale.data(),
+              {scale_row_extent, params.problem_size.n()},
+              thread_idx,
+              tb_offset_scale,
+              params.group_size);
 
       // Broadcast the warp_id computed by lane 0 to ensure dependent code
       // is compiled as warp-uniform.
@@ -383,7 +445,11 @@ struct GemmFpAIntB {
       // Main loop
       //
       // Construct thread-scoped matrix multiply
-      Mma mma(shared_storage.main_loop, thread_idx, warp_idx, lane_idx);
+      Mma mma(shared_storage.main_loop,
+              params.group_size,
+              thread_idx,
+              warp_idx,
+              lane_idx);
 
       typename Mma::FragmentC accumulators;
 
@@ -505,10 +571,9 @@ struct GemmFpAIntB {
     KernelRunner<compile_needed>::run_kernel(params, shared_storage);
 
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 750) && (__CUDA_ARCH__ < 800)
-    // static constexpr bool compile_needed = platform::is_same<KernelArch,
-    // arch::Sm75>::value; KernelRunner<compile_needed>::run_kernel(params,
-    // shared_storage);
-    CUTLASS_NOT_IMPLEMENTED();
+    static constexpr bool compile_needed =
+        platform::is_same<KernelArch, arch::Sm75>::value;
+    KernelRunner<compile_needed>::run_kernel(params, shared_storage);
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800) && (__CUDA_ARCH__ < 900)
     static constexpr bool compile_needed =
         platform::is_same<KernelArch, arch::Sm80>::value;

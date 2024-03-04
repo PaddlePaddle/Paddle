@@ -58,8 +58,10 @@ class DistributedOperator:
     def get_serial_input(self, name):
         if self._serial_op.type == "create_py_reader":
             tensor = None
-        else:
+        elif self._serial_op.block._find_var_recursive(name) is not None:
             tensor = self._serial_op.block._var_recursive(name)
+        else:
+            tensor = None
         return tensor
 
     def get_serial_output(self, name):
@@ -124,8 +126,8 @@ class DistributedOperator:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", process_mesh ({}): {}".format(
-            annotated_str, self.dist_attr.process_mesh
+        str += (
+            f", process_mesh ({annotated_str}): {self.dist_attr.process_mesh}"
         )
 
         for arg_name in self.serial_op.desc.input_arg_names():
@@ -148,8 +150,17 @@ class DistributedOperator:
                     is_parameter_str = "non-parameter"
             else:
                 is_parameter_str = "non-parameter"
-            str += ", {}'s dims_mapping (input, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping
+
+            # partial
+            input_dist_attr = self.dist_attr.get_input_dist_attr(arg_name)
+            partial_dims = sorted(input_dist_attr._partial_dims())
+
+            str += "; {}'s dims_mapping (input, {}, {}): {}, partial on dims: {}".format(
+                arg_name,
+                annotated_str,
+                is_parameter_str,
+                dims_mapping,
+                partial_dims,
             )
 
         for arg_name in self.serial_op.desc.output_arg_names():
@@ -172,12 +183,25 @@ class DistributedOperator:
                     is_parameter_str = "non-parameter"
             else:
                 is_parameter_str = "non-parameter"
-            str += ", {}'s dims_mapping (output, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping
+
+            # partial
+            output_dist_attr = self.dist_attr.get_output_dist_attr(arg_name)
+            partial_dims = sorted(output_dist_attr._partial_dims())
+
+            str += "; {}'s dims_mapping (output, {}, {}): {}, partial on dims: {}".format(
+                arg_name,
+                annotated_str,
+                is_parameter_str,
+                dims_mapping,
+                partial_dims,
             )
 
-        str += ", dist_impl idx: {} , dist_impl type {} }}".format(
-            self.dist_attr.impl_idx, self.dist_attr.impl_type
+        str += (
+            ", dist_impl idx: {} , dist_impl type: {}, chunk_id: {} }}".format(
+                self.dist_attr.impl_idx,
+                self.dist_attr.impl_type,
+                self.dist_attr.chunk_id,
+            )
         )
 
         return str
@@ -200,12 +224,18 @@ class DistributedOperator:
 
 class DistributedOperatorHelper:
     def __init__(
-        self, serial_op, process_mesh, in_dims_mappings, out_dims_mappings
+        self,
+        serial_op,
+        process_mesh,
+        in_dims_mappings,
+        out_dims_mappings,
+        kwargs,
     ):
         self._serial_op = serial_op
         self._process_mesh = process_mesh
         self._in_dims_mappings = in_dims_mappings
         self._out_dims_mappings = out_dims_mappings
+        self._chunk_id = kwargs["chunk_id"] if "chunk_id" in kwargs else 0
 
     def __call__(self, *args, **kwargs):
         tensor_to_dims_mapping = {}
@@ -228,7 +258,12 @@ class DistributedOperatorHelper:
         default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         op_size = len(cur_block.ops)
-        output = self._serial_op(*args, **kwargs)
+        if paddle.base.dygraph.base.in_to_static_mode():
+            output = paddle.jit.dy2static.convert_call_func.convert_call(
+                self._serial_op
+            )(*args, **kwargs)
+        else:
+            output = self._serial_op(*args, **kwargs)
         new_op_size = len(cur_block.ops)
 
         if isinstance(output, (tuple, list)):
@@ -307,6 +342,7 @@ class DistributedOperatorHelper:
                         tensor_dist_attr.dims_mapping = dims_mapping
                         tensor_dist_attr.mark_annotated("dims_mapping")
             dist_op.dist_attr.process_mesh = self._process_mesh
+            dist_op.dist_attr.chunk_id = self._chunk_id
             if self._process_mesh is not None:
                 dist_op.dist_attr.mark_annotated("process_mesh")
             default_dist_ctx.add_dist_op_for_program(dist_op)

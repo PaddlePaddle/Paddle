@@ -25,7 +25,7 @@ using cinn::common::float16;
 
 cinn_type_t ToRuntimeType(Type type) {
 #define SET_TYPE_CASE_ITEM(compiled_type, runtime_type) \
-  if (type == common::compiled_type()) {                \
+  if (type == cinn::common::compiled_type()) {          \
     return runtime_type();                              \
   }
 

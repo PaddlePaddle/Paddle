@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-from paddle.nn import Layer
 from paddle.nn import functional as F
 
+from ...layer.layers import Layer
 from ..format import ConvertibleQuantedLayer
 
 

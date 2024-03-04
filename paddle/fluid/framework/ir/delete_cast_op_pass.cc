@@ -84,7 +84,7 @@ static std::vector<Node*> FindOpNodeWithInputName(
     if (!node->IsOp()) continue;
     auto inputs = node->Op()->Inputs();
     bool find_input = false;
-    for (auto input : inputs) {
+    for (auto const& input : inputs) {
       auto input_names = input.second;
       if (std::count(input_names.begin(), input_names.end(), input_name) > 0) {
         find_input = true;
@@ -103,7 +103,7 @@ static std::vector<Node*> FindOpNodeWithOutputName(
     if (!node->IsOp()) continue;
     auto outputs = node->Op()->Outputs();
     bool find_output = false;
-    for (auto output : outputs) {
+    for (auto const& output : outputs) {
       auto output_names = output.second;
       if (std::count(output_names.begin(), output_names.end(), output_name) >
           0) {

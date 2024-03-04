@@ -19,7 +19,8 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestCrossOp(OpTest):
@@ -47,10 +48,10 @@ class TestCrossOp(OpTest):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
 class TestCrossOpCase1(TestCrossOp):
@@ -116,13 +117,15 @@ class TestCrossBF16Op(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+                self.check_grad_with_place(
+                    place, ['X', 'Y'], 'Out', check_pir=True
+                )
 
 
 class TestCrossAPI(unittest.TestCase):
@@ -134,18 +137,22 @@ class TestCrossAPI(unittest.TestCase):
             [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
         ).astype('float32')
 
+    @test_with_pir_api
     def test_cross_api(self):
         self.input_data()
 
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
         # case 1:
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y, axis=1)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
+                main,
                 feed={'x': self.data_x, 'y': self.data_y},
-                fetch_list=[z.name],
+                fetch_list=[z],
                 return_numpy=False,
             )
         expect_out = np.array(
@@ -153,15 +160,18 @@ class TestCrossAPI(unittest.TestCase):
         )
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
         # case 2:
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
+                main,
                 feed={'x': self.data_x, 'y': self.data_y},
-                fetch_list=[z.name],
+                fetch_list=[z],
                 return_numpy=False,
             )
         expect_out = np.array(
@@ -169,8 +179,14 @@ class TestCrossAPI(unittest.TestCase):
         )
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
-        # case 3:
-        with program_guard(Program(), Program()):
+    def test_cross_api1(self):
+        self.input_data()
+
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+
+        # case 1:
+        with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=[-1, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[-1, 3], dtype='float32')
 
@@ -181,8 +197,8 @@ class TestCrossAPI(unittest.TestCase):
         self.input_data()
         # case 1:
         # with base.dygraph.guard():
-        #     x = base.dygraph.to_variable(self.data_x)
-        #     y = base.dygraph.to_variable(self.data_y)
+        #     x = paddle.to_tensor(self.data_x)
+        #     y = paddle.to_tensor(self.data_y)
         #     z = paddle.cross(x, y)
         #     np_z = z.numpy()
         # expect_out = np.array([[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0],
@@ -191,8 +207,8 @@ class TestCrossAPI(unittest.TestCase):
 
         # case 2:
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            y = base.dygraph.to_variable(self.data_y)
+            x = paddle.to_tensor(self.data_x)
+            y = paddle.to_tensor(self.data_y)
             z = paddle.cross(x, y, axis=1)
             np_z = z.numpy()
         expect_out = np.array(

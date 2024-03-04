@@ -34,6 +34,9 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/op_result.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace pybind {
@@ -75,7 +78,7 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
   }
 
   if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
-          .find("numpy") != std::string::npos) {
+          .find("numpy.int") != std::string::npos) {
     auto to = PyNumber_Long(*obj);
     if (to) {
       *obj = to;
@@ -93,8 +96,12 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
        (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
   }
-  if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
-          .find("numpy") != std::string::npos) {
+  auto type_name =
+      std::string(reinterpret_cast<PyTypeObject*>((*obj)->ob_type)->tp_name);
+  VLOG(4) << "type_name: " << type_name;
+
+  if (type_name.find("numpy") != std::string::npos &&
+      type_name.find("numpy.complex") == std::string::npos) {
     auto to = PyNumber_Float(*obj);
     if (to) {
       *obj = to;
@@ -105,9 +112,13 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
 }
 
 bool PyObject_CheckComplexOrToComplex(PyObject** obj) {
-  if (PyComplex_Check(*obj) || PyLong_Check(*obj) || PyFloat_Check(*obj) ||
+  if (PyComplex_Check(*obj) ||
       PyObject_TypeCheck(*obj, g_vartype_pytype) ||  // NOLINT
       PyObject_TypeCheck(*obj, p_tensor_type)) {     // NOLINT
+    return true;
+  }
+  if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
+          .find("numpy.complex") != std::string::npos) {
     return true;
   }
   // consider numpy cfloat & numpy cdouble?
@@ -119,15 +130,13 @@ bool PyObject_CheckString(PyObject* obj) { return PyUnicode_Check(obj); }
 bool CastPyArg2Boolean(PyObject* obj,
                        const std::string& op_type,
                        ssize_t arg_pos) {
-  if (obj == Py_None) {
+  if (obj == Py_None || obj == Py_False) {
     return false;  // To be compatible with QA integration testing. Some
                    // test case pass in None.
   } else if (obj == Py_True) {
     return true;
-  } else if (obj == Py_False) {
-    return false;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "bool, but got %s",
         op_type,
@@ -150,7 +159,7 @@ int CastPyArg2Int(PyObject* obj, const std::string& op_type, ssize_t arg_pos) {
   if (PyObject_CheckLongOrToLong(&obj)) {
     return (int)PyLong_AsLong(obj);  // NOLINT
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "int, but got %s",
         op_type,
@@ -175,7 +184,7 @@ int64_t CastPyArg2Long(PyObject* obj,
   if (PyObject_CheckLongOrToLong(&obj)) {
     return (int64_t)PyLong_AsLongLong(obj);  // NOLINT
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "long, but got %s",
         op_type,
@@ -228,7 +237,7 @@ double CastPyArg2Double(PyObject* obj,
   if (PyObject_CheckFloatOrToFloat(&obj)) {
     return PyFloat_AsDouble(obj);  // NOLINT
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "double, but got %s",
         op_type,
@@ -242,12 +251,17 @@ double CastPyArg2Double(PyObject* obj,
 phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
                                              const std::string& op_type,
                                              ssize_t arg_pos) {
+  PyTypeObject* type = obj->ob_type;
+  auto type_name = std::string(type->tp_name);
   if (PyComplex_Check(obj)) {
     double real = PyComplex_RealAsDouble(obj);
     double imag = PyComplex_ImagAsDouble(obj);
     return phi::dtype::complex<float>(real, imag);  // NOLINT
+  } else if (type_name == "numpy.complex64") {
+    Py_complex v = PyComplex_AsCComplex(obj);
+    return phi::dtype::complex<float>(v.real, v.imag);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "complex, but got %s",
         op_type,
@@ -266,7 +280,7 @@ phi::dtype::complex<double> CastPyArg2Complex128(PyObject* obj,
     double imag = PyComplex_ImagAsDouble(obj);
     return phi::dtype::complex<double>(real, imag);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "complex, but got %s",
         op_type,
@@ -289,12 +303,12 @@ std::string CastPyArg2String(PyObject* obj,
                              const std::string& op_type,
                              ssize_t arg_pos) {
   if (PyObject_CheckString(obj)) {
-    Py_ssize_t size;
-    const char* data;
+    Py_ssize_t size = 0;
+    const char* data = nullptr;
     data = PyUnicode_AsUTF8AndSize(obj, &size);
     return std::string(data, (size_t)size);  // NOLINT
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "str, but got %s",
         op_type,
@@ -325,7 +339,7 @@ std::vector<bool> CastPyArg2Booleans(PyObject* obj,
       if (PyObject_CheckBool(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of bool, but got %s at pos %d",
             op_type,
@@ -342,7 +356,7 @@ std::vector<bool> CastPyArg2Booleans(PyObject* obj,
       if (PyObject_CheckBool(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of bool, but got %s at pos %d",
             op_type,
@@ -352,7 +366,7 @@ std::vector<bool> CastPyArg2Booleans(PyObject* obj,
       }
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "list or tuple, but got %s",
         op_type,
@@ -384,7 +398,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj,
       if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of int, but got %s at pos %d",
             op_type,
@@ -402,7 +416,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj,
       if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of int, but got %s at pos %d",
             op_type,
@@ -420,7 +434,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj,
       if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of int, but got %s at pos %d",
             op_type,
@@ -430,7 +444,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj,
       }
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "list or tuple, but got %s",
         op_type,
@@ -461,7 +475,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
       if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back((int64_t)PyLong_AsLongLong(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of int, but got %s at pos %d",
             op_type,
@@ -478,7 +492,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
       if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back((int64_t)PyLong_AsLongLong(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of int, but got %s at pos %d",
             op_type,
@@ -495,7 +509,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
       if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back((int64_t)PyLong_AsLongLong(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of int, but got %s at pos %d",
             op_type,
@@ -507,9 +521,9 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrToLong(&obj)) {
-    return {(int64_t)PyLong_AsLongLong(obj)};
+    return {(int64_t)PyLong_AsLongLong(obj)};  // NOLINT
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "list or tuple, but got %s",
         op_type,
@@ -540,7 +554,7 @@ std::vector<float> CastPyArg2Floats(PyObject* obj,
       if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of float, but got %s at pos %d",
             op_type,
@@ -557,7 +571,7 @@ std::vector<float> CastPyArg2Floats(PyObject* obj,
       if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of float, but got %s at pos %d",
             op_type,
@@ -574,7 +588,7 @@ std::vector<float> CastPyArg2Floats(PyObject* obj,
       if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of float, but got %s at pos %d",
             op_type,
@@ -584,7 +598,7 @@ std::vector<float> CastPyArg2Floats(PyObject* obj,
       }
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "list or tuple, but got %s",
         op_type,
@@ -615,7 +629,7 @@ std::vector<double> CastPyArg2Float64s(PyObject* obj,
       if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of float, but got %s at pos %d",
             op_type,
@@ -632,7 +646,7 @@ std::vector<double> CastPyArg2Float64s(PyObject* obj,
       if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of float, but got %s at pos %d",
             op_type,
@@ -649,7 +663,7 @@ std::vector<double> CastPyArg2Float64s(PyObject* obj,
       if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of float, but got %s at pos %d",
             op_type,
@@ -659,7 +673,7 @@ std::vector<double> CastPyArg2Float64s(PyObject* obj,
       }
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "list or tuple, but got %s",
         op_type,
@@ -696,12 +710,12 @@ std::vector<std::string> CastPyArg2Strings(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_CheckString(item)) {
-        Py_ssize_t size;
-        const char* data;
+        Py_ssize_t size = 0;
+        const char* data = nullptr;
         data = PyUnicode_AsUTF8AndSize(item, &size);
         value.emplace_back(std::string(data, (size_t)size));  // NOLINT
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of str, but got %s at pos %d",
             op_type,
@@ -716,12 +730,12 @@ std::vector<std::string> CastPyArg2Strings(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_CheckString(item)) {
-        Py_ssize_t size;
-        const char* data;
+        Py_ssize_t size = 0;
+        const char* data = nullptr;
         data = PyUnicode_AsUTF8AndSize(item, &size);
         value.emplace_back(std::string(data, (size_t)size));  // NOLINT
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
             "list of str, but got %s at pos %d",
             op_type,
@@ -731,7 +745,7 @@ std::vector<std::string> CastPyArg2Strings(PyObject* obj,
       }
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "list or tuple, but got %s",
         op_type,
@@ -753,7 +767,7 @@ void CastPyArg2AttrStrings(PyObject* obj,
 std::vector<paddle::experimental::Scalar> CastPyArg2Scalars(
     PyObject* obj, const std::string& op_type, ssize_t arg_pos) {
   if (obj == Py_None) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "a list of int, float, or bool, but got %s",
         op_type,
@@ -795,7 +809,7 @@ std::vector<paddle::experimental::Scalar> CastPyArg2Scalars(
       return value;
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "a list of int, float, complex, or bool, but got %s",
         op_type,
@@ -817,7 +831,7 @@ void CastPyArg2AttrBlock(PyObject* obj,
       (::pybind11::detail::instance*)obj;  // NOLINT
 
   if (!PyObject_TypeCheck((PyObject*)inst, g_blockdesc_pytype)) {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
         "BlockDesc, but got %s",
         op_type,
@@ -827,6 +841,50 @@ void CastPyArg2AttrBlock(PyObject* obj,
   void** vh = inst->simple_layout ? inst->simple_value_holder
                                   : &inst->nonsimple.values_and_holders[0];
   attrs[key] = reinterpret_cast<paddle::framework::BlockDesc*&>(vh[0]);
+}
+
+void CastPyArg2AttrIRBlock(PyObject* obj,
+                           paddle::framework::AttributeMap& attrs,  // NOLINT
+                           const std::string& key,
+                           const std::string& op_type,
+                           ssize_t arg_pos) {
+  VLOG(1) << "After Process pir::Block*";
+  ::pybind11::detail::instance* inst =
+      (::pybind11::detail::instance*)obj;  // NOLINT
+  void** vh = inst->simple_layout ? inst->simple_value_holder
+                                  : &inst->nonsimple.values_and_holders[0];
+  attrs[key] = reinterpret_cast<::pir::Block*&>(vh[0]);
+}
+
+void CastPyArg2AttrValues(PyObject* obj,
+                          paddle::framework::AttributeMap& attrs,  // NOLINT
+                          const std::string& key,
+                          const std::string& op_type,
+                          ssize_t arg_pos) {
+  std::vector<::pir::Value> results;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      // TODO(xiongkun): judge Value;
+      item = PyList_GetItem(obj, i);
+      ::pybind11::detail::instance* inst =
+          (::pybind11::detail::instance*)item;  // NOLINT
+      void** vh = inst->simple_layout ? inst->simple_value_holder
+                                      : &inst->nonsimple.values_and_holders[0];
+      ::pir::Value* value = reinterpret_cast<::pir::Value*>(vh[0]);
+      results.emplace_back(pir::Value(value->impl()));
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidType(
+        "%s(): argument (position %d) must be "
+        "a list of int, float, complex, or bool, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+  attrs[key] = results;
+  VLOG(1) << "Pybind: Cast " << results.size() << " Value Finished.";
 }
 
 void ConstructAttrMapFromPyArgs(
@@ -847,8 +905,9 @@ void ConstructAttrMapFromPyArgs(
 
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
-    Py_ssize_t key_len;
-    const char* key_ptr;
+    VLOG(1) << "Start Process " << arg_pos;
+    Py_ssize_t key_len = 0;
+    const char* key_ptr = nullptr;
     obj = PyTuple_GET_ITEM(args, arg_pos);
     if (PyObject_CheckString(obj)) {
       key_ptr = PyUnicode_AsUTF8AndSize(obj, &key_len);
@@ -862,6 +921,7 @@ void ConstructAttrMapFromPyArgs(
     }
 
     std::string key(key_ptr, (size_t)key_len);  // NOLINT
+    VLOG(1) << "Start Process " << key;
     auto iter = attr_type_map->find(key);
     if (iter == attr_type_map->end()) {
       continue;
@@ -917,6 +977,78 @@ void ConstructAttrMapFromPyArgs(
         break;
       default:
         break;
+    }
+  }
+}
+
+void ConstructAttrMapForRunProgram(
+    const std::string& op_type,
+    PyObject* args,
+    ssize_t attr_start,
+    ssize_t attr_end,
+    paddle::framework::AttributeMap& attrs) {  // NOLINT
+  PADDLE_ENFORCE_EQ((attr_end - attr_start) % 2,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The number of arguments for attributes should be even "
+                        "but attr_start = %d, attr_end = %d.",
+                        attr_start,
+                        attr_end));
+
+  PyObject* obj = nullptr;
+  for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
+    VLOG(1) << "Start Process " << arg_pos;
+    Py_ssize_t key_len = 0;
+    const char* key_ptr = nullptr;
+    obj = PyTuple_GET_ITEM(args, arg_pos);
+    if (PyObject_CheckString(obj)) {
+      key_ptr = PyUnicode_AsUTF8AndSize(obj, &key_len);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be str, but got "
+          "%s",
+          op_type,
+          arg_pos,
+          ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    }
+
+    std::string key(key_ptr, (size_t)key_len);  // NOLINT
+    VLOG(1) << "Start Process " << key;
+    obj = PyTuple_GET_ITEM(args, arg_pos + 1);
+
+    if (std::set<std::string>({"cuda_graph_capture_mode"}).count(key)) {
+      CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"global_block",
+                                      "forward_global_block",
+                                      "backward_global_block"})
+                   .count(key)) {
+      CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"is_test", "use_interpretorcore"})
+                   .count(key)) {
+      CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"start_op_index",
+                                      "end_op_index",
+                                      "program_id",
+                                      "cuda_graph_pool_id"})
+                   .count(key)) {
+      CastPyArg2AttrLong(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"fx",
+                                      "fp",
+                                      "fm",
+                                      "fo",
+                                      "bx",
+                                      "no_need_buffers",
+                                      "bp",
+                                      "bm",
+                                      "bo_g",
+                                      "bx_g",
+                                      "bp_g",
+                                      "bo"})
+                   .count(key)) {
+      CastPyArg2AttrValues(obj, attrs, key, op_type, arg_pos);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s is not defined in this function.", key));  // NOLINT
     }
   }
 }

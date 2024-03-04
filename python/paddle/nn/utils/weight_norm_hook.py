@@ -113,13 +113,13 @@ class WeightNorm:
             if isinstance(hook, WeightNorm) and hook.name == name:
                 raise RuntimeError(
                     "Cannot register two weight_norm hooks on "
-                    "the same parameter {}".format(name)
+                    f"the same parameter {name}"
                 )
 
         if dim is None:
             dim = -1
 
-        # support dim is negative numeber, (dim = -1) == (dim = None)
+        # support dim is negative number, (dim = -1) == (dim = None)
         weight_dim = len(layer._parameters[name].shape)
         assert (
             dim < weight_dim and dim >= -1 * weight_dim

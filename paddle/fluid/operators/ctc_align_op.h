@@ -33,7 +33,7 @@ class CTCAlignKernel : public framework::OpKernel<T> {
     size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
     bool merge_repeated = ctx.Attr<bool>("merge_repeated");
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    auto input_dims = phi::vectorize<int>(input->dims());
+    auto input_dims = common::vectorize<int>(input->dims());
     const T* input_data = input->data<T>();
 
     // support tensor input, no lod information

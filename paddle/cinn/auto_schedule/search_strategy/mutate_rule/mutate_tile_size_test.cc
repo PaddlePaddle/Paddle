@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 
@@ -27,9 +28,9 @@ TEST(MutateTileSize, Basic) {
   srand(0);
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   const int kSize = 32;
@@ -46,16 +47,13 @@ TEST(MutateTileSize, Basic) {
       [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); },
       "C");
 
-  poly::StageMap stages = CreateStages({A, B, C});
+  ast_gen_ius::TensorGroup tensor_group({A, B, C});
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestMutateTileSize_Basic",
-                     stages,
-                     {A, B, C},
-                     {},
-                     {},
-                     nullptr,
-                     target,
-                     true);
+      lang::LowerToAstVec("TestMutateTileSize_Basic",
+
+                          {A, B, C},
+                          &tensor_group,
+                          target);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Original Expr: ";
@@ -65,7 +63,7 @@ TEST(MutateTileSize, Basic) {
   // repeated.
   utils::LinearRandomEngine::StateType rand_seed = 123;
   ir::IRSchedule ir_schedule(module_expr, rand_seed);
-  ir::IRSchedule new_ir_schedule(ir_schedule);
+  ir::IRSchedule pir_schedule(ir_schedule);
 
   // apply schedule
   auto loops = ir_schedule.GetLoops("C");
@@ -76,13 +74,13 @@ TEST(MutateTileSize, Basic) {
   MutateTileSize mutator;
   ir::ScheduleDesc sch_desc =
       mutator.Apply(ir_schedule.GetTraceDesc(), &rand_seed);
-  sch_desc.Replay(&new_ir_schedule, true);
+  sch_desc.Replay(&pir_schedule, true);
   VLOG(6) << "Expr before mutate tile size: \n"
           << ir_schedule.GetModule().GetExprs()[0];
   VLOG(6) << "Expr after mutate tile size: \n"
-          << new_ir_schedule.GetModule().GetExprs()[0];
+          << pir_schedule.GetModule().GetExprs()[0];
 
-  std::string target_new_ir = R"ROC({
+  std::string target_pir = R"ROC({
   ScheduleBlock(root)
   {
     serial for (i_1, 0, 2)
@@ -117,7 +115,7 @@ TEST(MutateTileSize, Basic) {
     ss << exprs[0];
     return ss.str();
   };
-  ASSERT_EQ(get_ir_str(&new_ir_schedule), target_new_ir);
+  ASSERT_EQ(get_ir_str(&pir_schedule), target_pir);
 
   std::vector<int> last_tile_factors = {2, 16};
   for (int i = 0; i < 10; ++i) {

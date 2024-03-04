@@ -134,6 +134,21 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_dygraph_sharding_stage3_for_eager PROPERTIES TIMEOUT
                                                                          "350")
 endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_dygraph_sharding_stage3_bf16
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "200"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22038;NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_dygraph_sharding_stage3_bf16 PROPERTIES TIMEOUT
+                                                                    "200")
+endif()
 if(WITH_NCCL)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
@@ -284,6 +299,20 @@ if(WITH_NCCL)
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
+    test_dygraph_dataparallel_bf16
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "200"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22024;NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_dygraph_dataparallel_bf16 PROPERTIES TIMEOUT "200")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
     test_dygraph_sharding_stage2
     START_BASH
     ../../legacy_test/dist_test.sh
@@ -295,6 +324,51 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=21228;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_sharding_stage2 PROPERTIES TIMEOUT "200")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_dygraph_sharding_stage2_bf16
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "200"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22024;NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_dygraph_sharding_stage2_bf16 PROPERTIES TIMEOUT
+                                                                    "200")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_dygraph_sharding_stage1_bf16
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "200"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22024;NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_dygraph_sharding_stage1_bf16 PROPERTIES TIMEOUT
+                                                                    "200")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_dygraph_sharding_stage1_fp16
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "200"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22024;NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_dygraph_sharding_stage1_fp16 PROPERTIES TIMEOUT
+                                                                    "200")
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -650,11 +724,6 @@ if((WITH_GPU OR WITH_XPU) AND (LINUX OR WIN32))
     test_fleet_recompute_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
-  py_test_modules(
-    test_fleet_private_function MODULES test_fleet_private_function ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_new_group
@@ -946,11 +1015,8 @@ if((WITH_GPU) AND (LINUX))
     MODULES
     test_dygraph_save_for_auto_infer
     ENVS
-    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "NVIDIA_TF32_OVERRIDE=0;FLAGS_new_executor_micro_batching=False;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
-  set_tests_properties(
-    test_dygraph_save_for_auto_infer
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()

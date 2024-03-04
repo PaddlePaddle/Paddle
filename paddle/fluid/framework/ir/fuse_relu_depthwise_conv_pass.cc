@@ -28,7 +28,7 @@ namespace ir {
 
 void FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseReluDepthwiseConv(graph, true);
-  graph = FuseReluDepthwiseConv(graph, false);
+  graph = FuseReluDepthwiseConv(graph, false);  // NOLINT
 }
 
 ir::Graph *FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(

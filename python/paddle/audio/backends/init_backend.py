@@ -73,8 +73,8 @@ def list_available_backends() -> List[str]:
         package = "paddleaudio"
         warn_msg = (
             "Failed importing {}. \n"
-            "only wave_banckend(only can deal with PCM16 WAV) supportted.\n"
-            "if want soundfile_backend(more audio type suppported),\n"
+            "only wave_backend(only can deal with PCM16 WAV) supported.\n"
+            "if want soundfile_backend(more audio type supported),\n"
             "please manually installed (usually with `pip install {} >= 1.0.2`). "
         ).format(package, package)
         warnings.warn(warn_msg)
@@ -83,9 +83,9 @@ def list_available_backends() -> List[str]:
         version = paddleaudio.__version__
         if not _check_version(version):
             err_msg = (
-                "the version of paddleaudio installed is {},\n"
+                f"the version of paddleaudio installed is {version},\n"
                 "please ensure the paddleaudio >= 1.0.2."
-            ).format(version)
+            )
             raise ImportError(err_msg)
         backends = paddleaudio.backends.list_audio_backends()
     backends.append("wave_backend")

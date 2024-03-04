@@ -17,7 +17,7 @@ from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
 from ..base.data_feeder import check_variable_and_dtype
-from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
+from ..framework import LayerHelper, in_dynamic_or_pir_mode
 from .layer_function_generator import (
     add_sample_code,
     generate_activation_fn,
@@ -242,7 +242,7 @@ def acos(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.98231316, 1.77215421, 1.47062886, 1.26610363])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.acos(x)
     else:
         check_variable_and_dtype(
@@ -289,7 +289,7 @@ def acosh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 1.76274717, 2.06343699, 2.29243159])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.acosh(x)
     else:
         check_variable_and_dtype(
@@ -336,7 +336,7 @@ def asin(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.asin(x)
     else:
         check_variable_and_dtype(
@@ -383,7 +383,7 @@ def asinh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.39003533, -0.19869010,  0.09983408,  0.29567307])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.asinh(x)
     else:
         check_variable_and_dtype(
@@ -430,7 +430,7 @@ def atan(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.38050640, -0.19739556,  0.09966865,  0.29145682])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.atan(x)
     else:
         check_variable_and_dtype(
@@ -477,7 +477,7 @@ def atanh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.42364895, -0.20273255,  0.10033534,  0.30951962])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.atanh(x)
     else:
         check_variable_and_dtype(
@@ -525,7 +525,7 @@ def ceil(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0., -0., 1. , 1. ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.ceil(x)
     else:
         check_variable_and_dtype(
@@ -564,7 +564,7 @@ def cos(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.92106098, 0.98006660, 0.99500418, 0.95533651])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cos(x)
     else:
         check_variable_and_dtype(
@@ -606,7 +606,7 @@ def cosh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.08107233, 1.02006674, 1.00500417, 1.04533851])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cosh(x)
     else:
         check_variable_and_dtype(
@@ -654,7 +654,7 @@ def exp(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.67032003, 0.81873077, 1.10517097, 1.34985888])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.exp(x)
     else:
         check_variable_and_dtype(
@@ -704,7 +704,7 @@ def expm1(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expm1(x)
     else:
         check_variable_and_dtype(
@@ -754,7 +754,7 @@ def floor(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-1., -1.,  0.,  0.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.floor(x)
     else:
         check_variable_and_dtype(
@@ -775,7 +775,7 @@ def reciprocal(x, name=None):
         out = \\frac{1}{x}
 
     Args:
-        x (Tensor): Input of Reciprocal operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Reciprocal operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -792,7 +792,7 @@ def reciprocal(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-2.50000000, -5.        ,  10.       ,  3.33333325])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.reciprocal(x)
     else:
         check_variable_and_dtype(
@@ -839,7 +839,7 @@ def round(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-1., -0.,  1.,  2.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.round(x)
     else:
         check_variable_and_dtype(
@@ -916,7 +916,7 @@ def sigmoid(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.40131235, 0.45016602, 0.52497917, 0.57444251])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sigmoid(x)
     else:
         check_variable_and_dtype(
@@ -963,7 +963,7 @@ def sin(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sin(x)
     else:
         check_variable_and_dtype(
@@ -1010,7 +1010,7 @@ def sinh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sinh(x)
     else:
         check_variable_and_dtype(
@@ -1057,7 +1057,7 @@ def sqrt(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.31622776, 0.44721359, 0.54772258, 0.63245553])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sqrt(x)
     else:
         check_variable_and_dtype(
@@ -1080,7 +1080,7 @@ def square(x, name=None):
        out = x^2
 
     Args:
-        x (Tensor): Input of Square operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Square operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1097,7 +1097,7 @@ def square(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.16000001, 0.04000000, 0.01000000, 0.09000000])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.square(x)
     else:
         check_variable_and_dtype(
@@ -1147,7 +1147,7 @@ def tan(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.42279324, -0.20271003,  0.10033467,  0.30933627])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tan(x)
     else:
         check_variable_and_dtype(

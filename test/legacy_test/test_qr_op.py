@@ -19,8 +19,9 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle import base
+from paddle import base, static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestQrOp(OpTest):
@@ -71,7 +72,7 @@ class TestQrOp(OpTest):
         return a, q, r
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -79,6 +80,7 @@ class TestQrOp(OpTest):
             ['Q', 'R'],
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
+            check_pir=True,
         )
 
 
@@ -185,6 +187,7 @@ class TestQrAPI(unittest.TestCase):
         ):
             run_qr_dygraph(tensor_shape, mode, dtype)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         np.random.seed(7)
@@ -213,7 +216,7 @@ class TestQrAPI(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
-                with base.program_guard(base.Program(), base.Program()):
+                with static.program_guard(static.Program(), static.Program()):
                     batch_size = a.size // (a.shape[-1] * a.shape[-2])
                     for i in range(batch_size):
                         coord = np.unravel_index(i, a.shape[:-2])
@@ -231,7 +234,6 @@ class TestQrAPI(unittest.TestCase):
                         r = paddle.linalg.qr(x, mode=mode)
                         exe = base.Executor(place)
                         fetches = exe.run(
-                            base.default_main_program(),
                             feed={"input": a},
                             fetch_list=[r],
                         )
@@ -242,7 +244,6 @@ class TestQrAPI(unittest.TestCase):
                         q, r = paddle.linalg.qr(x, mode=mode)
                         exe = base.Executor(place)
                         fetches = exe.run(
-                            base.default_main_program(),
                             feed={"input": a},
                             fetch_list=[q, r],
                         )

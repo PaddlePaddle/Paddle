@@ -82,10 +82,10 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
         pad_h_0, pad_h_1 = pad[0], pad[1]
         pad_w_0, pad_w_1 = pad[2], pad[3]
 
-    d_bolck_h = dilations[0] * (f_h - 1) + 1
-    d_bolck_w = dilations[1] * (f_w - 1) + 1
-    out_h = (in_h - 1) * stride[0] + d_bolck_h
-    out_w = (in_w - 1) * stride[1] + d_bolck_w
+    d_block_h = dilations[0] * (f_h - 1) + 1
+    d_block_w = dilations[1] * (f_w - 1) + 1
+    out_h = (in_h - 1) * stride[0] + d_block_h
+    out_w = (in_w - 1) * stride[1] + d_block_w
     if 'output_size' in attrs:
         output_size = attrs['output_size']
         out_h = output_size[0] + pad_h_0 + pad_h_1
@@ -117,8 +117,8 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
                             ],
                             axis=0,
                         )
-                        i1, i2 = i * stride[0], i * stride[0] + d_bolck_h
-                        j1, j2 = j * stride[1], j * stride[1] + d_bolck_w
+                        i1, i2 = i * stride[0], i * stride[0] + d_block_h
+                        j1, j2 = j * stride[1], j * stride[1] + d_block_w
                         out[
                             n,
                             g * f_out_c + k,
@@ -227,10 +227,15 @@ class TestConv2DTransposeOp(OpTest):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
+                place,
+                atol=1e-5,
+                check_dygraph=(not self.use_mkldnn),
+                check_pir=True,
             )
         else:
-            self.check_output(check_dygraph=(not self.use_mkldnn))
+            self.check_output(
+                check_dygraph=(not self.use_mkldnn), check_pir=True
+            )
 
     def test_check_grad_no_input(self):
         if self.need_check_grad:
@@ -242,19 +247,28 @@ class TestConv2DTransposeOp(OpTest):
                     'Output',
                     max_relative_error=0.02,
                     no_grad_set={'Input'},
+                    check_pir=True,
                 )
             else:
-                self.check_grad(['Filter'], 'Output', no_grad_set={'Input'})
+                self.check_grad(
+                    ['Filter'], 'Output', no_grad_set={'Input'}, check_pir=True
+                )
 
     def test_check_grad_no_filter(self):
         if self.need_check_grad:
             if self.use_cudnn:
                 place = core.CUDAPlace(0)
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set={'Filter'}
+                    place,
+                    ['Input'],
+                    'Output',
+                    no_grad_set={'Filter'},
+                    check_pir=True,
                 )
             else:
-                self.check_grad(['Input'], 'Output', no_grad_set={'Filter'})
+                self.check_grad(
+                    ['Input'], 'Output', no_grad_set={'Filter'}, check_pir=True
+                )
 
     def test_check_grad(self):
         if self.need_check_grad:
@@ -265,10 +279,14 @@ class TestConv2DTransposeOp(OpTest):
                     {'Input', 'Filter'},
                     'Output',
                     max_relative_error=0.02,
+                    check_pir=True,
                 )
             else:
                 self.check_grad(
-                    {'Input', 'Filter'}, 'Output', max_relative_error=0.02
+                    {'Input', 'Filter'},
+                    'Output',
+                    max_relative_error=0.02,
+                    check_pir=True,
                 )
 
     def init_test_case(self):
@@ -781,10 +799,15 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(
-                    place, atol=0.02, check_dygraph=(not self.use_mkldnn)
+                    place,
+                    atol=0.02,
+                    check_dygraph=(not self.use_mkldnn),
+                    check_pir=True,
                 )
         else:
-            self.check_output(check_dygraph=(not self.use_mkldnn))
+            self.check_output(
+                check_dygraph=(not self.use_mkldnn), check_pir=True
+            )
 
     def test_check_grad_no_input(self):
         if self.need_check_grad:
@@ -797,9 +820,12 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
                         'Output',
                         max_relative_error=0.02,
                         no_grad_set={'Input'},
+                        check_pir=True,
                     )
             else:
-                self.check_grad(['Filter'], 'Output', no_grad_set={'Input'})
+                self.check_grad(
+                    ['Filter'], 'Output', no_grad_set={'Input'}, check_pir=True
+                )
 
     def test_check_grad_no_filter(self):
         if self.need_check_grad:
@@ -812,9 +838,12 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
                         'Output',
                         max_relative_error=0.02,
                         no_grad_set={'Filter'},
+                        check_pir=True,
                     )
             else:
-                self.check_grad(['Input'], 'Output', no_grad_set={'Filter'})
+                self.check_grad(
+                    ['Input'], 'Output', no_grad_set={'Filter'}, check_pir=True
+                )
 
     def test_check_grad(self):
         if self.need_check_grad:
@@ -826,10 +855,14 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
                         {'Input', 'Filter'},
                         'Output',
                         max_relative_error=0.02,
+                        check_pir=True,
                     )
             else:
                 self.check_grad(
-                    {'Input', 'Filter'}, 'Output', max_relative_error=0.02
+                    {'Input', 'Filter'},
+                    'Output',
+                    max_relative_error=0.02,
+                    check_pir=True,
                 )
 
 
@@ -965,7 +998,10 @@ class TestCUDNN_BF16(TestConv2DTransposeOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, atol=0.02, check_dygraph=(not self.use_mkldnn)
+            place,
+            atol=0.02,
+            check_dygraph=(not self.use_mkldnn),
+            check_pir=True,
         )
 
     def test_check_grad_no_input(self):
@@ -978,6 +1014,7 @@ class TestCUDNN_BF16(TestConv2DTransposeOp):
             max_relative_error=0.02,
             no_grad_set={'Input'},
             user_defined_grads=[numeric_grads],
+            check_pir=True,
         )
 
     def test_check_grad_no_filter(self):
@@ -990,6 +1027,7 @@ class TestCUDNN_BF16(TestConv2DTransposeOp):
             max_relative_error=0.02,
             no_grad_set={'Filter'},
             user_defined_grads=[numeric_grads],
+            check_pir=True,
         )
 
 
@@ -1311,15 +1349,15 @@ class TestTensorOutputSize1(UnittestBase):
     def call_func(self, x):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
         output_size = paddle.assign([17])
-        out = paddle.paddle.nn.functional.conv2d_transpose(
+        out = paddle.nn.functional.conv2d_transpose(
             x, w_var, stride=2, output_size=output_size
         )
         return out
 
     def test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(8, 8)
             x = paddle.randn([2, 3, 8, 8])
             x.stop_gradient = False
@@ -1331,7 +1369,7 @@ class TestTensorOutputSize1(UnittestBase):
             self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[feat, out])
             np.testing.assert_allclose(res[1].shape, (2, 6, 17, 17))
 
@@ -1350,7 +1388,7 @@ class TestTensorOutputSize2(TestTensorOutputSize1):
     def call_func(self, x):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
         output_size = [17, paddle.assign([17])]
-        out = paddle.paddle.nn.functional.conv2d_transpose(
+        out = paddle.nn.functional.conv2d_transpose(
             x, w_var, stride=2, output_size=output_size
         )
         return out

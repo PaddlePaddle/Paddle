@@ -121,12 +121,12 @@ def bilinear_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, float) or isinstance(scale, int):
+    if isinstance(scale, (float, int)):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, list) or isinstance(scale, tuple):
+    elif isinstance(scale, (list, tuple)):
         scale = list(map(float, scale))
     if SizeTensor is not None:
         if not isinstance(SizeTensor, list) and not isinstance(
@@ -254,7 +254,7 @@ class TestBilinearInterpOp(OpTest):
         scale_h = 0
         scale_w = 0
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -295,7 +295,7 @@ class TestBilinearInterpOp(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -304,10 +304,10 @@ class TestBilinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         create_test_case0(self)
@@ -386,10 +386,12 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
 
 class TestBilinearInterpOpFP16(TestBilinearInterpOp):
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True, max_relative_error=1e-2)
+        self.check_grad(
+            ['X'], 'Out', in_place=True, max_relative_error=1e-2, check_pir=True
+        )
 
     def init_test_case(self):
         create_test_case0(self)
@@ -463,7 +465,7 @@ class TestBilinearInterpOpBF16(OpTest):
         scale_h = 0
         scale_w = 0
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -504,7 +506,7 @@ class TestBilinearInterpOpBF16(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0.0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -513,10 +515,12 @@ class TestBilinearInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output(atol=1e-2, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True, max_relative_error=1e-2)
+        self.check_grad(
+            ['X'], 'Out', in_place=True, max_relative_error=1e-2, check_pir=True
+        )
 
     def init_test_case(self):
         create_test_case0(self)
@@ -604,7 +608,7 @@ class TestBilinearInterpOpUint8(OpTest):
         ).astype("uint8")
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -641,7 +645,7 @@ class TestBilinearInterpOpUint8(OpTest):
             'align_mode': self.align_mode,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -650,7 +654,9 @@ class TestBilinearInterpOpUint8(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(place=core.CPUPlace(), atol=1)
+        self.check_output_with_place(
+            place=core.CPUPlace(), atol=1, check_pir=True
+        )
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -778,7 +784,7 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -805,7 +811,7 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -824,10 +830,10 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -966,6 +972,29 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
                 mode="bilinear",
                 align_corners=False,
             )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
+class TestBilinearInterpOpAPI_dy5(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with base.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            scale_np = np.array([2, 2]).astype("int64")
+            input_x = paddle.to_tensor(input_data)
+            scale = paddle.to_tensor(scale_np)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            up_layer = paddle.nn.Upsample(
+                scale_factor=scale, mode="bilinear", align_corners=False
+            )
+            out = up_layer(input_x)
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 

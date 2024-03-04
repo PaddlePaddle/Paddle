@@ -14,14 +14,14 @@
 
 #pragma once
 
-// #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace dialect {
@@ -120,6 +120,12 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
       return pir::Int64Attribute::get(ctx, scalar.to<int64_t>());
     case phi::DataType::BOOL:
       return pir::BoolAttribute::get(ctx, scalar.to<bool>());
+    case phi::DataType::COMPLEX64:
+      return pir::Complex64Attribute::get(
+          ctx, scalar.to<phi::dtype::complex<float>>());
+    case phi::DataType::COMPLEX128:
+      return pir::Complex128Attribute::get(
+          ctx, scalar.to<phi::dtype::complex<double>>());
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "
@@ -128,47 +134,38 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
   }
 }
 
-inline DataType VarTypeToDataType(
-    ::paddle::framework::proto::VarType_Type var_type) {
-  switch (var_type) {
-    case paddle::framework::proto::VarType_Type::VarType_Type_BOOL:
-      return DataType::BOOL;
-    case paddle::framework::proto::VarType_Type::VarType_Type_INT16:
-      return DataType::INT16;
-    case paddle::framework::proto::VarType_Type::VarType_Type_INT32:
-      return DataType::INT32;
-    case paddle::framework::proto::VarType_Type::VarType_Type_INT64:
-      return DataType::INT64;
-    case paddle::framework::proto::VarType_Type::VarType_Type_FP16:
-      return DataType::FLOAT16;
-    case paddle::framework::proto::VarType_Type::VarType_Type_FP32:
-      return DataType::FLOAT32;
-    case paddle::framework::proto::VarType_Type::VarType_Type_FP64:
-      return DataType::FLOAT64;
-    case paddle::framework::proto::VarType_Type::VarType_Type_SIZE_T:
-      return DataType::UINT64;
-    case paddle::framework::proto::VarType_Type::VarType_Type_UINT8:
-      return DataType::UINT8;
-    case paddle::framework::proto::VarType_Type::VarType_Type_INT8:
-      return DataType::INT8;
-    case paddle::framework::proto::VarType_Type::VarType_Type_BF16:
-      return DataType::BFLOAT16;
-    case paddle::framework::proto::VarType_Type::VarType_Type_COMPLEX64:
-      return DataType::COMPLEX64;
-    case paddle::framework::proto::VarType_Type::VarType_Type_COMPLEX128:
-      return DataType::COMPLEX128;
-    case paddle::framework::proto::VarType_Type::VarType_Type_PSTRING:
-      return DataType::PSTRING;
-    default:
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported proto::VarType_Type `%s` when casting it into DataType.",
-          var_type));
-  }
-}
-
 VariantType GetAttributeData(const pir::Attribute& attr);
 
+paddle::any TransAttrToAny(const pir::Attribute& attr);
+
 bool IsLegacyOp(const std::string& name);
+
+bool IsEmptyValue(const pir::Value& value);
+
+std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr);
+
+void CheckValueDataType(const pir::Value& value,
+                        const std::string& input_name,
+                        const std::string& op_name);
+
+void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
+                                const std::string& input_name,
+                                const std::string& op_name);
+
+void CheckDataType(const phi::DataType& dtype,
+                   const std::string& dtype_name,
+                   const std::string& op_name);
+
+void CheckDataTypeOrValue(const phi::DataType& dtype,
+                          const std::string& dtype_name,
+                          const pir::Value& value,
+                          const std::string& value_name,
+                          const std::string& op_name);
+
+phi::DataType GetValueDataType(const pir::Value& value);
+
+std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
+                                     bool* is_from_tensor);
 
 }  // namespace dialect
 }  // namespace paddle

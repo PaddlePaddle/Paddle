@@ -33,7 +33,6 @@
 #include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
-
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
@@ -95,7 +94,7 @@ struct PD_INFER_DECL XpuConfig {
 
   // Reserved xpu global memory size for xpu_context;
   // If not set(-1), default memory size for xpu_context is 128MB in XPU2 or
-  // 64MB in XPU1. If set 1*1024*1024, memory size for xpu_conext will be 1MB;
+  // 64MB in XPU1. If set 1*1024*1024, memory size for xpu_context will be 1MB;
   int context_gm_size{-1};
   // xpu_context(from baidu::xpu::api::create_context) for execution.
   // If context is nullptr, new context will be created by default.
@@ -105,23 +104,17 @@ struct PD_INFER_DECL XpuConfig {
   void* stream{nullptr};
 
   // Conv autotune level. Default 0 means no autotune.
-  // Note: Paddle-Lite only.
   int conv_autotune_level{0};
   // Base conv autotune info is read from conv_autotune_file.
-  // Note: Paddle-Lite only.
   std::string conv_autotune_file;
   // Whether write new conv autotune info to conv_autotune_file.
-  // Note: Paddle-Lite only.
   bool conv_autotune_file_writeback{false};
 
   // Fc autotune level. The Optional values are 0-9. Default 0 means no
-  // autotune. Note: Paddle-Lite only.
   int fc_autotune_level{0};
   // Base fc autotune info is read from fc_autotune_file.
-  // Note: Paddle-Lite only.
   std::string fc_autotune_file;
   // Whether write new fc autotune info to fc_autotune_file.
-  // Note: Paddle-Lite only.
   bool fc_autotune_file_writeback{false};
 
   // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
@@ -152,6 +145,10 @@ struct PD_INFER_DECL XpuConfig {
   // Note: PaddleInference only.
   int quant_post_dynamic_weight_precision{1};
   std::vector<std::string> quant_post_dynamic_op_types;
+  // fc, conv2d
+  // 0: int8 per tensor, 1: int8 per-channel, 2: int16 per-tensor(default), 3:
+  // int16 per-channel, 4: int31 per-tensor. Note: PaddleInference only.
+  std::map<std::string, int> quant_post_dynamic_weight_methods;
 };
 
 struct DistConfig {
@@ -210,7 +207,7 @@ struct DistConfig {
 /// During inference procedure, there are many parameters(model/params path,
 /// place of inference, etc.)
 /// to be specified, and various optimizations(subgraph fusion, memory
-/// optimazation, TensorRT engine, etc.)
+/// optimization, TensorRT engine, etc.)
 /// to be done. Users can manage these settings by creating and modifying an
 /// AnalysisConfig,
 /// and loading it into AnalysisPredictor.
@@ -256,7 +253,7 @@ struct PD_INFER_DECL AnalysisConfig {
   void SetModel(const std::string& model_dir) { model_dir_ = model_dir; }
 
   ///
-  /// \brief Set the combined model with two specific pathes for program and
+  /// \brief Set the combined model with two specific paths for program and
   /// parameters.
   ///
   /// \param prog_file_path model file path of the combined model.
@@ -561,7 +558,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return string The custom device type.
   ///
   std::string custom_device_type() const { return custom_device_type_; }
-  /// \brief Get whether the custom device mixed preicsion is enabled.
+  /// \brief Get whether the custom device mixed precision is enabled.
   ///
   /// \return bool custom device mixed is enabled.
   ///
@@ -599,17 +596,16 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Control whether to perform IR graph optimization.
   /// If turned off, the AnalysisConfig will act just like a NativeConfig.
   ///
-  /// \param x Whether the ir graph optimization is actived.
+  /// \param x Whether the ir graph optimization is activated.
   ///
   void SwitchIrOptim(int x = true) { enable_ir_optim_ = x; }
   ///
   /// \brief A boolean state telling whether the ir graph optimization is
-  /// actived.
+  /// activated.
   ///
   /// \return bool Whether to use ir graph optimization.
   ///
   bool ir_optim() const { return enable_ir_optim_; }
-
   ///
   /// \brief INTERNAL Determine whether to use the feed and fetch operators.
   /// Just for internal development, not stable yet.
@@ -617,14 +613,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x Whether to use the feed and fetch operators.
   ///
-  void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
+  void SwitchUseFeedFetchOps(int x = true) {}
   ///
   /// \brief A boolean state telling whether to use the feed and fetch
   /// operators.
   ///
   /// \return bool Whether to use the feed and fetch operators.
   ///
-  bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
+  bool use_feed_fetch_ops_enabled() const { return false; }
 
   ///
   /// \brief Turn on the feed and fetch data with low precision.
@@ -656,7 +652,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   ///
   /// \brief Turn on the TensorRT engine.
-  /// The TensorRT engine will accelerate some subgraphes in the original Fluid
+  /// The TensorRT engine will accelerate some subgraphs in the original Fluid
   /// computation graph. In some models such as resnet50, GoogleNet and so on,
   /// it gains significant performance acceleration.
   ///
@@ -695,8 +691,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param output_tensor_names The name of the Tensor that needs to be marked
   ///
   void MarkTrtEngineOutputs(
-      const std::vector<std::string>& output_tensor_names = {},
-      const bool trt_mark_output_with_id = false);
+      const std::vector<std::string>& output_tensor_names = {});
   ///
   /// \brief Turn on the TensorRT memory optimization.
   ///
@@ -815,6 +810,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
+  void Exp_DisableTensorRtSubgraph(
+      const std::vector<std::string>& var_name_not_trt);
+
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
   /// https://github.com/NVIDIA/TensorRT), with which some models's inference
@@ -850,7 +848,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to show TensorRT inspector information.
   ///
-  void EnableTensorRtInspector();
+  void EnableTensorRtInspector(bool inspector_serialize = false);
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
   ///
@@ -863,6 +861,46 @@ struct PD_INFER_DECL AnalysisConfig {
   bool tensorrt_explicit_quantization_enabled() {
     return trt_use_explicit_quantization_;
   }
+
+  ///
+  /// \brief Set the optimization level of TensorRT
+  /// \param level The optimization level
+  /// The API accepts level in range [0, 5].
+  /// Higher optimization level allows the optimizer to spend more time
+  /// searching for optimization opportunities. The API supports TRT version
+  /// >= 8.6, and takes no effect instead.
+  ///
+  void SetTensorRtOptimizationLevel(int level);
+
+  ///
+  /// \brief An integer telling the TRT optimization level.
+  ///
+  /// \return integer The TRT optimization level.
+  ///
+  int tensorrt_optimization_level() { return trt_optimization_level_; }
+
+  /// \brief A boolean state telling whether to use new executor.
+  ///
+  /// \return bool whether to use new executor.
+  ///
+  void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
+
+  bool new_executor_enabled() const { return use_new_executor_; }
+
+  /// \brief A boolean state telling whether to use new IR.
+  ///
+  /// \return bool whether to use new IR.
+  ///
+  void EnableNewIR(bool x = true) { use_pir_ = x; }
+
+  bool new_ir_enabled() const { return use_pir_; }
+
+  ///
+  /// \brief Control whether to use optimized model to inference.
+  ///
+  /// \param x whether to use optimized model.
+  ///
+  void UseOptimizedModel(bool x = true) { use_optimized_model_ = x; }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -879,7 +917,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.
   ///
-  /// \param precision_mode Precion used in Lite sub-graph engine.
+  /// \param precision_mode Precision used in Lite sub-graph engine.
   /// \param passes_filter Set the passes used in Lite sub-graph engine.
   /// \param ops_filter Operators not supported by Lite.
   ///
@@ -915,6 +953,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMKLDNN();
+
+  ///
+  /// \brief Turn down MKLDNN.
+  ///
+  ///
+  void DisableMKLDNN();
+
   ///
   /// \brief Set the cache capacity of different input shapes for MKLDNN.
   /// Default value 0 means not caching any shape.
@@ -1163,7 +1208,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Enable use cinn compiler optimization.
   ///
-  void Exp_EnableCINNCompiler();
+  void EnableCINN();
 
   ///
   /// \brief A boolean state telling whether the CINN compiler optimization is
@@ -1171,7 +1216,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether the CINN compiler optimization is turned on.
   ///
-  bool cinn_compiler_enabled() const;
+  bool cinn_enabled() const;
 
  protected:
   // Update the config.
@@ -1180,7 +1225,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string SerializeInfoCache();
 
  protected:
-  // Model pathes.
+  // Model paths.
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
@@ -1238,8 +1283,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   bool trt_mark_output_{false};
-  bool trt_mark_output_with_id_{false};
   std::vector<std::string> trt_output_tensor_names_{};
+  std::vector<std::string> trt_exclude_var_names_{};
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
@@ -1253,7 +1298,9 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
+  bool trt_inspector_serialize_{false};
   bool trt_use_explicit_quantization_{false};
+  int trt_optimization_level_{3};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the
@@ -1274,17 +1321,26 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool trt_engine_memory_sharing_{false};
+  bool trt_engine_memory_sharing_{true};
   int trt_engine_memory_sharing_identifier_{0};
 
+  std::unordered_set<std::string> trt_ops_run_float_;
+
+#ifdef PADDLE_WITH_DNNL
+  bool use_mkldnn_{true};
+#else
   bool use_mkldnn_{false};
+#endif
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   bool model_from_memory_{false};
 
   bool enable_ir_optim_{true};
-  bool use_feed_fetch_ops_{true};
   bool ir_debug_{false};
+
+  bool use_optimized_model_{false};
+
+  bool use_new_executor_{false};
 
   bool specify_input_name_{false};
 
@@ -1306,7 +1362,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool lite_zero_copy_;
 
   // CINN compiler related.
-  bool use_cinn_compiler_{false};
+  bool use_cinn_{false};
 
   // XPU related.
   bool use_xpu_{false};
@@ -1381,6 +1437,8 @@ struct PD_INFER_DECL AnalysisConfig {
   // PrepareProgram(). So we add this flag to control the process.
   bool apply_optim_{false};
   bool skip_load_params_{false};
+
+  bool use_pir_{false};
 };
 
 }  // namespace paddle

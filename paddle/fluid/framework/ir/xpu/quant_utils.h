@@ -23,17 +23,43 @@ void Assign(const phi::DenseTensor& in, phi::DenseTensor* out);
 
 void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 
+void CastTo(phi::DenseTensor* in, phi::DenseTensor* out, DataType dtype);
+
 void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
+
+void CastToFp16(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 
 void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 
-// 1. Quant weight from fp32 to int16/int31
-// 2. Weight data is in-place update.
-// 3. Generate weight max tensor
 template <typename T>
-void PrepareWeight(phi::DenseTensor* weight,
-                   phi::DenseTensor* weight_max,
-                   bool transpose);
+void ConvertWithoutQuant(phi::DenseTensor* weight,
+                         phi::DenseTensor* weight_max,
+                         phi::DenseTensor* scale_max,
+                         bool transpose,
+                         const std::vector<float>& weight_scales);
+
+template <typename Tcpu,
+          typename Txpu,
+          typename std::enable_if<std::is_same<Tcpu, float>::value, Tcpu>::type*
+              ptr = nullptr>
+void ConvertWithQuant(phi::DenseTensor* weight,
+                      phi::DenseTensor* weight_max,
+                      phi::DenseTensor* scale_max,
+                      bool transpose,
+                      bool per_channel_quant = false);
+
+template <typename Tcpu,
+          typename Txpu,
+          typename std::enable_if<!std::is_same<Tcpu, float>::value,
+                                  Tcpu>::type* ptr = nullptr>
+void ConvertWithQuant(phi::DenseTensor* weight,
+                      phi::DenseTensor* weight_max,
+                      phi::DenseTensor* scale_max,
+                      bool transpose,
+                      const std::vector<float>& weight_scales,
+                      bool per_channel_quant = false);
+
+bool IsPerTensorQuant(const std::vector<float>& weight_max);
 
 }  // namespace ir
 }  // namespace framework

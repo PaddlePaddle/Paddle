@@ -33,9 +33,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         # install general extension
         # compile, install the custom op egg into site-packages under background
-        cmd = 'cd {} && {} cpp_extension_setup.py install'.format(
-            cur_dir, sys.executable
-        )
+        cmd = f'cd {cur_dir} && {sys.executable} cpp_extension_setup.py install'
         run_cmd(cmd)
 
         site_dir = site.getsitepackages()[0]

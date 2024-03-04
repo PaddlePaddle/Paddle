@@ -34,10 +34,16 @@ TEST(dist_tensor, constructor) {
   DDim dims({3, 4});
   DenseTensorMeta meta(dtype, dims);
 
-  auto dist_attr = TensorDistAttr(phi::vectorize(dims));
+  auto dist_attr = TensorDistAttr(common::vectorize(dims));
+
+  std::vector<int64_t> mesh_shape = {1};
+  std::vector<int64_t> process_ids = {0};
+  std::vector<std::string> dim_names = {"x"};
+  ProcessMesh mesh(mesh_shape, process_ids, dim_names);
+  dist_attr.set_process_mesh(mesh);
 
   // copy construct
-  DenseTensor x1(alloc, meta);
+  std::shared_ptr<DenseTensor> x1 = std::make_shared<DenseTensor>(alloc, meta);
   DistTensor dist_x1(x1, dist_attr);
   EXPECT_TRUE(dist_x1.defined());
   EXPECT_TRUE(dist_x1.initialized());
@@ -54,7 +60,7 @@ TEST(dist_tensor, constructor) {
   bool caught_exception = false;
   try {
     dist_x2.AllocateFrom(alloc, phi::DataType::FLOAT32, 12L, false);
-  } catch (phi::EnforceNotMet& error) {
+  } catch (common::enforce::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_NE(std::string(error.what()).find("Unavailable"), 0UL);
   }

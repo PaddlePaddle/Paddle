@@ -37,7 +37,7 @@
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {

@@ -88,7 +88,9 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "trt_support_nhwc_pass",
+  "set_subgraph_edge_pass",                                       //
+      "trt_remove_amp_strategy_op_pass",                          //
+      "trt_support_nhwc_pass",                                    //
       "adaptive_pool2d_convert_global_pass",                      //
       "trt_map_ops_to_matrix_multiply_pass",                      //
       "shuffle_channel_detect_pass",                              //
@@ -192,7 +194,7 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "conv_elementwise_add_act_fuse_pass",
     "conv_elementwise_add2_act_fuse_pass",
     "conv_elementwise_add_fuse_pass",
-    "conv2d_fusion_layout_transfer_pass",
+    "transfer_layout_pass",
     "multihead_matmul_fuse_pass_v2",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
@@ -211,6 +213,9 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "inplace_op_var_pass"};
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
+    "trt_remove_amp_strategy_op_pass",
+    "trt_support_nhwc_pass",
+    "trt_map_ops_to_matrix_multiply_pass",
     "simplify_with_basic_ops_pass",
     // "conv_bn_fuse_pass",
     // "conv_eltwiseadd_bn_fuse_pass",
@@ -224,6 +229,39 @@ const std::vector<std::string> kCINNCompilerPasses{
     "gpu_cpu_map_matmul_v2_to_matmul_pass",
     "gpu_cpu_map_matmul_to_mul_pass",
     "build_cinn_pass",
+};
+
+const std::vector<std::string> CpuBasicPasses{
+    "simplify_with_basic_ops_pass",  //
+    "layer_norm_fuse_pass",
+    "attention_lstm_fuse_pass",       //
+    "seqconv_eltadd_relu_fuse_pass",  //
+    // "seqpool_concat_fuse_pass",    //
+    "seqpool_cvm_concat_fuse_pass",  //
+    // "embedding_fc_lstm_fuse_pass", //
+    // TODO(wilber): fix correctness problem.
+    // "fc_lstm_fuse_pass",                    //
+    "mul_lstm_fuse_pass",                      //
+    "fc_gru_fuse_pass",                        //
+    "mul_gru_fuse_pass",                       //
+    "seq_concat_fc_fuse_pass",                 //
+    "gpu_cpu_squeeze2_matmul_fuse_pass",       //
+    "gpu_cpu_reshape2_matmul_fuse_pass",       //
+    "gpu_cpu_flatten2_matmul_fuse_pass",       //
+    "matmul_v2_scale_fuse_pass",               //
+    "gpu_cpu_map_matmul_v2_to_mul_pass",       //
+    "gpu_cpu_map_matmul_v2_to_matmul_pass",    //
+    "matmul_scale_fuse_pass",                  //
+    "gpu_cpu_map_matmul_to_mul_pass",          //
+    "fc_fuse_pass",                            //
+    "repeated_fc_relu_fuse_pass",              //
+    "squared_mat_sub_fuse_pass",               //
+    "conv_bn_fuse_pass",                       //
+    "conv_eltwiseadd_bn_fuse_pass",            //
+    "conv_transpose_bn_fuse_pass",             //
+    "conv_transpose_eltwiseadd_bn_fuse_pass",  //
+    "is_test_pass",                            //
+    "constant_folding_pass",
 };
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
@@ -269,7 +307,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "conv2d_fusion_layout_transfer_pass",  //
+        "transfer_layout_pass",                //
         "transfer_layout_elim_pass",
         "auto_mixed_precision_pass",  //
         "identity_op_clean_pass",  // should be after auto_mixed_precision_pass.
@@ -309,36 +347,7 @@ void GpuPassStrategy::DisableMkldnnFcPasses() {
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
-  passes_.assign({"simplify_with_basic_ops_pass",  //
-                  "layer_norm_fuse_pass",
-                  "attention_lstm_fuse_pass",       //
-                  "seqconv_eltadd_relu_fuse_pass",  //
-                  // "seqpool_concat_fuse_pass",    //
-                  "seqpool_cvm_concat_fuse_pass",  //
-                  // "embedding_fc_lstm_fuse_pass", //
-                  // TODO(wilber): fix correctness problem.
-                  // "fc_lstm_fuse_pass",                    //
-                  "mul_lstm_fuse_pass",                      //
-                  "fc_gru_fuse_pass",                        //
-                  "mul_gru_fuse_pass",                       //
-                  "seq_concat_fc_fuse_pass",                 //
-                  "gpu_cpu_squeeze2_matmul_fuse_pass",       //
-                  "gpu_cpu_reshape2_matmul_fuse_pass",       //
-                  "gpu_cpu_flatten2_matmul_fuse_pass",       //
-                  "matmul_v2_scale_fuse_pass",               //
-                  "gpu_cpu_map_matmul_v2_to_mul_pass",       //
-                  "gpu_cpu_map_matmul_v2_to_matmul_pass",    //
-                  "matmul_scale_fuse_pass",                  //
-                  "gpu_cpu_map_matmul_to_mul_pass",          //
-                  "fc_fuse_pass",                            //
-                  "repeated_fc_relu_fuse_pass",              //
-                  "squared_mat_sub_fuse_pass",               //
-                  "conv_bn_fuse_pass",                       //
-                  "conv_eltwiseadd_bn_fuse_pass",            //
-                  "conv_transpose_bn_fuse_pass",             //
-                  "conv_transpose_eltwiseadd_bn_fuse_pass",  //
-                  "is_test_pass",                            //
-                  "constant_folding_pass"});
+  passes_.assign(CpuBasicPasses.begin(), CpuBasicPasses.end());
 
   use_gpu_ = false;
 }
@@ -389,6 +398,11 @@ void CpuPassStrategy::EnableMKLDNN() {
 #else
   use_mkldnn_ = false;
 #endif
+}
+
+void CpuPassStrategy::DisableMKLDNN() {
+  ClearPasses();
+  passes_.assign(CpuBasicPasses.begin(), CpuBasicPasses.end());
 }
 
 void CpuPassStrategy::EnableMkldnnQuantizer() {
@@ -507,10 +521,14 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
+      // "quant_dequant_xpu_pass", open this pass when use old int8 model
+      "delete_quant_dequant_linear_op_pass",
+      "delete_weight_dequant_linear_op_pass",
       "delete_assign_op_pass",
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
       "gather_squeeze_pass",
+      "roformer_relative_pos_fuse_pass",
       "delete_repeated_ops_pass",
       "identity_op_clean_pass",
       "fused_continuous_same_ops_pass",
@@ -521,10 +539,13 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
+      "qk_qkv_attention_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
       "fused_multi_transformer_cachekv_layout_trans_pass",
+      "fused_multi_transformer_int8_cachekv_layout_trans_pass",
+      "decoder_attention_xpu_fuse_pass",
       "one_beam_size_fuse_pass",
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
@@ -538,6 +559,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "conv2d_trans_filter_dilations_nxn_to_1x1_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
+      "fused_multi_transformer_int8_xpu_quant_pass",
       "relu6_fuse_pass",
       "sigmoid_elementmul_fuse_pass",
       "layer_norm_fuse_pass",
@@ -552,15 +574,19 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "squeeze_excitation_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
+      "layer_norm_act_xpu_fuse_pass",
       "fast_layernorm_xpu_fuse_pass",
       "bn_act_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "fast_where_xpu_fuse_pass",
       "elementwise_mul_add_fuse_pass",
-      "link_xpu_op_max_pass",
-      "delete_isolated_node_pass",
+      "sine_pos_fuse_pass",
       // "auto_mixed_precision_pass",
       "cast_mixed_precision_op_fuse_pass",
+      "xpu_quantize_op_pass",
+      "xpu_quantize_squash_pass",
+      "link_xpu_op_max_pass",
+      "delete_isolated_node_pass",
       "inplace_op_var_pass",
   });
   use_xpu_ = true;

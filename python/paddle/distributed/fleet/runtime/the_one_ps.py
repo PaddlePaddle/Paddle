@@ -480,9 +480,7 @@ class Tensor:
         attrs += f"fetch_var_name: \"{str(self.fetch_var_name)}\" "
         attrs += f"startup_program_id: {str(self.startup_program_id)} "
         attrs += f"main_program_id: {str(self.main_program_id)} "
-        attrs += "tensor_table_class: \"{}\" ".format(
-            str(self.tensor_table_class)
-        )
+        attrs += f"tensor_table_class: \"{str(self.tensor_table_class)}\" "
         attrs += "\n"
         return program_str.format(
             conv_indent(indent), attrs, conv_indent(indent)
@@ -686,7 +684,7 @@ class TheOnePSRuntime(RuntimeBase):
         self.origin_main_program = context["origin_main_program"]
         self.origin_startup_program = context["origin_startup_program"]
         self.async_strategy = self._get_distributed_strategy()
-        self.compiled_strategy = self.build_compiled_startegy()
+        self.compiled_strategy = self.build_compiled_strategy()
 
     def _get_distributed_strategy(self):
         strategy = None
@@ -714,7 +712,7 @@ class TheOnePSRuntime(RuntimeBase):
             strategy.use_ps_gpu = True
         return strategy
 
-    def build_compiled_startegy(self):
+    def build_compiled_strategy(self):
         from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             CompileTimeStrategy,
         )
@@ -898,9 +896,7 @@ class TheOnePSRuntime(RuntimeBase):
                 heter_device_type = self.role_maker._heter_device_type().upper()
                 if heter_device_type not in ["GPU", "XPU", "CPU"]:
                     raise ValueError(
-                        "Heter Worker Not Support Device {}".format(
-                            heter_device_type
-                        )
+                        f"Heter Worker Not Support Device {heter_device_type}"
                     )
                 if heter_device_type == "GPU":
                     executor = Executor(
@@ -1129,8 +1125,8 @@ class TheOnePSRuntime(RuntimeBase):
             if len(tensor_table_dict) > 0:
                 tables = _add_tensor_table(tables)
             else:
-                empty_porgram = Program()
-                self._server_sub_program.append(empty_porgram.desc)
+                empty_program = Program()
+                self._server_sub_program.append(empty_program.desc)
 
             barrier_table = _build_barrier_table(len(tables))
             tables.append(barrier_table)

@@ -16,10 +16,32 @@ limitations under the License. */
 
 namespace phi {
 
+void ArangeInferMeta(const Scalar& start,
+                     const Scalar& end,
+                     const Scalar& step,
+                     DataType dtype,
+                     MetaTensor* out) {
+  if (!start.FromTensor() && !end.FromTensor() && !step.FromTensor()) {
+    double start_value = start.to<double>();
+    double end_value = end.to<double>();
+    double step_value = step.to<double>();
+    int numel =
+        static_cast<int>(std::ceil((end_value - start_value) / step_value));
+    out->set_dims(common::make_ddim(std::vector<int64_t>(1, numel)));
+  } else {
+    out->set_dims({-1});
+  }
+  out->set_dtype(dtype);
+}
+
 void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out) {
-  out->set_dims(phi::make_ddim(shape));
+  out->set_dims(common::make_ddim(shape));
+  out->set_dtype(dtype);
+}
+
+void CreateArrayInferMeta(DataType dtype, MetaTensor* out) {
   out->set_dtype(dtype);
 }
 
@@ -35,26 +57,24 @@ void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
               "than 0. But received: shape[%u] = %d; shape = [%s].",
               i,
               data[i],
-              phi::make_ddim(data)));
+              common::make_ddim(data)));
     }
   }
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
-void CreateIntArrayInferMeta(const IntArray& data,
+void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
                              DataType dtype,
                              MetaTensor* out) {
-  CreateInferMetaBase({static_cast<int64_t>(data.GetData().size())},
-                      dtype,
-                      DataLayout::NCHW,
-                      out);
+  CreateInferMetaBase(
+      {static_cast<int64_t>(shape.size())}, dtype, DataLayout::NCHW, out);
 }
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
                          DataLayout layout,
                          MetaTensor* out) {
-  auto out_dims = phi::make_ddim(shape);
+  auto out_dims = common::make_ddim(shape);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(layout);
@@ -64,7 +84,7 @@ void DataInferMeta(const std::string& name,
                    const phi::IntArray& shape,
                    phi::DataType data_type,
                    MetaTensor* out) {
-  auto out_dims = phi::make_ddim(shape.GetData());
+  auto out_dims = common::make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(data_type);
 }
@@ -74,7 +94,7 @@ void EyeInferMeta(const Scalar& num_rows,
                   DataType dtype,
                   MetaTensor* out,
                   MetaConfig config) {
-  int64_t rows, columns;
+  int64_t rows = 0, columns = 0;
   if (!config.is_runtime && num_rows.FromTensor()) {
     rows = -1;
   } else {
@@ -97,21 +117,21 @@ void GaussianInferMeta(const IntArray& shape,
                        int seed,
                        DataType dtype,
                        MetaTensor* out) {
-  auto out_dims = phi::make_ddim(shape.GetData());
+  auto out_dims = common::make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);
 }
 
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
-  out->set_dims(phi::make_ddim({n}));
+  out->set_dims(common::make_ddim({n}));
   out->set_dtype(dtype);
 }
 
 void UniformRandomInferMeta(const IntArray& shape,
                             DataType dtype,
                             MetaTensor* out) {
-  auto out_dims = phi::make_ddim(shape.GetData());
+  auto out_dims = common::make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);
@@ -136,7 +156,7 @@ void RandintInferMeta(
   for (auto dim : shape_vector) {
     tensor_shape.push_back(static_cast<int64_t>(dim));
   }
-  out->set_dims(make_ddim(tensor_shape));
+  out->set_dims(common::make_ddim(tensor_shape));
   out->set_dtype(dtype);
 }
 
@@ -218,13 +238,13 @@ void RecvV2InferMeta(const int ring_id,
                             i,
                             out_shape[i]));
     }
-    out->set_dims(phi::make_ddim(out_shape));
+    out->set_dims(common::make_ddim(out_shape));
   }
   out->set_dtype(dtype);
 }
 
 void SeedInferMeta(int seed, MetaTensor* out) {
-  out->set_dims(phi::make_ddim({1}));
+  out->set_dims(common::make_ddim({1}));
   out->set_dtype(DataType::INT32);
 }
 
@@ -234,7 +254,7 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       int seed,
                                       DataType dtype,
                                       MetaTensor* out) {
-  auto out_dims = phi::make_ddim(shape);
+  auto out_dims = common::make_ddim(shape);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);
@@ -259,7 +279,7 @@ void TrilIndicesInferMeta(
     tril_size += diff_row * cols;
   }
   std::vector<int64_t> tmp = {2, tril_size};
-  auto out_dims = phi::make_ddim(tmp);
+  auto out_dims = common::make_ddim(tmp);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
 }
@@ -288,8 +308,15 @@ void TriuIndicesInferMeta(
     tril_size += diff_row * col;
   }
   std::vector<int64_t> tmp = {2, row * col - tril_size};
-  auto out_dims = phi::make_ddim(tmp);
+  auto out_dims = common::make_ddim(tmp);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
 }
+
+void ReadFileInferMeta(const std::string& filename, MetaTensor* out) {
+  auto out_dims = std::vector<int>(1, -1);
+  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(phi::DataType::UINT8);
+}
+
 }  // namespace phi

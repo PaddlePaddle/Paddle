@@ -15,10 +15,15 @@
 import numpy
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
-from paddle.framework import core, in_dynamic_mode, in_pir_mode
+from paddle.framework import (
+    core,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from paddle.tensor.creation import full
 
 from ...base.data_feeder import (
@@ -64,19 +69,19 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     Parameters:
         x(Tensor):              4-D Tensor, input tensor of format [N, C, H, W],
                                   data type can be float32 or float64
-        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+        kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list, optional):        The strides, should be [stride_h, stride_w]
-                                  or an integer stride treated as [sride, stride].
+        strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [stride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list, optional):       The paddings of each dimension, should be
+        paddings(int|list|tuple, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list, optional):      the dilations of convolution kernel, should be
+        dilations(int|list|tuple, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -86,7 +91,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     Returns:
         Tensor, The tensor corresponding to the sliding local blocks.
-        The output shape is [N, Cout, Lout] as decriabled above.
+        The output shape is [N, Cout, Lout] as described above.
         Cout is the  total number of values within each block,
         and Lout is the total number of such blocks.
         The data type of output is the same as the input :math:`x`
@@ -104,49 +109,55 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     helper = LayerHelper("unfold", **locals())
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
+    check_variable_and_dtype(
+        x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'unfold'
+    )
 
     assert len(x.shape) == 4, "input should be the format of [N, C, H, W]"
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert isinstance(kernel_sizes, list) and (
+        assert isinstance(kernel_sizes, (list, tuple)) and (
             len(kernel_sizes) == 2
-        ), "kernel_sizes should either be an integer or a list of two integers"
+        ), "kernel_sizes should either be an integer or a list/tuple of two integers"
+        kernel_sizes = list(kernel_sizes)
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert isinstance(strides, list) and (
+        assert isinstance(strides, (list, tuple)) and (
             len(strides) == 2
-        ), "strides should either be an integer or a list of two integers"
+        ), "strides should either be an integer or a list/tuple of two integers"
+        strides = list(strides)
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert isinstance(dilations, list) and (
+        assert isinstance(dilations, (list, tuple)) and (
             len(dilations) == 2
-        ), "dilations should either be an integer or a list of two integers"
+        ), "dilations should either be an integer or a list/tuple of two integers"
+        dilations = list(dilations)
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
-    elif isinstance(paddings, list):
+    elif isinstance(paddings, (list, tuple)):
+        paddings = list(paddings)
         if len(paddings) == 2:
             paddings = paddings * 2
         elif len(paddings) == 4:
             pass
         else:
             raise ValueError(
-                "paddings should either be an integer or a list of 2 or 4 integers"
+                "paddings should either be an integer or a list/tuple of 2 or 4 integers"
             )
     else:
         raise ValueError(
-            "Unexpected type of paddings, it should be either an integer or a list"
+            "Unexpected type of paddings, it should be either an integer or a list/tuple"
             "of 2 or 4 integers"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -171,18 +182,19 @@ def interpolate(
     mode='nearest',
     align_corners=False,
     align_mode=0,
-    data_format='NCHW',
+    data_format=None,
     name=None,
 ):
     """
 
     This API resizes a batch of images.
 
-    The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
-    or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
+    The input must be be a 3-D Tensor of the shape (num_batches, channels, in_w)
+    or (num_batches, in_w, channels), or 4-D (num_batches, channels, in_h, in_w) or
+    (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
-    in_d is the depth of the intput tensor.
+    in_d is the depth of the input tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -311,8 +323,9 @@ def interpolate(
     https://en.wikipedia.org/wiki/Bicubic_interpolation
 
     Parameters:
-        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
+        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8, its data format is
+             specified by :attr:`data_format`. If :attr:`data_format` is not provided, the data format will
+             be presumed according to its dimension. See details in :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -329,20 +342,23 @@ def interpolate(
                                corner pixels.This only has an effect when 'linear', 'bilinear', 'bicubic' or 'trilinear'.
                                Default: False
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
-                            it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
+                            it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from:`NCW`, `NWC`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`,
-            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
-            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        data_format (str, optional): Specify the data format of the input, and the data format of
+             the output will be consistent with that of the input. An optional string from:`"NCW"`,
+             `"NWC"`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`, `"NDHWC"`. The default value is None.
+             When :attr:`data_format` is not specified, it will be automatically inferred from the
+             input dimension of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
+             set to `"NCW"`; When :attr:`x` is a 4-D Tensor, :attr:`data_format` will be set to
+             `"NCHW"`; When :attr:`x` is a 5-D Tensor, :attr:`data_format` will be set to `"NCDHW"`.
+             When it is `"NCHW"`, the data should be stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCDHW"`, the
+             data should be stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+        A 3-D, 4-D or 5-D Tensor, with the same data format of the input :attr:`x`.
 
 
     Examples:
@@ -364,6 +380,18 @@ def interpolate(
             >>> print(output_2.shape)
             [2, 3, 12, 10]
     """
+    if data_format is None:
+        dim_size = len(x.shape)
+        if dim_size == 3:
+            data_format = 'NCW'
+        elif dim_size == 4:
+            data_format = 'NCHW'
+        elif dim_size == 5:
+            data_format = 'NCDHW'
+        else:
+            raise ValueError(
+                f"The dimension of the input tensor should only be 3-D, 4-D or 5-D, but the received dimension is {dim_size}."
+            )
     data_format = data_format.upper()
     resample = mode.upper()
     resample_type = mode.lower()
@@ -401,7 +429,7 @@ def interpolate(
             'The x and size should satisfy rank(x) - 2 == len(size).'
         )
 
-    if isinstance(size, Variable):
+    if isinstance(size, (Variable, paddle.pir.Value)):
         size = size.cast("int32")  # static mode only support int32
         if size.ndim != 1:
             raise ValueError(
@@ -423,7 +451,7 @@ def interpolate(
         )
 
     if resample == 'AREA':
-        if isinstance(size, (list, tuple, Variable)):
+        if isinstance(size, (list, tuple, Variable, paddle.pir.Value)):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if size is None:
@@ -455,7 +483,7 @@ def interpolate(
             + " received but only `NCDHW` or `NDHWC` supported for 5-D input."
         )
 
-    def _is_list_or_turple_(data):
+    def _is_list_or_tuple_(data):
         return isinstance(data, (list, tuple))
 
     if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
@@ -482,7 +510,10 @@ def interpolate(
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-        if isinstance(out_shape, Variable) and not in_dynamic_mode():
+        if (
+            isinstance(out_shape, (Variable, paddle.pir.Value))
+            and not in_dynamic_mode()
+        ):
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
@@ -495,12 +526,12 @@ def interpolate(
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable):
                         out_shape[i] = dim.item()
-            if not (_is_list_or_turple_(out_shape)):
+            if not (_is_list_or_tuple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
             contain_var = False
             for dim_idx, dim_size in enumerate(out_shape):
-                if isinstance(dim_size, Variable):
+                if isinstance(dim_size, (Variable, paddle.pir.Value)):
                     contain_var = True
                     continue
                 assert (
@@ -511,18 +542,25 @@ def interpolate(
                 new_size_tensor = []
                 size_list = []
                 for dim in out_shape:
-                    if isinstance(dim, Variable):
+                    if isinstance(dim, (Variable, paddle.pir.Value)):
                         dim.stop_gradient = True
                         new_size_tensor.append(dim)
                         size_list.append(-1)
                     else:
                         assert isinstance(dim, int)
-                        temp_out = helper.create_variable_for_type_inference(
-                            'int32'
-                        )
-                        paddle.tensor.fill_constant(
-                            [1], 'int32', dim, force_cpu=True, out=temp_out
-                        )
+                        if in_pir_mode():
+                            temp_out = paddle.tensor.fill_constant(
+                                [1], 'int32', dim, force_cpu=True
+                            )
+                        else:
+                            temp_out = (
+                                helper.create_variable_for_type_inference(
+                                    'int32'
+                                )
+                            )
+                            paddle.tensor.fill_constant(
+                                [1], 'int32', dim, force_cpu=True, out=temp_out
+                            )
                         new_size_tensor.append(temp_out)
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor
@@ -570,7 +608,7 @@ def interpolate(
                 scale = float(scale)
             else:
                 scale = list(scale.numpy())
-        if isinstance(scale, Variable):
+        if isinstance(scale, (Variable, paddle.pir.Value)):
             scale.stop_gradient = True
             inputs["Scale"] = scale
         elif isinstance(scale, (float, int, numpy.ndarray)):
@@ -583,8 +621,8 @@ def interpolate(
         elif isinstance(scale, (list, tuple)):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError(
-                    "scale_shape length should be {} for "
-                    "input {}-D tensor.".format(len(x.shape) - 2, len(x.shape))
+                    f"scale_shape length should be {len(x.shape) - 2} for "
+                    f"input {len(x.shape)}-D tensor."
                 )
             for value in scale:
                 if value <= 0:
@@ -595,7 +633,7 @@ def interpolate(
                 "Attr(scale)'s type should be float, int, list, tuple, or Tensor."
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         attr_list = []
         for k, v in attrs.items():
             attr_list.append(k)
@@ -698,7 +736,7 @@ def upsample(
     mode='nearest',
     align_corners=False,
     align_mode=0,
-    data_format='NCHW',
+    data_format=None,
     name=None,
 ):
     """
@@ -706,10 +744,11 @@ def upsample(
     This API resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
-    or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
+    or (num_batches, in_w, channels), or 4-D (num_batches, channels, in_h, in_w) or
+    (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
-    in_d is the depth of the intput tensor.
+    in_d is the depth of the input tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -837,8 +876,9 @@ def upsample(
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
 
     Parameters:
-        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
+        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8, its data format is
+             specified by :attr:`data_format`. If :attr:`data_format` is not provided, the data format will
+             be presumed according to its dimension. See details in :attr:`data_format`.
         size (list|tuple|Tensor|None, optional): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -856,21 +896,24 @@ def upsample(
                                corner pixels.
                                Default: False
         align_mode(int, optional)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
-                            it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
+                            it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
-            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
-            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        data_format (str, optional): Specify the data format of the input, and the data format of
+             the output will be consistent with that of the input. An optional string from:`"NCW"`,
+             `"NWC"`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`, `"NDHWC"`. The default value is None.
+             When :attr:`data_format` is not specified, it will be automatically inferred from the
+             input dimension of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
+             set to `"NCW"`; When :attr:`x` is a 4-D Tensor, :attr:`data_format` will be set to
+             `"NCHW"`; When :attr:`x` is a 5-D Tensor, :attr:`data_format` will be set to `"NCDHW"`.
+             When it is `"NCHW"`, the data should be stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCDHW"`, the
+             data should be stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+        A 3-D, 4-D or 5-D Tensor, with the same data format of the input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -885,6 +928,7 @@ def upsample(
             [2, 3, 12, 12]
 
     """
+
     return interpolate(
         x, size, scale_factor, mode, align_corners, align_mode, data_format
     )
@@ -894,7 +938,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     This layer performs bilinear on two inputs.
-    See :ref:`api_nn_Bilinear` for details and output shape.
+    See :ref:`api_paddle_nn_Bilinear` for details and output shape.
 
     Parameters:
         x1 (Tensor): the first input tensor, it's data type should be float32, float64.
@@ -922,7 +966,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
             [5, 1000]
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bilinear(x1, x2, weight, bias)
     else:
         check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
@@ -1090,7 +1134,7 @@ def dropout(
             [[0., 0., 6.],
              [0., 0., 0.]])
     """
-    if not isinstance(p, (float, int, Variable)):
+    if not isinstance(p, (float, int, Variable, pir.Value)):
         raise TypeError("p argument should be a number or Variable")
 
     if isinstance(p, (int, float)):
@@ -1112,11 +1156,11 @@ def dropout(
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
         )  # semantic transfer
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
-            out, mask = _C_ops.dropout(
+            out = _C_ops.dropout(
                 x,
                 None,
                 p,
@@ -1146,9 +1190,7 @@ def dropout(
                     dropout_prob, Variable
                 ) and not dropout_prob.shape != [1]:
                     raise TypeError(
-                        "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                            p.shape
-                        )
+                        f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
                     )
                 attrs = {
                     'dropout_prob': dropout_prob,
@@ -1176,7 +1218,7 @@ def dropout(
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if in_dynamic_mode() and p == 1.0:
+            if in_dynamic_or_pir_mode() and p == 1.0:
                 return paddle.scale(x, scale=0.0)
 
             scale_input = (
@@ -1357,9 +1399,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     input_shape = x.shape
     if len(input_shape) != 4:
         raise ValueError(
-            "dimensions of x should be 4, but received {} != 4".format(
-                len(input_shape)
-            )
+            f"dimensions of x should be 4, but received {len(input_shape)} != 4"
         )
 
     if data_format not in ["NCHW", "NHWC"]:
@@ -1415,9 +1455,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     input_shape = x.shape
     if len(input_shape) != 5:
         raise ValueError(
-            "dimensions of x should be 5, but received {} != 5".format(
-                len(input_shape)
-            )
+            f"dimensions of x should be 5, but received {len(input_shape)} != 5"
         )
 
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1525,7 +1563,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        x (Tensor): The input tensor with data type float32/double/int32/int64_t.
+        x (Tensor): The input tensor with data type float32/double/int32/int64_t/complex64/complex128.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int.
             If mode is ``'constant'`` and length of pad is twice as length of x dimension, then x will
             be padded from the first  dimension to the last dimension.
@@ -1635,14 +1673,12 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         'replicate',
         'constant',
         'circular',
-    ], "mode should be one of constant, reflect, replicate, circular, but got {}.".format(
-        mode
-    )
+    ], f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
 
     data_format = data_format.upper()
     assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], (
         "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
-        "but got {}".format(data_format)
+        f"but got {data_format}"
     )
 
     x_dim = len(x.shape)
@@ -1658,6 +1694,12 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         if in_dynamic_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
+
+        if in_pir_mode():
+            if isinstance(pad_value, paddle.pir.Value):
+                return _C_ops.pad(x, paddings, pad_value)
+            else:
+                return _C_ops.pad(x, paddings, float(pad_value))
 
         check_variable_and_dtype(
             x,
@@ -1694,7 +1736,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         3,
         4,
         5,
-    ], f"input tesor dimension must be in [3, 4, 5] but got {x_dim}"
+    ], f"input tensor dimension must be in [3, 4, 5] but got {x_dim}"
 
     supported_format_map = {
         3: ["NCL", "NLC"],
@@ -1709,7 +1751,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     unsqueezed_dim = []
 
-    if isinstance(pad, Variable):
+    if isinstance(pad, (Variable, pir.Value)):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
@@ -1753,7 +1795,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(pad, Variable):
             pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
@@ -1941,9 +1983,9 @@ def linear(x, weight, bias=None, name=None):
         return _C_ops.linear(x, weight, bias)
 
     elif in_pir_mode():
-        out = paddle._ir_ops.matmul(x, weight, False, False)
+        out = _C_ops.matmul(x, weight, False, False)
         if bias is not None:
-            return paddle._ir_ops.add(out, bias)
+            return _C_ops.add(out, bias)
         else:
             return out
     else:
@@ -2041,7 +2083,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.label_smooth(label, prior_dist, float(epsilon))
 
     check_variable_and_dtype(
@@ -2204,26 +2246,22 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         label_size *= dim
     if label_size != -1 and label_size < 1:
         raise ValueError(
-            'Expected label_size > 0 \
-             (got label_size: {})'.format(
-                label_size
-            )
+            f'Expected label_size > 0 \
+             (got label_size: {label_size})'
         )
 
     label_dims = len(list(label.shape))
     if label_dims != 1:
         raise ValueError(
-            'Expected label_dims == 1 \
-             (got label_dims: {})'.format(
-                label_dims
-            )
+            f'Expected label_dims == 1 \
+             (got label_dims: {label_dims})'
         )
 
     seed = None
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.class_center_sample(
             label,
             num_classes,
@@ -2289,11 +2327,11 @@ def fold(
         x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
                                   data type can be float32, float64, complex64 or complex128
         output_sizes(int|list|tuple):       The size of output size, should be [output_size_h, output_size_w]
-                                  or an interger o treated as [o, o].
+                                  or an integer o treated as [o, o].
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
         strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
-                                  or an integer stride treated as [sride, stride].
+                                  or an integer stride treated as [stride, stride].
                                   For default, strides will be [1, 1].
         paddings(int|list|tuple, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
@@ -2312,7 +2350,7 @@ def fold(
 
     Returns:
         The tensor formed by combining a group of sliding local blocks
-        The output shape is [N, Cout, H, W] as decriabled above.
+        The output shape is [N, Cout, H, W] as described above.
 
     Examples:
 
@@ -2338,34 +2376,34 @@ def fold(
 
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 
-    def _is_list_or_turple_(data):
+    def _is_list_or_tuple_(data):
         return isinstance(data, (list, tuple))
 
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]
     else:
-        assert _is_list_or_turple_(output_sizes) and (
+        assert _is_list_or_tuple_(output_sizes) and (
             len(output_sizes) == 2
         ), "output_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert _is_list_or_turple_(kernel_sizes) and (
+        assert _is_list_or_tuple_(kernel_sizes) and (
             len(kernel_sizes) == 2
         ), "kernel_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert _is_list_or_turple_(strides) and (
+        assert _is_list_or_tuple_(strides) and (
             len(strides) == 2
         ), "strides should either be an integer or a list/tuple of two integers"
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert _is_list_or_turple_(dilations) and (
+        assert _is_list_or_tuple_(dilations) and (
             len(dilations) == 2
         ), "dilations should either be an integer or a list/tuple of two integers"
 
@@ -2386,7 +2424,7 @@ def fold(
             "of 2 or 4 integers"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fold(
             x, output_sizes, kernel_sizes, strides, paddings, dilations
         )

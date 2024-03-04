@@ -27,8 +27,8 @@
 
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/buffer_assign.h"
 #include "paddle/cinn/optim/compute_inline_expand.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
@@ -75,7 +75,7 @@ Expr LowerGroup(const poly::ScheduleGroup& group,
 /**
  * A Computation graph node.
  */
-struct CompuGraphNode : public common::GraphNode {
+struct CompuGraphNode : public cinn::common::GraphNode {
   explicit CompuGraphNode(ir::Tensor tensor) : tensor(tensor) {}
 
   ir::Tensor tensor;
@@ -94,7 +94,7 @@ struct CompuGraphNode : public common::GraphNode {
  * @param hide_inline hide inline tensor nodes.
  * @return a graph.
  */
-std::unique_ptr<common::Graph> CreateCompGraph(
+std::unique_ptr<cinn::common::Graph> CreateCompGraph(
     const std::vector<ir::Tensor>& tensors,
     StageMap stages,
     bool hide_inline = false);
@@ -114,7 +114,7 @@ class LowerImpl {
             const std::vector<Tensor>& tensor_args,
             const std::vector<Var>& scalar_args,
             const std::vector<Tensor>& temp_tensor_args = {},
-            const Target& target = common::DefaultHostTarget(),
+            const Target& target = cinn::common::DefaultHostTarget(),
             bool support_ir_schedule = false);
 
   std::vector<ir::LoweredFunc> operator()();
@@ -122,7 +122,7 @@ class LowerImpl {
   /**
    * Get the computational graph.
    */
-  const common::Graph* comp_graph() const { return compu_graph_.get(); }
+  const cinn::common::Graph* comp_graph() const { return compu_graph_.get(); }
 
   /**
    * \brief generate the argument list of the final output function.
@@ -150,8 +150,8 @@ class LowerImpl {
   std::vector<Tensor> CollectTemporaryTensors();
 
   /**
-   * \brief Check both the tensor_args and sclar_args not contain duplication
-   * (different arguemnt with the same name).
+   * \brief Check both the tensor_args and scalar_args not contain duplication
+   * (different argument with the same name).
    */
   void CheckArgsUnique();
 
@@ -193,7 +193,7 @@ class LowerImpl {
   StageMap stages_;
 
   //! A computation graph generated from the tensor_args and scalar_args.
-  std::unique_ptr<common::Graph> compu_graph_;
+  std::unique_ptr<cinn::common::Graph> compu_graph_;
 
   //! CUDA axis info for this function.
   std::vector<ir::CudaAxisInfo> cuda_axis_info_;
@@ -304,7 +304,7 @@ struct MarkParallelMutator : public ir::IRMutator<Expr*> {
     auto it = parallels.find(tensor_n->name);
     if (it != parallels.end()) {
       for (int level : it->second) {
-        VLOG(1) << "Mark " << level << " Paralled";
+        VLOG(1) << "Mark " << level << " Parallelled";
         CHECK_LT(level, stack.size());
         stack[level]->set_parallel();
       }

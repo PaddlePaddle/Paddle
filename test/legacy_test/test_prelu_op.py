@@ -21,6 +21,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import Program, core
+from paddle.pir_utils import test_with_pir_api
 
 
 def ref_prelu(x, weight):
@@ -48,6 +49,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.weight_np_0 = np.random.randn(1).astype('float32')
         self.weight_np_1 = np.random.randn(self.x_np.shape[1]).astype('float32')
 
+    @test_with_pir_api
     def static_check(self, weight_np):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_np.shape, 'float32')
@@ -69,6 +71,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_api(self):
         self.static_check(self.weight_np_0)
         self.static_check(self.weight_np_1)
@@ -77,6 +80,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
 
+    @test_with_pir_api
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             weight_fp32 = paddle.static.data(
@@ -90,10 +94,11 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
             # support the input dtype is float16
-            x_fp16 = paddle.static.data(
-                name='x_fp16', shape=[2, 3], dtype='float16'
-            )
-            F.prelu(x=x_fp16, weight=weight_fp32)
+            if core.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[2, 3], dtype='float16'
+                )
+                F.prelu(x=x_fp16, weight=weight_fp32)
 
 
 class TestNNPReluAPI(unittest.TestCase):
@@ -105,6 +110,7 @@ class TestNNPReluAPI(unittest.TestCase):
         )
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
+    @test_with_pir_api
     def test_static_api(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
@@ -226,10 +232,10 @@ class PReluTest(OpTest):
         self.attrs = {'mode': "channel", "data_format": "NCHW"}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Alpha'], 'Out')
+        self.check_grad(['X', 'Alpha'], 'Out', check_pir=True)
 
 
 @skip_check_grad_ci(
@@ -392,13 +398,17 @@ def create_test_fp16_class(
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=atol)
+                    self.check_output_with_place(
+                        place, atol=atol, check_pir=True
+                    )
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and check_grad:
                 # Use the default max_relative_error, not use max_relative_error
-                self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
+                self.check_grad_with_place(
+                    place, ['X', 'Alpha'], 'Out', check_pir=True
+                )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestPReluFp16Case.__name__ = cls_name
@@ -411,7 +421,7 @@ def create_test_bf16_class(
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "core is not complied with CUDA and not support the bfloat16",
+        "core is not compiled with CUDA and not support the bfloat16",
     )
     class TestPReluBF16Op(parent):
         def setUp(self):
@@ -426,13 +436,15 @@ def create_test_bf16_class(
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=atol)
+            self.check_output_with_place(place, atol=atol, check_pir=True)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if check_grad:
                 # Use the default max_relative_error, not use max_relative_error
-                self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
+                self.check_grad_with_place(
+                    place, ['X', 'Alpha'], 'Out', check_pir=True
+                )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16Op")
     TestPReluBF16Op.__name__ = cls_name

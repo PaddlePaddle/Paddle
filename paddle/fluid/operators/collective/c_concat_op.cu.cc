@@ -15,19 +15,18 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 
 #include <vector>
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {

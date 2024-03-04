@@ -64,23 +64,12 @@ limitations under the License. */
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/type_defs.h"
 
-PHI_DECLARE_bool(set_to_1d);
 namespace paddle {
 namespace pybind {
 
 std::atomic<int> VarBaseUniqueNameID{0};
 
 namespace py = ::pybind11;
-
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s", typeid(T).name()));
-  }
-}
 
 class PyVariableWrapperHook : public imperative::VariableWrapperHook {
  public:
@@ -108,7 +97,7 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
       res = PyObject_CallFunctionObjArgs(
           py_func_, py::cast(tmp_varbase).ptr(), nullptr);
     } catch (platform::EnforceNotMet &e) {
-      throw std::move(e);
+      throw e;
     } catch (std::exception &e) {
       PADDLE_THROW(platform::errors::Unavailable(
           "Hook function of Tensor raises an exception: %s.", e.what()));
@@ -173,7 +162,7 @@ static void InitVarBaseOnly(imperative::VarBase *self,
           << " / stop_gradient: " << stop_gradient;
   new (self) imperative::VarBase(name_);
   if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
+    self->SetOverriddenStopGradient(stop_gradient);
   }
   self->SetPersistable(persistable);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -261,7 +250,7 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
   self->SetPersistable(persistable);
   auto *tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
+    self->SetOverriddenStopGradient(stop_gradient);
   }
   SetTensorFromPyArray<P>(tensor, array, place, zero_copy);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -441,7 +430,7 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
     dst.SetPersistable(src->Persistable());
     dst.SetDataType(src->DataType());
     dst.SetType(src->Type());
-    dst.SetOverridedStopGradient(src->OverridedStopGradient());
+    dst.SetOverriddenStopGradient(src->OverriddenStopGradient());
     if (!src->SharedVar()->IsEmpty()) {
       if (src->Var().IsType<phi::DenseTensor>()) {
         auto &src_tensor = src->Var().Get<phi::DenseTensor>();
@@ -645,6 +634,23 @@ void BindImperative(py::module *m_ptr) {
           egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
+  m.def("_get_amp_attrs",
+        []() { return egr::Controller::Instance().GetCurrentAmpAttrs(); });
+  m.def("_set_amp_op_list",
+        [](std::unordered_set<std::string> &allow_ops,
+           std::unordered_set<std::string> &block_ops) {
+          imperative::AmpOperators::Instance().GetMutableAllowOps()->swap(
+              allow_ops);
+          imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
+              block_ops);
+          VLOG(5) << "AMP operators changed, "
+                  << imperative::AmpOperators::Instance();
+        });
+  m.def("_get_amp_op_list", []() {
+    return std::make_tuple(
+        *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
+        *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
+  });
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
       .def("create_program_desc",
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
@@ -658,10 +664,21 @@ void BindImperative(py::module *m_ptr) {
       .value("O3", paddle::imperative::AmpLevel::O3)
       .export_values();
 
+  py::class_<imperative::AmpAttrs, std::shared_ptr<imperative::AmpAttrs>>(
+      m, "AmpAttrs", R"DOC()DOC")
+      .def_property("_use_promote",
+                    &imperative::AmpAttrs::GetUsePromote,
+                    &imperative::AmpAttrs::SetUsePromote)
+      .def_property("_amp_level",
+                    &imperative::AmpAttrs::GetAmpLevel,
+                    &imperative::AmpAttrs::SetAmpLevel)
+      .def_property("_amp_dtype",
+                    &imperative::AmpAttrs::GetAmpDtype,
+                    &imperative::AmpAttrs::SetAmpDtype);
+
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
-      .def("__init__",
-           [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
+      .def(py::init([]() { return std::make_unique<imperative::Tracer>(); }))
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
@@ -1027,15 +1044,15 @@ void BindImperative(py::module *m_ptr) {
                                  shape with the input numpy array.
 
   Examples:
-      .. code-block:: python
+        .. code-block:: python
 
-        # required: gpu
-        import numpy as np
-        import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import numpy as np
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-        data = np.random.randint(10, size=(3, 4))
-        tensor = paddle.base.core.to_uva_tensor(data)
-        print(tensor)
+            >>> data = np.random.randint(10, size=(3, 4))
+            >>> tensor = paddle.base.core.to_uva_tensor(data)
 )DOC");
 
 #endif
@@ -1161,29 +1178,29 @@ void BindImperative(py::module *m_ptr) {
                     should be one-dimensinal.
 
   Examples:
-      .. code-block:: python
+        .. code-block:: python
 
-          import numpy as np
-          import paddle
-          from paddle.base import core
-          from paddle.device import cuda
-
-          if core.is_compiled_with_cuda():
-              src = paddle.rand(shape=[100, 50, 50])
-              dst = paddle.emtpy(shape=[200, 50, 50]).pin_memory()
-              offset = paddle.to_tensor(
-                  np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
-              count = paddle.to_tensor(
-                  np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
-
-              stream = cuda.Stream()
-              with cuda.stream_guard(stream):
-                  core.async_write(src, dst, offset, count)
-
-              offset_a = paddle.gather(dst, paddle.to_tensor(np.arange(0, 40)))
-              offset_b = paddle.gather(dst, paddle.to_tensor(np.arange(60, 120)))
-              offset_array = paddle.concat([offset_a, offset_b], axis=0)
-              print(np.allclose(src.numpy(), offset_array.numpy())) # True
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.base import core
+            >>> from paddle.device import cuda
+            >>> if core.is_compiled_with_cuda():
+            ...     src = paddle.rand(shape=[100, 50, 50])
+            ...     dst = paddle.empty(shape=[200, 50, 50]).pin_memory()
+            ...     offset = paddle.to_tensor(
+            ...         np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
+            ...     count = paddle.to_tensor(
+            ...         np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
+            ...
+            ...     stream = cuda.Stream()
+            ...     with cuda.stream_guard(stream):
+            ...         core.eager.async_write(src, dst, offset, count)
+            ...
+            ...     offset_a = paddle.gather(dst, paddle.to_tensor(np.arange(0, 40)))
+            ...     offset_b = paddle.gather(dst, paddle.to_tensor(np.arange(60, 120)))
+            ...     offset_array = paddle.concat([offset_a, offset_b], axis=0)
+            ...     print(np.allclose(src.numpy(), offset_array.numpy()))
+            True
 )DOC");
 
   m.def(
@@ -1340,8 +1357,9 @@ void BindImperative(py::module *m_ptr) {
           auto *index_data = index_tensor.data<int64_t>();
           auto *buffer_data =
               buffer_tensor->mutable_data<float>(buffer_tensor->place());
-          const int &slice_size = src_tensor.numel() / src_tensor.dims()[0];
-          const int &copy_bytes = slice_size * sizeof(float);
+          const int &slice_size =
+              static_cast<int>(src_tensor.numel()) / src_tensor.dims()[0];
+          const int &copy_bytes = static_cast<int>(slice_size) * sizeof(float);
           int64_t c = 0;
           for (int64_t i = 0; i < index_tensor.numel(); i++) {
             std::memcpy(buffer_data + c * slice_size,
@@ -1393,28 +1411,27 @@ void BindImperative(py::module *m_ptr) {
                     should be one-dimensinal.
 
   Examples:
-      .. code-block:: python
+        .. code-block:: python
 
-          import numpy as np
-          import paddle
-          from paddle.base import core
-          from paddle.device import cuda
-
-          if core.is_compiled_with_cuda():
-              src = paddle.rand(shape=[100, 50, 50], dtype="float32").pin_memory()
-              dst = paddle.empty(shape=[100, 50, 50], dtype="float32")
-              offset = paddle.to_tensor(
-                  np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
-              count = paddle.to_tensor(
-                  np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
-              buffer = paddle.empty(shape=[50, 50, 50], dtype="float32").pin_memory()
-              index = paddle.to_tensor(
-                  np.array([1, 3, 5, 7, 9], dtype="int64")).cpu()
-
-              stream = cuda.Stream()
-              with cuda.stream_guard(stream):
-                  core.async_read(src, dst, index, buffer, offset, count)
-
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.base import core
+            >>> from paddle.device import cuda
+            ...
+            >>> if core.is_compiled_with_cuda():
+            ...     src = paddle.rand(shape=[100, 50, 50], dtype="float32").pin_memory()
+            ...     dst = paddle.empty(shape=[100, 50, 50], dtype="float32")
+            ...     offset = paddle.to_tensor(
+            ...         np.array([0, 60], dtype="int64"), place=paddle.CPUPlace())
+            ...     count = paddle.to_tensor(
+            ...         np.array([40, 60], dtype="int64"), place=paddle.CPUPlace())
+            ...     buffer = paddle.empty(shape=[50, 50, 50], dtype="float32").pin_memory()
+            ...     index = paddle.to_tensor(
+            ...         np.array([1, 3, 5, 7, 9], dtype="int64")).cpu()
+            ...
+            ...     stream = cuda.Stream()
+            ...     with cuda.stream_guard(stream):
+            ...         core.eager.async_read(src, dst, index, buffer, offset, count)
 )DOC");
 #endif
 }

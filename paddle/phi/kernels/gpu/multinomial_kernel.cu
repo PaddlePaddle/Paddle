@@ -22,10 +22,10 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/arg_min_max_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -173,7 +173,7 @@ void MultinomialKernel(const Context& dev_ctx,
           int_num_samples,
           valid_samples,
           errors::InvalidArgument("When replacement=False, 'num_samples' "
-                                  "must less than or eaqual to the number of "
+                                  "must less than or equal to the number of "
                                   "positive item of input"));
     }
 
@@ -191,9 +191,10 @@ void MultinomialKernel(const Context& dev_ctx,
 
     if (int_num_samples == 1) {
       ArgMaxKernel<T, Context>(
-          dev_ctx, rand, -1, true, false, 3 /*proto::VarType::INT64*/, out);
+          dev_ctx, rand, -1, true, false, DataType::INT64, out);
     } else {
-      std::vector<int64_t> out_dim_vec = vectorize<int64_t>(out->dims());
+      std::vector<int64_t> out_dim_vec =
+          common::vectorize<int64_t>(out->dims());
       DenseTensor value = Empty<T, Context>(dev_ctx, IntArray(out_dim_vec));
       TopkKernel<T, Context>(
           dev_ctx, rand, num_samples, -1, true, true, &value, out);

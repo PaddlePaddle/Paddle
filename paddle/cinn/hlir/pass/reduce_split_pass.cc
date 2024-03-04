@@ -24,7 +24,7 @@ namespace hlir {
 namespace pass {
 namespace {
 
-using common::GraphNode;
+using cinn::common::GraphNode;
 using framework::Node;
 using framework::NodeData;
 using framework::Operator;
@@ -73,7 +73,7 @@ class ReduceSplitPass {
  public:
   // Find the reduce op with nwhc format and large shape, split it into two ops
   static int Apply(framework::Graph* graph) {
-    int MAX_NUM_THREADS = common::DefaultNVGPUTarget().max_num_threads();
+    int MAX_NUM_THREADS = cinn::common::DefaultNVGPUTarget().max_num_threads();
     constexpr int MAX_ITER_PER_THREAD = 32;  // empirical value
 
     int cnt = 0;
@@ -159,7 +159,7 @@ class ReduceSplitPass {
         //   1. reshape_loop > split_loop
         //   2. reshape thread > max_threads.
         if (shape[0] <= reduce_numel0 &&
-            shape[1] * shape[2] <= common::GetMaxThreads()) {
+            shape[1] * shape[2] <= cinn::common::GetMaxThreads()) {
           VLOG(3) << "  Don't Do Reduce Split!";
           continue;
         }
@@ -173,7 +173,7 @@ class ReduceSplitPass {
         // create reshape node0
         Node* reshape0 = new Node(Operator::Get("reshape"),
                                   "reshape",
-                                  common::UniqName("reshape_split"));
+                                  cinn::common::UniqName("reshape_split"));
         reshape0->attrs.attr_store["shape"] = std::vector<int>{
             reduce_numel0, reduce_numel1, in_shape[in_shape.size() - 1]};
         graph->RegisterNode(reshape0->id(), reshape0);
@@ -181,24 +181,24 @@ class ReduceSplitPass {
         in->UnLinkSingleTo(node);
         node->UnLinkSingleTo(out);
         auto reshape0_data = new NodeData(
-            Shared<Node>(reshape0), 0, 0, common::UniqName("var"), false);
+            Shared<Node>(reshape0), 0, 0, cinn::common::UniqName("var"), false);
         graph->RegisterNode(reshape0_data->id(), reshape0_data);
         reshape0->LinkTo(reshape0_data);
         shape_dict[reshape0_data->id()] =
             absl::get<std::vector<int>>(reshape0->attrs.attr_store.at("shape"));
-        dtype_dict[reshape0_data->id()] =
-            common::Str2Type(common::Type2Str(dtype_dict[in->id()]));
+        dtype_dict[reshape0_data->id()] = cinn::common::Str2Type(
+            cinn::common::Type2Str(dtype_dict[in->id()]));
 
         // create reduce node0
         Node* reduce0 = new Node(
-            Operator::Get(name), name, common::UniqName(name + "_split"));
+            Operator::Get(name), name, cinn::common::UniqName(name + "_split"));
         reduce0->attrs.attr_store["dim"] = std::vector<int>{0};
         reduce0->attrs.attr_store["keep_dim"] =
             absl::get<bool>(n->attrs.attr_store.at("keep_dim"));
         graph->RegisterNode(reduce0->id(), reduce0);
         reshape0_data->LinkTo(reduce0);
         auto reduce0_data = new NodeData(
-            Shared<Node>(reduce0), 0, 0, common::UniqName("var"), false);
+            Shared<Node>(reduce0), 0, 0, cinn::common::UniqName("var"), false);
         graph->RegisterNode(reduce0_data->id(), reduce0_data);
         reduce0->LinkTo(reduce0_data);
         shape_dict[reduce0_data->id()] =
@@ -207,12 +207,12 @@ class ReduceSplitPass {
                                         in_shape[in_shape.size() - 1]}
                      : std::vector<int>{reduce_numel1,
                                         in_shape[in_shape.size() - 1]};
-        dtype_dict[reduce0_data->id()] =
-            common::Str2Type(common::Type2Str(dtype_dict[in->id()]));
+        dtype_dict[reduce0_data->id()] = cinn::common::Str2Type(
+            cinn::common::Type2Str(dtype_dict[in->id()]));
 
         // create reduce node1
         Node* reduce1 = new Node(
-            Operator::Get(name), name, common::UniqName(name + "_split"));
+            Operator::Get(name), name, cinn::common::UniqName(name + "_split"));
         reduce1->attrs.attr_store["dim"] =
             keep_dim ? std::vector<int>{0, 1} : std::vector<int>{0};
         reduce1->attrs.attr_store["keep_dim"] =
@@ -220,24 +220,24 @@ class ReduceSplitPass {
         graph->RegisterNode(reduce1->id(), reduce1);
         reduce0_data->LinkTo(reduce1);
         auto reduce1_data = new NodeData(
-            Shared<Node>(reduce1), 0, 0, common::UniqName("var"), false);
+            Shared<Node>(reduce1), 0, 0, cinn::common::UniqName("var"), false);
         graph->RegisterNode(reduce1_data->id(), reduce1_data);
         reduce1->LinkTo(reduce1_data);
         shape_dict[reduce1_data->id()] =
             keep_dim ? std::vector<int>{1, 1, in_shape[in_shape.size() - 1]}
                      : std::vector<int>{in_shape[in_shape.size() - 1]};
-        dtype_dict[reduce1_data->id()] =
-            common::Str2Type(common::Type2Str(dtype_dict[in->id()]));
+        dtype_dict[reduce1_data->id()] = cinn::common::Str2Type(
+            cinn::common::Type2Str(dtype_dict[in->id()]));
 
         // create reshape node1
         Node* reshape1 = new Node(Operator::Get("reshape"),
                                   "reshape",
-                                  common::UniqName("reshape_split"));
+                                  cinn::common::UniqName("reshape_split"));
         reshape1->attrs.attr_store["shape"] = out_shape;
         graph->RegisterNode(reshape1->id(), reshape1);
         reduce1_data->LinkTo(reshape1);
         reshape1->LinkTo(out);
-        out->source_node = common::Shared<Node>(reshape1);
+        out->source_node = cinn::common::Shared<Node>(reshape1);
 
         // drop old node
         graph->DropNode(node);

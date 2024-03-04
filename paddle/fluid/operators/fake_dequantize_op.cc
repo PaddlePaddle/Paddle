@@ -121,9 +121,9 @@ struct ChannelDequantizeFunctor<phi::CPUContext, T> {
         const T* scale_two = scales[1]->data<T>();
         for (int i = 0; i < batch_size; i++) {
           phi::DenseTensor one_batch_in = in->Slice(i, i + 1).Resize(
-              phi::slice_ddim(in->dims(), 1, in->dims().size()));
+              common::slice_ddim(in->dims(), 1, in->dims().size()));
           phi::DenseTensor one_batch_out = out->Slice(i, i + 1).Resize(
-              phi::slice_ddim(out->dims(), 1, out->dims().size()));
+              common::slice_ddim(out->dims(), 1, out->dims().size()));
           for (int j = 0; j < channel; j++) {
             T s = scale_one[j];
             phi::DenseTensor one_channel_in = one_batch_in.Slice(j, j + 1);
@@ -300,7 +300,7 @@ PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_dequantize_max_abs,
 REGISTER_OP_VERSION(fake_channel_wise_dequantize_max_abs)
     .AddCheckpoint(
         R"ROC(add new attributes [quant_axis] for applying per-channel "
-        "dequantization to conv2d_tranpose and mul ops.)ROC",
+        "dequantization to conv2d_transpose and mul ops.)ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "quant_axis", "The axis for dequantization.", 0))
     .AddCheckpoint(

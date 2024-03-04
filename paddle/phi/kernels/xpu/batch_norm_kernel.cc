@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -25,8 +26,8 @@ void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
                      bool is_test,
                      float momentum,
                      float epsilon,
@@ -42,12 +43,12 @@ void BatchNormKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   bool test_mode = is_test && (!trainable_statistics);
   bool global_stats = test_mode || use_global_stats;
-  const auto data_layout = phi::StringToDataLayout(data_layout_str);
+  const auto data_layout = common::StringToDataLayout(data_layout_str);
   PADDLE_ENFORCE_EQ(data_layout_str == "NCHW" || data_layout_str == "NHWC",
                     true,
                     phi::errors::InvalidArgument(
                         "The 'data_layout' attribute must be NCHW or NHWC. "
-                        "But recevived 'data_layout' is [%s].",
+                        "But received 'data_layout' is [%s].",
                         data_layout_str));
 
   const auto& x_dims = x.dims();
@@ -69,9 +70,27 @@ void BatchNormKernel(const Context& dev_ctx,
 
   W = W * D;
 
+  auto* Scale = scale.get_ptr();
+  auto* Bias = bias.get_ptr();
+
+  phi::DenseTensor new_scale;
+  phi::DenseTensor new_bias;
+
+  if (Scale) {
+    new_scale = scale.get();
+  } else {
+    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+  }
+
+  if (Bias) {
+    new_bias = bias.get();
+  } else {
+    new_bias = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
+  }
+
   const auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
-  const auto* scale_data = scale.data<float>();
-  const auto* bias_data = bias.data<float>();
+  const auto* scale_data = new_scale.data<float>();
+  const auto* bias_data = new_bias.data<float>();
 
   // alloc memory
   auto* y_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(y));
@@ -85,7 +104,7 @@ void BatchNormKernel(const Context& dev_ctx,
       5,
       phi::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
-          "But received: the size of input X's dimensionss is [%d]",
+          "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
 
   bool is_nchw = data_layout_str == "NCHW";
@@ -140,4 +159,9 @@ PD_REGISTER_KERNEL(batch_norm,
                    ALL_LAYOUT,
                    phi::BatchNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+}

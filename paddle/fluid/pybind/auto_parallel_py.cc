@@ -12,50 +12,70 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <Python.h>
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 #include <utility>
 
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/reduce_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_p_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/x_to_r_reshard_function.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/pybind.h"
-
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/s_to_s_reshard_function.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-namespace py = pybind11;
+namespace py = pybind11;  // NOLINT
 
 namespace paddle {
 namespace pybind {
 
+static bool PyCheckInteger(PyObject *obj) {
+#if PY_VERSION_HEX < 0x03000000
+  return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);
+#else
+  return PyLong_Check(obj) && !PyBool_Check(obj);
+#endif
+}
+
 using paddle::distributed::auto_parallel::DistTensorSpec;
 using paddle::distributed::auto_parallel::kDefault;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
-using paddle::distributed::auto_parallel::SPMDRuleBase;
-using paddle::distributed::auto_parallel::SPMDRuleMap;
 using paddle::framework::BlockDesc;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
+using phi::distributed::ArgDistAttr;
 using phi::distributed::ProcessMesh;
 using phi::distributed::TensorDistAttr;
 using phi::distributed::auto_parallel::Device;
@@ -67,6 +87,13 @@ using phi::distributed::auto_parallel::LinkCapability;
 using phi::distributed::auto_parallel::Machine;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
+PyTypeObject *g_dist_tensor_spec_pytype = nullptr;
+PyTypeObject *g_process_mesh_pytype = nullptr;
+PyTypeObject *g_placement_shard_pytype = nullptr;
+PyTypeObject *g_placement_replicated_pytype = nullptr;
+PyTypeObject *g_placement_partial_pytype = nullptr;
+
+constexpr const char *infer_spmd_string = "infer_spmd";
 
 static inline const ProcessMesh *get_tensor_process_mesh(
     const TensorDistAttr &self) {
@@ -120,8 +147,14 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
   }
   dist_attr->set_impl_type(kDefault);
   dist_attr->set_impl_idx(0);
+  dist_attr->set_chunk_id(0);
   dist_attr->clear_annotated();
 }
+
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
+infer_forward(const phi::distributed::SpmdRule &self, const py::args &args);
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
+infer_backward(const phi::distributed::SpmdRule &self, const py::args &args);
 
 void BindAutoParallel(py::module *m) {
   auto ReshardFunction =
@@ -157,52 +190,94 @@ void BindAutoParallel(py::module *m) {
       *m, "RToSReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::RToSReshardFunctionCrossMesh>(
+      *m, "RToSReshardFunctionCrossMesh", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<phi::distributed::SToRReshardFunction>(
       *m, "SToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SToRReshardFunctionCrossMesh>(
+      *m, "SToRReshardFunctionCrossMesh", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::RToPReshardFunction>(
       *m, "RToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::RToPReshardFunctionCrossMesh>(
+      *m, "RToPReshardFunctionCrossMesh", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<phi::distributed::PToRReshardFunction>(
       *m, "PToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::PToRReshardFunctionCrossMesh>(
+      *m, "PToRReshardFunctionCrossMesh", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::SToSReshardFunction>(
       *m, "SToSReshardFunction", ReshardFunction)
       .def(py::init<>());
 
-  py::class_<ProcessMesh>(*m, "ProcessMesh")
-      .def(py::init<>())
-      .def(py::init<const std::vector<int64_t> &,
-                    const std::vector<int64_t> &,
-                    const std::vector<std::string> &>(),
-           py::arg("shape"),
-           py::arg("process_ids"),
-           py::arg("dim_names"))
-      .def_property_readonly("shape", &ProcessMesh::shape)
-      .def_property_readonly("process_ids", &ProcessMesh::process_ids)
-      .def_property_readonly("dim_names", &ProcessMesh::dim_names)
-      .def_property_readonly("size", &ProcessMesh::size)
-      .def_property_readonly("ndim", &ProcessMesh::ndim)
-      .def("dim_size",
-           static_cast<int64_t (ProcessMesh::*)(int64_t) const>(
-               &ProcessMesh::dim_size))
-      .def("dim_size",
-           static_cast<int64_t (ProcessMesh::*)(const std::string &) const>(
-               &ProcessMesh::dim_size))
-      .def("empty", &ProcessMesh::empty)
-      .def("contains", &ProcessMesh::contains)
-      .def(py::self == py::self)
-      .def(py::self != py::self)
-      .def("__copy__",
-           [](const ProcessMesh &self) { return ProcessMesh(self); })
-      .def(
-          "__deepcopy__",
-          [](const ProcessMesh &self, py::dict) { return ProcessMesh(self); },
-          py::arg("memo"))
-      .def("__str__", &ProcessMesh::to_string);
+  py::class_<phi::distributed::SToPReshardFunction>(
+      *m, "SToPReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::PToSReshardFunction>(
+      *m, "PToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::XToRShrinkReshardFunction>(
+      *m, "XToRShrinkReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SameNdMeshReshardFunction>(
+      *m, "SameNdMeshReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SameStatusReshardFunction>(
+      *m, "SameStatusReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  auto process_mesh =
+      py::class_<ProcessMesh>(*m, "ProcessMesh")
+          .def(py::init<>())
+          .def(py::init<const std::vector<int64_t> &,
+                        const std::vector<int64_t> &,
+                        const std::vector<std::string> &>(),
+               py::arg("shape"),
+               py::arg("process_ids"),
+               py::arg("dim_names"))
+          .def_property_readonly("shape", &ProcessMesh::shape)
+          .def_property_readonly("process_ids", &ProcessMesh::process_ids)
+          .def_property_readonly("dim_names", &ProcessMesh::dim_names)
+          .def_property_readonly("size", &ProcessMesh::size)
+          .def_property_readonly("ndim", &ProcessMesh::ndim)
+          .def("dim_size",
+               static_cast<int64_t (ProcessMesh::*)(int64_t) const>(
+                   &ProcessMesh::dim_size))
+          .def("dim_size",
+               static_cast<int64_t (ProcessMesh::*)(const std::string &) const>(
+                   &ProcessMesh::dim_size))
+          .def("empty", &ProcessMesh::empty)
+          .def("contains", &ProcessMesh::contains)
+          .def(py::self == py::self)
+          .def(py::self != py::self)
+          .def("__copy__",
+               [](const ProcessMesh &self) { return ProcessMesh(self); })
+          .def(
+              "__deepcopy__",
+              [](const ProcessMesh &self, py::dict) {
+                return ProcessMesh(self);
+              },
+              py::arg("memo"))
+          .def("__hash__", &ProcessMesh::hash)
+          .def("__str__", &ProcessMesh::to_string);
+
+  g_process_mesh_pytype = reinterpret_cast<PyTypeObject *>(process_mesh.ptr());
 
   py::class_<DeviceCapability>(*m, "DeviceCapability")
       .def(py::init<>())
@@ -299,6 +374,154 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
+  py::enum_<phi::ReduceType>(*m, "ReduceType", R"DOC(
+    Specify the type of operation used for paddle.distributed.Partial().
+    It should be one of the following values:
+
+        - ReduceType.kRedSum
+        - ReduceType.kRedMax
+        - ReduceType.kRedMin
+        - ReduceType.kRedProd
+        - ReduceType.kRedAvg
+        - ReduceType.kRedAny
+        - ReduceType.kRedAll
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+            >>> a = paddle.ones([10, 20])
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # distributed tensor
+            >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial(dist.ReduceType.kRedSum)])
+
+      )DOC")
+      .value("kRedSum", phi::ReduceType::kRedSum)
+      .value("kRedMax", phi::ReduceType::kRedMax)
+      .value("kRedMin", phi::ReduceType::kRedMin)
+      .value("kRedProd", phi::ReduceType::kRedProd)
+      .value("kRedAvg", phi::ReduceType::kRedAvg)
+      .value("kRedAny", phi::ReduceType::kRedAny)
+      .value("kRedAll", phi::ReduceType::kRedAll);
+
+  auto Placement =
+      py::class_<phi::distributed::Placement,
+                 std::shared_ptr<phi::distributed::Placement>>(
+          *m, "Placement", R"DOC(
+        The `Placement` is base class that describes how to place the tensor on ProcessMesh. it has three subclass: `Replicate`, `Shard` and `Partial`.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle.distributed as dist
+                >>> placements = [dist.Replicate(), dist.Shard(0), dist.Partial()]
+                >>> for p in placements:
+                >>>     if isinstance(p, dist.Placement):
+                >>>         if p.is_replicated():
+                >>>             print("replicate.")
+                >>>         elif p.is_shard():
+                >>>             print("shard.")
+                >>>         elif p.is_partial():
+                >>>             print("partial.")
+
+      )DOC")
+          .def(py::init<>())
+          .def("is_shard",
+               &phi::distributed::Placement::is_shard,
+               py::arg("dim") = std::nullopt)
+          .def("is_replicated", &phi::distributed::Placement::is_replicated)
+          .def("is_partial", &phi::distributed::Placement::is_partial)
+          .def("__hash__", &phi::distributed::Placement::hash)
+          .def("__str__", &phi::distributed::Placement::to_string)
+          .def(py::self == py::self)
+          .def(py::self != py::self);
+
+  auto Shard = py::class_<phi::distributed::Shard,
+                          std::shared_ptr<phi::distributed::Shard>>(
+                   *m, "Shard", Placement, R"DOC(
+               The `Shard` describes how `Tensor` splitted across multiple devices according to specified dimensions.
+
+               Parameters:
+                   dim (int): specify the slicing dimension of the tensor.
+
+               Examples:
+                   .. code-block:: python
+
+                       >>> import paddle
+                       >>> import paddle.distributed as dist
+                       >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+                       >>> a = paddle.to_tensor([[1,2,3],[5,6,7]])
+                       >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                       >>> # distributed tensor
+                       >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Shard(0), dist.Shard(1)])
+
+               )DOC")
+                   .def(py::init([](int64_t dim) {
+                     return std::make_shared<phi::distributed::Shard>(dim);
+                   }))
+                   .def("get_dim", &phi::distributed::Shard::get_dim)
+                   .def("__hash__", &phi::distributed::Shard::hash)
+                   .def("__str__", &phi::distributed::Shard::to_string)
+                   .def(py::self == py::self)
+                   .def(py::self != py::self);
+
+  auto Replicate = py::class_<phi::distributed::Replicate,
+                              std::shared_ptr<phi::distributed::Replicate>>(
+                       *m, "Replicate", Placement, R"DOC(
+                   The `Replicate` describes the tensor placed repeatedly on ProcessMesh.
+
+                   Examples:
+                       .. code-block:: python
+
+                           >>> import paddle
+                           >>> import paddle.distributed as dist
+                           >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+                           >>> a = paddle.ones([10, 20])
+                           >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                           >>> # distributed tensor
+                           >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Replicate()])
+
+                   )DOC")
+                       .def(py::init<>())
+                       .def("__hash__", &phi::distributed::Replicate::hash)
+                       .def("__str__", &phi::distributed::Replicate::to_string)
+                       .def(py::self == py::self)
+                       .def(py::self != py::self);
+
+  auto Partial = py::class_<phi::distributed::Partial,
+                            std::shared_ptr<phi::distributed::Partial>>(
+                     *m, "Partial", Placement, R"DOC(
+                 The `Partial` describes `Tensor` across multiple devices, this type of tensor has the same shape but only a fraction of the value, which can be further reduce (e.g. sum/min/max) to obtain dist_tensor, often used as an intermediate representation.
+
+                 Parameters:
+                   reduce_type (paddle.distributed.ReduceType): the reduce type of the Partial state, default `paddle.distributed.ReduceType.kRedSum`.
+
+                 Examples:
+                     .. code-block:: python
+
+                         >>> import paddle
+                         >>> import paddle.distributed as dist
+                         >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+                         >>> a = paddle.ones([10, 20])
+                         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                         >>> # distributed tensor
+                         >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial()])
+
+                 )DOC")
+                     .def(py::init<phi::ReduceType>(),
+                          py::arg("reduce_type") = phi::ReduceType::kRedSum)
+                     .def("__hash__", &phi::distributed::Partial::hash)
+                     .def("__str__", &phi::distributed::Partial::to_string)
+                     .def(py::self == py::self)
+                     .def(py::self != py::self);
+
+  g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());
+  g_placement_replicated_pytype =
+      reinterpret_cast<PyTypeObject *>(Replicate.ptr());
+  g_placement_partial_pytype = reinterpret_cast<PyTypeObject *>(Partial.ptr());
+
   py::class_<TensorDistAttr> py_dist_attr(*m, "TensorDistAttr");
   g_tensor_dist_attr_pytype =
       reinterpret_cast<PyTypeObject *>(py_dist_attr.ptr());
@@ -317,6 +540,8 @@ void BindAutoParallel(py::module *m) {
       .def_property("batch_dim",
                     &TensorDistAttr::batch_dim,
                     &TensorDistAttr::set_batch_dim)
+      .def_property(
+          "chunk_id", &TensorDistAttr::chunk_id, &TensorDistAttr::set_chunk_id)
       .def_property("dynamic_dims",
                     &TensorDistAttr::dynamic_dims,
                     &TensorDistAttr::set_dynamic_dims)
@@ -361,130 +586,15 @@ void BindAutoParallel(py::module *m) {
            })
       .def("_clean_partial_status", &TensorDistAttr::clean_partial_status);
 
-  py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
-      .def("infer_forward", &SPMDRuleBase::InferForward)
-      .def("infer_backward",
-           static_cast<std::pair<std::vector<TensorDistAttr>,
-                                 std::vector<TensorDistAttr>> (SPMDRuleBase::*)(
-               const std::vector<DistTensorSpec> &,
-               const std::vector<DistTensorSpec> &,
-               const paddle::framework::AttributeMap &)>(
-               &SPMDRuleBase::InferBackward));
-  // .def("infer_backward", &SPMDRuleBase::InferBackward) [revert in future]
-
   py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")
-      .def("infer_forward",
-           [](const phi::distributed::SpmdRule &self,
-              const std::vector<DistTensorSpec> &input_specs,
-              const std::vector<phi::Attribute> &attrs) {
-             phi::distributed::InferSpmdContext ctx;
-             for (auto &spec : input_specs) {
-               ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
-                   phi::make_ddim(spec.shape()), spec.dist_attr()));
-             }
-             for (auto &attr : attrs) {
-               ctx.EmplaceBackAttr(attr);
-             }
-             return self.InferForward(ctx);
-           })
-      .def("infer_forward",  // for op that have vector argument
-           [](const phi::distributed::SpmdRule &self,
-              const std::vector<std::pair<int, int>> &input_ranges,
-              const std::vector<DistTensorSpec> &input_specs,
-              const std::vector<phi::Attribute> &attrs) {
-             /*
-             to distingish between single tensor argument and vector argument of
-             one tensor: start - end == 0: single tensor start - end == 1:
-             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3, 4)]
-             + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
-             */
-             phi::distributed::InferSpmdContext ctx;
-             paddle::small_vector<phi::distributed::DistMetaTensor,
-                                  phi::kInputSmallVectorSize>
-                 ins;
-             for (auto &range : input_ranges) {
-               if (range.second - range.first == 0) {
-                 auto &in = input_specs.at(range.first);
-                 ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
-                     phi::make_ddim(in.shape()), in.dist_attr()));
-               } else {
-                 int start = range.first;
-                 int end = range.second;
-                 ins.reserve(end - start);
-                 for (int i = start; i < end; ++i) {
-                   auto &in = input_specs.at(i);
-                   ins.emplace_back(phi::distributed::DistMetaTensor(
-                       phi::make_ddim(in.shape()), in.dist_attr()));
-                 }
-                 ctx.EmplaceBackInputs(ins);
-                 ins.clear();
-               }
-             }
-             for (auto &attr : attrs) {
-               ctx.EmplaceBackAttr(attr);
-             }
-             return self.InferForward(ctx);
-           })
-      .def("infer_backward",
-           [](const phi::distributed::SpmdRule &self,
-              const std::vector<DistTensorSpec> &input_specs,
-              const std::vector<DistTensorSpec> &output_specs,
-              const std::vector<phi::Attribute> &attrs) {
-             phi::distributed::InferSpmdContext ctx;
-             for (auto &spec : input_specs) {
-               ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
-                   phi::make_ddim(spec.shape()), spec.dist_attr()));
-             }
-             for (auto &spec : output_specs) {
-               ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
-                   phi::make_ddim(spec.shape()), spec.dist_attr()));
-             }
-             for (auto &attr : attrs) {
-               ctx.EmplaceBackAttr(attr);
-             }
-             return self.InferBackward(ctx);
-           })
-      .def("infer_backward",  // for op that have vector argument
-           [](const phi::distributed::SpmdRule &self,
-              const std::vector<std::pair<int, int>> &input_ranges,
-              const std::vector<DistTensorSpec> &input_specs,
-              const std::vector<phi::Attribute> &attrs) {
-             /*
-             to distingish between single tensor argument and vector argument of
-             one tensor: start - end == 0: single tensor start - end == 1:
-             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3, 4)]
-             + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
-             */
-             phi::distributed::InferSpmdContext ctx;
-             paddle::small_vector<phi::distributed::DistMetaTensor,
-                                  phi::kInputSmallVectorSize>
-                 ins;
-             for (auto &range : input_ranges) {
-               if (range.second - range.first == 0) {
-                 auto &in = input_specs.at(range.first);
-                 ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
-                     phi::make_ddim(in.shape()), in.dist_attr()));
-               } else {
-                 int start = range.first;
-                 int end = range.second;
-                 ins.reserve(end - start);
-                 for (int i = start; i < end; ++i) {
-                   auto &in = input_specs.at(i);
-                   ins.emplace_back(phi::distributed::DistMetaTensor(
-                       phi::make_ddim(in.shape()), in.dist_attr()));
-                 }
-                 ctx.EmplaceBackInputs(ins);
-                 ins.clear();
-               }
-             }
-             for (auto &attr : attrs) {
-               ctx.EmplaceBackAttr(attr);
-             }
-             return self.InferBackward(ctx);
-           });
+      .def("infer_forward", &infer_forward)
+      .def("infer_backward", &infer_backward);
 
-  py::class_<DistTensorSpec>(*m, "DistTensorSpec")
-      .def(py::init<>())
+  py::class_<DistTensorSpec> py_dist_tensor_spec(
+      *m, "DistTensorSpec");  // TODO(ljz) remove and unify to DistTensor
+  g_dist_tensor_spec_pytype =
+      reinterpret_cast<PyTypeObject *>(py_dist_tensor_spec.ptr());
+  py_dist_tensor_spec.def(py::init<>())
       .def(py::init<const DistTensorSpec &>())
       .def(py::init<const std::vector<int64_t> &, const TensorDistAttr &>())
       .def("dims_mapping", &DistTensorSpec::dims_mapping)
@@ -517,6 +627,9 @@ void BindAutoParallel(py::module *m) {
       .def_property("impl_idx",
                     &OperatorDistAttr::impl_idx,
                     &OperatorDistAttr::set_impl_idx)
+      .def_property("chunk_id",
+                    &OperatorDistAttr::chunk_id,
+                    &OperatorDistAttr::set_chunk_id)
       .def_property("is_recompute",
                     &OperatorDistAttr::is_recompute,
                     &OperatorDistAttr::set_is_recompute)
@@ -552,6 +665,9 @@ void BindAutoParallel(py::module *m) {
           static_cast<std::map<std::string, TensorDistAttr> &(
               OperatorDistAttr::*)()>(&OperatorDistAttr::output_dist_attrs),
           &OperatorDistAttr::set_output_dist_attrs)
+      .def_property("run_time_us",
+                    &OperatorDistAttr::run_time_us,
+                    &OperatorDistAttr::set_run_time_us)
       .def("get_input_dist_attr",
            static_cast<TensorDistAttr &(
                OperatorDistAttr::*)(const std::string &)>(
@@ -616,9 +732,10 @@ void BindAutoParallel(py::module *m) {
       .def("__str__", &OperatorDistAttr::to_string);
 
   m->def(
-      "get_spmd_rule",
+      "contains_spmd_rule",
       [](const std::string op_type) {
-        return SPMDRuleMap::Instance().Get(op_type);
+        return phi::distributed::SpmdRuleFactory::Instance().ContainsSpmdRule(
+            op_type);
       },
       py::return_value_policy::reference);
 
@@ -630,13 +747,155 @@ void BindAutoParallel(py::module *m) {
       },
       py::return_value_policy::reference);
 
+  m->def(
+      "reshard",
+      [](py::handle py_tensor, const TensorDistAttr &dist_attr) {
+        auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+        return reshard_ad_function(tensor, dist_attr);
+      },
+      py::return_value_policy::reference);
+
   // TODO(liuzhenhai): DistributedMapper is not used for now, but
-  // dist_mapper_test need the symbols forch DistributedMapper to be linked,
-  // remove it latter
+  // dist_mapper_test need the symbols touch DistributedMapper to be linked,
+  // remove it later
   m->def("touch_dist_mapper", []() {
     DistributedMapper mapper;
     return mapper.to_string();
   });
+}
+
+static void parse_tensors(PyObject *obj,
+                          phi::distributed::InferSpmdContext *ctx,
+                          const size_t arg_pos) {
+  Py_ssize_t len = PyList_Size(obj);
+  VLOG(6) << "args indx: [" << arg_pos << "] input vector of ["
+          << static_cast<size_t>(len) << "] tensors.";
+  paddle::small_vector<phi::distributed::DistMetaTensor,
+                       phi::kInputSmallVectorSize>
+      ins;
+  ins.reserve(static_cast<size_t>(len));
+  for (Py_ssize_t i = 0; i < len; i++) {
+    DistTensorSpec in = py::cast<DistTensorSpec>(PyList_GetItem(obj, i));
+    VLOG(6) << "Vector emplace_back DistTensorSpec: " << in.to_string();
+    ins.emplace_back(phi::distributed::DistMetaTensor(
+        common::make_ddim(in.shape()), in.dist_attr()));
+  }
+  ctx->EmplaceBackInputs(ins);
+}
+
+static void parse_tensor(PyObject *obj,
+                         phi::distributed::InferSpmdContext *ctx,
+                         const size_t arg_pos) {
+  VLOG(6) << "args indx: [" << arg_pos << "] input one tensor.";
+  DistTensorSpec in = py::cast<DistTensorSpec>(obj);
+  VLOG(6) << "DistTensorSpec: " << in.to_string();
+  ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
+      common::make_ddim(in.shape()), in.dist_attr()));
+}
+
+// TODO(ljz) support other types
+static void parse_attrs(PyObject *obj,
+                        PyObject *first_item,
+                        phi::distributed::InferSpmdContext *ctx,
+                        const size_t arg_pos) {
+  if (PyBool_Check(first_item)) {
+    auto attrs = CastPyArg2Booleans(
+        obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attrs);
+  } else if (PyCheckInteger(first_item)) {
+    auto attrs =
+        CastPyArg2Ints(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attrs);
+  } else if (PyLong_Check(first_item)) {
+    auto attrs =
+        CastPyArg2Longs(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attrs);
+  } else if (PyFloat_Check(first_item)) {
+    auto attrs =
+        CastPyArg2Floats(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attrs);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "list of int, float, bool or Tensor, but got %s",
+        infer_spmd_string,
+        arg_pos,
+        ((PyTypeObject *)first_item->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+// TODO(ljz) support other types
+static void parse_attr(PyObject *obj,
+                       phi::distributed::InferSpmdContext *ctx,
+                       const size_t arg_pos) {
+  if (PyBool_Check(obj)) {
+    auto attr = CastPyArg2Boolean(
+        obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attr);
+  } else if (PyCheckInteger(obj)) {
+    auto attr =
+        CastPyArg2Int(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attr);
+  } else if (PyLong_Check(obj)) {
+    auto attr =
+        CastPyArg2Long(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attr);
+  } else if (PyFloat_Check(obj)) {
+    auto attr =
+        CastPyArg2Float(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attr);
+  } else {  // TODO(ljz) support other types
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "int, float, bool or Tensor, but got %s",
+        infer_spmd_string,
+        arg_pos,
+        ((PyTypeObject *)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static void parse_single_pyobject(PyObject *obj,
+                                  phi::distributed::InferSpmdContext *ctx,
+                                  const size_t arg_pos) {
+  if (PyList_Check(obj)) {  // list inputs, spmd not allow tuple inputs
+    PyObject *first_item = PyList_GetItem(obj, 0);
+    if (PyObject_TypeCheck(first_item, g_dist_tensor_spec_pytype)) {
+      parse_tensors(obj, ctx, arg_pos);
+    } else {
+      parse_attrs(obj, first_item, ctx, arg_pos);
+    }
+  } else {
+    if (PyObject_TypeCheck(obj, g_dist_tensor_spec_pytype)) {
+      parse_tensor(obj, ctx, arg_pos);
+    } else {
+      parse_attr(obj, ctx, arg_pos);
+    }
+  }
+}
+
+static void prepare_ctx(phi::distributed::InferSpmdContext *ctx,
+                        const py::args &args) {
+  VLOG(6) << "prepare_ctx ";
+  size_t inputs_size = args.size();
+  for (size_t i = 0; i < inputs_size; ++i) {
+    PyObject *obj = args[i].ptr();
+    parse_single_pyobject(obj, ctx, i);
+  }
+}
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
+infer_forward(const phi::distributed::SpmdRule &self, const py::args &args) {
+  VLOG(6) << "infer_forward ";
+  phi::distributed::InferSpmdContext ctx;
+  prepare_ctx(&ctx, args);
+  return self.InferForward(ctx);
+}
+
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
+infer_backward(const phi::distributed::SpmdRule &self, const py::args &args) {
+  VLOG(6) << "infer_backward ";
+  phi::distributed::InferSpmdContext ctx;
+  prepare_ctx(&ctx, args);
+  return self.InferBackward(ctx);
 }
 
 }  // namespace pybind

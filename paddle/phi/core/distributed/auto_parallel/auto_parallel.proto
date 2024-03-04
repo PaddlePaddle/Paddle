@@ -49,6 +49,9 @@ message TensorDistAttrProto {
   // If the dynamic_dims[i] is True, the i-th dimension of the corresponding tensor 
   // is dynamic changed. Otherwise, the i-th dimension of the tensor is static determined. 
   repeated bool dynamic_dims = 4;
+
+  // This field is used to distinguish vars which are in same process_mesh and in different vpp chunk
+  optional int64 chunk_id = 5;
 }
 
 // This distributed attribute describes how to distribute the corresponding operator,
@@ -81,6 +84,9 @@ message OperatorDistAttrProto {
   // This field tells which distributed implementations of this corresponding operator 
   // will be selected for the actual computation.
   optional int64 impl_idx = 5;
+
+  // This field is used to distinguish ops which are in same process_mesh and in different vpp chunk
+  optional int64 chunk_id = 6;
 }
 
 // This proto describes the capability of one device such as the computation and memory.

@@ -18,8 +18,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/thread_data_registry.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/os_info.h"
 
 namespace phi {
@@ -245,7 +245,7 @@ class HostEventRecorder {
   void RecordEvent(Args &&...args) {
     // Get thread local ThreadEventRecorder
     // If not exists, we create a new one.
-    // Both HostEventRecorder and thread-local varibale in
+    // Both HostEventRecorder and thread-local variable in
     // ThreadEventRecorderRegistry keep the shared pointer. We add this to
     // prevent ThreadEventRecorder being destroyed by thread-local variable in
     // ThreadEventRecorderRegistry and lose data.

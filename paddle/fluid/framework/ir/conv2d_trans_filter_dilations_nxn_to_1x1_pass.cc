@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/quantize_helper.h"
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -73,23 +74,23 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::ApplyImpl(ir::Graph* graph) const {
 template <class T>
 static void conv2d_dilation_trans_fn(const T* weights_data,
                                      T* new_weights_data,
-                                     int kn,
-                                     int kc,
-                                     int kh,
-                                     int kw,
-                                     int new_kh,
-                                     int new_kw,
-                                     int dilation_h,
-                                     int dilation_w) {
-  for (int n = 0; n < kn; n++) {
-    for (int c = 0; c < kc; c++) {
-      for (int h = 0; h < kh; h++) {
-        auto h_offset = dilation_h * h;
-        for (int w = 0; w < kw; w++) {
-          auto w_offset = dilation_w * w;
-          auto new_offset = n * kc * new_kh * new_kw + c * new_kh * new_kw +
-                            h_offset * new_kw + w_offset;
-          auto old_offset = n * kc * kh * kw + c * kh * kw + h * kw + w;
+                                     uint64_t kn,
+                                     uint64_t kc,
+                                     uint64_t kh,
+                                     uint64_t kw,
+                                     uint64_t new_kh,
+                                     uint64_t new_kw,
+                                     uint64_t dilation_h,
+                                     uint64_t dilation_w) {
+  for (uint64_t n = 0; n < kn; n++) {
+    for (uint64_t c = 0; c < kc; c++) {
+      for (uint64_t h = 0; h < kh; h++) {
+        uint64_t h_offset = dilation_h * h;
+        for (uint64_t w = 0; w < kw; w++) {
+          uint64_t w_offset = dilation_w * w;
+          uint64_t new_offset = n * kc * new_kh * new_kw + c * new_kh * new_kw +
+                                h_offset * new_kw + w_offset;
+          uint64_t old_offset = n * kc * kh * kw + c * kh * kw + h * kw + w;
           new_weights_data[new_offset] = weights_data[old_offset];
         }
       }
@@ -112,6 +113,9 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
     auto weights_name = conv2d->Op()->Input("Filter")[0];
     auto dilations =
         conv2d->Op()->GetAttrIfExists<std::vector<int>>("dilations");
+    // For kunlunxin, if the dilation is bigger than 8, xdnn will occur
+    // XDNN_NO_ENOUGH_WORKSPACE error.
+    if (dilations[0] >= 8 || dilations[1] >= 8) return;
     auto* weights =
         scope->FindVar(weights_name)->GetMutable<phi::DenseTensor>();
     auto weights_shape = weights->dims();
@@ -124,10 +128,11 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
     auto* new_weights =
         scope->Var(new_weights_name)->GetMutable<phi::DenseTensor>();
     new_weights->Resize({weights_shape[0], weights_shape[1], new_kh, new_kw});
+    auto* cpu_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     if (weights->dtype() == phi::DataType::FLOAT32) {
-      auto weights_data = weights->mutable_data<float>(platform::CPUPlace());
-      auto* new_weights_data =
-          new_weights->mutable_data<float>(platform::CPUPlace());
+      auto weights_data = weights->data<float>();
+      auto* new_weights_data = cpu_ctx->Alloc<float>(new_weights);
       memset(new_weights_data, 0, new_weights->numel() * sizeof(float));
       conv2d_dilation_trans_fn<float>(weights_data,
                                       new_weights_data,
@@ -140,10 +145,8 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
                                       dilations[0],
                                       dilations[1]);
     } else if (weights->dtype() == phi::DataType::FLOAT16) {
-      auto weights_data =
-          weights->mutable_data<phi::dtype::float16>(platform::CPUPlace());
-      auto* new_weights_data =
-          new_weights->mutable_data<phi::dtype::float16>(platform::CPUPlace());
+      auto weights_data = weights->data<phi::dtype::float16>();
+      auto* new_weights_data = cpu_ctx->Alloc<phi::dtype::float16>(new_weights);
       memset(new_weights_data,
              0,
              new_weights->numel() * sizeof(phi::dtype::float16));
@@ -158,16 +161,37 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
           new_kw,
           dilations[0],
           dilations[1]);
+    } else if (weights->dtype() == phi::DataType::INT8) {
+      auto weights_data = weights->data<int8_t>();
+      auto* new_weights_data = cpu_ctx->Alloc<int8_t>(new_weights);
+      memset(new_weights_data, 0, new_weights->numel() * sizeof(int8_t));
+      conv2d_dilation_trans_fn<int8_t>(weights_data,
+                                       new_weights_data,
+                                       static_cast<int>(weights_shape[0]),
+                                       static_cast<int>(weights_shape[1]),
+                                       kh,
+                                       kw,
+                                       new_kh,
+                                       new_kw,
+                                       dilations[0],
+                                       dilations[1]);
+      // Update new weights quant scales
+      std::unordered_map<std::string, std::vector<float>> var_quant_scales =
+          GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
+      std::unordered_map<std::string, std::vector<float>> new_weights_scale{
+          {new_weights_name, var_quant_scales[weights_name]}};
+      SaveQuantInfoInTheGraph(
+          graph, "has_quant_info", "var_quant_scales", new_weights_scale);
     } else {
-      VLOG(3)
-          << "Transfilter only support float32/float16 dtype of weights -- do "
-             "nothing and break.";
-      return;  // Only support fp32/fp16 dtype
+      VLOG(3) << "Transfilter only support float32/float16/int8 dtype of "
+                 "weights -- do "
+                 "nothing and break.";
+      return;
     }
 
     VarDesc new_weights_desc(new_weights_name);
     new_weights_desc.SetPersistable(true);
-    new_weights_desc.SetShape(vectorize(new_weights->dims()));
+    new_weights_desc.SetShape(common::vectorize(new_weights->dims()));
     new_weights_desc.SetDataType(
         framework::TransToProtoVarType(new_weights->dtype()));
     auto* new_weights_node = graph->CreateVarNode(&new_weights_desc);
@@ -179,6 +203,10 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
     conv2d->Op()->SetAttr("dilations", std::vector<int>({1, 1}));
     conv2d->Op()->RenameInput(weights_name, new_weights_name);
     IR_NODE_LINK_TO(new_weights_node, conv2d);
+    LOG(INFO) << "Transfilter dilations from " << Vec2Str<int>(dilations)
+              << " to (1, 1) successfully, ori_weights: " << weights_name << "["
+              << weights->dims() << "], new_weights: " << new_weights_name
+              << "[" << new_weights->dims() << "]";
     found_count++;
   };
   gpd(graph, handler);

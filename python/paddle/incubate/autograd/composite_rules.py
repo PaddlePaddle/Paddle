@@ -179,8 +179,9 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
             bias = reshape(bias, x.shape[begin_norm_axis:])
         out = out + bias
 
-    mean_ = reshape(mean_, [-1])
-    variance = reshape(variance, [-1])
+    # keep the mean and variance shape as input x before begin_norm_axis
+    mean_ = reshape(mean_, x.shape[:begin_norm_axis])
+    variance = reshape(variance, x.shape[:begin_norm_axis])
     if is_amp:
         out = cast(out, dtype)
     return out, mean_, variance
@@ -289,7 +290,7 @@ def mean_composite(x, axis, keepdim):
 @REGISTER_COMPOSITE('expand_v2')
 def expand_v2_composite(x, shape):
     """
-    define composite rule of op expnad_v2, expand_v2->expand
+    define composite rule of op expand_v2, expand_v2->expand
     repeat_times = shape / x.shape
     out = tile(x, repeat_times = repeat_times)
     """
@@ -323,7 +324,7 @@ def expand_v2_composite(x, shape):
 @REGISTER_COMPOSITE('expand_as_v2')
 def expand_as_v2_composite(x, y, target_shape):
     """
-    define composite rule of op expnad_as_v2, expand_as_v2->expand_as
+    define composite rule of op expand_as_v2, expand_as_v2->expand_as
     repeat_times = target_shape / x.shape
     out = tile(x, repeat_times = repeat_times)
     """
@@ -419,7 +420,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
 
     if upscale_in_train:
         if not is_test:
-            # Process p=1.0 for avoid devide zero error (x*mask/(1.0-p))
+            # Process p=1.0 for avoid divide zero error (x*mask/(1.0-p))
             if p == 1.0:
                 return 0.0 * x, zeros(x.shape, core.VarDesc.VarType.UINT8)
             else:
@@ -456,7 +457,7 @@ def hard_swish_composite(x):
     """define composite rule of op hard_swish.
     offset=3, threshold=6, scale=6
     out = minimum(
-        maxmum(x + offset, 0), threshold
+        maximum(x + offset, 0), threshold
     ) * x / scale
     """
     threshold = 6.0

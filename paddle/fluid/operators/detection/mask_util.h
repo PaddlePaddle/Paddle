@@ -17,17 +17,19 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/utils/test_macros.h"
+
 namespace paddle {
 namespace operators {
 
-void Poly2Mask(const float* ploy, int k, int h, int w, uint8_t* mask);
+TEST_API void Poly2Mask(const float* ploy, int k, int h, int w, uint8_t* mask);
 
-void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
-                float* boxes);
+TEST_API void Poly2Boxes(
+    const std::vector<std::vector<std::vector<float>>>& polys, float* boxes);
 
-void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
-                      const float* box,
-                      int M,
-                      uint8_t* mask);
+TEST_API void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
+                               const float* box,
+                               int M,
+                               uint8_t* mask);
 }  // namespace operators
 }  // namespace paddle

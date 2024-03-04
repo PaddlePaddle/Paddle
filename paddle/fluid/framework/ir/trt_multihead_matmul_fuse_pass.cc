@@ -791,8 +791,8 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
     auto combined_w_dims =
-        phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
+        common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    auto combined_bias_dims = common::make_ddim({3, bq_tensor->dims()[0]});
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = mul0_w->Var();
@@ -1257,8 +1257,8 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
     auto combined_w_dims =
-        phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
+        common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    auto combined_bias_dims = common::make_ddim({3, bq_tensor->dims()[0]});
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = mul0_w->Var();

@@ -12,8 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "test/cpp/pir/tools/test_dialect.h"
+#include "paddle/pir/include/core/ir_printer.h"
 #include "test/cpp/pir/tools/test_op.h"
 namespace test {
-void TestDialect::initialize() { RegisterOps<RegionOp, BranchOp>(); }
+
+TestDialect::TestDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<TestDialect>()) {
+  initialize();
+}
+void TestDialect::initialize() {
+  RegisterOps<RegionOp,
+              BranchOp,
+              Operation1,
+              Operation2,
+              TraitExampleOp,
+              SameOperandsShapeTraitOp1,
+              SameOperandsShapeTraitOp2,
+              SameOperandsAndResultShapeTraitOp1,
+              SameOperandsAndResultShapeTraitOp2,
+              SameOperandsAndResultShapeTraitOp3,
+              SameOperandsElementTypeTraitOp1,
+              SameOperandsElementTypeTraitOp2,
+              SameOperandsAndResultElementTypeTraitOp1,
+              SameOperandsAndResultElementTypeTraitOp2,
+              SameOperandsAndResultElementTypeTraitOp3,
+              SameOperandsAndResultTypeTraitOp1,
+              SameOperandsAndResultTypeTraitOp2,
+              SameOperandsAndResultTypeTraitOp3>();
+}
+
+pir::OpPrintFn TestDialect::PrintOperation(pir::Operation *op) const {
+  return [](pir::Operation *op, pir::IrPrinter &printer) {
+    printer.PrintOpResult(op);
+    printer.os << " =";
+
+    printer.os << " \"" << op->name() << "\"";
+    printer.PrintOpOperands(op);
+  };
+}
 }  // namespace test
 IR_DEFINE_EXPLICIT_TYPE_ID(test::TestDialect)

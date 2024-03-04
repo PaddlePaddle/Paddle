@@ -20,9 +20,6 @@
 
 namespace phi {
 
-using phi::funcs::gpc_free_polygon;
-using phi::funcs::gpc_polygon_clip;
-
 template <class T>
 class Point_ {
  public:
@@ -61,13 +58,13 @@ void Array2Poly(const T* box,
                 phi::funcs::gpc_polygon* poly) {
   size_t pts_num = box_size / 2;
   (*poly).num_contours = 1;
-  (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
+  (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));  // NOLINT
   (*poly).hole[0] = 0;
-  (*poly).contour =
-      (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
+  (*poly).contour = (phi::funcs::gpc_vertex_list*)malloc(  // NOLINT
+      sizeof(phi::funcs::gpc_vertex_list));
   (*poly).contour->num_vertices = static_cast<int>(pts_num);
-  (*poly).contour->vertex = (phi::funcs::gpc_vertex*)malloc(
-      sizeof(phi::funcs::gpc_vertex) * pts_num);  // NOLINT
+  (*poly).contour->vertex = (phi::funcs::gpc_vertex*)malloc(  // NOLINT
+      sizeof(phi::funcs::gpc_vertex) * pts_num);
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = box[2 * i];
     (*poly).contour->vertex[i].y = box[2 * i + 1];
@@ -79,13 +76,13 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec,
                    phi::funcs::gpc_polygon* poly) {
   int pts_num = vec.size();
   (*poly).num_contours = 1;
-  (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
+  (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));  // NOLINT
   (*poly).hole[0] = 0;
-  (*poly).contour =
-      (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
+  (*poly).contour = (phi::funcs::gpc_vertex_list*)malloc(  // NOLINT
+      sizeof(phi::funcs::gpc_vertex_list));
   (*poly).contour->num_vertices = pts_num;
-  (*poly).contour->vertex =
-      (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
+  (*poly).contour->vertex = (phi::funcs::gpc_vertex*)malloc(  // NOLINT
+      sizeof(phi::funcs::gpc_vertex) * pts_num);
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = vec[i].x;
     (*poly).contour->vertex[i].y = vec[i].y;
@@ -381,7 +378,7 @@ void MultiClassNMS(const Context& ctx,
   *num_nmsed_out = num_det;
   const T* scores_data = scores.data<T>();
   if (keep_top_k > -1 && num_det > keep_top_k) {
-    const T* sdata;
+    const T* sdata = nullptr;
     std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
     for (const auto& it : *indices) {
       int label = it.first;
@@ -441,7 +438,7 @@ void MultiClassOutput(const Context& ctx,
   auto* scores_data = scores.data<T>();
   auto* bboxes_data = bboxes.data<T>();
   auto* odata = out->data<T>();
-  const T* sdata;
+  const T* sdata = nullptr;
   DenseTensor bbox;
   bbox.Resize({scores.dims()[0], box_size});
   int count = 0;
@@ -456,7 +453,7 @@ void MultiClassOutput(const Context& ctx,
 
     for (auto idx : indices) {
       odata[count * out_dim] = label;  // label
-      const T* bdata;
+      const T* bdata = nullptr;
       if (scores_size == 3) {
         bdata = bboxes_data + idx * box_size;
         odata[count * out_dim + 1] = sdata[idx];  // score
@@ -494,7 +491,7 @@ void MultiClassNMSKernel(const Context& ctx,
                          DenseTensor* nms_rois_num) {
   bool return_index = index != nullptr;
   bool has_roisnum = rois_num.get_ptr() != nullptr;
-  auto score_dims = phi::vectorize<int>(scores.dims());
+  auto score_dims = common::vectorize<int>(scores.dims());
   auto score_size = score_dims.size();
 
   std::vector<std::map<int, std::vector<int>>> all_indices;

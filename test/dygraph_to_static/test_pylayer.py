@@ -14,10 +14,21 @@
 
 """Tests for PyLayer of Dynamic-to-Static.
 Only test simple cases here."""
+import sys
+from pathlib import Path
 
+from dygraph_to_static_utils import enable_to_static_guard
+
+sys.path.append(
+    str(Path(__file__).absolute().parent.parent.joinpath("legacy_test"))
+)
+
+import os
+import tempfile
 import unittest
 
 import numpy as np
+from test_jit_save_load import train
 
 import paddle
 from paddle.autograd.py_layer import PyLayer
@@ -32,9 +43,7 @@ def compare_result(dygraph_res, static_res, rtol=1e-5, atol=0):
         static_res.detach().numpy(),
         rtol=rtol,
         atol=atol,
-        err_msg='dygraph result is {}\nstatic_result is {}'.format(
-            dygraph_res, static_res
-        ),
+        err_msg=f'dygraph result is {dygraph_res}\nstatic_result is {static_res}',
     )
 
 
@@ -53,7 +62,7 @@ class scaled_layer_1(PyLayer):
 class scaled_layer_2(PyLayer):
     @staticmethod
     def forward(ctx, x1, x2):
-        y = x1 * x2
+        y = 3 * x1 + x2 / 5
         return y
 
     @staticmethod
@@ -77,6 +86,78 @@ class cus_tanh_1(PyLayer):
         return grad
 
 
+class cus_tanh_2(PyLayer):
+    @staticmethod
+    def forward(ctx, x, func1, func2=paddle.square):
+        ctx.func = func2
+        y = func1(x)
+        ctx.save_for_backward(y)
+        return y
+
+    @staticmethod
+    def backward(ctx, dy):
+        (y,) = ctx.saved_tensor()
+        grad = dy * (1 - ctx.func(y))
+        return grad
+
+
+class cus_tanh_3(PyLayer):
+    @staticmethod
+    def forward(ctx, x1, x2, func1, func2=paddle.square):
+        ctx.func = func2
+        y1 = func1(x1)
+        y2 = func1(x2)
+        ctx.save_for_backward(y1, y2)
+        return 1, None, y1, y2, ''
+
+    @staticmethod
+    def backward(ctx, dy1, dy2):
+        y1, y2 = ctx.saved_tensor()
+        re1 = dy1 * (1 - ctx.func(y1))
+        re2 = dy2 * (1 - paddle.square(y2))
+        return re1, None
+
+
+def user_defined_tanh(x):
+    y = paddle.tanh(x)
+    return y
+
+
+def user_defined_square(x):
+    y = paddle.square(x)
+    return y
+
+
+class cus_tanh_4(PyLayer):
+    @staticmethod
+    def forward(ctx, x, func, name="cus_tanh_4"):
+        ctx.func = func
+        y = user_defined_tanh(x)
+        ctx.save_for_backward(y)
+        return y
+
+    @staticmethod
+    def backward(ctx, dy):
+        (y,) = ctx.saved_tensor()
+        grad = dy * (1 - ctx.func(y))
+        return grad
+
+
+class cus_sigmoid(PyLayer):
+    @staticmethod
+    def forward(ctx, x, func1, func2):
+        ctx.func = func2
+        y = 1 / (1 + func1(-x))
+        ctx.save_for_backward(x)
+        return y
+
+    @staticmethod
+    def backward(ctx, dy):
+        (x,) = ctx.saved_tensor()
+        grad = dy * ctx.func(x) * (1 - ctx.func(x))
+        return grad
+
+
 class nested_layer(PyLayer):
     @staticmethod
     def forward(ctx, x1, x2):
@@ -94,22 +175,46 @@ class nested_layer(PyLayer):
 
 
 class SimpleNet_1(paddle.nn.Layer):
-    def __init__(self):
+    def __init__(self, in_size, out_size):
         super().__init__()
-        self.linear = paddle.nn.Linear(4, 8)
+        self.linear = paddle.nn.Linear(in_size, out_size)
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self, data):
         hidden = self.linear(data)
         z = cus_tanh_1.apply(hidden)
         return z
 
 
+class SimpleNet_2(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear = paddle.nn.Linear(in_size, out_size)
+
+    def forward(self, x):
+        y = self.linear(x)
+        out = cus_tanh_2.apply(y, func1=paddle.tanh)
+        return out
+
+
+class SimpleNet_3(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear = paddle.nn.Linear(in_size, out_size)
+
+    def forward(self, x):
+        y = self.linear(x)
+        out = cus_sigmoid.apply(
+            y, func1=paddle.exp, func2=paddle.nn.functional.sigmoid
+        )
+        return out
+
+
 class SimpleNetInplace(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self, data):
         data = data**2
         z = paddle.tanh(data)
@@ -117,21 +222,63 @@ class SimpleNetInplace(paddle.nn.Layer):
         return z
 
 
+class SimplePyLayerNet(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear = paddle.nn.Linear(in_size, out_size)
+
+    @paddle.jit.to_static(full_graph=True)
+    def forward(self, x):
+        y = self.linear(x)
+        out = cus_tanh_2.apply(y, func1=paddle.tanh)
+        out = paddle.mean(out)
+        return out
+
+
+class SimplePyLayerNetMultiIn(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear1 = paddle.nn.Linear(in_size, out_size)
+        self.linear2 = paddle.nn.Linear(in_size, out_size)
+
+    @paddle.jit.to_static(full_graph=True)
+    def forward(self, x1, x2):
+        y1 = self.linear1(x1)
+        y2 = self.linear1(x2)
+        out = cus_tanh_2.apply(y1, paddle.tanh)
+        out = out + y2
+        out = paddle.mean(out)
+        return out
+
+
+class SimplePyLayerNetStopGrad(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear = paddle.nn.Linear(in_size, out_size)
+
+    @paddle.jit.to_static(full_graph=True)
+    def forward(self, x):
+        y = self.linear(x)
+        y.stop_gradient = True
+        out = cus_tanh_2.apply(y, func1=paddle.tanh)
+        return out
+
+
 class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
-        self.to_static = False
+        self.to_static: bool = False
 
     def _run(self, *input_args, **input_kwargs):
         assert getattr(
             self, "dygraph_func", None
         ), "Please setting `self.dygraph_func` before calling `self._run`"
 
-        paddle.jit.enable_to_static(self.to_static)
-        paddle.set_device(self.place)
-        result = self.dygraph_func(*input_args, **input_kwargs)
-        result.mean().backward()
-        return result
+        with enable_to_static_guard(self.to_static):
+            paddle.set_device(self.place)
+            result = self.dygraph_func(*input_args, **input_kwargs)
+            result.mean().backward()
+            return result
 
     def _run_dygraph(self, *args, **kwargs):
         self.to_static = False
@@ -175,7 +322,7 @@ class TestPyLayerBase(unittest.TestCase):
                 dygraph_inp_kwargs[k].stop_gradient = False
                 static_inp_kwargs[k].stop_gradient = False
 
-        # Step2. Run the dygraph and the static seperately
+        # Step2. Run the dygraph and the static separately
         dygraph_res = self._run_dygraph(*dygraph_inp_args, **dygraph_inp_kwargs)
         static_res = self._run_static(*static_inp_args, **static_inp_kwargs)
 
@@ -214,7 +361,7 @@ class TestPyLayerBase(unittest.TestCase):
 
 class TestPyLayerWithoutContext(TestPyLayerBase):
     def test_single_in_single_out(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x):
             y = scaled_layer_1.apply(x)
             return y
@@ -227,7 +374,7 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         self._run_and_compare(input1)
 
     def test_multi_in_single_out(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x1, x2):
             y = scaled_layer_2.apply(x1, x2)
             return y
@@ -244,7 +391,7 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
 
 class TestPyLayerWithContext(TestPyLayerBase):
     def test_single_in_single_out(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x):
             y = cus_tanh_1.apply(x)
             return y
@@ -257,7 +404,7 @@ class TestPyLayerWithContext(TestPyLayerBase):
         self._run_and_compare(input1)
 
     def test_nested_pylayer(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x1, x2):
             y = nested_layer.apply(x1, x2)
             return y
@@ -271,10 +418,69 @@ class TestPyLayerWithContext(TestPyLayerBase):
 
         self._run_and_compare(input1, input2)
 
+    def test_apply_kwargs_pylayer(self):
+        @paddle.jit.to_static(full_graph=True)
+        def test_func(x1, x2):
+            y = scaled_layer_2.apply(x1=x2, x2=x1)
+            return y
+
+        self.dygraph_func = test_func
+
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input2 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+        input2.stop_gradient = False
+
+        self._run_and_compare(input1, input2)
+
+    def test_non_variable_inputs(self):
+        @paddle.jit.to_static(full_graph=True)
+        def test_func(x):
+            y = cus_tanh_2.apply(x, func1=paddle.tanh)
+            return y
+
+        self.dygraph_func = test_func
+
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+
+        self._run_and_compare(input1)
+
+    def test_simple_pylayer_return_none_with_no_grad(self):
+        @paddle.jit.to_static(full_graph=True)
+        def test_func(input1, input2):
+            z = cus_tanh_3.apply(input1, input2, paddle.tanh, paddle.square)
+            z = z[2] + z[3]
+            return z
+
+        self.dygraph_func = test_func
+
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input2 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+        input2.stop_gradient = True
+
+        self._run_and_compare(input1, input2)
+
+    def test_non_variable_inputs_and_userdefined_call(self):
+        @paddle.jit.to_static(full_graph=True)
+        def test_func(input1):
+            y = cus_tanh_4.apply(
+                input1, func=user_defined_square, name="cus_tanh_test"
+            )
+            return y
+
+        self.dygraph_func = test_func
+
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+
+        self._run_and_compare(input1)
+
 
 class TestPyLayerInsideNet(TestPyLayerBase):
     def test_single_in_single_out(self):
-        simple_net = SimpleNet_1()
+        simple_net = SimpleNet_1(in_size=4, out_size=8)
         self.dygraph_func = simple_net
 
         input1 = paddle.randn([3, 4]).astype("float32")
@@ -288,6 +494,140 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
         self._run_and_compare(input1)
+
+    def test_non_variable_args_pylayernet(self):
+        simple_net = SimplePyLayerNet(in_size=4, out_size=8)
+        self.dygraph_func = simple_net
+
+        input1 = paddle.randn([3, 4]).astype("float32")
+        input1.stop_gradient = False
+        self._run_and_compare(input1)
+
+    def test_pylayer_net_with_no_grad(self):
+        simple_net = SimplePyLayerNetMultiIn(in_size=4, out_size=8)
+        self.dygraph_func = simple_net
+
+        input1 = paddle.randn([3, 4]).astype("float32")
+        input2 = paddle.randn([3, 4]).astype("float32")
+        input1.stop_gradient = False
+        input2.stop_gradient = True
+        self._run_and_compare(input1, input2)
+
+
+class PyLayerTrainHelper(unittest.TestCase):
+    def setUp(self):
+        self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
+
+    def _run_train(self, to_static: bool, layer_builder, build_strategy=None):
+        """
+        Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
+        """
+        paddle.set_device(self.place)
+        np.random.seed(SEED)
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+
+        # net = self.build_layer()
+        net = layer_builder()
+        if to_static:
+            net = paddle.jit.to_static(
+                net, build_strategy=build_strategy, full_graph=True
+            )
+
+        _, _, avg_loss = train(net)
+        return avg_loss.numpy()
+
+
+class TestTrainingPyLayer(PyLayerTrainHelper):
+    def test_tanh_pylayer(self):
+        build_layer = lambda: SimpleNet_2(784, 20)
+
+        static_loss = self._run_train(to_static=True, layer_builder=build_layer)
+        dygraph_loss = self._run_train(
+            to_static=False, layer_builder=build_layer
+        )
+
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
+        )
+
+    def test_sigmoid_pylayer(self):
+        build_layer = lambda: SimpleNet_3(784, 20)
+
+        static_loss = self._run_train(to_static=True, layer_builder=build_layer)
+        dygraph_loss = self._run_train(
+            to_static=False, layer_builder=build_layer
+        )
+
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
+        )
+
+    def test_pylayer_net_no_grad(self):
+        build_layer = lambda: SimplePyLayerNetStopGrad(784, 20)
+
+        static_loss = self._run_train(to_static=True, layer_builder=build_layer)
+        dygraph_loss = self._run_train(
+            to_static=False, layer_builder=build_layer
+        )
+
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
+        )
+
+
+class TestPyLayerJitSaveLoad(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(
+            self.temp_dir.name, "test_pylayer/jit_save_model"
+        )
+        # enable dygraph mode
+        paddle.base.enable_dygraph()
+        # config seed
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def train_and_save_model(self, model_path=None):
+        layer = SimpleNet_1(784, 20)
+        example_inputs, layer, _ = train(layer)
+        final_model_path = model_path if model_path else self.model_path
+        orig_input_types = [type(x) for x in example_inputs]
+        paddle.jit.save(
+            layer=layer, path=final_model_path, input_spec=example_inputs
+        )
+        new_input_types = [type(x) for x in example_inputs]
+        self.assertEqual(orig_input_types, new_input_types)
+        return layer
+
+    def test_save_load(self):
+        # train and save model
+        train_layer = self.train_and_save_model()
+        # load model
+        loaded_layer = paddle.jit.load(self.model_path)
+        self.load_and_inference(train_layer, loaded_layer)
+
+    def load_and_inference(self, train_layer, infer_layer):
+        train_layer.eval()
+        infer_layer.eval()
+        # inference & compare
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
+        train_layer_result = train_layer(x).numpy()
+        infer_layer_result = infer_layer(x).numpy()
+
+        np.testing.assert_array_equal(train_layer_result, infer_layer_result)
 
 
 if __name__ == "__main__":

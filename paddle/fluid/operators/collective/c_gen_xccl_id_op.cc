@@ -52,34 +52,7 @@ class CGenXCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
-    int rank = Attr<int>("rank");
-    int ring_id = Attr<int>("ring_id");
-
-    std::function<std::string(size_t)> func = [&](size_t i) -> std::string {
-      return Output("Out");
-    };
-
-    std::string endpoint = Attr<std::string>("endpoint");
-    int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
-
-    std::vector<phi::ccl::CCLRootId> xccl_ids;
-    xccl_ids.resize(1);
-
-    if (rank == 0) {
-      for (size_t i = 0; i < xccl_ids.size(); ++i) {
-        phi::DeviceManager::CCLGetUniqueId(dev_place.GetDeviceType(),
-                                           &xccl_ids[i]);
-      }
-      std::vector<std::string> endpoint_list =
-          Attr<std::vector<std::string>>("other_endpoints");
-      platform::SendBroadCastCommID(endpoint_list, &xccl_ids, ring_id);
-    } else {
-      platform::RecvBroadCastCommID(server_fd, endpoint, &xccl_ids, ring_id);
-    }
-
-    CopyXCCLIDToVar(xccl_ids, func, scope);
-  }
+               const platform::Place& dev_place) const override {}
 };
 
 #else
@@ -100,7 +73,7 @@ class CGenXCCLIdOp : public framework::OperatorBase {
 class CGenXCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "Raw variable contains a XCCL UniqueId instaces.");
+    AddOutput("Out", "Raw variable contains a XCCL UniqueId instances.");
     AddComment(R"DOC(
 CGenXCCLId operator
 

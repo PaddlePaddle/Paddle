@@ -14,10 +14,10 @@
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace platform {
@@ -43,7 +43,7 @@ inline phi::GPUPlace CUDAGraphCapturingPlace() {
 
 using phi::backends::gpu::IsCUDAGraphCapturing;
 
-using phi::backends::gpu::AddResetCallbackIfCapturingCUDAGraph;
+using phi::backends::gpu::AddPostResetCallbackIfCapturingCUDAGraph;
 
 using phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph;
 

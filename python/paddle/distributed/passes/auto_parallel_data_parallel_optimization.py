@@ -63,7 +63,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def __init__(self):
         super().__init__()
-        # NOTE not use depence on loss and param_grads
+        # NOTE not use dependence on loss and param_grads
         self.set_attr("dist_context", None)
         self.set_attr("global_rank", -1)
         self.set_attr("use_sharding", False)
@@ -217,7 +217,7 @@ class DataParallelOptimizationPass(PassBase):
             if is_loss_grad_op(op):
                 assert op.type == 'fill_constant', (
                     "loss_grad_op must be fill_constant op, "
-                    "but this op is {}".format(op.type)
+                    f"but this op is {op.type}"
                 )
                 assert op.has_attr('value')
                 loss_scale = float(op.attr('value'))
@@ -245,14 +245,10 @@ class DataParallelOptimizationPass(PassBase):
             ):
                 assert op.has_attr(
                     'rescale_grad'
-                ), "Unexpected: op [{}] is supported to have [rescale_grad] attribute.".format(
-                    str(op)
-                )
+                ), f"Unexpected: op [{str(op)}] is supported to have [rescale_grad] attribute."
                 assert (
                     len(op.input("Grad")) == 1
-                ), "Unexpected: op [{}] is supported to have only one input grad var.".format(
-                    str(op)
-                )
+                ), f"Unexpected: op [{str(op)}] is supported to have only one input grad var."
 
                 grad_name = op.input("Grad")[0]
                 dp_degree = len(
@@ -310,11 +306,11 @@ class DataParallelOptimizationPass(PassBase):
 
         block = default_main_program().global_block()
 
-        # NOTE the naive overlap implement in static hybird parallel only sync comm stream
+        # NOTE the naive overlap implement in static hybrid parallel only sync comm stream
         # at the end of Backward phase, based on a strong constraint that
         # all communicating gradient would NOT be used after communication in Backward phase.
         # BUT this constraint will fail for scenario like Weight-Sharing and Higher-Order Differentiation,
-        # where gradient will be involved in other calculation between data-parallel allreduce kernel submmited
+        # where gradient will be involved in other calculation between data-parallel allreduce kernel submitted
         # into comm streams and the synchronization of comm stream at the end of Backward phase.
         # synchronization of  comm stream should add according to the usage of communicating gradients
         # to support Overlapping for Weight-Sharing and Higher-Order Differentiation.
@@ -498,9 +494,7 @@ class DataParallelOptimizationPass(PassBase):
             allreduce_op = block.ops[group.allreduce_op_idx]
             assert (
                 allreduce_op.type == 'c_allreduce_sum'
-            ), "should found c_allreduce_sum op but found {}".format(
-                str(allreduce_op)
-            )
+            ), f"should found c_allreduce_sum op but found {str(allreduce_op)}"
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
             )
@@ -524,7 +518,7 @@ class DataParallelOptimizationPass(PassBase):
                 new_out_name, out_dist_attr
             )
 
-            # remvoe un-used op
+            # remove un-used op
             remove_op_indices = (
                 group.remove_wait_op_indices
                 + group.remove_allreduce_op_indices
@@ -699,9 +693,7 @@ class DataParallelOptimizationPass(PassBase):
                 fused_grads
             )
             self._logger.debug(
-                "the following [{}] gradients are not fused: ".format(
-                    len(individual_grads)
-                )
+                f"the following [{len(individual_grads)}] gradients are not fused: "
             )
             self._logger.debug(f"individual gradient {individual_grads}")
 
@@ -764,9 +756,7 @@ class GradientsGroup:
             grad_op = self.ops[grad_op_idx]
             assert (
                 grad_var.name in grad_op.output_arg_names
-            ), "grad [{}] should be output of {}".format(
-                grad_var.name, str(grad_op)
-            )
+            ), f"grad [{grad_var.name}] should be output of {str(grad_op)}"
             self.coalesce_op_idx = grad_op_idx
 
     def finalize(self):

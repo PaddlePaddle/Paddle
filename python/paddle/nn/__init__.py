@@ -12,202 +12,158 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: import all neural network related api under this directory,
-# including layers, linear, conv, rnn etc.
-from .layer.container import LayerList  # noqa: F401
-from .layer.container import ParameterList  # noqa: F401
-from .layer.container import Sequential  # noqa: F401
-
-from .clip import ClipGradByGlobalNorm  # noqa: F401
-from .clip import ClipGradByNorm  # noqa: F401
-from .clip import ClipGradByValue  # noqa: F401
-from .decode import BeamSearchDecoder  # noqa: F401
-from .decode import dynamic_decode  # noqa: F401
-from .layer.activation import CELU  # noqa: F401
-from .layer.activation import ELU  # noqa: F401
-from .layer.activation import GELU  # noqa: F401
-from .layer.activation import Tanh  # noqa: F401
-from .layer.activation import Hardshrink  # noqa: F401
-from .layer.activation import Hardswish  # noqa: F401
-from .layer.activation import Hardtanh  # noqa: F401
-from .layer.activation import PReLU  # noqa: F401
-from .layer.activation import ReLU  # noqa: F401
-from .layer.activation import ReLU6  # noqa: F401
-from .layer.activation import SELU  # noqa: F401
-from .layer.activation import Silu  # noqa: F401
-from .layer.activation import LeakyReLU  # noqa: F401
-from .layer.activation import Sigmoid  # noqa: F401
-from .layer.activation import Hardsigmoid  # noqa: F401
-from .layer.activation import LogSigmoid  # noqa: F401
-from .layer.activation import Softmax  # noqa: F401
-from .layer.activation import Softmax2D  # noqa: F401
-from .layer.activation import Softplus  # noqa: F401
-from .layer.activation import Softshrink  # noqa: F401
-from .layer.activation import Softsign  # noqa: F401
-from .layer.activation import Swish  # noqa: F401
-from .layer.activation import Mish  # noqa: F401
-from .layer.activation import Tanhshrink  # noqa: F401
-from .layer.activation import ThresholdedReLU  # noqa: F401
-from .layer.activation import LogSoftmax  # noqa: F401
-from .layer.activation import Maxout  # noqa: F401
-from .layer.activation import RReLU  # noqa: F401
-from .layer.common import Pad1D  # noqa: F401
-from .layer.common import Pad2D  # noqa: F401
-from .layer.common import ZeroPad2D  # noqa: F401
-from .layer.common import Pad3D  # noqa: F401
-from .layer.common import CosineSimilarity  # noqa: F401
-from .layer.common import Embedding  # noqa: F401
-from .layer.common import Linear  # noqa: F401
-from .layer.common import Identity  # noqa: F401
-from .layer.common import Flatten  # noqa: F401
-from .layer.common import Upsample  # noqa: F401
-from .layer.common import UpsamplingNearest2D  # noqa: F401
-from .layer.common import UpsamplingBilinear2D  # noqa: F401
-from .layer.common import Bilinear  # noqa: F401
-from .layer.common import Dropout  # noqa: F401
-from .layer.common import Dropout2D  # noqa: F401
-from .layer.common import Dropout3D  # noqa: F401
-from .layer.common import AlphaDropout  # noqa: F401
-from .layer.common import Unfold  # noqa: F401
-from .layer.common import Fold  # noqa: F401
-from .layer.common import Unflatten  # noqa: F401
-from .layer.pooling import AvgPool1D  # noqa: F401
-from .layer.pooling import AvgPool2D  # noqa: F401
-from .layer.pooling import AvgPool3D  # noqa: F401
-from .layer.pooling import MaxPool1D  # noqa: F401
-from .layer.pooling import MaxPool2D  # noqa: F401
-from .layer.pooling import MaxPool3D  # noqa: F401
-from .layer.pooling import MaxUnPool1D  # noqa: F401
-from .layer.pooling import MaxUnPool2D  # noqa: F401
-from .layer.pooling import MaxUnPool3D  # noqa: F401
-from .layer.pooling import AdaptiveAvgPool1D  # noqa: F401
-from .layer.pooling import AdaptiveAvgPool2D  # noqa: F401
-from .layer.pooling import AdaptiveAvgPool3D  # noqa: F401
-from .layer.pooling import AdaptiveMaxPool1D  # noqa: F401
-from .layer.pooling import AdaptiveMaxPool2D  # noqa: F401
-from .layer.pooling import AdaptiveMaxPool3D  # noqa: F401
-
-from .layer.conv import Conv1D  # noqa: F401
-from .layer.conv import Conv2D  # noqa: F401
-from .layer.conv import Conv3D  # noqa: F401
-from .layer.conv import Conv1DTranspose  # noqa: F401
-from .layer.conv import Conv2DTranspose  # noqa: F401
-from .layer.conv import Conv3DTranspose  # noqa: F401
-
-from .layer.loss import BCEWithLogitsLoss  # noqa: F401
-from .layer.loss import CrossEntropyLoss  # noqa: F401
-from .layer.loss import HSigmoidLoss  # noqa: F401
-from .layer.loss import MSELoss  # noqa: F401
-from .layer.loss import L1Loss  # noqa: F401
-from .layer.loss import NLLLoss  # noqa: F401
-from .layer.loss import PoissonNLLLoss  # noqa: F401
-from .layer.loss import BCELoss  # noqa: F401
-from .layer.loss import KLDivLoss  # noqa: F401
-from .layer.loss import MarginRankingLoss  # noqa: F401
-from .layer.loss import MultiLabelSoftMarginLoss
-from .layer.loss import CTCLoss  # noqa: F401
-from .layer.loss import RNNTLoss  # noqa: F401
-from .layer.loss import SmoothL1Loss  # noqa: F401
-from .layer.loss import HingeEmbeddingLoss  # noqa: F401
-from .layer.loss import CosineEmbeddingLoss  # noqa: F401
-from .layer.loss import MultiMarginLoss
-from .layer.loss import TripletMarginWithDistanceLoss
-from .layer.loss import TripletMarginLoss
-from .layer.loss import SoftMarginLoss
-from .layer.loss import GaussianNLLLoss
-
-from .layer.norm import BatchNorm  # noqa: F401
-from .layer.norm import SyncBatchNorm  # noqa: F401
-from .layer.norm import GroupNorm  # noqa: F401
-from .layer.norm import LayerNorm  # noqa: F401
-from .layer.norm import SpectralNorm  # noqa: F401
-from .layer.norm import InstanceNorm1D  # noqa: F401
-from .layer.norm import InstanceNorm2D  # noqa: F401
-from .layer.norm import InstanceNorm3D  # noqa: F401
-from .layer.norm import BatchNorm1D  # noqa: F401
-from .layer.norm import BatchNorm2D  # noqa: F401
-from .layer.norm import BatchNorm3D  # noqa: F401
-from .layer.norm import LocalResponseNorm  # noqa: F401
-
-from .layer.rnn import RNNCellBase  # noqa: F401
-from .layer.rnn import SimpleRNNCell  # noqa: F401
-from .layer.rnn import LSTMCell  # noqa: F401
-from .layer.rnn import GRUCell  # noqa: F401
-from .layer.rnn import RNN  # noqa: F401
-from .layer.rnn import BiRNN  # noqa: F401
-from .layer.rnn import SimpleRNN  # noqa: F401
-from .layer.rnn import LSTM  # noqa: F401
-from .layer.rnn import GRU  # noqa: F401
-
-from .layer.transformer import MultiHeadAttention  # noqa: F401
-from .layer.transformer import TransformerEncoderLayer  # noqa: F401
-from .layer.transformer import TransformerEncoder  # noqa: F401
-from .layer.transformer import TransformerDecoderLayer  # noqa: F401
-from .layer.transformer import TransformerDecoder  # noqa: F401
-from .layer.transformer import Transformer  # noqa: F401
-from .layer.distance import PairwiseDistance  # noqa: F401
-
-from .layer.vision import PixelShuffle  # noqa: F401
-from .layer.vision import PixelUnshuffle  # noqa: F401
-from .layer.vision import ChannelShuffle  # noqa: F401
-from .layer.container import LayerDict  # noqa: F401
-
-from .layer.layers import Layer  # noqa: F401
-
-from .utils.spectral_norm_hook import spectral_norm
+from . import functional, initializer, quant, utils  # noqa: F401
+from .clip import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
+from .decode import BeamSearchDecoder, dynamic_decode
 
 # TODO: remove loss, keep it for too many used in unittests
 from .layer import loss  # noqa: F401
-
-from . import utils  # noqa: F401
-from . import functional  # noqa: F401
-from . import initializer  # noqa: F401
-from . import quant  # noqa: F401
-
-# TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
-from paddle.utils import deprecated
-
-
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.functional.diag_embed",
-    level=1,
-    reason="diag_embed in paddle.nn will be removed in future",
+from .layer.activation import (
+    CELU,
+    ELU,
+    GELU,
+    GLU,
+    SELU,
+    Hardshrink,
+    Hardsigmoid,
+    Hardswish,
+    Hardtanh,
+    LeakyReLU,
+    LogSigmoid,
+    LogSoftmax,
+    Maxout,
+    Mish,
+    PReLU,
+    ReLU,
+    ReLU6,
+    RReLU,
+    Sigmoid,
+    Silu,
+    Softmax,
+    Softmax2D,
+    Softplus,
+    Softshrink,
+    Softsign,
+    Swish,
+    Tanh,
+    Tanhshrink,
+    ThresholdedReLU,
 )
-def diag_embed(*args):
-    '''
-    alias name of paddle.nn.functional.diag_embed
-    '''
-    return functional.diag_embed(*args)
-
-
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.utils.remove_weight_norm",
-    level=1,
-    reason="remove_weight_norm in paddle.nn will be removed in future",
+from .layer.common import (
+    AlphaDropout,
+    Bilinear,
+    CosineSimilarity,
+    Dropout,
+    Dropout2D,
+    Dropout3D,
+    Embedding,
+    Flatten,
+    Fold,
+    Identity,
+    Linear,
+    Pad1D,
+    Pad2D,
+    Pad3D,
+    Unflatten,
+    Unfold,
+    Upsample,
+    UpsamplingBilinear2D,
+    UpsamplingNearest2D,
+    ZeroPad2D,
 )
-def remove_weight_norm(*args):
-    '''
-    alias name of paddle.nn.utils.remove_weight_norm
-    '''
-    return utils.remove_weight_norm(*args)
 
-
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.utils.weight_norm",
-    level=1,
-    reason="weight_norm in paddle.nn will be removed in future",
+# TODO: import all neural network related api under this directory,
+# including layers, linear, conv, rnn etc.
+from .layer.container import LayerDict, LayerList, ParameterList, Sequential
+from .layer.conv import (
+    Conv1D,
+    Conv1DTranspose,
+    Conv2D,
+    Conv2DTranspose,
+    Conv3D,
+    Conv3DTranspose,
 )
-def weight_norm(*args):
-    '''
-    alias name of paddle.nn.utils.weight_norm
-    '''
-    return utils.weight_norm(*args)
+from .layer.distance import PairwiseDistance
+from .layer.layers import Layer
+from .layer.loss import (
+    BCELoss,
+    BCEWithLogitsLoss,
+    CosineEmbeddingLoss,
+    CrossEntropyLoss,
+    CTCLoss,
+    GaussianNLLLoss,
+    HingeEmbeddingLoss,
+    HSigmoidLoss,
+    KLDivLoss,
+    L1Loss,
+    MarginRankingLoss,
+    MSELoss,
+    MultiLabelSoftMarginLoss,
+    MultiMarginLoss,
+    NLLLoss,
+    PoissonNLLLoss,
+    RNNTLoss,
+    SmoothL1Loss,
+    SoftMarginLoss,
+    TripletMarginLoss,
+    TripletMarginWithDistanceLoss,
+)
+from .layer.norm import (
+    BatchNorm,
+    BatchNorm1D,
+    BatchNorm2D,
+    BatchNorm3D,
+    GroupNorm,
+    InstanceNorm1D,
+    InstanceNorm2D,
+    InstanceNorm3D,
+    LayerNorm,
+    LocalResponseNorm,
+    SpectralNorm,
+    SyncBatchNorm,
+)
+from .layer.pooling import (
+    AdaptiveAvgPool1D,
+    AdaptiveAvgPool2D,
+    AdaptiveAvgPool3D,
+    AdaptiveMaxPool1D,
+    AdaptiveMaxPool2D,
+    AdaptiveMaxPool3D,
+    AvgPool1D,
+    AvgPool2D,
+    AvgPool3D,
+    FractionalMaxPool2D,
+    FractionalMaxPool3D,
+    MaxPool1D,
+    MaxPool2D,
+    MaxPool3D,
+    MaxUnPool1D,
+    MaxUnPool2D,
+    MaxUnPool3D,
+)
+from .layer.rnn import (
+    GRU,
+    LSTM,
+    RNN,
+    BiRNN,
+    GRUCell,
+    LSTMCell,
+    RNNCellBase,
+    SimpleRNN,
+    SimpleRNNCell,
+)
+from .layer.transformer import (
+    MultiHeadAttention,
+    Transformer,
+    TransformerDecoder,
+    TransformerDecoderLayer,
+    TransformerEncoder,
+    TransformerEncoderLayer,
+)
+from .layer.vision import ChannelShuffle, PixelShuffle, PixelUnshuffle
+from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
-
-__all__ = [  # noqa
+__all__ = [
     'BatchNorm',
     'CELU',
     'GroupNorm',
@@ -287,6 +243,7 @@ __all__ = [  # noqa
     'TransformerDecoderLayer',
     'CrossEntropyLoss',
     'GELU',
+    'GLU',
     'SELU',
     'Silu',
     'Conv2DTranspose',
@@ -339,4 +296,6 @@ __all__ = [  # noqa
     'SoftMarginLoss',
     'GaussianNLLLoss',
     'Unflatten',
+    'FractionalMaxPool2D',
+    'FractionalMaxPool3D',
 ]

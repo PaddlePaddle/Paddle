@@ -37,7 +37,7 @@ do
         do
             echo "Testcase: opt: ${opt}, onchip: ${onchip}, rts: ${rts}"
             echo "paddle.distributed.fleet.launch test with IPUs..."
-            python3.7 -m paddle.distributed.launch \
+            python3.8 -m paddle.distributed.launch \
             --devices=8 \
             ipu \
             --hosts=localhost \
@@ -50,12 +50,12 @@ do
 
             echo "paddle normal test with CPU..."
             export POPLAR_IPUMODEL=1
-            python3.7 test_dist_data_parallel_ipu.py ${opt} cpu_res.txt > cpu.log
+            python3.8 test_dist_data_parallel_ipu.py ${opt} cpu_res.txt > cpu.log
             unset POPLAR_IPUMODEL
             echo "paddle normal test with CPU...Done"
 
             echo "Compare results..."
-            python3.7 -c """${allclose_script}"""
+            python3.8 -c """${allclose_script}"""
             if [ $? -eq 0 ];then
             echo "Compare results...Done"
             else

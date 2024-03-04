@@ -19,13 +19,14 @@ import sys
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_default_and_pir,
+)
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
-from paddle import base
-from paddle.base.dygraph import to_variable
-from paddle.jit.api import to_static
 from paddle.nn import BatchNorm, Linear
 
 random.seed(0)
@@ -43,7 +44,7 @@ def parse_args():
     parser.add_argument(
         '--use_gpu',
         type=bool,
-        default=base.is_compiled_with_cuda(),
+        default=paddle.is_compiled_with_cuda(),
         help='default use gpu.',
     )
     args = parser.parse_args(
@@ -71,15 +72,15 @@ class ConvBNLayer(paddle.nn.Layer):
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=1,
-            weight_attr=base.param_attr.ParamAttr(),
+            weight_attr=paddle.ParamAttr(),
             bias_attr=False,
         )
 
         self._batch_norm = BatchNorm(
             num_filters,
             act=act,
-            param_attr=base.param_attr.ParamAttr(),
-            bias_attr=base.param_attr.ParamAttr(),
+            param_attr=paddle.ParamAttr(),
+            bias_attr=paddle.ParamAttr(),
         )
 
     def forward(self, inputs):
@@ -202,7 +203,6 @@ class TSM_ResNet(paddle.nn.Layer):
             ),
         )
 
-    @to_static
     def forward(self, inputs):
         y = paddle.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
@@ -293,106 +293,97 @@ def create_optimizer(cfg, params):
     return optimizer
 
 
-def train(args, fake_data_reader, to_static):
-    paddle.jit.enable_to_static(to_static)
-
+def train(args, fake_data_reader):
     config = parse_config(args.config)
     train_config = merge_configs(config, 'train', vars(args))
     valid_config = merge_configs(config, 'valid', vars(args))
     print_configs(train_config, 'Train')
 
-    place = base.CUDAPlace(0) if args.use_gpu else base.CPUPlace()
-
     random.seed(0)
     np.random.seed(0)
-    with base.dygraph.guard(place):
-        paddle.seed(1000)
-        paddle.framework.random._manual_program_seed(1000)
+    paddle.seed(1000)
+    paddle.framework.random._manual_program_seed(1000)
 
-        video_model = TSM_ResNet("TSM", train_config, 'Train')
+    video_model = paddle.jit.to_static(TSM_ResNet("TSM", train_config, 'Train'))
 
-        optimizer = create_optimizer(
-            train_config.TRAIN, video_model.parameters()
-        )
+    optimizer = create_optimizer(train_config.TRAIN, video_model.parameters())
 
-        train_reader = fake_data_reader.create_reader()
+    train_reader = fake_data_reader.create_reader()
 
-        ret = []
-        for epoch in range(train_config.TRAIN.epoch):
-            video_model.train()
-            total_loss = 0.0
-            total_acc1 = 0.0
-            total_acc5 = 0.0
-            total_sample = 0
-            for batch_id, data in enumerate(train_reader()):
-                x_data = np.array([item[0] for item in data])
-                y_data = np.array([item[1] for item in data]).reshape([-1, 1])
+    ret = []
+    for epoch in range(train_config.TRAIN.epoch):
+        video_model.train()
+        total_loss = 0.0
+        total_acc1 = 0.0
+        total_acc5 = 0.0
+        total_sample = 0
+        for batch_id, data in enumerate(train_reader()):
+            x_data = np.array([item[0] for item in data])
+            y_data = np.array([item[1] for item in data]).reshape([-1, 1])
 
-                imgs = to_variable(x_data)
-                labels = to_variable(y_data)
-                labels.stop_gradient = True
-                outputs = video_model(imgs)
-                loss = paddle.nn.functional.cross_entropy(
-                    input=outputs,
-                    label=labels,
-                    ignore_index=-1,
-                    reduction='none',
-                    use_softmax=False,
-                )
-                avg_loss = paddle.mean(loss)
-                acc_top1 = paddle.static.accuracy(
-                    input=outputs, label=labels, k=1
-                )
-                acc_top5 = paddle.static.accuracy(
-                    input=outputs, label=labels, k=5
-                )
+            imgs = paddle.to_tensor(x_data)
+            labels = paddle.to_tensor(y_data)
+            labels.stop_gradient = True
+            outputs = video_model(imgs)
+            loss = paddle.nn.functional.cross_entropy(
+                input=outputs,
+                label=labels,
+                ignore_index=-1,
+                reduction='none',
+                use_softmax=False,
+            )
+            avg_loss = paddle.mean(loss)
+            acc_top1 = paddle.static.accuracy(input=outputs, label=labels, k=1)
+            acc_top5 = paddle.static.accuracy(input=outputs, label=labels, k=5)
 
-                avg_loss.backward()
-                optimizer.minimize(avg_loss)
-                video_model.clear_gradients()
+            avg_loss.backward()
+            optimizer.minimize(avg_loss)
+            video_model.clear_gradients()
 
-                total_loss += float(avg_loss)
-                total_acc1 += float(acc_top1)
-                total_acc5 += float(acc_top5)
-                total_sample += 1
-
-                print(
-                    'TRAIN Epoch {}, iter {}, loss = {}, acc1 {}, acc5 {}'.format(
-                        epoch,
-                        batch_id,
-                        float(avg_loss),
-                        float(acc_top1),
-                        float(acc_top5),
-                    )
-                )
-                ret.extend(
-                    [
-                        float(avg_loss),
-                        float(acc_top1),
-                        float(acc_top5),
-                    ]
-                )
+            total_loss += float(avg_loss)
+            total_acc1 += float(acc_top1)
+            total_acc5 += float(acc_top5)
+            total_sample += 1
 
             print(
-                'TRAIN End, Epoch {}, avg_loss= {}, avg_acc1= {}, avg_acc5= {}'.format(
+                'TRAIN Epoch {}, iter {}, loss = {}, acc1 {}, acc5 {}'.format(
                     epoch,
-                    total_loss / total_sample,
-                    total_acc1 / total_sample,
-                    total_acc5 / total_sample,
+                    batch_id,
+                    float(avg_loss),
+                    float(acc_top1),
+                    float(acc_top5),
                 )
             )
-        return ret
+            ret.extend(
+                [
+                    float(avg_loss),
+                    float(acc_top1),
+                    float(acc_top5),
+                ]
+            )
+
+        print(
+            'TRAIN End, Epoch {}, avg_loss= {}, avg_acc1= {}, avg_acc5= {}'.format(
+                epoch,
+                total_loss / total_sample,
+                total_acc1 / total_sample,
+                total_acc5 / total_sample,
+            )
+        )
+    return ret
 
 
-class TestTsm(unittest.TestCase):
-    @test_and_compare_with_new_ir(False)
+class TestTsm(Dy2StTestBase):
+    @test_default_and_pir
     def test_dygraph_static_same_loss(self):
-        if base.is_compiled_with_cuda():
-            base.set_flags({"FLAGS_cudnn_deterministic": True})
+        if paddle.is_compiled_with_cuda():
+            paddle.set_flags({"FLAGS_cudnn_deterministic": True})
         args = parse_args()
         fake_data_reader = FakeDataReader("train", parse_config(args.config))
-        dygraph_loss = train(args, fake_data_reader, to_static=False)
-        static_loss = train(args, fake_data_reader, to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_loss = train(args, fake_data_reader)
+
+        static_loss = train(args, fake_data_reader)
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
 

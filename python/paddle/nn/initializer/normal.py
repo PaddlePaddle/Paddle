@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 
 from ...base import core, framework, unique_name
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place, in_dygraph_mode
+from ...base.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_pir_mode,
+)
 from .initializer import Initializer
 
 __all__ = []
@@ -52,9 +56,12 @@ class NormalInitializer(Initializer):
         Returns:
             The initialization op.
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, normal initializer not support lazy init for dist param."
         block = self._check_block(block)
 
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
 
         check_variable_and_dtype(
             var,
@@ -78,7 +85,17 @@ class NormalInitializer(Initializer):
             )
             out_var._share_underline_tensor_to(var)
             return None
-
+        elif in_pir_mode():
+            place = _current_expected_place()
+            out_var = _C_ops.gaussian(
+                var.shape,
+                self._mean,
+                self._std_dev,
+                self._seed,
+                var.dtype,
+                place,
+            )
+            return out_var
         else:
             op = block.append_op(
                 type="gaussian_random",
@@ -89,7 +106,6 @@ class NormalInitializer(Initializer):
                     "mean": self._mean,
                     "std": self._std_dev,
                     "seed": self._seed,
-                    "use_mkldnn": False,
                 },
                 stop_gradient=True,
             )
@@ -184,7 +200,7 @@ class TruncatedNormalInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
             out_dtype = core.VarDesc.VarType.FP32
             out_var = block.create_var(

@@ -27,7 +27,7 @@
 namespace cinn {
 namespace poly {
 
-struct DataFlowGraphNode : public common::GraphNode {
+struct DataFlowGraphNode : public cinn::common::GraphNode {
   //! Used for union find to gather groups.
   DataFlowGraphNode* group_parent{};
   //! Each stage belongs to a node.
@@ -58,12 +58,12 @@ struct DataFlowGraphNode : public common::GraphNode {
                                       const DataFlowGraphNode* b);
 };
 
-struct DataFlowGraphEdge : public common::GraphEdge {};
+struct DataFlowGraphEdge : public cinn::common::GraphEdge {};
 
 /**
  * DataFlowGraph help to record the data dependencies between the Stages.
  */
-struct DataFlowGraph : public common::Graph {};
+struct DataFlowGraph : public cinn::common::Graph {};
 
 /**
  * Create a dependency graph given some stages.
@@ -93,7 +93,7 @@ struct Group {
  * Nodes has the stages has dependency relation and has the same iteration
  * domain, then they will be put in the same sub-graph.
  */
-std::vector<Group> PartitionGraphByIterationDomain(common::Graph* graph);
+std::vector<Group> PartitionGraphByIterationDomain(cinn::common::Graph* graph);
 
 }  // namespace detail
 

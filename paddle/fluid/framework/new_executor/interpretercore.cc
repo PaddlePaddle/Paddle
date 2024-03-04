@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -54,7 +54,7 @@ InterpreterCore::InterpreterCore(
     framework::Scope* scope,
     const ExecutionConfig& execution_config) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
-  impl_ = std::make_unique<NewIRInterpreter>(
+  impl_ = std::make_unique<PirInterpreter>(
       place, fetch_var_names, ir_block, scope, execution_config);
 }
 
@@ -65,13 +65,27 @@ InterpreterCore::~InterpreterCore() {
 
 FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
-  return impl_->Run(feed_names, feed_tensors);
+    const std::vector<phi::DenseTensor>& feed_tensors,
+    bool need_fetch,
+    bool enable_job_schedule_profiler,
+    bool switch_stream) {
+  return impl_->Run(feed_names,
+                    feed_tensors,
+                    need_fetch,
+                    enable_job_schedule_profiler,
+                    switch_stream);
 }
 
 FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
-                               bool need_fetch) {
-  return impl_->Run(feed_names, need_fetch);
+                               bool need_fetch,
+                               bool enable_job_schedule_profiler,
+                               bool enable_op_profiling,
+                               bool switch_stream) {
+  return impl_->Run(feed_names,
+                    need_fetch,
+                    enable_job_schedule_profiler,
+                    enable_op_profiling,
+                    switch_stream);
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
@@ -117,8 +131,32 @@ const platform::Place& InterpreterCore::GetPlace() const {
   return impl_->GetPlace();
 }
 
+void InterpreterCore::SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
+  impl_->SetInputHooks(hookfuncs);
+}
+
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
+}
+
+void InterpreterCore::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+  impl_->Build(feed_names, op_func_nodes);
+}
+
+bool InterpreterCore::IsStaticBuild() const { return impl_->IsStaticBuild(); }
+
+std::tuple<double, double> InterpreterCore::InterpreterRunTime() {
+  return impl_->InterpreterRunTime();
+}
+
+std::shared_ptr<ProgramDesc> InterpreterCore::GetMutableCopyProgram() {
+  return impl_->GetMutableCopyProgram();
+}
+
+Variable* InterpreterCore::DebugVar(const std::string& name) const {
+  return impl_->DebugVar(name);
 }
 
 }  // namespace framework

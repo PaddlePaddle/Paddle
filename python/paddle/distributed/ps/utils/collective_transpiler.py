@@ -125,6 +125,7 @@ class Collective:
         wait_port,
         has_multitrainer=False,
     ):
+        endpoints_str = ",".join(endpoints)
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
@@ -161,6 +162,7 @@ class Collective:
                     'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
+                    'endpoints': endpoints_str,
                     self.op_role_key: OpRole.Forward,
                 },
             )
@@ -190,6 +192,7 @@ class Collective:
                         'nranks': nranks,
                         'rank': rank,
                         'ring_id': ring_id,
+                        'endpoints': endpoints_str,
                         self.op_role_key: OpRole.Forward,
                     },
                 )
@@ -234,6 +237,7 @@ class Collective:
                     'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
+                    'endpoints': endpoints_str,
                     self.op_role_key: OpRole.Forward,
                 },
             )
@@ -353,7 +357,7 @@ class GradAllReduce(Collective):
                         )
                         offset += 1
 
-                    # As we search ops reversedly, we should insert c_allreduce_sum
+                    # As we search ops reversely, we should insert c_allreduce_sum
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(
@@ -627,7 +631,7 @@ class MultiThread(GradAllReduce):
                         )
                         offset += 1
 
-                    # As we search ops reversedly, we should insert c_allgather
+                    # As we search ops reversely, we should insert c_allgather
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(

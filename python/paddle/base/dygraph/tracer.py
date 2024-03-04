@@ -13,9 +13,8 @@
 # limitations under the License.
 
 
-from paddle.base import core
-from paddle.base import framework
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base import core, framework
 
 name_mapping = {
     "graph_send_recv": {
@@ -143,7 +142,7 @@ class Tracer(core.Tracer):
                     assert out_name in outputs.keys()
                     num_outs = len(outputs[out_name])
                     arg_to_append = num_outs
-                # NOTE(dev): For MasterParam/MasterParamOut in optimzer op
+                # NOTE(dev): For MasterParam/MasterParamOut in optimizer op
                 elif "Var" in arg_name[-3:]:
                     out_name = arg_name[:-3]
                     print(out_name)

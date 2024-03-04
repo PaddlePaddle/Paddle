@@ -17,7 +17,7 @@ function(CheckCompilerCXX14Flag)
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID
                                                         STREQUAL "Clang")
     # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
-    # Apple Clang is a different compiler than upstream Clang which havs different version numbers.
+    # Apple Clang is a different compiler than upstream Clang which has different version numbers.
     # https://gist.github.com/yamaya/2924292
     if(APPLE) # cmake < 3.0 compiler id "Clang" on Mac OS X
       if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.1)
@@ -37,6 +37,7 @@ checkcompilercxx14flag()
 if(NOT WIN32)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 else()
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17")
   set(CMAKE_CXX_STANDARD 17)
 endif()
 

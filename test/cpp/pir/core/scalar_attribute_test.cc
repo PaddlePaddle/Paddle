@@ -15,11 +15,11 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 using ScalarAttribute = paddle::dialect::ScalarAttribute;
 
@@ -49,6 +49,9 @@ TEST(ScalarTest, test_classof) {
 
   pir::Attribute int32_scalar = pir::Int32Attribute::get(ctx, 1);
   EXPECT_TRUE(int32_scalar.isa<ScalarAttribute>());
+
+  pir::Attribute index_scalar = pir::IndexAttribute::get(ctx, 1l);
+  EXPECT_TRUE(index_scalar.isa<ScalarAttribute>());
 
   pir::Attribute int64_scalar = pir::Int64Attribute::get(ctx, 1l);
   EXPECT_TRUE(int64_scalar.isa<ScalarAttribute>());

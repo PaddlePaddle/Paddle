@@ -14,10 +14,10 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/program.h"
 #include "test/cpp/pir/tools/test_dialect.h"
 #include "test/cpp/pir/tools/test_op.h"
 
@@ -30,21 +30,21 @@ TEST(block_argument_test, base) {
   pir::Builder builder(&ctx, block);
 
   std::vector<pir::Type> types(3, builder.float32_type());
-  block->AddArguments(types);
+  block->AddArgs(types);
 
   EXPECT_FALSE(block->args_empty());
   EXPECT_EQ(block->args_size(), types.size());
 
   uint32_t index = 0;
   for (auto iter = block->args_begin(); iter != block->args_end(); ++iter) {
-    EXPECT_EQ(iter->arg_index(), index++);
+    EXPECT_EQ(iter->dyn_cast<pir::BlockArgument>().index(), index++);
   }
 
-  pir::Value value = block->argument(0);
+  pir::Value value = block->arg(0);
   pir::BlockArgument argument = value.dyn_cast<pir::BlockArgument>();
   EXPECT_TRUE(argument);
   EXPECT_EQ(argument.owner(), block);
-  EXPECT_EQ(block->argument_type(0), types[0]);
+  EXPECT_EQ(block->arg_type(0), types[0]);
   pir::OpResult op_result = value.dyn_cast<pir::OpResult>();
   EXPECT_FALSE(op_result);
 
@@ -55,4 +55,51 @@ TEST(block_argument_test, base) {
   EXPECT_FALSE(argument);
   op_result = value.dyn_cast<pir::OpResult>();
   EXPECT_TRUE(op_result);
+  block->AddArgs({builder.bool_type()});
+  EXPECT_EQ(block->args_size(), 4u);
+
+  value = block->AddArg(builder.bool_type());
+  EXPECT_EQ(value.type(), builder.bool_type());
+}
+
+TEST(block_argument_test, kwargs) {
+  pir::IrContext ctx;
+  ctx.GetOrRegisterDialect<test::TestDialect>();
+
+  pir::Program program(&ctx);
+  pir::Block* block = program.block();
+  pir::Builder builder(&ctx, block);
+
+  std::unordered_map<std::string, pir::Type> types{
+      {"a", builder.float32_type()},
+      {"b", builder.float32_type()},
+      {"c", builder.float32_type()}};
+  block->AddKwargs(types);
+
+  EXPECT_FALSE(block->kwargs_empty());
+  EXPECT_EQ(block->kwargs_size(), types.size());
+
+  for (auto iter = block->kwargs_begin(); iter != block->kwargs_end(); ++iter) {
+    EXPECT_EQ(iter->second.dyn_cast<pir::BlockArgument>().type(),
+              builder.float32_type());
+  }
+
+  pir::Value value = block->kwarg("a");
+  pir::BlockArgument argument = value.dyn_cast<pir::BlockArgument>();
+  EXPECT_TRUE(argument);
+  EXPECT_EQ(argument.owner(), block);
+  EXPECT_EQ(block->kwarg_type("a"), types["a"]);
+  pir::OpResult op_result = value.dyn_cast<pir::OpResult>();
+  EXPECT_FALSE(op_result);
+
+  auto op = builder.Build<pir::ConstantOp>(builder.double_attr(1.0),
+                                           builder.float64_type());
+  value = op.result(0);
+  argument = value.dyn_cast<pir::BlockArgument>();
+  EXPECT_FALSE(argument);
+  op_result = value.dyn_cast<pir::OpResult>();
+  EXPECT_TRUE(op_result);
+  value = block->AddKwarg("d", builder.bool_type());
+  EXPECT_EQ(block->kwargs_size(), 4u);
+  EXPECT_EQ(value.type(), builder.bool_type());
 }

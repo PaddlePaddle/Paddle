@@ -50,40 +50,40 @@ class GradientMergeOptimizer:
     Examples:
         .. code-block:: python
 
-        import paddle
-        import paddle.base as base
-        import numpy as np
+        >>> import paddle
+        >>> import numpy as np
+        >>> paddle.enable_static()
 
-        def gen_data(batch_size):
-            return {"x": np.random.random(size=(batch_size, 32)).astype('float32'),
-                    "y": np.random.random(size=(batch_size, 1)).astype('int64')}
+        >>> def gen_data(batch_size):
+        ...     return {"x": np.random.random(size=(batch_size, 32)).astype('float32'),
+        ...             "y": np.random.random(size=(batch_size, 1)).astype('int64')}
 
-        def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-            fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
-            prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-            cost = paddle.nn.functional.cross_entropy(
-                input=prediction, label=input_y,
-                reduction='none', use_softmax=False
-            )
-            sum_cost = paddle.mean(cost)
-            return sum_cost, fc_1, prediction
+        >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+        ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+        ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
+        ...     cost = paddle.nn.functional.cross_entropy(
+        ...         input=prediction, label=input_y,
+        ...         reduction='none', use_softmax=False
+        ...     )
+        ...     sum_cost = paddle.mean(cost)
+        ...     return sum_cost, fc_1, prediction
 
-        input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-        input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
-        cost, fc_1, pred = mlp(input_x, input_y)
-        sgd = paddle.optimizer.Adam(learning_rate=0.01)
-        sgd = paddle.incubate.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
-        sgd.minimize(cost)
+        >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+        >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+        >>> cost, fc_1, pred = mlp(input_x, input_y)
+        >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
+        >>> sgd = paddle.incubate.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
+        >>> sgd.minimize(cost)
 
-        place = base.CPUPlace()
-        exe = base.Executor(place)
-        exe.run(base.default_startup_program())
+        >>> place = paddle.CPUPlace()
+        >>> exe = paddle.static.Executor(place)
+        >>> exe.run(paddle.static.default_startup_program())
 
-        for i in range(10):
-            cost_val = exe.run(feed=gen_data(32),
-                       program=base.default_main_program(),
-                       fetch_list=[cost.name])
-            print("step=%d, cost=%f" % (i, cost_val[0]))
+        >>> for i in range(10):
+        ...     cost_val = exe.run(feed=gen_data(32),
+        ...                program=paddle.static.default_main_program(),
+        ...                fetch_list=[cost.name])
+        ...     print("step=%d, cost=%f" % (i, cost_val[0]))
     """
 
     GRAD_MERGE_COND_NAME = "grad_merge_cond_name"
@@ -154,9 +154,7 @@ class GradientMergeOptimizer:
         op = grad.op
         assert self._is_the_backward_op(
             op
-        ), 'grad.op={} is not the backward op which produces the grad={}'.format(
-            op, grad.name
-        )
+        ), f'grad.op={op} is not the backward op which produces the grad={grad.name}'
 
         block = grad.block
         var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
@@ -208,7 +206,7 @@ class GradientMergeOptimizer:
         zero_var = paddle.static.create_global_var(
             name="gradient_merge_zero",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,
@@ -218,7 +216,7 @@ class GradientMergeOptimizer:
         step_var = paddle.static.create_global_var(
             name="gradient_merge_step",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,
@@ -235,7 +233,7 @@ class GradientMergeOptimizer:
                 type='elementwise_mod',
                 inputs={'X': step_var, 'Y': k_step_var},
                 outputs={'Out': step_var},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1},
             )
 
             # cond_var = (step_var == 0)
@@ -304,7 +302,7 @@ class GradientMergeOptimizer:
                 type="elementwise_add",
                 inputs={'X': grad, 'Y': gradient_merge_var},
                 outputs={'Out': gradient_merge_var},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1},
             )
             self._add_gm_op_role_var(
                 new_grad_op, param, gradient_merge_var, cond

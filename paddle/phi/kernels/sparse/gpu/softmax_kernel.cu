@@ -194,7 +194,7 @@ void SoftmaxCooGPUKernel(const Context& dev_ctx,
   auto indices = x.indices();
   auto values = x.values();
   const auto x_dims = x.dims();
-  const std::vector<IntT> sizes = phi::vectorize<IntT>(x_dims);
+  const std::vector<IntT> sizes = common::vectorize<IntT>(x_dims);
   const auto sparse_dim = x.sparse_dim();
   const IntT x_nnz = x.nnz();
   DenseTensor out_indices(indices);

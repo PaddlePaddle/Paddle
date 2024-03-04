@@ -183,7 +183,7 @@ class TestEigOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            checker=self.checker, place=core.CPUPlace()
+            checker=self.checker, place=core.CPUPlace(), check_pir=True
         )
 
     def test_check_grad(self):
@@ -193,6 +193,7 @@ class TestEigOp(OpTest):
             ['Eigenvalues', 'Eigenvectors'],
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_w, self.grad_v],
+            check_pir=True,
         )
 
 
@@ -319,6 +320,7 @@ class TestEigDyGraph(unittest.TestCase):
         test_type = 'float64'
         paddle.set_device("cpu")
 
+        np.random.seed(1024)
         input_np = np.random.random(test_shape).astype(test_type)
         real_w, real_v = np.linalg.eig(input_np)
 
@@ -327,7 +329,7 @@ class TestEigDyGraph(unittest.TestCase):
         grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
 
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(input_np)
+            x = paddle.to_tensor(input_np)
             x.stop_gradient = False
             w, v = paddle.linalg.eig(x)
             (w.sum() + v.sum()).backward()

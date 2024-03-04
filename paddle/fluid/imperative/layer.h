@@ -37,6 +37,7 @@
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {
 class Variable;
@@ -50,7 +51,7 @@ class GradOpNode;
 class OpBase;
 class VariableWrapper;
 
-class ThreadSafeNameSet {
+class TEST_API ThreadSafeNameSet {
  public:
   void Insert(const std::string& name);
 
@@ -124,7 +125,7 @@ class VarBase {
       }
       // NOTE(zhiqiu): we should keep grad_var_'s stop_gradient property
       // same as fwd varbase
-      grad_var_->SetOverridedStopGradient(var_->InnerOverridedStopGradient());
+      grad_var_->SetOverriddenStopGradient(var_->InnerOverriddenStopGradient());
     }
     return grad_var_;
   }
@@ -145,26 +146,26 @@ class VarBase {
 
   bool IsLeaf() const { return var_->IsLeaf(); }
 
-  void SetOverridedStopGradient(bool stop_gradient) {
-    var_->SetOverridedStopGradient(stop_gradient);
+  void SetOverriddenStopGradient(bool stop_gradient) {
+    var_->SetOverriddenStopGradient(stop_gradient);
     if (grad_var_) {
-      grad_var_->SetOverridedStopGradient(stop_gradient);
+      grad_var_->SetOverriddenStopGradient(stop_gradient);
     }
   }
 
-  bool OverridedStopGradient() const { return var_->OverridedStopGradient(); }
+  bool OverriddenStopGradient() const { return var_->OverriddenStopGradient(); }
 
-  void InnerSetOverridedStopGradient(bool stop_gradient) {
-    if (InnerOverridedStopGradient() == -1) {
-      var_->InnerSetOverridedStopGradient(stop_gradient);
+  void InnerSetOverriddenStopGradient(bool stop_gradient) {
+    if (InnerOverriddenStopGradient() == -1) {
+      var_->InnerSetOverriddenStopGradient(stop_gradient);
       if (grad_var_) {
-        grad_var_->InnerSetOverridedStopGradient(stop_gradient);
+        grad_var_->InnerSetOverriddenStopGradient(stop_gradient);
       }
     }
   }
 
-  int InnerOverridedStopGradient() const {
-    return var_->InnerOverridedStopGradient();
+  int InnerOverriddenStopGradient() const {
+    return var_->InnerOverriddenStopGradient();
   }
 
   void SetPersistable(bool persistable) { var_->SetPersistable(persistable); }
@@ -285,7 +286,7 @@ class VarBase {
 
   mutable size_t copied_counter_ = 0;
 
-  static ThreadSafeNameSet name_set_;
+  TEST_API static ThreadSafeNameSet name_set_;
 };
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(

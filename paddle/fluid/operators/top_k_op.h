@@ -46,10 +46,10 @@ class TopkKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
-    // reshape input to a flattern matrix(like flat_inner_dims)
+    // reshape input to a flatten matrix(like flat_inner_dims)
     framework::DDim inputdims = input->dims();
     const size_t row =
-        phi::product(phi::slice_ddim(inputdims, 0, inputdims.size() - 1));
+        common::product(common::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const size_t col = inputdims[inputdims.size() - 1];
     Eigen::DSizes<int, 2> flat2dims(row, col);
 // NOTE: eigen shape doesn't affect paddle tensor.
@@ -106,7 +106,7 @@ class TopkGradKernel : public framework::OpKernel<T> {
 
     framework::DDim xdims = x->dims();
     const size_t row =
-        phi::product(phi::slice_ddim(xdims, 0, xdims.size() - 1));
+        common::product(common::slice_ddim(xdims, 0, xdims.size() - 1));
     const size_t col = xdims[xdims.size() - 1];
 
     memset(x_grad_data, 0, row * col * sizeof(T));

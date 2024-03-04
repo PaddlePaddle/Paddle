@@ -18,8 +18,10 @@ import paddle
 from paddle import base
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.param_attr import ParamAttr
-from paddle.nn import Layer
-from paddle.nn import initializer as I
+from paddle.nn import (
+    Layer,
+    initializer as I,
+)
 
 
 def resnet_unit(
@@ -149,7 +151,7 @@ def resnet_unit(
 class ResNetUnit(Layer):
     r"""
     ******Temporary version******.
-    ResNetUnit is designed for optimize the performence by using cudnnv8 API.
+    ResNetUnit is designed for optimize the performance by using cudnnv8 API.
     """
 
     def __init__(

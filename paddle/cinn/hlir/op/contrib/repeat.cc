@@ -40,7 +40,7 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValuePack;
+using cinn::common::CINNValuePack;
 
 std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor,
                                int repeats,
@@ -79,7 +79,7 @@ std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor,
         }
         return tensor(idx);
       },
-      common::UniqName(output_name));
+      cinn::common::UniqName(output_name));
   return {res};
 }
 
@@ -166,22 +166,22 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     std::vector<ir::Tensor> out = Repeat(tensor_A, repeats, axis, tensor_name);
     CHECK(out.size() == 1U) << "The size of Repeat's output should be 1";
 
-    std::vector<common::CINNValue> res;
+    std::vector<cinn::common::CINNValue> res;
     auto stages = CreateStages({tensor_A});
     for (auto &t : out) {
       stages->InsertLazily(t);
-      res.push_back(common::CINNValue(t));
+      res.push_back(cinn::common::CINNValue(t));
     }
 
-    res.push_back(common::CINNValue(stages));
-    *ret = common::CINNValuePack{res};
+    res.push_back(cinn::common::CINNValue(stages));
+    *ret = cinn::common::CINNValuePack{res};
   });
 
   framework::CINNSchedule repeat_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
     CHECK(!args.empty())
         << "The input argument of repeat schedule is empty! Please check.\n";
-    common::CINNValuePack arg_pack = args[0];
+    cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
@@ -204,9 +204,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
         pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
       }
     }
-    std::vector<common::CINNValue> res{
-        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = common::CINNValuePack{res};
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

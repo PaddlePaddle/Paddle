@@ -14,20 +14,19 @@
 
 #pragma once
 
-#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 namespace test {
 class TestDialect : public pir::Dialect {
  public:
-  explicit TestDialect(pir::IrContext *context)
-      : pir::Dialect(name(), context, pir::TypeId::get<TestDialect>()) {
-    initialize();
-  }
+  explicit TestDialect(pir::IrContext *context);
   static const char *name() { return "test"; }
+  pir::OpPrintFn PrintOperation(pir::Operation *op) const override;
 
  private:
   void initialize();
 };
 
 }  // namespace test
-IR_DECLARE_EXPLICIT_TYPE_ID(test::TestDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::TestDialect)

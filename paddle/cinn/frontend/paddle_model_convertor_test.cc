@@ -92,7 +92,7 @@ void RunProgram(const Target& target, Program* prog) {
 }
 
 TEST(PaddleModelConvertor, basic) {
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   PaddleModelConvertor model_transform(target);
   model_transform.LoadModel(FLAGS_model_dir);

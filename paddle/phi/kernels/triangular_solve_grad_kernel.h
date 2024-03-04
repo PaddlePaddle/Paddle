@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {

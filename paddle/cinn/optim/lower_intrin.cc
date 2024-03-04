@@ -19,8 +19,8 @@
 #include "paddle/cinn/backends/llvm/llvm_intrin_rule.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/registry.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 
 namespace cinn {
 namespace optim {
@@ -69,10 +69,10 @@ void LowerIntrin(Expr *e, Target target) {
     void Visit(const ir::Call *op, Expr *expr) override {
       auto *node = expr->As<ir::Call>();
       CHECK(node);
-      LowerCpuintrinsicOp(node, expr);
+      LowerCpuIntrinsicOp(node, expr);
     }
 
-    void LowerCpuintrinsicOp(ir::Call *op, Expr *expr) {
+    void LowerCpuIntrinsicOp(ir::Call *op, Expr *expr) {
       auto *node = expr->As<ir::Call>();
       if (kIntrinsicCalls.count(node->name)) {
         CHECK(!node->name.empty());

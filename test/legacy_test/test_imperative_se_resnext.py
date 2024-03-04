@@ -199,9 +199,7 @@ class SeResNeXt(paddle.nn.Layer):
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 50:
             cardinality = 32
@@ -314,13 +312,13 @@ class SeResNeXt(paddle.nn.Layer):
 
 class TestImperativeResneXt(unittest.TestCase):
     def reader_decorator(self, reader):
-        def _reader_imple():
+        def _reader_simple():
             for item in reader():
                 doc = np.array(item[0]).reshape(3, 224, 224)
                 label = np.array(item[1]).astype('int64').reshape(1)
                 yield doc, label
 
-        return _reader_imple
+        return _reader_simple
 
     def test_se_resnext_float32(self):
         seed = 90

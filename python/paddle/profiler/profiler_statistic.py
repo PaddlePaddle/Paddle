@@ -48,7 +48,7 @@ _CommunicationOpName = ['allreduce', 'broadcast', 'rpc']
 
 class SortedKeys(Enum):
     r"""
-    SortedKeys is used to specify how to sort items when printing :ref:`summary <api_paddle_profiler_profiler_summary>` table.
+    SortedKeys is used to specify how to sort items when printing ``paddle.profiler.Profiler.summary`` table.
 
     The meaning of each SortedKeys is as following
 
@@ -276,9 +276,7 @@ def _gen_layer_flops(node, repeat=1):
             flops_n = _format_large_number(node.flops)
             flops_s = _format_large_number(node.flops * 1e9 / node.cpu_time)
             ret.append(
-                "{}{} latency: {}, FLOPs: {}, FLOPS: {}\n".format(
-                    align, name, tm, flops_n, flops_s
-                )
+                f"{align}{name} latency: {tm}, FLOPs: {flops_n}, FLOPS: {flops_s}\n"
             )
 
     for n in node[1:]:
@@ -1132,8 +1130,8 @@ def _build_table(
         )
         if len(model_perspective_items) > 1:
             all_row_values = []
-            accmulation_time = 0
-            gpu_accmulation_time = 0
+            accumulation_time = 0
+            gpu_accumulation_time = 0
             gpu_total_time = (
                 statistic_data.event_summary.model_perspective_items[
                     'ProfileStep'
@@ -1173,11 +1171,11 @@ def _build_table(
                     ]
                     all_row_values.append(row_values)
                     if 'ProfileStep' not in name:
-                        accmulation_time += item.cpu_time
-                        gpu_accmulation_time += item.gpu_time
+                        accumulation_time += item.cpu_time
+                        gpu_accumulation_time += item.gpu_time
 
-            other_time = total_time - accmulation_time
-            other_gpu_time = gpu_total_time - gpu_accmulation_time
+            other_time = total_time - accumulation_time
+            other_gpu_time = gpu_total_time - gpu_accumulation_time
             if gpu_total_time == 0:
                 gpu_ratio = 0
             else:

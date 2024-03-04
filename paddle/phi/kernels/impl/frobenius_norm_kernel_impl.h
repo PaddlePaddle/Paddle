@@ -23,13 +23,13 @@ namespace phi {
 template <typename T, typename Context>
 void FrobeniusNormKernel(const Context& ctx,
                          const DenseTensor& x,
-                         const std::vector<int64_t>& axis,
+                         const IntArray& axis,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, axis, reduce_all);
+  reduce_all = recompute_reduce_all(x, axis.GetData(), reduce_all);
   Reduce<Context, T, funcs::FrobeniusNormFunctor>(
-      ctx, x, reduce_all, axis, keep_dim, x.dtype(), out);
+      ctx, x, reduce_all, axis.GetData(), keep_dim, x.dtype(), out);
 }
 
 }  // namespace phi

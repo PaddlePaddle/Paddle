@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
@@ -21,7 +22,6 @@ from op_test import OpTest
 import paddle
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.base.framework import default_main_program
 from paddle.incubate.nn import FusedMultiTransformer
 from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.nn.layer.common import Dropout, Linear
@@ -31,13 +31,13 @@ from paddle.nn.layer.transformer import _convert_attention_mask
 seed = 42
 
 random.seed(seed)
-default_main_program().random_seed = seed
 np.random.seed(seed)
 paddle.seed(seed)
 
 
 class TestFusedMultiTransformerOp(OpTest):
     def setUp(self):
+        self.with_new_comm()
         self.config()
         self.generate_input_data()
 
@@ -58,7 +58,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.__class__.no_need_check_grad = False
 
         bias_attr = paddle.base.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(value=0.0005)
+            initializer=paddle.nn.initializer.Constant(value=0.0005)
         )
         self.q_proj = Linear(
             self.embed_dim,
@@ -107,6 +107,9 @@ class TestFusedMultiTransformerOp(OpTest):
         paddle.set_default_dtype(self.x_type)
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
         self.activation = getattr(F, self.act_method)
+
+    def with_new_comm(self):
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
 
     def config(self):
         # for debug
@@ -1125,6 +1128,11 @@ class TestFusedMultiTransformerOp(OpTest):
             )
 
 
+class TestFusedMultiTransformerOpWithNewComm(TestFusedMultiTransformerOp):
+    def with_new_comm(self):
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
+
+
 class TestFusedMultiTransformerOpRotaryFP16(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
@@ -1373,16 +1381,16 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
         self.has_attn_mask = False
         self.x_type = np.float32
         self.weight_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
+            initializer=paddle.nn.initializer.Constant(0.0)
         )
         self.bias_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0005)
+            initializer=paddle.nn.initializer.Constant(0.0005)
         )
         self.ln_w_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(1.0)
+            initializer=paddle.nn.initializer.Constant(1.0)
         )
         self.ln_b_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
+            initializer=paddle.nn.initializer.Constant(0.0)
         )
 
     def test_fused_multi_transformer_op(self):

@@ -235,7 +235,7 @@ void SerializeToStream(std::ostream &os,
 
 void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext *dev_ctx;
+  const platform::DeviceContext *dev_ctx = nullptr;
   auto place = tensor.place();
   dev_ctx = pool.Get(place);
   SerializeToStream(os, tensor, *dev_ctx);
@@ -243,7 +243,7 @@ void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
 
 void DeserializeFromStream(std::istream &os, phi::DenseTensor *tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext *dev_ctx;
+  const platform::DeviceContext *dev_ctx = nullptr;
   dev_ctx = pool.Get(platform::CPUPlace());
   DeserializeFromStream(os, tensor, *dev_ctx);
 }
@@ -255,7 +255,7 @@ void DeserializeFromStream(std::istream &is,
                            const std::vector<int64_t> &shape) {
   {
     // the 1st field, unit32_t version for DenseTensor
-    uint32_t version;
+    uint32_t version = 0;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
                       true,
@@ -271,7 +271,7 @@ void DeserializeFromStream(std::istream &is,
   }
   {
     // the 2st field, LoD information
-    uint64_t lod_level;
+    uint64_t lod_level = 0;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
     auto &lod = *tensor->mutable_lod();
     lod.resize(lod_level);
@@ -286,7 +286,7 @@ void DeserializeFromStream(std::istream &is,
                            const platform::DeviceContext &dev_ctx) {
   {
     // the 1st field, unit32_t version for DenseTensor
-    uint32_t version;
+    uint32_t version = 0;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
                       true,
@@ -302,12 +302,12 @@ void DeserializeFromStream(std::istream &is,
   }
   {
     // the 2st field, LoD information
-    uint64_t lod_level;
+    uint64_t lod_level = 0;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
     auto &lod = *tensor->mutable_lod();
     lod.resize(lod_level);
     for (uint64_t i = 0; i < lod_level; ++i) {
-      uint64_t size;
+      uint64_t size = 0;
       is.read(reinterpret_cast<char *>(&size), sizeof(size));
       std::vector<size_t> tmp(size / sizeof(size_t));
       is.read(reinterpret_cast<char *>(tmp.data()),
@@ -463,8 +463,8 @@ void MergeLoDTensor(phi::DenseTensor *target,
           platform::errors::InvalidArgument(
               "phi::DenseTensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
-              phi::DataLayoutToString(new_layout),
-              phi::DataLayoutToString(t->layout())));
+              common::DataLayoutToString(new_layout),
+              common::DataLayoutToString(t->layout())));
       auto tensor_dims = t->dims();
       PADDLE_ENFORCE_EQ(tensor_dims.size(),
                         new_dim.size(),
@@ -475,7 +475,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
             tensor_dims[j],
             new_dim[j],
             platform::errors::InvalidArgument(
-                "DenseTensor.ddim[%d] should eaqual to %d, but is %d",
+                "DenseTensor.ddim[%d] should equal to %d, but is %d",
                 j,
                 new_dim[j],
                 tensor_dims[j]));

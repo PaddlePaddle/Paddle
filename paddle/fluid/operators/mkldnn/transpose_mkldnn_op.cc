@@ -44,7 +44,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    auto x_vec_dims = phi::vectorize(x->dims());
+    auto x_vec_dims = common::vectorize(x->dims());
 
     auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
     phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -105,7 +105,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    auto dout_vec_dims = phi::vectorize(dout->dims());
+    auto dout_vec_dims = common::vectorize(dout->dims());
     auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
 
     phi::funcs::ReorderOneDNNHandler reorder_handler(

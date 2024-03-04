@@ -57,10 +57,10 @@ using dim3 = phi::kps::dim3;
 
 #endif
 
+#include "paddle/common/array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_utils.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -288,8 +288,8 @@ struct ReduceConfig {
                      const KPDevice& dev_ctx,
                      phi::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->Resize(
-          phi::make_ddim({static_cast<int64_t>(left_num * grid.z * grid.y)}));
+      tmp->Resize(common::make_ddim(
+          {static_cast<int64_t>(left_num * grid.z * grid.y)}));
       tmp_data = dev_ctx.Alloc<MPType>(tmp);
     }
   }
@@ -925,6 +925,7 @@ static void LaunchReduceKernel(const Tx* x_data,
 }
 
 #if !defined(PADDLE_WITH_XPU_KP)
+
 template <typename Tx,
           typename Ty,
           template <typename>
@@ -983,7 +984,6 @@ CubTensorReduceImpl(const Tx* x_data,
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
-
 template <typename Tx,
           typename Ty,
           template <typename>
@@ -1006,17 +1006,53 @@ template <typename Tx,
           typename Ty,
           template <typename>
           class ReduceOp,
+          typename TransformOp,
+          bool IsMean = false>
+struct CubTensorReduce {
+  static void apply(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const KPDevice& dev_ctx,
+                    KPStream stream) {
+    CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
+        x_data, y_data, transform, reduce_num, dev_ctx, stream);
+  }
+};
+
+template <typename Tx,
+          typename Ty,
+          template <typename>
+          class ReduceOp,
           typename TransformOp>
+struct CubTensorReduce<Tx, Ty, ReduceOp, TransformOp, true> {
+  static void apply(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const KPDevice& dev_ctx,
+                    KPStream stream) {
+    using Div = kps::DivideFunctor<Tx>;
+    CubTensorReduceImpl<Tx, Ty, ReduceOp, Div>(
+        x_data, y_data, Div(reduce_num), reduce_num, dev_ctx, stream);
+  }
+};
+
+template <typename Tx,
+          typename Ty,
+          template <typename>
+          class ReduceOp,
+          typename TransformOp,
+          bool IsMean = false>
 void ReduceKernel(const KPDevice& dev_ctx,
                   const phi::DenseTensor& x,
                   phi::DenseTensor* y,
                   const TransformOp& transform,
-                  const std::vector<int>& origin_reduce_dims,
-                  bool is_mean = false) {
+                  const std::vector<int>& origin_reduce_dims) {
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
 #ifdef PADDLE_WITH_XPU_KP
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
@@ -1024,7 +1060,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
 #endif
   dev_ctx.Alloc<Ty>(y);
 
-  auto x_dim = phi::vectorize<int>(x.dims());
+  auto x_dim = common::vectorize<int>(x.dims());
 
   if (x_dim.size() == 0) {
     std::vector<const DenseTensor*> inputs = {&x};
@@ -1059,20 +1095,11 @@ void ReduceKernel(const KPDevice& dev_ctx,
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
   constexpr bool kIsTxBF16 = std::is_same<Tx, phi::dtype::bfloat16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16;
+
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
-    if (is_mean) {
-      using Div = kps::DivideFunctor<Tx>;
-      CubTensorReduceImpl<Tx, Ty, ReduceOp, Div>(x_data,
-                                                 y_data,
-                                                 Div(config.reduce_num),
-                                                 config.reduce_num,
-                                                 dev_ctx,
-                                                 stream);
-    } else {
-      CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
-          x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
-    }
+    CubTensorReduce<Tx, Ty, ReduceOp, TransformOp, IsMean>::apply(
+        x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
     return;
   }
 #endif
@@ -1115,7 +1142,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
             config.blocking_size,
             dim,
             config.reduce_num,
-            is_mean && (!config.should_reduce_again),
+            IsMean && (!config.should_reduce_again),
             config.tmp_data,
             config.should_reduce_again);
 
@@ -1149,7 +1176,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
               config.grid.y,
               dim2,
               config.reduce_num,
-              is_mean,
+              IsMean,
               config.tmp_data,
               false);
     }
@@ -1167,29 +1194,28 @@ void ReduceKernel(const KPDevice& dev_ctx,
       reducer.initial(),
       stream,
       config,
-      is_mean);
+      IsMean);
 }
 
 template <typename Tx,
           typename Ty,
           template <typename>
           class ReduceOp,
-          typename TransformOp>
+          typename TransformOp,
+          bool IsMean = false>
 void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       const phi::DenseTensor& x,
                       phi::DenseTensor* y,
                       const TransformOp& transform,
                       const std::vector<int>& origin_reduce_dims,
-                      gpuStream_t stream,
-                      bool is_mean = false) {
+                      gpuStream_t stream) {
   dev_ctx.template Alloc<Ty>(y);
-  ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
+  ReduceKernel<Tx, Ty, ReduceOp, TransformOp, IsMean>(
       static_cast<const phi::GPUContext&>(dev_ctx),
       x,
       y,
       transform,
-      origin_reduce_dims,
-      is_mean);
+      origin_reduce_dims);
 }
 
 #endif
@@ -1212,13 +1238,13 @@ void ReduceFunctor(const Context& context,
   DDim out_dims = output->dims();
   if (keep_dim && x_rank > 1) {
     const int kDelFlag = -2;
-    auto dims_vector = phi::vectorize(out_dims);
+    auto dims_vector = common::vectorize(out_dims);
     for (size_t i = 0; i < dims_ref.size(); ++i) {
       dims_vector[dims_ref[i]] = kDelFlag;
     }
     dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
                       dims_vector.end());
-    out_dims = phi::make_ddim(dims_vector);
+    out_dims = common::make_ddim(dims_vector);
   }
   auto& place = *context.eigen_device();
   Functor functor;
@@ -1334,7 +1360,7 @@ void ReduceKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       input.numel(),
       0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
 
   dev_ctx.template Alloc<OutT>(output);
 

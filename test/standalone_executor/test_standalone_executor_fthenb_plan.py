@@ -36,7 +36,6 @@ class TestStandaloneExecutorFThenBPlan(unittest.TestCase):
         for job in plan.job_list():
             job_type_list.append(job.type())
         expect_job_type_list = [
-            "lr",
             "forward",
             "forward",
             "forward",

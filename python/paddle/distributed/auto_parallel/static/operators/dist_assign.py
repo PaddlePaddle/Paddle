@@ -13,12 +13,7 @@
 # limitations under the License.
 
 from ..utils import compute_compatible_and_update_dim_mapping
-from .common import (
-    DistributedOperatorImpl,
-    DistributedOperatorImplContainer,
-    register_distributed_operator_impl,
-    register_distributed_operator_impl_container,
-)
+from .common import DistributedOperatorImpl, DistributedOperatorImplContainer
 from .dist_default import DistributedDefaultImpl0
 
 
@@ -27,7 +22,8 @@ class DistributedAssign(DistributedOperatorImplContainer):
         super().__init__(op_type)
 
 
-register_distributed_operator_impl_container(DistributedAssign("assign"))
+# TODO remove assign dist op
+# register_distributed_operator_impl_container(DistributedAssign("assign"))
 
 
 class DistributedAssignImpl(DistributedOperatorImpl):
@@ -91,4 +87,4 @@ class DistributedAssignImpl(DistributedOperatorImpl):
         DistributedDefaultImpl0.backward(ctx, *args, **kwargs)
 
 
-register_distributed_operator_impl("assign", DistributedAssignImpl("assign"))
+# register_distributed_operator_impl("assign", DistributedAssignImpl("assign"))

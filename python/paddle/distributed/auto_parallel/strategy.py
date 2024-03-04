@@ -26,9 +26,7 @@ class BaseConfig:
                 self._config_dict = config_dict
             else:
                 raise ValueError(
-                    "Expected a dictionary. But received: {}".format(
-                        config_dict
-                    )
+                    f"Expected a dictionary. But received: {config_dict}"
                 )
         # Initialize attributes by the default config
         config = constants.get_category_default_config(self._category)
@@ -81,6 +79,12 @@ class BaseConfig:
 class RecomputeConfig(BaseConfig):
     def __init__(self, config_dict=None):
         category = constants.RECOMPUTE
+        super().__init__(category, config_dict)
+
+
+class FusedLinearPromotionConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.FUSEDLINEARPROMOTION
         super().__init__(category, config_dict)
 
 
@@ -138,9 +142,21 @@ class DPOptimizationConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class MPOptimizationConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.MP_OPTIMIZATION
+        super().__init__(category, config_dict)
+
+
+class SPOptimizationConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.SP_OPTIMIZATION
+        super().__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
-    The `Strategy` object is used to configure the parallelization and optimization behaviors.
+    The `Strategy` object is used to configure the parallelization and optimization for static graph.
 
     Args:
         config (dict|string, optional): If this is None, the default configurations will used.
@@ -214,5 +230,16 @@ class Strategy(BaseConfig):
         config_dict = self._config_dict.get(constants.FUSED_PASSES, None)
         self.fused_passes = FusedPassesConfig(config_dict)
 
+        config_dict = self._config_dict.get(
+            constants.FUSEDLINEARPROMOTION, None
+        )
+        self.fused_linear_promotion = FusedLinearPromotionConfig(config_dict)
+
         config_dict = self._config_dict.get(constants.DP_OPTIMIZATION, None)
         self.dp_optimization = DPOptimizationConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.MP_OPTIMIZATION, None)
+        self.mp_optimization = MPOptimizationConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.SP_OPTIMIZATION, None)
+        self.sp_optimization = SPOptimizationConfig(config_dict)

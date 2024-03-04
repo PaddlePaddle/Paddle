@@ -18,8 +18,8 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestNumelOp(OpTest):
@@ -34,7 +34,7 @@ class TestNumelOp(OpTest):
         self.outputs = {'Out': np.array(np.size(x))}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def init(self):
         self.shape = (6, 56, 8, 55)
@@ -136,7 +136,7 @@ class TestNumelOpBF16(OpTest):
 
     def test_check_output(self):
         place = paddle.CUDAPlace(0)
-        self.check_output_with_place(place, check_new_ir=True)
+        self.check_output_with_place(place, check_pir=True)
 
     def init(self):
         self.shape = (6, 56, 8, 55)
@@ -148,10 +148,11 @@ class TestNumelOp1BF16(TestNumelOpBF16):
 
 
 class TestNumelAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_numel_static(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             shape1 = [2, 1, 4, 5]
             shape2 = [1, 4, 5]
             x_1 = paddle.static.data(shape=shape1, dtype='int32', name='x_1')
@@ -187,10 +188,11 @@ class TestNumelAPI(unittest.TestCase):
         np.testing.assert_array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_error(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
 
             def test_x_type():
                 shape = [1, 4, 5]

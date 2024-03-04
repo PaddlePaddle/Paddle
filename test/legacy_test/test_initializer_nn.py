@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
 from paddle import base, nn
@@ -173,7 +174,7 @@ class TestKaimingInitializer(unittest.TestCase):
         )
 
     def test_kaiming_uniform_initializer_static(self):
-        """Test Kaiming unorm initializer for matrix multiply."""
+        """Test Kaiming uniform initializer for matrix multiply."""
         self.static_test_kaiming_initializer_common(
             init_inst=initializer.KaimingUniform(),
             dtype="float32",
@@ -182,7 +183,7 @@ class TestKaimingInitializer(unittest.TestCase):
         )
 
     def test_kaiming_uniform_initializer_conv_static(self):
-        """Test Kaiming unorm initializer for convolutions."""
+        """Test Kaiming uniform initializer for convolutions."""
         self.static_test_kaiming_initializer_common(
             init_inst=initializer.KaimingUniform(),
             dtype="float32",
@@ -238,7 +239,7 @@ class TestUniform(unittest.TestCase):
         return block
 
     def test_uniform_initializer_default_value(
-        self, dtype="float32", seed=0, min_value=-1.0, max_vlaue=1.0
+        self, dtype="float32", seed=0, min_value=-1.0, max_value=1.0
     ):
         """Test the uniform initializer with default value"""
         paddle.enable_static()
@@ -259,7 +260,7 @@ class TestUniform(unittest.TestCase):
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
         self.assertAlmostEqual(init_op.attr('min'), min_value, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), max_vlaue, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), max_value, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), seed)
 
         paddle.disable_static()
@@ -267,7 +268,7 @@ class TestUniform(unittest.TestCase):
         return block
 
     def test_uniform_initializer(
-        self, dtype="float32", seed=0, min_value=-4.2, max_vlaue=3.1
+        self, dtype="float32", seed=0, min_value=-4.2, max_value=3.1
     ):
         """Test uniform initializer with supplied attributes"""
         paddle.enable_static()
@@ -281,21 +282,21 @@ class TestUniform(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.Uniform(min_value, max_vlaue),
+                initializer=initializer.Uniform(min_value, max_value),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
         self.assertAlmostEqual(init_op.attr('min'), min_value, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), max_vlaue, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), max_value, delta=DELTA)
 
         paddle.disable_static()
 
         return block
 
     def test_uniform_initializer_two_op(
-        self, dtype="float32", seed=123, min_value=-4.2, max_vlaue=0.0
+        self, dtype="float32", seed=123, min_value=-4.2, max_value=0.0
     ):
         """Test uniform initializer with supplied attributes"""
         paddle.enable_static()
@@ -490,6 +491,12 @@ class TestTruncatedNormal(unittest.TestCase):
         block = self.test_truncated_normal_initializer("uint16")  # bfloat16
         self.assertTrue(check_cast_op(block.ops[1]))
 
+    def test_truncated_normal_initializer_fp64(self):
+        """Test truncated normal initializer with float64"""
+        with static_guard():
+            # Only test whether float64 data can be generated without error
+            _ = self.test_truncated_normal_initializer("float64")  # float64
+
     def test_truncated_normal_initializer_dygraph(self):
         """Test truncated normal initializer in dygraph model."""
         paddle.disable_static()
@@ -657,8 +664,8 @@ class TestAssign(unittest.TestCase):
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'assign_value')
-        assert (init_op.attr('fp32_values') == np_array).all()
-
+        values = framework.extract_plain_list(init_op.attr('values'))
+        assert values == np_array.ravel().tolist()
         paddle.disable_static()
 
         return block

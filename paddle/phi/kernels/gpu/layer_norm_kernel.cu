@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
-#include "paddle/utils/flags.h"
 
-PD_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_fast_math);
 
 namespace phi {
 
@@ -463,8 +463,8 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
                                                   U *variance,
                                                   int begin_norm_axis,
                                                   float eps) {
-  const auto x_dims = phi::make_ddim(input_shape);
-  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
+  const auto x_dims = common::make_ddim(input_shape);
+  auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   switch (phi::funcs::GetDesiredBlockDim(feature_size)) {
@@ -534,7 +534,7 @@ void LayerNormKernel(const Context &dev_ctx,
                           "Unsupported data type of Scale and Bias"));
   }
 
-  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
+  auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   auto stream = dev_ctx.stream();

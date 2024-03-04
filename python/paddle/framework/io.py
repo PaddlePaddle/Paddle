@@ -17,6 +17,7 @@ import copyreg
 import os
 import pickle
 import sys
+import threading
 import warnings
 from collections.abc import Iterable
 
@@ -48,6 +49,80 @@ from .io_utils import (
 )
 
 __all__ = []
+async_save_queue = []
+
+
+def clear_async_save_task_queue():
+    '''
+    wait until all async save task to be done.
+    '''
+    while len(async_save_queue) > 0:
+        task = async_save_queue.pop()
+        if task and task.is_alive():
+            task.join()
+
+
+def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
+    '''
+    async version of paddle.save.
+    Note:
+        currently only support dygraph mode.
+    Note:
+        any argument passed through configs will be overridden by default setting.
+    Args:
+        obj(Object) : The object to be saved.
+        path(str|BytesIO) : The path/buffer of the object to be saved.
+          If saved in the current directory, the input path string will be used as the file name.
+        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
+                                 Default: 4
+        sync_other_task(bool) : Determine whether to wait other async save task to be finished before this one be put in queue.
+        **configs(dict, optional): compatible argument to paddle.save, but will be overridden by default setting.
+    Examples:
+        .. code-block:: python
+            :name: code-example-1
+
+            import paddle
+            emb = paddle.nn.Embedding(10, 10)
+            layer_state_dict = emb.state_dict()
+
+            # call paddle.async_save with the same style of paddle.save
+            paddle.async_save(layer_state_dict, "emb.pdparams")
+            for i in range(10):
+                # do some calculations here
+            # wait if any async_save task has not been done
+            paddle.clear_async_task_queue()
+    '''
+    if not in_dygraph_mode():
+        raise ValueError(
+            "async_save currently is not supported in static mode."
+        )
+    if len(configs) > 0:
+        warnings.warn(
+            "configs are not supported in async mode, will be overridden by default settings."
+        )
+
+    # TODO: make this part async
+    def move_state_dict_to_cpu(sd):
+        for k, v in sd.items():
+            if isinstance(v, dict):
+                move_state_dict_to_cpu(v)
+            elif isinstance(v, core.eager.Tensor):
+                sd[k] = v.pin_memory() if core.is_compiled_with_cuda() else v
+
+    if isinstance(obj, dict):
+        move_state_dict_to_cpu(obj)
+    elif isinstance(obj, core.eager.Tensor):
+        obj = obj.pin_memory() if core.is_compiled_with_cuda() else obj
+    else:
+        # other types are currently not supported
+        raise TypeError(
+            f"currently async_save does not support this type: {type(obj)}"
+        )
+    if sync_other_task:
+        clear_async_save_task_queue()
+    t = threading.Thread(target=save, args=(obj, path, protocol))
+    t.start()
+    async_save_queue.append(t)
 
 
 def _build_saved_state_dict(state_dict):
@@ -181,9 +256,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The {}.pdmodel and {} directory exist at the same time, "
+            f"The {path}.pdmodel and {path} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique.".format(path, path)
+            "of ``path`` is unique."
         )
     elif not prefix_format_exist and not directory_format_exist:
         error_msg = "The ``path`` (%s) to load model not exists."
@@ -281,9 +356,7 @@ def _pickle_save(obj, f, protocol):
     # TODO(weixin):add support for BytesIO.
     if not isinstance(protocol, int):
         raise ValueError(
-            "The 'protocol' MUST be `int`, but received {}".format(
-                type(protocol)
-            )
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
     if protocol < 2 or protocol > 4:
@@ -429,9 +502,7 @@ def _transformed_from_lodtensor(obj):
 def _to_LodTensor(ndarray):
     if not isinstance(ndarray, np.ndarray):
         raise TypeError(
-            'Type of `ndarray` should be numpy.ndarray, but received {}.'.format(
-                type(ndarray)
-            )
+            f'Type of `ndarray` should be numpy.ndarray, but received {type(ndarray)}.'
         )
     t = core.LoDTensor()
     place = _current_expected_place()
@@ -495,7 +566,7 @@ def _parse_every_object(obj, condition_func, convert_func):
             (str, np.ndarray, core.eager.Tensor, core.LoDTensor),
         ):
             raise NotImplementedError(
-                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
+                "The iterable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
                     type(obj)
                 )
             )
@@ -525,13 +596,13 @@ def _parse_load_result(obj, return_numpy):
     def ndarray_to_tensor(obj):
         return _ndarray_to_tensor(obj, return_numpy=return_numpy)
 
-    # tuple(name, ndarry) was converted from varbase of paddle2.1,
-    # and all tuple(name, ndarry) are converted to tensor.
+    # tuple(name, ndarray) was converted from varbase of paddle2.1,
+    # and all tuple(name, ndarray) are converted to tensor.
     if _contain_x(obj, _transformed_from_varbase):
         return _parse_every_object(
             obj, _transformed_from_varbase, tuple_to_tensor
         )
-    # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0
+    # If there is no tuple(name, ndarray), it is considered to be saved by paddle2.0
     # or converted from LoDTensor, and all ndarrays are converted to tensor.
     else:
         return _parse_every_object(
@@ -794,9 +865,7 @@ def save(obj, path, protocol=4, **configs):
             os.makedirs(dirname, exist_ok=True)
     elif not _is_memory_buffer(path):
         raise ValueError(
-            "only supports saving objects to file and `BytesIO`, but got {}".format(
-                type(path)
-            )
+            f"only supports saving objects to file and `BytesIO`, but got {type(path)}"
         )
 
     config = _parse_save_config(configs)
@@ -846,9 +915,7 @@ def _legacy_save(obj, path, protocol=2):
 
     if not isinstance(protocol, int):
         raise ValueError(
-            "The 'protocol' MUST be `int`, but received {}".format(
-                type(protocol)
-            )
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
     if protocol < 2 or protocol > 4:
@@ -1129,9 +1196,7 @@ def load(path, **configs):
                             return program
                     except:
                         raise ValueError(
-                            "`paddle.load` can not parse the file:{}.".format(
-                                path
-                            )
+                            f"`paddle.load` can not parse the file:{path}."
                         )
 
     else:

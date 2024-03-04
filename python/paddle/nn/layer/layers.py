@@ -23,24 +23,27 @@ import numpy as np
 
 import paddle
 from paddle import nn, profiler
+from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
-from paddle.base.dygraph.base import in_declarative_mode  # noqa F401
 from paddle.base.dygraph.base import (
     _convert_into_variable,
+    in_declarative_mode,  # noqa: F401
     in_to_static_mode,
     program_desc_tracing_guard,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
 from paddle.base.executor import Executor, global_scope
-from paddle.base.framework import Parameter, Program
-from paddle.base.framework import _current_expected_place as _get_device
 from paddle.base.framework import (
-    _global_flags,
+    Parameter,
+    Program,
+    _current_expected_place as _get_device,
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
+    in_pir_mode,
+    name_struct,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -71,8 +74,6 @@ def record_program_ops_pre_hook(layer, inputs):
                 )
             )
 
-    return None
-
 
 def set_op_customized_attrs_post_hook(layer, inputs, outputs):
     """
@@ -94,8 +95,6 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
         # remove pre-hook and post-hook
         for hook_helper in layer._op_recorder.hooks:
             hook_helper.remove()
-
-    return None
 
 
 def _scope_dist2single(dist_scope):
@@ -269,14 +268,9 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-        if (use_mkldnn is not None) and use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if in_dygraph_mode():
-            res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
-            )
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
@@ -308,7 +302,7 @@ class LayerObjectHelper(LayerHelperBase):
             )
 
 
-class LayerOpsRecoder:
+class LayerOpsRecorder:
     """
     Record generated operators information in nn.Layer.
     """
@@ -411,17 +405,17 @@ class Layer:
         self._loaddict_holder = collections.OrderedDict()
 
         # Record generated op_descs in this layer
-        self._op_recorder = LayerOpsRecoder(ops=[], hooks=[])
+        self._op_recorder = LayerOpsRecorder(ops=[], hooks=[])
         self._customized_attrs = {}
 
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
 
         # only used in AMP Training
-        self._cast_to_low_precison = True
+        self._cast_to_low_precision = True
 
         self._state_dict_hooks = collections.OrderedDict()
-        # Records orignal functions after @to_static to support to rollback
+        # Records original functions after @to_static to support to rollback
         self._original_funcs = collections.OrderedDict()
 
     def train(self):
@@ -642,7 +636,7 @@ class Layer:
 
                 >>> # the forward_post_hook change the output of the layer: output = output * 2
                 >>> def forward_post_hook(layer, input, output):
-                ...     # user can use layer, input and output for information statistis tasks
+                ...     # user can use layer, input and output for information statistics tasks
                 ...
                 ...     # change the output
                 ...     return output * 2
@@ -696,7 +690,7 @@ class Layer:
 
                 >>> # the forward_pre_hook change the input of the layer: input = input * 2
                 >>> def forward_pre_hook(layer, input):
-                ...     # user can use layer and input for information statistis tasks
+                ...     # user can use layer and input for information statistics tasks
                 ...
                 ...     # change the input
                 ...     input_return = (input[0] * 2)
@@ -736,7 +730,7 @@ class Layer:
         """Create parameters for this layer.
 
         Parameters:
-            shape(list): Shape of the parameter.
+            shape(list): Shape of the parameter. The data type in the list must be int.
             attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_paddle_ParamAttr`. Default: None.
             dtype(str, optional): Data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
@@ -847,12 +841,12 @@ class Layer:
         Create Tensor for this layer.
 
         Parameters:
-            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
-            persistable(bool, optional): if set this tensor persistable. Default: False
+            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None.
+            persistable(bool, optional): if set this tensor persistable. Default: False.
             dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                If set None, it will be "float32". Default: None
+                If set None, it will be "float32". Default: None.
 
         Returns:
             Tensor, created Tensor.
@@ -897,6 +891,11 @@ class Layer:
 
         Returns a list of all Parameters from current layer and its sub-layers.
 
+        Parameters:
+            include_sublayers (bool, optional): Whether to return the parameters of the sublayer.
+                If True, the returned list contains the parameters of the sublayer.
+                Default: True.
+
         Returns:
             list of Tensor, a list of Parameters.
 
@@ -922,6 +921,86 @@ class Layer:
             )
         ]
         return ret
+
+    def astype(self, dtype=None):
+        """
+
+        Casts all parameters and buffers to dtype and then return the Layer.
+
+        Parameters:
+            dtype(str|paddle.dtype|numpy.dtype): target data type of layer.
+                If set str, it can be "bool", "bfloat16", "float16", "float32", "float64",
+                "int8", "int16", "int32", "int64", "uint8", "complex64", "complex128".
+                Default: None
+
+        Returns:
+            Layer, self
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.nn as nn
+                >>> weight_attr = paddle.ParamAttr(name="weight",initializer=paddle.nn.initializer.Constant(value=1.5))
+                >>> bias_attr = paddle.ParamAttr(name="bias",initializer=paddle.nn.initializer.Constant(value=2.5))
+
+                >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr).to(device="cpu",dtype="float32")
+                >>> print(linear)
+                Linear(in_features=2, out_features=2, dtype=float32)
+                >>> print(linear.parameters())
+                [Parameter containing:
+                Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                    [[1.50000000, 1.50000000],
+                        [1.50000000, 1.50000000]]), Parameter containing:
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                    [2.50000000, 2.50000000])]
+
+                >>> linear=linear.astype("int8")
+                >>> print(linear)
+                Linear(in_features=2, out_features=2, dtype=paddle.int8)
+                >>> print(linear.parameters())
+                [Parameter containing:
+                Tensor(shape=[2, 2], dtype=int8, place=Place(cpu), stop_gradient=False,
+                    [[1, 1],
+                        [1, 1]]), Parameter containing:
+                Tensor(shape=[2], dtype=int8, place=Place(cpu), stop_gradient=False,
+                    [2, 2])]
+
+        """
+        valid_dtypes = [
+            "bfloat16",
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "complex64",
+            "complex128",
+            "bool",
+        ]
+        if (
+            isinstance(dtype, (paddle.dtype, np.dtype))
+            or type(dtype) is str
+            and dtype in valid_dtypes
+        ):
+            if isinstance(dtype, (str, np.dtype)):
+                dtype = framework.convert_np_dtype_to_dtype_(dtype)
+            self._dtype = dtype
+            for layer in self.sublayers():
+                layer._dtype = dtype
+            for _, param in self.named_parameters(include_sublayers=True):
+                param._to(None, dtype)
+            for _, buffer in self.named_buffers(include_sublayers=True):
+                buffer.to(None, dtype)
+            return self
+        else:
+            raise ValueError(
+                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but receive "
+                + str(dtype)
+            )
 
     def children(self):
         """
@@ -981,7 +1060,7 @@ class Layer:
         Returns a list of sub layers.
 
         Parameters:
-            include_self(bool, optional): Whether return self as sublayers. Default: False
+            include_self(bool, optional): Whether return self as sublayers. Default: False.
 
         Returns:
             list of Layer, a list of sub layers.
@@ -1060,7 +1139,9 @@ class Layer:
                  [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
                  0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
-        params_set = set()
+        params_set = (
+            ValueSet() if in_pir_mode() and not in_to_static_mode() else set()
+        )
         named_sublayers = (
             self.named_sublayers(prefix=prefix, include_self=True)
             if include_sublayers
@@ -1110,10 +1191,9 @@ class Layer:
             if layer is None:
                 continue
             layer_prefix = prefix + ('.' if prefix else '') + key
-            for p, l in layer.named_sublayers(
+            yield from layer.named_sublayers(
                 prefix=layer_prefix, include_self=True, layers_set=layers_set
-            ):
-                yield p, l
+            )
 
     def register_buffer(self, name, tensor, persistable=True):
         """
@@ -1192,7 +1272,7 @@ class Layer:
         Returns a list of all buffers from current layer and its sub-layers.
 
         Parameters:
-            include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True
+            include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True.
 
         Returns:
             list of Tensor, a list of buffers.
@@ -1326,7 +1406,8 @@ class Layer:
             ):
                 outputs = self.forward(*inputs, **kwargs)
         else:
-            outputs = self.forward(*inputs, **kwargs)
+            with name_struct(self.__class__.__name__):
+                outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
@@ -1522,9 +1603,7 @@ class Layer:
 
         if not isinstance(attrs, dict):
             raise TypeError(
-                "attrs should be type(dict), but received {}".format(
-                    type(attrs).__name__
-                )
+                f"attrs should be type(dict), but received {type(attrs).__name__}"
             )
 
         # NOTE: Overwrite behavior for same key.
@@ -1592,15 +1671,16 @@ class Layer:
             if len(self._loaddict_holder) > 0:
                 assert (
                     value.name in self._loaddict_holder
-                ), "Parameter not found, Can't not find [ {} ] in state_dict".format(
-                    value.name
-                )
+                ), f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
 
                 value.set_value(self._loaddict_holder[value.name])
 
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
-        elif isinstance(value, paddle.ir.OpResult) and value.is_persistable:
+        elif (
+            isinstance(value, paddle.pir.Value)
+            and value.get_defining_op().name() == 'builtin.parameter'
+        ):
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
@@ -1652,7 +1732,9 @@ class Layer:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
                     # value via `assign`.
-                    if type(value) == framework.Variable:
+                    if type(value) == framework.Variable or isinstance(
+                        value, paddle.pir.Value
+                    ):
                         from paddle import assign
 
                         # Note(zhhsplendid): the condition below happens in PaddleGan model,
@@ -1661,10 +1743,8 @@ class Layer:
                         # conservative code.
                         if in_to_static_mode() and _buffers[name] is None:
                             raise RuntimeError(
-                                'In Dy2stat, self.{0} is a buffer and self.{0} is '
-                                'not allowed to be set to Variable when self.{0} is None.'.format(
-                                    name
-                                )
+                                f'In Dy2stat, self.{name} is a buffer and self.{name} is '
+                                f'not allowed to be set to Variable when self.{name} is None.'
                             )
                         elif (
                             _buffers[name] is None
@@ -1811,10 +1891,10 @@ class Layer:
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
         """
 
         if destination is None:
@@ -1867,11 +1947,11 @@ class Layer:
         Get all parameters and buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
-        Retruns:
+        Returns:
             dict, a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -1904,11 +1984,11 @@ class Layer:
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
-        Retruns:
+        Returns:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -1938,7 +2018,7 @@ class Layer:
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
-                                                  Default: True
+                                                  Default: True.
         Returns:
             missing_keys(list):A list of str containing the missing keys
             unexpected_keys(list):A list of str containing the unexpected keys
@@ -1969,10 +2049,8 @@ class Layer:
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
-                        "{} receieves the length of {}, "
-                        "but the expected shape is {}".format(
-                            key, len(state), len(param)
-                        )
+                        f"{key} receives the length of {len(state)}, "
+                        f"but the expected shape is {len(param)}"
                     )
                 else:
                     match_keys.add(key)
@@ -1996,6 +2074,8 @@ class Layer:
 
         matched_param_state = []
         for key, param in self._state_dict_impl(use_hook=False).items():
+            if isinstance(param, paddle.Tensor) and not param._is_initialized():
+                continue
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
@@ -2046,7 +2126,7 @@ class Layer:
                     _set_var(param, state)
             except ValueError as e:
                 raise ValueError(
-                    "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
 
         return missing_keys, unexpected_keys
@@ -2150,7 +2230,7 @@ class Layer:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
             size_dtype = core.size_of_dtype(dtype)
-            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
+            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will compute ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (
                 ((np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
@@ -2184,7 +2264,11 @@ class Layer:
         # 4. share Tensor to origin param / Tensor
         dst_tensor = t.value().get_tensor()
         src_tensor = new_t.value().get_tensor()
-        dst_tensor._share_data_with(src_tensor)
+        if t._is_initialized():
+            dst_tensor._share_data_with(src_tensor)
+        else:
+            # If the tensor is not initialized, we can't check the memory size.
+            dst_tensor._share_data_nocheck_with(src_tensor)
 
         return t
 
@@ -2261,7 +2345,7 @@ class Layer:
 
     def _startup_program(self):
         """
-        Return starup program containing initialization operations of all parameters.
+        Return startup program containing initialization operations of all parameters.
 
         NOTE(dev): This is a very low level API and only for inner developer.
         """
@@ -2280,7 +2364,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``float`` data type.
 
         Parameters:
-            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
+            excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
 
         Returns:
             Layer: self
@@ -2313,8 +2397,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",
@@ -2336,7 +2420,7 @@ class Layer:
 
 
         Parameters:
-           excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+           excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2378,8 +2462,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",
@@ -2401,7 +2485,7 @@ class Layer:
 
 
         Parameters:
-            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+            excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2444,8 +2528,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",

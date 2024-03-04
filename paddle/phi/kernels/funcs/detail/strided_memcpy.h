@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/device_context.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

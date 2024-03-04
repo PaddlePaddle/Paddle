@@ -16,6 +16,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
@@ -54,10 +55,7 @@ void llm_int8_compute(const Context& dev_ctx,
                        k,
                        n);
   if (bias) {
-    std::vector<const phi::DenseTensor*> ins = {out, &(bias.get())};
-    std::vector<phi::DenseTensor*> outs = {out};
-    phi::funcs::BroadcastKernel<T>(
-        dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
+    phi::AddKernel<T, Context>(dev_ctx, *out, bias.get(), out);
   }
 #else
   PADDLE_THROW(phi::errors::Unimplemented(

@@ -56,9 +56,9 @@ class LookupTableOp : public framework::OperatorWithKernel {
             ids_dims));
 
     auto output_dims =
-        phi::vectorize(phi::slice_ddim(ids_dims, 0, ids_rank - 1));
+        common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
     output_dims.push_back(table_dims[1]);
-    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Out")[0] ==
         framework::proto::VarType::LOD_TENSOR) {

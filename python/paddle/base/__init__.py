@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import atexit
+import os
+import platform
+import sys
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepaddle without -U option
@@ -33,98 +34,107 @@ if os.path.exists(legacy_core):
         raise e
 
 # import all class inside framework into base module
-from . import framework
-from .framework import *
-
 # import all class inside executor into base module
-from . import executor
-from .executor import *
-
-from . import data_feed_desc
-from .data_feed_desc import *
-
-from . import dataset
-from .dataset import *
-
-from . import trainer_desc
-
-from . import io
-from . import initializer
-from .initializer import set_global_initializer
-from . import layers
-from . import dygraph
-from . import backward
-from .backward import gradients
-from . import incubate
-from .param_attr import ParamAttr, WeightNormParamAttr
-from .data_feeder import DataFeeder
-
-from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import (
+from . import (  # noqa: F401
+    backward,
+    compiler,
+    core,
+    data_feed_desc,
+    dataset,
+    dygraph,
+    executor,
+    framework,
+    incubate,
+    initializer,
+    io,
+    layers,
+    trainer_desc,
+    unique_name,
+)
+from .backward import (  # noqa: F401
+    append_backward,
+    gradients,
+)
+from .compiler import (  # noqa: F401
+    BuildStrategy,
+    CompiledProgram,
+    ExecutionStrategy,
+    IpuCompiledProgram,
+    IpuStrategy,
+)
+from .core import (  # noqa: F401
     CPUPlace,
-    XPUPlace,
-    CUDAPlace,
     CUDAPinnedPlace,
-    IPUPlace,
+    CUDAPlace,
     CustomPlace,
+    IPUPlace,
+    LoDTensor,
+    LoDTensorArray,
+    Scope,
+    XPUPlace,
+    _cuda_synchronize,
+    _Scope,
 )
-from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
-
-from . import unique_name
-from . import compiler
-from .compiler import *
-from paddle.base.layers.math_op_patch import monkey_patch_variable
-from .dygraph.base import enable_dygraph, disable_dygraph
+from .data_feed_desc import DataFeedDesc  # noqa: F401
+from .data_feeder import DataFeeder  # noqa: F401
+from .dataset import (  # noqa: F401
+    DatasetFactory,
+    InMemoryDataset,
+)
+from .dygraph.base import disable_dygraph, enable_dygraph
 from .dygraph.tensor_patch_methods import monkey_patch_tensor
-from .core import _cuda_synchronize
-from .trainer_desc import (
-    TrainerDesc,
-    DistMultiTrainer,
-    PipelineTrainer,
-    HeterPipelineTrainer,
-    MultiTrainer,
-    HeterXpuTrainer,
+from .executor import (  # noqa: F401
+    Executor,
+    global_scope,
+    scope_guard,
 )
-from .backward import append_backward
+from .framework import (  # noqa: F401
+    Program,
+    Variable,
+    cpu_places,
+    cuda_pinned_places,
+    cuda_places,
+    default_main_program,
+    default_startup_program,
+    device_guard,
+    get_flags,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+    ipu_shard_guard,
+    is_compiled_with_cinn,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+    is_compiled_with_xpu,
+    name_scope,
+    process_type_promotion,
+    program_guard,
+    require_version,
+    set_flags,
+    set_ipu_shard,
+    xpu_places,
+)
+from .initializer import set_global_initializer  # noqa: F401
+from .layers.math_op_patch import monkey_patch_variable
+from .lod_tensor import (  # noqa: F401
+    create_lod_tensor,
+    create_random_int_lodtensor,
+)
+from .param_attr import ParamAttr, WeightNormParamAttr  # noqa: F401
+from .trainer_desc import (  # noqa: F401
+    DistMultiTrainer,
+    HeterPipelineTrainer,
+    HeterXpuTrainer,
+    MultiTrainer,
+    PipelineTrainer,
+    TrainerDesc,
+)
 
 Tensor = LoDTensor
 enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph
 
-__all__ = (
-    framework.__all__
-    + executor.__all__
-    + trainer_desc.__all__
-    + lod_tensor.__all__
-    + data_feed_desc.__all__
-    + compiler.__all__
-    + backward.__all__
-    + [
-        'io',
-        'initializer',
-        'layers',
-        'dygraph',
-        'enable_dygraph',
-        'disable_dygraph',
-        'enable_imperative',
-        'disable_imperative',
-        'backward',
-        'LoDTensor',
-        'LoDTensorArray',
-        'CPUPlace',
-        'XPUPlace',
-        'CUDAPlace',
-        'CUDAPinnedPlace',
-        'IPUPlace',
-        'Tensor',
-        'ParamAttr',
-        'WeightNormParamAttr',
-        'DataFeeder',
-        'unique_name',
-        'Scope',
-        '_cuda_synchronize',
-    ]
-)
+__all__ = []
 
 
 def __bootstrap__():
@@ -134,14 +144,6 @@ def __bootstrap__():
     Returns:
         None
     """
-    import sys
-    import os
-    import platform
-    from . import core
-
-    # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7,
-    # unittest is always imported in numpy (maybe some versions not).
-    # so is_test is True and p2p is not inited.
     in_test = 'unittest' in sys.modules
 
     try:
@@ -151,10 +153,10 @@ def __bootstrap__():
 
     if num_threads > 1:
         print(
-            'WARNING: OMP_NUM_THREADS set to {0}, not 1. The computation '
+            f'WARNING: OMP_NUM_THREADS set to {num_threads}, not 1. The computation '
             'speed will not be optimized if you use data parallel. It will '
             'fail if this PaddlePaddle binary is compiled with OpenBlas since'
-            ' OpenBlas does not support multi-threads.'.format(num_threads),
+            ' OpenBlas does not support multi-threads.',
             file=sys.stderr,
         )
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
@@ -207,6 +209,7 @@ monkey_patch_tensor()
 
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
+atexit.register(core.pir.clear_pir_compiler_manager)
 
 # NOTE(Aganlengzi): clean up KernelFactory in advance manually.
 # NOTE(wangran16): clean up DeviceManager in advance manually.

@@ -68,7 +68,7 @@ class BCEWithLogitsLoss(Layer):
             batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
             The data type is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -253,7 +253,7 @@ class CrossEntropyLoss(Layer):
             value needs to be ignored. Only valid when soft_label = False.
             Default is ``-100`` .
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
@@ -311,8 +311,9 @@ class CrossEntropyLoss(Layer):
     Examples:
 
         .. code-block:: python
+            :name: code-example1
 
-            # hard labels
+            >>> # hard labels
             >>> import paddle
             >>> paddle.seed(2023)
             >>> N=100
@@ -330,9 +331,9 @@ class CrossEntropyLoss(Layer):
             5.33697682)
 
         .. code-block:: python
+            :name: code-example2
 
-            # soft labels
-            # case1: soft labels without label_smoothing
+            >>> # soft labels
             >>> import paddle
             >>> paddle.seed(2023)
             >>> axis = -1
@@ -342,6 +343,7 @@ class CrossEntropyLoss(Layer):
             >>> reduction='mean'
             >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> # case1: soft labels without label_smoothing
             >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
@@ -353,7 +355,7 @@ class CrossEntropyLoss(Layer):
 
 
 
-            # case2: soft labels with label_smoothing
+            >>> # case2: soft labels with label_smoothing
             >>> import paddle
             >>> paddle.seed(2023)
             >>> axis = -1
@@ -364,14 +366,23 @@ class CrossEntropyLoss(Layer):
             >>> reduction='mean'
             >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
+            >>> integer_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')
+
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
             ...     weight=weight, reduction=reduction, label_smoothing=label_smoothing)
-            >>> dy_ret = cross_entropy_loss(logits, labels)
-            >>> print(dy_ret)
+
+            >>> # integer labels
+            >>> integer_label_dy_ret = cross_entropy_loss(logits, integer_labels)
+            >>> print(integer_label_dy_ret)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            1.13879701)
+            1.10520368)
+
+            >>> # one_hot labels
+            >>> one_hot_label_dy_ret = cross_entropy_loss(logits, one_hot_labels)
+            >>> print(one_hot_label_dy_ret)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            1.10520368)
 
     """
 
@@ -606,7 +617,7 @@ class MSELoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.reduction = reduction
 
@@ -658,7 +669,7 @@ class L1Loss(Layer):
 
     Parameters:
         reduction (str, optional): Indicate the reduction to apply to the loss,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'none'``, the unreduced loss is returned;
             If `reduction` is ``'mean'``, the reduced mean loss is returned.
             If `reduction` is ``'sum'``, the reduced sum loss is returned.
@@ -754,7 +765,7 @@ class BCELoss(Layer):
             batch element. If given, has to be a Tensor of size nbatch and the data type
             is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -853,10 +864,10 @@ class NLLLoss(Layer):
         ignore_index (int, optional): Specifies a target value that is ignored
             and does not contribute to the input gradient.
         reduction (str, optional): Indicate how to average the loss,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-            if `reduction` is ``'none'``, no reduction will be apllied.
+            if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default is ``'None'``.
 
@@ -948,10 +959,10 @@ class PoissonNLLLoss(Layer):
             A small value to avoid evaluation of :math:`\log(0)` when ``log_input`` = ``False``. ``epsilon > 0``.
             Default: 1e-8.
          reduction (str, optional):
-            Indicate how to reduce the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            Indicate how to reduce the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-            if `reduction` is ``'none'``, no reduction will be apllied.
+            if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
          name (str, optional):
             Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -986,7 +997,7 @@ class PoissonNLLLoss(Layer):
     ):
         if epsilon <= 0:
             raise ValueError(
-                "The value of `epsilon` in PoissonNLLLoss should be positve, but received %f, which is not allowed"
+                "The value of `epsilon` in PoissonNLLLoss should be positive, but received %f, which is not allowed"
                 % epsilon
             )
         if reduction not in ['sum', 'mean', 'none']:
@@ -1037,11 +1048,11 @@ class KLDivLoss(Layer):
 
     Parameters:
         reduction (str, optional): Indicate how to average the loss,
-            the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-            if `reduction` is ``'none'``, no reduction will be apllied.
+            if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
 
     Shape:
@@ -1121,7 +1132,7 @@ class MarginRankingLoss(Layer):
 
     Parameters:
         margin (float, optional): The margin value to add, default value is 0;
-        reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
+        reduction (str, optional): Indicate the reduction to apply to the loss, the candidates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -1177,11 +1188,11 @@ class CTCLoss(Layer):
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
     It can be aliased as softmax with CTC, since a native softmax activation
-    is interated to the Warp-CTC library to normalize values for each row of the input tensor.
+    is integrated to the Warp-CTC library to normalize values for each row of the input tensor.
 
     Parameters:
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
-        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+        reduction (string, optional): Indicate how to average the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
 
     Shape:
         - log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type should be float32 or float64.
@@ -1353,7 +1364,7 @@ class SmoothL1Loss(Layer):
 
     Parameters:
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
@@ -1426,7 +1437,7 @@ class MultiLabelSoftMarginLoss(Layer):
                     If given, has to be a Tensor of size C and the data type is float32, float64.
                     Default is ``'None'`` .
             reduction (str, optional): Indicate how to average the loss by batch_size,
-                    the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                    the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
                     If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
                     If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                     If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -1473,7 +1484,7 @@ class MultiLabelSoftMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiLabelSoftMarginloss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.weight = weight
         self.reduction = reduction
@@ -1520,7 +1531,7 @@ class HingeEmbeddingLoss(Layer):
             hinge_embedding_loss. When label is -1, Input smaller than margin are minimized with hinge_embedding_loss.
             Default = 1.0
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -1722,7 +1733,7 @@ class TripletMarginWithDistanceLoss(Layer):
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
 
         reduction (str, Optional):Indicate how to average the loss by batch_size.
-                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
                 If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
                 If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                 If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -1731,18 +1742,18 @@ class TripletMarginWithDistanceLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-        input (Tensor):Input tensor, the data type is float32 or float64.
-    the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+      - input (Tensor):Input tensor, the data type is float32 or float64.
+        the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
-        positive (Tensor):Positive tensor, the data type is float32 or float64.
-    The shape of label is the same as the shape of input.
+      - positive (Tensor):Positive tensor, the data type is float32 or float64.
+        The shape of label is the same as the shape of input.
 
-        negative (Tensor):Negative tensor, the data type is float32 or float64.
-    The shape of label is the same as the shape of input.
+      - negative (Tensor):Negative tensor, the data type is float32 or float64.
+        The shape of label is the same as the shape of input.
 
-        output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+      - output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
-    Return：
+    Return:
         A callable object of TripletMarginWithDistanceLoss
 
     Examples:
@@ -1834,7 +1845,7 @@ class TripletMarginLoss(Layer):
             Default: ``False``.
 
         reduction (str, Optional):Indicate how to average the loss by batch_size.
-                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
                 If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
                 If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                 If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -1998,7 +2009,7 @@ class MultiMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.p = p
         self.margin = margin

@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
@@ -33,12 +34,11 @@
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_string(tracer_mkldnn_ops_on);
-PHI_DECLARE_string(tracer_mkldnn_ops_off);
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_string(tracer_mkldnn_ops_on);
+COMMON_DECLARE_string(tracer_mkldnn_ops_off);
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -48,27 +48,55 @@ thread_local bool Tracer::enable_program_desc_tracing_ = false;
 
 thread_local bool Tracer::has_grad_ = true;
 
-thread_local bool Tracer::use_promote_ = true;
-
 thread_local bool Tracer::use_layout_autotune_ = false;
-
-thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
-
-thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
 
 static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
+static thread_local std::shared_ptr<AmpAttrs> g_current_amp_attrs =
+    std::make_shared<AmpAttrs>();
+
+TEST_API void Tracer::DisableLayoutAutoTune() { use_layout_autotune_ = false; }
+TEST_API void Tracer::EnableLayoutAutoTune() {
+  use_layout_autotune_ = true;
+  if (FLAGS_use_stride_kernel) {
+    LOG(WARNING) << "When the layout_autotune policy is on, Paddle will turn "
+                    "off the Stride policy. This will cause the input and "
+                    "output of the Strided API no longer share memory, which "
+                    "may cause problems with model accuracy.";
+    FLAGS_use_stride_kernel = false;
+  }
+}
+
+bool Tracer::UseLayoutAutoTune() {
+#if defined(PADDLE_WITH_CUDA)
+  if (phi::backends::gpu::TensorCoreAvailable()) {
+    return use_layout_autotune_;
+  }
+#endif
+  use_layout_autotune_ = false;
+  return false;
+}
+
+TEST_API void Tracer::SetPythonStack(std::string stack_str) {
+  python_stack_ = stack_str;
+}
+TEST_API std::string Tracer::GetPythonStack() { return python_stack_; }
+
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
 
-void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
+TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
   g_current_tracer = tracer;
   VLOG(6) << "Set current tracer: " << g_current_tracer;
+}
+
+const std::shared_ptr<AmpAttrs>& GetCurrentAmpAttrs() {
+  return g_current_amp_attrs;
 }
 
 void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
   for (const auto& pair : outs) {
     for (const auto& var : pair.second) {
-      // NOTE(zhiqiu): this happends when None output are passed from python
+      // NOTE(zhiqiu): this happens when None output are passed from python
       // side. For example, fake_quantize_dequantize_moving_average_abs_max may
       // pass None OutAccum in eval mode.
       // It can be refined by generate several different pybind interface for
@@ -77,9 +105,9 @@ void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
         VLOG(4) << pair.first << " is NULL";
         continue;
       }
-      VLOG(6) << "Set output: " << var->Name() << "'s OverridedStopGradient as "
-              << generate_grad;
-      var->InnerSetOverridedStopGradient(generate_grad);
+      VLOG(6) << "Set output: " << var->Name()
+              << "'s OverriddenStopGradient as " << generate_grad;
+      var->InnerSetOverriddenStopGradient(generate_grad);
     }
   }
 }
@@ -248,22 +276,24 @@ void Tracer::TraceOpImpl(const std::string& type,
                               : attr_checker->GetDefaultAttrMap();
 
   std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
-  if (amp_level_ == AmpLevel::O1) {
-    if (amp_dtype_ == phi::DataType::FLOAT16) {
+  if (GetCurrentAmpAttrs()->GetAmpLevel() == AmpLevel::O1) {
+    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == phi::DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           AutoCastInputs<VarType>(type, ins));
-    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() ==
+               phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           AutoCastBF16Inputs<VarType>(type, ins));
     }
-  } else if (amp_level_ == AmpLevel::O2) {
-    if (amp_dtype_ == phi::DataType::FLOAT16) {
+  } else if (GetCurrentAmpAttrs()->GetAmpLevel() == AmpLevel::O2) {
+    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == phi::DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           CastPureFp16Inputs<VarType>(type, ins));
-    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() ==
+               phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           CastPureBf16Inputs<VarType>(type, ins));
@@ -321,7 +351,7 @@ void Tracer::TraceOpImpl(const std::string& type,
     }
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
-    throw std::move(exception);
+    throw exception;
   } catch (std::exception& ex) {
     PADDLE_THROW(
         platform::errors::Fatal("Operator %s raises an %s exception.\n"
@@ -363,7 +393,7 @@ void Tracer::TraceOpImpl(const std::string& type,
   }
 }
 
-template void Tracer::TraceOp<VarBase>(
+template TEST_API void Tracer::TraceOp<VarBase>(
     const std::string& type,
     const NameVarMap<VarBase>& ins,
     const NameVarMap<VarBase>& outs,
@@ -474,7 +504,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameTensorMap& ins,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap attrs) {
-  VLOG(6) << "Running On Eager TraceOp(4 agrs): ";
+  VLOG(6) << "Running On Eager TraceOp(4 args): ";
   TraceOpImpl<egr::EagerVariable>(
       type, ins, outs, attrs, expected_place_, false, {}, nullptr, true);
 }
@@ -521,8 +551,29 @@ void Tracer::TraceOp(const std::string& type,
   }
 }
 
-void Tracer::SetExpectedPlace(platform::Place place) {
+TEST_API void Tracer::SetExpectedPlace(platform::Place place) {
   expected_place_ = place;
+}
+TEST_API bool Tracer::HasGrad() const { return has_grad_; }
+
+TEST_API void Tracer::SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
+
+TEST_API void Tracer::SetUsePromote(bool use_promote) {
+  VLOG(4) << "set use_promote to " << use_promote;
+  g_current_amp_attrs->SetUsePromote(use_promote);
+}
+
+TEST_API bool Tracer::GetUsePromote() const {
+  return g_current_amp_attrs->GetUsePromote();
+}
+
+TEST_API void Tracer::SetAmpLevel(AmpLevel level) {
+  VLOG(4) << "set amp_level to " << static_cast<unsigned int>(level);
+  g_current_amp_attrs->SetAmpLevel(level);
+}
+
+TEST_API AmpLevel Tracer::GetAmpLevel() const {
+  return g_current_amp_attrs->GetAmpLevel();
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
@@ -532,15 +583,36 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
 
   for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
-      if (!var_base->OverridedStopGradient()) {
+      if (!var_base->OverriddenStopGradient()) {
         VLOG(6) << "Find out input: " << var_base->Name()
                 << "'s GeneratedGrad is True";
-        PassStopGradient(outs, var_base->OverridedStopGradient());
+        PassStopGradient(outs, var_base->OverriddenStopGradient());
         return true;
       }
     }
   }
   return false;
+}
+
+void Tracer::SetEnableProgramDescTracing(bool enabled) {
+  enable_program_desc_tracing_ = enabled;
+}
+
+bool Tracer::IsProgramDescTracingEnabled() const {
+  return enable_program_desc_tracing_;
+}
+
+void Tracer::SetAmpDtype(std::string amp_dtype) {
+  VLOG(4) << "set amp_dtype to " << amp_dtype;
+  g_current_amp_attrs->SetAmpDtype(amp_dtype);
+}
+
+std::string Tracer::GetAmpDtype() const {
+  return g_current_amp_attrs->GetAmpDtype();
+}
+
+phi::DataType Tracer::GetAmpPhiDtype() const {
+  return g_current_amp_attrs->GetAmpPhiDtype();
 }
 
 bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,

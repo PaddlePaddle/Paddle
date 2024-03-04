@@ -23,7 +23,7 @@
 #include <typeinfo>
 #include <vector>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/capi/include/c_device_context.h"
 #include "paddle/phi/capi/include/c_infer_meta_context.h"
 #include "paddle/phi/capi/include/c_int_array.h"

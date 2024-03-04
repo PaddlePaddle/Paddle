@@ -27,18 +27,17 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
-#endif
-
-#if defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -165,6 +164,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
 
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
+    int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
     BKCLDataType dtype =
@@ -174,17 +174,73 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::BKCLCommContext::Instance().Get(rid, place);
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      distributed::AllreduceOptions opts;
+      switch (red_type) {
+        case kRedSum:
+          opts.reduce_op = distributed::ReduceOp::SUM;
+          break;
+
+        case kRedMax:
+          opts.reduce_op = distributed::ReduceOp::MAX;
+          break;
+
+        case kRedMin:
+          opts.reduce_op = distributed::ReduceOp::MIN;
+          break;
+
+        case kRedProd:
+          opts.reduce_op = distributed::ReduceOp::PRODUCT;
+          break;
+
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Invalid reduce type: %d", red_type));
+      }
+
+      auto task = pg->AllReduce(out, *in, opts, false, true);
+      task->Wait();
+      return;
+    }
 
     XPUStream stream = nullptr;
+    platform::BKCLComm* comm = nullptr;
+    phi::distributed::BKCLCommContext* comm_ctx = nullptr;
+
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(rid)));
+      comm_ctx = static_cast<phi::distributed::BKCLCommContext*>(
+          comm_context_manager.Get(std::to_string(rid)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "BKCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      stream = comm_ctx->GetStream();
+      VLOG(3) << "new comm_context_manager has rid " << rid;
+    } else {
+      comm = platform::BKCLCommContext::Instance().Get(rid, place);
+      stream = comm->stream();
+      VLOG(3) << "old BKCLCommContext has rid " << rid;
+    }
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                    ->x_context()
                    ->xpu_stream;
-    } else {
-      stream = comm->stream();
     }
 
     BKCLOp bkcl_red_type = BKCL_ADD;
@@ -210,16 +266,17 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_EQ(
-        bkcl_all_reduce(comm->comm(),
-                        sendbuff,
-                        recvbuff,
-                        numel,
-                        dtype,
-                        bkcl_red_type,
-                        stream),
-        BKCL_SUCCESS,
-        platform::errors::PreconditionNotMet("BKCL all reduce failed"));
+    if (comm_ctx) {
+      comm_ctx->AllReduce(out, *in, bkcl_red_type, stream);
+    } else {
+      PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(comm->comm(),
+                                                 sendbuff,
+                                                 recvbuff,
+                                                 numel,
+                                                 dtype,
+                                                 bkcl_red_type,
+                                                 stream));
+    }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU."));

@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def accuracy_wrapper(infer, indices, label):
@@ -53,7 +54,7 @@ class TestAccuracyOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAccuracyOpFp16(TestAccuracyOp):
@@ -61,7 +62,7 @@ class TestAccuracyOpFp16(TestAccuracyOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
 
 @unittest.skipIf(
@@ -103,7 +104,7 @@ class TestAccuracyOpBf16(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-2)
+            self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
 
 class TestAccuracyOpError(unittest.TestCase):
@@ -142,35 +143,38 @@ class TestAccuracyOpError(unittest.TestCase):
 
 
 class TestAccuracyAPI1(unittest.TestCase):
-    def setUp(self):
+    def run_api(self, accuracy_api):
         with paddle_static_guard():
-            self.predictions = paddle.static.data(
-                shape=[2, 5], name="predictions", dtype="float32"
-            )
-            self.label = paddle.static.data(
-                shape=[2, 1], name="labels", dtype="int64"
-            )
-            self.result = paddle.static.accuracy(
-                input=self.predictions, label=self.label, k=1
-            )
-            self.input_predictions = np.array(
-                [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
-                dtype="float32",
-            )
-            self.input_labels = np.array([[2], [0]], dtype="int64")
-            self.expect_value = np.array([0.5], dtype='float32')
+            with paddle.static.program_guard(paddle.static.Program()):
+                self.predictions = paddle.static.data(
+                    shape=[2, 5], name="predictions", dtype="float32"
+                )
+                self.label = paddle.static.data(
+                    shape=[2, 1], name="labels", dtype="int64"
+                )
+                self.result = accuracy_api(
+                    input=self.predictions, label=self.label, k=1
+                )
+                self.input_predictions = np.array(
+                    [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
+                    dtype="float32",
+                )
+                self.input_labels = np.array([[2], [0]], dtype="int64")
+                self.expect_value = np.array([0.5], dtype='float32')
+                exe = paddle.static.Executor()
+                (result,) = exe.run(
+                    feed={
+                        "predictions": self.input_predictions,
+                        'labels': self.input_labels,
+                    },
+                    fetch_list=[self.result],
+                )
+                self.assertEqual((result == self.expect_value).all(), True)
 
+    @test_with_pir_api
     def test_api(self):
-        with paddle_static_guard():
-            exe = paddle.static.Executor()
-            (result,) = exe.run(
-                feed={
-                    "predictions": self.input_predictions,
-                    'labels': self.input_labels,
-                },
-                fetch_list=[self.result.name],
-            )
-            self.assertEqual((result == self.expect_value).all(), True)
+        self.run_api(accuracy_api=paddle.static.accuracy)
+        self.run_api(accuracy_api=paddle.metric.accuracy)
 
 
 class TestAccuracyAPI2(unittest.TestCase):

@@ -16,9 +16,9 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/common/layout.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace eager_test {
@@ -37,7 +37,7 @@ TEST(Tensor, Constructor) {
   CHECK_EQ(et2.name(), "et2");
 
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -67,7 +67,7 @@ TEST(Tensor, Constructor) {
 TEST(Tensor, MemberFunction) {
   paddle::Tensor et3;
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -87,7 +87,7 @@ TEST(Tensor, MemberFunction) {
   CHECK_EQ(et3.is_cpu(), true);
   CHECK_EQ(et3.is_gpu(), false);
   CHECK_EQ(et3.numel(), 2);
-  auto expected_dim = phi::make_ddim({1, 2});
+  auto expected_dim = common::make_ddim({1, 2});
   CHECK_EQ(et3.dims(), expected_dim);
   CHECK_EQ(et3.type(), phi::DataType::FLOAT32);
   CHECK_EQ(et3.layout(), phi::DataLayout::NCHW);
@@ -121,7 +121,7 @@ TEST(Tensor, MemberFunction) {
 TEST(EagerVariable, Constructor) {
   paddle::Tensor t3;
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -159,7 +159,7 @@ TEST(EagerVariable, Constructor) {
   paddle::Tensor t7(std::make_shared<phi::SelectedRows>(rows, 2));
   std::dynamic_pointer_cast<phi::SelectedRows>(t7.impl())
       ->mutable_value()
-      ->Resize(phi::make_ddim(dims));
+      ->Resize(common::make_ddim(dims));
   auto* dt7_tmp_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(t7.impl())
                           ->mutable_value()
                           ->mutable_data<float>(paddle::platform::CPUPlace());
@@ -202,9 +202,10 @@ TEST(EagerVariable, Constructor) {
 
 TEST(EagerVariable, DataLayout) {
   paddle::Tensor tensor;
-  phi::DenseTensorMeta meta = phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                                                   phi::make_ddim({1, 1, 1, 1}),
-                                                   phi::DataLayout::UNDEFINED);
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           common::make_ddim({1, 1, 1, 1}),
+                           phi::DataLayout::UNDEFINED);
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())

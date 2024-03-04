@@ -20,7 +20,7 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/poly/domain_add_unit_loop_mutator.h"
 #include "paddle/cinn/poly/isl_utils.h"
 

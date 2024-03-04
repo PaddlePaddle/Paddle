@@ -438,7 +438,7 @@ CascadeFastWhereXPUPattern::CascadeFastWhereXPUPattern(
       pattern->NewNode(fast_where_xpu0_repr())->assert_is_op("fast_where_xpu");
   auto fast_where_xpu1 =
       pattern->NewNode(fast_where_xpu1_repr())->assert_is_op("fast_where_xpu");
-  // declare vairable nodes
+  // declare variable nodes
   auto condition0 = pattern->NewNode(condition0_repr())
                         ->assert_is_op_input("fast_where_xpu", "condition");
   auto condition1 = pattern->NewNode(condition1_repr())

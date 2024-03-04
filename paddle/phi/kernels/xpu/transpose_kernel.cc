@@ -25,10 +25,10 @@ void TransposeKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   size_t x_rank = x.dims().size();
-  std::vector<int> formated_axis = axis;
+  std::vector<int> formatted_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
+      formatted_axis[i] = axis[i] + x_rank;
     }
   }
 
@@ -38,17 +38,17 @@ void TransposeKernel(const Context& dev_ctx,
   if (out->numel() == 0) {
     return;
   }
-  if (formated_axis.size() == 0) {
+  if (formatted_axis.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
-  std::vector<int> x_dim_vec = phi::vectorize<int>(x.dims());
+  std::vector<int> x_dim_vec = common::vectorize<int>(x.dims());
   int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                   reinterpret_cast<const XPUType*>(x.data<T>()),
                                   reinterpret_cast<XPUType*>(out->data<T>()),
                                   x_dim_vec,
-                                  formated_axis);
+                                  formatted_axis);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 }
 
@@ -60,6 +60,7 @@ PD_REGISTER_KERNEL(transpose,
                    phi::TransposeKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t,
                    int,
                    bool) {}

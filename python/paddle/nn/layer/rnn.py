@@ -24,13 +24,15 @@ from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
     default_startup_program,
-    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
     program_guard,
 )
 from paddle.common_ops_import import Variable
 from paddle.framework import core
-from paddle.nn import functional as F
-from paddle.nn import initializer as I
+from paddle.nn import (
+    functional as F,
+    initializer as I,
+)
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 from .container import LayerList
@@ -77,12 +79,12 @@ def rnn(
     Returns:
         outputs (Tensor|list|tuple): the output sequence. Tensor or nested
             structure of Tensors.
-            If `time_major` is True, the shape of each tensor in outpus is
+            If `time_major` is True, the shape of each tensor in outputs is
             `[time_steps, batch_size, hidden_size]`, else
             `[batch_size, time_steps, hidden_size]`.
         final_states (Tensor|list|tuple): final states. A (possibly nested structure of)
             tensor[s], representing the final state for RNN. It has the same
-            structure of intial state. Each tensor in final states has the same
+            structure of initial state. Each tensor in final states has the same
             shape and dtype as the corresponding tensor in initial states.
 
     Examples:
@@ -104,7 +106,7 @@ def rnn(
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,
@@ -391,7 +393,7 @@ def birnn(
         outputs (Tensor): the outputs of the bidirectional RNN. It is the
             concatenation of the outputs from the forward RNN and backward
             RNN along the last axis.
-            If time major is True, the shape is `[time_steps, batch_size, size]`,
+            If time_major is True, the shape is `[time_steps, batch_size, size]`,
             else the shape is `[batch_size, time_steps, size]`, where size is
             `cell_fw.hidden_size + cell_bw.hidden_size`.
         final_states (tuple): A tuple of the final states of the forward
@@ -540,10 +542,10 @@ def concat_states(states, bidirectional=False, state_components=1):
         return paddle.stack(paddle.utils.flatten(states))
     else:
         states = paddle.utils.flatten(states)
-        componnets = []
+        components = []
         for i in range(state_components):
-            componnets.append(states[i::state_components])
-        return tuple([paddle.stack(item) for item in componnets])
+            components.append(states[i::state_components])
+        return tuple([paddle.stack(item) for item in components])
 
 
 class RNNCellBase(Layer):
@@ -664,7 +666,7 @@ class RNNCellBase(Layer):
         r"""
         Abstract method (property).
         Used to initialize states.
-        A (possiblely nested structure of) shape[s], where a shape is a
+        A (possibly nested structure of) shape[s], where a shape is a
         list/tuple of integers (-1 for batch size would be automatically
         inserted into a shape if shape is not started with it).
         Not necessary to be implemented if states are not initialized by
@@ -672,7 +674,7 @@ class RNNCellBase(Layer):
         `get_initial_states`.
         """
         raise NotImplementedError(
-            "Please add implementaion for `state_shape` in the used cell."
+            "Please add implementation for `state_shape` in the used cell."
         )
 
     @property
@@ -680,15 +682,15 @@ class RNNCellBase(Layer):
         r"""
         Abstract method (property).
         Used to initialize states.
-        A (possiblely nested structure of) data types[s]. The structure must be
+        A (possibly nested structure of) data types[s]. The structure must be
         same as that of `shape`, except when all tensors' in states has the same
-        data type, a signle data type can be used.
+        data type, a single data type can be used.
         Not necessary to be implemented if states are not initialized
         by `get_initial_states` or the `dtype` argument is provided when using
         `get_initial_states`.
         """
         raise NotImplementedError(
-            "Please add implementaion for `state_dtype` in the used cell."
+            "Please add implementation for `state_dtype` in the used cell."
         )
 
 
@@ -740,7 +742,7 @@ class SimpleRNNCell(RNNCellBase):
         - **states** (Tensor): shape `[batch_size, hidden_size]`, the new hidden state, corresponding to :math:`h_{t}` in the formula.
 
     Notes:
-        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_base_ParamAttr`.
+        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_paddle_ParamAttr`.
 
     Examples:
 
@@ -777,35 +779,72 @@ class SimpleRNNCell(RNNCellBase):
                 )
             )
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = self.create_parameter(
-            (hidden_size, input_size),
-            weight_ih_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.weight_hh = self.create_parameter(
-            (hidden_size, hidden_size),
-            weight_hh_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_ih = self.create_parameter(
-            (hidden_size,),
-            bias_ih_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_hh = self.create_parameter(
-            (hidden_size,),
-            bias_hh_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_ih.stop_gradient = True
+
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (hidden_size, hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (hidden_size, hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_hh.stop_gradient = True
+
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_ih = self.create_parameter(
+                (hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_ih.stop_gradient = True
+
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_hh = self.create_parameter(
+                (hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_hh.stop_gradient = True
 
         self.input_size = input_size
         self.hidden_size = hidden_size
         if activation not in ["tanh", "relu"]:
             raise ValueError(
                 "activation for SimpleRNNCell should be tanh or relu, "
-                "but get {}".format(activation)
+                f"but get {activation}"
             )
         self.activation = activation
         self._activation_fn = paddle.tanh if activation == "tanh" else F.relu
@@ -856,7 +895,7 @@ class LSTMCell(RNNCellBase):
 
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise
+    where :math:`\sigma` is the sigmoid function, and * is the elementwise
     multiplication operator.
 
     Please refer to `An Empirical Exploration of Recurrent Network Architectures
@@ -880,7 +919,7 @@ class LSTMCell(RNNCellBase):
         - **weight_ih** (Parameter): shape (4 * hidden_size, input_size), input to hidden weight, which corresponds to the concatenation of :math:`W_{ii}, W_{if}, W_{ig}, W_{io}` in the formula.
         - **weight_hh** (Parameter): shape (4 * hidden_size, hidden_size), hidden to hidden weight, which corresponds to the concatenation of :math:`W_{hi}, W_{hf}, W_{hg}, W_{ho}` in the formula.
         - **bias_ih** (Parameter): shape (4 * hidden_size, ), input to hidden bias, which corresponds to the concatenation of :math:`b_{ii}, b_{if}, b_{ig}, b_{io}` in the formula.
-        - **bias_hh** (Parameter): shape (4 * hidden_size, ), hidden to hidden bias, swhich corresponds to the concatenation of :math:`b_{hi}, b_{hf}, b_{hg}, b_{ho}` in the formula.
+        - **bias_hh** (Parameter): shape (4 * hidden_size, ), hidden to hidden bias, which corresponds to the concatenation of :math:`b_{hi}, b_{hf}, b_{hg}, b_{ho}` in the formula.
 
     Inputs:
         - **inputs** (Tensor): shape `[batch_size, input_size]`, the input, corresponding to :math:`x_t` in the formula.
@@ -893,7 +932,7 @@ class LSTMCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to :ref:`api_base_ParamAttr`.
+        information about parameter initialization, please refer to :ref:`api_paddle_ParamAttr`.
 
     Examples:
 
@@ -935,28 +974,62 @@ class LSTMCell(RNNCellBase):
                 )
             )
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = self.create_parameter(
-            (4 * hidden_size, input_size),
-            weight_ih_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.weight_hh = self.create_parameter(
-            (4 * hidden_size, hidden_size),
-            weight_hh_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_ih = self.create_parameter(
-            (4 * hidden_size,),
-            bias_ih_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_hh = self.create_parameter(
-            (4 * hidden_size,),
-            bias_hh_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_ih.stop_gradient = True
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_hh.stop_gradient = True
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (4 * hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_ih = self.create_parameter(
+                (4 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_ih.stop_gradient = True
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (4 * hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_hh = self.create_parameter(
+                (4 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_hh.stop_gradient = True
 
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -1017,7 +1090,7 @@ class GRUCell(RNNCellBase):
 
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise
+    where :math:`\sigma` is the sigmoid function, and * is the elementwise
     multiplication operator.
 
     Please refer to `An Empirical Exploration of Recurrent Network Architectures
@@ -1041,7 +1114,7 @@ class GRUCell(RNNCellBase):
         - **weight_ih** (Parameter): shape (3 * hidden_size, input_size), input to hidden weight, which corresponds to the concatenation of :math:`W_{ir}, W_{iz}, W_{ic}` in the formula.
         - **weight_hh** (Parameter): shape (3 * hidden_size, hidden_size), hidden to hidden weight, which corresponds to the concatenation of :math:`W_{hr}, W_{hz}, W_{hc}` in the formula.
         - **bias_ih** (Parameter): shape (3 * hidden_size, ), input to hidden bias, which corresponds to the concatenation of :math:`b_{ir}, b_{iz}, b_{ic}` in the formula.
-        - **bias_hh** (Parameter): shape (3 * hidden_size, ), hidden to hidden bias, swhich corresponds to the concatenation of :math:`b_{hr}, b_{hz}, b_{hc}` in the formula.
+        - **bias_hh** (Parameter): shape (3 * hidden_size, ), hidden to hidden bias, which corresponds to the concatenation of :math:`b_{hr}, b_{hz}, b_{hc}` in the formula.
 
     Inputs:
         - **inputs** (Tensor): A tensor with shape `[batch_size, input_size]`, corresponding to :math:`x_t` in the formula.
@@ -1054,7 +1127,7 @@ class GRUCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to s:ref:`api_base_ParamAttr`.
+        information about parameter initialization, please refer to s:ref:`api_paddle_ParamAttr`.
 
     Examples:
 
@@ -1094,28 +1167,64 @@ class GRUCell(RNNCellBase):
                 )
             )
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = self.create_parameter(
-            (3 * hidden_size, input_size),
-            weight_ih_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.weight_hh = self.create_parameter(
-            (3 * hidden_size, hidden_size),
-            weight_hh_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_ih = self.create_parameter(
-            (3 * hidden_size,),
-            bias_ih_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_hh = self.create_parameter(
-            (3 * hidden_size,),
-            bias_hh_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (3 * hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (3 * hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_ih.stop_gradient = True
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (3 * hidden_size, hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (3 * hidden_size, hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_hh.stop_gradient = True
+
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (3 * hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_ih = self.create_parameter(
+                (3 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_ih.stop_gradient = True
+
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (3 * hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_hh = self.create_parameter(
+                (3 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_hh.stop_gradient = True
 
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -1171,14 +1280,14 @@ class RNN(Layer):
             time steps. Defaults to False.
 
     Inputs:
-        - **inputs** (Tensor): A (possibly nested structure of) tensor[s]. The input sequences. If time major is False, the shape is `[batch_size, time_steps, input_size]`. If time major is True, the shape is `[time_steps, batch_size, input_size]` where `input_size` is the input size of the cell.
+        - **inputs** (Tensor): A (possibly nested structure of) tensor[s]. The input sequences. If time_major is False, the shape is `[batch_size, time_steps, input_size]`. If time_major is True, the shape is `[time_steps, batch_size, input_size]` where `input_size` is the input size of the cell.
         - **initial_states** (Tensor|list|tuple, optional): Tensor of a possibly nested structure of tensors, representing the initial state for the rnn cell. If not provided, `cell.get_initial_states` would be called to produce the initial states. Defaults to None.
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None.If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
         - **kwargs**: Additional keyword arguments to pass to `forward` of the cell.
 
-    Returns:
+    Outputs:
         - **outputs** (Tensor|list|tuple): the output sequences. If `time_major` is True, the shape is `[time_steps, batch_size, hidden_size]`, else `[batch_size, time_steps, hidden_size]`.
-        - **final_states** (Tensor|list|tuple): final states of the cell. Tensor or a possibly nested structure of tensors which has the same structure with intial state. Each tensor in final states has the same shape and dtype as the corresponding tensor in initial states.
+        - **final_states** (Tensor|list|tuple): final states of the cell. Tensor or a possibly nested structure of tensors which has the same structure with initial state. Each tensor in final states has the same shape and dtype as the corresponding tensor in initial states.
 
     Notes:
         This class is a low-level API for wrapping rnn cell into a RNN network.
@@ -1232,9 +1341,9 @@ class RNN(Layer):
 
 class BiRNN(Layer):
     r"""
-    Wrapper for bidirectional RNN, which builds a bidiretional RNN given the
+    Wrapper for bidirectional RNN, which builds a bidirectional RNN given the
     forward rnn cell and backward rnn cell. A BiRNN applies forward RNN and
-    backward RNN with coresponding cells separately and concats the outputs
+    backward RNN with corresponding cells separately and concats the outputs
     along the last axis.
 
     Parameters:
@@ -1250,7 +1359,7 @@ class BiRNN(Layer):
         - **kwargs**: Additional keyword arguments. Arguments passed to `forward` for each cell.
 
     Outputs:
-        - **outputs** (Tensor): the outputs of the bidirectional RNN. It is the concatenation of the outputs from the forward RNN and backward RNN along the last axis. If time major is True, the shape is `[time_steps, batch_size, size]`, else the shape is `[batch_size, time_steps, size]`, where size is `cell_fw.hidden_size + cell_bw.hidden_size`.
+        - **outputs** (Tensor): the outputs of the bidirectional RNN. It is the concatenation of the outputs from the forward RNN and backward RNN along the last axis. If time_major is True, the shape is `[time_steps, batch_size, size]`, else the shape is `[batch_size, time_steps, size]`, where size is `cell_fw.hidden_size + cell_bw.hidden_size`.
         - **final_states** (tuple): A tuple of the final states of the forward cell and backward cell.
 
     Notes:
@@ -1285,10 +1394,8 @@ class BiRNN(Layer):
         self.cell_bw = cell_bw
         if cell_fw.input_size != cell_bw.input_size:
             raise ValueError(
-                "input size of forward cell({}) does not equals"
-                "that of backward cell({})".format(
-                    cell_fw.input_size, cell_bw.input_size
-                )
+                f"input size of forward cell({cell_fw.input_size}) does not equals"
+                f"that of backward cell({cell_bw.input_size})"
             )
         for cell in [self.cell_fw, self.cell_bw]:
             if not hasattr(cell, "call"):
@@ -1380,7 +1487,7 @@ class RNNBase(LayerList):
         else:
             raise ValueError(
                 "direction should be forward or bidirect (or bidirectional), "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.could_use_cudnn = True
@@ -1429,7 +1536,7 @@ class RNNBase(LayerList):
                 )
                 layer_idx = i // 4
                 self._all_weights[offset + layer_idx * 2 + i % 2] = param
-            # Wrap using a list to avoid registed into params and saving, maybe
+            # Wrap using a list to avoid registered into params and saving, maybe
             # need a better way to handle this later. Use `create_parameter` to
             # add both to main_program and startup_program for static-graph.
             # Use Constant initializer to avoid make effect on random generator.
@@ -1483,7 +1590,7 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             out, _, state = _C_ops.rnn(
                 inputs,
                 initial_states,
@@ -1497,29 +1604,6 @@ class RNNBase(LayerList):
                 self.num_layers,
                 self.mode,
                 0,
-                not self.training,
-            )
-        elif in_dynamic_mode():
-            _, _, out, state = _legacy_C_ops.rnn(
-                inputs,
-                initial_states,
-                self._all_weights,
-                sequence_length,
-                self._dropout_state,
-                self.state_components,
-                'dropout_prob',
-                self.dropout,
-                'is_bidirec',
-                self.num_directions == 2,
-                'input_size',
-                self.input_size,
-                'hidden_size',
-                self.hidden_size,
-                'num_layers',
-                self.num_layers,
-                'mode',
-                self.mode,
-                'is_test',
                 not self.training,
             )
         else:
@@ -1664,7 +1748,7 @@ class SimpleRNN(RNNBase):
             means the time steps. If time_major is True, the shape of Tensor is
             [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
             Defaults to False. `time_steps` means the length of input sequence.
-        dropout (float, optional): The droput probability. Dropout is applied
+        dropout (float, optional): The dropout probability. Dropout is applied
             to the input of each layer except for the first layer. The range of
             dropout from 0 to 1. Defaults to 0.
         activation (str, optional): The activation in each SimpleRNN cell. It can be
@@ -1781,7 +1865,7 @@ class LSTM(RNNBase):
 
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise
+    where :math:`\sigma` is the sigmoid function, and * is the elementwise
     multiplication operator.
 
     Using key word arguments to construct is recommended.
@@ -1797,7 +1881,7 @@ class LSTM(RNNBase):
             means the time steps. If time_major is True, the shape of Tensor is
             [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
             Defaults to False. `time_steps` means the length of input sequence.
-        dropout (float, optional): The droput probability. Dropout is applied
+        dropout (float, optional): The dropout probability. Dropout is applied
             to the input of each layer except for the first layer. The range of
             dropout from 0 to 1. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for
@@ -1826,7 +1910,7 @@ class LSTM(RNNBase):
         - **weight_ih_l[k]**: the learnable input-hidden weights of the k-th layer. If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise, the shape is `[hidden_size, num_directions * hidden_size]`.
         - **weight_hh_l[k]**: the learnable hidden-hidden weights of the k-th layer, with shape `[hidden_size, hidden_size]`.
         - **bias_ih_l[k]**: the learnable input-hidden bias of the k-th layer, with shape `[hidden_size]`.
-        - **bias_hh_l[k]**: the learnable hidden-hidden bias of the k-th layer, swith shape `[hidden_size]`.
+        - **bias_hh_l[k]**: the learnable hidden-hidden bias of the k-th layer, with shape `[hidden_size]`.
 
     Examples:
 
@@ -1882,7 +1966,7 @@ class LSTM(RNNBase):
 
 class GRU(RNNBase):
     r"""
-    Multilayer GRU. It takes input sequencse and initial states as inputs, and
+    Multilayer GRU. It takes input sequence and initial states as inputs, and
     returns the output sequences and the final states.
 
     Each layer inside the GRU maps the input sequences and initial states
@@ -1903,7 +1987,7 @@ class GRU(RNNBase):
 
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise
+    where :math:`\sigma` is the sigmoid function, and * is the elementwise
     multiplication operator.
 
     Using key word arguments to construct is recommended.
@@ -1919,7 +2003,7 @@ class GRU(RNNBase):
             means the time steps. If time_major is True, the shape of Tensor is
             [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
             Defaults to False. `time_steps` means the length of input sequence.
-        dropout (float, optional): The droput probability. Dropout is applied
+        dropout (float, optional): The dropout probability. Dropout is applied
             to the input of each layer except for the first layer. The range of
             dropout from 0 to 1. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for

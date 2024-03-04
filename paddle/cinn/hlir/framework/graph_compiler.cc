@@ -29,7 +29,10 @@
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/utils/enum_string.h"
 #include "paddle/cinn/utils/profiler.h"
+
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 
 namespace cinn {
 namespace hlir {
@@ -44,7 +47,7 @@ std::unique_ptr<Program> GraphCompiler::Build(const std::string& code) {
   compilation_context_.with_instantiate_variables = true;
 
   auto&& result = Build(&compilation_context_);
-  return std::move(result.runtime_program);
+  return result.RuntimeProgram();
 }
 
 CompilationResult GraphCompiler::Build(CompilationContext* context) {
@@ -64,22 +67,22 @@ CompilationResult GraphCompiler::Build(CompilationContext* context) {
   parallel_compiler_ = std::make_shared<ParallelCompiler>(context);
   CompilationResult result = (*parallel_compiler_.get())();
 
-  if (context->stage != CompilationStage::DEFAULT) {
+  if (context->stage != CompilationStage::DEFAULT || !result.IsSuccess()) {
     return result;
   }
 
   if (context->remove_unused_variables) {
-    RemoveInvalidVariables(context, result.instructions);
+    RemoveInvalidVariables(context, result.RuntimeInstructions());
   }
 
   if (context->with_buffer_handle_instruction_inserted) {
     VLOG(3) << "option.with_buffer_handle_instruction_inserted enable";
-    InsertBufferHandlers(context, &result.instructions);
+    InsertBufferHandlers(context, &result.instructions_);
   }
   VLOG(2) << "Compile With Parallel Compiler Done!";
 
-  result.runtime_program =
-      std::make_unique<Program>(context->scope, std::move(result.instructions));
+  result.SetRuntimeProgram(std::make_unique<Program>(
+      context->scope, std::move(result.instructions_)));
   return result;
 }
 
@@ -207,7 +210,7 @@ static void BufferMallocWithCallback(void* args, int num_args) {
   for (int i = 0; i < num_args; ++i) {
     cinn_buffer_t* buffer = static_cast<cinn_buffer_t*>(pod_args[i]);
     CHECK(buffer->external_malloc)
-        << "external_malloc is nullptr at " << i << "-th argumemnts";
+        << "external_malloc is nullptr at " << i << "-th arguments";
     buffer->external_malloc->operator()(nullptr, buffer);
   }
 }
@@ -274,12 +277,12 @@ void GraphCompiler::InsertBufferHandlers(
       const auto& malloc_var_names = m_it->second;
       auto function_name = "malloc_buffer_instruction_" + std::to_string(step);
       auto malloc_instr =
-          std::make_unique<Instruction>(common::DefaultHostTarget(),
+          std::make_unique<Instruction>(cinn::common::DefaultHostTarget(),
                                         context->scope.get(),
                                         malloc_var_names,
                                         std::vector<std::string>({}),
                                         function_name);
-      VLOG(4) << "seting malloc function " << function_name << " for var "
+      VLOG(4) << "setting malloc function " << function_name << " for var "
               << cinn::utils::Join(malloc_var_names, ", ");
       malloc_instr->SetLoweredFunc(
           reinterpret_cast<void*>(BufferMallocWithCallback), function_name);
@@ -297,7 +300,7 @@ void GraphCompiler::InsertBufferHandlers(
       const auto& free_var_names = f_it->second;
       auto function_name = "free_buffer_instruction_" + std::to_string(step);
       auto free_instr =
-          std::make_unique<Instruction>(common::DefaultHostTarget(),
+          std::make_unique<Instruction>(cinn::common::DefaultHostTarget(),
                                         context->scope.get(),
                                         std::vector<std::string>({}),
                                         free_var_names,
@@ -347,7 +350,7 @@ std::shared_ptr<Scope> BuildScope(Target target,
 
 std::vector<ir::LoweredFunc> GetFuncFromImpl(
     const std::shared_ptr<OpImpl>& impl,
-    const common::CINNValuePack& cinn_inputs,
+    const cinn::common::CINNValuePack& cinn_inputs,
     std::vector<ir::Tensor>& all_arg_tensors,  // NOLINT
     const std::vector<std::string>& input_output_nodes,
     const std::string& node_id,
@@ -356,7 +359,7 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
                      utils::EventType::kOrdinary);
   // 1.Call Op's Compute function, using the default stages and LowerVec to get
   // IR tree.
-  common::CINNValuePack C = impl->fcompute(cinn_inputs);
+  cinn::common::CINNValuePack C = impl->fcompute(cinn_inputs);
 
   // 2. Collect tensors and arguments
   // Add output tensors to all_arg_tensors
@@ -364,34 +367,37 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
     ir::Expr temp = C[i];
     // checkout whether the tensor is with buffer.
     if (!temp.as_tensor_ref()->buffer.defined() ||
-        target != common::DefaultNVGPUTarget()) {
+        target != cinn::common::DefaultNVGPUTarget()) {
       all_arg_tensors.push_back(temp.as_tensor_ref());
     }
   }
 
   poly::StageMap stages = C.back();
   std::string func_name_prefix = "fn_";
-  auto funcs = lang::LowerVec(func_name_prefix + node_id,
-                              stages,
-                              all_arg_tensors,
-                              {},
-                              {},
-                              nullptr,
-                              target,
-                              true);
 
-  std::vector<common::CINNValue> schedule_inputs;
+  ast_gen_ius::TensorGroup tensor_group =
+      ast_gen_ius::ConvertStageMapToTensorGroup(stages);
+  auto funcs = lang::LowerToAstVec(
+      func_name_prefix + node_id, all_arg_tensors, &tensor_group, target);
+
+  VLOG(4) << "Lower op: " << node_id << ", get " << funcs.size()
+          << " LoweredFunc:\n";
+  for (auto fun : funcs) {
+    VLOG(4) << fun;
+  }
+
+  std::vector<cinn::common::CINNValue> schedule_inputs;
   for (int i = 0; i < C.size() - 1; ++i) {
     CHECK(C[i].is_tensor());
-    schedule_inputs.push_back(common::CINNValue(C[i]));
+    schedule_inputs.push_back(cinn::common::CINNValue(C[i]));
   }
   for (auto& f : funcs) {
-    schedule_inputs.push_back(common::CINNValue(f->body));
+    schedule_inputs.push_back(cinn::common::CINNValue(f->body));
   }
 
   // 3. Call Op's Schedule function, optimizing the IR tree by new IR schedule
-  common::CINNValuePack expr_pack =
-      impl->fschedule(common::CINNValuePack{schedule_inputs});
+  cinn::common::CINNValuePack expr_pack =
+      impl->fschedule(cinn::common::CINNValuePack{schedule_inputs});
 
   // 4. Optimize the LoweredFunc
   VLOG(3) << "expr_pack.size() is : " << expr_pack.size()
@@ -425,7 +431,8 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
     optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
 #endif
     auto temp_buffers = lang::GetTempBuffers(
-        all_arg_tensors, stages, funcs_after_schedule[i]->body);
+        all_arg_tensors, tensor_group, funcs_after_schedule[i]->body);
+
     funcs_after_schedule[i]->temp_bufs = temp_buffers;
     funcs_after_schedule[i] =
         ir::_LoweredFunc_::Make(funcs_after_schedule[i]->name,

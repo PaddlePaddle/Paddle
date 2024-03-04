@@ -22,7 +22,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #ifdef CINN_WITH_CUDNN
 PD_DEFINE_bool(
@@ -61,6 +61,18 @@ PD_DEFINE_bool(general_fusion_merge_pass,
                BoolFromEnv("FLAGS_general_fusion_merge_pass", true),
                "Whether to use general fusion_merge pass.");
 
+PD_DEFINE_bool(cinn_new_group_scheduler,
+               BoolFromEnv("FLAGS_cinn_new_group_scheduler", false),
+               "Whether to use new group scheduler.");
+
+PD_DEFINE_bool(cinn_bucket_compile,
+               BoolFromEnv("FLAGS_cinn_bucket_compile", false),
+               "Whether to enable bucket compile for dynamic shape.");
+
+PD_DEFINE_bool(group_schedule_tiling_first,
+               BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
+               "Whether to enable new group scheduler tiling first strategy.");
+
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                            false),
@@ -70,6 +82,26 @@ PD_DEFINE_string(
     cinn_custom_call_deny_ops,
     StringFromEnv("FLAGS_cinn_custom_call_deny_ops", ""),
     "a blacklist of op are denied by MarkCustomCallOps pass, separated by ;");
+
+PD_DEFINE_bool(cinn_enable_map_expr,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr", false),
+               "It controls whether to use cinn with map_expr");
+
+PD_DEFINE_bool(cinn_enable_map_expr_schedule,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr_schedule", false),
+               "It controls whether to schedule by map_expr");
+
+PD_DEFINE_bool(cinn_enable_map_expr_inline,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr_inline", false),
+               "It controls whether to inline by map_expr");
+
+PD_DEFINE_bool(cinn_enable_map_expr_dynamic_shape,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr_dynamic_shape", false),
+               "It controls whether map_expr uses dynamic_shape");
+
+PD_DEFINE_bool(cinn_enable_map_expr_index_detail,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr_index_detail", false),
+               "It controls whether to display detail tensor index");
 
 PD_DEFINE_bool(
     cinn_use_custom_call,
@@ -88,7 +120,7 @@ PD_DEFINE_string(cinn_check_fusion_accuracy_pass,
 
 PD_DEFINE_bool(cinn_use_cuda_vectorize,
                BoolFromEnv("FLAGS_cinn_use_cuda_vectorize", false),
-               "Whether use cuda vectroize on schedule config");
+               "Whether use cuda vectorize on schedule config");
 
 PD_DEFINE_bool(use_reduce_split_pass,
                BoolFromEnv("FLAGS_use_reduce_split_pass", false),
@@ -107,6 +139,14 @@ PD_DEFINE_bool(
 PD_DEFINE_bool(cinn_compile_with_nvrtc,
                BoolFromEnv("FLAGS_cinn_compile_with_nvrtc", true),
                "Whether nvrtc compile cuda source with nvrtc(default nvcc).");
+
+PD_DEFINE_bool(
+    cinn_nvrtc_cubin_with_fmad,
+    BoolFromEnv("FLAGS_cinn_nvrtc_cubin_with_fmad", true),
+    "Whether nvrtc enables fmad when compile to cubin. This flag only works "
+    "when FLAGS_nvrtc_compile_to_cubin=true. Fmad is the cuda speed up "
+    "technique which contract fp multiplication and addition/subtraction into "
+    "multiply-add operation. It may result in different fp precision.");
 
 // FLAGS for performance analysis and accuracy debug
 PD_DEFINE_bool(cinn_sync_run,
@@ -163,6 +203,10 @@ PD_DEFINE_string(cinn_pass_visualize_dir,
                  "Specify the directory path of pass visualize file of graph, "
                  "which is used for debug.");
 
+PD_DEFINE_bool(cinn_runtime_display_debug_info,
+               false,
+               "Whether to display debug information in runtime");
+
 PD_DEFINE_bool(enable_auto_tuner,
                BoolFromEnv("FLAGS_enable_auto_tuner", false),
                "Whether enable auto tuner.");
@@ -198,6 +242,22 @@ PD_DEFINE_double(cinn_infer_model_version,
                  DoubleFromEnv("FLAGS_cinn_infer_model_version", 2.0),
                  "Paddle has different model format in inference model. We use "
                  "a flag to load different versions.");
+
+PD_DEFINE_bool(cinn_use_cutlass,
+               BoolFromEnv("FLAGS_cinn_use_cutlass", false),
+               "Whether to use cutlass kernels");
+
+PD_DEFINE_string(cinn_convert_static_dim_to_dynamic_dim,
+                 StringFromEnv("FLAGS_cinn_convert_static_dim_to_dynamic_dim",
+                               ""),
+                 "A test flag whether to convert static dim to dynamic, e.g.: "
+                 "FLAGS_cinn_convert_static_dim_to_dynamic_dim=128:s0,299:s1");
+
+PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
+                 StringFromEnv("FLAGS_cinn_convert_dynamic_dim_to_static_dim",
+                               ""),
+                 "A test flag whether to convert dynamic to static dim, e.g.: "
+                 "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
 
 namespace cinn {
 namespace runtime {
@@ -272,10 +332,11 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
-common::Target CurrentTarget::target_ = common::DefaultTarget();
+cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 
-void CurrentTarget::SetCurrentTarget(const common::Target& target) {
-  if (!IsCompiledWithCUDA() && target.arch == common::Target::Arch::NVGPU) {
+void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
+  if (!IsCompiledWithCUDA() &&
+      target.arch == cinn::common::Target::Arch::NVGPU) {
     LOG(FATAL) << "Current CINN version does not support NVGPU, please try to "
                   "recompile with -DWITH_CUDA.";
   } else {
@@ -283,7 +344,7 @@ void CurrentTarget::SetCurrentTarget(const common::Target& target) {
   }
 }
 
-common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
+cinn::common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
 
 }  // namespace runtime
 }  // namespace cinn

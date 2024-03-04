@@ -483,7 +483,7 @@ void FleetWrapper::PushDenseVarsAsync(
 
     ::paddle::distributed::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
-    VLOG(3) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "
+    VLOG(3) << "FleetWrapper::PushDenseVarsAsync Var " << t << " table_id "
             << table_id << " Temp_data[0] " << g[0] << " Temp_data[-1] "
             << g[tensor->numel() - 1];
   }
@@ -534,7 +534,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     int fea_dim,
     uint64_t padding_id,
     bool scale_sparse,
-    const std::string& accesor,
+    const std::string& accessor,
     const std::string& click_name,
     platform::Place place,
     const std::vector<std::string>& input_names,
@@ -748,7 +748,7 @@ void FleetWrapper::SaveCacheTable(const uint64_t table_id,
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {
-    LOG(ERROR) << "save cache table stat failed";
+    VLOG(0) << "save cache table stat failed";
   }
 }
 
@@ -813,7 +813,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
-    // PADDLE_THORW(platform::errors::Fatal(
+    // PADDLE_THROW(platform::errors::Fatal(
     //    "push shrink dense param failed, status is [%d].", status));
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
@@ -839,7 +839,7 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
     VLOG(0) << "FleetWrapper::Client is null";
     return -1;
   } else {
-    return worker_ptr_->RegisteClient2ClientMsgHandler(msg_type, handler);
+    return worker_ptr_->RegisterClient2ClientMsgHandler(msg_type, handler);
   }
 }
 
@@ -918,8 +918,8 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
       clock_gettime(CLOCK_REALTIME, &tp);
       double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
       static std::atomic<uint64_t> x(0);
-      std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
-      engine.seed(sseq);
+      std::seed_seq s_seq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
+      engine.seed(s_seq);
     }
   };
   thread_local engine_wrapper_t r;

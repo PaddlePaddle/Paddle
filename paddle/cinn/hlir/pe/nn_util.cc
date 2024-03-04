@@ -387,13 +387,14 @@ ir::Tensor const_matrix(const std::vector<std::vector<float>>& input,
         auto now = cinn::common::make_const(1.0f);
         for (int ii = 0; ii < row; ii++) {
           for (int jj = 0; jj < col; jj++) {
-            // if (common::is_zero(Expr(ii)-yy) && common::is_zero(Expr(jj)-xx))
+            // if (cinn::common::is_zero(Expr(ii)-yy) &&
+            // cinn::common::is_zero(Expr(jj)-xx))
             // {
             //     now = cinn::common::make_const(input[ii][jj]);
             // }
             auto cond =
-                common::and_all({Expr(ii) - yy == 0, Expr(jj) - xx == 0});
-            now = common::select(
+                cinn::common::and_all({Expr(ii) - yy == 0, Expr(jj) - xx == 0});
+            now = cinn::common::select(
                 cond, cinn::common::make_const(input[ii][jj]), now);
           }
         }
@@ -461,7 +462,8 @@ std::vector<int> GetFirstStepReduceShape(const std::vector<int>& shape,
   // post parallel size
   int post_parallel_size = GetPostParallelSize(shape, axes);
   // the size to unfold las reduce axis
-  int unfold_size = common::GetMaxThreads() / GetParallelSize(shape, axes);
+  int unfold_size =
+      cinn::common::GetMaxThreads() / GetParallelSize(shape, axes);
   CHECK_GT(unfold_size, 1);
 
   // fuse reduce axis.

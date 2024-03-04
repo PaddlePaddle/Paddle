@@ -107,8 +107,8 @@ int LayerNormPlugin::enqueue(int batch_size,
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }
-  const auto input_ddim = phi::make_ddim(input_shape);
-  auto matrix_dim = phi::flatten_to_2d(input_ddim, begin_norm_axis);
+  const auto input_ddim = common::make_ddim(input_shape);
+  auto matrix_dim = common::flatten_to_2d(input_ddim, begin_norm_axis);
   int feature_size = static_cast<int>(matrix_dim[1]);
   PADDLE_ENFORCE_EQ(feature_size,
                     scale_.size(),
@@ -127,8 +127,8 @@ int LayerNormPlugin::enqueue(int batch_size,
 
   int device_id;
   cudaGetDevice(&device_id);
-  mean_t.Resize(phi::make_ddim({batched_mean_shape}));
-  variance_t.Resize(phi::make_ddim({batched_variance_shape}));
+  mean_t.Resize(common::make_ddim({batched_mean_shape}));
+  variance_t.Resize(common::make_ddim({batched_variance_shape}));
   float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
@@ -309,8 +309,8 @@ int LayerNormPluginDynamic::enqueue(
                         "but got:%d",
                         variance_shape_[0]));
 
-  const auto input_ddim = phi::make_ddim(input_shape);
-  auto matrix_dim = phi::flatten_to_2d(input_ddim, begin_norm_axis);
+  const auto input_ddim = common::make_ddim(input_shape);
+  auto matrix_dim = common::flatten_to_2d(input_ddim, begin_norm_axis);
   int feature_size = static_cast<int>(matrix_dim[1]);
   PADDLE_ENFORCE_EQ(feature_size,
                     scale_.size(),
@@ -329,8 +329,8 @@ int LayerNormPluginDynamic::enqueue(
 
   int device_id;
   cudaGetDevice(&device_id);
-  mean_t.Resize(phi::make_ddim(mean_shape_));
-  variance_t.Resize(phi::make_ddim(variance_shape_));
+  mean_t.Resize(common::make_ddim(mean_shape_));
+  variance_t.Resize(common::make_ddim(variance_shape_));
   float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));

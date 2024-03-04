@@ -85,7 +85,7 @@ class GraphCompiler final {
       const std::vector<std::unique_ptr<Instruction>>& instructions);
 
   // find the first and last instruction where a variable used, and mark the
-  // variable should allocate buffer before the first instruction runing and
+  // variable should allocate buffer before the first instruction running and
   // can release the buffer after the last instruction finished.
   void AnalyzeVariableLifeTime(
       const std::vector<std::unique_ptr<Instruction>>& instructions,
@@ -115,7 +115,7 @@ std::shared_ptr<Scope> BuildScope(Target target,
 // Given params, lower the op to LoweredFunc using new IR Schedule
 std::vector<ir::LoweredFunc> GetFuncFromImpl(
     const std::shared_ptr<OpImpl>& impl,
-    const common::CINNValuePack& cinn_inputs,
+    const cinn::common::CINNValuePack& cinn_inputs,
     std::vector<ir::Tensor>& tensor_inputs,  // NOLINT
     const std::vector<std::string>& input_output_nodes,
     const std::string& node_id,

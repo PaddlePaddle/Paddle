@@ -55,13 +55,13 @@ function(pass_library TARGET DEST)
       ${TARGET}
       SRCS ${pass_library_DIR}/${TARGET}.cc
       DEPS graph_pattern_detector pass fuse_pass_base op_version_registry
-           ${pass_library_DEPS})
+           quantize_helper ${pass_library_DEPS})
   else()
     cc_library(
       ${TARGET}
       SRCS ${TARGET}.cc
       DEPS graph_pattern_detector pass fuse_pass_base op_version_registry
-           ${pass_library_DEPS})
+           quantize_helper ${pass_library_DEPS})
   endif()
 
   # add more DEST here, such as train, dist and collect USE_PASS into a file automatically.
@@ -115,99 +115,37 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 cc_library(
   string_array
   SRCS string_array.cc
-  DEPS utf8proc phi)
+  DEPS utf8proc phi common)
 
 cc_library(
   data_type
   SRCS data_type.cc
   DEPS framework_proto)
 
-cc_test(
-  data_type_test
-  SRCS data_type_test.cc
-  DEPS data_type place tensor)
-
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS place memory data_type device_context phi)
-
-cc_test(
-  tensor_test
-  SRCS tensor_test.cc
-  DEPS tensor isfinite_op)
-if(WITH_GPU)
-  nv_test(
-    tensor_util_test
-    SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor isfinite_op)
-elseif(WITH_ROCM)
-  hip_test(
-    tensor_util_test
-    SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor isfinite_op)
-else()
-  cc_test(
-    tensor_util_test
-    SRCS tensor_util_test.cc
-    DEPS tensor dlpack_tensor isfinite_op)
-endif()
-
-cc_test(
-  copy_same_tensor_test
-  SRCS copy_same_tensor_test.cc
-  DEPS tensor)
-
-cc_test(
-  eigen_test
-  SRCS eigen_test.cc
-  DEPS tensor)
+  DEPS place fluid_memory data_type device_context phi common)
 
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS phi place tensor framework_proto version)
-
-cc_test(
-  lod_tensor_test
-  SRCS lod_tensor_test.cc
-  DEPS phi lod_tensor memory)
-
-if(WITH_GPU)
-  nv_test(
-    lod_tensor_gpu_test
-    SRCS lod_tensor_test.cu
-    DEPS lod_tensor)
-elseif(WITH_ROCM)
-  hip_test(
-    lod_tensor_gpu_test
-    SRCS lod_tensor_test.cu
-    DEPS lod_tensor)
-endif()
+  DEPS phi common place tensor framework_proto version)
 
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context memory phi glog)
+  DEPS device_context allocator phi common glog)
 
 cc_library(
   reader
   SRCS reader.cc
-  DEPS lod_tensor phi)
-cc_test(
-  reader_test
-  SRCS reader_test.cc
-  DEPS reader)
-
-cc_test(
-  threadpool_test
-  SRCS threadpool_test.cc
-  DEPS phi)
+  DEPS lod_tensor phi common)
 
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope phi)
+  DEPS framework_proto scope phi common)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -220,11 +158,6 @@ endif()
 if(WITH_MKLDNN)
   add_dependencies(var_type_traits mkldnn)
 endif()
-
-cc_test(
-  var_type_traits_test
-  SRCS var_type_traits_test.cc
-  DEPS var_type_traits)
 
 set(BRPC_DEPS "")
 if(WITH_PSCORE)
@@ -244,44 +177,20 @@ endif()
 cc_library(
   scope
   SRCS scope.cc
-  DEPS glog phi xxhash var_type_traits)
+  DEPS glog phi common xxhash var_type_traits)
 cc_library(
   device_worker
   SRCS device_worker.cc
   DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS})
-cc_test(
-  device_worker_test
-  SRCS device_worker_test.cc
-  DEPS device_worker)
-
 cc_library(
   scope_pool
   SRCS scope_pool.cc
   DEPS scope)
-cc_test(
-  scope_test
-  SRCS scope_test.cc
-  DEPS scope)
-cc_test(
-  variable_test
-  SRCS variable_test.cc
-  DEPS tensor var_type_traits)
 
 cc_library(
   data_device_transform
   SRCS data_device_transform.cc
   DEPS tensor)
-if(WITH_GPU)
-  nv_test(
-    data_device_transform_test
-    SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context phi scope)
-elseif(WITH_ROCM)
-  hip_test(
-    data_device_transform_test
-    SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context phi scope)
-endif()
 
 if(WITH_GPU)
   if(WIN32)
@@ -299,76 +208,44 @@ if(WITH_GPU)
       SRCS data_type_transform.cu
       DEPS tensor)
   endif()
-  nv_test(
-    data_type_transform_test
-    SRCS data_type_transform_test.cc data_type_transform_test.cu
-    DEPS data_type_transform)
 elseif(WITH_ROCM)
   hip_library(
     data_type_transform
     SRCS data_type_transform.cu
     DEPS tensor)
-  hip_test(
-    data_type_transform_test
-    SRCS data_type_transform_test.cc data_type_transform_test.cu
-    DEPS data_type_transform)
 elseif(WITH_XPU)
   cc_library(
     data_type_transform
     SRCS data_type_transform.cc
     DEPS tensor xpulib)
-  cc_test(
-    data_type_transform_test
-    SRCS data_type_transform_test.cc
-    DEPS data_type_transform)
 else()
   cc_library(
     data_type_transform
     SRCS data_type_transform.cc
     DEPS tensor)
-  cc_test(
-    data_type_transform_test
-    SRCS data_type_transform_test.cc
-    DEPS data_type_transform)
 endif()
 
 cc_library(
   data_layout_transform
   SRCS data_layout_transform.cc
-  DEPS tensor phi)
-cc_test(
-  data_layout_transform_test
-  SRCS data_layout_transform_test.cc
-  DEPS data_layout_transform)
+  DEPS tensor phi common)
 
 cc_library(
   data_transform
   SRCS data_transform.cc
-  DEPS phi
-       tensor
+  DEPS tensor
        framework_proto
        selected_rows_utils
        data_device_transform
        data_type_transform
        data_layout_transform
-       phi)
+       phi
+       common)
 
 cc_library(
   attribute
   SRCS attribute.cc
-  DEPS framework_proto enforce)
-cc_test(
-  attribute_test
-  SRCS attribute_test.cc
-  DEPS attribute framework_proto proto_desc)
-cc_test(
-  program_desc_test
-  SRCS program_desc_test.cc
-  DEPS proto_desc device_context)
-cc_test(
-  op_desc_test
-  SRCS op_desc_test.cc
-  DEPS proto_desc)
+  DEPS framework_proto enforce common)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -378,19 +255,11 @@ cc_library(
   op_version_registry
   SRCS op_version_registry.cc
   DEPS op_version_proto framework_proto)
-cc_test(
-  op_version_registry_test
-  SRCS op_version_registry_test.cc
-  DEPS op_version_registry)
 
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
   DEPS framework_proto attribute ops_extra_info glog auto_parallel_proto)
-cc_test(
-  op_proto_maker_test
-  SRCS op_proto_maker_test.cc
-  DEPS op_proto_maker)
 cc_library(
   no_need_buffer_vars_inference
   SRCS no_need_buffer_vars_inference.cc
@@ -402,18 +271,13 @@ cc_library(
 cc_library(
   shape_inference
   SRCS shape_inference.cc
-  DEPS phi attribute selected_rows_utils)
+  DEPS phi common attribute selected_rows_utils)
 
 # every source file that includes "dnnl.h" must depends on mkldnn
 # or, the first one should depends on mkldnn
 if(WITH_MKLDNN)
   add_dependencies(shape_inference mkldnn)
 endif()
-
-cc_test(
-  no_need_buffer_vars_inference_test
-  SRCS no_need_buffer_vars_inference_test.cc
-  DEPS no_need_buffer_vars_inference layer)
 
 cc_library(
   transfer_scope_cache
@@ -438,6 +302,7 @@ if(WITH_XPU)
          selected_rows_utils
          place
          phi
+         common
          var_type_traits
          op_info
          xpu_op_list)
@@ -445,7 +310,13 @@ else()
   cc_library(
     phi_utils
     SRCS phi_utils.cc
-    DEPS lod_tensor selected_rows_utils place phi var_type_traits op_info)
+    DEPS lod_tensor
+         selected_rows_utils
+         place
+         phi
+         common
+         var_type_traits
+         op_info)
 endif()
 
 if(WITH_XPU)
@@ -469,10 +340,11 @@ if(WITH_XPU)
          op_kernel_type
          op_call_stack
          unused_var_check
-         nan_inf_utils
+         detail_op_handle
          phi_utils
          infershape_utils
          phi
+         common
          op_compat_infos
          type_info)
 else()
@@ -495,32 +367,34 @@ else()
          op_kernel_type
          op_call_stack
          unused_var_check
-         nan_inf_utils
+         detail_op_handle
          phi_utils
          infershape_utils
          phi
+         common
          op_compat_infos
          type_info)
 endif()
 
-cc_test(
-  operator_test
-  SRCS operator_test.cc
-  DEPS operator op_registry device_context)
-cc_test(
-  operator_exception_test
-  SRCS operator_exception_test.cc
-  DEPS operator op_registry device_context)
-
 cc_library(version SRCS version.cc)
-cc_test(
-  version_test
-  SRCS version_test.cc
-  DEPS version)
+
+add_library(proto_desc_base OBJECT var_desc.cc op_desc.cc block_desc.cc
+                                   program_desc.cc)
+add_dependencies(
+  proto_desc_base
+  attribute
+  ops_extra_info
+  shape_inference
+  op_info
+  glog
+  version
+  xxhash
+  phi
+  common)
 
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc program_converter.cc
+  SRCS $<TARGET_OBJECTS:proto_desc_base> program_converter.cc
   DEPS attribute
        ops_extra_info
        shape_inference
@@ -531,6 +405,7 @@ cc_library(
        xxhash
        op_dist_attr
        phi
+       common
        op_version_proto
        op_version_registry)
 
@@ -542,32 +417,12 @@ cc_library(
 cc_library(
   op_call_stack
   SRCS op_call_stack.cc
-  DEPS op_proto_maker enforce)
-cc_test(
-  op_call_stack_test
-  SRCS op_call_stack_test.cc
-  DEPS op_call_stack)
+  DEPS op_proto_maker enforce common)
 
 cc_library(
   program_utils
   SRCS program_utils.cc
   DEPS proto_desc)
-cc_test(
-  program_utils_test
-  SRCS program_utils_test.cc
-  DEPS proto_desc program_utils)
-
-if(WITH_GPU)
-  nv_test(
-    op_registry_test
-    SRCS op_registry_test.cc
-    DEPS op_registry)
-elseif(WITH_ROCM)
-  hip_test(
-    op_registry_test
-    SRCS op_registry_test.cc
-    DEPS op_registry)
-endif()
 
 if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
@@ -675,6 +530,7 @@ set(NAIVE_EXECUTOR_DEPS
     lod_rank_table
     feed_fetch_method
     graph_to_program_pass
+    standalone_executor
     variable_helper)
 
 if(TENSORRT_FOUND)
@@ -736,8 +592,7 @@ if(WITH_DISTRIBUTE)
            framework_proto
            trainer_desc_proto
            glog
-           fs
-           shell
+           framework_io
            heter_wrapper
            ps_gpu_wrapper
            box_wrapper
@@ -775,7 +630,7 @@ if(WITH_DISTRIBUTE)
     #         pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     #         device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
     #         index_sampler index_wrapper sampler index_dataset_proto
-    #         lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
+    #         lod_rank_table framework_io fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
     #         graph_to_program_pass variable_helper timer monitor
     #         heter_service_proto fleet heter_server brpc fleet_executor
     #         graph_gpu_wrapper)
@@ -819,8 +674,7 @@ if(WITH_DISTRIBUTE)
            sampler
            index_dataset_proto
            lod_rank_table
-           fs
-           shell
+           framework_io
            fleet_wrapper
            heter_wrapper
            box_wrapper
@@ -835,7 +689,8 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            ${${EXTERNAL_BRPC_DEPS}}
-           phi)
+           phi
+           common)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -892,8 +747,7 @@ if(WITH_DISTRIBUTE)
            trainer_desc_proto
            glog
            lod_rank_table
-           fs
-           shell
+           framework_io
            fleet_wrapper
            heter_wrapper
            ps_gpu_wrapper
@@ -953,8 +807,7 @@ elseif(WITH_PSLIB)
          trainer_desc_proto
          glog
          lod_rank_table
-         fs
-         shell
+         framework_io
          fleet_wrapper
          heter_wrapper
          ps_gpu_wrapper
@@ -1001,8 +854,7 @@ else()
          trainer_desc_proto
          glog
          lod_rank_table
-         fs
-         shell
+         framework_io
          fleet_wrapper
          heter_wrapper
          ps_gpu_wrapper
@@ -1022,118 +874,31 @@ target_link_libraries(
 cc_library(
   parallel_executor
   SRCS parallel_executor.cc
-  DEPS threaded_ssa_graph_executor
-       scope_buffered_ssa_graph_executor
-       parallel_ssa_graph_executor
-       async_ssa_graph_executor
-       graph
-       build_strategy
-       bind_threaded_ssa_graph_executor
-       collective_helper
-       fast_threaded_ssa_graph_executor
+  DEPS ssa_graph_executor graph build_strategy collective_helper
        variable_helper)
 
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor phi_kernel_adaptor pd_inplace_pass
-       pd_op_to_kernel_pass pir)
-if(WITH_PSCORE)
-  get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
-  if(WITH_HETERPS)
-    cc_test(
-      dist_multi_trainer_test
-      SRCS dist_multi_trainer_test.cc
-      DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS}
-           graph_gpu_wrapper)
-    cc_test(
-      heter_pipeline_trainer_test
-      SRCS heter_pipeline_trainer_test.cc
-      DEPS conditional_block_op
-           generated_op
-           heter_listen_and_serv_op
-           executor
-           heter_server
-           gloo_wrapper
-           phi
-           ${RPC_DEPS}
-           graph_gpu_wrapper)
-  else()
-    cc_test(
-      dist_multi_trainer_test
-      SRCS dist_multi_trainer_test.cc
-      DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS})
-    cc_test(
-      heter_pipeline_trainer_test
-      SRCS heter_pipeline_trainer_test.cc
-      DEPS conditional_block_op
-           generated_op
-           heter_listen_and_serv_op
-           executor
-           heter_server
-           gloo_wrapper
-           phi
-           ${RPC_DEPS})
-  endif()
-else()
-  cc_test(
-    dist_multi_trainer_test
-    SRCS dist_multi_trainer_test.cc
-    DEPS conditional_block_op executor gloo_wrapper)
-endif()
+  DEPS parallel_executor pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto auto_parallel_proto)
-cc_test(
-  prune_test
-  SRCS prune_test.cc
-  DEPS op_info prune recurrent_op device_context)
-cc_test(
-  var_type_inference_test
-  SRCS var_type_inference_test.cc
-  DEPS op_registry proto_desc)
+  DEPS framework_proto auto_parallel_proto proto_desc)
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS phi device_context)
-cc_test(
-  selected_rows_utils_test
-  SRCS selected_rows_utils_test.cc
-  DEPS selected_rows_utils)
-
-cc_test(
-  op_kernel_type_test
-  SRCS op_kernel_type_test.cc
-  DEPS place device_context framework_proto op_kernel_type)
-cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
-
-cc_test(tuple_test SRCS tuple_test.cc)
-
-cc_test(inlined_vector_test SRCS inlined_vector_test.cc)
+  DEPS phi common device_context)
 
 cc_library(
   dlpack_tensor
   SRCS dlpack_tensor.cc
   DEPS tensor dlpack)
-cc_test(
-  dlpack_tensor_test
-  SRCS dlpack_tensor_test.cc
-  DEPS dlpack_tensor glog)
 
 cc_library(
   op_compatible_info
   SRCS op_compatible_info.cc
   DEPS string_helper proto_desc)
-cc_test_old(
-  op_compatible_info_test
-  SRCS
-  op_compatible_info_test.cc
-  DEPS
-  op_compatible_info
-  proto_desc
-  string_helper
-  glog)
 
 cc_library(
   infershape_utils
@@ -1144,13 +909,10 @@ cc_library(
        place
        var_type_traits
        phi
+       common
        phi_utils
        op_info
        shape_inference)
-cc_test(
-  infershape_utils_test
-  SRCS infershape_utils_test.cc
-  DEPS infershape_utils phi)
 
 # Get the current working branch
 execute_process(
@@ -1182,10 +944,15 @@ cc_library(
        dynamic_loader
        string_helper
        phi
+       common
        imperative_flag
        layer)
 
-cc_library(type_info SRCS type_info.cc)
+cc_library(
+  type_info
+  SRCS type_info.cc type_defs.cc
+  DEPS common)
+target_link_libraries(type_info pir op_dialect)
 add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
 if(WITH_MKLDNN)
   add_dependencies(type_info mkldnn)
@@ -1193,7 +960,6 @@ endif()
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
-    memory
     lod_tensor
     executor
     data_feed_proto
@@ -1202,15 +968,3 @@ set(FLUID_FRAMEWORK_MODULES
     custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-
-if(WITH_TESTING AND TEST selected_rows_utils_test)
-  set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)
-endif()
-
-cc_test(scope_guard_test SRCS scope_guard_test.cc)
-cc_test(
-  phi_utils_test
-  SRCS phi_utils_test.cc
-  DEPS phi_utils)
-
-cc_test(convert_utils_test SRCS convert_utils_test.cc)

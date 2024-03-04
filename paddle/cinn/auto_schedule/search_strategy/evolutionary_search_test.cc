@@ -41,7 +41,7 @@ std::vector<TuneTask> CreateTasks(const frontend::Program& program,
   TaskCreator task_creator;
   auto tasks = task_creator.CreateTuneTaskOpLevel(graph.get());
   const auto& dtype_dict =
-      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+      graph->GetAttrs<absl::flat_hash_map<std::string, cinn::common::Type>>(
           "inferdtype");
   const auto& shape_dict = graph->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
@@ -93,7 +93,7 @@ class MockSearchSpace : public SearchSpace {
 
 class MockCostModel : public ExprCostModel {
   float Predict(const ir::ModuleExpr& sample,
-                const common::Target& target) const override {
+                const cinn::common::Target& target) const override {
     float cost = 0.0f;
     std::vector<ir::Expr> exprs = sample.GetExprs();
     for (const ir::Expr& expr : exprs) {
@@ -108,7 +108,7 @@ class MockCostModel : public ExprCostModel {
 TEST(EvolutionarySearch, GetOneBest) {
   TuneTask mock_tune_task;
   mock_tune_task.serialized_key = "mock_task";
-  mock_tune_task.target = common::DefaultTarget();
+  mock_tune_task.target = cinn::common::DefaultTarget();
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
   task_registry->Regist(mock_tune_task.serialized_key,
                         ir::ModuleExpr({ir::Expr(0)}));
@@ -131,7 +131,7 @@ TEST(EvolutionarySearch, GetOneBest) {
 TEST(EvolutionarySearch, GetEpsGreedy) {
   TuneTask mock_tune_task;
   mock_tune_task.serialized_key = "mock_task";
-  mock_tune_task.target = common::DefaultTarget();
+  mock_tune_task.target = cinn::common::DefaultTarget();
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
   task_registry->Regist(mock_tune_task.serialized_key,
                         ir::ModuleExpr({ir::Expr(0)}));
@@ -155,7 +155,7 @@ TEST(EvolutionarySearch, GetEpsGreedy) {
 }
 
 TEST(EvolutionarySearch, Evolve) {
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto tasks = CreateTasks(
       tests::OpBuilder("matmul").Build({{"X", {32, 32}}, {"Y", {32, 32}}}),
       target);

@@ -89,7 +89,7 @@ void testIm2col() {
   std::array<float, 8> out_cfo_data = {0, 1, 1, 2, 3, 4, 4, 5};
   std::array<float, 8> out_ocf_data = {0, 1, 3, 4, 1, 2, 4, 5};
 
-  float* out_cfo_ptr;
+  float* out_cfo_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
@@ -101,7 +101,7 @@ void testIm2col() {
     EXPECT_EQ(out_cfo_ptr[i], out_cfo_data[i]);
   }
 
-  float* out_ocf_ptr;
+  float* out_ocf_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
@@ -130,7 +130,7 @@ void testIm2col() {
 
   col2im(*context, output_cfo, dilation, stride, padding, &input);
 
-  float* in_ptr;
+  float* in_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
@@ -207,8 +207,8 @@ void testIm2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
       (input_width - filter_size + padding[2] + padding[3]) / stride[1] + 1;
   float* input_ptr = input_tmp.mutable_data<float>(
       {1, input_height, input_width}, paddle::platform::CPUPlace());
-  float arr[6] = {0, 1, 2, 3, 4, 5};
-  memcpy(input_ptr, arr, 6 * sizeof(float));
+  std::array<float, 6> arr = {0, 1, 2, 3, 4, 5};
+  memcpy(input_ptr, arr.data(), 6 * sizeof(float));
 
   auto* place = new paddle::platform::CUDAPlace();
   auto* context = new phi::GPUContext(*place);
@@ -235,8 +235,8 @@ void testIm2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
   im2col(*context, input, dilation, stride, padding, &output_cfo);
   im2col_ocf(*context, input, dilation, stride, padding, &output_ocf);
 
-  float out_cfo_data[] = {0, 1, 1, 2, 3, 4, 4, 5};
-  float out_ocf_data[] = {0, 1, 3, 4, 1, 2, 4, 5};
+  std::array<float, 8> out_cfo_data = {0, 1, 1, 2, 3, 4, 4, 5};
+  std::array<float, 8> out_ocf_data = {0, 1, 3, 4, 1, 2, 4, 5};
 
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
@@ -268,7 +268,7 @@ void testIm2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
       col2im;
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, float>
       col2im_ocf;
-  float col2im_data[] = {0, 2, 2, 3, 8, 5};
+  std::array<float, 6> col2im_data = {0, 2, 2, 3, 8, 5};
 
   memset(input_ptr, 0, 6 * sizeof(float));
   if (paddle::platform::is_cpu_place(*place)) {

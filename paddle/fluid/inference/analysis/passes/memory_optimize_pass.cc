@@ -39,7 +39,7 @@ namespace analysis {
 
 using framework::ir::Graph;
 using framework::ir::Node;
-using framework::ir::TopologyVarientSort;
+using framework::ir::TopologyVariantSort;
 using space_table_t = MemoryOptimizePass::space_table_t;
 
 typedef struct {
@@ -60,7 +60,7 @@ void MemoryOptimizePass::CollectLifeCycle(
     int sort_kind) const {
   int max_lifecycle = 0;
   double persis_byte = 0;
-  for (auto* op_node : framework::ir::TopologyVarientSort(
+  for (auto* op_node : framework::ir::TopologyVariantSort(
            *graph, static_cast<framework::ir::SortKind>(sort_kind))) {
     if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
@@ -92,7 +92,7 @@ void MemoryOptimizePass::CollectLifeCycle(
 
           auto in_shape = node->Var()->GetShape();
           for (auto i : in_shape) {
-            CHECK_GT(i, 0);
+            CHECK_GE(i, 0);
           }
           auto var_bytes = std::accumulate(in_shape.begin(),
                                            in_shape.end(),
@@ -156,7 +156,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
     return true;
   };
 
-  // MemoryOptimizePass surppose input model is directed acyclic graph
+  // MemoryOptimizePass suppose input model is directed acyclic graph
   // although it's not always the case. so black list is the best compromise
   // between performance and underlying principle.
   std::unordered_set<std::string> black_list;

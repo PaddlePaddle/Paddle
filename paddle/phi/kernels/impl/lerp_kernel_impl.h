@@ -62,7 +62,7 @@ static void LerpFunctionZero(const Context& ctx,
                              DenseTensor* out) {
   ctx.template Alloc<T>(out);
 
-  auto dim = make_ddim(std::vector<int64_t>(1, 1));
+  auto dim = common::make_ddim(std::vector<int64_t>(1, 1));
   auto eigen_x = phi::EigenTensor<T, 1>::From(x, dim);
   auto eigen_y = phi::EigenTensor<T, 1>::From(y, dim);
   auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
@@ -86,12 +86,12 @@ void LerpKernel(const Context& ctx,
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument("LerpKernel's input x must not empyt."));
+      phi::errors::InvalidArgument("LerpKernel's input x must not empty."));
 
   PADDLE_ENFORCE_GT(
       y.numel(),
       0,
-      phi::errors::InvalidArgument("LerpKernel's input y must not empyt."));
+      phi::errors::InvalidArgument("LerpKernel's input y must not empty."));
 
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(

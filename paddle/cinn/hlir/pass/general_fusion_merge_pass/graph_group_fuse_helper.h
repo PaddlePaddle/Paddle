@@ -97,7 +97,7 @@ class GraphGroupFuseHelper final : public FuseHelper {
             Visit(node_producer);
           }
         };
-    common::IsReachablePredicator<OpGroupPtr> is_reachable(
+    cinn::common::IsReachablePredicator<OpGroupPtr> is_reachable(
         MinDepth4Node, MaxDepth4Node, VisitNextNodes);
     return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
@@ -120,7 +120,7 @@ class GraphGroupFuseHelper final : public FuseHelper {
             Visit(node_producer);
           }
         };
-    common::IsReachablePredicator<OpGroupPtr> is_reachable(
+    cinn::common::IsReachablePredicator<OpGroupPtr> is_reachable(
         MinDepth4Node, MaxDepth4Node, VisitNextNodes);
     return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
@@ -138,7 +138,7 @@ bool GraphGroupFuseHelper<FusePassCtxT>::AllOutputsSameSize(
 template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::HorizontalElementwiseFuseReduce(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
-  return honrizontal_elementwise_fuse_reduce(
+  return horizontal_elementwise_fuse_reduce(
       &ctx_->graph_group_fusion_helper(), src.GetGroup(), dst.GetGroup());
 }
 

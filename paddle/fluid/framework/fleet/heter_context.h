@@ -46,6 +46,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <typename KeyType, typename ValType>
+class HashTable;
+
 class HeterContext {
  public:
   virtual ~HeterContext() {
@@ -93,7 +96,14 @@ class HeterContext {
   std::vector<std::vector<std::mutex*>> dim_mutex_;
   int multi_mf_dim_ = 0;
 
+  // keys: key id
+  // value: dest machine rank id
+  // vector: multi gpu data_feed
+  std::vector<std::unordered_map<uint64_t, uint32_t>> keys2rank_map_vec_;
+  std::vector<std::shared_ptr<HashTable<uint64_t, uint32_t>>> keys2rank_tables_;
+
   void* sub_graph_feas = NULL;
+  void* sub_graph_float_feas = NULL;
   uint32_t shard_num_ = 37;
   uint16_t pass_id_ = 0;
   uint64_t size() {
@@ -162,7 +172,7 @@ class HeterContext {
         }
       }
     } else {
-      VLOG(3) << "Reset gpu task with dynamic mf dimention";
+      VLOG(3) << "Reset gpu task with dynamic mf dimension";
       for (size_t i = 0; i < feature_dim_keys_.size(); i++) {
         for (size_t j = 0; j < feature_dim_keys_[i].size(); j++) {
           feature_dim_keys_[i][j].clear();
@@ -185,6 +195,11 @@ class HeterContext {
         }
       }
     }
+
+    for (auto& item : keys2rank_map_vec_) {
+      item.clear();
+    }
+    keys2rank_map_vec_.clear();
   }
   void batch_add_keys(
       const std::vector<std::unordered_set<uint64_t>>& thread_keys) {
@@ -247,7 +262,7 @@ class HeterContext {
           threads.push_back(std::thread(unique_dynamic_mf_func, i, j));
         }
       }
-      VLOG(3) << "heter_context unique keys with dynamic mf dimention";
+      VLOG(3) << "heter_context unique keys with dynamic mf dimension";
     }
     for (std::thread& t : threads) {
       t.join();

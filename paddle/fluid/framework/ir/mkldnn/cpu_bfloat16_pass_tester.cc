@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_bfloat16_pass.h"
-#include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
@@ -74,9 +73,9 @@ void MainTest(const ProgramDesc& prog,
   auto graph = std::make_unique<ir::Graph>(prog);
   auto pass = PassRegistry::Instance().Get("cpu_bfloat16_pass");
 
-  int original_nodes_num = graph->Nodes().size();
+  int original_nodes_num = static_cast<int>(graph->Nodes().size());
   graph.reset(pass->Apply(graph.release()));
-  int current_nodes_num = graph->Nodes().size();
+  int current_nodes_num = static_cast<int>(graph->Nodes().size());
 
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;
@@ -128,7 +127,7 @@ ProgramDesc BuildProgramDescDoubleInput(bool use_mkldnn) {
   SetOp(&prog, "transpose2", "Transpose", {"d"}, {"e"}, use_mkldnn, "float32");
   SetOp(&prog,
         "elementwise_add",
-        "ElemetwiseAdd",
+        "ElementwiseAdd",
         {"c", "e"},
         {"f"},
         use_mkldnn,

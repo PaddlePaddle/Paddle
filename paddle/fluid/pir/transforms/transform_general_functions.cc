@@ -14,42 +14,81 @@
 
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
+#include <unordered_set>
+
+#include "paddle/common/ddim.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/op_operand.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
+
+namespace {
+
+void GetUsedExternalValueImpl(
+    std::unordered_set<pir::Value>& defined_values,  // NOLINT
+    std::vector<pir::Value>& used_values,            // NOLINT
+    const pir::Operation& op) {
+  for (size_t index = 0; index < op.num_operands(); ++index) {
+    pir::Value value = op.operand_source(index);
+    if (defined_values.find(value) == defined_values.end()) {
+      used_values.push_back(value);
+      defined_values.insert(value);
+    }
+  }
+  for (auto& region : op) {
+    for (auto& block : region) {
+      for (auto value : block.args()) {
+        defined_values.insert(value);
+      }
+    }
+    for (auto& block : region) {
+      for (auto& inner_op : block) {
+        GetUsedExternalValueImpl(defined_values, used_values, inner_op);
+      }
+    }
+  }
+  for (size_t index = 0; index < op.num_results(); ++index) {
+    defined_values.insert(op.result(index));
+  }
+}
+
+}  // namespace
 
 namespace pir {
 
-std::pair<std::string, pir::Parameter*> GetParameterFromValue(
-    pir::Value value) {
-  pir::GetParameterOp op =
-      value.GetDefiningOp()->dyn_cast<pir::GetParameterOp>();
-  PADDLE_ENFORCE_NOT_NULL(
-      op,
-      phi::errors::InvalidArgument(
-          "Value must be a weight from a GetParameter op."));
-  pir::Program* program = op->GetParentProgram();
-  PADDLE_ENFORCE_NOT_NULL(
-      program, phi::errors::InvalidArgument("Program should not be null."));
-  std::string name = op->attributes()
-                         .at(op.attributes_name[0])
-                         .dyn_cast<pir::StrAttribute>()
-                         .AsString();
-  pir::Parameter* param = program->GetParameter(name);
-  PADDLE_ENFORCE_NOT_NULL(
-      param, phi::errors::InvalidArgument("Parameter should not be null."));
-  return {name, param};
+std::string GetParameterNameFromValue(pir::Value value) {
+  pir::Operation* owner = value.defining_op();
+  std::string name;
+  if (owner->isa<ParameterOp>()) {
+    pir::ParameterOp op = owner->dyn_cast<pir::ParameterOp>();
+    name = op.param_name();
+  } else if (owner->isa<ConstantTensorOp>()) {
+    pir::ConstantTensorOp op = owner->dyn_cast<pir::ConstantTensorOp>();
+    name = op.tensor_name();
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Value must be a weight from a Parameter "
+                                   "or a ConstantTensorOp op."));
+  }
+  return name;
 }
 
-const phi::DDim& GetShapeFromValue(pir::Value value) {
-  // TODO(dev): Support other types like DenseTensor.
-  PADDLE_ENFORCE_EQ(
-      value.type().isa<paddle::dialect::DenseTensorType>(),
-      true,
-      phi::errors::InvalidArgument("Value's type must be a DenseTensorType."));
-  return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+std::vector<int64_t> GetShapeFromValue(pir::Value value) {
+  if (value.type().isa<paddle::dialect::DenseTensorType>()) {
+    return phi::vectorize(
+        value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+  } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
+    return phi::vectorize(
+        value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dims());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense_tensor or selected_rows."));
+  }
 }
 
 pir::Type GetDataTypeFromValue(pir::Value value) {
@@ -61,20 +100,63 @@ pir::Type GetDataTypeFromValue(pir::Value value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
 }
 
-Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
+Operation* GetDefiningOpForInput(const Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
-      index < op->num_operands(),
+      index < op->num_operands() && op->operand_source(index),
       true,
       phi::errors::InvalidArgument("Intput operand's index must be valid."));
-  return op->operand_source(index).GetDefiningOp();
+  return op->operand_source(index).defining_op();
 }
 
-Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index) {
+std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
+    const Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
       index < op->num_results(),
       true,
       phi::errors::InvalidArgument("Output op result's index must be valid."));
-  return op->result(index).first_use().owner();
+  auto result = op->result(index);
+  std::vector<std::pair<Operation*, int32_t>> use_ops;
+  for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+    use_ops.emplace_back(it->owner(), it->index());
+  }
+  return use_ops;
+}
+
+std::vector<pir::Value> GetUsedExternalValue(const pir::Operation& op) {
+  std::unordered_set<pir::Value> defined_values{nullptr};
+  std::vector<pir::Value> used_values;
+  GetUsedExternalValueImpl(defined_values, used_values, op);
+  return used_values;
+}
+
+std::vector<pir::Value> GetUsedExternalValue(const pir::Block& block) {
+  auto& args = block.args();
+  std::unordered_set<pir::Value> defined_values(args.begin(), args.end());
+  std::vector<pir::Value> used_values;
+  for (auto& op : block) {
+    GetUsedExternalValueImpl(defined_values, used_values, op);
+  }
+  return used_values;
+}
+
+bool ValueIsPersitable(pir::Value value) {
+  if (!value.defining_op()) {
+    return false;
+  }
+  if (value.defining_op()->num_operands() > 0) {
+    for (const auto& source_value : value.defining_op()->operands_source()) {
+      if (!ValueIsPersitable(source_value)) {
+        return false;
+      }
+    }
+  } else {
+    if (!value.defining_op()->isa<pir::ParameterOp>() &&
+        !value.defining_op()->isa<paddle::dialect::FullOp>() &&
+        !value.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace pir

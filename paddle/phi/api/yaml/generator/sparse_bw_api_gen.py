@@ -98,9 +98,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
 
         else:
             raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
+                f"{self.api} : Output error: the output should not be empty."
             )
 
         return kernel_output, output_names, output_create
@@ -121,7 +119,7 @@ def source_include(header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -137,7 +135,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/backward.h"
 
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 

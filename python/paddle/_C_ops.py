@@ -21,7 +21,7 @@ for name in dir(core.eager.ops):
     globals()[name] = getattr(core.eager.ops, name)
     __all__.append(name)
 
-for name in dir(core.ir.ops):
-    globals()[name] = getattr(core.ir.ops, name)
+for name in dir(core.pir.ops):
+    globals()[name] = getattr(core.pir.ops, name)
     if name not in __all__:
         __all__.append(name)

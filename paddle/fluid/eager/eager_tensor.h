@@ -18,9 +18,9 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 // Phi deps
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/macros.h"
 
 namespace egr {
 
@@ -199,7 +199,7 @@ inline bool IsVariableCompatTensor(const paddle::Tensor& tensor) {
  * **/
 class EagerVariable final {
  public:
-  /* Default constructor and name constructor should only be used for contruct
+  /* Default constructor and name constructor should only be used for construct
    * output and in fluid*/
   EagerVariable() = default;
 
@@ -285,7 +285,7 @@ class EagerVariable final {
   template <typename VarType>
   void ConstructVariableFromTensor(const paddle::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<VarType>();
-    // Contruct phi::DenseTensor from egr::EagerVariable
+    // Construct phi::DenseTensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
 
     PADDLE_ENFORCE_EQ(
@@ -293,7 +293,7 @@ class EagerVariable final {
         true,
         paddle::platform::errors::Fatal(
             "Tensor %s does not hold phi::SelectedRows or phi::DenseTensor. "
-            "Or it holds empty impl, this should not happend since we should "
+            "Or it holds empty impl, this should not happened since we should "
             "treat all kinds of tensor as what they are.",
             tensor.name()));
     *framework_tensor = *tensor_dense;
@@ -308,13 +308,13 @@ class EagerVariable final {
   template <typename VarType>
   void ConstructVariableFromCompatTensor(const paddle::Tensor& tensor) {
     auto* framework_holder = var_.GetMutable<VarType>();
-    // Contruct phi::DenseTensor from egr::EagerVariable
+    // Construct phi::DenseTensor from egr::EagerVariable
     auto* compat_tensor =
         static_cast<VariableCompatTensor*>(tensor.impl().get());
     PADDLE_ENFORCE_NOT_NULL(compat_tensor,
                             paddle::platform::errors::Fatal(
                                 "Tensor %s holds empty impl, this should not "
-                                "happend since we should "
+                                "happened since we should "
                                 "treat all kinds of tensor as what they are.",
                                 tensor.name()));
     *framework_holder = compat_tensor->Get<VarType>();

@@ -19,7 +19,7 @@ from paddle.base import core
 from paddle.base.executor import _add_feed_fetch_ops, _StandaloneExecutor
 from paddle.distributed.passes.pass_utils import (
     _add_event_dependency,
-    get_skip_gc_vars,
+    set_skip_gc_vars,
     split_program,
 )
 
@@ -94,15 +94,15 @@ class TestMannulEvent(unittest.TestCase):
             ops[op_index].dist_attr.execution_stream = "s2"
             ops[op_index].dist_attr.stream_priority = -1
 
-    def split_program(self, prog, apply_mannual_event=False):
+    def split_program(self, prog, apply_manual_event=False):
         # split two subprograms
         waiter_recorder_events_map = {11: [8, 10]}
         prog_block = prog.global_block()
         ops = prog_block.ops
-        if apply_mannual_event:
+        if apply_manual_event:
             for waiter, recorders in waiter_recorder_events_map.items():
                 for recorder in recorders:
-                    _add_event_dependency(ops[recorder].desc, ops[waiter].desc)
+                    _add_event_dependency(ops[recorder], ops[waiter])
         main_progs, _, _ = split_program(prog, [11])
         return main_progs
 
@@ -112,7 +112,6 @@ class TestMannulEvent(unittest.TestCase):
         job_list = []
         prog_num = len(main_progs)
         fetch_op_num = len(fetch_list)
-        skip_gc_vars = get_skip_gc_vars(main_progs)
 
         if prog_num == 1:  # single prog
             main_progs[0] = _add_feed_fetch_ops(
@@ -140,20 +139,17 @@ class TestMannulEvent(unittest.TestCase):
         # create jobs
         for program_id in range(prog_num):
             job = core.Job(f"prog_{program_id}")
-            job.set_skip_gc_vars(skip_gc_vars[program_id])
-            # Set col_attr info for fetch_op to fetch the correct data after running multiple micro batch
-            if program_id == prog_num - 1:
-                for i in range(fetch_op_num):
-                    job.set_col_attr_for_fetch_op(
-                        fetch_op_indics[i],
-                        i * micro_batch_num + micro_batch_id,
-                    )
             job_list.append(job)
 
-        type_to_program = {}
+        job_types = []
         for program_id in range(prog_num):
-            type_to_program[f"prog_{program_id}"] = main_progs[program_id].desc
+            job_types.append(f"prog_{program_id}")
+        type_to_program = set_skip_gc_vars(
+            micro_batch_num, job_types, main_progs, job_list
+        )
 
+        for type in type_to_program.keys():
+            type_to_program[type] = type_to_program[type].desc
         plan = core.Plan(job_list, type_to_program)
         scope = core.Scope()
         main_exe = _StandaloneExecutor(self.place, plan, scope)
@@ -163,7 +159,7 @@ class TestMannulEvent(unittest.TestCase):
         self,
         apply_custom_stream=False,
         split_prog=False,
-        apply_mannual_event=False,
+        apply_manual_event=False,
     ):
         paddle.seed(2022)
         main_program, startup_program, fetch_list = build_program()
@@ -174,7 +170,7 @@ class TestMannulEvent(unittest.TestCase):
         main_progs = [main_program]
         startup_progs = [startup_program]
         if apply_custom_stream and split_prog:
-            main_progs = self.split_program(main_program, apply_mannual_event)
+            main_progs = self.split_program(main_program, apply_manual_event)
         outs = []
         exe = self.create_standalone_exe(main_progs, startup_progs, fetch_list)
         for i in range(self.steps):
@@ -188,11 +184,11 @@ class TestMannulEvent(unittest.TestCase):
         baselines = self.run_program()
         stream_outs = self.run_program(apply_custom_stream=True)
         split_outs = self.run_program(apply_custom_stream=True, split_prog=True)
-        mannual_outs = self.run_program(
-            apply_custom_stream=True, split_prog=True, apply_mannual_event=True
+        manual_outs = self.run_program(
+            apply_custom_stream=True, split_prog=True, apply_manual_event=True
         )
         for bl, out0, out1, out2 in zip(
-            baselines, stream_outs, split_outs, mannual_outs
+            baselines, stream_outs, split_outs, manual_outs
         ):
             self.assertEqual(bl[0], out0[0])
             self.assertEqual(bl[0], out2[0])

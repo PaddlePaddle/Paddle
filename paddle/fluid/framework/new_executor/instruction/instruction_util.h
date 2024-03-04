@@ -22,19 +22,16 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 namespace paddle {
 namespace framework {
 
-std::vector<int> GetValueIds(
-    pir::Value value,
-    Scope* inner_scope,
-    const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name);
+class ValueExecutionInfo;
+
+std::vector<int> GetValueIds(pir::Value value,
+                             const ValueExecutionInfo& value_exec_info);
 
 platform::DeviceContext* ParseDeviceContext(
     pir::Operation* op,
@@ -45,6 +42,34 @@ platform::DeviceContext* ParseDeviceContext(
 
 OpFuncType AnalyseOpFuncType(::pir::Operation* op,
                              const platform::Place& place);
+
+std::vector<pir::Value> GetYiedOpInputs(pir::Block* block);
+
+void GetInputIds(pir::Operation* op,
+                 const ValueExecutionInfo& value_exec_info,
+                 std::unordered_map<pir::Value, std::vector<int>>* input_ids);
+
+std::vector<pir::Value> GetExternalInputs(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* input_ids);
+
+void InsertTuplePushContinerToOuts(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs);
+
+void InsertInplacedExternalInputsToOuts(
+    pir::Block* block,
+    const std::vector<pir::Value>& external_inputs,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs);
+
+bool GetCondData(const phi::DenseTensor& cond);
+
+void CopyBranchOutput(const std::vector<std::string>& var_names,
+                      const std::vector<Variable*>& output_vars,
+                      Scope* inner_scope);
 
 }  // namespace framework
 }  // namespace paddle

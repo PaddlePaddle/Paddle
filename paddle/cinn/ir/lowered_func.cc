@@ -25,16 +25,18 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
+
+PD_DECLARE_bool(cinn_runtime_display_debug_info);
 
 namespace cinn {
 namespace ir {
 
-using common::bfloat16;
-using common::float16;
+using cinn::common::bfloat16;
+using cinn::common::float16;
 
 const _LoweredFunc_* LoweredFunc::operator->() const {
   return As<_LoweredFunc_>();
@@ -64,6 +66,16 @@ LoweredFunc _LoweredFunc_::Make(const std::string& name,
   return LoweredFunc(n);
 }
 
+LoweredFunc _LoweredFunc_::Make(const std::string& name,
+                                const std::vector<Argument>& args,
+                                const Expr& body) {
+  auto* n = make_shared<_LoweredFunc_>();
+  n->name = name;
+  n->args = args;
+  n->body = body;
+  return LoweredFunc(n);
+}
+
 void _LoweredFunc_::CheckValid() const {
   // check there is at least one output
   int out_count = 0;
@@ -82,7 +94,7 @@ std::vector<const Expr*> _LoweredFunc_::expr_fields() const { return {&body}; }
 
 void _LoweredFunc_::PrepareCudaAxisInfoFromBody() {
   std::set<Expr> bound_for_exprs =
-      ir::CollectIRNodes(body, [](const Expr* expr) {
+      ir::ir_utils::CollectIRNodes(body, [](const Expr* expr) {
         const ir::For* for_expr = expr->As<ir::For>();
         return for_expr != nullptr && for_expr->is_binded();
       });
@@ -100,10 +112,10 @@ void _LoweredFunc_::PrepareCudaAxisInfoFromBody() {
     const ir::For* for_expr = expr.As<ir::For>();
     if (for_expr->for_type() == ir::ForType::GPUBlock) {
       cuda_axis_info.set_grid_dim(for_expr->bind_info().offset,
-                                  for_expr->extent.as_int32());
+                                  for_expr->extent);
     } else if (for_expr->for_type() == ir::ForType::GPUThread) {
       cuda_axis_info.set_block_dim(for_expr->bind_info().offset,
-                                   for_expr->extent.as_int32());
+                                   for_expr->extent);
     }
   }
   device_api = ir::DeviceAPI::GPU;
@@ -161,7 +173,7 @@ std::vector<Expr> _LoweredFunc_::PrepareCreateTempBufferExprs() const {
       auto expr = ir::intrinsics::BufferCreate::Make(temp_buf);
       auto buffer_ptr_type =
           Type()
-              .set_customized_type(common::customized_type::kbuffer_t)
+              .set_customized_type(cinn::common::customized_type::kbuffer_t)
               .set_cpp_handle();
       Var variable = ir::_Var_::Make(temp_buf->name, buffer_ptr_type);
       expr = ir::Let::Make(variable, expr);
@@ -174,7 +186,7 @@ std::vector<Expr> _LoweredFunc_::PrepareCreateTempBufferExprs() const {
 std::vector<Expr> _LoweredFunc_::CudaPrepareAllocTempBufferExprs() const {
   std::vector<Expr> alloc_output_buffer_exprs;
   for (auto temp_buf : temp_bufs) {
-    if (utils::Startswith(temp_buf->name, "_")) {
+    if (utils::StartsWith(temp_buf->name, "_")) {
       temp_buf->name = temp_buf->name.substr(1);
     }
     if (!temp_buf->shape.empty() && temp_buf->type() != Void()) {
@@ -208,7 +220,7 @@ void _LoweredFunc_::AllocTempBuffer() {}
 void _LoweredFunc_::PrepareBufferCastExprs(bool with_expr_gen_tensor) {
   buffer_data_cast_exprs.clear();
   // collect write.
-  auto write_teller = ir::CollectTensorNeedsWrite(&body);
+  auto write_teller = ir::ir_utils::CollectTensorNeedsWrite(&body);
 
   auto tensors = CollectAllTensorReference(with_expr_gen_tensor);
   std::sort(tensors.begin(),
@@ -248,7 +260,7 @@ std::vector<Expr> _LoweredFunc_::CudaAliasVarExprs() const {
   }
   // collect write.
   std::vector<Expr> res;
-  auto write_teller = ir::CollectTensorNeedsWrite(&body);
+  auto write_teller = ir::ir_utils::CollectTensorNeedsWrite(&body);
 
   auto tensors = CollectAllTensorReference();
   std::sort(tensors.begin(),
@@ -291,7 +303,7 @@ void _LoweredFunc_::PrepareArgumentExprs() {
   // type of `cinn_buffer_t*`
   auto buffer_ptr_type =
       Type()
-          .set_customized_type(common::customized_type::kbuffer_t)
+          .set_customized_type(cinn::common::customized_type::kbuffer_t)
           .set_cpp_handle();
   // type of `const cinn_buffer_t*`
   auto const_buffer_ptr_type = buffer_ptr_type.with_cpp_const();
@@ -299,13 +311,13 @@ void _LoweredFunc_::PrepareArgumentExprs() {
 
   Var args_passed_in("_args", type_of<void*>());
   auto pod_value_ptr =
-      common::CastIfNeeded(args_passed_in, type_of<cinn_pod_value_t*>());
+      cinn::common::CastIfNeeded(args_passed_in, type_of<cinn_pod_value_t*>());
 
   if (FLAGS_cinn_runtime_display_debug_info) {
     argument_prepare_exprs.push_back(runtime::IntrinsicCall(
         Void(),
         runtime::intrinsic::print_debug_args_repr,
-        {pod_value_ptr, common::make_const(Int(32), args.size())}));
+        {pod_value_ptr, cinn::common::make_const(Int(32), args.size())}));
   }
 
   /*
@@ -323,7 +335,8 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     // cast arg to cinn_pod_value_t*
 
     // something like `_args[0]`
-    Expr load_expr = Load::Make(pod_value_ptr, {common::make_const(i)});
+    Expr load_expr = Load::Make(
+        pod_value_ptr, {cinn::common::make_const(static_cast<int32_t>(i))});
     CHECK_EQ(load_expr.type(), type_of<cinn_pod_value_t>());
     load_expr = ir::intrinsics::GetAddr::Make(load_expr);
 
@@ -388,11 +401,24 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     } else if (arg.type() == type_of<void*>()) {
       pod_cast_expr =
           ir::intrinsics::PodValueToX::Make(load_expr, type_of<void*>());
+    } else if (arg.type() == type_of<int32_t*>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int32_t*>());
+    } else if (arg.type() == type_of<int32_t**>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int32_t**>());
+    } else if (arg.type() == type_of<int64_t**>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int64_t**>());
+    } else if (arg.type() == type_of<void**>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<void**>());
     } else {
       LOG(ERROR) << "Not supported type [" << arg.type() << "]";
       CINN_NOT_IMPLEMENTED
     }
 
+    VLOG(6) << "args " << i << "convert";
     Expr let_expr = Let::Make(_arg, pod_cast_expr);
     CHECK(let_expr.type().valid());
     argument_prepare_exprs.push_back(let_expr);
@@ -403,11 +429,11 @@ std::vector<Tensor> _LoweredFunc_::CollectAllTensorReference(
     bool with_expr_gen_tensor) const {
   std::set<Expr> tensor_exprs =
       with_expr_gen_tensor
-          ? ir::CollectIRNodes(
+          ? ir::ir_utils::CollectIRNodes(
                 body, [](const Expr* expr) { return expr->As<ir::_Tensor_>(); })
-          : ir::CollectIRNodesWithoutTensor(body, [](const Expr* expr) {
-              return expr->As<ir::_Tensor_>();
-            });
+          : ir::ir_utils::CollectIRNodesWithoutTensor(
+                body,
+                [](const Expr* expr) { return expr->As<ir::_Tensor_>(); });
 
   std::vector<Tensor> tensors;
   // remove the duplicate tensor by their name.
@@ -489,38 +515,40 @@ std::ostream& operator<<(std::ostream& os, const CudaAxisInfo& x) {
   return os;
 }
 
-void CudaAxisInfo::set_grid_dim(int offset, int x) {
+void CudaAxisInfo::set_grid_dim(int offset, int64_t x) {
+  valid_ = true;
+  CHECK_LT(offset, 3);
+  grid_dims_[offset] = ir::Expr(x);
+}
+
+void CudaAxisInfo::set_block_dim(int offset, int64_t x) {
+  valid_ = true;
+  CHECK_LT(offset, 3);
+  block_dims_[offset] = ir::Expr(x);
+}
+
+void CudaAxisInfo::set_grid_dim(int offset, ir::Expr x) {
   valid_ = true;
   CHECK_LT(offset, 3);
   grid_dims_[offset] = x;
 }
-void CudaAxisInfo::set_block_dim(int offset, int x) {
+
+void CudaAxisInfo::set_block_dim(int offset, ir::Expr x) {
   valid_ = true;
   CHECK_LT(offset, 3);
   block_dims_[offset] = x;
 }
-int CudaAxisInfo::grid_dim(int offset) const {
+
+ir::Expr CudaAxisInfo::grid_dim(int offset) const {
   CHECK(valid_);
   CHECK_LT(offset, 3);
   return grid_dims_[offset];
 }
-int CudaAxisInfo::block_dim(int offset) const {
+
+ir::Expr CudaAxisInfo::block_dim(int offset) const {
   CHECK(valid_);
   CHECK_LT(offset, 3);
   return block_dims_[offset];
-}
-void CudaAxisInfo::ExtendWith(const CudaAxisInfo& other) {
-  set_valid(true);
-  for (int i = 0; i < 3; i++) {
-    grid_dims_[i] = std::max(grid_dims_[i], other.grid_dims_[i]);
-    block_dims_[i] = std::max(block_dims_[i], other.block_dims_[i]);
-  }
-}
-void CudaAxisInfo::CopyGridDimsTo(std::vector<int>* dest) const {
-  dest->insert(dest->begin(), grid_dims_.begin(), grid_dims_.end());
-}
-void CudaAxisInfo::CopyBlockDimsTo(std::vector<int>* dest) const {
-  dest->insert(dest->begin(), block_dims_.begin(), block_dims_.end());
 }
 
 }  // namespace ir

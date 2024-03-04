@@ -275,7 +275,7 @@ static void ShareBufferForNonInitedTensor(DenseTensor *origin,
 
   DDim fused_out_dim = fused_out->dims();
   auto fused_out_numel = fused_out->numel();
-  auto numel = phi::product(dims);
+  auto numel = common::product(dims);
   *origin = fused_out->Resize({fused_out_numel})
                 .Slice(numel_offset, numel + numel_offset);
   origin->Resize(dims);

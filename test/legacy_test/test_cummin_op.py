@@ -20,7 +20,7 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
-from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def cummin_dim2(arr, axis=None):
@@ -77,7 +77,7 @@ class TestCumminOp(OpTest):
         self.python_api = paddle.cummin
         self.dtype = np.float64
         self.axis = -1
-        self.indices_type = 3
+        self.indices_type = paddle.int64
         self.input_data = np.random.random((10, 10)).astype(self.dtype)
         self.set_attrs()
 
@@ -91,11 +91,11 @@ class TestCumminOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(['x'], 'out')
+        self.check_grad(['x'], 'out', check_pir=True)
 
 
 class TestCuinOpAxis1(TestCumminOp):
@@ -110,7 +110,7 @@ class TestCumminOpAxis2(TestCumminOp):
 
 class TestCumminOpIndexType(TestCumminOp):
     def set_attrs(self):
-        self.indices_type = 2
+        self.indices_type = paddle.int32
 
 
 class TestCumminAPI(unittest.TestCase):
@@ -142,7 +142,7 @@ class TestCumminAPI(unittest.TestCase):
         z, ind = cummin_dim2(data_np, axis=-2)
         np.testing.assert_array_equal(z, y.numpy())
         np.testing.assert_array_equal(ind, indices.numpy())
-        self.assertTrue(indices.dtype == core.VarDesc.VarType.INT32)
+        self.assertTrue(indices.dtype == paddle.int32)
 
         data_np = np.random.randint(0, 10, size=(100, 100)).astype(np.int32)
         data = paddle.to_tensor(data_np)
@@ -151,6 +151,7 @@ class TestCumminAPI(unittest.TestCase):
         np.testing.assert_array_equal(z, y.numpy())
         np.testing.assert_array_equal(ind, indices.numpy())
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
         with base.program_guard(base.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)
@@ -163,20 +164,19 @@ class TestCumminAPI(unittest.TestCase):
 
             place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
-            exe.run(base.default_startup_program())
             out = exe.run(
                 feed={'x': data_np},
                 fetch_list=[
-                    y1.name,
-                    indices1.name,
-                    y2.name,
-                    indices2.name,
-                    y3.name,
-                    indices3.name,
-                    y4.name,
-                    indices4.name,
-                    y5.name,
-                    indices5.name,
+                    y1,
+                    indices1,
+                    y2,
+                    indices2,
+                    y3,
+                    indices3,
+                    y4,
+                    indices4,
+                    y5,
+                    indices5,
                 ],
             )
 
@@ -218,6 +218,7 @@ class TestCumminAPI(unittest.TestCase):
         paddle.enable_static()
         with base.program_guard(base.Program()):
 
+            @test_with_pir_api
             def test_x_type():
                 data = [1, 2, 3]
                 y, indices = paddle.cummin(data, axis=0)

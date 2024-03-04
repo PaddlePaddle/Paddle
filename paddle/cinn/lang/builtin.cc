@@ -127,10 +127,10 @@ Expr FloorDivide(Expr a, Expr b) {
   } else {
     auto div = a / b;
     auto mod = a % b;
-    auto ret =
-        ir::Select::Make(ir::EQ::Make(mod, common::make_const(a.type(), 0)),
-                         div,
-                         div - common::make_const(a.type(), 1));
+    auto ret = ir::Select::Make(
+        ir::EQ::Make(mod, cinn::common::make_const(a.type(), 0)),
+        div,
+        div - cinn::common::make_const(a.type(), 1));
     return ir::Select::Make((a > 0 && b > 0) || (a < 0 && b < 0), div, ret);
   }
 }
@@ -227,11 +227,11 @@ Expr Abs(Expr e) {
 Expr IsNan(Expr e) {
   Type type = e->type();
   if (type.is_int() || type.is_uint()) {
-    return common::make_bool(false, type.lanes());
+    return cinn::common::make_bool(false, type.lanes());
   } else if (type.is_float()) {
     auto* node = e.As<ir::FloatImm>();
     if (node) {
-      return common::make_bool(std::isnan(node->value), type.lanes());
+      return cinn::common::make_bool(std::isnan(node->value), type.lanes());
     }
     return CallExtern("isnan", {e}, {{"vectorizable", false}});
   } else {
@@ -258,11 +258,11 @@ Expr Infinity(const Type& type) {
 Expr IsInf(Expr e) {
   Type type = e->type();
   if (type.is_int() || type.is_uint()) {
-    return common::make_bool(false, type.lanes());
+    return cinn::common::make_bool(false, type.lanes());
   } else if (type.is_float()) {
     auto* node = e.As<ir::FloatImm>();
     if (node) {
-      return common::make_bool(std::isinf(node->value), type.lanes());
+      return cinn::common::make_bool(std::isinf(node->value), type.lanes());
     }
     return CallExtern("isinf", {e}, {{"vectorizable", false}});
   } else {

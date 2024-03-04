@@ -39,7 +39,7 @@ FetchOpHandle::~FetchOpHandle() = default;
 
 void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "No nodes need to wait FetchOp. Unexpceted Error."));
+      "No nodes need to wait FetchOp. Unexpected Error."));
 }
 
 static void CheckDims(const framework::DDim &tensor_dims,
@@ -113,14 +113,14 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
     }
   } else {
     auto &val = PADDLE_GET(FetchUnmergedList, *data_);
-    val.at(offset_) = std::move(tensors_);
+    val.at(offset_) = tensors_;
   }
 }
 
 static void TransData(const phi::DenseTensor &src_item,
                       phi::DenseTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
-    if (platform::is_gpu_place(src_item.place())) {
+    if (platform::is_gpu_place(src_item.place())) {  // NOLINT
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       TensorCopy(src_item, platform::CPUPlace(), dst_item);
 #endif

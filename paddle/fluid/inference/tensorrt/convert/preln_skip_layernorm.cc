@@ -57,8 +57,8 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
     framework::DDim bias_dims, scale_dims;
     auto* bias = get_persistable_data("Bias", &bias_dims);
     auto* scale = get_persistable_data("Scale", &scale_dims);
-    int bias_size = phi::product(bias_dims);
-    int scale_size = phi::product(scale_dims);
+    int bias_size = common::product(bias_dims);
+    int scale_size = common::product(scale_dims);
 
     nvinfer1::ILayer* layer = nullptr;
 
@@ -100,7 +100,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out_0")[0]);
     output_names.push_back(op_desc.Output("Out_1")[0]);
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "preln_skip_layernorm", {output_names}, test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(

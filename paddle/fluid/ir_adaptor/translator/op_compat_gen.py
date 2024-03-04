@@ -48,7 +48,7 @@ def OpNameNormalizerInitialization(
         op_compat_infos = yaml.safe_load(f)
     op_name_mappings: Dict[str, str] = {}
     op_arg_name_mappings: Dict[str, Dict[str, str]] = {}
-    op_mutable_attribues: Dict[str, Set[str]] = {}
+    op_mutable_attributes: Dict[str, Set[str]] = {}
     op_mutable_attribute_infos: Dict[str, Dict[str, List[str]]] = {}
 
     for op_compat_item in op_compat_infos:
@@ -70,21 +70,21 @@ def OpNameNormalizerInitialization(
         def insert_new_mutable_attributes(
             op_name: str, mutable_attribute_infos: Dict[str, Dict[str, str]]
         ):
-            if op_name not in op_mutable_attribues:
-                op_mutable_attribues[op_name] = set()
+            if op_name not in op_mutable_attributes:
+                op_mutable_attributes[op_name] = set()
             if op_name not in op_mutable_attribute_infos:
                 op_mutable_attribute_infos[op_name] = {}
             for (
                 attribute_name,
                 mutable_attribute_info,
             ) in mutable_attribute_infos.items():
-                op_mutable_attribues[op_name].add(attribute_name)
+                op_mutable_attributes[op_name].add(attribute_name)
                 op_mutable_attribute_infos[op_name][attribute_name] = []
                 for k, v in mutable_attribute_info.items():
                     if k == 'tensor_name' or k == 'tensors_name':
                         op_mutable_attribute_infos[op_name][
                             attribute_name
-                        ].append(v)
+                        ].insert(0, v)
 
         _, legacy_name = insert_new_mappings(op_compat_item["op"])
         legacy_backward_op_names = []
@@ -127,15 +127,53 @@ def OpNameNormalizerInitialization(
                 )
 
     # special mapping list
+    op_name_mappings["deformable_conv_v1"] = "deformable_conv"
+    op_name_mappings["deformable_conv_v1_grad"] = "deformable_conv_grad"
+    op_arg_name_mappings["deformable_conv_v1"] = {
+        "x": "Input",
+        "offset": "Offset",
+        "filter": "Filter",
+        "mask": "Mask",
+        "out": "Output",
+    }
+
     op_arg_name_mappings["set_value_grad"]["values_grad"] = "ValueTensor@GRAD"
     op_arg_name_mappings["fetch"] = {"x": "X"}
+    op_arg_name_mappings["elementwise_add_grad_grad"] = {
+        "y": "Y",
+        "grad_out": "DOut",
+        "grad_x_grad": "DDX",
+        "grad_y_grad": "DDY",
+        "grad_out_grad": "DDOut",
+    }
+    op_arg_name_mappings["batch_norm_grad_grad"] = {
+        "scale_grad": "DScale",
+        "x_grad": "DX",
+        "grad_out_grad": "DDY",
+        "out_mean": "OutMean",
+        "out_variance": "OutVariance",
+        "grad_x_grad": "DDX",
+        "grad_scale_grad": "DDScale",
+        "grad_bias_grad": "DDBias",
+        "grad_out": "DY",
+    }
+    op_arg_name_mappings["matmul"] = {"x": "X", "y": "Y", "out": "Out"}
 
-    op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")
+    op_arg_name_mappings["matrix_rank"] = {
+        "x": "X",
+        "atol_tensor": "TolTensor",
+        "out": "Out",
+    }
+    op_arg_name_mappings['push_sparse_v2'].update(
+        {"out_grad_in": "Out@GRAD", "out_grad_out": "Out@GRAD"}
+    )
+
+    op_name_normalizer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:
-        op_compat_definition = op_name_normailzer_template.render(
+        op_compat_definition = op_name_normalizer_template.render(
             op_name_pairs=op_name_mappings,
             op_arg_name_pairs=op_arg_name_mappings,
-            op_mutable_attributes=op_mutable_attribues,
+            op_mutable_attributes=op_mutable_attributes,
             op_mutable_attribute_infos=op_mutable_attribute_infos,
         )
         f.write(op_compat_definition)
@@ -146,7 +184,7 @@ def OpNameNormalizerInitialization(
 # =====================================
 def ParseArguments():
     parser = argparse.ArgumentParser(
-        description='Generate OP Compatiable info Files By Yaml'
+        description='Generate OP Compatible info Files By Yaml'
     )
     parser.add_argument('--op_compat_yaml_file', type=str)
     parser.add_argument('--output_source_file', type=str)

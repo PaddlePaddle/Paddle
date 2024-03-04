@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace primitive {

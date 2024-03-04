@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -51,7 +52,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
-  auto update_dims = vectorize(x.dims());
+  auto update_dims = common::vectorize(x.dims());
   for (auto i : reduce_dims) {
     update_dims[i] = 1;
   }
@@ -59,7 +60,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(phi::make_ddim(update_dims));
+  new_out_grad.Resize(common::make_ddim(update_dims));
 
   // call ReduceGrad
   dev_ctx.Alloc(x_grad, x.dtype());
@@ -88,7 +89,7 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   int dim_size = x.dims().size();
   auto reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
-  auto update_dims = vectorize(x.dims());
+  auto update_dims = common::vectorize(x.dims());
   for (auto i : reduce_dims) {
     update_dims[i] = 1;
   }
@@ -96,11 +97,11 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   // make new tensor of out and out_grad
   phi::DenseTensor new_out(out.type());
   new_out.ShareDataWith(out);
-  new_out.Resize(phi::make_ddim(update_dims));
+  new_out.Resize(common::make_ddim(update_dims));
 
   phi::DenseTensor new_out_grad(out_grad.type());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(phi::make_ddim(update_dims));
+  new_out_grad.Resize(common::make_ddim(update_dims));
 
   // make equal_out
   phi::DenseTensor* equal_out = new phi::DenseTensor();
@@ -115,10 +116,7 @@ void ReduceMinGradKernel(const Context& dev_ctx,
       dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
 
   // 2. dx = dout * 1
-  std::vector<const phi::DenseTensor*> mul_inputs = {&new_out_grad, equal_out};
-  std::vector<phi::DenseTensor*> mul_outputs = {x_grad};
-  funcs::BroadcastKernel<T>(
-      dev_ctx, mul_inputs, &mul_outputs, funcs::MultiplyFunctor<T>(), 0);
+  phi::MultiplyKernel<T, Context>(dev_ctx, new_out_grad, *equal_out, x_grad);
   delete equal_out;
 }
 
@@ -136,7 +134,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
-  auto update_dims = vectorize(x.dims());
+  auto update_dims = common::vectorize(x.dims());
   int reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];
@@ -146,7 +144,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(phi::make_ddim(update_dims));
+  new_out_grad.Resize(common::make_ddim(update_dims));
 
   // call BroadcastKernel
   dev_ctx.Alloc(x_grad, x.dtype());
@@ -174,7 +172,7 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
   int dim_size = x.dims().size();
   auto reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
-  auto update_dims = vectorize(x.dims());
+  auto update_dims = common::vectorize(x.dims());
   for (auto i : reduce_dims) {
     update_dims[i] = 1;
   }
@@ -182,11 +180,11 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
   // make new tensor of out and out_grad
   phi::DenseTensor new_out(out.type());
   new_out.ShareDataWith(out);
-  new_out.Resize(phi::make_ddim(update_dims));
+  new_out.Resize(common::make_ddim(update_dims));
 
   phi::DenseTensor new_out_grad(out_grad.type());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(phi::make_ddim(update_dims));
+  new_out_grad.Resize(common::make_ddim(update_dims));
 
   // make equal_out
   phi::DenseTensor* equal_out = new phi::DenseTensor();
@@ -201,10 +199,7 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
       dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
 
   // 2. dx = dout * 1
-  std::vector<const phi::DenseTensor*> mul_inputs = {&new_out_grad, equal_out};
-  std::vector<phi::DenseTensor*> mul_outputs = {x_grad};
-  funcs::BroadcastKernel<T>(
-      dev_ctx, mul_inputs, &mul_outputs, funcs::MultiplyFunctor<T>(), 0);
+  phi::MultiplyKernel<T, Context>(dev_ctx, new_out_grad, *equal_out, x_grad);
   delete equal_out;
 }
 
@@ -245,7 +240,7 @@ void ReduceKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
@@ -353,7 +348,9 @@ PD_REGISTER_KERNEL(mean_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>,
+                   int,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(min_grad,
                    GPU,
@@ -375,6 +372,8 @@ PD_REGISTER_KERNEL(sum_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t,
                    int16_t,
                    int,
                    int64_t,

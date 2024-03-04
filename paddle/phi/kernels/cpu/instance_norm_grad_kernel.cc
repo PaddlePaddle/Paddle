@@ -18,8 +18,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
@@ -93,9 +93,9 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   }
 
   auto scale_e =
-      scale_ptr
-          ? EigenVector<T>::Flatten(*scale_ptr)
-          : EigenVector<T>::Flatten(const_cast<const DenseTensor&>(scale_data));
+      scale_ptr ? EigenVector<T>::Flatten(*scale_ptr)
+                : EigenVector<T>::Flatten(
+                      const_cast<const DenseTensor&>(scale_data));  // NOLINT
   auto mean_e = EigenVector<T>::Flatten(saved_mean);
   auto inv_var_e = EigenVector<T>::Flatten(saved_variance);
   auto dy_e = EigenVector<T>::Flatten(d_y);
@@ -170,7 +170,7 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
   const auto* ddBias = ddbias.get_ptr();
   phi::funcs::SetConstant<CPUContext, T> set_constant;
   const auto& x_dims = x.dims();
-  int N, C, H, W, D;
+  int N = 0, C = 0, H = 0, W = 0, D = 0;
   funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
   const int sample_size = static_cast<int>(x.numel() / N / C);
   const int NxC = N * C;

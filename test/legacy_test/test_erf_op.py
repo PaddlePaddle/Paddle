@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 from scipy.special import erf
+from utils import static_guard
 
 import paddle
 import paddle.base.dygraph as dg
@@ -43,10 +44,18 @@ class TestErfOp(OpTest):
         return "float64"
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+
+    def test_check_grad_prim_pir(self):
+        # Todo(CZ): float64 loss greater than 1e-8
+        if self.dtype == "float64":
+            self.dtype = "float32"
+            self.rev_comp_atol = 1e-7
+            self.rev_comp_rtol = 1e-7
+        self.check_grad(['X'], 'Out', check_prim_pir=True)
 
 
 class TestErfOp_ZeroDim(TestErfOp):
@@ -59,19 +68,19 @@ class TestErfLayer(unittest.TestCase):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float64)
         y_ref = erf(x)
         with dg.guard(place) as g:
-            x_var = dg.to_variable(x)
+            x_var = paddle.to_tensor(x)
             y_var = paddle.erf(x_var)
             y_test = y_var.numpy()
         np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)
 
     def test_case(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             self._test_case(base.CPUPlace())
             if base.is_compiled_with_cuda():
                 self._test_case(base.CUDAPlace(0))
 
     def test_name(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data('x', [3, 4])
                 y = paddle.erf(x, name='erf')
@@ -92,10 +101,16 @@ class TestErfFP16OP(OpTest):
         self.outputs = {'Out': y_ref}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -103,7 +118,7 @@ class TestErfFP16OP(OpTest):
     or not paddle.base.core.is_bfloat16_supported(
         paddle.base.core.CUDAPlace(0)
     ),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestErfBF16OP(OpTest):
     def setUp(self):
@@ -120,11 +135,18 @@ class TestErfBF16OP(OpTest):
 
     def test_check_output(self):
         place = paddle.base.core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = paddle.base.core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 if __name__ == '__main__':

@@ -16,10 +16,10 @@
 
 #include <thrust/random.h>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
-#include "paddle/utils/flags.h"
 
 namespace phi {
 
@@ -64,7 +64,7 @@ void UniformRawKernel(const Context& dev_ctx,
                       int diag_step,
                       float diag_val,
                       DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // Use global Generator seed

@@ -17,6 +17,7 @@
 #include <tuple>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -25,7 +26,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -33,7 +33,7 @@
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
 namespace paddle {
@@ -102,6 +102,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   Precision precision_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
+  use_new_executor_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   gpu_device_id_ = device_id;
@@ -461,7 +462,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_mark_output_);
-  CP_MEMBER(trt_mark_output_with_id_);
   CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
@@ -478,9 +478,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_inspector_serialize_);
   CP_MEMBER(trt_use_explicit_quantization_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
+  CP_MEMBER(trt_optimization_level_);
+  CP_MEMBER(trt_ops_run_float_);
+  CP_MEMBER(trt_exclude_var_names_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -531,16 +535,17 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(with_profile_);
 
   // cinn compiler related.
-  CP_MEMBER(use_cinn_compiler_);
+  CP_MEMBER(use_cinn_);
 
   // glog related.
   CP_MEMBER(with_glog_info_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
-  CP_MEMBER(use_feed_fetch_ops_);
   CP_MEMBER(ir_debug_);
   CP_MEMBER(specify_input_name_);
+
+  CP_MEMBER(use_optimized_model_);
 
   CP_MEMBER(cpu_math_library_num_threads_);
 
@@ -575,6 +580,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(apply_optim_);
   CP_MEMBER(skip_load_params_);
 
+  CP_MEMBER(use_new_executor_);
+  CP_MEMBER(use_pir_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
                       false,
@@ -599,13 +607,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
-  if (use_tensorrt_ || use_cinn_compiler_) {
+  if (use_tensorrt_ || use_cinn_) {
     // Update() will reset all the passes, when some tensorRT pass is deleted in
     // other.pass_builder(), it will set again, so we just remove the
     // deleted_pass.
     pass_builder_->ClearPasses();
     auto other_passes = other.pass_builder()->AllPasses();
-    for (auto pass : other_passes) {
+    for (auto const &pass : other_passes) {
       pass_builder_->AppendPass(pass);
     }
   }
@@ -622,7 +630,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
                         other_passes.begin(),
                         other_passes.end(),
                         std::inserter(deleted_passes, deleted_passes.begin()));
-    for (auto ps : deleted_passes) {
+    for (auto const &ps : deleted_passes) {
       pass_builder_->DeletePass(ps);
     }
   }
@@ -651,6 +659,11 @@ void AnalysisConfig::EnableMKLDNN() {
   use_mkldnn_ = false;
 #endif
 
+  Update();
+}
+
+void AnalysisConfig::DisableMKLDNN() {
+  use_mkldnn_ = false;
   Update();
 }
 
@@ -763,10 +776,8 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
 }
 
 void AnalysisConfig::MarkTrtEngineOutputs(
-    const std::vector<std::string> &output_tensor_names,
-    const bool mark_output_with_id) {
+    const std::vector<std::string> &output_tensor_names) {
   trt_mark_output_ = true;
-  trt_mark_output_with_id_ = mark_output_with_id;
   trt_output_tensor_names_ = output_tensor_names;
 }
 
@@ -809,7 +820,7 @@ void AnalysisConfig::EnableDlnne(
     int max_batch_size,
     bool use_static_batch,
     std::string weight_share_mode,
-    std::unordered_set<std::string> disable_nodes_by_ouputs,
+    std::unordered_set<std::string> disable_nodes_by_outputs,
     std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict,
     bool use_calib_mode,
     Precision precision_mode) {
@@ -818,7 +829,7 @@ void AnalysisConfig::EnableDlnne(
   dlnne_max_batchsize_ = max_batch_size;
   dlnne_use_static_batch_ = use_static_batch;
   dlnne_weight_share_mode_ = weight_share_mode;
-  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_ouputs;
+  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_outputs;
   dlnne_input_shape_dict_ = dlnne_input_shape_dict;
   dlnne_use_calib_mode_ = use_calib_mode;
   dlnne_precision_mode_ = precision_mode;
@@ -841,7 +852,10 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_dla_core_ = dla_core;
 }
 
-void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
+void AnalysisConfig::EnableTensorRtInspector(bool inspector_serialize) {
+  trt_use_inspector_ = true;
+  trt_inspector_serialize_ = inspector_serialize;
+}
 
 void AnalysisConfig::EnableTensorRtExplicitQuantization() {
   trt_use_explicit_quantization_ = true;
@@ -853,7 +867,25 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
+void AnalysisConfig::Exp_DisableTensorRtSubgraph(
+    const std::vector<std::string> &var_name_not_trt) {
+  trt_exclude_var_names_.insert(trt_exclude_var_names_.end(),
+                                var_name_not_trt.begin(),
+                                var_name_not_trt.end());
+}
+
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
+
+void AnalysisConfig::SetTensorRtOptimizationLevel(int level) {
+  PADDLE_ENFORCE(
+      level >= 0 && level <= 5,
+      platform::errors::InvalidArgument(
+          "The input level in SetTRTOptimizationLevel is invalid. The "
+          "level must be in range [0, 5], but received level = %d (default "
+          "level is 3).",
+          level));
+  trt_optimization_level_ = level;
+}
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
@@ -917,6 +949,26 @@ void AnalysisConfig::Update() {
     }
   }
 
+#ifdef PADDLE_WITH_DNNL
+  // Since EnableMKLDNN is default, the pass_builder has created in the first
+  // time.
+  // Case1: User manually disable mkldnn after pass_builder
+  // create.(config.disable_mkldnn())
+  // Case2: User device is gpu/ipu/xpu, use
+  // EnableXpu(), EnableCUDNN(), PassStrategy has been reset in the above code
+  // block
+  //  Case3: pass_builder_ has been created and belongs to
+  // GpuPassStrategy(or IpuPassStrategy), neither enable mkldnn and
+  // disable mkldnn will be executed
+  if ((!use_gpu() && !use_xpu() && !use_ipu() && !use_mkldnn_) ||
+      (use_mkldnn_ &&
+       !phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2))) {
+    // User manually disable mkldnn or disable when not support AVX2
+    use_mkldnn_ = false;
+    pass_builder()->DisableMKLDNN();
+  }
+#endif
+
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
@@ -936,7 +988,7 @@ void AnalysisConfig::Update() {
   }
 
   // TODO(wilber): An ugly method to update pass, need to be fixed.
-  if (use_cinn_compiler_) {
+  if (use_cinn_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kCINNCompilerPasses) {
       pass_builder()->AppendPass(pass);
@@ -960,15 +1012,13 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-  if (use_mkldnn_) {
+  if (!use_gpu() && !use_xpu() && !use_ipu()) {
+    if (use_mkldnn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
-    if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableMKLDNN() only works when IR optimization is enabled.";
-    } else {
+      // default enable mkldnn when device is cpu and enable_ir_optim
       pass_builder()->EnableMKLDNN();
-    }
 #endif
+    }
   }
 
   // Quantization passes must come after all other optimization passes
@@ -1054,6 +1104,9 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
+  for (auto &delete_pass : pass_builder()->GetAllDeletedPasses()) {
+    pass_builder_->DeletePass(delete_pass);
+  }
 }
 
 std::string AnalysisConfig::SerializeInfoCache() {
@@ -1083,6 +1136,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   for (auto &op : trt_disabled_ops_) ss << op.c_str();
   ss << ";";
 
+  for (auto &name : trt_exclude_var_names_) ss << name.c_str();
+  ss << ";";
+
   ss << trt_use_dla_;
   ss << trt_dla_core_;
 
@@ -1108,8 +1164,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << with_glog_info_;
 
   ss << enable_ir_optim_;
-  ss << use_feed_fetch_ops_;
   ss << ir_debug_;
+
+  ss << use_optimized_model_;
 
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
@@ -1135,7 +1192,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_config_.quant_post_static_gelu_out_threshold;
   ss << xpu_config_.quant_post_dynamic_activation_method;
   ss << xpu_config_.quant_post_dynamic_weight_precision;
-  for (auto type : xpu_config_.quant_post_dynamic_op_types) ss << type;
+  for (auto const &type : xpu_config_.quant_post_dynamic_op_types) ss << type;
   ss << xpu_lite_l3_locked_;
   ss << xpu_lite_enable_multi_stream_;
 
@@ -1151,11 +1208,11 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
   ss << ipu_enable_model_runtime_executor_;
-  for (auto custom_op : ipu_custom_ops_info_)
-    for (auto attr : custom_op) ss << attr;
+  for (auto const &custom_op : ipu_custom_ops_info_)
+    for (auto const &attr : custom_op) ss << attr;
   ss << ";";
-  for (auto pattern : ipu_custom_patterns_)
-    for (auto attr : pattern) ss << attr;
+  for (auto const &pattern : ipu_custom_patterns_)
+    for (auto const &attr : pattern) ss << attr;
   ss << ";";
   for (auto &op : mixed_black_list_) ss << op.c_str();
   for (auto &op : mixed_white_list_) ss << op.c_str();
@@ -1176,11 +1233,13 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
   size_t gpu_total, gpu_available;
   platform::SetDeviceId(gpu_device_id_);
   platform::GpuMemoryUsage(&gpu_available, &gpu_total);
-  double total_gpu_memory = gpu_total / 1024. / 1024.;
+  double total_gpu_memory = static_cast<double>(gpu_total) / 1024. / 1024.;
   float fraction_of_gpu_memory =
-      static_cast<double>(memory_pool_init_size_mb()) / total_gpu_memory;
+      static_cast<float>(memory_pool_init_size_mb()) /
+      static_cast<float>(total_gpu_memory);
   VLOG(3) << "total_gpu_memory is " << total_gpu_memory
-          << "M, gpu_available is " << gpu_available / 1024. / 1024.
+          << "M, gpu_available is "
+          << static_cast<double>(gpu_available) / 1024. / 1024.
           << "M, memory_pool_init_size is " << memory_pool_init_size_mb()
           << "M.";
   return fraction_of_gpu_memory;
@@ -1423,13 +1482,15 @@ std::string AnalysisConfig::Summary() {
   }
 
   // cinn compiler
-  os.InsertRow({"use_cinn_compiler", use_cinn_compiler_ ? "true" : "false"});
+  os.InsertRow({"use_cinn_compiler", use_cinn_ ? "true" : "false"});
 
   // ir info
   os.InsertRow(
       {"save_optimized_model", save_optimized_model_ ? "true" : "false"});
   os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
   os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
+  os.InsertRow(
+      {"use_optimized_model", use_optimized_model_ ? "true" : "false"});
   os.InsertRow({"memory_optim", enable_memory_optim_ ? "true" : "false"});
   os.InsertRow({"enable_profile", with_profile_ ? "true" : "false"});
   os.InsertRow({"enable_log", with_glog_info_ ? "true" : "false"});
@@ -1545,9 +1606,9 @@ void AnalysisConfig::Exp_EnableMixedPrecisionOps(
   mixed_white_list_ = white_list;
 }
 
-void AnalysisConfig::Exp_EnableCINNCompiler() {
+void AnalysisConfig::EnableCINN() {
 #ifdef PADDLE_WITH_CINN
-  use_cinn_compiler_ = true;
+  use_cinn_ = true;
   Update();
 #else
   PADDLE_THROW(platform::errors::Unavailable(
@@ -1556,8 +1617,6 @@ void AnalysisConfig::Exp_EnableCINNCompiler() {
 #endif
 }
 
-bool AnalysisConfig::cinn_compiler_enabled() const {
-  return use_cinn_compiler_;
-}
+bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
 
 }  // namespace paddle

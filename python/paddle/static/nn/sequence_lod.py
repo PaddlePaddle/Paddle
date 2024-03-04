@@ -38,7 +38,7 @@ def sequence_conv(
     r"""
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use conv2d Op.(base.layers.** :ref:`api_base_layers_conv2d` ).
+        Only receives Tensor as input. If your input is Tensor, please use conv2d Op.(base.layers.** :ref:`api_paddle_nn_functional_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
@@ -69,7 +69,7 @@ def sequence_conv(
                 down_pad_len = max(0, filter_size + padding_start - 1) = 1
 
                 The output of the input sequence after padding is:
-                data_aftet_padding = [[0, 0, 1, 1, 2, 2],
+                data_after_padding = [[0, 0, 1, 1, 2, 2],
                                       [1, 1, 2, 2, 3, 3],
                                       [2, 2, 3, 3, 0, 0],
                                       [0, 0, 4, 4, 0, 0]]
@@ -108,9 +108,9 @@ def sequence_conv(
             on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
             is padded at the end of each input sequence. Default: None.
         bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
-            default bias parameter property is used. See usage for details in :ref:`api_base_ParamAttr` .
+            default bias parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
         param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_base_ParamAttr` .
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
         act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
             sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
@@ -167,7 +167,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     r"""
 
     Note:
-        The input type of the OP must be Tensor. For Tensor, use:** :ref:`api_static_nn_softmax`
+        The input type of the OP must be Tensor. For Tensor, use:** :ref:`api_paddle_nn_functional_softmax`
 
     A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
     The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
@@ -254,7 +254,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     r"""
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use pool2d Op.(static.nn.** :ref:`api_static_nn_pool2d` ).
+        Only receives Tensor as input. If your input is Tensor, please use pool2d Op.(static.nn.** :ref:`api_paddle_nn_functional_avg_pool2d` or :ref:`api_paddle_nn_functional_max_pool2d` ).
 
     This operator only supports Tensor as input. It will apply specified pooling
     operation on the input Tensor. It pools features of all time-steps of each
@@ -314,7 +314,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     Args:
         input (variable): Tensor with lod_level no more than 2. The data type should be float32 or float64.
         pool_type (str): The pooling type that supports average, sum, sqrt, max, last or first.
-        is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tenosr maxIndex is
+        is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tensor maxIndex is
             created to record the index information corresponding to the maximum value, which is used for backward
             gradient calculation in the training phase. Default: False.
         pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
@@ -372,7 +372,7 @@ def sequence_concat(input, name=None):
     """
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use concat Op.(static.nn.** :ref:`api_static_nn_concat` ).
+        Only receives Tensor as input. If your input is Tensor, please use concat Op.(static.nn.** :ref:`api_paddle_concat` ).
 
     This operator only supports Tensor as input. It concatenates the multiple Tensor from input by the LoD information,
     and outputs the concatenated Tensor.
@@ -921,7 +921,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
         to ``maxlen``). The padding value is defined by ``pad_value``, and will be
         appended to the tail of sequences. The result is a Python tuple ``(Out, Length)``:
         the Tensor ``Out`` is the padded sequences, and Tensor ``Length`` is
-        the length information of input sequences. For removing padding data (unpadding operation), See :ref:`api_static_static_sequence_unpad`.
+        the length information of input sequences. For removing padding data (unpadding operation), See :ref:`api_paddle_static_nn_sequence_unpad`.
 
     Note:
         Please note that the input ``x`` should be Tensor.
@@ -968,7 +968,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
     Args:
         x (Tensor): Input 1-level Tensor with dims ``[M, K]``. The batch \
-            size is described by lod infor (the number of sequences ). \
+            size is described by lod info (the number of sequences ). \
             The data type should be float32, float64, int8, int32 or int64.
         pad_value (Tensor): Padding value. It can be a scalar or a 1D tensor \
             with length ``K``. If it's a scalar, it will be automatically broadcasted \
@@ -984,7 +984,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     Returns:
             tuple, A Python tuple (Out, Length): the 1st is a 0 level Tensor \
             ``Out``, with the shape ``[batch_size, maxlen, K]``; the second is the original \
-            sequences length infor ``Length``, which should be a 0-level 1D Tensor. \
+            sequences length info ``Length``, which should be a 0-level 1D Tensor. \
             The size of ``Length`` is equal to batch size, and the data type is int64.
 
     Examples:
@@ -1039,7 +1039,7 @@ def sequence_unpad(x, length, name=None):
     """
 
     Note:
-        The input of the OP is Tensor and the output is Tensor.  For padding operation, See:**  :ref:`api_static_nn_sequence_pad`
+        The input of the OP is Tensor and the output is Tensor.  For padding operation, See:**  :ref:`api_paddle_static_nn_sequence_pad`
 
     Remove the padding data from the input based on the length information and returns a Tensor.
 
@@ -1123,7 +1123,7 @@ def sequence_reshape(input, new_dim):
     """
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use reshape Op.(static.nn.** :ref:`api_static_nn_reshape` ).
+        Only receives Tensor as input. If your input is Tensor, please use reshape Op.(static.nn.** :ref:`api_paddle_reshape` ).
 
     Only supports Tensor as input. Given :attr:`new_dim` ,
     it will compute new shape according to original length of each sequence,
@@ -1420,11 +1420,11 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 def sequence_reverse(x, name=None):
     """
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use reverse Op.(static.nn.** :ref:`api_static_nn_reverse` ).
+        Only receives Tensor as input. If your input is Tensor, please use reverse Op.(static.nn.** :ref:`api_paddle_flip` ).
 
     Only supports Tensor as input. It will reverse each sequence for input Tensor.
     Currently it only supports 1-level Tensor. This operator is very useful when building a
-    reverse :ref:`api_base_layers_DynamicRNN` network.
+    reverse :ref:`api_paddle_nn_RNN` network.
 
     .. code-block:: text
 

@@ -107,14 +107,12 @@ class Attr:
 
     def set_dtype(self, dtype) -> None:
         self.dtype = dtype
-        return
 
     def set_shape(self, n_shape, shape1=[], shape2=[], shape3=[]) -> None:
         self.n_shape = n_shape
         self.shape1 = shape1
         self.shape2 = shape2
         self.shape3 = shape3
-        return
 
     def get_rtol(self, flag):
         rtol = SUB_TOLERANCE[self.dtype][flag].get("rtol")

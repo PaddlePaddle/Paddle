@@ -15,7 +15,8 @@
 import paddle
 from paddle.base import core
 from paddle.base.backward import _append_grad_suffix_
-from paddle.base.framework import Variable
+from paddle.base.framework import Variable, in_pir_mode
+from paddle.base.libpaddle.pir import build_pylayer_op, cf_yield
 from paddle.common_ops_import import LayerHelper, check_type, in_dygraph_mode
 from paddle.utils import flatten, map_structure
 
@@ -45,11 +46,13 @@ class StaticPyLayerBlockGuard(BlockGuard):
 
 class StaticPyLayerBlock:
     def __init__(self, inputs, name=None, pylayer_context=None):
-        for each_input in inputs:
-            check_type(each_input, "input", Variable, "StaticPyLayerBlock")
+        # used to specify the Variable type `Input` to `pylayer` op
+        self.fwd_inputs = [
+            each_input
+            for each_input in inputs
+            if isinstance(each_input, Variable)
+        ]  # filter non-Variable inputs
 
-        # used to specify the `Input` to `pylayer` op
-        self.fwd_inputs = inputs
         # used to specify the `Out` to `pylayer` op
         self.fwd_outputs = []
 
@@ -105,7 +108,7 @@ class StaticPyLayerBlock:
         parent_block = self.helper.main_program.block(inside_block.parent_idx)
 
         self._backward_block_id = inside_block.idx
-        # set OpRole to `backward`
+        # Set OpRole to `backward`. The operators marked as `backward` are expected to be pruned in PruneBackward.
         for op in inside_block.ops:
             op_role_attr_name = (
                 core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -194,7 +197,7 @@ def _rename_var_recursively_(cur_block, var_old_to_new):
                 op._rename_output(old_var_name, new_var_name)
 
     # NOTE(MarioLulab): block attr type with the name of "blocks" or "sub_block" indicates
-    # the block might be excuted. We should rename the var name in these blocks recursively
+    # the block might be executed. We should rename the var name in these blocks recursively
     block_attr_names = ["blocks", "sub_block"]
 
     for op in cur_block.ops:
@@ -234,22 +237,20 @@ def copy_var_from_parent_block(parent_block_var, layer_helper):
     return current_block_var
 
 
-# TODO(MarioLulab):
-# Need to support non-Variable in ``inputs``
 def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     """
     This API returns ``forward_fn(inputs)``, and two sub-block are created based on
     the logic of ``forward_fn`` and ``backward_fn``, with the operator ``pylayer``
     holding information about the two blocks.
 
-    ``forward_fn`` and ``backward_fn`` should return a nest structure of tensors.
-    A nest structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
-    list of tensors.
+    ``forward_fn`` and ``backward_fn`` should return a nest structure of Variables.
+    A nest structure of Variables in PaddlePaddle is Variable(s), or tuple of Variables, or
+    list of Variables.
 
     Note:
-        1. If ``backward_fn`` is not None, user needs to keep the number of inputs to ``forward_fn`` the same as the
-        number of outputs to ``backward_fn``, and the number of outputs to ``forward_fn``
-        the same as the number of inputs to ``backward_fn``.
+        1. If ``backward_fn`` is not None, user needs to keep the number of `Variable` inputs to ``forward_fn`` the same as the
+        number of `Variable` outputs to ``backward_fn``, and the number of `Variable` outputs to ``forward_fn``
+        the same as the number of `Variable` inputs to ``backward_fn``.
 
         2. If ``backward_fn`` is None, ``stop_gradient`` attr of all Variable in ``inputs`` is expected to be True.
         Otherwise it might get unexpected results in backward propagation.
@@ -325,6 +326,32 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     )
                 )
 
+    if in_pir_mode():
+        assert (
+            backward_fn is None
+        ), "backward_fn should be None in pir mode Now. We will support it soon."
+
+        pylayer_op = build_pylayer_op(inputs)
+        if forward_fn is not None:
+            if not callable(forward_fn):
+                raise ValueError("`forward_fn` should be callable")
+            with pylayer_op.forward_block():
+                fwd_outputs = forward_fn(*inputs)
+
+            if fwd_outputs is None:
+                return None
+
+            with pylayer_op.forward_block():
+                if fwd_outputs is not None:
+                    cf_yield(flatten(fwd_outputs))
+            pylayer_op.update_output()
+
+        return (
+            pylayer_op.results()[0]
+            if len(pylayer_op.results()) == 1
+            else pylayer_op.results()
+        )
+
     # judge if in dy2st or not, by checking binding args of `forward_fn` and `backward_fn`
     fwd_fn_ctx = _get_ctx_from_func_(forward_fn)
     bwd_fn_ctx = _get_ctx_from_func_(backward_fn)
@@ -344,7 +371,9 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         origin_output = forward_fn(*inputs)
         if origin_output is not None:
             output = map_structure(copy_to_parent_func, origin_output)
-            mgr.fwd_outputs = flatten(output)
+            mgr.fwd_outputs = [
+                x for x in flatten(output) if isinstance(x, Variable)
+            ]
         else:
             mgr.fwd_outputs = []
 
@@ -358,7 +387,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         # **Create the backward input** from the output of the op to build the
         # backward block, and then delete it.
         grad_var_ins = []
-        for fwd_var in flatten(output):
+        for fwd_var in pylayer_block_manager.fwd_outputs:
             fwd_var_name = fwd_var.name
             bwd_var_name = _append_grad_suffix_(fwd_var_name)
             if not current_block.desc.has_var_recursive(fwd_var_name.encode()):
@@ -405,7 +434,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     but got {len(forward_input_names)} and {len(flat_grad_origin)}"
 
                 # Step4. Rename var name with suffix of "@GRAD"
-                for bwd_output_name, fwd_input_name in zip(
+                for bwd_output, fwd_input_name in zip(
                     flat_grad_origin, forward_input_names
                 ):
                     # NOTE(MarioLulab): Because `flat_grad_origin` are the Variables inside the backward block, which one by one corresponds
@@ -428,12 +457,13 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     # TODO(MarioLulab): We will validate the assumption above is whether a strong hypothesis or not.
 
                     # attach old var name into new
-                    bwd_out_new = _append_grad_suffix_(
-                        fwd_input_name
-                    )  # "X" => "X@GRAD"
-                    mgr.var_old_to_new[
-                        bwd_output_name.name
-                    ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
+                    if isinstance(bwd_output, Variable):
+                        bwd_out_new = _append_grad_suffix_(
+                            fwd_input_name
+                        )  # "X" => "X@GRAD"
+                        mgr.var_old_to_new[
+                            bwd_output.name
+                        ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
 
         # **Delete the backward input**
         for bwd_var in grad_var_ins:

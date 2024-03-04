@@ -32,7 +32,7 @@ void* AlignedMalloc(size_t size, size_t alignment) {
 #elif defined(_WIN32)
   return _aligned_malloc(size, alignment);
 #else
-  void* mem = malloc(size + alignment);
+  void* mem = malloc(size + alignment);  // NOLINT
   if (mem == nullptr) {
     return nullptr;
   }
@@ -51,7 +51,7 @@ void AlignedFree(void* mem_ptr) {
   _aligned_free(mem_ptr);
 #else
   if (mem_ptr) {
-    free(*(reinterpret_cast<void**>(mem_ptr) - 1));
+    free(*(reinterpret_cast<void**>(mem_ptr) - 1));  // NOLINT
   }
 #endif
 }

@@ -55,7 +55,9 @@ class XPUTestLookupTableOP(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ['X'], 'Out')
+            self.check_grad_with_place(
+                self.place, ['W'], 'Out', no_grad_set=set('Ids')
+            )
 
         def init_config(self):
             self.input_shape = (17, 31)

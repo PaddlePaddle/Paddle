@@ -125,7 +125,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         super().__init__()
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
@@ -195,7 +195,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
 
 class FusedMultiHeadAttention(Layer):
     """
-    Attention mapps queries and a set of key-value pairs to outputs, and
+    Attention maps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces.
     Please refer to `Attention Is All You Need <https://arxiv.org/pdf/1706.03762.pdf>`_
@@ -303,12 +303,10 @@ class FusedMultiHeadAttention(Layer):
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
-        assert (
-            num_heads > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            num_heads
+        assert num_heads > 0, (
+            "Expected nhead to be greater than 0, " f"but received {num_heads}"
         )
 
         self.normalize_before = normalize_before
@@ -511,7 +509,7 @@ class FusedFeedForward(Layer):
         epsilon (float, optional): he small value added to the variance to prevent
             division by zero. Default: 1e-05.
         activation (str, optional): The activation function. Default relu.
-        act_dropout_rate (float, optional): The dropout probability after activition.
+        act_dropout_rate (float, optional): The dropout probability after activation.
             If None, use the value of `dropout_rate`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into, preprocessing or postprocessing. Default False
@@ -587,9 +585,7 @@ class FusedFeedForward(Layer):
         super().__init__()
         assert (
             d_model > 0
-        ), "Expected d_model to be greater than 0, but received {}".format(
-            d_model
-        )
+        ), f"Expected d_model to be greater than 0, but received {d_model}"
         assert (
             dim_feedforward > 0
         ), "Expected dim_feedforward to be greater than 0, but received {}".format(
@@ -751,7 +747,7 @@ class FusedTransformerEncoderLayer(Layer):
             in MHA to drop some attention target. If None, use the value of
             `dropout`. Default None
         act_dropout_rate (float, optional): The dropout probability used after FFN
-            activition.  If None, use the value of `dropout`. Default None
+            activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
             normalization and post-precess includes dropout, residual connection.
@@ -809,19 +805,15 @@ class FusedTransformerEncoderLayer(Layer):
         self._config.pop("__class__", None)  # py3
 
         super().__init__()
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
         attn_dropout_rate = (
             dropout_rate if attn_dropout_rate is None else attn_dropout_rate
@@ -919,7 +911,7 @@ class FusedTransformer(Layer):
     Please refer to `Attention is all you need <http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf>`_ ,
     and see `TransformerEncoder` and `TransformerDecoder` for more details.
 
-    Users can configurate the model architecture with corresponding parameters.
+    Users can configure the model architecture with corresponding parameters.
     Note the usage of `normalize_before` representing where to apply layer
     normalization (in pre-process or post-precess of multi-head attention or FFN),
     and some transformer like models are different on this, such as
@@ -942,7 +934,7 @@ class FusedTransformer(Layer):
             in MHA to drop some attention target. If None, use the value of
             `dropout`. Default None
         act_dropout (float, optional): The dropout probability used after FFN
-            activition.  If None, use the value of `dropout`. Default None
+            activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
             normalization and post-precess includes dropout, residual connection.
@@ -954,7 +946,7 @@ class FusedTransformer(Layer):
             would be used as `weight_attr` for cross attention of `TransformerDecoder`,
             and `weight_attr[2]` would be used as `weight_attr` for linear in FFN.
             If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention
-            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for
+            and cross attention and `weight_attr[1]` would be used as `weight_attr` for
             linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr`
             for self attention, cross attention and linear in FFN. Otherwise,
             the three sub-layers all uses it as `weight_attr` to create parameters.
@@ -967,7 +959,7 @@ class FusedTransformer(Layer):
             would be used as `bias_attr` for cross attention of `TransformerDecoder`,
             and `bias_attr[2]` would be used as `bias_attr` for linear in FFN.
             If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention
-            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for
+            and cross attention and `bias_attr[1]` would be used as `bias_attr` for
             linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr`
             for self attention, cross attention and linear in FFN. Otherwise,
             the three sub-layers all uses it as `bias_attr` to create parameters.
@@ -1225,12 +1217,10 @@ class FusedMultiTransformer(Layer):
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
-        assert (
-            num_heads > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            num_heads
+        assert num_heads > 0, (
+            "Expected nhead to be greater than 0, " f"but received {num_heads}"
         )
         assert (
             dim_feedforward > 0

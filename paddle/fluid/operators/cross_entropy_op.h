@@ -39,10 +39,10 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     phi::DenseTensor labels_2d, y_2d;
     if (label_dims.size() < rank) {
       labels_2d.ShareDataWith(*labels);
-      labels_2d.Resize({phi::product(label_dims), 1});
+      labels_2d.Resize({common::product(label_dims), 1});
 
       y_2d.ShareDataWith(*y);
-      y_2d.Resize({phi::product(y->dims()), 1});
+      y_2d.Resize({common::product(y->dims()), 1});
 
     } else {
       labels_2d = phi::ReshapeToMatrix(*labels, rank - 1);
@@ -62,9 +62,9 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class XeSoftlabelGradFunctor {
+class XeSoftLabelGradFunctor {
  public:
-  XeSoftlabelGradFunctor(T* dx,
+  XeSoftLabelGradFunctor(T* dx,
                          const T* dy,     // NOLINT
                          const T* x,      // NOLINT
                          const T* label,  // NOLINT
@@ -137,7 +137,7 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
     int64_t class_num = x->dims()[rank - 1];
     int64_t ignore_index = ctx.Attr<int>("ignore_index");
     if (ctx.Attr<bool>("soft_label")) {
-      XeSoftlabelGradFunctor<T> functor(dx_data,
+      XeSoftLabelGradFunctor<T> functor(dx_data,
                                         dy->data<T>(),
                                         x->data<T>(),
                                         label->data<T>(),
@@ -250,7 +250,7 @@ class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
 
     auto& x_dims = x->dims();
     auto feature_size = x_dims[x_dims.size() - 1];
-    auto batch_size = phi::product(x->dims()) / feature_size;
+    auto batch_size = common::product(x->dims()) / feature_size;
 
     auto* p_x = x->data<T>();
     auto* p_label = label->data<int64_t>();
@@ -283,7 +283,7 @@ class CrossEntropyGradientOpKernel2 : public framework::OpKernel<T> {
     int64_t ignore_index = ctx.Attr<int>("ignore_index");
     int rank = dx->dims().size();
     int64_t feature_size = dx->dims()[rank - 1];
-    int64_t batch_size = phi::product(dx->dims()) / feature_size;
+    int64_t batch_size = common::product(dx->dims()) / feature_size;
 
     platform::ForRange<DeviceContext> for_range(
         ctx.template device_context<DeviceContext>(),

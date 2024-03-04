@@ -60,21 +60,23 @@ void ReduceMinGradKernel(const Context& dev_ctx,
     }
   }
 
-  T* brocast1 = nullptr;
-  T* brocast2 = nullptr;
+  T* broadcast1 = nullptr;
+  T* broadcast2 = nullptr;
   bool* equal = nullptr;
-  PADDLE_ENFORCE_EQ(
-      xpu_malloc(reinterpret_cast<void**>(&brocast1), x.numel() * sizeof(T)),
-      XPU_SUCCESS,
-      errors::ResourceExhausted("XPU has no enough memory"));
-  PADDLE_ENFORCE_EQ(
-      xpu_malloc(reinterpret_cast<void**>(&equal), x.numel() * sizeof(bool)),
-      XPU_SUCCESS,
-      errors::ResourceExhausted("XPU has no enough memory"));
-  PADDLE_ENFORCE_EQ(
-      xpu_malloc(reinterpret_cast<void**>(&brocast2), x.numel() * sizeof(T)),
-      XPU_SUCCESS,
-      errors::ResourceExhausted("XPU has no enough memory"));
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
+  broadcast1 = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
+  PADDLE_ENFORCE_NOT_NULL(
+      broadcast1, errors::ResourceExhausted("XPU has no enough memory"));
+
+  equal = RAII_GUARD.alloc_l3_or_gm<bool>(x.numel());
+  PADDLE_ENFORCE_NOT_NULL(
+      equal, errors::ResourceExhausted("XPU has no enough memory"));
+
+  broadcast2 = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
+  PADDLE_ENFORCE_NOT_NULL(
+      broadcast2, errors::ResourceExhausted("XPU has no enough memory"));
 
   // use [1] to replace [], because xpu not support []
   if (xdims.size() == 0) {
@@ -84,36 +86,29 @@ void ReduceMinGradKernel(const Context& dev_ctx,
     ydims = std::vector<int>({1});
   }
 
-  // step 1. brocast out and out_grad
-  int r =
-      xpu::broadcast<T>(dev_ctx.x_context(), out_data, brocast1, ydims, xdims);
+  // step 1. broadcast out and out_grad
+  int r = xpu::broadcast<T>(
+      dev_ctx.x_context(), out_data, broadcast1, ydims, xdims);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 
   r = xpu::broadcast<T>(
-      dev_ctx.x_context(), out_grad_data, brocast2, ydims, xdims);
+      dev_ctx.x_context(), out_grad_data, broadcast2, ydims, xdims);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 
-  // step 2. comparse out_brocast and x
-  r = xpu::equal<T>(dev_ctx.x_context(), x_data, brocast1, equal, x.numel());
+  // step 2. compare out_broadcast and x
+  r = xpu::equal<T>(dev_ctx.x_context(), x_data, broadcast1, equal, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "equal");
   // step 3. get x_grad
-  r = xpu::constant<T>(dev_ctx.x_context(), brocast1, x.numel(), 0);
+  r = xpu::constant<T>(dev_ctx.x_context(), broadcast1, x.numel(), 0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
   r = xpu::select<T>(dev_ctx.x_context(),
                      equal,
-                     brocast2,
-                     brocast1,
+                     broadcast2,
+                     broadcast1,
                      x_grad_data,
                      xdims,
                      xdims);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "select");
-
-  if (dev_ctx.x_context()->xpu_stream) {
-    dev_ctx.Wait();
-  }
-  xpu_free(brocast1);
-  xpu_free(brocast2);
-  xpu_free(equal);
 }
 
 }  // namespace phi

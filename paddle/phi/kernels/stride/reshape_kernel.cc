@@ -41,6 +41,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
     out->set_offset(x_offset);
     out->set_strides(stride);
     out->ResetHolder(x.Holder());
+    out->ShareInplaceVersionCounterWith(x);
   } else {
     DenseTensor tmp;
     DenseTensor tmp_x = x;

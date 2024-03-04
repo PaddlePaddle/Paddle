@@ -37,7 +37,7 @@ TEST(DeviceEvent, CUDA) {
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
-  DeviceEvent event(place);
+  DeviceEvent event(place, paddle::platform::GenerateDeviceEventFlag());
   ASSERT_NE(event.GetEvent().get(), nullptr);
   bool status = event.Query();
   ASSERT_EQ(status, true);
@@ -63,7 +63,7 @@ TEST(DeviceEvent, CUDA) {
   status = event.Query();
   ASSERT_EQ(status, false);  // async
 
-  event.Wait(kCPU, context);  // step 3. EventSynchornize
+  event.Wait(kCPU, context);  // step 3. EventSynchronize
   status = event.Query();
   ASSERT_EQ(status, true);  // sync
 
@@ -86,7 +86,7 @@ TEST(DeviceEvent, CUDA) {
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
-  DeviceEvent event(place);
+  DeviceEvent event(place, paddle::platform::GenerateDeviceEventFlag());
   ASSERT_NE(event.GetEvent().get(), nullptr);
   bool status = event.Query();
   ASSERT_EQ(status, true);
@@ -114,7 +114,7 @@ TEST(DeviceEvent, CUDA) {
   status = event.Query();
   ASSERT_EQ(status, false);  // async
 
-  event.Wait(kCPU, context);  // step 3. EventSynchornize
+  event.Wait(kCPU, context);  // step 3. EventSynchronize
   status = event.Query();
   ASSERT_EQ(status, true);  // sync
 
@@ -127,13 +127,13 @@ TEST(DeviceEvent, CUDA) {
 TEST(DeviceEvent, CPU) {
   using paddle::platform::CPUPlace;
   auto place = CPUPlace();
-  DeviceEvent event(place);
+  DeviceEvent event(place, paddle::platform::GenerateDeviceEventFlag());
   auto& pool = DeviceContextPool::Instance();
   auto* context = pool.Get(place);
 
   // TODO(Aurelius84): All DeviceContext should has Record/Wait
   event.Record(context);
-  event.SetFininshed();
+  event.SetFinished();
   bool status = event.Query();
   ASSERT_EQ(status, true);
 

@@ -100,7 +100,7 @@ class NCEOp : public framework::OperatorWithKernel {
     std::vector<int64_t> out_dims;
     out_dims.push_back(x_dims[0]);
     out_dims.push_back(1);
-    ctx->SetOutputDim("Cost", phi::make_ddim(out_dims));
+    ctx->SetOutputDim("Cost", common::make_ddim(out_dims));
 
     if (!is_test) {
       // set dims of output(SampleOut)
@@ -108,8 +108,8 @@ class NCEOp : public framework::OperatorWithKernel {
       sample_out_dims.push_back(x_dims[0]);
       sample_out_dims.push_back(
           (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
-      ctx->SetOutputDim("SampleLogits", phi::make_ddim(sample_out_dims));
-      ctx->SetOutputDim("SampleLabels", phi::make_ddim(sample_out_dims));
+      ctx->SetOutputDim("SampleLogits", common::make_ddim(sample_out_dims));
+      ctx->SetOutputDim("SampleLabels", common::make_ddim(sample_out_dims));
     }
   }
 
@@ -149,19 +149,19 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddInput(
         "CustomDistProbs",
-        "(Tensor) It is used in 'CostumDist' sampler. "
+        "(Tensor) It is used in 'CustomDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
         "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAlias",
-        "(Tensor) It is used in 'CostumDist' sampler. "
+        "(Tensor) It is used in 'CustomDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
         "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAliasProbs",
-        "(Tensor) It is used in 'CostumDist' sampler. "
+        "(Tensor) It is used in 'CustomDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
         "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
@@ -194,7 +194,7 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(10);
     AddAttr<int>("sampler",
                  "(int) Which sampler to be used to sample negative class."
-                 "0: Uniform; 1: LogUniform; 2: CostumDist.")
+                 "0: Uniform; 1: LogUniform; 2: CustomDist.")
         .SetDefault(0);
     AddAttr<int>("seed",
                  "(int) The seed used in sampler. If it is 0, "

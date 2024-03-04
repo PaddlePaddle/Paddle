@@ -49,7 +49,7 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
   h_size_data[1] = size_attr[1];
   h_size_data[2] = size_attr[2];
   h_size_data[3] = size_attr[3];
-  output->Resize(phi::make_ddim({n, h_size_data[2], h_size_data[3], 2}));
+  output->Resize(common::make_ddim({n, h_size_data[2], h_size_data[3], 2}));
   T* output_data = dev_ctx.template Alloc<T>(output);
   ScopedSpatialTransformerDescriptor st_desc;
   cudnnSpatialTransformerDescriptor_t cudnn_st_desc =

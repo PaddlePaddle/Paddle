@@ -40,7 +40,7 @@ namespace pybind {
 
 extern PyTypeObject* p_tensor_type;
 
-PyDoc_STRVAR(tensor_name__doc__,
+PyDoc_STRVAR(tensor_name__doc__,  // NOLINT
              R"DOC(name
 
 Tensor's name.
@@ -51,12 +51,14 @@ Returns:
 Examples:
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor(1.)
-        print(x.name)  # generated_tensor_0
-        x.name = 'test_tensor_name'
-        print(x.name)  # test_tensor_name
+        >>> x = paddle.to_tensor(1.)
+        >>> print(x.name)
+        generated_tensor_0
+        >>> x.name = 'test_tensor_name'
+        >>> print(x.name)
+        test_tensor_name
 )DOC");
 
 PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
@@ -73,7 +75,7 @@ PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_type__doc__,
+PyDoc_STRVAR(tensor_type__doc__,  // NOLINT
              R"DOC(type
 
 Tensor's type.
@@ -84,21 +86,21 @@ Returns:
 Examples:
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor(1.)
-        print(x.type) # VarType.LOD_TENSOR
+        >>> x = paddle.to_tensor(1.)
+        >>> print(x.type)
+        VarType.LOD_TENSOR
 )DOC");
 
 PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (!self->tensor.defined()) {
+  if (!self->tensor.defined() || self->tensor.is_dense_tensor() ||
+      self->tensor.is_dist_tensor()) {
     // be same to old dygraph
     return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
   }
-  if (self->tensor.is_dense_tensor()) {
-    return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
-  } else if (self->tensor.is_selected_rows()) {
+  if (self->tensor.is_selected_rows()) {
     return ToPyObject(paddle::framework::proto::VarType::SELECTED_ROWS);
   } else if (egr::IsVariableCompatTensor(self->tensor)) {
     return ToPyObject(static_cast<paddle::framework::proto::VarType::Type>(
@@ -125,20 +127,27 @@ Returns:
 Examples:
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor(1.)
-        print(x.is_leaf) # True
+        >>> x = paddle.to_tensor(1.)
+        >>> print(x.is_leaf)
+        True
 
-        x = paddle.to_tensor(1., stop_gradient=True)
-        y = x + 1
-        print(x.is_leaf) # True
-        print(y.is_leaf) # True
+        >>> x = paddle.to_tensor(1., stop_gradient=True)
+        >>> y = x + 1
+        >>> print(x.is_leaf)
+        True
 
-        x = paddle.to_tensor(1., stop_gradient=False)
-        y = x + 1
-        print(x.is_leaf) # True
-        print(y.is_leaf) # False
+        >>> print(y.is_leaf)
+        True
+
+        >>> x = paddle.to_tensor(1., stop_gradient=False)
+        >>> y = x + 1
+        >>> print(x.is_leaf)
+        True
+
+        >>> print(y.is_leaf)
+        False
 )DOC");
 
 PyObject* tensor_properties_is_leaf(TensorObject* self, void* closure) {
@@ -156,7 +165,7 @@ int tensor_properties_set_name(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_stop_gradient__doc__,
+PyDoc_STRVAR(tensor_stop_gradient__doc__,  // NOLINT
              R"DOC(stop_gradient
 
 Tensor's stop_gradient.
@@ -167,12 +176,15 @@ Returns:
 Examples:
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor(1.)
-        print(x.stop_gradient) # True
-        x.stop_gradient = False
-        print(x.stop_gradient) # False
+        >>> x = paddle.to_tensor(1.)
+        >>> print(x.stop_gradient)
+        True
+
+        >>> x.stop_gradient = False
+        >>> print(x.stop_gradient)
+        False
 )DOC");
 
 PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
@@ -183,7 +195,7 @@ PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_data__doc__,
+PyDoc_STRVAR(tensor_data__doc__,  // NOLINT
              R"DOC(data
 
 Tensor's self.
@@ -194,14 +206,25 @@ Returns:
 Examples:
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor(1.)
-        print(x)
-        print(x.data)
-        x.data = paddle.to_tensor(2.)
-        print(x)
-        print(x.data)
+        >>> x = paddle.to_tensor(1.)
+        >>> print(x)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+        1.)
+
+        >>> print(x.data)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+        1.)
+
+        >>> x.data = paddle.to_tensor(2.)
+        >>> print(x)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+        2.)
+
+        >>> print(x.data)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+        2.)
 )DOC");
 PyObject* tensor_properties_get_data(TensorObject* self, void* closure) {
   EAGER_TRY
@@ -217,15 +240,25 @@ int tensor_properties_set_data(TensorObject* self,
   auto src = CastPyArg2Tensor(value, 0);
   self->tensor = src;
   phi::DenseTensor tmp;
-  auto dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  if (dense_tensor) {
-    dense_tensor->ShareInplaceVersionCounterWith(tmp);
+  if (self->tensor.is_dense_tensor()) {
+    auto dense_tensor =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    if (dense_tensor) {
+      dense_tensor->ShareInplaceVersionCounterWith(tmp);
+    }
+  } else if (self->tensor.is_dist_tensor()) {
+    auto dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+    if (dist_tensor) {
+      dist_tensor->ShareInplaceVersionCounterWith(tmp);
+    }
   }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_grad__doc__,
+PyDoc_STRVAR(tensor_grad__doc__,  // NOLINT
              R"DOC(grad
 
 Tensor's grad Tensor.
@@ -236,23 +269,31 @@ Returns:
 Examples:
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor(1.0, stop_gradient=False)
-      y = x**2
-      y.backward()
-      print(x.grad)
-      x.grad = paddle.to_tensor(3.0)
-      print(x.grad)
+        >>> x = paddle.to_tensor(1.0, stop_gradient=False)
+        >>> y = x**2
+        >>> y.backward()
+        >>> print(x.grad)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+        2.)
+
+        >>> x.grad = paddle.to_tensor(3.0)
+        >>> print(x.grad)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+        3.)
 )DOC");
 PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
   auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-  VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
   if (meta && meta->Grad().initialized()) {
     return ToPyObject(meta->Grad());
   } else {
+    if (meta && !meta->Grad().initialized() && meta->Grad().impl() &&
+        meta->Grad().is_dist_tensor()) {
+      return ToPyObject(meta->Grad(), false);
+    }
     RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -262,7 +303,7 @@ int tensor_properties_set_grad(TensorObject* self,
                                PyObject* value,
                                void* closure) {
   EAGER_TRY
-  auto src = CastPyArg2Tensor(value, 0);
+  auto& src = CastPyArg2Tensor(value, 0);
   PADDLE_ENFORCE(
       egr::EagerUtils::IsLeafTensor(self->tensor),
       paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
@@ -273,6 +314,10 @@ int tensor_properties_set_grad(TensorObject* self,
                      "Detected NULL grad"
                      "Please check if you have manually cleared"
                      "the grad inside autograd_meta"));
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, src, self->tensor, *grad)) {
+    ConvertAllInputsToDistTensor(mesh, src, self->tensor, *grad);
+  }
   grad->copy_(src, self->tensor.place(), true);
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
@@ -311,7 +356,7 @@ int tensor_properties_set_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_persistable__doc__,
+PyDoc_STRVAR(tensor_persistable__doc__,  // NOLINT
              R"DOC(persistable
 
 Tensor's persistable.
@@ -322,12 +367,15 @@ Returns:
 Examples:
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor(1.0, stop_gradient=False)
-      print(x.persistable) # False
-      x. persistable = True
-      print(x.persistable) # True
+        >>> x = paddle.to_tensor(1.0, stop_gradient=False)
+        >>> print(x.persistable)
+        False
+
+        >>> x. persistable = True
+        >>> print(x.persistable)
+        True
 )DOC");
 
 PyObject* tensor_properties_get_persistable(TensorObject* self, void* closure) {
@@ -347,42 +395,135 @@ int tensor_properties_set_persistable(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_dist_attr__doc__,
-             R"DOC(dist_attr
+PyDoc_STRVAR(tensor_process_mesh__doc__,  // NOLINT
+             R"DOC(process_mesh
 
-Get dist_attr property from shard tensor.
+Get process_mesh property from shard tensor.
 
 Returns:
-    core.TensorDistAttr: the dist attr of shard tensor
+    core.ProcessMesh: the process mesh of shard tensor
 
 Examples:
     .. code-block:: python
 
-        import paddle
-        import paddle.distributed as dist
+        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+        >>> import paddle
+        >>> import paddle.distributed as dist
 
-        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+        >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
 
-        a = paddle.to_tensor([[1,2,3],
-                              [5,6,7]])
-        d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+        >>> a = paddle.to_tensor([[1,2,3],
+        ...                       [5,6,7]])
+        >>> d_tensor = dist.shard_tensor(a, [core.Shard(0), core.Shard(1)])
 
-        print(d_tensor.dist_attr)
+        >>> print(d_tensor.process_mesh)
 
 )DOC");
 
-PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
+PyObject* tensor_properties_get_process_mesh(TensorObject* self,
+                                             void* closure) {
   EAGER_TRY
   if (self->tensor.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-    return ToPyObject(&dist_tensor->dist_attr());
+    return ToPyObject(&dist_tensor->process_mesh());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
-        "The `dist_attr()` property of (Dist)Tensor is not supported in the "
+        "The `process_mesh` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and install PaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyDoc_STRVAR(tensor_placements__doc__,  // NOLINT
+             R"DOC(placements
+
+Get placements property from shard tensor.
+
+Returns:
+    List[core.Placement]: the process mesh of shard tensor
+
+Examples:
+    .. code-block:: python
+
+        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+        >>> import paddle
+        >>> import paddle.distributed as dist
+        >>> from paddle.base import core
+
+        >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+
+        >>> a = paddle.to_tensor([[1,2,3],
+        ...                       [5,6,7]])
+        >>> d_tensor = dist.shard_tensor(a, [core.Shard(0), core.Shard(1)])
+
+        >>> print(d_tensor.placements)
+
+)DOC");
+
+PyObject* tensor_properties_get_placements(TensorObject* self, void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    return ToPyObject(dist_tensor->placements());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `placements()` property of (Dist)Tensor is not supported in the "
         "current PaddlePaddle, please recompile and installPaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyDoc_STRVAR(tensor_num_shard__doc__,  // NOLINT
+             R"DOC(num_shard
+
+Tensor's num_shard.
+
+Returns:
+    int64_t: Tensor's num_shard.
+
+Examples:
+    .. code-block:: python
+
+        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+        >>> import paddle
+        >>> import paddle.distributed as dist
+        >>> from paddle.base import core
+
+        >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+
+        >>> a = paddle.to_tensor([[1,2,3],
+        ...                       [5,6,7]])
+        >>> d_tensor = paddle.Tensor(a, [core.Shard(0), core.Shard(1)])
+
+        >>> print(d_tensor.num_shard) # 4
+
+)DOC");
+
+PyObject* tensor_properties_get_num_shard(TensorObject* self, void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    return ToPyObject(dist_tensor->num_shard());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `num_shard` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and install PaddlePaddle with "
         "the "
         "option of `WITH_DISTRIBUTE=ON`."));
 #endif
@@ -398,7 +539,7 @@ PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-    return ToPyObject(phi::vectorize<int64_t>(dist_tensor->local_dims()));
+    return ToPyObject(common::vectorize<int64_t>(dist_tensor->local_dims()));
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "The `_local_shape` property of (Dist)Tensor is not supported "
@@ -412,7 +553,7 @@ PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_shape__doc__,
+PyDoc_STRVAR(tensor_shape__doc__,  // NOLINT
              R"DOC(shape
 
 Tensor's shape.
@@ -423,10 +564,11 @@ Returns:
 Examples:
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor(1.0, stop_gradient=False)
-      print(x.shape)
+        >>> x = paddle.to_tensor(1.0, stop_gradient=False)
+        >>> print(x.shape)
+        []
 )DOC");
 
 PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
@@ -471,7 +613,7 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
             << " tensor layout: " << self->tensor.layout()
             << " tensor's shape size is : " << value.size();
     std::vector<int64_t> dims = value;
-    if (change_dim && phi::DataLayoutToString(desired_layout) == "NCHW") {
+    if (change_dim && common::DataLayoutToString(desired_layout) == "NCHW") {
       // NCHW -> NHWC
       VLOG(6) << "layout autotune get Shape from NCHW -> NHWC " << value[0]
               << " " << value[1] << " " << value[2] << " " << value[3] << " to "
@@ -481,7 +623,7 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
       value[2] = dims[3];
       value[3] = dims[1];
     } else if (change_dim &&
-               phi::DataLayoutToString(desired_layout) == "NHWC") {
+               common::DataLayoutToString(desired_layout) == "NHWC") {
       // NHWC -> NCHW
       VLOG(6) << "layout autotune get Shape from NHWC -> NCHW " << value[0]
               << " " << value[1] << " " << value[2] << " " << value[3] << " to "
@@ -498,7 +640,7 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_strides__doc__,
+PyDoc_STRVAR(tensor_strides__doc__,  // NOLINT
              R"DOC(strides
 
 Tensor's strides.
@@ -509,17 +651,19 @@ Returns:
 Examples:
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor([1, 2, 3])
-      y = x[1]
-      print(y.strides)
+        >>> x = paddle.to_tensor([1, 2, 3])
+        >>> y = x[1]
+        >>> print(y.strides)
+        []
 )DOC");
 
 PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   EAGER_TRY
   std::vector<int64_t> value;
-  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+  if (!self->tensor.defined() ||
+      (!self->tensor.is_dense_tensor() && !self->tensor.is_dist_tensor())) {
     return ToPyObject(value);
   }
 
@@ -535,7 +679,7 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_offset__doc__,
+PyDoc_STRVAR(tensor_offset__doc__,  // NOLINT
              R"DOC(offset
 
 The address of the first element relative to the offset of the video memory.
@@ -546,31 +690,43 @@ Returns:
 Examples:
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor([1, 2, 3])
-      y = x[1]
-      print(y.offset)
+        >>> x = paddle.to_tensor([1, 2, 3])
+        >>> y = x[1]
+        >>> print(y.offset)
+        8
 )DOC");
 PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+  if (!self->tensor.defined() ||
+      (!self->tensor.is_dense_tensor() && !self->tensor.is_dist_tensor())) {
     RETURN_PY_NONE;
   }
 
-  auto dense_tensor =
-      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-
-  if (dense_tensor == nullptr) {
-    RETURN_PY_NONE;
-  } else {
-    return ToPyObject(dense_tensor->offset());
+  size_t offset = 0;
+  if (self->tensor.is_dense_tensor()) {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    if (dense_tensor == nullptr) {
+      RETURN_PY_NONE;
+    }
+    offset = dense_tensor->offset();
+  } else if (self->tensor.is_dist_tensor()) {
+    auto dist_tensor = std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+        self->tensor.impl());
+    if (dist_tensor == nullptr) {
+      RETURN_PY_NONE;
+    }
+    offset = dist_tensor->value().offset();
   }
+
+  return ToPyObject(offset);
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_layout__doc__,
+PyDoc_STRVAR(tensor_layout__doc__,  // NOLINT
              R"DOC(layout
 
 Tensor's memory layout.
@@ -581,10 +737,11 @@ Returns:
 Examples:
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor([1, 2, 3])
-      print(x.layout)
+        >>> x = paddle.to_tensor([1, 2, 3])
+        >>> print(x.layout)
+        NCHW
 )DOC");
 PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
   EAGER_TRY
@@ -597,14 +754,14 @@ PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
     VLOG(3) << "VariableCompatTensor does not support `layout` method.";
     return ToPyObject(layout);
   } else {
-    return ToPyObject(phi::DataLayoutToString(self->tensor.layout()));
+    return ToPyObject(common::DataLayoutToString(self->tensor.layout()));
   }
 
   return ToPyObject(layout);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_place__doc__,
+PyDoc_STRVAR(tensor_place__doc__,  // NOLINT
              R"DOC(place
 
 The device Tensor's memory locate.
@@ -615,10 +772,11 @@ Returns:
 Examples:
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor([1, 2, 3])
-      print(x.place)
+        >>> x = paddle.to_tensor([1, 2, 3])
+        >>> print(x.place)
+        Place(cpu)
 )DOC");
 PyObject* tensor_properties_get_place(TensorObject* self, void* closure) {
   EAGER_TRY
@@ -634,7 +792,43 @@ PyObject* tensor_properties_get_place_str(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_dtype__doc__,
+PyObject* tensor_properties_get_placements_str(TensorObject* self,
+                                               void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+
+    std::stringstream ostr;
+    ostr << "[";
+
+    bool isFirst = true;
+    for (const auto& p : dist_tensor->placements()) {
+      if (p) {
+        if (!isFirst) {
+          ostr << ", ";
+        }
+        ostr << p->to_string();
+        isFirst = false;
+      }
+    }
+    ostr << "]";
+    return ToPyObject(ostr.str());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `placements()` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyDoc_STRVAR(tensor_dtype__doc__,  // NOLINT
              R"DOC(dtype
 
 Tensor's data type.
@@ -645,10 +839,11 @@ Returns:
 Examples:
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor([1, 2, 3])
-      print(x.dtype)
+        >>> x = paddle.to_tensor([1, 2, 3])
+        >>> print(x.dtype)
+        paddle.int64
 )DOC");
 PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_TRY
@@ -770,13 +965,28 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      nullptr,
      tensor_offset__doc__,
      nullptr},
-    {"dist_attr",
-     (getter)tensor_properties_get_dist_attr,
+    {"process_mesh",
+     (getter)tensor_properties_get_process_mesh,
      nullptr,
-     tensor_dist_attr__doc__,
+     tensor_process_mesh__doc__,
+     nullptr},
+    {"placements",
+     (getter)tensor_properties_get_placements,
+     nullptr,
+     tensor_placements__doc__,
+     nullptr},
+    {"num_shard",
+     (getter)tensor_properties_get_num_shard,
+     nullptr,
+     tensor_num_shard__doc__,
      nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,
+     nullptr,
+     nullptr,
+     nullptr},
+    {"_placements_str",
+     (getter)tensor_properties_get_placements_str,
      nullptr,
      nullptr,
      nullptr},

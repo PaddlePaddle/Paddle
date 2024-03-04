@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #include <string>
 #include <vector>
@@ -23,8 +25,10 @@ limitations under the License. */
 #include <cuda_runtime.h>
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
-#include "test/cpp/inference/api/tester_helper.h"
+
+PD_DEFINE_string(infer_model, "", "model path");
 
 namespace paddle {
 namespace inference {
@@ -60,17 +64,17 @@ TEST(PD_Config, gpu_interface) {
   EXPECT_TRUE(trt_enable);
 
   const char* tensor_name = "image";
-  size_t shapes_num[1] = {4};
-  int32_t min_shape[4] = {1, 3, 36, 36};
-  int32_t max_shape[4] = {1, 3, 224, 224};
-  int32_t opt_shape[4] = {1, 3, 224, 224};
-  int32_t* min_shape_ptr = min_shape;
-  int32_t* max_shape_ptr = max_shape;
-  int32_t* opt_shape_ptr = opt_shape;
+  std::array<size_t, 1> shapes_num = {4};
+  std::array<int32_t, 4> min_shape = {1, 3, 36, 36};
+  std::array<int32_t, 4> max_shape = {1, 3, 224, 224};
+  std::array<int32_t, 4> opt_shape = {1, 3, 224, 224};
+  int32_t* min_shape_ptr = min_shape.data();
+  int32_t* max_shape_ptr = max_shape.data();
+  int32_t* opt_shape_ptr = opt_shape.data();
   PD_ConfigSetTrtDynamicShapeInfo(config,
                                   1,
                                   &tensor_name,
-                                  shapes_num,
+                                  shapes_num.data(),
                                   &min_shape_ptr,
                                   &max_shape_ptr,
                                   &opt_shape_ptr,

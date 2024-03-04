@@ -1,19 +1,24 @@
-cc_library(
-  transform_general_functions
-  SRCS transform_general_functions.cc
-  DEPS pd_op_dialect_core)
+file(GLOB_RECURSE transforms_srcs "*.cc")
+if(NOT WITH_CINN)
+  list(
+    REMOVE_ITEM transforms_srcs ${CMAKE_CURRENT_SOURCE_DIR}/build_cinn_pass.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/sub_graph_extract_pass.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/sub_graph_detector.cc)
+endif()
+
+if(NOT WITH_MKLDNN)
+  file(GLOB_RECURSE onednn_srcs "onednn/*.cc")
+  list(REMOVE_ITEM transforms_srcs ${onednn_srcs})
+endif()
+
+set(transforms_deps drr op_dialect op_dialect_vjp standalone_executor pir
+                    device_event_base)
+
+if(WITH_CINN)
+  set(transforms_deps ${transforms_deps} cinn_op_dialect cinnapi)
+endif()
 
 cc_library(
-  pd_op_to_kernel_pass
-  SRCS pd_op_to_kernel_pass.cc
-  DEPS pd_kernel_dialect pd_op_dialect pd_op_dialect_utils)
-
-cc_library(
-  _constant_folding_pass
-  SRCS constant_folding_pass.cc
-  DEPS standalone_executor pd_op_to_kernel_pass transform_general_functions)
-
-cc_library(
-  pd_inplace_pass
-  SRCS inplace_pass.cc
-  DEPS pd_op_dialect_core op_yaml_info_parser)
+  pir_transforms
+  SRCS ${transforms_srcs}
+  DEPS ${transforms_deps})

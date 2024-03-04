@@ -28,25 +28,25 @@
 namespace cinn {
 
 // export some general concepts.
-using common::Context;
-using common::make_shared;
-using common::Object;
-using common::ref_count;
-using common::Shared;
-using common::UniqName;
+using cinn::common::Context;
+using cinn::common::make_shared;
+using cinn::common::Object;
+using cinn::common::ref_count;
+using cinn::common::Shared;
+using cinn::common::UniqName;
 
 // Type related.
-using common::Bool;
-using common::Float;
-using common::Int;
-using common::UInt;
-using common::Void;
+using cinn::common::Bool;
+using cinn::common::Float;
+using cinn::common::Int;
+using cinn::common::UInt;
+using cinn::common::Void;
 
-using common::type_of;
+using cinn::common::type_of;
 
-using common::Target;
-using common::Type;
-using common::UnkTarget;
+using cinn::common::Target;
+using cinn::common::Type;
+using cinn::common::UnkTarget;
 
 template <typename T>
 T& Reference(const T* x) {
@@ -63,7 +63,7 @@ static void CheckVarNameValid(const absl::string_view name) {
         name.find('\n') == std::string::npos &&  //
         name.find('\r') == std::string::npos)
       << "Some invalid character found";
-  CHECK(!common::IsAxisNameReserved(std::string(name)))
+  CHECK(!cinn::common::IsAxisNameReserved(std::string(name)))
       << "The name [" << name << "] is reserved for internal axis";
 }
 

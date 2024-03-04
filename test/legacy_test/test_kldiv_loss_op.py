@@ -18,6 +18,7 @@ from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle.nn.functional import kl_div
+from paddle.pir_utils import test_with_pir_api
 
 
 def kldiv_loss(x, target, reduction):
@@ -55,10 +56,10 @@ class TestKLDivLossOp(OpTest):
         self.outputs = {'Loss': loss.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Loss', no_grad_set={"Target"})
+        self.check_grad(['X'], 'Loss', no_grad_set={"Target"}, check_pir=True)
 
     def initTestCase(self):
         self.x_shape = (4, 5, 5)
@@ -111,6 +112,7 @@ class TestKLDivLossDygraph(unittest.TestCase):
     def test_kl_loss_none(self):
         self.run_kl_loss('none')
 
+    @test_with_pir_api
     def test_kl_loss_static_api(self):
         with paddle_static_guard():
             input = paddle.static.data(name='input', shape=[5, 20])

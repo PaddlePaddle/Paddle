@@ -105,8 +105,8 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
     const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places,
     std::vector<std::unique_ptr<ir::Graph>> graphs)
-    : strategy_(std::move(strategy)),
-      local_scopes_(std::move(local_scopes)),
+    : strategy_(strategy),
+      local_scopes_(local_scopes),
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
       places_(places),
       graphs_(std::move(graphs)),
@@ -297,6 +297,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
         for (size_t i = 0; i < lodtensorarray_ptrs[0]->size(); ++i) {
           phi::DenseTensor var;
           std::vector<const phi::DenseTensor *> ptrs;
+          ptrs.reserve(lodtensor_ptrs.size());
           for (auto &lodtensorarray_ptr : lodtensorarray_ptrs) {
             ptrs.push_back(&(lodtensorarray_ptr->at(i)));
           }

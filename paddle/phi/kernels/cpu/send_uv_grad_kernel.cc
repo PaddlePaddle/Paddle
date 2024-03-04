@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/send_uv_grad_kernel.h"
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -60,12 +60,12 @@ void CalculateGrad(const Context& ctx,
       }
     } else {
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, x_grad_dims);
-      auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
+      auto out_grad_dims_1 = common::vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
       DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
-      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -117,12 +117,12 @@ void CalculateGrad(const Context& ctx,
         }
       }
     } else {
-      auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
+      auto out_grad_dims_1 = common::vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
       DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
-      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -172,7 +172,7 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
       index_size,
       0,
       errors::InvalidArgument("The first dimension of src_index or dst_index "
-                              "shoule be greater than 0, but received %d.",
+                              "should be greater than 0, but received %d.",
                               index_size));
 
   ctx.template Alloc<T>(x_grad);

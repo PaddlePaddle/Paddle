@@ -54,15 +54,15 @@ class Adadelta(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
-            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_base_ParamAttr` already, \
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
@@ -149,7 +149,7 @@ class Adadelta(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
@@ -157,7 +157,7 @@ class Adadelta(Optimizer):
                 self._add_accumulator(
                     self._avg_squared_update_acc_str, master_p
                 )
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -169,7 +169,7 @@ class Adadelta(Optimizer):
                 )
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
             self._add_accumulator(self._avg_squared_update_acc_str, p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         if isinstance(param_and_grad, dict):

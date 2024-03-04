@@ -43,13 +43,13 @@ class DropoutOpConverter : public OpConverter {
         downgrade_in_infer == "upscale_in_train") {
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
       auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
       return;
     }
 
     platform::CPUPlace cpu_place;
     std::unique_ptr<phi::DenseTensor> weight_tensor(new phi::DenseTensor());
-    weight_tensor->Resize(phi::make_ddim({1}));
+    weight_tensor->Resize(common::make_ddim({1}));
     auto* weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
     weight_data[0] = 1 - dropout_prob;
@@ -75,7 +75,7 @@ class DropoutOpConverter : public OpConverter {
                         std::move(weight_tensor));
     auto output_name = op_desc.Output("Out")[0];
 
-    RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
   }
 };
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 '''
-python3.7 -m paddle.distributed.launch \
+python3.8 -m paddle.distributed.launch \
 --devices=128 \
 ipu \
 --hosts=host1,host2 \
@@ -31,7 +31,7 @@ poprun \
 --vipu-partition=pod128_bert \
 --vipu-server-host=lr17-1-ctrl \
 --update-partition=yes \
-python3.7 test/ipu/disabled/test_dist_pod128_ipu.py
+python3.8 test/ipu/disabled/test_dist_pod128_ipu.py
 '''
 
 import os
@@ -49,8 +49,7 @@ def TestDistTraining():
     scope = paddle.base.core.Scope()
     main_prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
-    main_prog.random_seed = 42
-    startup_prog.random_seed = 42
+    paddle.seed(42)
 
     np.random.seed(42)
     input_data = np.random.uniform(0, 127, size=[128, 3, 2, 1]).astype(np.int32)

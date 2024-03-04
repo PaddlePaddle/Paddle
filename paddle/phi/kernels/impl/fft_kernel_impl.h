@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/fft.h"
@@ -75,7 +75,7 @@ void FFTR2CKernel(const Context& ctx,
         out->dims().at(last_fft_axis) / 2 + 1;
     onesided_out_shape[last_fft_axis] = onesided_last_axis_size;
     DenseTensor onesided_out =
-        Empty<C, Context>(ctx, phi::vectorize(onesided_out_shape));
+        Empty<C, Context>(ctx, common::vectorize(onesided_out_shape));
     fft_r2c_func(ctx, x, &onesided_out, axes, norm_type, forward);
     funcs::FFTFillConj<Context, C>(ctx, &onesided_out, out, axes);
   }

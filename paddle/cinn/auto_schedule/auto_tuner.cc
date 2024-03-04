@@ -38,7 +38,7 @@
 namespace cinn {
 namespace auto_schedule {
 
-AutoTuner::AutoTuner(const common::Target& target,
+AutoTuner::AutoTuner(const cinn::common::Target& target,
                      hlir::framework::Graph* graph)
     : target_(target), graph_(graph) {}
 
@@ -58,7 +58,7 @@ void AutoTuner::Initialize(const Config& config,
   tasks_ = task_creator.CreateTuneTaskOpLevel(graph_);
 
   const auto& dtype_dict =
-      graph_->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+      graph_->GetAttrs<absl::flat_hash_map<std::string, cinn::common::Type>>(
           "inferdtype");
   const auto& shape_dict = graph_->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");

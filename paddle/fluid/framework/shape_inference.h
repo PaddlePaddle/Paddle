@@ -17,10 +17,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/small_vector.h"
 
@@ -78,13 +78,14 @@ class InferShapeContext {
 
   virtual DDim GetInputDim(const std::string &name) const = 0;
   virtual std::vector<DDim> GetInputsDim(const std::string &name) const = 0;
-  virtual std::vector<DDim> GetReaderDims(const std::string &name) const;
+  TEST_API virtual std::vector<DDim> GetReaderDims(
+      const std::string &name) const;
 
   virtual void SetOutputDim(const std::string &name, const DDim &dim) = 0;
   virtual void SetOutputsDim(const std::string &name,
                              const std::vector<DDim> &dims) = 0;
-  virtual void SetReaderDims(const std::string &name,
-                             const std::vector<DDim> &dims);
+  TEST_API virtual void SetReaderDims(const std::string &name,
+                                      const std::vector<DDim> &dims);
   virtual std::string GetInputNameByIdx(size_t idx) const = 0;
   virtual std::string GetOutputNameByIdx(size_t idx) const = 0;
   virtual AttrReader Attrs() const = 0;

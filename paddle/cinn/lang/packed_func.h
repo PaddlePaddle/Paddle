@@ -24,7 +24,7 @@
 
 namespace cinn {
 namespace lang {
-using common::CINNValue;
+using cinn::common::CINNValue;
 
 /**
  * A single argument value to Function.
@@ -54,8 +54,8 @@ class Args {
   ArgValue& operator[](int i) { return values_[i]; }
   const ArgValue& operator[](int i) const { return values_[i]; }
 
-  common::CINNValuePack ToValuePack() const {
-    return common::CINNValuePack(values_);
+  cinn::common::CINNValuePack ToValuePack() const {
+    return cinn::common::CINNValuePack(values_);
   }
 
  private:

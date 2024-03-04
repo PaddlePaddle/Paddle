@@ -58,6 +58,7 @@ class XPUTestEmptyOp(XPUOpTestWrapper):
                 'uint8',
                 'float16',
                 'int16',
+                'uint16',
             ]:
                 max_value = np.nanmax(outs[0])
                 min_value = np.nanmin(outs[0])

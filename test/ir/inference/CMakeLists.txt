@@ -33,6 +33,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_groupnorm_act_pass_fuse_pass")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_trans_layernorm")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_trans_layernorm")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_argsort")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_trans_layernorm")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
@@ -46,6 +47,10 @@ if(WIN32)
        "test_split_layernorm_to_math_ops_pass")
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_quantize_dequantize_linear")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization_resnet")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES
+       "test_trt_explicit_quantization_mobilenet")
 endif()
 
 # Only for cpu(mkl + openblas)
@@ -133,19 +138,6 @@ if(WITH_XPU)
   endforeach()
 endif()
 
-# below are cutlass unittests
-file(
-  GLOB TEST_CUTLASS
-  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "test_cutlass_*.py")
-string(REPLACE ".py" "" TEST_CUTLASS "${TEST_CUTLASS}")
-list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_CUTLASS})
-if(WITH_CUTLASS)
-  foreach(target ${TEST_CUTLASS})
-    py_test_modules(${target} MODULES ${target})
-  endforeach()
-endif()
-
 if(WITH_MKLDNN
    AND TENSORRT_FOUND
    AND WITH_GPU)
@@ -163,8 +155,8 @@ if(NOT WITH_MKLDNN
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
 
-  set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 1000)
+  set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 600)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
@@ -176,6 +168,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_optimization_level PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
+  if(NOT WIN32)
+    set_tests_properties(test_trt_explicit_quantization_resnet
+                         PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_trt_explicit_quantization_mobilenet
+                         PROPERTIES TIMEOUT 300)
+  endif()
   if(WITH_MKLDNN)
     set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
   endif()

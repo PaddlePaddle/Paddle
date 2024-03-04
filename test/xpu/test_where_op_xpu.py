@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -37,13 +38,22 @@ class XPUTestWhereOp(XPUOpTestWrapper):
         def setUp(self):
             self.init_config()
             self.init_data()
+            self.convert_data_if_bf16()
             self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
             self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
         def init_data(self):
-            self.x = np.random.uniform(-3, 5, (100)).astype(self.dtype)
-            self.y = np.random.uniform(-3, 5, (100)).astype(self.dtype)
+            self.x = np.random.uniform(-3, 5, (100))
+            self.y = np.random.uniform(-3, 5, (100))
             self.cond = np.zeros(100).astype("bool")
+
+        def convert_data_if_bf16(self):
+            if self.dtype == np.uint16:
+                self.x = convert_float_to_uint16(self.x)
+                self.y = convert_float_to_uint16(self.y)
+            else:
+                self.x = self.x.astype(self.dtype)
+                self.y = self.y.astype(self.dtype)
 
         def init_config(self):
             self.op_type = "where"
@@ -59,14 +69,14 @@ class XPUTestWhereOp(XPUOpTestWrapper):
 
     class TestXPUWhereOp2(TestXPUWhereOp):
         def init_data(self):
-            self.x = np.random.uniform(-5, 5, (60, 2)).astype(self.dtype)
-            self.y = np.random.uniform(-5, 5, (60, 2)).astype(self.dtype)
+            self.x = np.random.uniform(-5, 5, (60, 2))
+            self.y = np.random.uniform(-5, 5, (60, 2))
             self.cond = np.ones((60, 2)).astype("bool")
 
     class TestXPUWhereOp3(TestXPUWhereOp):
         def init_data(self):
-            self.x = np.random.uniform(-3, 5, (20, 2, 4)).astype(self.dtype)
-            self.y = np.random.uniform(-3, 5, (20, 2, 4)).astype(self.dtype)
+            self.x = np.random.uniform(-3, 5, (20, 2, 4))
+            self.y = np.random.uniform(-3, 5, (20, 2, 4))
             self.cond = np.array(
                 np.random.randint(2, size=(20, 2, 4)), dtype=bool
             )
@@ -174,9 +184,9 @@ class TestWhereDygraphAPI(unittest.TestCase):
             x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
             y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
             cond_i = np.array([False, False, True, True]).astype("bool")
-            x = base.dygraph.to_variable(x_i)
-            y = base.dygraph.to_variable(y_i)
-            cond = base.dygraph.to_variable(cond_i)
+            x = paddle.to_tensor(x_i)
+            y = paddle.to_tensor(y_i)
+            cond = paddle.to_tensor(cond_i)
             out = paddle.where(cond, x, y)
             np.testing.assert_array_equal(
                 out.numpy(), np.where(cond_i, x_i, y_i)

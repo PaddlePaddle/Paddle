@@ -30,8 +30,10 @@ class _LoweredFunc_;
  * the function signature of generated code.
  */
 struct Argument {
-  //! Input or output.
-  enum class IO { kInput = 0, kOutput = 1 };
+  //! kInput: arg is input
+  //! kOutput: arg is output
+  //! kUnknown: arg maybe input or output
+  enum class IO { kInput = 0, kOutput = 1, kUnknown = 2 };
 
   IO io{IO::kInput};
 
@@ -82,34 +84,30 @@ class LoweredFunc : public IrNodeRef {
   _LoweredFunc_* operator->();
 };
 
-using dim3_t = std::array<int, 3>;
+using symbolic_dim3_t = std::array<ir::Expr, 3>;
 struct CudaAxisInfo {
   CudaAxisInfo() {
-    for (int& v : grid_dims_) v = 1;
-    for (int& v : block_dims_) v = 1;
+    for (ir::Expr& v : grid_dims_) v = ir::Expr(static_cast<int64_t>(1));
+    for (ir::Expr& v : block_dims_) v = ir::Expr(static_cast<int64_t>(1));
     set_valid(false);
   }
 
-  void set_grid_dim(int offset, int x);
-  void set_block_dim(int offset, int x);
+  void set_grid_dim(int offset, int64_t x);
+  void set_block_dim(int offset, int64_t x);
+  void set_grid_dim(int offset, ir::Expr x);
+  void set_block_dim(int offset, ir::Expr x);
 
-  int grid_dim(int offset) const;
-  int block_dim(int offset) const;
-
-  void CopyGridDimsTo(std::vector<int>* dest) const;
-  void CopyBlockDimsTo(std::vector<int>* dest) const;
+  ir::Expr grid_dim(int offset) const;
+  ir::Expr block_dim(int offset) const;
 
   inline void set_valid(bool x = false) { valid_ = x; }
   inline bool valid() const { return valid_; }
 
-  //! Extend the axis dims and keep the larger dims.
-  void ExtendWith(const CudaAxisInfo& other);
-
  private:
   // the three dimensions represents x, y, z
-  dim3_t grid_dims_;
+  symbolic_dim3_t grid_dims_;
   // the three dimensions represents x, y, z
-  dim3_t block_dims_;
+  symbolic_dim3_t block_dims_;
   bool valid_{false};
 };
 
@@ -163,6 +161,13 @@ struct _LoweredFunc_ : ExprNode<_LoweredFunc_> {
                           const std::vector<Argument>& args,
                           const Expr& body,
                           const std::vector<ir::Buffer>& temp_bufs);
+
+  // A simple version of the make function method,
+  // regardless of the argument buffer information and IO information of
+  // Argument, after building the function to optimize the buffer through pass
+  static LoweredFunc Make(const std::string& name,
+                          const std::vector<Argument>& args,
+                          const Expr& body);
 
   bool is_gpu_host() const { return cuda_axis_info.valid(); }
 

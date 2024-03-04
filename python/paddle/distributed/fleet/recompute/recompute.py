@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import contextlib
+import copy
 import weakref
 
 import paddle
 from paddle import framework
 from paddle.autograd import PyLayer
+from paddle.base.framework import EagerParamBase
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
@@ -26,6 +28,15 @@ from paddle.framework import core, in_dynamic_mode
 from ..utils.log_util import logger
 
 __all__ = []
+
+
+def _varbase_help(param):
+    state = copy.deepcopy(param.__dict__)
+    new_param = EagerParamBase(
+        shape=param.shape, dtype=param.dtype, name=param.name, **state
+    )
+    param._share_buffer_to(new_param)
+    return new_param
 
 
 def detach_variable(inputs):
@@ -38,14 +49,23 @@ def detach_variable(inputs):
             out.append(inp)
             continue
 
+        if isinstance(inp, EagerParamBase):
+            out.append(_varbase_help(inp))
+            continue
+
         if type(inp) is tuple:
             detach_inp = []
             for i in inp:
                 # detach all tensors in the tuple
                 assert isinstance(i, core.eager.Tensor)
-                tmp_i = i.detach()
-                tmp_i.stop_gradient = i.stop_gradient
-                detach_inp.append(tmp_i)
+
+                if isinstance(i, EagerParamBase):
+                    detach_inp.append(_varbase_help(i))
+                else:
+                    tmp_i = i.detach()
+                    tmp_i.stop_gradient = i.stop_gradient
+                    detach_inp.append(tmp_i)
+
             out.append(tuple(detach_inp))
             continue
 
@@ -73,7 +93,7 @@ def check_recompute_necessary(inputs):
 
 
 @contextlib.contextmanager
-def swith_rng_state_tracker(rng_state, tracker):
+def switch_rng_state_tracker(rng_state, tracker):
     orig_rng_state = paddle.get_rng_state()
     orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
     paddle.set_rng_state(rng_state)
@@ -135,8 +155,8 @@ class RecomputeFunction(PyLayer):
                 ctx.inputs.append(arg)
         ctx.save_for_backward(*tensor_inputs)
 
-        # NOTE recompute with restore RNG only support one senario where one process for one cuda gpu.
-        # one process with multiple gpu and mix-gpu-cpu senarios are not support
+        # NOTE recompute with restore RNG only support one scenario where one process for one cuda gpu.
+        # one process with multiple gpu and mix-gpu-cpu scenarios are not support
         if ctx.preserve_rng_state:
             ctx.fw_rng_state = paddle.get_rng_state()
             ctx.fwd_rng_state_tracker = (
@@ -171,7 +191,7 @@ class RecomputeFunction(PyLayer):
     @staticmethod
     def backward(ctx, *args):
         with paddle.base.dygraph.guard():
-            # TODO need to check the recompute calling is vaild or not
+            # TODO need to check the recompute calling is valid or not
 
             # Restore inputs
             inputs = list(ctx.inputs)
@@ -188,7 +208,7 @@ class RecomputeFunction(PyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state_tracker(
+                with switch_rng_state_tracker(
                     ctx.fw_rng_state, ctx.fwd_rng_state_tracker
                 ):
                     with paddle.amp.auto_cast(
@@ -253,7 +273,7 @@ class RecomputeFunction(PyLayer):
                         # all tensors in the tuple doesn't need grad, only return a None for the whole tuple
                         grads.append(None)
                     else:
-                        # all tensors in the tuple nees grad, should return a tuple of grads
+                        # all tensors in the tuple need grad, should return a tuple of grads
                         grads.append(tuple(i._grad_ivar() for i in inp))
 
             if in_dynamic_mode():
@@ -283,7 +303,7 @@ def _recompute_without_reentrant(
             fw_cuda_rng_state = paddle.get_rng_state(cur_device)
         else:
             raise RuntimeError(
-                "Recompute with RNG perserve is not support current device: {}.".format(
+                "Recompute with RNG preserve is not support current device: {}.".format(
                     cur_device
                 )
             )
@@ -338,10 +358,10 @@ def _recompute_without_reentrant(
                 return
 
             def inner_unpack(inner_x):
-                raise Exception("An unexcepted backward called on a tensor!")
+                raise Exception("An unexpected backward called on a tensor!")
 
             if preserve_rng_state:
-                with swith_rng_state_tracker(
+                with switch_rng_state_tracker(
                     fw_cuda_rng_state, fwd_cuda_rng_state_tracker
                 ):
                     with paddle.set_grad_enabled(True):
@@ -403,88 +423,102 @@ def recompute(function, *args, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet.utils import recompute
-            import random
-            # required: gpu
-            def get_fc_block(block_idx, input_size, is_last=False):
-                block_name = "block_" + str(block_idx)
-                block = paddle.nn.Sequential(
-                    (block_name + "_fc_0", paddle.nn.Linear(input_size, input_size, bias_attr=False)),
-                    (block_name + "_dropout", paddle.nn.Dropout(p=0.5)),
-                    (block_name + "_relu_1", paddle.nn.ReLU()),
-                    (block_name + "_fc_1", paddle.nn.Linear(input_size, input_size, bias_attr=False)),
-                    (block_name + "_relu_2", paddle.nn.ReLU()),
-                )
-                if is_last:
-                    block.add_sublayer(
-                        block_name + "_fc_2",
-                        paddle.nn.Linear(
-                            input_size, 1, bias_attr=False
-                        )
-                    )
-                else:
-                    block.add_sublayer(
-                        block_name + "_fc_2",
-                        paddle.nn.Linear(input_size, input_size, bias_attr=False)
-                    )
-                return block
-            class Naive_fc_net(paddle.nn.Layer):
-                def __init__(self, input_size=10,
-                            recompute_blocks=[1, 3],
-                            recompute_kwargs={}):
-                    super().__init__()
-                    self.recompute_blocks = recompute_blocks
-                    self.recompute_kwargs = recompute_kwargs
-                    self.runfunc0 = get_fc_block(0, input_size, is_last=False)
-                    self.runfunc1 = get_fc_block(1, input_size, is_last=False)
-                    self.runfunc2 = get_fc_block(2, input_size, is_last=False)
-                    self.runfunc3 = get_fc_block(3, input_size, is_last=False)
-                    self.runfunc4 = get_fc_block(4, input_size, is_last=True)
-                    self.total_func = [self.runfunc0, self.runfunc1, self.runfunc2, self.runfunc3, self.runfunc4]
-                def forward(self, inputs):
-                    nums = len(self.total_func)
-                    for i in range(nums):
-                        if i in self.recompute_blocks:
-                            inputs = recompute(self.total_func[i], inputs, **{"preserve_rng_state": True})
-                        else:
-                            inputs = self.total_func[i](inputs)
-                    return inputs
-            def run_model(cuda_state, recompute_block=[], recompute_kwargs={}):
-                gen = paddle.seed(10)
-                gen.manual_seed(10)
-                random.seed(10)
-                if cuda_state:
-                    paddle.set_cuda_rng_state(cuda_state)
-                batch_size, input_size = 1, 10
-                model = Naive_fc_net(
-                    input_size,
-                    recompute_blocks=recompute_block,
-                    recompute_kwargs=recompute_kwargs)
-                optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
-                loss_ = []
-                param_ = []
-                grad_ = []
-                for _ in range(5):
-                    x = paddle.rand(shape=[batch_size, input_size], dtype="float32")
-                    y_pred = model(x)
-                    loss = y_pred.mean()
-                    loss_.append(loss.item())
-                    loss.backward()
-                    optimizer.step()
-                    param_.append(model.parameters()[9])
-                    grad_.append(model.parameters()[3]._grad_ivar())
-                    optimizer.clear_grad()
-                return loss_, param_, grad_
-            cuda_state = paddle.get_cuda_rng_state()
-            # without recompute
-            loss_ref, param_ref, grad_ref = run_model(
-                cuda_state, recompute_block=[]
-            )
-            loss, param, grad = run_model(cuda_state, recompute_block=[1, 2])
-            print("normal_loss: {}, recompute_loss: {}".format(loss_ref, loss))
-            # The result of the recompute_loss should be the same as the normal_loss.
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)
+            >>> import paddle
+            >>> from paddle.distributed.fleet.utils import recompute
+            >>> import random
+            >>> paddle.seed(2023)
+            >>> def get_fc_block(block_idx, input_size, is_last=False):
+            ...     block_name = "block_" + str(block_idx)
+            ...     block = paddle.nn.Sequential(
+            ...         (block_name + "_fc_0", paddle.nn.Linear(input_size, input_size, bias_attr=False)),
+            ...         (block_name + "_dropout", paddle.nn.Dropout(p=0.5)),
+            ...         (block_name + "_relu_1", paddle.nn.ReLU()),
+            ...         (block_name + "_fc_1", paddle.nn.Linear(input_size, input_size, bias_attr=False)),
+            ...         (block_name + "_relu_2", paddle.nn.ReLU()),
+            ...     )
+            ...     if is_last:
+            ...         block.add_sublayer(
+            ...             block_name + "_fc_2",
+            ...             paddle.nn.Linear(
+            ...                 input_size, 1, bias_attr=False
+            ...             )
+            ...         )
+            ...     else:
+            ...         block.add_sublayer(
+            ...             block_name + "_fc_2",
+            ...             paddle.nn.Linear(input_size, input_size, bias_attr=False)
+            ...         )
+            ...     return block
+
+            >>> class Naive_fc_net(paddle.nn.Layer):
+            ...     def __init__(self, input_size=10,
+            ...                 recompute_blocks=[1, 3],
+            ...                 recompute_kwargs={}):
+            ...         super().__init__()
+            ...         self.recompute_blocks = recompute_blocks
+            ...         self.recompute_kwargs = recompute_kwargs
+            ...         self.runfunc0 = get_fc_block(0, input_size, is_last=False)
+            ...         self.runfunc1 = get_fc_block(1, input_size, is_last=False)
+            ...         self.runfunc2 = get_fc_block(2, input_size, is_last=False)
+            ...         self.runfunc3 = get_fc_block(3, input_size, is_last=False)
+            ...         self.runfunc4 = get_fc_block(4, input_size, is_last=True)
+            ...         self.total_func = [self.runfunc0, self.runfunc1, self.runfunc2, self.runfunc3, self.runfunc4]
+            ...     def forward(self, inputs):
+            ...         nums = len(self.total_func)
+            ...         for i in range(nums):
+            ...             if i in self.recompute_blocks:
+            ...                 inputs = recompute(self.total_func[i], inputs, **{"preserve_rng_state": True})
+            ...             else:
+            ...                 inputs = self.total_func[i](inputs)
+            ...         return inputs
+
+            >>> def run_model(cuda_state, recompute_block=[], recompute_kwargs={}):
+            ...     gen = paddle.seed(10)
+            ...     gen.manual_seed(10)
+            ...     random.seed(10)
+            ...     if cuda_state:
+            ...         paddle.set_cuda_rng_state(cuda_state)
+            ...     batch_size, input_size = 1, 10
+            ...     model = Naive_fc_net(
+            ...         input_size,
+            ...         recompute_blocks=recompute_block,
+            ...         recompute_kwargs=recompute_kwargs)
+            ...     optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+            ...     loss_ = []
+            ...     param_ = []
+            ...     grad_ = []
+            ...     for _ in range(5):
+            ...         x = paddle.rand(shape=[batch_size, input_size], dtype="float32")
+            ...         y_pred = model(x)
+            ...         loss = y_pred.mean()
+            ...         loss_.append(loss.item())
+            ...         loss.backward()
+            ...         optimizer.step()
+            ...         param_.append(model.parameters()[9])
+            ...         grad_.append(model.parameters()[3]._grad_ivar())
+            ...         optimizer.clear_grad()
+            ...     return loss_, param_, grad_
+
+            >>> cuda_state = paddle.get_cuda_rng_state()
+            >>> # without recompute
+            >>> loss_ref, param_ref, grad_ref = run_model(
+            ...     cuda_state, recompute_block=[]
+            ... )
+
+            >>> loss, param, grad = run_model(cuda_state, recompute_block=[1, 2])
+            >>> print("normal_loss: {}, recompute_loss: {}".format(loss_ref, loss))
+            >>> # The result of the recompute_loss should be the same as the normal_loss.
+            normal_loss: [0.0018744759727269411, 0.0, 0.035971127450466156, 0.0, 0.0], recompute_loss: [0.0018744759727269411, 0.0, 0.035971127450466156, 0.0, 0.0]
+
     """
+    if not in_dynamic_mode():
+        from paddle.distributed.auto_parallel.interface import (
+            recompute as static_auto_recompute,
+        )
+
+        return static_auto_recompute(function)(*args, **kwargs)
+
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)
 
@@ -524,11 +558,14 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
 
     Examples:
         .. code-block:: python
-            import paddle
-            from paddle.incubate.distributed.fleet import recompute_sequential
-            input = paddle.ones(shape=[8, 10])
-            model = paddle.nn.Sequential(paddle.nn.Linear(10, 10), paddle.nn.Linear(10, 2))
-            output = recompute_sequential({'segments' : 1}, model, input)
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> from paddle.incubate.distributed.fleet import recompute_sequential
+            >>> input = paddle.ones(shape=[8, 10])
+            >>> model = paddle.nn.Sequential(paddle.nn.Linear(10, 10), paddle.nn.Linear(10, 2))
+            >>> output = recompute_sequential({'segments' : 1}, model, input)
+
     """
     segments = ctx.get('segments', 1)
     preserve_rng_state = ctx.get('preserve_rng_state', True)

@@ -44,7 +44,7 @@ class TestElementwisePowOp(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_new_ir=True)
+            self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
@@ -53,7 +53,11 @@ class TestElementwisePowOp(OpTest):
             )
         else:
             self.check_grad(
-                ['X', 'Y'], 'Out', check_prim=True, check_new_ir=True
+                ['X', 'Y'],
+                'Out',
+                check_prim=True,
+                check_prim_pir=True,
+                check_pir=True,
             )
 
 
@@ -190,6 +194,8 @@ class TestElementwisePowOpInt(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
 
         self.inputs = {'X': np.asarray([1, 3, 6]), 'Y': np.asarray([1, 1, 1])}
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
@@ -198,7 +204,7 @@ class TestElementwisePowOpInt(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_new_ir=True)
+            self.check_output(check_pir=True)
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
@@ -224,8 +230,8 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
             places.append(base.CUDAPlace(0))
         for place in places:
             with base.dygraph.guard(place):
-                x = base.dygraph.to_variable(self.x, zero_copy=False)
-                y = base.dygraph.to_variable(self.y, zero_copy=False)
+                x = paddle.to_tensor(self.x)
+                y = paddle.to_tensor(self.y)
                 x.stop_gradient = False
                 y.stop_gradient = False
                 res = x**y
@@ -254,7 +260,7 @@ class TestElementwisePowOpFP16(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_new_ir=True)
+            self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -264,7 +270,8 @@ class TestElementwisePowOpFP16(OpTest):
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
 
@@ -290,7 +297,7 @@ class TestElementwisePowBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
@@ -301,7 +308,7 @@ class TestElementwisePowBF16Op(OpTest):
                 'Out',
                 check_prim=True,
                 only_check_prim=True,
-                check_new_ir=True,
+                check_prim_pir=True,
             )
 
 

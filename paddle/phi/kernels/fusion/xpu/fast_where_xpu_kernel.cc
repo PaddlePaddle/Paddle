@@ -30,9 +30,9 @@ void FastWhereXPUKernel(const Context& ctx,
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
-  auto condition_dims = phi::vectorize<int>(condition.dims());
-  auto x_dims = phi::vectorize<int>(x.dims());
-  auto y_dims = phi::vectorize<int>(y.dims());
+  auto condition_dims = common::vectorize<int>(condition.dims());
+  auto x_dims = common::vectorize<int>(x.dims());
+  auto y_dims = common::vectorize<int>(y.dims());
   PADDLE_ENFORCE_EQ(
       x_dims,
       y_dims,
@@ -43,7 +43,7 @@ void FastWhereXPUKernel(const Context& ctx,
           y.dims(),
           "]"));
 #ifndef PADDLE_WITH_XPU_PLUGIN
-  LOG(WARNING)
+  LOG(INFO)
       << "Add -DWITH_XPU_PLUGIN=ON to build xpu::plugin::fast_where(), or use "
          "xpu::select() instead, which leads low performance.";
   int r = xpu::select<XPUType>(ctx.x_context(),

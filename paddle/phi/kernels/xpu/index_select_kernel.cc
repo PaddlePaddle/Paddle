@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_select_kernel.h"
-
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -40,14 +40,33 @@ void IndexSelectKernel(const Context& ctx,
                         index_type,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
-
   auto* in_data = x.data<T>();
-  std::vector<int> in_shape = phi::vectorize<int>(input_dim);
+  std::vector<int> in_shape = common::vectorize<int>(input_dim);
   int index_len = output->dims()[dim];
   T* out_data = ctx.template Alloc<T>(output);
   int r = 0;
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  int8_t* index_ptr = nullptr;  // temp xpu buffer
+  int byte_times = SizeOf(index_type);
+  if (index.place() == CPUPlace()) {
+    index_ptr = RAII_GUARD.alloc_l3_or_gm<int8_t>(byte_times * index.numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(index_ptr);
+    const void* cpu_idx_data = nullptr;
+    if (index_type == phi::DataType::INT64) {
+      cpu_idx_data = reinterpret_cast<const void*>(index.data<int64_t>());
+    } else if (index_type == phi::DataType::INT32) {
+      cpu_idx_data = reinterpret_cast<const void*>(index.data<int>());
+    }
+    memory_utils::Copy(ctx.GetPlace(),
+                       reinterpret_cast<void*>(index_ptr),
+                       CPUPlace(),
+                       cpu_idx_data,
+                       byte_times * index.numel());
+  }
   if (index_type == phi::DataType::INT64) {
-    const int64_t* index_data = index.data<int64_t>();
+    const int64_t* index_data =
+        index_ptr ? reinterpret_cast<const int64_t*>(index_ptr)
+                  : index.template data<int64_t>();
     r = xpu::gather<T, int64_t>(ctx.x_context(),
                                 in_data,
                                 index_data,
@@ -56,7 +75,8 @@ void IndexSelectKernel(const Context& ctx,
                                 index_len,
                                 dim);
   } else {
-    const int* index_data = index.data<int>();
+    const int* index_data = index_ptr ? reinterpret_cast<const int*>(index_ptr)
+                                      : index.template data<int>();
     r = xpu::gather<T, int>(ctx.x_context(),
                             in_data,
                             index_data,

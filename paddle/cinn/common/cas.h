@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
@@ -62,8 +62,8 @@ struct CasInterval {
     if (expr_l.is_constant() && expr_r.is_constant()) {
       CHECK(expr_l->type().is_integer());
       CHECK(expr_r->type().is_integer());
-      l = expr_l.as_int32();
-      r = expr_r.as_int32();
+      l = expr_l.as_int64();
+      r = expr_r.as_int64();
       return;
     }
     e_l = expr_l;

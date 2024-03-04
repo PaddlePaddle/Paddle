@@ -15,10 +15,15 @@
 # TODO: define the initializers of Kaiming functions in neural network
 import math
 
+import paddle
 from paddle import _C_ops
 
 from ...base import core, framework, unique_name
-from ...base.framework import _current_expected_place, in_dygraph_mode
+from ...base.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_pir_mode,
+)
 from .initializer import Initializer, calculate_gain
 
 __all__ = []
@@ -47,7 +52,7 @@ class MSRAInitializer(Initializer):
 
     Args:
         uniform (bool, optional): whether to use uniform or normal distribution. Default is True.
-        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automaticly. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
+        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automatically. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
         seed (int32, optional): random seed. Default is 0.
         negative_slope (float, optional): negative_slope (only used with leaky_relu). Default is 0.0.
         nonlinearity(str, optional): the non-linear function. Default is relu.
@@ -86,10 +91,14 @@ class MSRAInitializer(Initializer):
         Returns:
             The initialization op.
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, kaiming initializer not support lazy init for dist param."
         block = self._check_block(block)
-
-        assert isinstance(var, framework.Variable)
-        assert isinstance(block, framework.Block)
+        assert isinstance(
+            var, (framework.Variable, paddle.pir.core.ParameterMeta)
+        )
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
         f_in, f_out = self._compute_fans(var)
 
         # If fan_in is passed, use it
@@ -98,7 +107,7 @@ class MSRAInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype == core.VarDesc.VarType.FP16 or (
             var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
         ):
@@ -112,6 +121,12 @@ class MSRAInitializer(Initializer):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
             )
+        elif (
+            var.dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
+            and not self._uniform
+        ):
+            out_dtype = core.DataType.FLOAT32
+            out_var = var
         else:
             out_dtype = var.dtype
             out_var = var
@@ -144,6 +159,33 @@ class MSRAInitializer(Initializer):
             else:
                 out_var._share_underline_tensor_to(var)
             return None
+        elif in_pir_mode():
+            if self._uniform:
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                limit = gain * math.sqrt(3.0 / float(fan_in))
+                out_var = _C_ops.uniform(
+                    var.shape,
+                    out_dtype,
+                    -limit,
+                    limit,
+                    self._seed,
+                    _current_expected_place(),
+                )
+            else:
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                std = gain / math.sqrt(float(fan_in))
+                place = _current_expected_place()
+                out_var = _C_ops.gaussian(
+                    out_var.shape, 0.0, std, self._seed, out_dtype, place
+                )
+
+            if (
+                var.dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
+                and not self._uniform
+            ):
+                return _C_ops.cast(out_var, var.dtype)
+
+            return out_var
         else:
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
@@ -210,7 +252,7 @@ class KaimingNormal(MSRAInitializer):
         \frac{gain}{\sqrt{{fan\_in}}}
 
     Args:
-        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automaticly. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
+        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automatically. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
         negative_slope (float, optional): negative_slope (only used with leaky_relu). Default is 0.0.
         nonlinearity(str, optional): the non-linear function. Default is relu.
 

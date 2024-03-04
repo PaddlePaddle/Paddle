@@ -61,8 +61,8 @@ void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
     // scale for one output
     for (auto out_node : quant_op->outputs) {
       for (auto out_op_node : out_node->outputs) {
-        for (auto name : out_op_node->Op()->InputNames()) {
-          for (auto input_name : out_op_node->Op()->Input(name)) {
+        for (auto const& name : out_op_node->Op()->InputNames()) {
+          for (auto const& input_name : out_op_node->Op()->Input(name)) {
             if (out_op_node->Op()->HasAttr("Input_scale_" + input_name)) {
               for (size_t i = 0; i < quanted_op_desc->OutputNames().size();
                    i++) {

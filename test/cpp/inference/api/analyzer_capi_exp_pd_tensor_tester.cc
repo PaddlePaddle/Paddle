@@ -12,18 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #include <fstream>
 #include <iostream>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
-#include "test/cpp/inference/api/tester_helper.h"
+
+PD_DEFINE_string(infer_model, "", "model path");
 
 namespace paddle {
 namespace inference {
@@ -40,18 +45,18 @@ void PD_run() {
   PD_Tensor* tensor =
       PD_PredictorGetInputHandle(predictor, input_names->data[0]);
 
-  int32_t shapes[4] = {1, 3, 300, 300};
+  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
   std::vector<float> input(1 * 3 * 300 * 300, 0);
   int32_t size;
   PD_PlaceType place;
-  PD_TensorReshape(tensor, 4, shapes);
+  PD_TensorReshape(tensor, 4, shapes.data());
   PD_TensorCopyFromCpuFloat(tensor, input.data());
   PD_TensorDataFloat(tensor, &place, &size);
   PD_TensorMutableDataFloat(tensor, place);
 
   PD_TwoDimArraySize lod;
   lod.size = 0;
-  lod.data = NULL;
+  lod.data = nullptr;
   PD_TensorSetLod(tensor, &lod);
 
   PD_PredictorRun(predictor);
@@ -64,7 +69,7 @@ void PD_run() {
   int32_t out_num = std::accumulate(output_shape->data,
                                     output_shape->data + output_shape->size,
                                     1,
-                                    std::multiplies<int32_t>());
+                                    std::multiplies<>());
   out_data.resize(out_num);
   PD_TensorCopyToCpuFloat(output_tensor, out_data.data());
   LOG(INFO) << "Output tensor name is: " << PD_TensorGetName(output_tensor);
@@ -93,11 +98,11 @@ TEST(PD_Tensor, int32) {
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
       PD_PredictorGetInputHandle(predictor, input_names->data[0]);
-  int32_t shapes[4] = {1, 3, 300, 300};
+  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
   std::vector<int32_t> input(1 * 3 * 300 * 300, 0);
   int32_t size;
   PD_PlaceType place;
-  PD_TensorReshape(tensor, 4, shapes);
+  PD_TensorReshape(tensor, 4, shapes.data());
   PD_TensorCopyFromCpuInt32(tensor, input.data());
   int32_t* data_ptr = PD_TensorDataInt32(tensor, &place, &size);
   EXPECT_EQ(place, PD_PLACE_CPU);
@@ -124,11 +129,11 @@ TEST(PD_Tensor, int64) {
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
       PD_PredictorGetInputHandle(predictor, input_names->data[0]);
-  int32_t shapes[4] = {1, 3, 300, 300};
+  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
   std::vector<int64_t> input(1 * 3 * 300 * 300, 0);
   int32_t size;
   PD_PlaceType place;
-  PD_TensorReshape(tensor, 4, shapes);
+  PD_TensorReshape(tensor, 4, shapes.data());
   PD_TensorCopyFromCpuInt64(tensor, input.data());
   int64_t* data_ptr = PD_TensorDataInt64(tensor, &place, &size);
   EXPECT_EQ(place, PD_PLACE_CPU);
@@ -155,12 +160,12 @@ TEST(PD_Tensor, uint8) {
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   PD_Tensor* tensor =
       PD_PredictorGetInputHandle(predictor, input_names->data[0]);
-  int32_t shapes[4] = {1, 3, 300, 300};
-  uint8_t input[1 * 3 * 300 * 300] = {0};
+  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
+  std::array<uint8_t, 1 * 3 * 300 * 300> input = {0};
   int32_t size;
   PD_PlaceType place;
-  PD_TensorReshape(tensor, 4, shapes);
-  PD_TensorCopyFromCpuUint8(tensor, input);
+  PD_TensorReshape(tensor, 4, shapes.data());
+  PD_TensorCopyFromCpuUint8(tensor, input.data());
   uint8_t* data_ptr = PD_TensorDataUint8(tensor, &place, &size);
   EXPECT_EQ(place, PD_PLACE_CPU);
   EXPECT_EQ(size, 1 * 3 * 300 * 300);
@@ -169,7 +174,7 @@ TEST(PD_Tensor, uint8) {
 
   PD_DataType data_type = PD_TensorGetDataType(tensor);
   EXPECT_EQ(data_type, PD_DATA_UINT8);
-  PD_TensorCopyToCpuUint8(tensor, input);
+  PD_TensorCopyToCpuUint8(tensor, input.data());
 
   PD_TensorDestroy(tensor);
   PD_OneDimArrayCstrDestroy(input_names);

@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.base.dygraph import to_variable
 from paddle.distributed import fleet
 from paddle.framework import core
 
@@ -29,23 +28,37 @@ def distributed_scaler(scaler):
     def unscale_method(self, optimizer):
         if not self._enable:
             return
+
+        param_grads = []
+        param_grads_bf16 = []
+        param_grads_fp16 = []
+        param_grads_fp32 = []
         if getattr(optimizer, '_param_groups', None) and isinstance(
             optimizer._param_groups[0], dict
         ):
-            param_grads = []
-            param_grads_fp16 = []
-            param_grads_fp32 = []
             for group in optimizer._param_groups:
                 for param in group['params']:
-                    if param._grad_ivar() is not None:
-                        param_grads.append(param._grad_ivar())
-                        if (
-                            param._grad_ivar().dtype
-                            == core.VarDesc.VarType.FP16
-                        ):
-                            param_grads_fp16.append(param._grad_ivar())
+                    tgt_grad = None
+                    if (
+                        hasattr(param, "main_grad")
+                        and param.main_grad is not None
+                    ):
+                        tgt_grad = param.main_grad
+                    elif param.grad is not None:
+                        tgt_grad = param.grad
+                    if tgt_grad is not None:
+                        param_grads.append(tgt_grad)
+                        if tgt_grad.dtype in [
+                            core.VarDesc.VarType.FP16,
+                            paddle.float16,
+                        ]:
+                            param_grads_fp16.append(tgt_grad)
+                        elif tgt_grad.dtype in [
+                            paddle.bfloat16,
+                        ]:
+                            param_grads_bf16.append(tgt_grad)
                         else:
-                            param_grads_fp32.append(param._grad_ivar())
+                            param_grads_fp32.append(tgt_grad)
         else:
             strategy = fleet.fleet._user_defined_strategy
             sharding_stage_1_overlap = strategy.hybrid_configs[
@@ -67,20 +80,30 @@ def distributed_scaler(scaler):
                 parameters = optimizer._local_parameter_list
             else:
                 parameters = optimizer._parameter_list
-            param_grads_fp16 = [
-                param._grad_ivar()
-                for param in parameters
-                if (param._grad_ivar() is not None)
-                and (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
-            ]
-            param_grads_fp32 = [
-                param._grad_ivar()
-                for param in parameters
-                if (param._grad_ivar() is not None)
-                and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
-            ]
-        temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
-        temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
+
+            for param in parameters:
+                tgt_grad = None
+                if hasattr(param, "main_grad") and param.main_grad is not None:
+                    tgt_grad = param.main_grad
+                elif param.grad is not None:
+                    tgt_grad = param.grad
+                if tgt_grad is not None:
+                    param_grads.append(tgt_grad)
+                    if tgt_grad.dtype in [
+                        core.VarDesc.VarType.FP16,
+                        paddle.float16,
+                    ]:
+                        param_grads_fp16.append(tgt_grad)
+                    elif tgt_grad.dtype in [
+                        paddle.bfloat16,
+                    ]:
+                        param_grads_bf16.append(tgt_grad)
+                    else:
+                        param_grads_fp32.append(tgt_grad)
+
+        temp_found_inf_fp16 = paddle.to_tensor(np.array([0]).astype(np.bool_))
+        temp_found_inf_bf16 = paddle.to_tensor(np.array([0]).astype(np.bool_))
+        temp_found_inf_fp32 = paddle.to_tensor(np.array([0]).astype(np.bool_))
         self._found_inf = self._temp_found_inf_value_false
         if len(param_grads_fp16):
             _legacy_C_ops.check_finite_and_unscale(
@@ -91,6 +114,16 @@ def distributed_scaler(scaler):
             )
             self._found_inf = _C_ops.bitwise_or(
                 self._found_inf, temp_found_inf_fp16
+            )
+        if len(param_grads_bf16):
+            _legacy_C_ops.check_finite_and_unscale(
+                param_grads_bf16,
+                self._scale,
+                param_grads_bf16,
+                temp_found_inf_bf16,
+            )
+            self._found_inf = _C_ops.bitwise_or(
+                self._found_inf, temp_found_inf_bf16
             )
         if len(param_grads_fp32):
             _legacy_C_ops.check_finite_and_unscale(
@@ -106,7 +139,7 @@ def distributed_scaler(scaler):
         self._found_inf = self._found_inf.cast("int32")
 
         # TODO(shenliang03) Since dp allreduce in the optimizer is
-        # after the gradscaler, check_finite needs to synchronize global
+        # after the grad scaler, check_finite needs to synchronize global
         # information. In the future, we should use check_group to speed.
         paddle.distributed.all_reduce(
             self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None

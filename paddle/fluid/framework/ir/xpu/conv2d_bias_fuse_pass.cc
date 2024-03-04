@@ -224,7 +224,7 @@ void Conv2dBiasFusePass::FoldConv2dBias(ir::Graph* graph) const {
     ew_bias_add_y_desc->SetShape({y_shape[1]});
     auto* ew_bias_add_y_tensor =
         scope->GetVar(ew_bias_add_y->Name())->GetMutable<phi::DenseTensor>();
-    ew_bias_add_y_tensor->Resize(phi::make_ddim({y_shape[1]}));
+    ew_bias_add_y_tensor->Resize(common::make_ddim({y_shape[1]}));
     ew_bias_add_desc->Flush();
 
     found_subgraph_count++;

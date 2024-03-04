@@ -20,6 +20,7 @@
 #include <sstream>
 #include <vector>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
@@ -37,9 +38,9 @@ namespace auto_schedule {
 TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_SimpleAssign) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   ir::Expr M(32);
@@ -49,9 +50,9 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_SimpleAssign) {
   ir::Tensor B = lang::Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
-  poly::StageMap stages = poly::CreateStages({A, B});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
-      "SimpleAssign", stages, {A, B}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({A, B});
+  std::vector<ir::LoweredFunc> funcs =
+      lang::LowerToAstVec("SimpleAssign", {A, B}, &tensor_group, target);
 
   ASSERT_FALSE(funcs.empty());
   ir::Expr ast_expr = funcs[0]->body;
@@ -101,9 +102,9 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_SimpleAssign) {
 TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_AddDiffShape) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   ir::Expr M(32);
@@ -115,9 +116,9 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_AddDiffShape) {
   ir::Tensor C = lang::Compute(
       {M, N}, [&](Var i, Var j) { return A(i) + B(j); }, "C");
 
-  poly::StageMap stages = poly::CreateStages({C});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
-      "AddDiffShape", stages, {C}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({C});
+  std::vector<ir::LoweredFunc> funcs =
+      lang::LowerToAstVec("AddDiffShape", {C}, &tensor_group, target);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr before MultiLevelTiling: ";
@@ -157,9 +158,9 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_AddDiffShape) {
 TEST(AnalyzeIr, ContainsNodeType) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   ir::Expr M(32);
@@ -169,9 +170,9 @@ TEST(AnalyzeIr, ContainsNodeType) {
   ir::Tensor B = lang::Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
-  poly::StageMap stages = poly::CreateStages({A, B});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
-      "SimpleAssign", stages, {A, B}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({A, B});
+  std::vector<ir::LoweredFunc> funcs =
+      lang::LowerToAstVec("SimpleAssign", {A, B}, &tensor_group, target);
 
   ASSERT_FALSE(funcs.empty());
   ir::Expr ast_expr = funcs[0]->body;

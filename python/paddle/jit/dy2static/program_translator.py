@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import inspect
-import os
-import textwrap
 import threading
 import warnings
 import weakref
+from typing import TYPE_CHECKING
 
+import paddle.pir.core as ir_static
+from paddle import decomposition, get_flags
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
@@ -27,14 +30,13 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
-from paddle.base.unique_name import UniqueNameGenerator
-from paddle.base.unique_name import guard as UniqueNameGuard
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
+from paddle.pir import Value
+from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
-from .ast_transformer import DygraphToStaticAst
 from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
@@ -46,21 +48,28 @@ from .origin_info import (
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
-from .partial_program import PartialProgramLayerHook, partial_program_from
+from .partial_program import PartialProgramLayerHook
+from .pir_partial_program import (
+    PartialProgramLayerHook as PirPartialProgramLayerHook,
+)
+from .transformers import DygraphToStaticAst
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
     ast_to_func,
-    ast_to_source_code,
     backend_guard,
+    cuda_pinned_tensors_move_to_excepted_place,
     func_to_source_code,
     input_specs_compatible,
     is_paddle_func,
     make_hashable,
+    prim_is_enabled,
     prim_or_cinn_is_enabled,
     type_name,
-    unwrap,
 )
+
+if TYPE_CHECKING:
+    from paddle.static.amp.fp16_utils import AmpOptions
 
 __all__ = []
 
@@ -125,9 +134,7 @@ class FunctionCache:
         If the conversion of A.foo happens after B.foo, it will reuse the transformed ast node of B.foo
         to speed up the conversion.
         """
-        # Note: In Python2, it will raise OSError when inspect function
-        # with decorator directly and function.__wrapped__ holds the actual function.
-        func = unwrap(func)
+        func = inspect.unwrap(func)
         source_code = func_to_source_code(func)
 
         # TODO(liym27):
@@ -195,7 +202,7 @@ class CacheKey:
         'class_instance',
         'kwargs',
         '_spec_names_id',
-        '_new_ir_flags',
+        '_pir_flags',
     ]
 
     def __init__(
@@ -225,8 +232,13 @@ class CacheKey:
         self._spec_names_id = _hash_spec_names(
             input_args_with_spec, input_kwargs_with_spec
         )
-        self._new_ir_flags = os.environ.get(
-            'FLAGS_enable_new_ir_in_executor', None
+        self._pir_flags = (
+            get_flags('FLAGS_enable_pir_in_executor')[
+                'FLAGS_enable_pir_in_executor'
+            ]
+            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
+                'FLAGS_enable_pir_with_pt_in_dy2st'
+            ]
         )
 
     @classmethod
@@ -271,7 +283,7 @@ class CacheKey:
                 self.class_instance,
                 with_hook,
                 is_train,
-                self._new_ir_flags,
+                self._pir_flags,
             )
         )
 
@@ -337,9 +349,11 @@ class StaticFunction:
         else:
             self._dygraph_function = function
             self._class_instance = None
-
-        if input_spec is not None and prim_or_cinn_is_enabled(
-            kwargs.get("build_strategy", None), kwargs.get("backend", None)
+        # TODO(chenzhuo): Remove this after lowering prim into C++
+        if (
+            input_spec is not None
+            and prim_is_enabled()
+            and not core._enable_prim_dynamic_shape()
         ):
             from paddle.static import InputSpec
 
@@ -362,6 +376,16 @@ class StaticFunction:
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         self._property = kwargs.get("property", False)
+        self._get_debug_name()
+
+    def _get_debug_name(self):
+        try:
+            if self._class_instance:
+                self._debug_name = self._class_instance.__class__.__name__
+            else:
+                self._debug_name = self._dygraph_function.__name__
+        except Exception:
+            self._debug_name = "static_function"
 
     @property
     def is_property(self):
@@ -470,11 +494,9 @@ class StaticFunction:
 
         if not in_dynamic_mode():
             raise RuntimeError(
-                "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
+                f"Failed to run the callable object {self.dygraph_function} decorated by '@paddle.jit.to_static', "
                 "because it is NOT in dynamic mode. Please disable the static graph mode to enter dynamic mode with the "
-                "following API: paddle.disable_static().".format(
-                    self.dygraph_function
-                )
+                "following API: paddle.disable_static()."
             )
 
         return self._perform_call(*args, **kwargs)
@@ -554,7 +576,7 @@ class StaticFunction:
         Example::
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
 
                 >>> class Net(paddle.nn.Layer):
@@ -675,8 +697,8 @@ class StaticFunction:
 def raise_error_template(func_str):
     def _raise_error(*args, **kwargs):
         error_template = (
-            "Can't call {func} when enable_fallback=True."
-            "Use paddle.jit.to_static(enable_fallback=False) instead."
+            "Can't call {func} when full_graph=False. "
+            "Use paddle.jit.to_static(full_graph=True) instead."
         )
         raise RuntimeError(error_template.format(func=func_str))
 
@@ -687,35 +709,30 @@ class SymbolicStaticFunction(StaticFunction):
     def __init__(self, function, input_spec=None, **kwargs):
         if input_spec is not None:
             warnings.warn(
-                "\nSymbolic Trace don't support input_spec arguments. It will Will not produce any effect.\n"
-                "1. You can disable fallback mode by `paddle.jit.to_static(enable_fallback=False)` to switch to AST to static, then you can assign input spec.\n"
+                "full_graph=False don't support input_spec arguments. It will not produce any effect.\n"
+                "You can set full_graph=True, then you can assign input spec.\n"
             )
         super().__init__(function, input_spec, **kwargs)
         self.last_call_input_spec = None
 
     def _perform_call(self, *args, **kwargs):
+        from ..sot import symbolic_translate
+
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        cuda_pinned_tensors_move_to_excepted_place(args)
+
         (
             input_args_with_spec,
             input_kwargs_with_spec,
         ) = self._function_spec.args_to_input_spec(args, kwargs)
         self.last_call_input_spec = input_args_with_spec
 
-        try:
-            from sot import symbolic_translate
-        except:
-            import os
-
-            os.system(
-                "pip install git+https://github.com/PaddlePaddle/PaddleSOT@develop"
-            )
-            from sot import symbolic_translate
-
         build_strategy = self._kwargs.get("build_strategy", None)
         backend = self._kwargs.get("backend", None)
         traced_fun = symbolic_translate(
             self._dygraph_function,
             build_strategy=build_strategy,
+            training=self._is_train_mode(),
             backend=backend,
         )
         if self._class_instance is not None:
@@ -774,7 +791,7 @@ class ASTStaticFunction(StaticFunction):
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
 
         try:
-            concrete_program, partial_program_layer = self.get_concrete_program(
+            _, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs, is_train=self._is_train_mode()
             )
             # 2. synchronize self.training attribute.
@@ -803,7 +820,7 @@ class ASTStaticFunction(StaticFunction):
             else:
                 logging_utils.warn(
                     "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
-                    " if you can't handle this {} yourself.".format(type(e))
+                    f" if you can't handle this {type(e)} yourself."
                 )
                 raise e
 
@@ -859,6 +876,7 @@ class ASTStaticFunction(StaticFunction):
             concrete_program, partial_program_layer = self._program_cache[
                 cache_key
             ]
+        partial_program_layer._debug_name = self._debug_name
         return concrete_program, partial_program_layer
 
     def get_concrete_program_with_cache_key(self, cached_key):
@@ -901,7 +919,7 @@ class ASTStaticFunction(StaticFunction):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
                 >>> from paddle.jit import to_static
                 >>> from paddle.static import InputSpec
@@ -1017,7 +1035,7 @@ class ASTStaticFunction(StaticFunction):
         inputs = [
             var
             for var in flatten(concrete_program.inputs)
-            if isinstance(var, framework.Variable)
+            if isinstance(var, (framework.Variable, Value))
         ]
         return inputs
 
@@ -1031,7 +1049,7 @@ class ASTStaticFunction(StaticFunction):
         outputs = [
             var
             for var in flatten(concrete_program.outputs)
-            if isinstance(var, framework.Variable)
+            if isinstance(var, (framework.Variable, Value))
         ]
 
         return outputs
@@ -1132,7 +1150,6 @@ class ConcreteProgram:
         "startup_program",
         "parameters",
         "function",
-        "name_generator",
         'kwargs',
     ]
 
@@ -1142,7 +1159,6 @@ class ConcreteProgram:
         outputs,
         parameters,
         function,
-        name_generator,
         main_program,
         startup_program=None,
         **kwargs,
@@ -1153,9 +1169,109 @@ class ConcreteProgram:
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
-        self.name_generator = name_generator
         self.kwargs = kwargs
 
+    @staticmethod
+    @switch_to_static_graph
+    def pir_from_func_spec(
+        func_spec, input_spec, input_kwargs_spec, class_instance, **kwargs
+    ):
+        """
+        Builds the main_program with specialized inputs and returns outputs
+        of program as fetch_list.
+
+        Args:
+            func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
+            input_spec(list[InputSpec]):
+        """
+        # verify the instance is initialized in imperative mode.
+        _verify_init_in_dynamic_mode(class_instance)
+
+        # Transforms dygraph function into static function and caches it.
+        dygraph_function = func_spec.dygraph_function
+        static_func = convert_to_static(dygraph_function)
+        # apply pre\post hook for outermost layer
+        hook_helper = HookHelper(
+            dygraph_function, class_instance, kwargs.get("with_hook", False)
+        )
+
+        main_program, startup_program = ir_static.Program(), ir_static.Program()
+        # Note: The random seed should be synchronized into cached program
+        # if set in `fluid.dygraph_guard` because some ops rely on it, such as
+        # `fluid.layers.dropout`.
+
+        # TODO: new ir has no random seed.
+        #  {{{
+        # main_program.random_seed = static.default_main_program().random_seed
+        # startup_program.random_seed = (
+        # framework.default_startup_program().random_seed
+        # ) }}}
+        with ir_static.program_guard(main_program, startup_program):
+            with _to_static_mode_guard_(
+                is_to_static=True
+            ), static_op_arg_cast_guard(_convert_into_value):
+                # 1. Adds `paddle.static.data` layers for input if needed
+                static_inputs = func_spec.pir_to_static_inputs_with_spec(
+                    input_spec, main_program
+                )
+                _kwargs = func_spec.pir_to_static_inputs_with_spec(
+                    input_kwargs_spec, main_program
+                )
+                if class_instance:
+                    static_inputs = tuple(
+                        [class_instance] + list(static_inputs)
+                    )
+
+                # 2. Builds program only once and returns the output Variables.
+                with param_guard(
+                    get_parameters(class_instance, True)
+                ), param_guard(get_buffers(class_instance, True)):
+                    try:
+                        # only for jit.save, do nothing while train and eval process
+                        inputs = hook_helper.apply_pre_hooks(static_inputs)
+                        if _kwargs:
+                            outputs = static_func(*inputs, **_kwargs)
+                        else:
+                            outputs = static_func(*inputs)
+                        outputs = hook_helper.apply_post_hooks(inputs, outputs)
+                    except BaseException as e:
+                        # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
+                        error.attach_error_data(e)
+                        error_data = getattr(e, error.ERROR_DATA, None)
+                        if error_data:
+                            error_data.raise_new_exception()
+                        raise
+
+                # 3. Gets all ParamBases and buffered VarBases in the function
+                from ..pir_dy2static.parameter_recorder import (
+                    _global_parameter_recorder,
+                )
+
+                all_parameters_and_buffers = _global_parameter_recorder.pop(
+                    main_program
+                )
+                if outputs is not None:
+                    need_wrap_into_list = (
+                        not isinstance(outputs, (tuple, list))
+                        or len(outputs) == 1
+                    )
+                    if need_wrap_into_list:
+                        outputs = [outputs]
+
+        # TODO(@xiongkun): support op call stack in new ir?
+        # main_program = update_op_callstack_with_origin_info(main_program)
+
+        return ConcreteProgram(
+            inputs=static_inputs,
+            outputs=outputs,
+            parameters=all_parameters_and_buffers,
+            function=dygraph_function,
+            main_program=main_program,
+            startup_program=startup_program,
+            **kwargs,
+        )
+
+    # TODO(@xiongkun): remove after new ir is switch
     @staticmethod
     @switch_to_static_graph
     def from_func_spec(
@@ -1189,12 +1305,10 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        new_name_generator = UniqueNameGenerator()
+        ProgramTranslator.get_instance()._amp_records.clear()
 
         with framework.program_guard(main_program, startup_program):
-            with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
-                new_name_generator
-            ):
+            with _to_static_mode_guard_(is_to_static=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
@@ -1209,8 +1323,8 @@ class ConcreteProgram:
 
                 # 2. Builds program only once and returns the output Variables.
                 with param_guard(
-                    get_parameters(class_instance, False)
-                ), param_guard(get_buffers(class_instance, False)):
+                    get_parameters(class_instance, True)
+                ), param_guard(get_buffers(class_instance, True)):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)
@@ -1249,7 +1363,6 @@ class ConcreteProgram:
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
-            name_generator=new_name_generator,
             main_program=main_program,
             startup_program=startup_program,
             **kwargs,
@@ -1326,7 +1439,11 @@ class InplaceMap:
         self.params_dict = checkpoint
 
     def save_checkpoint(self):
-        return dict(self.params_dict.items())
+        ckp = {}
+        for program_id, params in self.params_dict.items():
+            new_params = dict(params.items())
+            ckp[program_id] = new_params
+        return ckp
 
 
 class FallbackProgramLayer:
@@ -1336,6 +1453,7 @@ class FallbackProgramLayer:
         'training',
         '_cuda_graph_capture_mode',
         '_cuda_graph_pool_id',
+        '_debug_name',
     ]
 
     def __init__(self, instance, dy_func):
@@ -1372,6 +1490,56 @@ class FallbackProgramLayer:
         return super().__setattr__(key, value)
 
 
+class PirPrimHooker(PirPartialProgramLayerHook):
+    def __init__(self, original_program, backend):
+        self.backend = backend
+        self.custom_vjps = set()
+        with backend_guard(self.backend):
+            if core._is_all_prim_enabled():
+                self.custom_vjps = {
+                    op.name()
+                    for op in original_program.global_block().ops
+                    if core.has_custom_vjp(op)
+                }
+
+    def before_append_backward(self, forward_program, src_vars):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                dst_vars = decomposition.decompose(
+                    forward_program, src_vars, blacklist=self.custom_vjps
+                )
+                return forward_program, dst_vars
+            return forward_program, src_vars
+
+    def after_append_backward(self, whole_program, src_vars, forward_end_idx):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+                backward_length = (
+                    len(whole_program.global_block().ops) - forward_end_idx
+                )
+                dst_vars = decomposition.decompose(
+                    whole_program, src_vars, whitelist=self.custom_vjps
+                )
+                new_start_index = (
+                    len(whole_program.global_block().ops) - backward_length
+                )
+                return whole_program, new_start_index, dst_vars
+            return whole_program, forward_end_idx, src_vars
+
+    def after_infer(self, infer_program):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                targets = decomposition.decompose(
+                    infer_program.program, infer_program.out_values
+                )
+                infer_program.out_values = targets
+                infer_program.forward_range = (
+                    0,
+                    len(infer_program.program.global_block().ops),
+                )
+            return
+
+
 class ProgramCache:
     """
     Wrapper class for the program functions defined by dygraph function.
@@ -1393,13 +1561,22 @@ class ProgramCache:
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
         try:
-            concrete_program = ConcreteProgram.from_func_spec(
-                func_spec=cache_key.function_spec,
-                input_spec=cache_key.input_args_with_spec,
-                input_kwargs_spec=cache_key.input_kwargs_with_spec,
-                class_instance=cache_key.class_instance,
-                **cache_key.kwargs,
-            )
+            if use_pir_api():
+                concrete_program = ConcreteProgram.pir_from_func_spec(
+                    func_spec=cache_key.function_spec,
+                    input_spec=cache_key.input_args_with_spec,
+                    input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                    class_instance=cache_key.class_instance,
+                    **cache_key.kwargs,
+                )
+            else:
+                concrete_program = ConcreteProgram.from_func_spec(
+                    func_spec=cache_key.function_spec,
+                    input_spec=cache_key.input_args_with_spec,
+                    input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                    class_instance=cache_key.class_instance,
+                    **cache_key.kwargs,
+                )
         except Exception as e:
             if enable_fallback:
                 warnings.warn(
@@ -1420,7 +1597,10 @@ class ProgramCache:
                 raise
 
         backend = cache_key.kwargs['backend']
-        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend):
+        if (
+            prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend)
+            and not use_pir_api()
+        ):
             for var in concrete_program.main_program.list_vars():
                 if var.type not in NO_SHAPE_VAR_TYPE and -1 in var.shape:
                     warnings.warn(
@@ -1429,14 +1609,28 @@ class ProgramCache:
                         )
                     )
 
-        partial_program = partial_program_from(
-            concrete_program, cache_key.class_instance is not None
-        )
+        if use_pir_api():
+            from .pir_partial_program import partial_program_from
+
+            partial_program = partial_program_from(
+                concrete_program, cache_key.class_instance is not None
+            )
+        else:  # TODO(pir): remove later.
+            from .partial_program import partial_program_from
+
+            partial_program = partial_program_from(
+                concrete_program, cache_key.class_instance is not None
+            )
         with backend_guard(backend):
             if core._is_fwd_prim_enabled():
-                partial_program.set_hooker(
-                    PrimHooker(concrete_program.main_program, backend)
-                )
+                if use_pir_api():
+                    partial_program.set_hooker(
+                        PirPrimHooker(concrete_program.main_program, backend)
+                    )
+                else:
+                    partial_program.set_hooker(
+                        PrimHooker(concrete_program.main_program, backend)
+                    )
         return concrete_program, partial_program
 
     def __getitem__(self, item):
@@ -1591,40 +1785,10 @@ class ProgramTranslator:
         self._program_cache = ProgramCache()
         self._params_recorder = ParametersRecorder()
         self._inplace_map = InplaceMap()
+        self._amp_records: dict[int, list[tuple[AmpOptions, int, int]]] = {}
         self.enable_to_static = True
 
     def enable(self, enable_to_static):
-        """
-        Enable or disable the converting from imperative to static graph by
-        ProgramTranslator globally.
-
-        Args:
-            enable_to_static (bool): True or False to enable or disable converting to static.
-
-        Returns:
-            None.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-
-                >>> x = paddle.ones([1, 2])
-                >>> x_v = prog_trans.get_output(func, x)
-                >>> print(x_v)
-                Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[0., 0.]])
-        """
         check_type(
             enable_to_static,
             "enable_to_static",
@@ -1632,274 +1796,6 @@ class ProgramTranslator:
             "ProgramTranslator.enable",
         )
         self.enable_to_static = enable_to_static
-
-    def get_output(self, dygraph_func, *args, **kwargs):
-        """
-        Returns the output dygraph Tensor for dygraph function. The dygraph
-        function will be translated into static graph function so the under
-        beneath numerical result will be calculated by static graph mode.
-
-        Args:
-            dygraph_func (callable): the dygraph function.
-            *args (tuple): the input argument of dygraph_func.
-            **kwargs (dict): the input argument of dygraph_func.
-
-        Returns:
-            Tensor or tuple of Tensors: the dygraph Tensor containing digital result.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-
-                >>> x = paddle.ones([1, 2])
-                >>> x_v = prog_trans.get_output(func, x)
-                >>> print(x_v)
-                Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[0., 0.]])
-        """
-        assert callable(
-            dygraph_func
-        ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
-
-        if not self.enable_to_static:
-            # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
-            # will show up **only once**.
-            logging_utils.warn(
-                "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
-                "We will just return dygraph output. "
-                "Please call ProgramTranslator.enable(True) if you would like to get static output."
-            )
-            return dygraph_func(*args, **kwargs)
-        try:
-            function_spec = FunctionSpec(dygraph_func)
-            cache_key = CacheKey.from_func_and_args(
-                function_spec,
-                args,
-                kwargs,
-                getattr(dygraph_func, '__self__', None),
-            )
-            _, partial_program_layer = self._program_cache[cache_key]
-
-            if args and isinstance(args[0], layers.Layer):
-                # Synchronize self.training attribute.
-                partial_program_layer.training = args[0].training
-                args = args[1:]
-            try:
-                return partial_program_layer(args)
-            except BaseException as e:
-                # NOTE:
-                # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
-                # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
-                if not hasattr(e, error.ERROR_DATA):
-                    # runtime error
-                    error.attach_error_data(e, in_runtime=True)
-                raise
-        except BaseException as e:
-            error_data = getattr(e, error.ERROR_DATA, None)
-            if error_data:
-                error_data.raise_new_exception()
-            else:
-                logging_utils.warn(
-                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
-                    " if you can't handle this {} yourself.".format(type(e))
-                )
-                raise e
-
-    def get_func(self, dygraph_func):
-        """
-        Returns a callable function which converts imperative dygraph APIs of
-        the input dygraph_func into declarative net-building APIs, which means
-        it doesn't return immediate digital result as get_output does.
-        Users should handle Program and Executor by themselves.
-
-        Args:
-            dygraph_func (callable): the dygraph function.
-
-        Returns:
-            callable: converting imperative dygraph APIs into declarative
-            net-building APIs.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-                >>> static_func = prog_trans.get_func(func)
-                >>> print(callable(static_func))
-                True
-        """
-        assert callable(
-            dygraph_func
-        ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
-
-        if not self.enable_to_static:
-            logging_utils.warn(
-                "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable to False. We will "
-                "just return dygraph output. Please call ProgramTranslator.enable(True) if you would like to get static output."
-            )
-            return dygraph_func
-
-        static_func = convert_to_static(dygraph_func)
-        return static_func
-
-    def get_program(self, dygraph_func, *args, **kwargs):
-        """
-        Returns the translated static program and input/output Tensors from
-        dygraph function. The users can use the program to run by executor.
-
-        Args:
-            dygraph_func (callable): the dygraph function.
-            *args (tuple): the input argument of dygraph_func.
-            **kwargs (dict): the input argument of dygraph_func.
-
-        Returns:
-            tuple of (main_program, startup_program, inputs, outputs) whose
-            types are (Program, Program, list of Tensors, list of Tensors).
-            main_program: the converted main program.
-            startup_program: the converted startup program.
-            inputs: list of input Tensors which need to be fed.
-            outputs: list of output Tensors which users can fetch.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-                >>> x = paddle.ones([1, 2])
-                >>> main_prog, start_prog, inputs, outputs = prog_trans.get_program(func, x)
-                >>> print([i.name for i in inputs])
-                >>> # [u'generated_tensor_0'] the feed input Tensor name representing x
-                >>> print([o.name for o in outputs])
-                >>> # [u'_generated_var_4'] the fetch output Tensor name representing x_v
-        """
-        assert callable(
-            dygraph_func
-        ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
-
-        if not self.enable_to_static:
-            logging_utils.warn(
-                "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable to False."
-                "We will just return dygraph output. "
-                "Please call ProgramTranslator.enable(True) if you would like to get static output."
-            )
-            return dygraph_func(*args, **kwargs)
-
-        function_spec = FunctionSpec(dygraph_func)
-        cache_key = CacheKey.from_func_and_args(
-            function_spec, args, kwargs, getattr(dygraph_func, '__self__', None)
-        )
-        concrete_program, partial_program_layer = self._program_cache[cache_key]
-
-        # Note: concrete_program hold all input/output infos include non-Variable
-        input_vars = [
-            var
-            for var in concrete_program.inputs
-            if isinstance(var, framework.Variable)
-        ]
-        output_vars = [
-            var
-            for var in concrete_program.outputs
-            if isinstance(var, framework.Variable)
-        ]
-
-        return (
-            concrete_program.main_program,
-            concrete_program.startup_program,
-            input_vars,
-            output_vars,
-        )
-
-    def get_code(self, dygraph_func):
-        """
-        Returns the translated static function string code from dygraph function.
-
-        Args:
-            dygraph_func (callable): the dygraph function.
-
-        Returns:
-            str: the string code of translated static function.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-
-                >>> code = prog_trans.get_code(func)
-                >>> print(type(code))
-                <class 'str'>
-        """
-        assert callable(
-            dygraph_func
-        ), "Input dygraph_func is not a callable in ProgramTranslator.get_code"
-        # Gets AST from dygraph function
-
-        unwrap_func = unwrap(dygraph_func)
-        raw_code = inspect.getsource(unwrap_func)
-        code = textwrap.dedent(raw_code)
-        root = gast.parse(code)
-
-        # Transform AST
-        dygraph_to_static = DygraphToStaticAst()
-        root = dygraph_to_static.get_static_ast(root)
-
-        # Get source_code
-        source_code = ast_to_source_code(root)
-        return source_code
-
-    def get_program_cache(self):
-        """
-        Returns the ProgramCache instance. This method is used by PaddlePaddle
-        developers to manage program cache in ProgramTranslator. Normal users
-        don't have to call this method.
-
-        Returns:
-            ProgramCache: ProgramCache instance of ProgramTranslator.
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle
-
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-                >>> prog_cache = prog_trans.get_program_cache()
-        """
-        return self._program_cache
 
 
 def enable_to_static(enable_to_static_bool):

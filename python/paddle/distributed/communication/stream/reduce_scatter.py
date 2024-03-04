@@ -99,7 +99,6 @@ def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
             'nranks': nranks,
         },
     )
-    return None
 
 
 def reduce_scatter(

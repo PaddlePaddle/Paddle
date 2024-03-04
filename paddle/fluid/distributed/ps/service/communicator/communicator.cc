@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <google/protobuf/text_format.h>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/utils/flags.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"
@@ -872,7 +872,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
     VLOG(3) << "send step_counter into queue";
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<phi::DenseTensor>();
-    tensor->Resize(phi::make_ddim({1}));
+    tensor->Resize(common::make_ddim({1}));
     auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
     out_d[0] = 1;
     send_varname_to_queue_[table_name]->Push(tmp_var);

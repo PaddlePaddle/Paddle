@@ -28,7 +28,17 @@ const phi::LoD& SelectedRowsType::lod() const { return storage()->lod_; }
 
 const size_t& SelectedRowsType::offset() const { return storage()->offset_; }
 
+const pir::Type& DenseTensorArrayType::dtype() const {
+  return storage()->dtype_;
+}
+const phi::DDim& DenseTensorArrayType::dims() const { return storage()->dims_; }
+
+const phi::DataLayout& DenseTensorArrayType::data_layout() const {
+  return storage()->layout_;
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)

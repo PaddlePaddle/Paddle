@@ -18,12 +18,25 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
+#include "paddle/common/macros.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/comm_context.h"
-#include "paddle/phi/core/macros.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/backends/gpu/forwards.h"
+#endif
 
 namespace phi {
 namespace distributed {
+
+struct P2POption {
+  bool is_p2p_op;
+  int p2p_rank;
+  int num_ranks;
+  int rank;
+};
 
 class Store;
 
@@ -44,16 +57,27 @@ class CommContextManager {
 
   CommContext* Get(const std::string& unique_comm_key) const;
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  int GetRingId(const ncclComm_t& comm) const;
+#endif
+
   bool Has(const std::string& unique_comm_key) const;
 
   static void SetDeviceId(int dev_id);
+
+  void SetGroupSize(const std::string& pg_key, int size);
+
+  void AddGroupRanks(const std::string& pg_key, std::vector<int> global_ranks);
+
+  std::vector<int> GetGroupRanks(const std::string& pg_key) const;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
                                     const std::string& unique_comm_key,
                                     int rank,
                                     int size,
-                                    const std::string& hash_key = "");
+                                    const std::string& hash_key = "",
+                                    const P2POption* opt = nullptr);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -66,9 +90,18 @@ class CommContextManager {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   static void CreateXCCLCommContext(const std::shared_ptr<Store>& store,
                                     const std::string& unique_comm_key,
-                                    const std::string& device_type,
+                                    const phi::Place& place,
                                     int rank,
-                                    int size);
+                                    int size,
+                                    const std::string& hash_key = "");
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+  static void CreateBKCLCommContext(const std::shared_ptr<Store>& store,
+                                    const std::string& unique_comm_key,
+                                    int rank,
+                                    int size,
+                                    const std::string& hash_key = "");
 #endif
 
  private:
@@ -78,6 +111,11 @@ class CommContextManager {
       id_to_comm_context_;
   std::shared_ptr<Store> store_;
   static int device_id;
+
+  // process group key to global ranks map
+  std::unordered_map<std::string, std::vector<int>> pg_key_ranks_;
+  // process group key to group size map
+  std::unordered_map<std::string, int> pg_key_size_;
 };
 
 }  // namespace distributed

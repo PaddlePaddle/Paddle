@@ -25,9 +25,9 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
@@ -41,24 +41,29 @@ LowerTensorGroup::LowerTensorGroup(
     const std::string& fn_name,
     const std::vector<ir::Tensor>& tensor_args,
     const std::vector<ir::Var>& scalar_args,
-    const std::vector<ast_gen_ius::TensorGroup*>& tensor_groups,
+    ast_gen_ius::TensorGroup* tensor_group,
     const std::vector<ir::Tensor>& temp_tensor_args,
     const Target& target)
     : fn_name_(fn_name),
       tensor_args_(tensor_args),
       scalar_args_(scalar_args),
-      tensor_groups_(tensor_groups),
+      tensor_group_(tensor_group),
       temp_tensor_args_(temp_tensor_args),
       target_(target) {}
 
 std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
   std::vector<ir::LoweredFunc> result;
   int num_func = 0;
-  for (ast_gen_ius::TensorGroup* tensor_group : tensor_groups_) {
-    // 1. Generate function body
-    ir::Expr func_body = GenerateFunctionBody(tensor_group);
+
+  // 1. Generate function body
+  std::vector<ir::Expr> func_bodies = GenerateFunctionBody(tensor_group_);
+  for (ir::Expr& func_body : func_bodies) {
+    func_body = ir::ScheduleBlockRealize::Make(
+        {},
+        ir::ScheduleBlock::Make(
+            {}, {}, {}, cinn::common::UniqName("root"), func_body));
     // 2. Assign buffer to tensors
-    auto tensor_map = tensor_group->AllocateBuffers();
+    auto tensor_map = tensor_group_->AllocateBuffers();
     // copy the tensor(with buffer assigned) back to func's args.
     for (auto& arg : tensor_args_) {
       if (arg->is_placeholder_node() || arg->buffer.defined()) {
@@ -88,7 +93,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
     }
 
     // Some store tensors are also temp tensors;
-    auto store_exprs = ir::CollectIRNodes(
+    auto store_exprs = ir::ir_utils::CollectIRNodes(
         func_body, [](const Expr* x) { return x->As<ir::Store>(); });
     for (auto& expr : store_exprs) {
       auto* store_node = expr.As<ir::Store>();
@@ -146,7 +151,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
 std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     Expr fn_body) {
   std::vector<ir::Argument> args;
-  auto teller = ir::CollectTensorNeedsWrite(&fn_body);
+  auto teller = ir::ir_utils::CollectTensorNeedsWrite(&fn_body);
 
   std::set<std::string> arg_names;
 
@@ -169,8 +174,8 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     if (!tensor_node->buffer.defined()) {
       continue;
     }
-    // if a argument is already marked as kInput, mark it as kOutput and move it
-    // to the back.
+    // if a argument is already marked as kInput, mark it as kOutput and move
+    // it to the back.
     if (arg_names.count(tensor_node->buffer->name)) {
       auto it =
           std::find_if(args.begin(), args.end(), [&](const ir::Argument& x) {
@@ -195,19 +200,36 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
   return args;
 }
 
-ir::Expr LowerTensorGroup::GenerateFunctionBody(
+std::vector<ir::Expr> LowerTensorGroup::GenerateFunctionBody(
     ast_gen_ius::TensorGroup* tensor_group) {
-  std::vector<ir::Tensor> ordered_tensors =
-      tensor_group->GetGenFuncTopoOrder(tensor_args_);
+  // TODO(zhhsplendid): GetGenFuncTopoOrder() may remove args
+  std::vector<ir::Tensor> ordered_tensors = tensor_group->GetGenFuncTopoOrder();
+
+  std::vector<ir::Expr> result;
   std::vector<ir::Expr> bodies;
   for (const ir::Tensor& tensor : ordered_tensors) {
-    bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor));
-  }
-  if (bodies.size() == 1) {
-    return bodies[0];
+    VLOG(6) << "tensor_name = " << tensor->name;
+    if (!tensor->is_placeholder_node() && tensor->has_expression()) {
+      VLOG(6) << "ast_gen_ius::AstGen::Build for Tensor " << tensor;
+      bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor, tensor_group));
+
+      bool gpu_local =
+          tensor->buffer.defined() &&
+          (tensor->buffer->memory_type == ir::MemoryType::GPUShared ||
+           tensor->buffer->memory_type == ir::MemoryType::GPULocal);
+      if (target_ == cinn::common::DefaultNVGPUTarget() && !gpu_local) {
+        result.push_back(bodies.size() == 1 ? bodies[0]
+                                            : ir::Block::Make(bodies));
+        bodies.clear();
+      }
+    }
   }
 
-  return ir::Block::Make(bodies);
+  if (!bodies.empty()) {
+    result.push_back(bodies.size() == 1 ? bodies[0] : ir::Block::Make(bodies));
+    bodies.clear();
+  }
+  return result;
 }
 
 }  // namespace detail

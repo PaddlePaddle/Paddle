@@ -14,13 +14,14 @@
 
 import logging
 
+import paddle
 from paddle.base import core
-from paddle.distributed.auto_parallel.static.utils import get_logger
 
+from ..utils.log_utils import get_logger
 from .pass_base import PassBase
-from .pass_utils import get_skip_gc_vars
+from .pass_utils import set_skip_gc_vars, shadow_var_between_sub_programs
 
-_logger = get_logger(logging.INFO)
+logger = get_logger(logging.INFO)
 
 
 class PipelinePassBase(PassBase):
@@ -33,21 +34,21 @@ class PipelinePassBase(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def create_job_list(self):
+    def _create_job_list(self):
         """
         An interface that MUST be implemented by subclasses.
         """
         pass
 
-    def partial_programs(self, program):
+    def _partial_programs(self, program):
         """
         An interface that MUST be implemented by subclasses.
         The return value MUST be two lists, one is a list of types(str), another
         is a list of sub programs.
         For example:
-        return ["lr", "forward", "backward", "optimizer"], [lr_prog, fwd_prog, bwd_prog, opt_prog]
+        return [FORWARD, BACKWARD, OPT], [fwd_prog, bwd_prog, opt_prog]
         or
-        return ["forward"], [fwd_prog]
+        return [FORWARD], [fwd_prog]
         """
         pass
 
@@ -56,27 +57,31 @@ class PipelinePassBase(PassBase):
         The shared process is implemented in this function and new subclass only need
         to implement two interfaces above, 'create_job_list' and 'partial_programs'.
         """
-        type_list, sub_program_list = self.partial_programs(main_program)
+        job_types, sub_programs = self._partial_programs(main_program)
 
-        job_list = self.create_job_list()
+        enable_pir_in_executor = paddle.framework.get_flags(
+            "FLAGS_enable_pir_in_executor"
+        )['FLAGS_enable_pir_in_executor']
+        if enable_pir_in_executor:
+            shadow_var_between_sub_programs(sub_programs)
 
-        # Following is a shared gc process for base class.
-        gc_vars_list = get_skip_gc_vars(sub_program_list)
-        type_to_gc_vars = {}
-        for type, gc_var in zip(type_list, gc_vars_list):
-            type_to_gc_vars[type] = gc_var
-        _logger.info(f"The skip_gc_vars : {gc_vars_list}")
-        if "backward" in type_to_gc_vars:
-            assert (
-                len(type_to_gc_vars["backward"]) == 0
-            ), f"When enabling pipeline parallelism stategy, the skip_gc_vars_set for backward subprogram must be empty, but it is {type_to_gc_vars['backward']}."
+        for i in range(len(job_types)):
+            logger.debug(
+                f"sub_program type: {job_types[i]}, sum_program:\n{sub_programs[i]}"
+            )
 
-        for job in job_list:
-            job.set_skip_gc_vars(type_to_gc_vars[job.type()])
+        jobs = self._create_job_list()
+        type_to_program = set_skip_gc_vars(
+            self.get_attr("num_micro_batches"), job_types, sub_programs, jobs
+        )
 
-        type_to_program = {}
-        for type, sub_program in zip(type_list, sub_program_list):
-            type_to_program[type] = sub_program.desc
+        for type in type_to_program.keys():
+            if enable_pir_in_executor:
+                type_to_program[type] = paddle.pir.translate_to_pir(
+                    type_to_program[type].desc
+                )
+            else:
+                type_to_program[type] = type_to_program[type].desc
 
-        plan = core.Plan(job_list, type_to_program)
+        plan = core.Plan(jobs, type_to_program)
         context.set_attr("plan", plan)

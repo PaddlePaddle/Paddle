@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import amp_lists
-from .amp_lists import AutoMixedPrecisionListsBF16
-from . import amp_utils
-from .amp_utils import (
+from . import (  # noqa: F401
+    amp_lists,
+    amp_utils,
+    decorator,
+)
+from .amp_lists import AutoMixedPrecisionListsBF16  # noqa: F401
+from .amp_utils import (  # noqa: F401
     bf16_guard,
-    rewrite_program_bf16,
     cast_model_to_bf16,
     cast_parameters_to_bf16,
     convert_float_to_uint16,
+    rewrite_program_bf16,
 )
-from . import decorator
-from .decorator import decorate_bf16
+from .decorator import decorate_bf16  # noqa: F401

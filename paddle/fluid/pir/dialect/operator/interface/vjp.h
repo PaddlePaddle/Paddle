@@ -13,50 +13,54 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
 namespace dialect {
 class VjpInterface : public pir::OpInterfaceBase<VjpInterface> {
  public:
   struct Concept {
-    explicit Concept(std::vector<std::vector<pir::OpResult>> (*vjp)(
+    explicit Concept(std::vector<std::vector<pir::Value>> (*vjp)(
         pir::Operation* op,
+        const std::vector<std::vector<pir::Value>>& inputs,
+        const std::vector<std::vector<pir::Value>>& outputs,
         const std::vector<std::vector<pir::Value>>& out_grads,
         const std::vector<std::vector<bool>>& stop_gradients))
         : vjp_(vjp) {}
-    std::vector<std::vector<pir::OpResult>> (*vjp_)(
+    std::vector<std::vector<pir::Value>> (*vjp_)(
         pir::Operation* op,
+        const std::vector<std::vector<pir::Value>>& inputs,
+        const std::vector<std::vector<pir::Value>>& outputs,
         const std::vector<std::vector<pir::Value>>& out_grads,
         const std::vector<std::vector<bool>>& stop_gradients);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static std::vector<std::vector<pir::OpResult>> Vjp(
+    static std::vector<std::vector<pir::Value>> Vjp(
         pir::Operation* op,
+        const std::vector<std::vector<pir::Value>>& inputs,
+        const std::vector<std::vector<pir::Value>>& outputs,
         const std::vector<std::vector<pir::Value>>& out_grads,
         const std::vector<std::vector<bool>>& stop_gradients) {
-      return ConcreteOp::Vjp(op, out_grads, stop_gradients);
+      return ConcreteOp::Vjp(op, inputs, outputs, out_grads, stop_gradients);
     }
 
     Model() : Concept(Vjp) {}
   };
 
+  /// Constructor
   VjpInterface(pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<VjpInterface>(op), impl_(impl) {}
 
-  std::vector<std::vector<pir::OpResult>> Vjp(
+  std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation* op,
+      const std::vector<std::vector<pir::Value>>& inputs,
+      const std::vector<std::vector<pir::Value>>& outputs,
       const std::vector<std::vector<pir::Value>>& out_grads,
       const std::vector<std::vector<bool>>& stop_gradients) {
-    return impl_->vjp_(op, out_grads, stop_gradients);
+    return impl_->vjp_(op, inputs, outputs, out_grads, stop_gradients);
   }
-
-  std::vector<std::vector<pir::OpResult>> Vjp(
-      pir::Operation* op,
-      const std::vector<std::vector<pir::OpResult>>& out_grads,
-      const std::vector<std::vector<bool>>& stop_gradients);
 
  private:
   Concept* impl_;

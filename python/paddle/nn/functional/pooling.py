@@ -14,11 +14,15 @@
 
 import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.base.framework import Variable, in_dygraph_mode
+from paddle import _C_ops, in_dynamic_mode
+from paddle.base.framework import (
+    Variable,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
-from ...base.layers import LayerHelper
+from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import squeeze, unsqueeze
 
 # TODO: define pooling functions
@@ -48,9 +52,7 @@ def _check_input(x, dimension):
 def _check_instance(x, x_name, types=(int, float)):
     if not isinstance(x, types):
         raise ValueError(
-            "Excepted {} type for {} but received type: {}. ".format(
-                types, x_name, type(x)
-            )
+            f"Excepted {types} type for {x_name} but received type: {type(x)}. "
         )
 
 
@@ -112,9 +114,7 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '{}'. It can only be 'SAME' or 'VALID'.".format(
-                    padding
-                )
+                f"Unknown padding: '{padding}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             if ceil_mode is not False:
@@ -135,8 +135,8 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
         if len(padding) == 2 + num_dims and _is_list_or_tuple(padding[0]):
             if not _zero_padding_in_batch_and_channel(padding, channel_last):
                 raise ValueError(
-                    "Non-zero padding({}) in the batch or channel dimensions "
-                    "is not supported.".format(padding)
+                    f"Non-zero padding({padding}) in the batch or channel dimensions "
+                    "is not supported."
                 )
             padding_algorithm = "EXPLICIT"
             padding = _exclude_padding_in_batch_and_channel(
@@ -171,9 +171,7 @@ def _expand_low_nd_padding(padding):
         padding = [0] + padding
     else:
         raise ValueError(
-            "The size of padding's dimmention should be 1 or 2. But got padding={}".format(
-                padding
-            )
+            f"The size of padding's dimension should be 1 or 2. But got padding={padding}"
         )
     return padding
 
@@ -189,7 +187,7 @@ def avg_pool1d(
 ):
     """
     This API implements average pooling 1d operation,
-    See more details in :ref:`api_nn_pooling_AvgPool1d` .
+    See more details in :ref:`api_paddle_nn_AvgPool1d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
@@ -252,10 +250,10 @@ def avg_pool1d(
         padding, 1, channel_last=channel_last, ceil_mode=ceil_mode
     )
 
-    # use 2d to implenment 1d should expand padding in advance.
+    # use 2d to implement 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.pool2d(
             x,
             kernel_size,
@@ -290,7 +288,6 @@ def avg_pool1d(
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
-                "use_mkldnn": False,
                 "exclusive": exclusive,
                 "data_format": data_format,
             },
@@ -312,7 +309,7 @@ def avg_pool2d(
 ):
     """
     This API implements average pooling 2d operation.
-    See more details in :ref:`api_nn_pooling_AvgPool2d` .
+    See more details in :ref:`api_paddle_nn_AvgPool2d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
@@ -376,7 +373,7 @@ def avg_pool2d(
         padding, 2, channel_last, ceil_mode=ceil_mode
     )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.pool2d(
             x,
             kernel_size,
@@ -417,7 +414,6 @@ def avg_pool2d(
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
-                "use_mkldnn": False,
                 "exclusive": exclusive,
                 "data_format": data_format,
             },
@@ -445,7 +441,7 @@ def avg_pool3d(
 ):
     """
     This API implements average pooling 3d operation.
-    See more details in :ref:`api_nn_pooling_AvgPool3d` .
+    See more details in :ref:`api_paddle_nn_AvgPool3d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
@@ -507,7 +503,7 @@ def avg_pool3d(
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.pool3d(
             x,
             kernel_size,
@@ -544,7 +540,6 @@ def avg_pool3d(
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
-                "use_mkldnn": False,
                 "exclusive": exclusive,
                 "data_format": data_format,
             },
@@ -571,8 +566,8 @@ def max_pool1d(
     name=None,
 ):
     """
-    This API implements max pooling 1d opereation.
-    See more details in :ref:`api_nn_pooling_MaxPool1d` .
+    This API implements max pooling 1d operation.
+    See more details in :ref:`api_paddle_nn_MaxPool1d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
@@ -631,7 +626,7 @@ def max_pool1d(
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if return_mask:
             pool_out = _C_ops.max_pool2d_with_index(
                 x, kernel_size, stride, padding, False, False
@@ -679,7 +674,6 @@ def max_pool1d(
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
-                "use_mkldnn": False,
                 "exclusive": True,
                 "data_format": data_format,
             },
@@ -751,7 +745,7 @@ def max_unpool1d(
     name=None,
 ):
     r"""
-    This API implements max unpooling 1d opereation.
+    This API implements max unpooling 1d operation.
     `max_unpool1d` accepts the output of `max_pool1d` as input,
     including the indices of the maximum value and calculate the partial inverse.
     All non-maximum values are set to zero.
@@ -773,7 +767,7 @@ def max_unpool1d(
         indices (Tensor): The indices given out by maxpooling1d which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` ,
                           where `N` is batch size, `C` is the number of channels, `L` is
-                          the length of the featuree. The data type is float32 or float64.
+                          the length of the feature. The data type is float32 or float64.
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
         stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
@@ -831,27 +825,9 @@ def max_unpool1d(
         x, kernel_size, stride, padding, output_size
     )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.unpool(
             x, indices, kernel_size, stride, padding, output_size, data_format
-        )
-        return squeeze(output, [2])
-    elif in_dynamic_mode():
-        output = _legacy_C_ops.unpool(
-            x,
-            indices,
-            'unpooling_type',
-            'max',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            "output_size",
-            output_size,
-            "data_format",
-            data_format,
         )
         return squeeze(output, [2])
 
@@ -886,8 +862,8 @@ def max_unpool2d(
     name=None,
 ):
     r"""
-    This API implements max unpooling 2d opereation.
-    See more details in :ref:`api_nn_pooling_MaxUnPool2D` .
+    This API implements max unpooling 2d operation.
+    See more details in :ref:`api_paddle_nn_MaxUnPool2D` .
 
 
     Args:
@@ -930,7 +906,7 @@ def max_unpool2d(
 
         Raises:
             ValueError: If the input is not a 4-D tensor.
-            ValueError: If indeces shape is not equal input shape.
+            ValueError: If indices shape is not equal input shape.
 
 
         Examples:
@@ -981,27 +957,9 @@ def max_unpool2d(
         x, kernel_size, stride, padding, output_size
     )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.unpool(
             x, indices, kernel_size, stride, padding, output_size, data_format
-        )
-        return output
-    elif in_dynamic_mode():
-        output = _legacy_C_ops.unpool(
-            x,
-            indices,
-            'unpooling_type',
-            'max',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            "output_size",
-            output_size,
-            "data_format",
-            data_format,
         )
         return output
 
@@ -1036,7 +994,7 @@ def max_unpool3d(
     name=None,
 ):
     r"""
-    This API implements max unpooling 3d opereation.
+    This API implements max unpooling 3d operation.
     `max_unpool3d` accepts the output of `max_pool3d` as input,
     including the indices of the maximum value and calculate the partial inverse.
     All non-maximum values are set to zero.
@@ -1128,27 +1086,9 @@ def max_unpool3d(
         x, kernel_size, stride, padding, output_size
     )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.unpool3d(
             x, indices, kernel_size, stride, padding, output_size, data_format
-        )
-        return output
-    elif in_dynamic_mode():
-        output = _legacy_C_ops.unpool3d(
-            x,
-            indices,
-            'unpooling_type',
-            'max',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            "output_size",
-            output_size,
-            "data_format",
-            data_format,
         )
         return output
 
@@ -1184,7 +1124,7 @@ def max_pool2d(
 ):
     """
     This API implements max pooling 2d operation.
-    See more details in :ref:`api_nn_pooling_MaxPool2d` .
+    See more details in :ref:`api_paddle_nn_MaxPool2d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
@@ -1258,7 +1198,7 @@ def max_pool2d(
             "When setting return_mask to true, data_format must be set to NCHW in API:max_pool2d"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool2d_with_index(
                 x, kernel_size, stride, padding, False, False
@@ -1305,7 +1245,6 @@ def max_pool2d(
                     "padding_algorithm": padding_algorithm,
                     "use_cudnn": True,
                     "ceil_mode": ceil_mode,
-                    "use_mkldnn": False,
                     "exclusive": True,
                     "data_format": data_format,
                 },
@@ -1328,7 +1267,6 @@ def max_pool2d(
                     "padding_algorithm": padding_algorithm,
                     "use_cudnn": True,
                     "ceil_mode": ceil_mode,
-                    "use_mkldnn": False,
                     "exclusive": True,
                     "data_format": data_format,
                 },
@@ -1347,8 +1285,8 @@ def max_pool3d(
     name=None,
 ):
     """
-    This API implements max pooling 2d operation.
-    See more details in :ref:`api_nn_pooling_MaxPool3d` .
+    This API implements max pooling 3d operation.
+    See more details in :ref:`api_paddle_nn_MaxPool3D` .
 
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
@@ -1425,7 +1363,7 @@ def max_pool3d(
             "When setting return_mask to true, data_format must be set to NCDHW in API:max_pool3d"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool3d_with_index(
                 x, kernel_size, stride, padding, False, False
@@ -1470,7 +1408,6 @@ def max_pool3d(
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
-                "use_mkldnn": False,
                 "exclusive": False,
                 "data_format": data_format,
             },
@@ -1484,7 +1421,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     Adaptive average pooling 1d operation on :attr:`x` according to :attr:`output_size`.
 
     Notes:
-        See more details in :ref:`api_nn_pooling_AdaptiveAvgPool1d` .
+        See more details in :ref:`api_paddle_nn_AdaptiveAvgPool1d` .
 
     Args:
         x (Tensor): The input Tensor of pooling, which is a 3-D tensor with shape :math:`[N, C, L]`, where :math:`N` is batch size, :math:`C` is the number of channels and :math:`L` is the length of the feature. The data type is float32 or float64.
@@ -1522,8 +1459,9 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     pool_size = [1] + convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dygraph_mode():
-        x = x._use_gpudnn(False)
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            x = x._use_gpudnn(False)
         pool_out = _C_ops.pool2d(
             x,
             pool_size,
@@ -1651,8 +1589,9 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     elif _contain_var(output_size):
         output_size = _convert_to_tensor_list(output_size)
 
-    if in_dygraph_mode():
-        x = x._use_gpudnn(False)
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            x = x._use_gpudnn(False)
         return _C_ops.pool2d(
             x,
             output_size,
@@ -1666,7 +1605,6 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             True,
             "EXPLICIT",
         )
-
     else:
         l_type = 'pool2d'
         check_variable_and_dtype(
@@ -1779,8 +1717,9 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         if output_size[2] is None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
-        x = x._use_gpudnn(False)
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            x = x._use_gpudnn(False)
         return _C_ops.pool3d(
             x,
             output_size,
@@ -1825,7 +1764,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
 def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     """
     This API implements adaptive max pooling 1d operation.
-    See more details in :ref:`api_nn_pooling_AdaptiveMaxPool1d` .
+    See more details in :ref:`api_paddle_nn_AdaptiveMaxPool1d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 3-D tensor
@@ -1921,7 +1860,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
 def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
     """
     This operation applies a 2D adaptive max pooling on input tensor.
-    See more details in :ref:`api_nn_pooling_AdaptiveMaxPool2d` .
+    See more details in :ref:`api_paddle_nn_AdaptiveMaxPool2d` .
 
     Args:
         x (Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type can be float16, float32, float64, int32 or int64.
@@ -2000,14 +1939,13 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
                 "adaptive": True,
             },
         )
-        # return (pool_out, mask) if return_mask else pool_out
-        return pool_out
+        return (pool_out, mask) if return_mask else pool_out
 
 
 def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     """
     This operation applies a 3D adaptive max pooling on input tensor.
-    See more details in :ref:`api_nn_pooling_AdaptiveMaxPool3d` .
+    See more details in :ref:`api_paddle_nn_AdaptiveMaxPool3d` .
 
     Args:
         x (Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
@@ -2091,6 +2029,322 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
                 "pooling_type": 'max',
                 "ksize": output_size,
                 "adaptive": True,
+            },
+        )
+
+        return (pool_out, mask) if return_mask else pool_out
+
+
+def fractional_max_pool2d(
+    x,
+    output_size,
+    kernel_size=None,
+    random_u=None,
+    return_mask=False,
+    name=None,
+):
+    r"""
+    This operation applies 2D fractional max pooling on input tensor, which is described in the paper:
+
+    [1] Ben Graham, Fractional Max-Pooling. 2015. http://arxiv.org/abs/1412.6071
+
+    The h and w dimensions of the output tensor are determined by the parameter output_size.
+
+    For each dimension, the fractional max pooling:
+
+    ..  math::
+
+        \alpha &= size_{input} / size_{output}
+
+        index_{start} &= ceil( \alpha * (i + u) - 1)
+
+        index_{end} &= ceil( \alpha * (i + 1 + u) - 1)
+
+        Output &= max(Input[index_{start}:index_{end}])
+
+        where, u \in (0, 1), i = 0,1,2...size_{output}
+
+    The ``u`` from the formula is the parameter ``random_u``, and subtract ``1`` for the index starts from ``0``
+    instead of ``1`` where ``ceil`` works.
+
+    For instance, giving a sequence of length ``7`` is ``[2, 4, 3, 1, 5, 2, 3]``, ``output_size`` is ``5`` and ``random_u`` is ``0.3``.
+    The ``alpha = 7/5 = 1.4``, the starts of index is ``[0, 1, 3, 4, 6]``, the ends of index is ``[1, 3, 4, 6, 7]`` and makes the
+    random sequence in the paper is ``index_end - index_start = [1, 2, 1, 2, 1]``. The strides and kernel_sizes are both equal to
+    the random sequence, giving the final pooling output is ``[2, 4, 1, 5, 3]``.
+
+    Parameters:
+        x (Tensor): The input tensor of fractional max pool2d operator, which is a 4-D tensor. The data type can be float16, bfloat16, float32, float64.
+        output_size(int|list|tuple): The output size. If output size is a tuple or list, it must contain
+            two element, (H, W). H and W can be either a int, or None which means the size will be the same as that of
+            the input.
+        kernel_size (int|list|tuple, optional): The pool kernel size. If the kernel size
+            is a tuple or list, it must contain two integers, (kernel_size_Height, kernel_size_Width).
+            Otherwise, the pool kernel size will be the square of an int. Default is None, means using the non-overlapping mode.
+        random_u(float): A random float number in range (0, 1) for the fractional pooling.
+            Default None, means randomly generated by framework which can be fixed by ``paddle.seed``.
+        return_mask(bool, optional): If true, the index of max pooling point will be returned along with outputs. Default False.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
+
+    Returns:
+        Tensor: The output tensor of fractional max pool2d result which is a 4-D tensor.. The data type is same as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # fractional max pool2d
+            >>> # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
+            >>> # output shape is [N, C, m, n], fractional pool divide H and W dimensions
+            >>> # of input data into m * n grids and performs poolings in each
+            >>> # grid to get output.
+
+            >>> import paddle
+
+            >>> x = paddle.rand([2, 3, 32, 32])
+
+            >>> # disjont: without `kernel_size`
+            >>> pool_out = paddle.nn.functional.fractional_max_pool2d(x, output_size=3)
+            >>> print(pool_out.shape)
+            [2, 3, 3, 3]
+
+            >>> # overlapping: with `kernel_size`
+            >>> pool_out = paddle.nn.functional.fractional_max_pool2d(x, kernel_size=2, output_size=3)
+            >>> print(pool_out.shape)
+            [2, 3, 3, 3]
+
+            >>> pool_out, indices = paddle.nn.functional.fractional_max_pool2d(x, output_size=[2, 3], return_mask=True)
+            >>> print(pool_out.shape)
+            [2, 3, 2, 3]
+            >>> print(indices.shape)
+            [2, 3, 2, 3]
+    """
+    _check_input(x, 4)
+
+    if random_u is None:
+        random_u = 0.0
+    else:
+        if random_u <= 0 or random_u >= 1:
+            raise ValueError(
+                "The param `random_u` should be a `float` in (0, 1)."
+            )
+
+    kernel_size = (
+        convert_to_list(kernel_size, 2, 'kernel_size')
+        if kernel_size is not None
+        else [0, 0]
+    )
+
+    in_h, in_w = x.shape[2:4]
+    if isinstance(output_size, int):
+        output_size = convert_to_list(output_size, 2, 'output_size')
+    else:
+        output_size = list(output_size)
+        if output_size[0] is None:
+            output_size[0] = in_h
+        if output_size[1] is None:
+            output_size[1] = in_w
+
+    if in_dygraph_mode():
+        pool_out = _C_ops.fractional_max_pool2d(
+            x, output_size, kernel_size, float(random_u), return_mask
+        )
+        return pool_out if return_mask else pool_out[0]
+
+    else:
+        l_type = 'fractional_max_pool2d'
+
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'fractional_max_pool2d',
+        )
+        check_type(return_mask, 'return_mask', bool, 'fractional_max_pool2d')
+
+        check_type(
+            random_u,
+            'random_u',
+            float,
+            'fractional_max_pool2d',
+        )
+
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        mask = helper.create_variable_for_type_inference('int32')
+        outputs = {"out": pool_out, "mask": mask}
+
+        helper.append_op(
+            type=l_type,
+            inputs={"x": x},
+            outputs=outputs,
+            attrs={
+                "output_size": output_size,
+                "kernel_size": kernel_size,
+                "random_u": random_u,
+                "return_mask": return_mask,
+            },
+        )
+
+        return (pool_out, mask) if return_mask else pool_out
+
+
+def fractional_max_pool3d(
+    x,
+    output_size,
+    kernel_size=None,
+    random_u=None,
+    return_mask=False,
+    name=None,
+):
+    r"""
+    This operation applies 3D fractional max pooling on input tensor, which is described in the paper:
+
+    [1] Ben Graham, Fractional Max-Pooling. 2015. http://arxiv.org/abs/1412.6071
+
+    The d, h and w dimensions of the output tensor are determined by the parameter output_size.
+
+    For each dimension, the fractional max pooling:
+
+    ..  math::
+
+        \alpha &= size_{input} / size_{output}
+
+        index_{start} &= ceil( \alpha * (i + u) - 1)
+
+        index_{end} &= ceil( \alpha * (i + 1 + u) - 1)
+
+        Output &= max(Input[index_{start}:index_{end}])
+
+        where, u \in (0, 1), i = 0,1,2...size_{output}
+
+    The ``u`` from the formula is the parameter ``random_u``, and subtract ``1`` for the index starts from ``0``
+    instead of ``1`` where ``ceil`` works.
+
+    For instance, giving a sequence of length ``7`` is ``[2, 4, 3, 1, 5, 2, 3]``, ``output_size`` is ``5`` and ``random_u`` is ``0.3``.
+    The ``alpha = 7/5 = 1.4``, the starts of index is ``[0, 1, 3, 4, 6]``, the ends of index is ``[1, 3, 4, 6, 7]`` and makes the
+    random sequence in the paper is ``index_end - index_start = [1, 2, 1, 2, 1]``. The strides and kernel_sizes are both equal to
+    the random sequence, giving the final pooling output is ``[2, 4, 1, 5, 3]``.
+
+    Parameters:
+        x (Tensor): The input tensor of fractional max pool3d operator, which is a 5-D tensor. The data type can be float16, bfloat16, float32, float64.
+        output_size(int|list|tuple): The output size. If output size is a tuple or list, it must contain
+            three element, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of
+            the input.
+        kernel_size (int|list|tuple): The pool kernel size. If the kernel size
+            is a tuple or list, it must contain three integers, (kernel_size_Depth, kernel_size_Height, kernel_size_Width).
+            Otherwise, the pool kernel size will be the cube of an int. Default is None, means using the non-overlapping mode.
+        random_u(float): A random float number in range (0, 1) for the fractional pooling.
+            Default None, means randomly generated by framework which can be fixed by ``paddle.seed``.
+        return_mask(bool, optional): If true, the index of max pooling point will be returned along with outputs. Default False.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
+
+    Returns:
+        Tensor: The output tensor of fractional max pool3d result which is a 5-D tensor.. The data type is same as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # fractional max pool3d
+            >>> # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
+            >>> # output shape is [N, C, l, m, n], fractional pool divide D, H and W dimensions
+            >>> # of input data into l * m * n grids and performs poolings in each
+            >>> # grid to get output.
+
+            >>> import paddle
+
+            >>> x = paddle.rand([2, 3, 8, 32, 32])
+
+            >>> # disjont: without `kernel_size`
+            >>> pool_out = paddle.nn.functional.fractional_max_pool3d(x, output_size=3)
+            >>> print(pool_out.shape)
+            [2, 3, 3, 3, 3]
+
+            >>> # overlapping: with `kernel_size`
+            >>> pool_out = paddle.nn.functional.fractional_max_pool3d(x, kernel_size=2, output_size=3)
+            >>> print(pool_out.shape)
+            [2, 3, 3, 3, 3]
+
+            >>> pool_out, indices = paddle.nn.functional.fractional_max_pool3d(x, output_size=[2, 3, 3], return_mask=True)
+            >>> print(pool_out.shape)
+            [2, 3, 2, 3, 3]
+            >>> print(indices.shape)
+            [2, 3, 2, 3, 3]
+    """
+    _check_input(x, 5)
+
+    if random_u is None:
+        random_u = 0.0
+    else:
+        if random_u <= 0 or random_u >= 1:
+            raise ValueError(
+                "The param `random_u` should be a `float` in (0, 1)."
+            )
+
+    kernel_size = (
+        convert_to_list(kernel_size, 3, 'kernel_size')
+        if kernel_size is not None
+        else [0, 0, 0]
+    )
+
+    in_l, in_h, in_w = x.shape[2:5]
+    if isinstance(output_size, int):
+        output_size = convert_to_list(output_size, 3, 'output_size')
+    else:
+        output_size = list(output_size)
+        if output_size[0] is None:
+            output_size[0] = in_l
+        if output_size[1] is None:
+            output_size[1] = in_h
+        if output_size[2] is None:
+            output_size[2] = in_w
+
+    if in_dygraph_mode():
+        pool_out = _C_ops.fractional_max_pool3d(
+            x,
+            output_size,
+            kernel_size,
+            float(random_u),
+            return_mask,
+        )
+        return pool_out if return_mask else pool_out[0]
+
+    else:
+        l_type = 'fractional_max_pool3d'
+
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'fractional_max_pool3d',
+        )
+        check_type(return_mask, 'return_mask', bool, 'fractional_max_pool3d')
+
+        check_type(
+            random_u,
+            'random_u',
+            float,
+            'fractional_max_pool3d',
+        )
+
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        mask = helper.create_variable_for_type_inference('int32')
+        outputs = {"out": pool_out, "mask": mask}
+
+        helper.append_op(
+            type=l_type,
+            inputs={"x": x},
+            outputs=outputs,
+            attrs={
+                "output_size": output_size,
+                "kernel_size": kernel_size,
+                "random_u": random_u,
+                "return_mask": return_mask,
             },
         )
 

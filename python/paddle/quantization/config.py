@@ -127,7 +127,7 @@ class QuantConfig:
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
                 >>> q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('random memory address')
                 >>> print(q_config)
                 Global config:
                 None
@@ -176,7 +176,7 @@ class QuantConfig:
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
                 >>> q_config.add_name_config([model.fc.full_name()], activation=quanter, weight=quanter)
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('random memory address')
                 >>> print(q_config)
                 Global config:
                 None
@@ -226,7 +226,7 @@ class QuantConfig:
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
                 >>> q_config.add_type_config([Linear], activation=quanter, weight=quanter)
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('random memory address')
                 >>> print(q_config)
                 Global config:
                 None
@@ -431,7 +431,7 @@ class QuantConfig:
 
     def details(self) -> str:
         r"""
-        Get the formated details of current config.
+        Get the formatted details of current config.
         """
         if self._model is None:
             return self.__str__()

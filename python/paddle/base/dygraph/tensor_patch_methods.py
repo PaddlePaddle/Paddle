@@ -12,34 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 import inspect
-import numpy as np
-import warnings
 import sys
+import warnings
+
+import numpy as np
 
 import paddle
-from .. import framework
-from ..framework import convert_np_dtype_to_dtype_
-from .. import core
-from .. import unique_name
+from paddle import _C_ops, profiler
+from paddle.base.data_feeder import (
+    _PADDLE_DTYPE_2_NUMPY_DTYPE,
+    convert_uint16_to_float,
+)
+from paddle.profiler.utils import in_profiler_mode
+from paddle.utils import deprecated
+
+from .. import core, framework, unique_name
 from ..framework import (
-    Variable,
-    Parameter,
-    _getitem_static,
-    _setitem_static,
-    _setitem_impl_,
     EagerParamBase,
+    Parameter,
+    Variable,
+    convert_np_dtype_to_dtype_,
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
-from paddle.base.data_feeder import (
-    convert_uint16_to_float,
-    _PADDLE_DTYPE_2_NUMPY_DTYPE,
-)
-import paddle.utils.deprecated as deprecated
-import paddle.profiler as profiler
-from paddle.profiler.utils import in_profiler_mode
-from paddle import _C_ops
 
 _grad_scalar = None
 
@@ -97,17 +94,17 @@ def monkey_patch_tensor():
             .. code-block:: python
 
                 >>> import paddle.base as base
-                >>> from paddle.base.dygraph.base import to_variable
+                >>> import paddle
                 >>> import numpy as np
 
                 >>> data = np.ones([3, 1024], dtype='float32')
                 >>> with base.dygraph.guard():
-                ...     tensor = to_variable(data)
+                ...     tensor = paddle.to_tensor(data)
                 ...     static_var = tensor._to_static_var()
         """
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
-        # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
+        # It will fail. So, for property that different between dynamic and static graph, should not getattr(self, attr, None).
         attr_not_need_keys = [
             'grad',
             'T',
@@ -150,6 +147,16 @@ def monkey_patch_tensor():
             static_var = Parameter(**attr_kwargs)
         else:
             static_var = Variable(**attr_kwargs)
+
+        if self.placements is not None:  # import for shard tensor api
+            import paddle.distributed as dist
+
+            static_var = dist.shard_tensor(
+                static_var,
+                self.process_mesh,
+                self.placements,
+                stop_gradient=static_var.stop_gradient,
+            )
         return static_var
 
     # TODO(jiabin): move this to cplusplus end if we find some performance issue on it
@@ -168,14 +175,14 @@ def monkey_patch_tensor():
             .. code-block:: python
 
                 >>> import paddle.base as base
-                >>> from paddle.base.dygraph.base import to_variable
+                >>> import paddle
                 >>> from paddle.nn import Linear
                 >>> import numpy as np
 
                 >>> data = np.ones([3, 1024], dtype='float32')
                 >>> with base.dygraph.guard():
                 ...     linear = Linear(1024, 4)
-                ...     t = to_variable(data)
+                ...     t = paddle.to_tensor(data)
                 ...     linear(t)  # call with default weight
                 ...     custom_weight = np.random.randn(1024, 4).astype("float32")
                 ...     linear.weight.set_value(custom_weight)  # change existing weight
@@ -185,6 +192,10 @@ def monkey_patch_tensor():
         assert isinstance(
             value, (np.ndarray, base_tensor, dict, str)
         ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
+        if self.is_dist():
+            assert isinstance(
+                value, (np.ndarray, base_tensor)
+            ), "For set_value function of dist tensor, arguments type only support numpy or Tensor."
 
         if isinstance(value, (dict, str)):
             assert len(self) == len(
@@ -216,7 +227,26 @@ def monkey_patch_tensor():
 
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
-            # this Interface behavior will be unifed in the future.
+            # this Interface behavior will be unified in the future.
+            if self.is_dist():
+                if isinstance(value, paddle.Tensor) and value.is_dist():
+                    from paddle.distributed.auto_parallel.placement_type import (
+                        check_placements_equal,
+                    )
+
+                    # TODO: support reshard later
+                    assert value.process_mesh == self.value().process_mesh or check_placements_equal(
+                        value.placements, self.value().placements
+                    ), f"process_mesh:{value.process_mesh} != {self.value().process_mesh} or placements:{value.placements} != {self.value().placements} not match"
+                else:
+                    # calling set method bound for DistTensor
+                    value = paddle.distributed.shard_tensor(
+                        value,
+                        self.value().process_mesh,
+                        self.value().placements,
+                    )
+                self.value().get_tensor().set(value.get_tensor())
+                return
             self.value().get_tensor().set(
                 value, framework._current_expected_place()
             )
@@ -354,6 +384,104 @@ def monkey_patch_tensor():
         return np.array(self.grad)
 
     @framework.dygraph_only
+    def apply_(self, func):
+        """
+        Inplace apply the python function to the tensor.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
+                >>> f = lambda x: 3*x+2
+                >>> x.apply_(f)
+                >>> print(x)
+                Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+                       [[2.90000004, 3.50000000, 2.30000000],
+                        [4.69999993, 4.69999993, 4.09999996],
+                        [3.20000002, 4.40000004, 2.60000001]])
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float16")
+                >>> x.apply_(f)
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
+                >>> x.apply_(f)
+
+
+                >>> if paddle.is_compiled_with_cuda():
+                >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("gpu", "float32")
+                >>>     x.apply_(f)
+        """
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that required gradient."
+            )
+        return self._apply_(func)
+
+    def apply(self, func):
+        """
+        Apply the python function to the tensor.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
+                >>> f = lambda x: 3*x+2
+                >>> y = x.apply(f)
+                >>> print(y)
+                Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+                       [[2.90000004, 3.50000000, 2.30000000],
+                        [4.69999993, 4.69999993, 4.09999996],
+                        [3.20000002, 4.40000004, 2.60000001]])
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float16")
+                >>> y = x.apply(f)
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
+                >>> y = x.apply(f)
+
+
+                >>> if paddle.is_compiled_with_cuda():
+                >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("gpu", "float32")
+                >>>     y = x.apply(f)
+
+        """
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that required gradient."
+            )
+        return self._apply(func)
+
+    @framework.dygraph_only
     def register_hook(self, hook):
         """
         Registers a backward hook for current Tensor.
@@ -437,6 +565,7 @@ def monkey_patch_tensor():
             elif isinstance(
                 device,
                 (
+                    core.Place,
                     core.CPUPlace,
                     core.CUDAPlace,
                     core.CUDAPinnedPlace,
@@ -512,6 +641,129 @@ def monkey_patch_tensor():
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
             return transform(self, device, dtype, blocking)
+
+    @framework.dygraph_only
+    def to(self, *args, **kwargs):
+        """
+        Performs Tensor dtype and/or device conversion. A paddle.dtype and place
+        are inferred from the arguments of ``self.to(*args, **kwargs)``.There are
+        three ways to call `to`:
+
+            1. to(dtype, blocking=True)
+            2. to(device, dtype=None, blocking=True)
+            3. to(other, blocking=True)
+
+        Returns:
+            Tensor: self
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> tensorx = paddle.to_tensor([1,2,3])
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+
+                >>> tensorx = tensorx.to("cpu")
+                >>> print(tensorx.place)
+                Place(cpu)
+
+                >>> tensorx = tensorx.to("float32")
+                >>> print(tensorx.dtype)
+                paddle.float32
+
+                >>> tensorx = tensorx.to("gpu", "int16")
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+                >>> tensor2 = paddle.to_tensor([4,5,6])
+                >>> tensor2
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+                >>> tensor2 = tensor2.to(tensorx)
+                >>> print(tensor2)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+        """
+        device = None
+        dtype = None
+        blocking = None
+        size_args = len(args)
+        size_kwargs = len(kwargs)
+
+        def get_device_dtype_from_tensor(other):
+            if other is not None:
+                device = str(other.place)[6:-1]
+                dtype = other.dtype
+                return device, dtype
+            else:
+                return None, None
+
+        if size_args + size_kwargs > 3 or size_args + size_kwargs == 0:
+            raise TypeError(
+                "to() received too many arguments - expected one of:\n  \
+                * (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] \
+                device, Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
+                * (Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
+                * (paddle.Tensor other, bool blocking) "
+            )
+        valid_keys = {"device", "dtype", "blocking", "other"}
+        valid_dtypes = [
+            "bfloat16",
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "complex64",
+            "complex128",
+            "bool",
+        ]
+        invalid_keys = set(kwargs.keys()) - valid_keys
+        if len(invalid_keys) != 0:
+            raise TypeError(
+                "to() got an unexpected keyword argument "
+                + list(invalid_keys)[0]
+            )
+        if size_args > 0:
+            if isinstance(args[0], paddle.Tensor):
+                device, dtype = get_device_dtype_from_tensor(args[0])
+                if size_args == 2:
+                    blocking = args[1]
+                else:
+                    blocking = kwargs.get("blocking", None)
+            elif (
+                isinstance(args[0], (paddle.dtype, np.dtype))
+                or isinstance(args[0], str)
+                and args[0].lower() in valid_dtypes
+            ):
+                dtype = args[0]
+                if size_args == 2:
+                    blocking = args[1]
+                else:
+                    blocking = kwargs.get("blocking", None)
+            else:
+                device = args[0]
+                if size_args == 2:
+                    dtype = args[1]
+                elif size_args == 3:
+                    dtype, blocking = args[1], args[2]
+                else:
+                    dtype = kwargs.get("dtype", None)
+                    blocking = kwargs.get("blocking", None)
+        else:
+            device = kwargs.get("device", None)
+            dtype = kwargs.get("dtype", None)
+            blocking = kwargs.get("blocking", None)
+            if device is None and dtype is None:
+                device, dtype = get_device_dtype_from_tensor(
+                    kwargs.get("other", None)
+                )
+        return self._to(device, dtype, blocking)
 
     @property
     def grad(self):
@@ -723,78 +975,25 @@ def monkey_patch_tensor():
             array = array.astype(dtype)
         return array
 
-    def contain_tensor(item):
-        if not isinstance(item, (tuple, list)):
-            item = [item]
+    def pre_deal_index(self, item):
+        # since in pybind there is no efficiency way to transfer Py_Tuple/Py_List/Py_Range to Tensor
+        # we call this function in python level.
+        item = list(item) if isinstance(item, tuple) else [item]
+        for i, slice_item in enumerate(item):
+            if isinstance(slice_item, (list, np.ndarray, tuple)):
+                item[i] = paddle.to_tensor(slice_item)
+            elif isinstance(slice_item, range):
+                item[i] = paddle.to_tensor(list(slice_item))
 
-        for slice_item in item:
-            if isinstance(slice_item, slice):
-                if (
-                    isinstance(slice_item.start, Variable)
-                    or isinstance(slice_item.stop, Variable)
-                    or isinstance(slice_item.step, Variable)
-                ):
-                    return True
-            else:
-                if (
-                    isinstance(slice_item, (Variable, np.ndarray))
-                    and Variable.dtype != paddle.bool
-                ):
-                    return True
-        return False
-
-    def contain_tensor_or_list(item):
-        if not isinstance(item, tuple):
-            item = (item,)
-
-        for slice_item in item:
-            if isinstance(slice_item, (list, np.ndarray, Variable, range)):
-                return True
-
-        return False
+        return tuple(item)
 
     def __getitem__(self, item):
-        if contain_tensor_or_list(item):
-            # 1. Call _getitem_impl_ when item contains tensor.
-            # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
-            return _getitem_static(self, item)
-
-        else:
-            # 2. Call c++ func getitem_index_not_tensor to speedup.
-            return self._getitem_index_not_tensor(item)
+        item = pre_deal_index(self, item)
+        return self._getitem_dygraph(item)
 
     def __setitem__(self, item, value):
-        def is_combine_index(item):
-            var_type = None
-            item_type = None
-            if isinstance(item, (tuple, list)):
-                for slice_item in item:
-                    if item_type is None:
-                        item_type = type(slice_item)
-                    else:
-                        if type(slice_item) != item_type:
-                            return True
-
-                    if isinstance(slice_item, Variable):
-                        if var_type is None:
-                            var_type = slice_item.dtype
-                        else:
-                            if var_type != slice_item.dtype:
-                                return True
-                return False
-
-            return False
-
-        if contain_tensor_or_list(item):
-            if core.is_compiled_with_xpu() and not is_combine_index(item):
-                # (NOTE): Currently, there is no index_put_xpu kernel.
-                return _setitem_impl_(self, item, value)
-            # To reuse code with static graph,
-            # Call _setitem_static when item contains tensor or list.
-            return _setitem_static(self, item, value)
-
-        else:
-            return self.__setitem_eager_tensor__(item, value)
+        item = pre_deal_index(self, item)
+        return self._setitem_dygraph(item, value)
 
     @framework.dygraph_only
     def _set_grad_ivar(self, value):
@@ -870,17 +1069,17 @@ def monkey_patch_tensor():
         if self.place._equals(res_place):
             return self
         else:
-            res = self._copy_to(res_place, True)
+            res = self._copy_to(res_place, blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
 
     @framework.dygraph_only
-    def pin_memory(self):
+    def pin_memory(self, blocking=True):
         if self.place.is_cuda_pinned_place():
             return self
         else:
-            res = self._copy_to(core.CUDAPinnedPlace(), True)
+            res = self._copy_to(core.CUDAPinnedPlace(), blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
@@ -890,6 +1089,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Get the values of current SparseTensor(COO or CSR).
 
         Returns:
@@ -914,6 +1114,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Convert the current SparseTensor(COO or CSR) to DenseTensor.
 
         Returns:
@@ -942,6 +1143,7 @@ def monkey_patch_tensor():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
+
         Convert the current DenseTensor to SparseTensor in COO format.
 
         Returns:
@@ -963,8 +1165,64 @@ def monkey_patch_tensor():
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
+    @framework.dygraph_only
+    def _md5sum(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+
+        Calculate the md5sum of current Tensor.
+
+        Returns:
+            str: The md5sum of current Tensor.
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([1, 2, 3])
+                >>> print(x._md5sum())
+                >>> #'1f68049372c5b2a4e0d049044450
+        """
+        numpy_array = np.array(self)
+        array_bytes = numpy_array.tobytes()
+        return hashlib.md5(array_bytes).hexdigest()
+
     def __hash__(self):
         return hash(id(self))
+
+    @framework.dygraph_only
+    def coalesce(self, name=None):
+        r"""
+        the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
+
+        Parameters:
+            x (Tensor): the input SparseCooTensor.
+            name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
+
+        Returns:
+            Tensor: return the SparseCooTensor after coalesced.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> indices = [[0, 0, 1], [1, 1, 2]]
+                >>> values = [1.0, 2.0, 3.0]
+                >>> sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
+                >>> sp_x = sp_x.coalesce()
+                >>> print(sp_x.indices())
+                Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[0, 1],
+                [1, 2]])
+                >>> print(sp_x.values())
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [3., 3.])
+        """
+        return _C_ops.sparse_coalesce(self)
 
     if not hasattr(core, "eager"):
         return
@@ -979,6 +1237,8 @@ def monkey_patch_tensor():
         ("clear_grad", clear_grad),
         ("inplace_version", inplace_version),
         ("gradient", gradient),
+        ("apply_", apply_),
+        ("apply", apply),
         ("register_hook", register_hook),
         ("__str__", __str__),
         ("__repr__", __str__),
@@ -989,9 +1249,11 @@ def monkey_patch_tensor():
         ("item", item),
         ("__setitem__", __setitem__),
         ("_to", _to),
+        ("to", to),
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("coalesce", coalesce),
         ("_set_grad_ivar", _set_grad_ivar),
         ("value", value),
         ("cpu", cpu),
@@ -1003,6 +1265,7 @@ def monkey_patch_tensor():
         ("_clear_data", _clear_data),
         ("__hash__", __hash__),
         ("_use_gpudnn", _use_gpudnn),
+        ("_md5sum", _md5sum),
     ):
         setattr(core.eager.Tensor, method_name, method)
 
@@ -1011,7 +1274,7 @@ def monkey_patch_tensor():
         # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
         # So, we need to overwrite it to a more readable one.
         # See details in https://github.com/pybind/pybind11/issues/2537.
-        origin = getattr(core.VarDesc.VarType, "__str__")
+        origin = core.VarDesc.VarType.__str__
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
@@ -1024,7 +1287,7 @@ def monkey_patch_tensor():
                 # for example, paddle.base.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)
 
-        setattr(core.VarDesc.VarType, "__str__", dtype_str)
+        core.VarDesc.VarType.__str__ = dtype_str
         _already_patch_repr = True
 
     # patch math methods for tensor

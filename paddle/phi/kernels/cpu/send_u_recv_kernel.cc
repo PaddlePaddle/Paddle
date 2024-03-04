@@ -18,8 +18,8 @@
 #include <set>
 #include <vector>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_recv_funcs.h"
 
@@ -97,11 +97,11 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
     }
   } else {
     // Set out dim following out_size.
-    std::vector<int64_t> dims_ = phi::vectorize(src_dims);
+    std::vector<int64_t> dims_ = common::vectorize(src_dims);
     if (!dims_.empty()) {
       dims_[0] = out_size;
     }
-    out->Resize(phi::make_ddim(dims_));
+    out->Resize(common::make_ddim(dims_));
     memset_size = out_size;
     for (int i = 1; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];

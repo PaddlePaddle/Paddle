@@ -56,10 +56,10 @@ TEST(AnalysisPredictor, analysis_off) {
   LOG(INFO) << "scope parameters " << predictor->scope_->LocalVarNames().size();
 
   // 2. Dummy Input Data
-  int64_t data[4] = {1, 2, 3, 4};
+  std::array<int64_t, 4> input_data = {1, 2, 3, 4};
   PaddleTensor tensor;
   tensor.shape = std::vector<int>({4, 1});
-  tensor.data.Reset(data, sizeof(data));
+  tensor.data.Reset(input_data.data(), sizeof(input_data));
   tensor.dtype = PaddleDType::INT64;
 
   std::vector<PaddleTensor> inputs(4, tensor);
@@ -109,10 +109,10 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_EQ(predictor->GetOutputTypes().size(), 1UL);
   ASSERT_EQ(predictor->GetOutputTensorShape().size(), 1UL);
   // 2. Dummy Input Data
-  int64_t data[4] = {1, 2, 3, 4};
+  std::array<int64_t, 4> input_data = {1, 2, 3, 4};
   PaddleTensor tensor;
   tensor.shape = std::vector<int>({4, 1});
-  tensor.data.Reset(data, sizeof(data));
+  tensor.data.Reset(input_data.data(), sizeof(input_data));
   tensor.dtype = PaddleDType::INT64;
 
   std::vector<PaddleTensor> inputs(4, tensor);
@@ -144,7 +144,6 @@ TEST(AnalysisPredictor, save_optimized_model_on) {
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
-  config.SwitchUseFeedFetchOps(false);
   LOG(INFO) << config.Summary();
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
@@ -184,7 +183,6 @@ TEST(AnalysisPredictor, ZeroCopy) {
 TEST(AnalysisPredictor, CollectShapeRangeInfo) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
-  config.SwitchUseFeedFetchOps(false);
   config.EnableUseGpu(100, 0);
   config.CollectShapeRangeInfo(FLAGS_dirname + "/shape_range.pbtxt");
   LOG(INFO) << config.Summary();
@@ -225,7 +223,6 @@ TEST(AnalysisPredictor, CollectShapeRangeInfo) {
 TEST(AnalysisPredictor, Clone) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
-  config.SwitchUseFeedFetchOps(true);
   config.SwitchIrOptim(true);
   LOG(INFO) << config.Summary();
 
@@ -245,10 +242,10 @@ TEST(AnalysisPredictor, Clone) {
             << framework::GenScopeTreeDebugInfo(root_scope);
 
   // 2. Dummy Input Data
-  int64_t data[4] = {1, 2, 3, 4};
+  std::array<int64_t, 4> input_data = {1, 2, 3, 4};
   PaddleTensor tensor;
   tensor.shape = std::vector<int>({4, 1});
-  tensor.data.Reset(data, sizeof(data));
+  tensor.data.Reset(input_data.data(), sizeof(input_data));
   tensor.dtype = PaddleDType::INT64;
 
   std::vector<PaddleTensor> inputs(4, tensor);
@@ -662,6 +659,61 @@ TEST(Predictor, Streams) {
 
     CHECK_NE(stream, stream2);
   }
+}
+
+TEST(Tensor, RunWithExternalStream) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.EnableUseGpu(100, 0);
+  cudaStream_t stream;
+  cudaStreamCreate(&stream);
+  config.SetExecStream(stream);
+  config.EnableNewExecutor();
+  auto predictor = CreatePredictor(config);
+
+  auto w0 = predictor->GetInputHandle("firstw");
+  auto w1 = predictor->GetInputHandle("secondw");
+  auto w2 = predictor->GetInputHandle("thirdw");
+  auto w3 = predictor->GetInputHandle("forthw");
+
+  std::vector<std::vector<int64_t>> input_data(4, {0, 1, 2, 3});
+  std::vector<int64_t*> input_gpu(4, nullptr);
+
+  for (size_t i = 0; i < 4; ++i) {
+    cudaMalloc(reinterpret_cast<void**>(&input_gpu[i]), 4 * sizeof(int64_t));
+    cudaMemcpy(input_gpu[i],
+               input_data[i].data(),
+               4 * sizeof(int64_t),
+               cudaMemcpyHostToDevice);
+  }
+
+  w0->ShareExternalData<int64_t>(input_gpu[0], {4, 1}, PlaceType::kGPU);
+  w1->ShareExternalData<int64_t>(input_gpu[1], {4, 1}, PlaceType::kGPU);
+  w2->ShareExternalData<int64_t>(input_gpu[2], {4, 1}, PlaceType::kGPU);
+  w3->ShareExternalData<int64_t>(input_gpu[3], {4, 1}, PlaceType::kGPU);
+
+  auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  auto out_shape = out->shape();
+  float* out_data = nullptr;
+  auto out_size =
+      std::accumulate(
+          out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
+      sizeof(float);
+  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
+
+  cudaStream_t external_stream;
+  cudaStreamCreate(&external_stream);
+
+  predictor->Run();
+  paddle_infer::experimental::InternalUtils::RunWithExternalStream(
+      predictor.get(), external_stream);
+
+  PlaceType place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  predictor->TryShrinkMemory();
 }
 #endif
 

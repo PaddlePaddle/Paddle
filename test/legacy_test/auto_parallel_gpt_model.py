@@ -266,7 +266,9 @@ class MultiHeadAttention(nn.Layer):
         if self.use_new_recompute and self.recompute_granularity == "core_attn":
             out, weights = auto.recompute(self.core_attn)(q, k, v, attn_mask)
         else:
-            out, weights = self.core_attn(q, k, v, attn_mask)
+            out, weights = auto.exclude_ops_in_recompute(self.core_attn)(
+                q, k, v, attn_mask
+            )
 
         # project to output
         out = self.out_proj(out)
@@ -401,7 +403,7 @@ class TransformerDecoder(nn.Layer):
 class TransformerDecoderLayer(nn.Layer):
     """
     The transformer decoder layer.
-    It contains multiheadattention and some linear layers.
+    It contains multi-head attention and some linear layers.
     """
 
     def __init__(
@@ -632,8 +634,8 @@ class GPTModel(nn.Layer):
         self.recompute_granularity = recompute_granularity
 
         self.layer_per_stage = None
-        self.pipline_mode = pp_degree is not None and pp_degree > 1
-        if self.pipline_mode:
+        self.pipeline_mode = pp_degree is not None and pp_degree > 1
+        if self.pipeline_mode:
             self.layer_per_stage = num_hidden_layers // pp_degree
         self.embeddings = GPTEmbeddings(
             vocab_size,

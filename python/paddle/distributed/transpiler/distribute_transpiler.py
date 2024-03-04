@@ -157,8 +157,8 @@ class DistributeTranspilerConfig:
     .. py:attribute:: split_method (PSDispatcher)
 
           Methods of dispatching parameters for server,
-          :ref:`api_base_transpiler_RoundRobin` or
-          :ref:`api_base_transpiler_HashName` can be used and default is RoundRobin.
+          `RoundRobin` or
+          `HashName` (both from `paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher`) can be used and default is RoundRobin.
           Try to choose the best method to balance loads for parameter servers.
 
     .. py:attribute:: min_block_size (int)
@@ -175,13 +175,14 @@ class DistributeTranspilerConfig:
     Examples:
         .. code-block:: python
 
-            from paddle.distributed.transpiler.ps_dispatcher import RoundRobin
-            import paddle.distributed.transpiler as transpiler
+            >>> from paddle.distributed.transpiler.distribute_transpiler import RoundRobin
+            >>> import paddle.distributed.transpiler as transpiler
 
-            config = transpiler.DistributeTranspilerConfig()
-            config.slice_var_up = True
-            config.split_method = RoundRobin
-            config.min_block_size = 81920
+            >>> config = transpiler.DistributeTranspilerConfig()
+            >>> config.slice_var_up = True
+            >>> config.split_method = RoundRobin
+            >>> config.min_block_size = 81920
+
     """
 
     slice_var_up = True
@@ -282,53 +283,57 @@ class DistributeTranspiler:
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.base as base
-            import paddle.distributed.transpiler as transpiler
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> import paddle.distributed.transpiler as transpiler
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            x = paddle.static.data(name='x', shape=[1,13], dtype='float32')
-            y = paddle.static.data(name='y', shape=[1], dtype='float32')
-            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
+            >>> x = paddle.static.data(name='x', shape=[1,13], dtype='float32')
+            >>> y = paddle.static.data(name='y', shape=[1], dtype='float32')
+            >>> y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
-            cost =paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-            avg_loss = paddle.mean(cost)
+            >>> cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+            >>> avg_loss = paddle.mean(cost)
 
-            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            sgd_optimizer.minimize(avg_loss)
+            >>> sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            >>> sgd_optimizer.minimize(avg_loss)
 
-            # for pserver mode
-            pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-            trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-            current_endpoint = "192.168.0.1:6174"
-            trainer_id = 0
-            trainers = 4
-            role = "PSERVER"
-            t = transpiler.DistributeTranspiler()
-            t.transpile(
-                 trainer_id, pservers=pserver_endpoints, trainers=trainers)
-            if role == "PSERVER":
-                 pserver_program = t.get_pserver_program(current_endpoint)
-                 pserver_startup_program = t.get_startup_program(current_endpoint,
-                                                                pserver_program)
-            elif role == "TRAINER":
-                 trainer_program = t.get_trainer_program()
+            >>> # for pserver mode
+            >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            >>> trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            >>> current_endpoint = "192.168.0.1:6174"
+            >>> trainer_id = 0
+            >>> trainers = 4
+            >>> role = "PSERVER"
 
-            # for nccl2 mode
-            trainer_num = 2
-            trainer_id = 0
-            config = transpiler.DistributeTranspilerConfig()
-            config.mode = "nccl2"
-            trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-            t = transpiler.DistributeTranspiler(config=config)
-            t.transpile(trainer_id=trainer_id, trainers=trainer_endpoints, current_endpoint="192.168.0.1:6174")
-            exe = paddle.static.ParallelExecutor(
-                use_cuda=True,
-                loss_name=avg_loss.name,
-                num_trainers=trainer_num,
-                trainer_id=trainer_id
-            )
+            >>> t = transpiler.DistributeTranspiler()
+            >>> t.transpile(
+            ...         trainer_id, pservers=pserver_endpoints, trainers=trainers)
+
+            >>> if role == "PSERVER":
+            ...         pserver_program = t.get_pserver_program(current_endpoint)
+            ...         pserver_startup_program = t.get_startup_program(current_endpoint,
+            ...                                                     pserver_program)
+            ... elif role == "TRAINER":
+            ...         trainer_program = t.get_trainer_program()
+
+            >>> # for nccl2 mode
+            >>> trainer_num = 2
+            >>> trainer_id = 0
+            >>> config = transpiler.DistributeTranspilerConfig()
+            >>> config.mode = "nccl2"
+            >>> trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            >>> t = transpiler.DistributeTranspiler(config=config)
+            >>> t.transpile(trainer_id=trainer_id, trainers=trainer_endpoints, current_endpoint="192.168.0.1:6174")
+            >>> exe = paddle.static.ParallelExecutor(
+            ...     use_cuda=True,
+            ...     loss_name=avg_loss.name,
+            ...     num_trainers=trainer_num,
+            ...     trainer_id=trainer_id
+            ... )
+
     """
 
     def __init__(self, config=None):
@@ -609,13 +614,15 @@ class DistributeTranspiler:
         Examples:
             .. code-block:: python
 
-                transpiler = paddle.distributed.transpiler.DistributeTranspiler()
-                t.transpile(
-                    trainer_id=0,
-                    pservers="127.0.0.1:7000,127.0.0.1:7001",
-                    trainers=2,
-                    sync_mode=False,
-                    current_endpoint="127.0.0.1:7000")
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> t = paddle.distributed.transpiler.DistributeTranspiler()
+                >>> t.transpile(
+                ...     trainer_id=0,
+                ...     pservers="127.0.0.1:7000,127.0.0.1:7001",
+                ...     trainers=2,
+                ...     sync_mode=False,
+                ...     current_endpoint="127.0.0.1:7000")
+
         """
         from paddle.distributed.distribute_lookup_table import (
             find_distributed_lookup_table,
@@ -651,7 +658,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             # check use_hierarchical_allreduce options
             if self.config.use_hierarchical_allreduce:
                 trainers_num = len(self.origin_program._trainers_endpoints)
-                # selected automaticly
+                # selected automatically
                 if self.config.hierarchical_allreduce_inter_nranks <= 1:
                     self.config.hierarchical_allreduce_inter_nranks = (
                         core.get_cuda_device_count()
@@ -1127,14 +1134,17 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-              import paddle.distributed.transpiler as transpiler
-              #this is an example, find available endpoints in your case
-              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-              trainer_id = 0
-              trainers = 4
-              t = transpiler.DistributeTranspiler()
-              t.transpile(trainer_id, trainers=trainers, pservers=pserver_endpoints)
-              trainer_program = t.get_trainer_program()
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> import paddle.distributed.transpiler as transpiler
+                >>> # this is an example, find available endpoints in your case
+                >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                >>> trainer_id = 0
+                >>> trainers = 4
+
+                >>> t = transpiler.DistributeTranspiler()
+                >>> t.transpile(trainer_id, trainers=trainers, pservers=pserver_endpoints)
+                >>> trainer_program = t.get_trainer_program()
+
         """
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
@@ -1273,16 +1283,20 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-              import paddle.distributed.transpiler as transpiler
-              #this is an example, find available endpoints in your case
-              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-              current_endpoint = "192.168.0.1:6174"
-              trainer_id = 0
-              trainers = 4
-              t = transpiler.DistributeTranspiler()
-              t.transpile(
-                   trainer_id, pservers=pserver_endpoints, trainers=trainers)
-              pserver_program = t.get_pserver_program(current_endpoint)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> import paddle.distributed.transpiler as transpiler
+                >>> # this is an example, find available endpoints in your case
+                >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                >>> current_endpoint = "192.168.0.1:6174"
+                >>> trainer_id = 0
+                >>> trainers = 4
+
+                >>> t = transpiler.DistributeTranspiler()
+                >>> t.transpile(
+                ...     trainer_id, pservers=pserver_endpoints, trainers=trainers)
+
+                >>> pserver_program = t.get_pserver_program(current_endpoint)
+
         """
         # TODO(panyx0718): Revisit this assumption. what if #blocks > #pservers.
         # NOTE: assume blocks of the same variable is not distributed
@@ -1582,16 +1596,19 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-              import paddle.distributed.transpiler as transpiler
-              #this is an example, find available endpoints in your case
-              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-              current_endpoint = "192.168.0.1:6174"
-              trainer_id = 0
-              trainers = 4
-              t = transpiler.DistributeTranspiler()
-              t.transpile(
-                   trainer_id, pservers=pserver_endpoints, trainers=trainers)
-              pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> import paddle.distributed.transpiler as transpiler
+                >>> # this is an example, find available endpoints in your case
+                >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                >>> current_endpoint = "192.168.0.1:6174"
+                >>> trainer_id = 0
+                >>> trainers = 4
+
+                >>> t = transpiler.DistributeTranspiler()
+                >>> t.transpile(
+                ...     trainer_id, pservers=pserver_endpoints, trainers=trainers)
+                >>> pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
+
         """
         pserver_prog = self.get_pserver_program(endpoint)
         pserver_startup = self.get_startup_program(
@@ -1621,17 +1638,19 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-                pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-                trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-                current_endpoint = "192.168.0.1:6174"
-                trainer_id = 0
-                trainers = 4
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                >>> trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                >>> current_endpoint = "192.168.0.1:6174"
+                >>> trainer_id = 0
+                >>> trainers = 4
 
-                t = paddle.distributed.transpiler.DistributeTranspiler()
-                t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
-                pserver_program = t.get_pserver_program(current_endpoint)
-                pserver_startup_program = t.get_startup_program(current_endpoint,
-                                                                pserver_program)
+                >>> t = paddle.distributed.transpiler.DistributeTranspiler()
+                >>> t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
+                >>> pserver_program = t.get_pserver_program(current_endpoint)
+                >>> pserver_startup_program = t.get_startup_program(current_endpoint,
+                ...                                                 pserver_program)
+
         """
         s_prog = Program()
         orig_s_prog = self.startup_program
@@ -2179,7 +2198,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 type="sum",
                 inputs={"X": pserver_side_table_grad_list},
                 outputs={"Out": [grad_var]},
-                attrs={"use_mkldnn": False},
+                attrs={},
             )
         else:
             # in async_mode, for table gradient, it also need to be split to each parameter server
@@ -2246,7 +2265,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         NOTE: only grads need to be named for different trainers, use
               add_trainer_suffix to rename the grad vars.
         Args:
-            program (ProgramDesc): ProgramDesc which gradients blong.
+            program (ProgramDesc): ProgramDesc which gradients belong.
             block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
             add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
         Returns:
@@ -2310,7 +2329,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     dtype=orig_var.dtype,
                     type=orig_var.type,
                     shape=splited_shape,
-                )  # flattend split var
+                )  # flatten split var
                 var_mapping[varname].append(var)
             program.global_block()._sync_with_cpp()
         return var_mapping
@@ -2471,7 +2490,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 type="sum",
                 inputs={"X": vars2merge},
                 outputs={"Out": merged_var},
-                attrs={"use_mkldnn": False},
+                attrs={},
             )
             optimize_block.append_op(
                 type="scale",

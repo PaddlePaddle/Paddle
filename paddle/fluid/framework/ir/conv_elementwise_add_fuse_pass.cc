@@ -109,13 +109,13 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
     std::string act_type = "identity";
     framework::OpDesc new_op_desc(base_op_desc, nullptr);
-    new_op_desc.SetType("conv2d_fusion");
+    new_op_desc.SetType("fused_conv2d_add_act");
     new_op_desc.SetInput("Bias", {bias_name});
     new_op_desc.SetInput("ResidualData", {});
     new_op_desc.SetAttr("activation", act_type);
     new_op_desc.SetOutput("Output", {output_name});
     new_op_desc.SetAttr("is_test", true);
-    new_op_desc.SetAttr("use_cudnn", false);
+    new_op_desc.SetAttr("use_cudnn", true);
 
     bool is_fp16_precision =
         static_cast<phi::DataType>(Get<int>("model_precision")) ==
@@ -126,14 +126,14 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
         conv_op->Op(), scope, act_type, Get<int>("gpu_device_id"));
     if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
-      new_op_desc.SetAttr("use_cutlass", true);
+      new_op_desc.SetAttr("use_cudnn", false);
     }
 
     auto* elementwise_add_op_desc = elementwise_add_op->Op();
     auto out_threshold_attr =
         elementwise_add_op_desc->GetNullableAttr("out_threshold");
     // set the out_threshold of the elementwise add op to be the out_threshold
-    // of the conv2d_fusion
+    // of the fused_conv2d_add_act
     if (out_threshold_attr.index()) {
       new_op_desc.SetAttr("out_threshold", out_threshold_attr);
     }
@@ -160,7 +160,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   };
 
   gpd(graph, handler);
-  // check if detect conv2d_fusion subgraph!
+  // check if detect fused_conv2d_add_act subgraph!
   AddStatis(found_conv_eltwise_count);
 }
 

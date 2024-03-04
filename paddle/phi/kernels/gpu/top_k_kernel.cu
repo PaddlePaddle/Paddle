@@ -70,10 +70,10 @@ void TopkKernel(const Context& dev_ctx,
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::funcs::set_constant(dev_ctx, indices, 0.0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
-  // calcluate the real axis
+  // calculate the real axis
   if (axis < 0) axis += in_dims.size();
 
   int k = k_scalar.to<int>();
@@ -98,7 +98,7 @@ void TopkKernel(const Context& dev_ctx,
   if (axis == in_dims.size() - 1) {
     // if get the topK from the last axis
     const int64_t& input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
 
     if (k > input_width) {
@@ -117,7 +117,7 @@ void TopkKernel(const Context& dev_ctx,
                                   out,
                                   indices,
                                   largest)) {
-        // Successed, return.
+        // Succeed, return.
         return;
       } else {
         VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "
@@ -228,10 +228,10 @@ void TopkKernel(const Context& dev_ctx,
             "the input data shape has error in the topk cuda kernel."));
     }
   } else {
-    // if get topK not from the last axis, will tranpose the tensor and get
+    // if get topK not from the last axis, will transpose the tensor and get
     // TopK
 
-    // first step, prepare the trans args for the tranpose
+    // first step, prepare the trans args for the transpose
     std::vector<int> trans;
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);
@@ -248,14 +248,14 @@ void TopkKernel(const Context& dev_ctx,
       trans_dims[i] = in_dims[trans[i]];
       trans_out_dims[i] = out_dims[trans[i]];
     }
-    // second step, tranpose the input
+    // second step, transpose the input
     DenseTensor trans_input;
     trans_input.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_input);
     int ndims = trans.size();
     funcs::TransCompute<phi::GPUContext, T>(
         ndims, dev_ctx, *input, &trans_input, trans);
-    // third step, calcluate the topk
+    // third step, calculate the topk
     // allocate the tmp cuda memory for the tmp result
     DenseTensor trans_ind;
     DenseTensor trans_out;
@@ -264,8 +264,8 @@ void TopkKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int64_t>(&trans_ind);
     dev_ctx.template Alloc<T>(&trans_out);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     if (k > input_width) k = input_width;
@@ -282,7 +282,7 @@ void TopkKernel(const Context& dev_ctx,
                                   &trans_out,
                                   &trans_ind,
                                   largest)) {
-        // last step, tranpose back the indices and output
+        // last step, transpose back the indices and output
         funcs::TransCompute<phi::GPUContext, int64_t>(
             ndims, dev_ctx, trans_ind, indices, trans);
         funcs::TransCompute<phi::GPUContext, T>(
@@ -337,7 +337,7 @@ void TopkKernel(const Context& dev_ctx,
             "the input data shape has error in the topk cuda kernel."));
     }
 
-    // last step, tranpose back the indices and output
+    // last step, transpose back the indices and output
     funcs::TransCompute<phi::GPUContext, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans);
     funcs::TransCompute<phi::GPUContext, T>(

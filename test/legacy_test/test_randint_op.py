@@ -36,6 +36,7 @@ def output_hist(out):
 class TestRandintOp(OpTest):
     def setUp(self):
         self.op_type = "randint"
+        self.python_api = paddle.randint
         self.inputs = {}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((10000, 784)).astype("float32")}
@@ -45,7 +46,7 @@ class TestRandintOp(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -66,10 +67,19 @@ class TestRandintOpError(unittest.TestCase):
                 TypeError, paddle.randint, 5, shape=[shape_tensor]
             )
 
+    def test_pir_error(self):
+        with paddle.pir_utils.IrGuard():
+            self.assertRaises(TypeError, paddle.randint, 5, shape=np.array([2]))
+            self.assertRaises(TypeError, paddle.randint, 5, dtype='float32')
+            self.assertRaises(ValueError, paddle.randint, 5, 5)
+            self.assertRaises(ValueError, paddle.randint, -5)
+            self.assertRaises(TypeError, paddle.randint, 5, shape=['2'])
+
 
 class TestRandintOp_attr_tensorlist(OpTest):
     def setUp(self):
         self.op_type = "randint"
+        self.python_api = paddle.randint
         self.new_shape = (10000, 784)
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
@@ -85,7 +95,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -95,6 +105,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
 class TestRandint_attr_tensor(OpTest):
     def setUp(self):
         self.op_type = "randint"
+        self.python_api = paddle.randint
         self.inputs = {"ShapeTensor": np.array([10000, 784]).astype("int64")}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((10000, 784)).astype("int64")}
@@ -104,7 +115,7 @@ class TestRandint_attr_tensor(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))

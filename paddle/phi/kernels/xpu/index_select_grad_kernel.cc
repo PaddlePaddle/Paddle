@@ -45,8 +45,8 @@ void IndexSelectGradKernel(const Context& ctx,
   T* x_grad_data = ctx.template Alloc<T>(x_grad);
   const T* out_grad_data = out_grad.data<T>();
 
-  auto out_grad_shape = phi::vectorize<int64_t>(out_grad.dims());
-  auto x_grad_shape = phi::vectorize<int64_t>(x_grad->dims());
+  auto out_grad_shape = common::vectorize<int64_t>(out_grad.dims());
+  auto x_grad_shape = common::vectorize<int64_t>(x_grad->dims());
 
   int r = xpu::Error_t::SUCCESS;
   if (index_type == phi::DataType::INT32) {

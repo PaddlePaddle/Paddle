@@ -32,6 +32,7 @@
 
 PD_DECLARE_string(cinn_nvcc_cmd_path);
 PD_DECLARE_bool(nvrtc_compile_to_cubin);
+PD_DECLARE_bool(cinn_nvrtc_cubin_with_fmad);
 
 namespace cinn {
 namespace backends {
@@ -106,6 +107,9 @@ std::string Compiler::CompileCudaSource(const std::string& code,
   }
   if (compile_to_cubin_) {
     compile_options.push_back("-arch=sm_" + cc);
+    std::string enable_fmad =
+        FLAGS_cinn_nvrtc_cubin_with_fmad ? "true" : "false";
+    compile_options.push_back("--fmad=" + enable_fmad);
   } else {
     compile_options.push_back("-arch=compute_" + cc);
   }
@@ -145,7 +149,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     std::string log;
     log.resize(log_size);
     NVRTC_CALL(nvrtcGetProgramLog(prog, &log[0]));
-    CHECK_EQ(compile_res, NVRTC_SUCCESS) << log;
+    CHECK_EQ(compile_res, NVRTC_SUCCESS) << log << "\nThe code is:\n" << code;
   }
 
   size_t size;
@@ -171,8 +175,8 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
     CHECK(mkdir(dir.c_str(), 7) != -1) << "Fail to mkdir " << dir;
   }
 
-  // get unqiue prefix name
-  prefix_name_ = dir + "/" + common::UniqName("rtc_tmp");
+  // get unique prefix name
+  prefix_name_ = dir + "/" + cinn::common::UniqName("rtc_tmp");
 
   auto cuda_c_file = prefix_name_ + ".cu";
   std::ofstream ofs(cuda_c_file, std::ios::out);
@@ -190,7 +194,7 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
 // std::ios::in); }
 
 void Compiler::CompileToPtx() {
-  auto include_dir = common::Context::Global().runtime_include_dir();
+  auto include_dir = cinn::common::Context::Global().runtime_include_dir();
   std::string include_dir_str = "";
   for (auto dir : include_dir) {
     if (include_dir_str.empty()) {

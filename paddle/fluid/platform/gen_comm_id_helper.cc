@@ -28,9 +28,9 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
-#include "paddle/phi/core/flags.h"
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/phi/backends/c_comm_lib.h"
 #endif
 
-PHI_DECLARE_int32(get_host_by_name_time);
+COMMON_DECLARE_int32(get_host_by_name_time);
 
 namespace paddle {
 namespace platform {
@@ -82,7 +82,7 @@ static int SocketSend(int fd, const char* buffer, int size) {
   int offset = 0;
   int bytes = 0;
   while (offset < size) {
-    bytes = send(fd, buffer + offset, size - offset, 0);
+    bytes = send(fd, buffer + offset, size - offset, 0);  // NOLINT
     if (bytes == -1) {
       if (errno != EINTR && errno != EWOULDBLOCK && errno != EAGAIN) {
         // send failed
@@ -100,7 +100,7 @@ static int SocketRecv(int fd, char* buffer, int size) {
   int offset = 0;
   int bytes = 0;
   while (offset < size) {
-    bytes = recv(fd, buffer + offset, size - offset, 0);
+    bytes = recv(fd, buffer + offset, size - offset, 0);  // NOLINT
     if (bytes == 0) {
       // closed by client, maybe probing alive client
       return 0;
@@ -321,7 +321,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
       VLOG(3) << "socket read failed with ret_val=" << ret_val;
       CloseSocket(sock);
     }
-    sock = -1;
+    sock = -1;  // NOLINT
     CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
     // unmatched link, retry after 80ms
     std::this_thread::sleep_for(std::chrono::milliseconds(80));
@@ -419,7 +419,7 @@ void SendBroadCastCommID(std::vector<std::string> servers,
 
   // connect with server
   std::vector<int> connects;
-  for (auto server : servers) {
+  for (auto const& server : servers) {
     VLOG(3) << "connecting endpoint: " << server;
     int conn = ConnectAddr(server, head);
     connects.push_back(conn);

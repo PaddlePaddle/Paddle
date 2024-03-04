@@ -34,14 +34,14 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
     auto label_dims = ctx->GetInputDim("Label");
     int rank = x_dims.size();
 
-    bool contain_unknown_dim = phi::contain_unknown_dim(x_dims) ||
-                               phi::contain_unknown_dim(label_dims);
+    bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                               common::contain_unknown_dim(label_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          phi::slice_ddim(x_dims, 0, rank - 1),
-          phi::slice_ddim(label_dims, 0, rank - 1),
+          common::slice_ddim(x_dims, 0, rank - 1),
+          common::slice_ddim(label_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) shall have the same shape "
               "except the last dimension. But received: the shape of Input(X) "
@@ -166,15 +166,15 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
             dy_dims.size(),
             label_dims.size()));
 
-    bool contain_unknown_dim =
-        phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(dy_dims);
+    bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                               common::contain_unknown_dim(dy_dims);
 
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          phi::slice_ddim(x_dims, 0, rank - 1),
-          phi::slice_ddim(dy_dims, 0, rank - 1),
+          common::slice_ddim(x_dims, 0, rank - 1),
+          common::slice_ddim(dy_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "The Input(X) and Input(Y@Grad) should have the same "
               "shape except the last dimension. but received: "
@@ -239,7 +239,7 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
               "represents the cross entropy loss.");
     AddAttr<bool>("soft_label",
                   "(bool, default false), a flag indicating whether to "
-                  "interpretant the given labels as soft labels.")
+                  "interpret the given labels as soft labels.")
         .SetDefault(false);
     AddAttr<int>("ignore_index",
                  "(int, default -100), Specifies a target value that is"
@@ -252,7 +252,7 @@ CrossEntropy Operator.
 The input 'X' and 'Label' will first be logically flattened to 2-D matrixs.
 The matrix's second dimension(row length) is as same as the original last
 dimension, and the first dimension(column length) is the product of all other
-original dimensions. Then the softmax computation will take palce on each raw
+original dimensions. Then the softmax computation will take place on each raw
 of flattened matrixs.
 
 It supports both standard cross-entropy and soft-label cross-entropy loss
@@ -268,10 +268,10 @@ computation.
 
                 $Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}$
 
-   Please make sure that in this case the summuation of each row of Label
+   Please make sure that in this case the summation of each row of Label
    equals one.
 
-3) One-hot cross-entropy with vecterized Input(Label):
+3) One-hot cross-entropy with vectorized Input(Label):
      As a special case of 2), when each row of Input(Label) has only one
      non-zero element (equals 1), soft-label cross-entropy degenerates to a
      one-hot cross-entropy with one-hot label representation.
@@ -321,9 +321,9 @@ class CrossEntropyOp2 : public CrossEntropyOpBase {
     OP_INOUT_CHECK(
         ctx->HasOutput("MatchX"), "Output", "MatchX", "CrossEntropyOp2");
     auto x_dims = ctx->GetInputDim("X");
-    auto x_dims_vec = phi::vectorize(x_dims);
+    auto x_dims_vec = common::vectorize(x_dims);
     x_dims_vec.push_back(0);
-    ctx->SetOutputDim("XShape", phi::make_ddim(x_dims_vec));
+    ctx->SetOutputDim("XShape", common::make_ddim(x_dims_vec));
     x_dims[x_dims.size() - 1] = 1;
     ctx->SetOutputDim("MatchX", x_dims);
     ctx->ShareLoD("X", /*->*/ "XShape");
@@ -387,7 +387,7 @@ Hard-label CrossEntropy Operator.
 The input 'X' and 'Label' will first be logically flattened to 2-D matrixs.
 The matrix's second dimension(row length) is as same as the original last
 dimension, and the first dimension(column length) is the product of all other
-original dimensions. Then the softmax computation will take palce on each raw
+original dimensions. Then the softmax computation will take place on each raw
 of flattened matrixs.
 
 Only support hard label.

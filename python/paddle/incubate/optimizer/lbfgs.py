@@ -57,15 +57,15 @@ class LBFGS(Optimizer):
             This parameter is required in dygraph mode. The default value is None.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
-            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_base_ParamAttr` already, \
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of \
             some derived class of ``GradientClipBase`` . There are three cliping strategies \
-            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` , \
-            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , \
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -227,10 +227,13 @@ class LBFGS(Optimizer):
         return loss, flat_grad
 
     def step(self, closure):
-        """Performs a single optimization step.
+        """
+        Performs a single optimization step.
+
         Args:
             closure (callable): A closure that reevaluates the model
                 and returns the loss.
+
         """
 
         with paddle.no_grad():

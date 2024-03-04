@@ -106,7 +106,7 @@ void FusedBatchNormAddActOp::InferShape(
 
   bool check = true;
   if ((!ctx->IsRuntime()) &&
-      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+      (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
     check = false;
   }
 
@@ -266,8 +266,6 @@ phi::KernelKey FusedBatchNormAddActGradOp::GetExpectedKernelType(
   }
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {

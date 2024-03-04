@@ -76,7 +76,7 @@ void IndexSampleInner(const Context &context,
     res[i] = v;
   }
 
-  auto ddim = phi::make_ddim({batch_size, index_length});
+  auto ddim = common::make_ddim({batch_size, index_length});
   context.template Alloc<T>(output);
   phi::TensorFromVector(res, context, output);
   output->Resize(ddim);

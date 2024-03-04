@@ -30,8 +30,7 @@ from paddle import base
 paddle.enable_static()
 
 # Fix seed for test
-base.default_startup_program().random_seed = 1
-base.default_main_program().random_seed = 1
+paddle.seed(1)
 
 
 def fake_ctr_reader():
@@ -200,9 +199,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                     fetch_list=[self.avg_cost.name],
                 )
                 loss_val = np.mean(loss_val)
-                message = "TEST ---> batch_idx: {} loss: {}\n".format(
-                    batch_idx, loss_val
-                )
+                message = f"TEST ---> batch_idx: {batch_idx} loss: {loss_val}\n"
                 fleet.util.print_on_rank(message, 0)
         except base.core.EOFException:
             self.test_reader.reset()
@@ -240,9 +237,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                     #       np.array(loss_val), mode="sum")
                     #   loss_all_trainer = fleet.util.all_gather(float(loss_val))
                     #   loss_val = float(reduce_output) / len(loss_all_trainer)
-                    message = "TRAIN ---> pass: {} loss: {}\n".format(
-                        epoch_id, loss_val
-                    )
+                    message = f"TRAIN ---> pass: {epoch_id} loss: {loss_val}\n"
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start

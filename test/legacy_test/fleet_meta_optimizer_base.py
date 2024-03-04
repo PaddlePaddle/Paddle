@@ -41,9 +41,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         startup_prog_op_types = [op.type for op in startup_prog_ops]
 
         print(
-            "=== debug program and ops in func [{}] ===".format(
-                inspect.stack()[1].function
-            )
+            f"=== debug program and ops in func [{inspect.stack()[1].function}] ==="
         )
         print(main_prog)
         print(main_prog_op_types)

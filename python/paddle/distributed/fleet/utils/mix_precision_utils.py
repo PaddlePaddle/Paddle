@@ -21,13 +21,15 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops, nn
 from paddle.base import framework
-from paddle.base.dygraph import base as imperative_base
-from paddle.base.dygraph import to_variable
+from paddle.base.dygraph import (
+    base as imperative_base,
+)
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
 )
 from paddle.framework import core
+from paddle.utils import deprecated
 
 
 class MixPrecisionLayer(nn.Layer):
@@ -45,7 +47,7 @@ class MixPrecisionLayer(nn.Layer):
                 param._register_grad_hook(self._update_main_grad_hook(param))
 
     def _update_main_grad_hook(self, param):
-        """Create the update_main_grad hook for backprop."""
+        """Create the update_main_grad hook for back-prop."""
 
         # Hook used for back-prop and grad-merge.
         @paddle.autograd.no_grad()
@@ -55,7 +57,7 @@ class MixPrecisionLayer(nn.Layer):
             ), "In main_grad node, param.grad should be None, but find param[{}] has grad.".format(
                 param.name
             )
-            if tmp_grad._is_initialized():
+            if tmp_grad is not None and tmp_grad._is_initialized():
                 # Some previous pylayer may return None, should check grad validation.
                 if param.main_grad is None:
                     param.main_grad = core.eager.Tensor(
@@ -67,7 +69,6 @@ class MixPrecisionLayer(nn.Layer):
                     param.main_grad.add_(tmp_grad)
 
                 tmp_grad._clear_data()
-            return None
 
         return param_hook
 
@@ -205,15 +206,15 @@ def unscale_method(self, optimizer):
         for group in optimizer._param_groups:
             for param in group['params']:
                 if param.main_grad is not None:
-                    assert param.main_grad.dtype == core.VarDesc.VarType.FP32
+                    assert param.main_grad.dtype == paddle.float32
                     param_grads.append(param.main_grad)
     else:
         for param in optimizer._parameter_list:
             if param.main_grad is not None:
-                assert param.main_grad.dtype == core.VarDesc.VarType.FP32
+                assert param.main_grad.dtype == paddle.float32
                 param_grads.append(param.main_grad)
 
-    temp_found_inf = to_variable(np.array([0]).astype(np.bool_))
+    temp_found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
     if len(param_grads):
         _legacy_C_ops.check_finite_and_unscale(
             param_grads,
@@ -233,6 +234,11 @@ def unscale_method(self, optimizer):
         self._found_inf = int(is_found_inf)
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.distributed_scaler",
+    level=1,
+)
 class MixPrecisionScaler:
     def __init__(self, scaler):
         self._inner_scaler = scaler

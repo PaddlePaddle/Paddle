@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 from typing import Set
 
@@ -26,6 +27,11 @@ from paddle.base.core import (
     PaddleInferTensor,
     PaddlePlace,
     convert_to_mixed_precision_bind,
+)
+from paddle.base.log_helper import get_logger
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 DataType = PaddleDType
@@ -96,6 +102,11 @@ def convert_to_mixed_precision(
         kwargs: Supported keys including 'white_list'.
             - white_list: Operators that do convert precision.
     '''
+    if backend is PlaceType.GPU and not core.is_compiled_with_cuda():
+        _logger.error(
+            "You should use PaddlePaddle compiled with GPU when backend set to PlaceType.GPU"
+        )
+
     mixed_model_dirname = os.path.dirname(mixed_model_file)
     # Support mixed_params_file is empty, because some models don't have params, but convert_to_mixed_precision will call
     # constant_folding_pass, it will generate a new params file to save persistable vars, which is saved in the same

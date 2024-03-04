@@ -17,7 +17,11 @@ import math
 
 import numpy as np
 
-from ...base.framework import default_main_program, in_dygraph_mode
+from ...base.framework import (
+    EagerParamBase,
+    default_main_program,
+    in_dygraph_mode,
+)
 from .lazy_init import lazy_init_helper
 
 __all__ = []
@@ -86,7 +90,11 @@ class Initializer:
         Returns:
             tuple of two integers (fan_in, fan_out).
         """
-        shape = var.shape
+        shape = (
+            var._local_shape
+            if (isinstance(var, EagerParamBase) and var.is_dist())
+            else var.shape
+        )
         if not shape or len(shape) == 0:
             fan_in = fan_out = 1
         elif len(shape) == 1:
@@ -160,7 +168,5 @@ def calculate_gain(nonlinearity, param=None):
         return recommended_gain[nonlinearity]
     else:
         raise ValueError(
-            "nonlinearity function {} is not suppported now.".format(
-                nonlinearity
-            )
+            f"nonlinearity function {nonlinearity} is not supported now."
         )

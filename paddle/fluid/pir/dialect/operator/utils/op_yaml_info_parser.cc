@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace dialect {
 
-OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple)
-    : op_info_tuple_(op_info_tuple) {
+OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple,
+                                   bool is_legacy_op)
+    : op_info_tuple_(op_info_tuple), is_legacy_op_(is_legacy_op) {
   parse();
 }
 
@@ -26,7 +28,7 @@ bool OpYamlInfoParser::IsTensorAttribute(size_t index) const {
   PADDLE_ENFORCE_LT(
       index,
       InputInfo().size(),
-      phi::errors::OutOfRange("Input index [%d] large than op input size [d]",
+      phi::errors::OutOfRange("Input index [%d] large than op input size [%d]",
                               index,
                               InputInfo().size()));
 
@@ -90,6 +92,26 @@ const std::map<std::string, uint32_t>& OpYamlInfoParser::InputName2Id() const {
 
 const std::map<std::string, uint32_t>& OpYamlInfoParser::OutputName2Id() const {
   return output_name2id_;
+}
+
+const std::string& OpYamlInfoParser::GetInputType(uint32_t input_id) const {
+  PADDLE_ENFORCE_EQ(input_id < input_name_list_.size(),
+                    true,
+                    phi::errors::NotFound("Exceeding maximum input id %d",
+                                          input_name_list_.size()));
+  std::string input_name = input_name_list_[input_id];
+  auto it = input_info_.find(input_name);
+  return it->second.type_name;
+}
+
+const std::string& OpYamlInfoParser::GetOutputType(uint32_t output_id) const {
+  PADDLE_ENFORCE_EQ(output_id < output_name_list_.size(),
+                    true,
+                    phi::errors::NotFound("Exceeding maximum output id %d",
+                                          output_name_list_.size()));
+  std::string output_name = output_name_list_[output_id];
+  auto it = output_info_.find(output_name);
+  return it->second.type_name;
 }
 
 const std::vector<uint32_t>& OpYamlInfoParser::NoNeedBufferIds() const {
@@ -190,7 +212,9 @@ void OpYamlInfoParser::parse() {
   }
 
   for (auto& name : runtime_info.kernel_param) {
-    if (input_name2id_.count(name) && !input_info_[name].is_mutable_attribute) {
+    if ((input_name2id_.count(name) &&
+         (!input_info_[name].is_mutable_attribute)) ||
+        (is_legacy_op_ && input_info_[name].is_mutable_attribute)) {
       kernel_fn_tensor_params_.push_back(name);
     } else {
       kernel_fn_attr_params_.push_back(name);
@@ -200,6 +224,18 @@ void OpYamlInfoParser::parse() {
 
 const std::string& OpYamlInfoParser::GetOriginOpName() const {
   return std::get<4>(op_info_tuple_);
+}
+
+int OpYamlInfoParser::GetTensorParamIndexByArgsName(
+    const std::string& args_name) const {
+  const auto& iter = std::find(kernel_fn_tensor_params_.begin(),
+                               kernel_fn_tensor_params_.end(),
+                               args_name);
+  if (iter != kernel_fn_tensor_params_.end()) {
+    return std::distance(kernel_fn_tensor_params_.begin(), iter);  // NOLINT
+  } else {
+    return -1;
+  }
 }
 
 }  // namespace dialect

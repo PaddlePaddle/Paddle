@@ -259,7 +259,7 @@ inline const nvinfer1::IDimensionExpr* CalcOutputSize(
   return output_size;
 }
 
-nvinfer1::DimsExprs UnflodInferMeta(
+nvinfer1::DimsExprs UnfoldInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
     int nb_inputs,
@@ -586,7 +586,7 @@ inline ExprWrapper ConvOutputSize(ExprWrapper ih,
   return oh;
 }
 
-nvinfer1::DimsExprs Conv2dFusionInferMeta(
+nvinfer1::DimsExprs FusedConv2dAddActInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
     int nb_inputs,
@@ -829,22 +829,73 @@ nvinfer1::DimsExprs PadInferMeta(
   return output;
 }
 
+nvinfer1::DimsExprs ScatterInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      3,
+      phi::errors::InvalidArgument("inputs of scatter should be equal to 3, "
+                                   "But received (%s)",
+                                   nb_inputs));
+  const nvinfer1::DimsExprs ref_dims = inputs[0];
+  return ref_dims;
+}
+
+nvinfer1::DimsExprs ArgsortInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  const nvinfer1::DimsExprs input_dims = inputs[0];
+  nvinfer1::DimsExprs output;
+  output.nbDims = input_dims.nbDims;
+  for (int i = 0; i < input_dims.nbDims; ++i) {
+    output.d[i] = input_dims.d[i];
+  }
+  return output;
+}
+
+nvinfer1::DimsExprs SolveInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      2,
+      phi::errors::InvalidArgument("inputs of solve should be equal to 2, "
+                                   "But received (%s)",
+                                   nb_inputs));
+  const nvinfer1::DimsExprs ref_dims = inputs[1];
+  return ref_dims;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
-PD_REGISTER_DYNAMIC_INFER_META_FN(unfold, UnflodInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(unfold, UnfoldInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter_nd_add, ScatterNdAddInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
-PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_fusion, Conv2dFusionInferMeta);
-PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d, Conv2dFusionInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(fused_conv2d_add_act,
+                                  FusedConv2dAddActInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d, FusedConv2dAddActInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_transpose, Conv2dTransposeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(memory_efficient_attention,
                                   MemoryEfficientAttentionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(argsort, ArgsortInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(scatter, ScatterInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(solve, SolveInferMeta);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

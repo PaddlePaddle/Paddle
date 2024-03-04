@@ -16,7 +16,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 
@@ -32,7 +36,7 @@ def unsupport_func(x):
     return paddle.to_tensor(t)
 
 
-class SuppportNet(paddle.nn.Layer):
+class SupportNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -40,7 +44,7 @@ class SuppportNet(paddle.nn.Layer):
         return support_func(x)
 
 
-class UnsuppportNet(paddle.nn.Layer):
+class UnsupportNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -51,13 +55,14 @@ class UnsuppportNet(paddle.nn.Layer):
             return unsupport_func(x - 1)
 
 
-class TestFallback(unittest.TestCase):
+class TestFallback(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.to_tensor([2]).astype('int')
 
     def tearDown(self):
         pass
 
+    @test_legacy_and_pt_and_pir
     def test_case_support(self):
         output = paddle.jit.to_static(support_func)(self.x)
         np.testing.assert_allclose(output.numpy(), 4)
@@ -71,8 +76,8 @@ class TestFallback(unittest.TestCase):
         np.testing.assert_allclose(output.numpy(), unsupport_func(self.x))
 
     def test_case_net_fallback(self):
-        s_net = SuppportNet()
-        u_net = UnsuppportNet()
+        s_net = SupportNet()
+        u_net = UnsupportNet()
         np.testing.assert_allclose(
             paddle.jit.to_static(s_net)(self.x).numpy(), 4
         )
@@ -85,10 +90,10 @@ class TestFallback(unittest.TestCase):
             u_net(self.x).numpy(),
         )
 
-    @ast_only_test
+    @test_ast_only
     def test_case_net_error(self):
-        s_net = SuppportNet()
-        u_net = UnsuppportNet()
+        s_net = SupportNet()
+        u_net = UnsupportNet()
         np.testing.assert_allclose(
             paddle.jit.to_static(s_net)(self.x).numpy(), 4
         )
@@ -106,7 +111,7 @@ class TestFallback(unittest.TestCase):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.build_cinn_pass = True
         u_net = paddle.jit.to_static(
-            UnsuppportNet(), build_strategy=build_strategy
+            UnsupportNet(), build_strategy=build_strategy
         )
         u_net.eval()
         np.testing.assert_allclose(u_net(self.x).numpy(), [1, 1])
@@ -116,7 +121,8 @@ class TestFallback(unittest.TestCase):
         """
         test the save will raise error.
         """
-        u_net = UnsuppportNet()
+        # TODO(pir-save-load): Open this case after pir support save and load.
+        u_net = UnsupportNet()
         u_net = paddle.jit.to_static(
             u_net, input_spec=[paddle.static.InputSpec(name='x', shape=[1])]
         )
@@ -127,7 +133,7 @@ class TestFallback(unittest.TestCase):
         """
         test the save will raise error.
         """
-        u_net = UnsuppportNet()
+        u_net = UnsupportNet()
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.build_cinn_pass = True
         u_net = paddle.jit.to_static(u_net, build_strategy=build_strategy)

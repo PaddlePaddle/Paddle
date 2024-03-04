@@ -40,13 +40,14 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include "paddle/common/flags.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -60,7 +61,7 @@ namespace phi {
 class KernelContext;
 }
 
-PHI_DECLARE_int32(inner_op_parallelism);
+COMMON_DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
 namespace framework {
@@ -102,7 +103,7 @@ constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 /// TODO(luotao): Note that this temporal attribute would be deleted after all
 /// ops contain it.
 constexpr char kAllKernelsMustComputeRuntimeShape[] =
-    "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@";
+    "ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE";
 
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
@@ -232,6 +233,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   std::vector<DDim> GetOutputsDim(const std::string& name) const;
 
+  bool HasRuntimeAttributes() const;
+
  protected:
   DDim GetDim(Variable* var) const;
 
@@ -268,7 +271,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  * should always construct a proto message OpDesc and call
  * OpRegistry::CreateOp(op_desc) to get an Operator instance.
  */
-class OperatorBase {
+class TEST_API OperatorBase {
  public:
   OperatorBase(const std::string& type,
                const VariableNameMap& inputs,
@@ -375,7 +378,10 @@ class OperatorBase {
 
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
-    hookfuncs_ = hookfuncs;
+    output_hookfuncs_ = hookfuncs;
+  }
+  void SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
+    input_hookfuncs_ = hookfuncs;
   }
 
  protected:
@@ -406,7 +412,8 @@ class OperatorBase {
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
 
-  std::vector<HookFunc> hookfuncs_;
+  std::vector<HookFunc> output_hookfuncs_;
+  std::vector<HookFunc> input_hookfuncs_;
 
  private:
   void GenerateTemporaryNames();
@@ -766,6 +773,8 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
+
+  bool SupportsCPUBF16() const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        phi::DataType data_type) const;

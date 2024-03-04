@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -182,8 +182,8 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
     int out2_w = (out1_w + padding2 * 2 - filter2_size) / stride2 + 1;
     std::vector<int> out2_shape = {batch, output2_channel, out2_h, out2_w};
 
-    auto y_dims = phi::make_ddim(out2_shape);
-    auto conv1_dims = phi::make_ddim(out1_shape);
+    auto y_dims = common::make_ddim(out2_shape);
+    auto conv1_dims = common::make_ddim(out1_shape);
     ctx->SetOutputDim("Y", y_dims);
     ctx->SetOutputDim("Conv1", conv1_dims);
     ctx->SetOutputDim("SavedMean1", bn1_param_dims);
@@ -206,7 +206,7 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
 
     bool find_max = ctx->Attrs().Get<bool>("find_conv_input_max");
     if (find_max) {
-      auto max_dims = phi::make_ddim({6});
+      auto max_dims = common::make_ddim({6});
       ctx->SetOutputDim("MaxInput1", max_dims);
       ctx->SetOutputDim("MaxFilter1", max_dims);
       ctx->SetOutputDim("MaxInput2", max_dims);

@@ -17,6 +17,19 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
+bool AddNCheckIfOneDNNSupport(const KernelContext* ctx) {
+  for (size_t i = 0; i < ctx->InputsSize(); i++) {
+    if (!DenseTensor::classof(ctx->MutableIutputAt(i))) {
+      return false;
+    }
+  }
+  KernelContext* ctx_tmp = const_cast<KernelContext*>(ctx);
+  if (!DenseTensor::classof(ctx_tmp->MutableOutputAt(0))) {
+    return false;
+  }
+  return true;
+}
+
 namespace funcs {
 template <typename T>
 class SumOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
@@ -28,7 +41,7 @@ class SumOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
 
       : OneDNNHandlerNoCachingT<T, dnnl::sum>(engine, cpu_place),
         num_inputs_(0) {
-    auto dst_tz = vectorize<int64_t>(out->dims());
+    auto dst_tz = common::vectorize<int64_t>(out->dims());
     auto src_tz = dst_tz;
 
     std::vector<dnnl::memory::desc> srcs_md;
@@ -122,4 +135,6 @@ void AddNKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    add_n, OneDNN, ONEDNN, phi::AddNKernel, float, phi::dtype::bfloat16) {}
+    add_n, OneDNN, ONEDNN, phi::AddNKernel, float, phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::AddNCheckIfOneDNNSupport;
+}

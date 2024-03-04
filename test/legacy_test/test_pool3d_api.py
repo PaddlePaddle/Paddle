@@ -25,6 +25,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.nn.functional import avg_pool3d, max_pool3d
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestPool3D_API(unittest.TestCase):
@@ -34,8 +35,11 @@ class TestPool3D_API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_avg_static_results(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32, 32], dtype="float32"
             )
@@ -50,9 +54,8 @@ class TestPool3D_API(unittest.TestCase):
                 pool_type='avg',
             )
 
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -61,7 +64,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_avg_dygraph_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             result = avg_pool3d(input, kernel_size=2, stride=2, padding="SAME")
 
             result_np = pool3D_forward_naive(
@@ -84,7 +87,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_avg_dygraph_padding_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             result = avg_pool3d(
                 input,
                 kernel_size=2,
@@ -118,7 +121,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_avg_dygraph_ceilmode_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             result = avg_pool3d(
                 input, kernel_size=2, stride=2, padding=0, ceil_mode=True
             )
@@ -139,8 +142,11 @@ class TestPool3D_API(unittest.TestCase):
             result = avg_pool3d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+    @test_with_pir_api
     def check_max_static_results(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32, 32], dtype="float32"
             )
@@ -155,9 +161,8 @@ class TestPool3D_API(unittest.TestCase):
                 pool_type='max',
             )
 
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -166,7 +171,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_max_dygraph_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             result = max_pool3d(input, kernel_size=2, stride=2, padding=0)
 
             result_np = pool3D_forward_naive(
@@ -187,9 +192,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_max_dygraph_ndhwc_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(
-                np.transpose(input_np, [0, 2, 3, 4, 1])
-            )
+            input = paddle.to_tensor(np.transpose(input_np, [0, 2, 3, 4, 1]))
             result = max_pool3d(
                 input,
                 kernel_size=2,
@@ -216,7 +219,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_max_dygraph_ceilmode_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             result = max_pool3d(
                 input, kernel_size=2, stride=2, padding=0, ceil_mode=True
             )
@@ -240,7 +243,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_max_dygraph_padding_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             result = max_pool3d(
                 input, kernel_size=2, stride=2, padding=1, ceil_mode=False
             )
@@ -264,7 +267,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_max_dygraph_stride_is_none(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             result, indices = max_pool3d(
                 input,
                 kernel_size=2,
@@ -292,7 +295,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_max_dygraph_padding(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             padding = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
             result = max_pool3d(input, kernel_size=2, stride=2, padding=padding)
 
@@ -318,7 +321,7 @@ class TestPool3D_API(unittest.TestCase):
     def check_avg_divisor(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             padding = 0
             result = avg_pool3d(
                 input,
@@ -366,6 +369,7 @@ class TestPool3D_API(unittest.TestCase):
             self.check_max_dygraph_ndhwc_results(place)
             self.check_max_dygraph_ceilmode_results(place)
 
+    @test_with_pir_api
     def test_static_fp16_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
@@ -384,7 +388,6 @@ class TestPool3D_API(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 res = exe.run(
-                    paddle.static.default_main_program(),
                     feed={
                         "x": input,
                     },
@@ -393,6 +396,7 @@ class TestPool3D_API(unittest.TestCase):
 
                 np.testing.assert_array_equal(res[0].shape, [1, 2, 1, 16, 16])
 
+    @test_with_pir_api
     def test_static_bf16_gpu(self):
         paddle.enable_static()
         if (
@@ -414,7 +418,6 @@ class TestPool3D_API(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 res = exe.run(
-                    paddle.static.default_main_program(),
                     feed={
                         "x": input,
                     },
@@ -431,7 +434,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 padding = [[0, 1], [0, 0], [0, 0], [0, 0], [0, 0]]
                 res_pd = avg_pool3d(
                     input_pd, kernel_size=2, stride=2, padding=padding
@@ -444,7 +447,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 padding = [[0, 1], [0, 0], [0, 0], [0, 0], [0, 0]]
                 res_pd = avg_pool3d(
                     input_pd,
@@ -461,7 +464,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 padding = [[0, 1], [0, 0], [0, 0], [0, 0], [0, 0]]
                 res_pd = avg_pool3d(
                     input_pd,
@@ -478,7 +481,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 res_pd = avg_pool3d(
                     input_pd,
                     kernel_size=2,
@@ -494,7 +497,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 res_pd = max_pool3d(
                     input_pd,
                     kernel_size=2,
@@ -510,7 +513,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 res_pd = avg_pool3d(
                     input_pd,
                     kernel_size=2,
@@ -526,7 +529,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 res_pd = max_pool3d(
                     input_pd,
                     kernel_size=2,
@@ -542,7 +545,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 res_pd = avg_pool3d(
                     input_pd,
                     kernel_size=2,
@@ -559,7 +562,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 res_pd = max_pool3d(
                     input_pd,
                     kernel_size=2,
@@ -576,7 +579,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 res_pd = max_pool3d(
                     input_pd,
                     kernel_size=2,
@@ -593,7 +596,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 res_pd = avg_pool3d(
                     input_pd,
                     kernel_size=-1,
@@ -609,7 +612,7 @@ class TestPool3DError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = base.dygraph.to_variable(input_np)
+                input_pd = paddle.to_tensor(input_np)
                 res_pd = avg_pool3d(
                     input_pd,
                     kernel_size=2,

@@ -23,7 +23,7 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 /**
- * A **hack** rule with a strong assumtion that the first dimension of
+ * A **hack** rule with a strong assumption that the first dimension of
  * all the input and ouput tensors is the batch dimension (broadcast dimension),
  * therefore, if any tensor's first dimension is sharded, the sharding would be
  * propagating to all the other tensors (for tensor first dimension). All the
@@ -34,31 +34,30 @@ namespace distributed {
  * once there is a specific rule for that op,  we should remove that op from
  * this rule.
  *
- * Vector of input tensors and output tensors used as argumnets (for both
+ * Vector of input tensors and output tensors used as arguments (for both
  * inferfw & inferbw) to support any kind of op.
  *
  */
-SpmdInfo DefaultDataParallelSpmdInferForward(
+SpmdInfo DefaultDataParallelInferSpmd(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
 
-SpmdInfo DefaultDataParallelSpmdInferBackward(
+SpmdInfo DefaultDataParallelInferSpmdReverse(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
 
 // For phi api
 template <typename... Args>
-SpmdInfo PhiDefaultDataParallelSpmdInferForward(const Args&... args) {
-  return detail::PhiSpmdVariadicArgumentParser<
-             DefaultDataParallelSpmdInferForward>()
+SpmdInfo VariadicDefaultDataParallelInferSpmd(const Args&... args) {
+  return detail::VariadicSpmdRuleArgumentParser<DefaultDataParallelInferSpmd>()
       .apply(args...)
       .InferForward();
 }
 
 template <typename... Args>
-SpmdInfo PhiDefaultDataParallelSpmdInferBackward(const Args&... args) {
-  return detail::PhiSpmdVariadicArgumentParser<
-             DefaultDataParallelSpmdInferBackward>()
+SpmdInfo VariadicDefaultDataParallelInferSpmdReverse(const Args&... args) {
+  return detail::VariadicSpmdRuleArgumentParser<
+             DefaultDataParallelInferSpmdReverse>()
       .apply(args...)
       .InferBackward();
 }

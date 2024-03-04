@@ -40,9 +40,9 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
                           table_dims.size(),
                           table_dims));
 
-    auto output_dims = phi::vectorize(ids_dims);
+    auto output_dims = common::vectorize(ids_dims);
     output_dims.push_back(table_dims[1]);
-    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Out")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
@@ -87,6 +87,10 @@ class CEmbeddingOpMaker : public framework::OpProtoAndCheckerMaker {
                      "(int64, default 0), The starting index is indeed, "
                      "and the out-of-bounds will be set to 0 ")
         .SetDefault(0);
+    AddAttr<int64_t>("vocab_size",
+                     "(int64, default -1), The total vocabulary size to check"
+                     "the out-of-bounds ids. If it is -1, no check will be ")
+        .SetDefault(-1);
     AddComment(R"DOC(
 c_embedding Operator.
 

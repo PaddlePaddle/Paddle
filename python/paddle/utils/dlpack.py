@@ -53,7 +53,7 @@ def to_dlpack(x):
         if not isinstance(x, (paddle.Tensor, paddle.base.core.eager.Tensor)):
             raise TypeError(
                 "The type of 'x' in to_dlpack must be paddle.Tensor,"
-                " but received {}.".format(type(x))
+                f" but received {type(x)}."
             )
 
         return x.value().get_tensor()._to_dlpack()
@@ -94,7 +94,7 @@ def from_dlpack(dlpack):
     if not dlpack_flag:
         raise TypeError(
             "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
-            " but received {}.".format(type(dlpack))
+            f" but received {type(dlpack)}."
         )
 
     if in_dygraph_mode():

@@ -13,6 +13,7 @@
 # limitations under the License
 
 import copy
+from collections import defaultdict
 
 import paddle
 from paddle.distributed.auto_parallel.static.dist_context import (
@@ -65,8 +66,11 @@ class Partitioner:
 
         self._dist_context = dist_context
         self._rank_id = rank_id
-        self._serial2dist_varname_mapping = {}
+        self._serial2dist_varname_mapping = defaultdict(
+            dict
+        )  # blockid -> serial_varname -> dist_varname
         self._dist_varname_suffix = ""
+        self._forward_op_id2forward_op = {}
 
     def partition(
         self, serial_main_program, serial_startup_program, params_grads
@@ -119,6 +123,9 @@ class Partitioner:
             )
 
         partitioned_startup_prog = paddle.framework.Program()
+        partitioned_startup_prog._name_generator = (
+            serial_startup_program._name_generator.clone()
+        )
         ref_block = serial_main_program.global_block()
         target_block = partitioned_startup_prog.global_block()
         var2shape = {}
@@ -140,14 +147,10 @@ class Partitioner:
             output_vars = op.desc.output_arg_names()
             assert (
                 len(output_vars) == 1
-            ), "initializer should output only ONE variable, but got [{}]".format(
-                str(op.desc)
-            )
+            ), f"initializer should output only ONE variable, but got [{str(op.desc)}]"
             assert (
                 temp_varname_map[output_vars[0]] in var2shape
-            ), "try to initialize [{}] which is not a persistable var".format(
-                output_vars[0]
-            )
+            ), f"try to initialize [{output_vars[0]}] which is not a persistable var"
             new_op_desc = target_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
             new_op_desc._rename_output(
@@ -158,7 +161,7 @@ class Partitioner:
             )
             target_block._sync_with_cpp()
 
-            # set distribute atrribute
+            # set distribute attribute
             new_op = target_block.ops[-1]
             assert new_op.type == new_op_desc.type()
             assert new_op.desc == new_op_desc
@@ -185,6 +188,9 @@ class Partitioner:
         """
 
         partitioned_main_prog = paddle.framework.Program()
+        partitioned_main_prog._name_generator = (
+            serial_main_program._name_generator.clone()
+        )
         dist_op_context = self._dist_context.dist_op_context
         dist_op_context.dst_main_program = partitioned_main_prog
 
@@ -217,14 +223,16 @@ class Partitioner:
 
         partitioned_params_and_grads = []
         for p, g in params_and_grads:
-            assert p.name in self._serial2dist_varname_mapping
-            dist_p = self._get_dist_var_by_serial_var(p, partitioned_main_prog)
+            assert p.name in self._serial2dist_varname_mapping[0]
+            dist_p = self._get_dist_var_by_serial_var(
+                p, partitioned_main_prog, 0
+            )
             if g is None:
                 dist_g = None
             else:
-                assert g.name in self._serial2dist_varname_mapping
+                assert g.name in self._serial2dist_varname_mapping[0]
                 dist_g = self._get_dist_var_by_serial_var(
-                    g, partitioned_main_prog
+                    g, partitioned_main_prog, 0
                 )
             partitioned_params_and_grads.append((dist_p, dist_g))
 
@@ -232,7 +240,6 @@ class Partitioner:
 
     def partition_block(self, ref_block, target_block):
         dist_op_context = self._dist_context.dist_op_context
-        serial_ops = ref_block.ops
 
         last_fwd_op_idx = -1
         for idx, op in enumerate(ref_block.ops):
@@ -243,21 +250,19 @@ class Partitioner:
         if last_fwd_op_idx == -1:
             last_fwd_op_idx = len(ref_block.ops)
 
-        # init mapping
-        forward_op_id2forward_op = {}
-        for idx in range(len(serial_ops)):
+        for idx in range(len(ref_block.ops)):
             if idx <= last_fwd_op_idx:
-                forward_op_id2forward_op[
-                    serial_ops[idx].desc.original_id()
-                ] = serial_ops[idx]
+                self._forward_op_id2forward_op[
+                    ref_block.ops[idx].desc.original_id()
+                ] = ref_block.ops[idx]
 
         # partition
         appended_grad_times = 0
-        for idx, op in enumerate(serial_ops):
+        for idx, op in enumerate(ref_block.ops):
             op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             if is_backward_op(op) and (
-                is_forward_op(serial_ops[idx - 1])
-                or is_loss_op(serial_ops[idx - 1])
+                is_forward_op(ref_block.ops[idx - 1])
+                or is_loss_op(ref_block.ops[idx - 1])
             ):
                 if not op_dist_attr.is_recompute:
                     appended_grad_times += 1
@@ -266,7 +271,11 @@ class Partitioner:
             for serial_input_varname in op.desc.input_arg_names():
                 if (
                     serial_input_varname
-                    not in self._serial2dist_varname_mapping
+                    not in self._serial2dist_varname_mapping[
+                        ref_block.forward_block_idx
+                    ]
+                    or serial_input_varname
+                    not in self._serial2dist_varname_mapping[ref_block.idx]
                 ):
                     new_varname = (
                         serial_input_varname + self._dist_varname_suffix
@@ -279,13 +288,7 @@ class Partitioner:
                             serial_input_varname,
                             new_varname,
                         )
-                    else:
-                        for varname_not_in_block in __varname_not_in_block__:
-                            assert (
-                                varname_not_in_block in serial_input_varname
-                            ), f"{serial_input_varname} is not found"
-
-                    self._serial2dist_varname_mapping[
+                    self._serial2dist_varname_mapping[ref_block.idx][
                         serial_input_varname
                     ] = new_varname
 
@@ -293,19 +296,24 @@ class Partitioner:
             for serial_output_varname in op.desc.output_arg_names():
                 if (
                     serial_output_varname
-                    not in self._serial2dist_varname_mapping
+                    not in self._serial2dist_varname_mapping[
+                        ref_block.forward_block_idx
+                    ]
+                    or serial_output_varname
+                    not in self._serial2dist_varname_mapping[ref_block.idx]
                 ):
                     new_varname = (
                         serial_output_varname + self._dist_varname_suffix
                     )
-                    _partition_var(
-                        self._dist_context,
-                        ref_block,
-                        target_block,
-                        serial_output_varname,
-                        new_varname,
-                    )
-                    self._serial2dist_varname_mapping[
+                    if ref_block.has_var(serial_output_varname):
+                        _partition_var(
+                            self._dist_context,
+                            ref_block,
+                            target_block,
+                            serial_output_varname,
+                            new_varname,
+                        )
+                    self._serial2dist_varname_mapping[ref_block.idx][
                         serial_output_varname
                     ] = new_varname
 
@@ -322,7 +330,7 @@ class Partitioner:
             elif is_backward_op(op):
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_backward_impl = _get_dist_op_backward_implement(
-                    op, self._dist_context, forward_op_id2forward_op
+                    op, self._dist_context, self._forward_op_id2forward_op
                 )
                 grad_var_to_var = (
                     self._dist_context.dist_op_context.grad_var_to_var[
@@ -339,7 +347,7 @@ class Partitioner:
                 # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must be 2 because of 1F1B PASS
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_opt_impl = _get_dist_op_backward_implement(
-                    op, self._dist_context, forward_op_id2forward_op
+                    op, self._dist_context, self._forward_op_id2forward_op
                 )
                 dist_op_opt_impl.backward(
                     self._dist_context,
@@ -349,9 +357,7 @@ class Partitioner:
                 )
             else:
                 raise NotImplementedError(
-                    "partitioner only support forward and backward, optimize ops, but got {}".format(
-                        str(op)
-                    )
+                    f"partitioner only support forward and backward, optimize ops, but got {str(op)}"
                 )
 
     def _is_valid_annotated_program(self, program):
@@ -376,10 +382,14 @@ class Partitioner:
 
         return all_ops_annotated and all_vars_annotated
 
-    def _get_dist_var_by_serial_var(self, serial_var, partitioned_main_prog):
+    def _get_dist_var_by_serial_var(
+        self, serial_var, partitioned_main_prog, block_id
+    ):
         block_idx = serial_var.block.idx
         target_block = partitioned_main_prog.blocks[block_idx]
-        dist_var_name = self._serial2dist_varname_mapping[serial_var.name]
+        dist_var_name = self._serial2dist_varname_mapping[block_id][
+            serial_var.name
+        ]
         assert target_block.has_var(dist_var_name)
         return target_block.var(dist_var_name)
 
@@ -393,9 +403,7 @@ def _get_dist_shape(var, dist_attr):
 
     assert len(var_shape) == len(
         mapping
-    ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
-        var_shape, mapping
-    )
+    ), f"variable shape [{var_shape}] and dim_mapping [{mapping}] is NOT match !"
     new_shape = []
     for idx in range(len(var_shape)):
         if var_shape[idx] == -1 or mapping[idx] == -1:

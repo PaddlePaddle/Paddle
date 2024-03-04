@@ -43,8 +43,9 @@ namespace backends {
  */
 class CompilationInfoDumper {
  public:
-  explicit CompilationInfoDumper(const hlir::framework::CompilationResult& info)
-      : info_(info) {
+  explicit CompilationInfoDumper(const hlir::framework::CompilationResult& info,
+                                 const int device_id)
+      : info_(info), device_id_(device_id) {
     DumpLoweredFunc();
     DumpSourceCode();
     DumpPtxCode();
@@ -52,14 +53,18 @@ class CompilationInfoDumper {
   }
 
   static void DumpLoweredFuncByGroupIndex(const ir::LoweredFunc& lowered_func,
-                                          const int gidx);
+                                          const int gidx,
+                                          const int device_id);
   static void DumpSourceCodeByGroupIndex(const std::string& source_code,
-                                         const int gidx);
+                                         const int gidx,
+                                         const int device_id);
   static void DumpPtxCodeByGroupIndex(const std::string& source_ptx,
-                                      const int gidx);
+                                      const int gidx,
+                                      const int device_id);
   static void DumpInstructionByGroupIndex(
       const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-      const int gidx);
+      const int gidx,
+      const int device_id);
 
  private:
   void DumpLoweredFunc();
@@ -68,10 +73,12 @@ class CompilationInfoDumper {
   void DumpInstruction();
   static void Dump(const std::string& base_path,
                    const int idx,
+                   const int device_id,
                    const std::string& file_name,
                    const std::string& content);
 
   const hlir::framework::CompilationResult& info_;
+  const int device_id_;
 };
 
 class SourceCodePrint {
@@ -114,6 +121,8 @@ class Compiler final {
    */
   void* Lookup(absl::string_view fn_name);
 
+  std::vector<void*> GetFnPtr() const { return fn_ptr_; }
+
  private:
   void CompileCudaModule(const ir::Module& module,
                          const std::string& code = "");
@@ -129,6 +138,7 @@ class Compiler final {
   Target target_;
   std::unique_ptr<ExecutionEngine> engine_;
 
+  std::vector<void*> fn_ptr_;
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
 #endif

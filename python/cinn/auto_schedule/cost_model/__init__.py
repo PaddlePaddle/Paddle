@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .cost_model import CostModel
-from .cost_model import CostModelType
+from .cost_model import CostModel, CostModelType
 from .xgb_cost_model import XgbCostModel
 
 __all__ = [

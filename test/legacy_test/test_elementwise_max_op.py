@@ -52,14 +52,20 @@ class TestElementwiseOp(OpTest):
         if hasattr(self, 'attrs'):
             if self.attrs['axis'] == -1:
                 self.check_grad(
-                    ['X', 'Y'], 'Out', check_dygraph=False, check_prim=True
+                    ['X', 'Y'],
+                    'Out',
+                    check_dygraph=False,
+                    check_prim=True,
+                    check_prim_pir=True,
                 )
             else:
                 self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_prim=True)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_prim=True, check_prim_pir=True
+            )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
             self.check_grad(
                 ['Y'],
@@ -75,9 +81,10 @@ class TestElementwiseOp(OpTest):
                 max_relative_error=0.005,
                 no_grad_set=set("X"),
                 check_prim=True,
+                check_prim_pir=True,
             )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
             self.check_grad(
                 ['X'],
@@ -93,6 +100,7 @@ class TestElementwiseOp(OpTest):
                 max_relative_error=0.005,
                 no_grad_set=set('Y'),
                 check_prim=True,
+                check_prim_pir=True,
             )
 
     def if_enbale_cinn(self):
@@ -161,7 +169,7 @@ class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseFP16Op):
         core.cudnn_version() < 8100
         or paddle.device.cuda.get_device_capability()[0] < 8
     ),
-    "run test when gpu is availble and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0.",
+    "run test when gpu is available and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0.",
 )
 class TestElementwiseBF16Op(OpTest):
     def init_data(self):
@@ -207,25 +215,31 @@ class TestElementwiseBF16Op(OpTest):
             )
         else:
             self.check_grad(
-                ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_prim=True
+                ['X', 'Y'],
+                'Out',
+                numeric_grad_delta=0.05,
+                check_prim=True,
+                check_prim_pir=True,
             )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
             numeric_grad_delta=0.05,
             no_grad_set=set("X"),
             check_prim=True,
+            check_prim_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
             numeric_grad_delta=0.05,
             no_grad_set=set('Y'),
             check_prim=True,
+            check_prim_pir=True,
         )
 
 

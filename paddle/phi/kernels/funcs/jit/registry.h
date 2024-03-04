@@ -19,8 +19,8 @@
 #include <type_traits>
 #include <utility>  // for std::move
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/jit/kernel_base.h"
 #include "paddle/phi/kernels/funcs/jit/kernel_pool.h"
 

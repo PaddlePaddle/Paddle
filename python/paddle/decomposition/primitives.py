@@ -12,58 +12,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.tensor import abs  # noqa: F401
-from paddle.tensor import acos  # noqa: F401
-from paddle.tensor import acosh  # noqa: F401
-from paddle.tensor import add  # noqa: F401
-from paddle.tensor import asin  # noqa: F401
-from paddle.tensor import asinh  # noqa: F401
-from paddle.tensor import atan  # noqa: F401
-from paddle.tensor import atanh  # noqa: F401
-from paddle.tensor import broadcast_shape  # noqa: F401
-from paddle.tensor import broadcast_to  # noqa: F401
-from paddle.tensor import concat  # noqa: F401
-from paddle.tensor import cos  # noqa: F401
-from paddle.tensor import cosh  # noqa: F401
-from paddle.tensor import cumprod  # noqa: F401
-from paddle.tensor import cumsum  # noqa: F401
-from paddle.tensor import digamma  # noqa: F401
-from paddle.tensor import divide  # noqa: F401
-from paddle.tensor import erf  # noqa: F401
-from paddle.tensor import erfinv  # noqa: F401
-from paddle.tensor import exp  # noqa: F401
-from paddle.tensor import expm1  # noqa: F401
-from paddle.tensor import fill_constant  # noqa: F401
-from paddle.tensor import full  # noqa: F401
-from paddle.tensor import gather  # noqa: F401
-from paddle.tensor import greater_equal  # noqa: F401
-from paddle.tensor import lgamma  # noqa: F401
-from paddle.tensor import log  # noqa: F401
-from paddle.tensor import log1p  # noqa: F401
-from paddle.tensor import logcumsumexp  # noqa: F401
-from paddle.tensor import logit  # noqa: F401
-from paddle.tensor import logsumexp  # noqa: F401
-from paddle.tensor import max  # noqa: F401
-from paddle.tensor import min  # noqa: F401
-from paddle.tensor import multiply  # noqa: F401
-from paddle.tensor import ones  # noqa: F401
-from paddle.tensor import pow  # noqa: F401
-from paddle.tensor import prod  # noqa: F401
-from paddle.tensor import reshape  # noqa: F401
-from paddle.tensor import rsqrt  # noqa: F401
-from paddle.tensor import sign  # noqa: F401
-from paddle.tensor import sin  # noqa: F401
-from paddle.tensor import sinh  # noqa: F401
-from paddle.tensor import sqrt  # noqa: F401
-from paddle.tensor import subtract  # noqa: F401
-from paddle.tensor import sum  # noqa: F401
-from paddle.tensor import tan  # noqa: F401
-from paddle.tensor import tanh  # noqa: F401
-from paddle.tensor import tile  # noqa: F401
-from paddle.tensor import uniform  # noqa: F401
-from paddle.tensor import zeros  # noqa: F401
-from paddle.tensor.creation import assign  # noqa: F401
-from paddle.tensor.creation import zeros_like  # noqa: F401
+from paddle.tensor import (  # noqa: F401
+    abs,
+    acos,
+    acosh,
+    add,
+    asin,
+    asinh,
+    atan,
+    atanh,
+    broadcast_shape,
+    broadcast_to,
+    concat,
+    cos,
+    cosh,
+    cumprod,
+    cumsum,
+    digamma,
+    divide,
+    erf,
+    erfinv,
+    exp,
+    expm1,
+    fill_constant,
+    full,
+    gather,
+    greater_equal,
+    lgamma,
+    log,
+    log1p,
+    logcumsumexp,
+    logit,
+    logsumexp,
+    max,
+    min,
+    multiply,
+    ones,
+    pow,
+    prod,
+    reshape,
+    rsqrt,
+    sign,
+    sin,
+    sinh,
+    sqrt,
+    subtract,
+    sum,
+    tan,
+    tanh,
+    tile,
+    uniform,
+    zeros,
+)
+from paddle.tensor.creation import assign, zeros_like  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
-from paddle.tensor.math import maximum  # noqa: F401
-from paddle.tensor.math import minimum  # noqa: F401
+from paddle.tensor.math import maximum, minimum  # noqa: F401

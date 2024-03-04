@@ -89,6 +89,7 @@ class TrtConvertIndexSelectTest(TrtLayerAutoScanTest):
                                         ),
                                     },
                                     outputs=["output_data"],
+                                    no_cast_list=["index_data"],
                                 )
 
                                 yield program_config

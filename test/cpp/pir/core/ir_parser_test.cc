@@ -21,15 +21,15 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_attribute_storage.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/parser/ir_parser.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/attribute_base.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute_storage.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/parser/ir_parser.h"
+#include "paddle/pir/include/core/utils.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
 using AttributeStorage = pir::AttributeStorage;
@@ -60,28 +60,50 @@ class ParserTest {
   explicit ParserTest(std::ifstream& test_text) : test_text(test_text) {}
   TestTask* GetTestTask();
   bool ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx);
+  std::string Peek(const size_t len);
+  std::string Get(const size_t len);
 };
 
 TestTask* ParserTest::GetTestTask() {
+  while (test_text.peek() == '\n' || test_text.peek() == ' ') {
+    test_text.get();
+  }
+
   if (test_text.peek() == EOF) {
     return nullptr;
   }
-  std::string test_info;
-  while (test_text.peek() != '/') {
+
+  while (Peek(7) != "//CHECK" && test_text.peek() != EOF) {
     test_text.get();
   }
-  while (test_text.peek() != ' ') {
+
+  while (test_text.peek() != ' ' && test_text.peek() != EOF) {
     test_text.get();
   }
+
   test_text.get();
+
   std::string test_type_info;
-  while (test_text.peek() != '\n') {
-    test_type_info += test_text.get();
+  while (test_text.peek() != '\n' && test_text.peek() != ' ' &&
+         test_text.peek() != EOF) {
+    test_type_info += test_text.get();  // NOLINT
   }
-  test_text.get();
-  while (test_text.peek() != '/' && test_text.peek() != EOF) {
-    test_info += test_text.get();
+
+  while (test_text.peek() == '\n' || test_text.peek() == ' ') {
+    test_text.get();
   }
+
+  std::string test_info;
+  while (Peek(5) != "//END" && test_text.peek() != EOF) {
+    test_info += test_text.get();  // NOLINT
+  }
+
+  if (Peek(5) != "//END" || static_cast<int>(test_info.size()) == 0) {
+    return nullptr;
+  }
+
+  Get(5);
+
   if (test_type_info == "attribute") {
     return new TestTask(AttributeTest, test_info);
   } else if (test_type_info == "type") {
@@ -89,6 +111,7 @@ TestTask* ParserTest::GetTestTask() {
   } else if (test_type_info == "program") {
     return new TestTask(ProgramTest, test_info);
   }
+
   return nullptr;
 }
 
@@ -135,15 +158,33 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx) {
   return true;
 }
 
+std::string ParserTest::Peek(const size_t len) {
+  std::string str;
+  auto pos = test_text.tellg();
+  str = Get(len);
+  if (test_text.eof()) {
+    test_text.clear();
+  }
+  test_text.seekg(pos);
+  return str;
+}
+
+std::string ParserTest::Get(const size_t len) {
+  std::string str;
+  for (size_t i = 0; i < len; i++) {
+    if (test_text.peek() == EOF) {
+      break;
+    }
+    str += test_text.get();  // NOLINT
+  }
+  return str;
+}
+
 TEST(IrParserTest, TestParserByFile) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-#ifdef _WIN32
   const std::string file_path = "TestParserText.txt";
-#else
-  const std::string file_path = "./pir/core/TestParserText.txt";
-#endif
   std::ifstream is(file_path);
   EXPECT_TRUE(is.is_open());
   ParserTest parser_test(is);

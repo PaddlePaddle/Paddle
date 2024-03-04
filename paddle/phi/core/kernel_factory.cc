@@ -15,8 +15,8 @@
 #include "paddle/phi/core/kernel_factory.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/flags.h"
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/common/data_type.h"
@@ -26,15 +26,14 @@
 #include "paddle/phi/backends/custom/custom_device_op_list.h"
 #endif
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
 PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
                          true,
                          "Whether to use strdie kernel if op support stride.");
 
-PD_DECLARE_int32(low_precision_op_list);
-PD_DECLARE_bool(enable_api_kernel_fallback);
+COMMON_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_bool(enable_api_kernel_fallback);
 PD_DECLARE_bool(run_kp_kernel);
 namespace phi {
 
@@ -63,9 +62,8 @@ KernelFactory& KernelFactory::Instance() {
 
 bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
   if (deprecated_op_names.find(op_type) == deprecated_op_names.end()) {
-    if (phi::OpUtilsMap::Instance().Contains(op_type)) {
-      return true;
-    } else if (kernels_.find(op_type) != kernels_.end()) {
+    if (phi::OpUtilsMap::Instance().Contains(op_type) ||
+        (kernels_.find(op_type) != kernels_.end())) {
       return true;
     }
   }
@@ -179,6 +177,22 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+    phi::KernelKey any_layout_kernel_key(
+        kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+    kernel_iter = iter->second.find(any_layout_kernel_key);
+  }
+
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+    kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                     phi::DataLayout::ALL_LAYOUT,
+                                     kernel_key.dtype()});
+  }
+#endif
+
   if (kernel_iter == iter->second.end()) {
     return false;
   }
@@ -527,7 +541,7 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   std::unordered_set<std::string> dtype_set;
 
   // Record all kernel information of kernel_name
-  for (auto iter : KernelFactory::Instance().kernels()[kernel_name]) {
+  for (auto const& iter : KernelFactory::Instance().kernels()[kernel_name]) {
     KernelKey kernel_key = iter.first;
     if (kernel_key.backend() == target_key.backend()) {
       support_backend = true;
@@ -539,7 +553,7 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
     backend_set.insert(
         paddle::experimental::BackendToString(kernel_key.backend()));
     all_kernel_key[paddle::experimental::BackendToString(kernel_key.backend()) +
-                   ", " + phi::DataLayoutToString(kernel_key.layout())]
+                   ", " + common::DataLayoutToString(kernel_key.layout())]
         .push_back(DataTypeToString(kernel_key.dtype()));
   }
   // 1. If target_key not supports target backend, output "Selected wrong

@@ -49,45 +49,57 @@ class RecomputeOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.base as base
-            import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            def gen_data():
-                return {"x": np.random.random(size=(32, 32)).astype('float32'),
-                "y": np.random.randint(2, size=(32, 1)).astype('int64')}
-            def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-                print(input_x)
-                fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
-                prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-                cost = paddle.nn.functional.cross_entropy(
-                    input=prediction, label=input_y,
-                    reduction='none', use_softmax=False
-                )
-                sum_cost = paddle.mean(cost)
-                return sum_cost, fc_1, prediction
-            input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-            input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
-            cost, fc_1, pred = mlp(input_x, input_y)
+            >>> def gen_data():
+            ...     return {"x": np.random.random(size=(32, 32)).astype('float32'),
+            ...     "y": np.random.randint(2, size=(32, 1)).astype('int64')}
+            >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+            ...     print(input_x)
+            ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+            ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
+            ...     cost = paddle.nn.functional.cross_entropy(
+            ...         input=prediction, label=input_y,
+            ...         reduction='none', use_softmax=False
+            ...     )
+            ...     sum_cost = paddle.mean(cost)
+            ...     return sum_cost, fc_1, prediction
+            >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+            >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+            >>> cost, fc_1, pred = mlp(input_x, input_y)
 
-            sgd = paddle.optimizer.Adam(learning_rate=0.01)
-            sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
-            sgd._set_checkpoints([fc_1, pred])
-            sgd.minimize(cost)
+            >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
+            >>> sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
+            >>> sgd._set_checkpoints([fc_1, pred])
+            >>> sgd.minimize(cost)
 
-            print("Finished optimize")
-            place = base.CPUPlace()
-            exe = base.Executor(place)
-            exe.run(base.default_startup_program())
-            step = 10
+            >>> print("Finished optimize")
+            Finished optimize
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> step = 10
 
-            for i in range(step):
-                cost_val = exe.run(feed=gen_data(),
-                       program=base.default_main_program(),
-                       fetch_list=[cost.name])
-                print("step=%d cost=%f" % (i, cost_val[0]))
+            >>> for i in range(step):
+            ...     cost_val = exe.run(feed=gen_data(),
+            ...             program=paddle.static.default_main_program(),
+            ...             fetch_list=[cost.name])
+            ...     print("step=%d cost=%f" % (i, cost_val[0]))
+            var x : LOD_TENSOR.shape(-1, 32).dtype(float32).stop_gradient(True)
+            Finished optimize
+            step=0 cost=0.737203
+            step=1 cost=1.308077
+            step=2 cost=0.768422
+            step=3 cost=1.239475
+            step=4 cost=0.882643
+            step=5 cost=0.738027
+            step=6 cost=0.819374
+            step=7 cost=0.818534
+            step=8 cost=0.753692
+            step=9 cost=0.787448
 
     """
 
@@ -109,8 +121,8 @@ class RecomputeOptimizer(Optimizer):
             checkpoints, list
         ), "_checkpoints should be a list of Variable or a list of String"
         for ckpt in checkpoints:
-            assert isinstance(ckpt, str) or isinstance(
-                ckpt, Variable
+            assert isinstance(
+                ckpt, (Variable, str)
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
@@ -132,33 +144,34 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
-                import paddle
-                import paddle.base as base
+                >>> import paddle
 
-                paddle.enable_static()
-                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-                    fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
-                    prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-                    cost = paddle.nn.functional.cross_entropy(
-                        input=prediction, label=input_y,
-                        reduction='none', use_softmax=False
-                    )
-                    sum_cost = paddle.mean(cost)
-                    return sum_cost, fc_1, prediction
+                >>> paddle.enable_static()
+                >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+                ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
+                ...     cost = paddle.nn.functional.cross_entropy(
+                ...         input=prediction, label=input_y,
+                ...         reduction='none', use_softmax=False
+                ...     )
+                ...     sum_cost = paddle.mean(cost)
+                ...     return sum_cost, fc_1, prediction
 
-                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
-                cost, fc_1, pred = mlp(input_x, input_y)
-                print("Finished FF")
+                >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+                >>> cost, fc_1, pred = mlp(input_x, input_y)
+                >>> print("Finished FF")
+                Finished FF
 
-                sgd = paddle.optimizer.Adam(learning_rate=0.01)
-                sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
-                sgd._set_checkpoints([fc_1, pred])
-                try:
-                    state_dict = {}
-                    sgd.load(state_dict)
-                except NotImplementedError as e:
-                    print(e)
+                >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
+                >>> sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
+                >>> sgd._set_checkpoints([fc_1, pred])
+                >>> try:
+                ...     state_dict = {}
+                ...     sgd.load(state_dict)
+                >>> except NotImplementedError as e:
+                ...     print(e)
+                load function is not supported by Recompute Optimizer for now
         """
         raise NotImplementedError(
             "load function is not supported by Recompute Optimizer for now"
@@ -177,47 +190,47 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
-                import paddle
-                import paddle.base as base
-                import paddle.base.framework as framework
+                >>> import paddle
+                >>> import paddle.base.framework as framework
 
-                paddle.enable_static()
+                >>> paddle.enable_static()
 
-                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-                    fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
-                    prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-                    cost = paddle.nn.functional.cross_entropy(
-                        input=prediction, label=input_y,
-                        reduction='none', use_softmax=False
-                    )
-                    sum_cost = paddle.mean(cost)
-                    return sum_cost, fc_1, prediction
+                >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+                ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
+                ...     cost = paddle.nn.functional.cross_entropy(
+                ...         input=prediction, label=input_y,
+                ...         reduction='none', use_softmax=False
+                ...     )
+                ...     sum_cost = paddle.mean(cost)
+                ...     return sum_cost, fc_1, prediction
 
+                >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+                >>> cost, fc_1, pred = mlp(input_x, input_y)
+                >>> print("Finished FF")
+                Finished FF
 
-                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
-                cost, fc_1, pred = mlp(input_x, input_y)
-                print("Finished FF")
+                >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
+                >>> sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
+                >>> sgd._set_checkpoints([fc_1, pred])
+                >>> params_grads = sgd.backward(
+                ...     cost,
+                ...     startup_program=None,
+                ...     parameter_list=None,
+                ...     no_grad_set=None)
 
-                sgd = paddle.optimizer.Adam(learning_rate=0.01)
-                sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
-                sgd._set_checkpoints([fc_1, pred])
-                params_grads = sgd.backward(
-                    cost,
-                    startup_program=None,
-                    parameter_list=None,
-                    no_grad_set=None)
+                >>> program = cost.block.program
+                >>> with framework.program_guard(program, None):
+                ...     optimize_ops = sgd.apply_gradients(params_grads)
 
-                program = cost.block.program
-                with framework.program_guard(program, None):
-                    optimize_ops = sgd.apply_gradients(params_grads)
-
-                print("Finished apply gradients")
+                >>> print("Finished apply gradients")
+                Finished apply gradients
         """
 
         return self._optimizer.apply_gradients(params_grads=params_grads)
 
-    def _creat_vars(self, varname):
+    def _create_vars(self, varname):
         pinned_var_name = unique_name.generate(varname + "@Pinned")
         fetched_var_name = unique_name.generate(varname + "@Fetch")
 
@@ -243,7 +256,7 @@ class RecomputeOptimizer(Optimizer):
         """
         add fill_constant_ops to the end of the prog
 
-        we should fill the pinned vars before runing the main_prog
+        we should fill the pinned vars before running the main_prog
         to instantiate their tensor hold_, which could tell us whether
         the host memory could hold all the checkpoints from all the
         GPU devices in this node.
@@ -274,8 +287,6 @@ class RecomputeOptimizer(Optimizer):
                 },
             )
 
-        return
-
     def _insert_async_memcpy_op(
         self, insert_idx, src_varname, dst_varname, op_role, dst_place_type
     ):
@@ -293,9 +304,7 @@ class RecomputeOptimizer(Optimizer):
     def _insert_fetch_op(self, idx, varname):
         assert (
             varname in self.checkpoint_name2pinned_name
-        ), "Try to fetch {} from Pinned Memory, but it is NOT a checkpoint".format(
-            varname
-        )
+        ), f"Try to fetch {varname} from Pinned Memory, but it is NOT a checkpoint"
 
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         fetch_varname = self.checkpoint_name2fetch_name[varname]
@@ -304,9 +313,7 @@ class RecomputeOptimizer(Optimizer):
     def _insert_offload_op(self, idx, varname):
         assert (
             varname in self.checkpoint_name2pinned_name
-        ), "Try to offload {} to Pinned Memory, but it is NOT a checkpoint".format(
-            varname
-        )
+        ), f"Try to offload {varname} to Pinned Memory, but it is NOT a checkpoint"
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 2)
 
@@ -352,30 +359,28 @@ class RecomputeOptimizer(Optimizer):
         for checkpoint_name in self.un_fetch_checkpoint_names:
             self.checkpoint_usage_count[checkpoint_name] = 0
 
-        self.bw_strart_op_idx = len(self.block.ops)
+        self.bw_start_op_idx = len(self.block.ops)
         for idx, op in enumerate(self.block.ops):
             if int(op.desc.attr("op_role")) == 1:
-                self.bw_strart_op_idx = idx
+                self.bw_start_op_idx = idx
                 break
 
-        assert self.bw_strart_op_idx < len(
+        assert self.bw_start_op_idx < len(
             self.block.ops
-        ), "Could NOT found backword op in prog"
+        ), "Could NOT found backward op in prog"
 
         # fetch second to last checkpoint at the beginning of BW
-        fetched_checkpoint_varname = self._record_fetch_op(
-            self.bw_strart_op_idx
-        )
+        fetched_checkpoint_varname = self._record_fetch_op(self.bw_start_op_idx)
         last_last_fetch_checkpoint = None
 
-        for i, op in enumerate(self.block.ops[self.bw_strart_op_idx :]):
-            idx = self.bw_strart_op_idx + i
+        for i, op in enumerate(self.block.ops[self.bw_start_op_idx :]):
+            idx = self.bw_start_op_idx + i
             input_vars = op.desc.input_arg_names()
 
             for input_var in input_vars:
                 if input_var in need_fetch_checkpoint_names:
                     if input_var not in self.un_fetch_checkpoint_names:
-                        # fetch the  offloade checkpoint when the first usage of its previous one
+                        # fetch the offload checkpoint when the first usage of its previous one
                         if self.checkpoint_usage_count[input_var] == 0:
                             # TODO (JZ-LIANG) sync memcpy_stream if extra stream for memcpy
                             second_to_last_fetch_checkpoint = (
@@ -401,22 +406,18 @@ class RecomputeOptimizer(Optimizer):
                         self.checkpoint_usage_count[input_var] += 1
                     else:
                         raise ValueError(
-                            "use checkpoint [{}] before fetch in BW".format(
-                                input_var
-                            )
+                            f"use checkpoint [{input_var}] before fetch in BW"
                         )
 
         assert (
             len(self.un_fetch_checkpoint_names) == 0
-        ), "{} checkpoints have NOT been Recorded".format(
-            self.un_fetch_checkpoint_names
-        )
+        ), f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
 
     def _update_backward(self):
         if len(self.idx2insertions) == 0:
             return
         total_op = len(self.block.ops)
-        for op_idx in reversed(range(self.bw_strart_op_idx, total_op)):
+        for op_idx in reversed(range(self.bw_start_op_idx, total_op)):
             if op_idx in self.idx2insertions:
                 operation, checkpoint_name = self.idx2insertions[op_idx]
                 if operation == "fetch":
@@ -429,7 +430,7 @@ class RecomputeOptimizer(Optimizer):
         self.block._sync_with_cpp()
         assert (
             len(self.idx2insertions) == 0
-        ), "{} checkpoints left un-Fecthed".format(
+        ), "{} checkpoints left un-Fetched".format(
             [ele[1] for ele in self.idx2insertions.values()]
         )
 
@@ -446,21 +447,21 @@ class RecomputeOptimizer(Optimizer):
                 'idx': -1,
             }
         self.synced_checkpoints = set()
-        self.fw_strart_op_idx = len(self.block.ops)
+        self.fw_start_op_idx = len(self.block.ops)
         for idx, op in enumerate(self.block.ops):
             if int(op.desc.attr("op_role")) == 0:
-                self.fw_strart_op_idx = idx
+                self.fw_start_op_idx = idx
                 break
 
-        assert self.fw_strart_op_idx < len(
+        assert self.fw_start_op_idx < len(
             self.block.ops
         ), "Could NOT found Forward op in prog"
         last_offload_checkpoint = None
 
         for i, op in enumerate(
-            self.block.ops[self.fw_strart_op_idx : self.bw_strart_op_idx]
+            self.block.ops[self.fw_start_op_idx : self.bw_start_op_idx]
         ):
-            idx = self.fw_strart_op_idx + i
+            idx = self.fw_start_op_idx + i
             output_vars = op.desc.output_arg_names()
             input_vars = op.desc.input_arg_names()
 
@@ -468,7 +469,7 @@ class RecomputeOptimizer(Optimizer):
                 if output_var in need_offload_checkpoint_names:
                     assert (
                         len(output_vars) == 1
-                    ), "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
+                    ), "checkpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
                         output_var, op
                     )
 
@@ -511,13 +512,13 @@ class RecomputeOptimizer(Optimizer):
                 if output_var == last_checkpoint:
                     assert (
                         len(output_vars) == 1
-                    ), "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
+                    ), "checkpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
                         output_var, op
                     )
                     assert (
                         last_offload_checkpoint
                         == self.sorted_checkpoint_names[-2]
-                    ), "the last offload chekpoint before [{}] is suppose to be [{}], but got [{}]".format(
+                    ), "the last offload checkpoint before [{}] is suppose to be [{}], but got [{}]".format(
                         last_checkpoint,
                         self.sorted_checkpoint_names[-2],
                         last_offload_checkpoint,
@@ -553,9 +554,7 @@ class RecomputeOptimizer(Optimizer):
 
         assert (
             len(self.un_offload_checkpoint_names) == 0
-        ), "{} checkpoints have NOT been Recorded".format(
-            self.un_fetch_checkpoint_names
-        )
+        ), f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
         assert len(self.synced_checkpoints) == len(
             need_offload_checkpoint_names
         ), "{} checkpoints have NOT been Recorded".format(
@@ -566,7 +565,7 @@ class RecomputeOptimizer(Optimizer):
         if len(self.idx2insertions) == 0:
             return
         for op_idx in reversed(
-            range(self.fw_strart_op_idx, self.bw_strart_op_idx)
+            range(self.fw_start_op_idx, self.bw_start_op_idx)
         ):
             if op_idx in self.idx2insertions:
                 operation, checkpoint_name = self.idx2insertions[op_idx]
@@ -619,7 +618,7 @@ class RecomputeOptimizer(Optimizer):
             self.checkpoint_name2pinned_name = {}
             self.checkpoint_name2fetch_name = {}
             for checkpoint_varname in self.sorted_checkpoint_names:
-                pinned_var_name, fetch_var_name = self._creat_vars(
+                pinned_var_name, fetch_var_name = self._create_vars(
                     checkpoint_varname
                 )
                 self.checkpoint_name2pinned_name[
@@ -629,7 +628,7 @@ class RecomputeOptimizer(Optimizer):
                     checkpoint_varname
                 ] = fetch_var_name
             self._append_fill_constant_ops(startup_program)
-            # TODO (JZ-LIANG) to provide two offload stragtegy in future
+            # TODO (JZ-LIANG) to provide two offload strategy in future
             # step 2. parse & update FW: rename, offload, sync
             self._parse_backward()
             self._update_backward()
@@ -638,8 +637,6 @@ class RecomputeOptimizer(Optimizer):
             self._update_forward()
             # step 4. verify the correctness
             self._check_offload_fetch()
-
-        return
 
     def backward(
         self,
@@ -665,36 +662,36 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
-                import paddle
-                import paddle.base as base
+                >>> import paddle
 
-                paddle.enable_static()
+                >>> paddle.enable_static()
 
-                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-                    fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
-                    prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-                    cost = paddle.nn.functional.cross_entropy(
-                        input=prediction, label=input_y,
-                        reduction='none', use_softmax=False
-                    )
-                    sum_cost = paddle.mean(cost)
-                    return sum_cost, fc_1, prediction
+                >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+                ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
+                ...     cost = paddle.nn.functional.cross_entropy(
+                ...         input=prediction, label=input_y,
+                ...         reduction='none', use_softmax=False
+                ...     )
+                ...     sum_cost = paddle.mean(cost)
+                ...     return sum_cost, fc_1, prediction
 
+                >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+                >>> cost, fc_1, pred = mlp(input_x, input_y)
+                >>> print("Finished FF")
+                Finished FF
 
-                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
-                cost, fc_1, pred = mlp(input_x, input_y)
-                print("Finished FF")
-
-                sgd = paddle.optimizer.Adam(learning_rate=0.01)
-                sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
-                sgd._set_checkpoints([fc_1, pred])
-                params_grads = sgd.backward(
-                    cost,
-                    startup_program=None,
-                    parameter_list=None,
-                    no_grad_set=None)
-                print("Finished backward")
+                >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
+                >>> sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
+                >>> sgd._set_checkpoints([fc_1, pred])
+                >>> params_grads = sgd.backward(
+                ...     cost,
+                ...     startup_program=None,
+                ...     parameter_list=None,
+                ...     no_grad_set=None)
+                >>> print("Finished backward")
+                Finished backward
         """
         assert (
             self._checkpoints is not None
@@ -747,39 +744,41 @@ class RecomputeOptimizer(Optimizer):
             params_grads (list): list of (param, grad) pair to do optimization.
         Examples:
             .. code-block:: python
-                import paddle
-                import paddle.base as base
 
-                paddle.enable_static()
+                >>> import paddle
 
-                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-                    fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
-                    prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-                    cost = paddle.nn.functional.cross_entropy(
-                        input=prediction, label=input_y,
-                        reduction='none', use_softmax=False
-                    )
-                    sum_cost = paddle.mean(cost)
-                    return sum_cost, fc_1, prediction
+                >>> paddle.enable_static()
 
-                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
-                cost, fc_1, pred = mlp(input_x, input_y)
-                print("Finished FF")
+                >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+                ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
+                ...     cost = paddle.nn.functional.cross_entropy(
+                ...         input=prediction, label=input_y,
+                ...         reduction='none', use_softmax=False
+                ...     )
+                ...     sum_cost = paddle.mean(cost)
+                ...     return sum_cost, fc_1, prediction
 
-                sgd = paddle.optimizer.Adam(learning_rate=0.01)
-                sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
-                sgd._set_checkpoints([fc_1, pred])
-                params_grads = sgd.backward(
-                    cost,
-                    startup_program=None,
-                    parameter_list=None,
-                    no_grad_set=None)
+                >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+                >>> cost, fc_1, pred = mlp(input_x, input_y)
+                >>> print("Finished FF")
+                Finished FF
 
-                optimize_ops = sgd.apply_optimize(
-                    cost, startup_program=None, params_grads=params_grads)
+                >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
+                >>> sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
+                >>> sgd._set_checkpoints([fc_1, pred])
+                >>> params_grads = sgd.backward(
+                ...     cost,
+                ...     startup_program=None,
+                ...     parameter_list=None,
+                ...     no_grad_set=None)
 
-                print("Finished apply_optimize")
+                >>> optimize_ops = sgd.apply_optimize(
+                ...     cost, startup_program=None, params_grads=params_grads)
+
+                >>> print("Finished apply_optimize")
+                Finished apply_optimize
         """
 
         func = (

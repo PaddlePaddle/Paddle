@@ -25,7 +25,7 @@ TEST(Scope, basic) {
   auto* var = scope.Var<Tensor>("key");
   auto& tensor = absl::get<Tensor>(*var);
   tensor->Resize(Shape{{3, 1}});
-  auto* data = tensor->mutable_data<float>(common::DefaultHostTarget());
+  auto* data = tensor->mutable_data<float>(cinn::common::DefaultHostTarget());
   data[0] = 0.f;
   data[1] = 1.f;
   data[2] = 2.f;

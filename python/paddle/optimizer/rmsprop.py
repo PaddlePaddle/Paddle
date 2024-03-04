@@ -17,7 +17,7 @@ import warnings
 from paddle import _C_ops
 
 from ..base import framework
-from ..base.framework import in_dygraph_mode
+from ..base.framework import in_dynamic_or_pir_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -91,15 +91,15 @@ class RMSProp(Optimizer):
           The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
           It can be a float value as coeff of L2 regularization or \
-          :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
-          If a parameter has set regularizer using :ref:`api_base_ParamAttr` already,
+          :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+          If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
           the regularization setting here in optimizer will be ignored for this parameter.
           Otherwise, the regularization setting here in optimizer will take effect.
           Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
           some derived class of ``GradientClipBase`` . There are three clipping strategies
-          ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-          :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+          ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+          :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information.
           For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -204,7 +204,7 @@ class RMSProp(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
 
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
@@ -212,7 +212,7 @@ class RMSProp(Optimizer):
                 self._add_accumulator(self._momentum_acc_str, master_p)
                 self._add_accumulator(self._mean_square_acc_str, master_p)
                 self._add_accumulator(self._mean_grad_acc_str, master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -225,7 +225,7 @@ class RMSProp(Optimizer):
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
             self._add_accumulator(self._mean_grad_acc_str, p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         if not isinstance(block, framework.Block):
@@ -252,7 +252,7 @@ class RMSProp(Optimizer):
             else None
         )
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             _C_ops.rmsprop_(
                 param_and_grad[0],
                 mean_square_acc,

@@ -21,7 +21,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph import guard, to_variable
+from paddle.base.dygraph import guard
 from paddle.nn import Layer, Linear
 
 np.set_printoptions(suppress=True)
@@ -88,7 +88,7 @@ class ModelHyperParams:
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.
     src_vocab_size = 10000
-    # size of target word dictionay
+    # size of target word dictionary
     trg_vocab_size = 10000
     # index for <bos> token
     bos_idx = 0
@@ -150,9 +150,7 @@ def position_encoding_init(n_position, d_pos_vec):
     channels = d_pos_vec
     position = np.arange(n_position)
     num_timescales = channels // 2
-    log_timescale_increment = np.log(float(1e4) / float(1)) / (
-        num_timescales - 1
-    )
+    log_timescale_increment = np.log(1e4 / float(1)) / (num_timescales - 1)
     inv_timescales = (
         np.exp(np.arange(num_timescales)) * -log_timescale_increment
     )
@@ -180,18 +178,18 @@ def create_data(is_static=False):
         ]
     else:
         enc_inputs = [
-            to_variable(src_word_np, name='src_word'),
-            to_variable(src_pos_np, name='src_pos'),
-            to_variable(src_slf_attn_bias_np, name='src_slf_attn_bias'),
+            paddle.to_tensor(src_word_np),
+            paddle.to_tensor(src_pos_np),
+            paddle.to_tensor(src_slf_attn_bias_np),
         ]
         dec_inputs = [
-            to_variable(trg_word_np, name='trg_word'),
-            to_variable(trg_pos_np, name='trg_pos'),
-            to_variable(trg_slf_attn_bias_np, name='trg_slf_attn_bias'),
-            to_variable(trg_src_attn_bias_np, name='trg_src_attn_bias'),
+            paddle.to_tensor(trg_word_np),
+            paddle.to_tensor(trg_pos_np),
+            paddle.to_tensor(trg_slf_attn_bias_np),
+            paddle.to_tensor(trg_src_attn_bias_np),
         ]
-        label = to_variable(lbl_word_np, name='lbl_word')
-        weight = to_variable(lbl_weight_np, name='lbl_weight')
+        label = paddle.to_tensor(lbl_word_np)
+        weight = paddle.to_tensor(lbl_weight_np)
         return enc_inputs, dec_inputs, label, weight
 
 
@@ -237,7 +235,7 @@ def make_all_inputs(input_fields):
 # consistent with some ops' infer-shape output in compile time, such as the
 # sequence_expand op used in beamsearch decoder.
 batch_size = -1
-# The placeholder for squence length in compile time.
+# The placeholder for sequence length in compile time.
 seq_len = ModelHyperParams.max_length
 # Here list the data shapes and data types of all inputs.
 # The shapes here act as placeholder and are set to pass the infer-shape in
@@ -498,11 +496,11 @@ class MultiHeadAttentionLayer(Layer):
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
-            weights_droped = paddle.nn.functional.dropout(
+            weights_dropped = paddle.nn.functional.dropout(
                 weights,
                 p=self._dropout_rate,
             )
-            out = paddle.matmul(weights_droped, transpose_v)
+            out = paddle.matmul(weights_dropped, transpose_v)
         else:
             out = paddle.matmul(weights, transpose_v)
 
@@ -682,7 +680,7 @@ class PrepareEncoderDecoderLayer(Layer):
         )
 
         # use in dygraph_mode to fit different length batch
-        # self._pos_emb._w = to_variable(
+        # self._pos_emb._w = paddle.to_tensor(
         #     position_encoding_init(self._src_max_len, self._src_emb_dim))
 
     def forward(self, src_word, src_pos):
@@ -777,7 +775,7 @@ class DecoderSubLayer(Layer):
         super().__init__()
         self._postprocess_cmd = postprocess_cmd
         self._preprocess_cmd = preprocess_cmd
-        self._prepostprcess_dropout = prepostprocess_dropout
+        self._prepostprocess_dropout = prepostprocess_dropout
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
@@ -821,7 +819,7 @@ class DecoderSubLayer(Layer):
 
     def forward(self, dec_input, enc_output, slf_attn_bias, dec_enc_attn_bias):
         pre_process_rlt = self._pre_process_layer(
-            None, dec_input, self._preprocess_cmd, self._prepostprcess_dropout
+            None, dec_input, self._preprocess_cmd, self._prepostprocess_dropout
         )
         slf_attn_output = self._multihead_attention_layer(
             pre_process_rlt, None, None, slf_attn_bias
@@ -830,13 +828,13 @@ class DecoderSubLayer(Layer):
             dec_input,
             slf_attn_output,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         pre_process_rlt2 = self._pre_process_layer2(
             None,
             slf_attn_output_pp,
             self._preprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         enc_attn_output_pp = self._multihead_attention_layer2(
             pre_process_rlt2, enc_output, enc_output, dec_enc_attn_bias
@@ -845,20 +843,20 @@ class DecoderSubLayer(Layer):
             slf_attn_output_pp,
             enc_attn_output_pp,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         pre_process_rlt3 = self._pre_process_layer3(
             None,
             enc_attn_output,
             self._preprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         ffd_output = self._positionwise_feed_forward_layer(pre_process_rlt3)
         dec_output = self._post_process_layer3(
             enc_attn_output,
             ffd_output,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         return dec_output
 

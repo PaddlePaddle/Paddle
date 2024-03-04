@@ -90,10 +90,10 @@ class TestSubblock(unittest.TestCase):
 
         engine = auto.Engine(model=mlp, loss=loss_fn, strategy=strategy)
 
-        input_sepc = InputSpec([4, 64], 'float32', 'input')
+        input_spec = InputSpec([4, 64], 'float32', 'input')
         label_spec = InputSpec([4, 1], 'float32', 'label')
         engine.prepare(
-            inputs_spec=[input_sepc], labels_spec=[label_spec], mode="predict"
+            inputs_spec=[input_spec], labels_spec=[label_spec], mode="predict"
         )
 
 

@@ -15,10 +15,14 @@
 import types
 import unittest
 
-from paddle.jit.dy2static.utils import index_in_list, is_paddle_func
+from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pir
+
+from paddle.jit.dy2static.transformers.utils import index_in_list
+from paddle.jit.dy2static.utils import is_paddle_func
 
 
-class TestIndexInList(unittest.TestCase):
+class TestIndexInList(Dy2StTestBase):
+    @test_legacy_and_pir
     def test_index_in_list(self):
         list_to_test = [1, 2, 3, 4, 5]
         self.assertEqual(index_in_list(list_to_test, 4), 3)
@@ -49,10 +53,11 @@ class StaticCode:
         y = n
 
 
-class TestIsPaddle(unittest.TestCase):
+class TestIsPaddle(Dy2StTestBase):
     def fake_module(self):
         return types.ModuleType('paddlenlp')
 
+    @test_legacy_and_pir
     def test_func(self):
         m = self.fake_module()
         self.assertFalse(is_paddle_func(m))

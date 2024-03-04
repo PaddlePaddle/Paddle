@@ -24,7 +24,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
     Dirichlet distribution with parameter "concentration".
 
     The Dirichlet distribution is defined over the `(k-1)-simplex` using a
-    positive, lenght-k vector concentration(`k > 1`).
+    positive, length-k vector concentration(`k > 1`).
     The Dirichlet is identically the Beta distribution when `k = 2`.
 
     For independent and identically distributed continuous random variable
@@ -51,7 +51,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
             distribution, also called :math:`\alpha`. When it's over one
             dimension, the last axis denotes the parameter of distribution,
             ``event_shape=concentration.shape[-1:]`` , axes other than last are
-            condsider batch dimensions with ``batch_shape=concentration.shape[:-1]`` .
+            consider batch dimensions with ``batch_shape=concentration.shape[:-1]`` .
 
     Examples:
 
@@ -79,7 +79,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
 
     @property
     def mean(self):
-        """Mean of Dirichelt distribution.
+        """Mean of Dirichlet distribution.
 
         Returns:
             Mean value of distribution.
@@ -119,7 +119,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
         return paddle.exp(self.log_prob(value))
 
     def log_prob(self, value):
-        """Log of probability densitiy function.
+        """Log of probability density function.
 
         Args:
             value (Tensor): Value to be evaluated.

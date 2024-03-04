@@ -29,6 +29,7 @@
 
 namespace cinn {
 
+using ast_gen_ius::TensorGroup;
 using backends::CodeGenC;
 using backends::CodeGenCX86;
 using backends::Outputs;
@@ -39,6 +40,7 @@ using lang::CallExtern;
 using lang::CallLowered;
 using lang::Compute;
 using lang::Lower;
+using lang::LowerToAst;
 using lang::Placeholder;
 using lang::ReduceAll;
 using lang::ReduceAny;

@@ -45,11 +45,14 @@ limitations under the License. */
 #include "paddle/phi/capi/include/c_meta_tensor.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_string(tensor_operants_mode);
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+
+COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace framework {
@@ -110,7 +113,7 @@ static void RunKernelFunc(
         // tensor here.
         custom_vec_in.emplace_back(paddle::Tensor());
       }
-      kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
+      kernel_ctx.EmplaceBackInputs(custom_vec_in);
     } else {                        // inputs Tensor
       if (ctx.HasInput(in_name)) {  // general Tensor inputs
         auto* x = ctx.Input<phi::DenseTensor>(in_name);
@@ -231,7 +234,7 @@ static void RunKernelFunc(
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
       }
-      kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
+      kernel_ctx.EmplaceBackOutputs(custom_vec_out);
     } else {
       // handle inplace optional outputs = None case
       if (!ctx.HasOutput(out_name)) {
@@ -318,7 +321,7 @@ static void RunKernelFunc(
       }
     }
   } catch (platform::EnforceNotMet& exception) {
-    throw std::move(exception);
+    throw exception;
   } catch (std::exception& ex) {
     PADDLE_THROW(platform::errors::External("%s", ex.what()));
   } catch (...) {
@@ -434,7 +437,7 @@ static void RunInferShapeFunc(
                        vec_ddim.end(),
                        std::back_inserter(vec_shape),
                        [&](const DDim& ddim) -> std::vector<int64_t> {
-                         return phi::vectorize(ddim);
+                         return common::vectorize(ddim);
                        });
 
       } else {  // optional inputs, `vec_shape` is empty
@@ -450,7 +453,7 @@ static void RunInferShapeFunc(
     } else {
       if (ctx->HasInput(in_name)) {  // general inputs
         auto ddim = ctx->GetInputDim(in_name);
-        input_shapes.emplace_back(phi::vectorize(ddim));
+        input_shapes.emplace_back(common::vectorize(ddim));
       } else {  // optional inputs
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
@@ -542,7 +545,7 @@ static void RunInferShapeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutputs(out_name)) {
         auto in_name = inplace_reverse_map.at(out_name);
@@ -582,7 +585,7 @@ static void RunInferShapeFunc(
       } else {
         // Set output dims by the output of InferShapeFn
         ctx->SetOutputDim(out_name,
-                          phi::make_ddim(output_shapes[output_shape_idx++]));
+                          common::make_ddim(output_shapes[output_shape_idx++]));
       }
     }
   }
@@ -793,7 +796,7 @@ static void RunInferDtypeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       auto in_name = inplace_reverse_map.at(out_name);
       // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutput(out_name)) {
@@ -1275,8 +1278,27 @@ void RegisterOperatorWithMetaInfoMap(
   VLOG(3) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
   // pair: {op_type, OpMetaInfo}
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  auto* custom_dialect =
+      ctx->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();
   for (auto& pair : meta_info_map) {
     VLOG(3) << "Custom Operator: pair first -> op name: " << pair.first;
+
+    // Register PIR op
+
+    if (custom_dialect->HasRegistered(pair.first)) {
+      LOG(INFO) << "The operator `" << pair.first
+                << "` has been registered. "
+                   "Therefore, we will not repeat the registration here.";
+      continue;
+    }
+    for (const auto& meta_info : pair.second) {
+      LOG(INFO) << "register pir custom op :"
+                << OpMetaInfoHelper::GetOpName(meta_info);
+      custom_dialect->RegisterCustomOp(meta_info);
+    }
+
+    // Register Fluid op
     RegisterOperatorWithMetaInfo(pair.second, dso_handle);
   }
 }

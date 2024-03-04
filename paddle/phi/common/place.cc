@@ -18,7 +18,7 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace phi {
@@ -37,11 +37,19 @@ const char *AllocationTypeStr(AllocationType type) {
       return "xpu";
     case AllocationType::IPU:
       return "ipu";
+    case AllocationType::CUSTOM:
+      return "custom_device";
     default:
       PD_THROW("Invalid phi device type.");
       return {};
   }
 }
+
+Place::Place(AllocationType type, const std::string &dev_type)
+    : device(0),
+      alloc_type_(type),
+      device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
+                          .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
 
 std::string Place::DebugString() const {
   std::ostringstream os;
@@ -125,7 +133,7 @@ static int8_t GetCorrectDeviceIdByPlaceType(
       return 0;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case paddle::PlaceType::kGPU:
-      return phi::backends::gpu::GetCurrentDeviceId();
+      return static_cast<int8_t>(phi::backends::gpu::GetCurrentDeviceId());
 #endif
     default:
       PD_THROW(

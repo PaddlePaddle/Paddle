@@ -132,7 +132,7 @@ void ConvertConv2d(TensorRTEngine* engine,
   bias.SetDataType(weight.get().type);
   bias.SetCount(0);
   bias.SetValues(nullptr);
-  if (op_desc.Type() == "conv2d_fusion") {
+  if (op_desc.Type() == "fused_conv2d_add_act") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
     auto* bias_tensor_data = bias_tensor->GetMutable<phi::DenseTensor>();
     bias =
@@ -198,6 +198,8 @@ class Conv2dOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+    framework::OpDesc op_desc(op, nullptr);
+    auto output_name = op_desc.Output("Output").front();
     ConvertConv2d(
         engine_,
         op,
@@ -215,6 +217,7 @@ class Conv2dOpConverter : public OpConverter {
                                              ksize,
                                              weight.get(),
                                              bias.get());
+          SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
           return layer;
         },
         [](nvinfer1::IConvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
@@ -229,6 +232,8 @@ class Deconv2dOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+    framework::OpDesc op_desc(op, nullptr);
+    auto output_name = op_desc.Output("Output").front();
     ConvertConv2d(
         engine_,
         op,
@@ -246,6 +251,7 @@ class Deconv2dOpConverter : public OpConverter {
                                              ksize,
                                              weight.get(),
                                              bias.get());
+          SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
           return layer;
         },
         [](nvinfer1::IDeconvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
@@ -259,5 +265,5 @@ class Deconv2dOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(conv2d, Conv2dOpConverter);
-REGISTER_TRT_OP_CONVERTER(conv2d_fusion, Conv2dOpConverter);
+REGISTER_TRT_OP_CONVERTER(fused_conv2d_add_act, Conv2dOpConverter);
 REGISTER_TRT_OP_CONVERTER(conv2d_transpose, Deconv2dOpConverter);

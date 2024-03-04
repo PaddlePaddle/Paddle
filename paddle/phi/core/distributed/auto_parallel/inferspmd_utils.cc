@@ -53,8 +53,12 @@ AttrType InferSpmdContext::AttrAt(size_t idx) const {
   }
 }
 
+template float InferSpmdContext::AttrAt(size_t idx) const;
+template int InferSpmdContext::AttrAt(size_t idx) const;
+template int64_t InferSpmdContext::AttrAt(size_t idx) const;
+
 template <>
-bool InferSpmdContext::AttrAt<bool>(size_t idx) const {
+bool InferSpmdContext::AttrAt(size_t idx) const {
   try {
     auto attr = attrs_.at(idx);
     if (attr.type() == typeid(int)) {
@@ -66,6 +70,45 @@ bool InferSpmdContext::AttrAt<bool>(size_t idx) const {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Attribute cast error in InferSpmd Context, the input attr type is "
         "`%s`, but the expected attribute type is `bool`.",
+        attrs_.at(idx).type().name()));
+  }
+}
+
+template <>
+std::vector<int> InferSpmdContext::AttrAt(size_t idx) const {
+  try {
+    auto attr = attrs_.at(idx);
+    if (attr.type() == typeid(std::vector<bool>)) {
+      std::vector<bool> val = PADDLE_GET_CONST(std::vector<bool>, attr);
+      return std::vector<int>(val.begin(), val.end());
+    } else {
+      return paddle::get<std::vector<int>>(attr);
+    }
+  } catch (paddle::bad_variant_access const& e) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Attribute cast error in InferSpmd Context, the input attr type is "
+        "`%s`, but the expected attribute type is `std::vector<int>`.",
+        attrs_.at(idx).type().name()));
+  }
+}
+
+template <>
+std::vector<int64_t> InferSpmdContext::AttrAt(size_t idx) const {
+  try {
+    auto attr = attrs_.at(idx);
+    if (attr.type() == typeid(std::vector<bool>)) {
+      std::vector<bool> val = PADDLE_GET_CONST(std::vector<bool>, attr);
+      return std::vector<int64_t>(val.begin(), val.end());
+    } else if (attr.type() == typeid(std::vector<int>)) {
+      std::vector<int> val = PADDLE_GET_CONST(std::vector<int>, attr);
+      return std::vector<int64_t>(val.begin(), val.end());
+    } else {
+      return PADDLE_GET_CONST(std::vector<int64_t>, attr);
+    }
+  } catch (paddle::bad_variant_access const& e) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Attribute cast error in InferSpmd Context, the input attr type is "
+        "`%s`, but the expected attribute type is `std::vector<int64_t>`.",
         attrs_.at(idx).type().name()));
   }
 }
@@ -101,7 +144,7 @@ bool SpmdRuleFactory::ContainsSpmdRule(const std::string& kernel_name) const {
 }
 
 int SpmdRuleFactory::InsertSpmdRule(std::string kernel_name, SpmdRule rule) {
-  spmd_rule_map_.insert({std::move(kernel_name), std::move(rule)});
+  spmd_rule_map_.insert({std::move(kernel_name), rule});
   return 0;
 }
 

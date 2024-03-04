@@ -18,7 +18,8 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestBatchNorm(unittest.TestCase):
@@ -191,25 +192,93 @@ class TestBatchNorm(unittest.TestCase):
                         ),
                         trainable_statistics=trainable_statistics,
                     )
-                    y = bn(paddle.to_tensor(x))
-                return y.numpy()
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
+
+            def compute_v3_1(x, is_test, trainable_statistics):
+                with base.dygraph.guard(p):
+                    bn = paddle.nn.BatchNorm(
+                        shape[1],
+                        is_test=is_test,
+                        param_attr=False,
+                        bias_attr=False,
+                        trainable_statistics=trainable_statistics,
+                    )
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
+
+            def compute_v3_2(x, is_test, trainable_statistics):
+                with base.dygraph.guard(p):
+                    bn = paddle.nn.BatchNorm(
+                        shape[1],
+                        is_test=is_test,
+                        param_attr=False,
+                        bias_attr=base.ParamAttr(
+                            initializer=paddle.nn.initializer.Constant(0.0),
+                            trainable=False,
+                        ),
+                        trainable_statistics=trainable_statistics,
+                    )
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
+
+            def compute_v3_3(x, is_test, trainable_statistics):
+                with base.dygraph.guard(p):
+                    bn = paddle.nn.BatchNorm(
+                        shape[1],
+                        is_test=is_test,
+                        param_attr=base.ParamAttr(
+                            initializer=paddle.nn.initializer.Constant(1.0),
+                            trainable=False,
+                        ),
+                        bias_attr=False,
+                        trainable_statistics=trainable_statistics,
+                    )
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
 
             def compute_v4(x):
                 with base.dygraph.guard(p):
                     bn = paddle.nn.BatchNorm2D(
                         shape[1], weight_attr=False, bias_attr=False
                     )
-                    y = bn(paddle.to_tensor(x))
-                return y.numpy()
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
 
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x, False, False)
             y2 = compute_v2(x)
-            y3 = compute_v3(x, False, False)
-            y4 = compute_v4(x)
+            y3, g3 = compute_v3(x, False, False)
+            y3_1, g3_1 = compute_v3_1(x, False, False)
+            y3_2, g3_2 = compute_v3_2(x, False, False)
+            y3_3, g3_3 = compute_v3_3(x, False, False)
+            y4, g4 = compute_v4(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
             np.testing.assert_allclose(y3, y4, rtol=1e-05)
+            np.testing.assert_allclose(y3_1, y4, rtol=1e-05)
+            np.testing.assert_allclose(y3_2, y4, rtol=1e-05)
+            np.testing.assert_allclose(y3_3, y4, rtol=1e-05)
+            np.testing.assert_allclose(g3, g4, rtol=1e-05)
+            np.testing.assert_allclose(g3_1, g4, rtol=1e-05)
+            np.testing.assert_allclose(g3_2, g4, rtol=1e-05)
+            np.testing.assert_allclose(g3_3, g4, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -219,7 +288,9 @@ class TestBatchNorm(unittest.TestCase):
             shape = [4, 10, 16, 16]
 
             def compute_v1(x_np, is_test, trainable_statistics):
-                with program_guard(Program(), Program()):
+                main_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+                with base.program_guard(main_program, startup_program):
                     bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
@@ -229,18 +300,20 @@ class TestBatchNorm(unittest.TestCase):
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = bn(x)
-                    exe.run(base.default_startup_program())
+                    exe.run(startup_program)
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
             def compute_v2(x_np):
-                with program_guard(Program(), Program()):
+                main_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+                with base.program_guard(main_program, startup_program):
                     bn = paddle.nn.BatchNorm2D(shape[1])
                     x = paddle.static.data(
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = bn(x)
-                    exe.run(base.default_startup_program())
+                    exe.run(startup_program)
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 

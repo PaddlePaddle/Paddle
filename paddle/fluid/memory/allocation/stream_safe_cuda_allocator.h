@@ -41,6 +41,7 @@ class StreamSafeCUDAAllocation : public Allocation {
                            StreamSafeCUDAAllocator *allocator);
 
   void RecordStream(gpuStream_t stream);
+  void EraseStream(gpuStream_t stream);
   bool CanBeFreed();
   gpuStream_t GetOwningStream() const;
 

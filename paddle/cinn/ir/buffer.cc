@@ -14,10 +14,11 @@
 
 #include "paddle/cinn/ir/buffer.h"
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -26,7 +27,7 @@ namespace ir {
 
 std::string TensorGetBufferName(const _Tensor_ *tensor) {
   CHECK(!tensor->name.empty());
-  CHECK(!utils::Startswith(tensor->name, "_"))
+  CHECK(!utils::StartsWith(tensor->name, "_"))
       << "the name with prefix _ is not allowed for tensor. Current tensor's "
          "name is: "
       << tensor->name;
@@ -34,7 +35,7 @@ std::string TensorGetBufferName(const _Tensor_ *tensor) {
 }
 std::string BufferGetTensorName(const _Buffer_ *buffer) {
   CHECK(!buffer->name.empty());
-  CHECK(utils::Startswith(buffer->name, "_"))
+  CHECK(utils::StartsWith(buffer->name, "_"))
       << "buffer's name should start with _";
   return buffer->name.substr(1);
 }
@@ -55,7 +56,7 @@ Buffer _Buffer_::Make(Var data,
   CHECK(dtype.valid());
   CHECK(!dtype.is_unk());
   CHECK(!dtype.is_void());
-  auto *node = common::make_shared<_Buffer_>();
+  auto *node = cinn::common::make_shared<_Buffer_>();
   node->shape = shape;
   node->strides = strides;
   node->elem_offset = elem_offset;
@@ -69,7 +70,7 @@ Buffer _Buffer_::Make(Var data,
 }
 
 Buffer _Buffer_::Make(const std::string &name, const std::vector<Expr> &shape) {
-  auto *node = common::make_shared<_Buffer_>();
+  auto *node = cinn::common::make_shared<_Buffer_>();
   node->name = name;
   node->shape = shape;
   node->dtype = Void();
@@ -77,7 +78,7 @@ Buffer _Buffer_::Make(const std::string &name, const std::vector<Expr> &shape) {
 }
 
 Buffer _Buffer_::Make() {
-  auto *node = common::make_shared<_Buffer_>();
+  auto *node = cinn::common::make_shared<_Buffer_>();
   node->dtype = Void();
   return Buffer(node);
 }
@@ -103,13 +104,25 @@ Var _Buffer_::buffer_addr() const {
   return _Var_::Make(name, thetype);
 }
 
-int _Buffer_::numel() const {
-  int res = 1;
+int64_t _Buffer_::numel() const {
+  int64_t res = 1;
   for (auto &i : shape) {
     CHECK(i.is_constant());
-    res *= i.as_int32();
+    if (i->type() == Int(64)) {
+      res *= i.as_int64();
+    } else {
+      res *= i.as_int32();
+    }
   }
   return res;
+}
+
+ir::Expr _Buffer_::SymbolicNumel() const {
+  ir::Expr res{1};
+  for (auto &i : shape) {
+    res = res * i;
+  }
+  return common::AutoSimplify(res);
 }
 
 void _Buffer_::Verify() const {

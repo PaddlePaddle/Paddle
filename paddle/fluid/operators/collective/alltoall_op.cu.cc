@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/alltoall_op.h"
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
 namespace operators {
+
+using phi::distributed::GetPartialTensor;
 
 template <typename T, typename DeviceContext>
 class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
@@ -103,9 +105,9 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->GroupStart();
       for (auto i = 0; i < nranks; ++i) {
-        auto send_buf = distributed::GetPartialTensor(*x, offset, send_numel);
+        auto send_buf = GetPartialTensor(*x, offset, send_numel);
         comm_ctx->Send(send_buf, send_numel, i, stream);
-        auto recv_buf = distributed::GetPartialTensor(*out, offset, send_numel);
+        auto recv_buf = GetPartialTensor(*out, offset, send_numel);
         comm_ctx->Recv(&recv_buf, send_numel, i, stream);
         offset += send_numel;
       }

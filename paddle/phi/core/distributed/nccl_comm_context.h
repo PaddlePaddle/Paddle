@@ -22,10 +22,10 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/comm_context.h"
-#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
@@ -40,7 +40,9 @@ namespace distributed {
 class NCCLCommContext final : public CommContext {
  public:
   NCCLCommContext(int rank, int size, ncclUniqueId nccl_id);
-  ~NCCLCommContext() {}
+  ~NCCLCommContext() override = default;
+
+  int GetNcclVersion();
 
   ncclComm_t GetNcclComm();
 
@@ -65,6 +67,7 @@ class NCCLCommContext final : public CommContext {
                  const phi::DenseTensor& in_tensor,
                  int root,
                  gpuStream_t stream);
+
   void Send(const phi::DenseTensor& in_tensor,
             const int64_t& count,
             const int& peer,
@@ -99,8 +102,23 @@ class NCCLCommContext final : public CommContext {
 
   void GroupEnd();
 
+#if NCCL_VERSION_CODE >= 21100
+  // Creates a new reduction operator which pre-multiplies input values by a
+  // given scalar locally before reducing them with peer values via summation.
+  void RedOpCreatePreMulSum(ncclRedOp_t* op,
+                            void* scalar,
+                            ncclDataType_t dtype,
+                            ncclScalarResidence_t residence);
+
+  // Destroys the reduction operator op. The operator must have been created by
+  // ncclRedOpCreatePreMul with the matching communicator comm.
+  void RedOpDestroy(ncclRedOp_t op);
+#endif
+
  private:
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
+
+  int nccl_version_;
 
   ncclComm_t nccl_comm_;
 

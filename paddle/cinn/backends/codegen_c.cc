@@ -38,7 +38,7 @@ using cinn::common::float16;
 const char *kCKeywordRestrict = "__restrict__";
 
 void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
-  ir::IrVerify(Expr(module));
+  ir::ir_utils::IrVerify(Expr(module));
 
   if (!outputs.c_header_name.empty()) {
     auto source = Compile(module, OutputKind::CHeader);
@@ -120,10 +120,11 @@ std::string CodeGenC::GetTypeName(Type type) {
     auto customized_name = type.customized_type();
     // get name of a cuda built-in vector type, it is started with a
     // 'CudaVectorType::' prefix
-    if (utils::Startswith(customized_name,
-                          common::customized_type::kcuda_builtin_vector_t)) {
+    if (utils::StartsWith(
+            customized_name,
+            cinn::common::customized_type::kcuda_builtin_vector_t)) {
       customized_name.erase(
-          0, strlen(common::customized_type::kcuda_builtin_vector_t));
+          0, strlen(cinn::common::customized_type::kcuda_builtin_vector_t));
     }
     return customized_name;
   }
@@ -299,12 +300,13 @@ void CodeGenC::Visit(const ir::Block *op) {
 
   IncIndent();
 
-  for (int i = 0; i < op->stmts.size() - 1; i++) {
-    DoIndent();
-    IrPrinter::Visit(op->stmts[i]);
-    str_ += ";\n";
-  }
+  // Note: size_t (0 - 1) = 18446744073709551615
   if (op->stmts.size() >= 1) {
+    for (int i = 0; i < op->stmts.size() - 1; i++) {
+      DoIndent();
+      IrPrinter::Visit(op->stmts[i]);
+      str_ += ";\n";
+    }
     DoIndent();
     IrPrinter::Visit(op->stmts.back());
     str_ += ";";
@@ -599,7 +601,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   CHECK_EQ(op->alloc_output_buffer_exprs.size(),
            op->dealloc_output_buffer_exprs.size())
-      << "the count of allocation and deallocaton expressions is not match";
+      << "the count of allocation and deallocation expressions is not match";
 
   std::vector<Expr> new_body;
 
@@ -653,7 +655,7 @@ void CodeGenC::PrintBufferCreation(const std::vector<ir::Buffer> &buffers) {
     DoIndent();
     auto buffer_ptr_type =
         Type()
-            .set_customized_type(common::customized_type::kbuffer_t)
+            .set_customized_type(cinn::common::customized_type::kbuffer_t)
             .set_cpp_handle();
     Var variable = ir::_Var_::Make(buffer->name, buffer_ptr_type);
     auto expr = ir::intrinsics::BufferCreate::Make(buffer);
@@ -747,6 +749,7 @@ void CodeGenC::Visit(const ir::ScheduleBlock *op) { CINN_NOT_IMPLEMENTED }
 void CodeGenC::Visit(const ir::ScheduleBlockRealize *op) {
   CINN_NOT_IMPLEMENTED
 }
+void CodeGenC::Visit(const ir::_Dim_ *op) { CINN_NOT_IMPLEMENTED }
 
 void CodeGenC::Visit(const ir::IntrinsicOp *op) {
   switch (op->getKind()) {

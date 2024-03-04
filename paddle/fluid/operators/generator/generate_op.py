@@ -22,7 +22,7 @@ from filters import (
     assert_dense_or_sr,
     cartesian_prod_mapping,
     delete_last_underline,
-    find_optinal_inputs_name,
+    find_optional_inputs_name,
     get_infer_var_type_func,
     to_composite_grad_opmaker_name,
     to_input_name,
@@ -70,7 +70,7 @@ env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
 env.filters["get_infer_var_type_func"] = get_infer_var_type_func
 env.filters["assert_dense_or_sr"] = assert_dense_or_sr
-env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
+env.filters["find_optional_inputs_name"] = find_optional_inputs_name
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
 env.tests["only_composite_op"] = is_only_composite_op
@@ -92,6 +92,7 @@ def process_scalar(op_item, scalar_configs):
     scalar_map = {
         'Scalar': 'float',
         'Scalar(float)': 'float',
+        'Scalar(double)': 'double',
         'Scalar(int)': 'int',
         'Scalar(int64_t)': 'int64_t',
     }
@@ -115,6 +116,14 @@ def process_scalar(op_item, scalar_configs):
                     if 'data_type' in scalar_config
                     else scalar_map[attr_type]
                 )
+                if (
+                    attr_type == 'Scalar(double)'
+                    and attr_item['data_type'] == 'std::string'
+                    and 'default_value' in attr_item
+                ):
+                    attr_item['default_value'] = (
+                        '"' + attr_item['default_value'] + '"'
+                    )
                 if attr_item['is_support_tensor'] is False:
                     attr_item['tensor_name'] = scalar_config['tensor_name']
 

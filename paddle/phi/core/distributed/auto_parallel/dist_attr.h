@@ -18,18 +18,25 @@ limitations under the License. */
 #include <cstdint>
 #include <iostream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
 #include "paddle/phi/common/reduce_type.h"
-#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 namespace distributed {
+
+namespace auto_parallel {
+class TensorDistAttrProto;
+}
+
+constexpr int kReplicateDim = -1;
 
 class PlacementStatus {
  public:
@@ -71,7 +78,7 @@ class ShardStatus final : public PlacementStatus {
   int64_t axis_{-1};
 };
 
-class TensorDistAttr {
+class TEST_API TensorDistAttr {
  public:
   TensorDistAttr() = default;
 
@@ -117,6 +124,10 @@ class TensorDistAttr {
 
   void set_batch_dim(int64_t batch_dim);
 
+  const int64_t& chunk_id() const { return chunk_id_; }
+
+  void set_chunk_id(const int64_t& chunk_id);
+
   const std::vector<bool>& dynamic_dims() const { return dynamic_dims_; }
 
   void set_dynamic_dims(const std::vector<bool>& dynamic_dims);
@@ -151,6 +162,7 @@ class TensorDistAttr {
   bool verify_partial_status() const;
 
   bool verify(const std::vector<int64_t>& tensor_shape) const;
+  bool verify_dynamic(const std::vector<int64_t>& tensor_shape) const;
 
   // TensorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
@@ -161,7 +173,7 @@ class TensorDistAttr {
   // future partial-support-stage-II.
   void from_proto(const auto_parallel::TensorDistAttrProto& proto);
 
-  auto_parallel::TensorDistAttrProto to_proto() const;
+  void to_proto(auto_parallel::TensorDistAttrProto* proto) const;
 
   std::string serialize_to_string();
 
@@ -192,8 +204,9 @@ class TensorDistAttr {
   int64_t batch_dim_{0};
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
+  int64_t chunk_id_{0};
   // partial map would be small (less than mesh.size)
-  // iterate operation (copy and comparision) would more frequency than random
+  // iterate operation (copy and comparison) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>
   paddle::flat_hash_map<int64_t, ReduceType> partial_status_;
 };

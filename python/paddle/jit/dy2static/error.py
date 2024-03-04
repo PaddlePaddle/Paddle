@@ -18,11 +18,13 @@ import re
 import sys
 import traceback
 
-import numpy as np  # noqa: F401
+import numpy as np
 
 from .origin_info import Location, OriginInfo, global_origin_info_map
-from .utils import _is_api_in_module_helper  # noqa: F401
-from .utils import RE_PYMODULE
+from .utils import (
+    RE_PYMODULE,
+    is_api_in_module_helper,
+)
 
 __all__ = []
 
@@ -73,7 +75,7 @@ class TraceBackFrame(OriginInfo):
         self.source_code = source_code
         self.error_line = ''
 
-    def formated_message(self):
+    def formatted_message(self):
         # self.source_code may be empty in some functions.
         # For example, decorator generated function
         return (
@@ -139,7 +141,7 @@ class TraceBackFrameRange(OriginInfo):
                     + self.source_code[i]
                 )
 
-    def formated_message(self):
+    def formatted_message(self):
         msg = (
             ' ' * BLANK_COUNT_BEFORE_FILE_STR
             + 'File "{}", line {}, in {}\n'.format(
@@ -156,7 +158,9 @@ class SuggestionDict:
         self.suggestion_dict = {
             ('is not initialized.', 'Hint:', 'IsInitialized'): (
                 "Please ensure all your sublayers are inheritted from nn.Layer.",
-                "Please ensure there is no tensor created explicitly depended on external data, we suggest to register it as buffer tensor. See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/04_dygraph_to_static/export_model/principle_cn.html#parameters-buffers for details",
+                "Please ensure there is no tensor created explicitly depended on external data, "
+                + "we suggest to register it as buffer tensor. "
+                + "See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/jit/principle_cn.html#buffers for details",
             )
         }
 
@@ -203,18 +207,16 @@ class ErrorData:
         func_str = None
         for frame in tb:
             searched_name = re.search(
-                r'({module})*{name}'.format(
-                    module=RE_PYMODULE, name=frame.name
-                ),
+                fr'({RE_PYMODULE})*{frame.name}',
                 error_line,
             )
             if searched_name:
                 func_str = searched_name.group(0)
                 break
         try:
-            module_result = eval(
-                "_is_api_in_module_helper({}, '{}')".format(func_str, "numpy")
-            )
+            globals = {'np': np}
+            fn = eval(func_str, globals)
+            module_result = is_api_in_module_helper(fn, "numpy")
             is_numpy_api_err = module_result or (
                 func_str.startswith("numpy.") or func_str.startswith("np.")
             )
@@ -286,7 +288,7 @@ class ErrorData:
                     dygraph_func_info.source_code,
                 )
 
-            message_lines.append(traceback_frame.formated_message())
+            message_lines.append(traceback_frame.formatted_message())
             error_line = traceback_frame.error_line
         message_lines.append("")
 
@@ -302,7 +304,7 @@ class ErrorData:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code
             )
-            message_lines.append(traceback_frame.formated_message())
+            message_lines.append(traceback_frame.formatted_message())
         message_lines.append("")
 
         # Step3: Adds error message like "TypeError: dtype must be int32, but received float32".
@@ -339,9 +341,7 @@ class ErrorData:
                 for suggestion in self.suggestion_dict[keywords]:
                     suggestion_msg = (
                         ' ' * BLANK_COUNT_BEFORE_FILE_STR * 2
-                        + '{}. {}'.format(
-                            str(len(revise_suggestions) - 1), suggestion
-                        )
+                        + f'{str(len(revise_suggestions) - 1)}. {suggestion}'
                     )
                     revise_suggestions.append(suggestion_msg)
         return revise_suggestions if len(revise_suggestions) > 2 else []
@@ -413,7 +413,7 @@ class ErrorData:
                 traceback_frame = TraceBackFrame(
                     Location(filepath, lineno), funcname, code
                 )
-            error_frame.append(traceback_frame.formated_message())
+            error_frame.append(traceback_frame.formatted_message())
         error_frame.append("")
 
         # Add paddle traceback after user code traceback
@@ -428,7 +428,7 @@ class ErrorData:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code
             )
-            error_frame.append(traceback_frame.formated_message())
+            error_frame.append(traceback_frame.formatted_message())
         error_frame.append("")
 
         error_frame.extend(bottom_error_message)

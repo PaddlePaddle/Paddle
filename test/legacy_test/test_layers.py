@@ -25,8 +25,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core, dygraph
-from paddle.base.dygraph import to_variable
-from paddle.base.framework import Program, default_main_program, program_guard
+from paddle.base.framework import Program, program_guard
 from paddle.incubate.layers.nn import (
     batch_fc,
     partial_concat,
@@ -34,6 +33,7 @@ from paddle.incubate.layers.nn import (
     rank_attention,
     shuffle_batch,
 )
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -66,9 +66,9 @@ class LayerTest(unittest.TestCase):
         self, feed, fetch_list, with_lod=False, force_to_use_cpu=False
     ):
         exe = base.Executor(self._get_place(force_to_use_cpu))
-        exe.run(base.default_startup_program())
+        exe.run(paddle.static.default_startup_program())
         return exe.run(
-            base.default_main_program(),
+            paddle.static.default_main_program(),
             feed=feed,
             fetch_list=fetch_list,
             return_numpy=(not with_lod),
@@ -104,7 +104,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             inp = np.ones([3, 3], dtype='float32')
-            x = to_variable(inp)
+            x = paddle.to_tensor(inp)
             custom = CustomLayer(input_size=3, linear1_size=2)
             ret = custom(x, do_linear2=False)
             np.testing.assert_array_equal(ret.numpy().shape, [3, 2])
@@ -126,7 +126,7 @@ class TestLayer(LayerTest):
                 feed={'data': inp}, fetch_list=[ret, ret2]
             )
         with self.dynamic_graph():
-            t = to_variable(inp)
+            t = paddle.to_tensor(inp)
             dropout = paddle.nn.Dropout(p=0.35)
             dy_ret = dropout(t)
             dy_ret2 = paddle.nn.functional.dropout(t, p=0.35)
@@ -153,7 +153,7 @@ class TestLayer(LayerTest):
                 feed={'data': inp}, fetch_list=[ret]
             )[0]
         with self.dynamic_graph():
-            t = to_variable(inp)
+            t = paddle.to_tensor(inp)
             linear = paddle.nn.Linear(
                 32,
                 4,
@@ -242,7 +242,7 @@ class TestLayer(LayerTest):
                 feed={'data': inp}, fetch_list=[ret]
             )[0]
         with self.dynamic_graph():
-            t = to_variable(inp)
+            t = paddle.to_tensor(inp)
             flatten = paddle.nn.Flatten()
             dy_ret = flatten(t)
             dy_ret_value = dy_ret.numpy()
@@ -275,6 +275,7 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
+    @test_with_pir_api
     def test_SyncBatchNorm(self):
         if core.is_compiled_with_cuda():
             with self.static_graph():
@@ -291,7 +292,7 @@ class TestLayer(LayerTest):
             with self.dynamic_graph():
                 t = np.ones([3, 3, 5, 5], dtype='float32')
                 my_syncbn = paddle.nn.SyncBatchNorm(3)
-                dy_ret = my_syncbn(to_variable(t))
+                dy_ret = my_syncbn(paddle.to_tensor(t))
                 dy_ret_value = dy_ret.numpy()
             np.testing.assert_array_equal(static_ret, dy_ret_value)
 
@@ -305,7 +306,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             t = np.ones([3, 3], dtype='float32')
-            dy_ret = F.relu(to_variable(t))
+            dy_ret = F.relu(paddle.to_tensor(t))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
@@ -328,7 +329,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             t = np.ones([3, 3], dtype='float32')
             t2 = np.ones([3, 3], dtype='float32')
-            dy_ret = paddle.matmul(to_variable(t), to_variable(t2))
+            dy_ret = paddle.matmul(paddle.to_tensor(t), paddle.to_tensor(t2))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
@@ -371,11 +372,11 @@ class TestLayer(LayerTest):
             )[0]
 
         with self.dynamic_graph():
-            ret = paddle.add(to_variable(n), to_variable(n2))
-            ret = paddle.pow(ret, to_variable(n3))
-            ret = paddle.divide(ret, to_variable(n4))
-            ret = paddle.subtract(ret, to_variable(n5))
-            dy_ret = paddle.multiply(ret, to_variable(n6))
+            ret = paddle.add(paddle.to_tensor(n), paddle.to_tensor(n2))
+            ret = paddle.pow(ret, paddle.to_tensor(n3))
+            ret = paddle.divide(ret, paddle.to_tensor(n4))
+            ret = paddle.subtract(ret, paddle.to_tensor(n5))
+            dy_ret = paddle.multiply(ret, paddle.to_tensor(n6))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
@@ -385,8 +386,8 @@ class TestLayer(LayerTest):
         n2 = np.ones([3, 3], dtype='float32') * 2
 
         with self.dynamic_graph():
-            min_ret = paddle.minimum(to_variable(n), to_variable(n2))
-            max_ret = paddle.maximum(to_variable(n), to_variable(n2))
+            min_ret = paddle.minimum(paddle.to_tensor(n), paddle.to_tensor(n2))
+            max_ret = paddle.maximum(paddle.to_tensor(n), paddle.to_tensor(n2))
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
 
@@ -431,7 +432,7 @@ class TestLayer(LayerTest):
                 27,
                 bias_attr=paddle.nn.initializer.Constant(value=1),
             )
-            dy_rlt = conv2d_transpose(to_variable(inp_np))
+            dy_rlt = conv2d_transpose(paddle.to_tensor(inp_np))
             dy_rlt = paddle.nn.functional.sigmoid(dy_rlt)
             dy_rlt_value = dy_rlt.numpy()
         np.testing.assert_allclose(static_rlt2, static_rlt, rtol=1e-05)
@@ -450,8 +451,8 @@ class TestLayer(LayerTest):
                 [2, 2],
                 weight_attr=weight_attr,
             )
-            dy_ret1 = conv2d1(to_variable(images))
-            dy_ret2 = conv2d2(to_variable(images))
+            dy_ret1 = conv2d1(paddle.to_tensor(images))
+            dy_ret2 = conv2d2(paddle.to_tensor(images))
             self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
 
             conv2d1_weight_np = conv2d1.weight.numpy()
@@ -464,8 +465,8 @@ class TestLayer(LayerTest):
                 conv2d1_weight_np, conv2d2.weight.numpy()
             )
             conv2d2.bias.set_value(conv2d1_bias)
-            dy_ret1 = conv2d1(to_variable(images))
-            dy_ret2 = conv2d2(to_variable(images))
+            dy_ret1 = conv2d1(paddle.to_tensor(images))
+            dy_ret2 = conv2d2(paddle.to_tensor(images))
             np.testing.assert_array_equal(dy_ret1.numpy(), dy_ret2.numpy())
 
             conv2d2.weight = conv2d1.weight
@@ -498,116 +499,148 @@ class TestLayer(LayerTest):
             self.assertRaises(TypeError, test_type)
 
     def test_bilinear_tensor_product(self):
+        def _test_static_specific(inp_np_x, inp_np_y):
+            with self.static_graph():
+                data_x = paddle.static.data(
+                    name='x', shape=[1, 3], dtype="float32"
+                )
+                data_y = paddle.static.data(
+                    name='y', shape=[1, 3], dtype="float32"
+                )
+                out = paddle.static.nn.common.bilinear_tensor_product(
+                    data_x,
+                    data_y,
+                    6,
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
+                    act='sigmoid',
+                )
+
+                static_rlt = self.get_static_graph_result(
+                    feed={'x': inp_np_x, 'y': inp_np_y}, fetch_list=[out]
+                )[0]
+
+            return static_rlt
+
+        def _test_static(inp_np_x, inp_np_y):
+            with self.static_graph():
+                data_x = paddle.static.data(
+                    name='x', shape=[1, 3], dtype="float32"
+                )
+                data_y = paddle.static.data(
+                    name='y', shape=[1, 3], dtype="float32"
+                )
+                btp = paddle.nn.Bilinear(
+                    3,
+                    3,
+                    6,
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
+                )
+                out = btp(data_x, data_y)
+                out = paddle.nn.functional.sigmoid(out)
+                static_rlt2 = self.get_static_graph_result(
+                    feed={'x': inp_np_x, 'y': inp_np_y}, fetch_list=[out]
+                )[0]
+
+            return static_rlt2
+
+        def _test_dygraph_1(inp_np_x, inp_np_y):
+            with self.dynamic_graph():
+                btp = paddle.nn.Bilinear(
+                    3,
+                    3,
+                    6,
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
+                )
+                dy_rlt = btp(
+                    paddle.to_tensor(inp_np_x),
+                    paddle.to_tensor(inp_np_y),
+                )
+                dy_rlt = paddle.nn.functional.sigmoid(dy_rlt)
+                dy_rlt_value = dy_rlt.numpy()
+
+            with self.dynamic_graph():
+                btp2 = paddle.nn.Bilinear(3, 3, 6)
+                dy_rlt2 = btp2(
+                    paddle.to_tensor(inp_np_x),
+                    paddle.to_tensor(inp_np_y),
+                )
+                dy_rlt2 = paddle.nn.functional.sigmoid(dy_rlt2)
+                dy_rlt2_value = dy_rlt2.numpy()
+
+            with self.static_graph():
+                data_x2 = paddle.static.data(
+                    name='x', shape=[1, 3], dtype="float32"
+                )
+                data_y2 = paddle.static.data(
+                    name='y', shape=[1, 3], dtype="float32"
+                )
+                out2 = paddle.static.nn.common.bilinear_tensor_product(
+                    data_x2, data_y2, 6, act='sigmoid'
+                )
+
+                static_rlt3 = self.get_static_graph_result(
+                    feed={'x': inp_np_x, 'y': inp_np_y}, fetch_list=[out2]
+                )[0]
+
+            return dy_rlt_value, dy_rlt2_value, static_rlt3
+
+        def _test_dygraph_2(inp_np_x, inp_np_y):
+            with self.dynamic_graph():
+                custom_weight = np.random.randn(6, 3, 3).astype("float32")
+                weight_attr = base.ParamAttr(
+                    initializer=paddle.nn.initializer.Assign(custom_weight)
+                )
+                btp1 = paddle.nn.Bilinear(3, 3, 6)
+                btp2 = paddle.nn.Bilinear(3, 3, 6, weight_attr=weight_attr)
+                dy_rlt1 = btp1(
+                    paddle.to_tensor(inp_np_x),
+                    paddle.to_tensor(inp_np_y),
+                )
+                dy_rlt1 = paddle.nn.functional.sigmoid(dy_rlt1)
+                dy_rlt2 = btp2(
+                    paddle.to_tensor(inp_np_x),
+                    paddle.to_tensor(inp_np_y),
+                )
+                dy_rlt2 = paddle.nn.functional.sigmoid(dy_rlt2)
+                self.assertFalse(
+                    np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy())
+                )
+                btp2.weight.set_value(btp1.weight.numpy())
+                btp2.bias.set_value(btp1.bias)
+                dy_rlt1 = btp1(
+                    paddle.to_tensor(inp_np_x),
+                    paddle.to_tensor(inp_np_y),
+                )
+                dy_rlt2 = btp2(
+                    paddle.to_tensor(inp_np_x),
+                    paddle.to_tensor(inp_np_y),
+                )
+                np.testing.assert_array_equal(dy_rlt1.numpy(), dy_rlt2.numpy())
+
+                btp2.weight = btp1.weight
+                btp2.bias = btp1.bias
+                np.testing.assert_array_equal(
+                    btp1.weight.numpy(), btp2.weight.numpy()
+                )
+                np.testing.assert_array_equal(
+                    btp1.bias.numpy(), btp2.bias.numpy()
+                )
+
         inp_np_x = np.array([[1, 2, 3]]).astype('float32')
         inp_np_y = np.array([[4, 5, 6]]).astype('float32')
 
-        with self.static_graph():
-            data_x = paddle.static.data(name='x', shape=[1, 3], dtype="float32")
-            data_y = paddle.static.data(name='y', shape=[1, 3], dtype="float32")
-            out = paddle.static.nn.common.bilinear_tensor_product(
-                data_x,
-                data_y,
-                6,
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-                act='sigmoid',
-            )
-
-            static_rlt = self.get_static_graph_result(
-                feed={'x': inp_np_x, 'y': inp_np_y}, fetch_list=[out]
-            )[0]
-
-        with self.static_graph():
-            data_x = paddle.static.data(name='x', shape=[1, 3], dtype="float32")
-            data_y = paddle.static.data(name='y', shape=[1, 3], dtype="float32")
-            btp = paddle.nn.Bilinear(
-                3,
-                3,
-                6,
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            out = btp(data_x, data_y)
-            out = paddle.nn.functional.sigmoid(out)
-            static_rlt2 = self.get_static_graph_result(
-                feed={'x': inp_np_x, 'y': inp_np_y}, fetch_list=[out]
-            )[0]
-        with self.dynamic_graph():
-            btp = paddle.nn.Bilinear(
-                3,
-                3,
-                6,
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            dy_rlt = btp(
-                to_variable(inp_np_x),
-                to_variable(inp_np_y),
-            )
-            dy_rlt = paddle.nn.functional.sigmoid(dy_rlt)
-            dy_rlt_value = dy_rlt.numpy()
-
-        with self.dynamic_graph():
-            btp2 = paddle.nn.Bilinear(3, 3, 6)
-            dy_rlt2 = btp2(
-                to_variable(inp_np_x),
-                to_variable(inp_np_y),
-            )
-            dy_rlt2 = paddle.nn.functional.sigmoid(dy_rlt2)
-            dy_rlt2_value = dy_rlt2.numpy()
-
-        with self.static_graph():
-            data_x2 = paddle.static.data(
-                name='x', shape=[1, 3], dtype="float32"
-            )
-            data_y2 = paddle.static.data(
-                name='y', shape=[1, 3], dtype="float32"
-            )
-            out2 = paddle.static.nn.common.bilinear_tensor_product(
-                data_x2, data_y2, 6, act='sigmoid'
-            )
-
-            static_rlt3 = self.get_static_graph_result(
-                feed={'x': inp_np_x, 'y': inp_np_y}, fetch_list=[out2]
-            )[0]
-
+        static_rlt = _test_static_specific(inp_np_x, inp_np_y)
+        static_rlt2 = _test_static(inp_np_x, inp_np_y)
+        dy_rlt_value, dy_rlt2_value, static_rlt3 = _test_dygraph_1(
+            inp_np_x, inp_np_y
+        )
         np.testing.assert_array_equal(dy_rlt2_value, static_rlt3)
         np.testing.assert_array_equal(static_rlt2, static_rlt)
         np.testing.assert_array_equal(dy_rlt_value, static_rlt)
 
-        with self.dynamic_graph():
-            custom_weight = np.random.randn(6, 3, 3).astype("float32")
-            weight_attr = base.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(custom_weight)
-            )
-            btp1 = paddle.nn.Bilinear(3, 3, 6)
-            btp2 = paddle.nn.Bilinear(3, 3, 6, weight_attr=weight_attr)
-            dy_rlt1 = btp1(
-                to_variable(inp_np_x),
-                to_variable(inp_np_y),
-            )
-            dy_rlt1 = paddle.nn.functional.sigmoid(dy_rlt1)
-            dy_rlt2 = btp2(
-                to_variable(inp_np_x),
-                to_variable(inp_np_y),
-            )
-            dy_rlt2 = paddle.nn.functional.sigmoid(dy_rlt2)
-            self.assertFalse(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
-            btp2.weight.set_value(btp1.weight.numpy())
-            btp2.bias.set_value(btp1.bias)
-            dy_rlt1 = btp1(
-                to_variable(inp_np_x),
-                to_variable(inp_np_y),
-            )
-            dy_rlt2 = btp2(
-                to_variable(inp_np_x),
-                to_variable(inp_np_y),
-            )
-            np.testing.assert_array_equal(dy_rlt1.numpy(), dy_rlt2.numpy())
-
-            btp2.weight = btp1.weight
-            btp2.bias = btp1.bias
-            np.testing.assert_array_equal(
-                btp1.weight.numpy(), btp2.weight.numpy()
-            )
-            np.testing.assert_array_equal(btp1.bias.numpy(), btp2.bias.numpy())
+        with paddle.pir_utils.IrGuard():
+            static_pir_result = _test_static(inp_np_x, inp_np_y)
+        np.testing.assert_array_equal(static_pir_result, static_rlt)
 
     def test_embeding(self):
         inp_word = np.array([[[1]]]).astype('int64')
@@ -642,7 +675,7 @@ class TestLayer(LayerTest):
             emb2 = paddle.nn.Embedding(
                 dict_size, 32, weight_attr='emb.w', sparse=False
             )
-            dy_rlt = emb2(to_variable(inp_word))
+            dy_rlt = emb2(paddle.to_tensor(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
         np.testing.assert_allclose(static_rlt2[0], static_rlt)
@@ -657,13 +690,13 @@ class TestLayer(LayerTest):
             emb2 = paddle.nn.Embedding(
                 dict_size, 32, weight_attr=weight_attr, sparse=False
             )
-            rep1 = emb1(to_variable(inp_word))
-            rep2 = emb2(to_variable(inp_word))
+            rep1 = emb1(paddle.to_tensor(inp_word))
+            rep2 = emb2(paddle.to_tensor(inp_word))
             self.assertFalse(np.array_equal(emb1.weight.numpy(), custom_weight))
             np.testing.assert_array_equal(emb2.weight.numpy(), custom_weight)
             self.assertFalse(np.array_equal(rep1.numpy(), rep2.numpy()))
             emb2.weight.set_value(emb1.weight.numpy())
-            rep2 = emb2(to_variable(inp_word))
+            rep2 = emb2(paddle.to_tensor(inp_word))
             np.testing.assert_array_equal(rep1.numpy(), rep2.numpy())
 
             emb2.weight = emb1.weight
@@ -673,10 +706,10 @@ class TestLayer(LayerTest):
 
     def test_one_hot(self):
         with self.dynamic_graph():
-            label = base.dygraph.to_variable(np.array([[1], [1], [3], [0]]))
+            label = paddle.to_tensor(np.array([[1], [1], [3], [0]]))
             one_hot_label1 = paddle.nn.functional.one_hot(label, 4)
             one_hot_label2 = paddle.nn.functional.one_hot(
-                label, base.dygraph.to_variable(np.array([4]))
+                label, paddle.to_tensor(np.array([4]))
             )
             np.testing.assert_array_equal(
                 one_hot_label1.numpy(), one_hot_label2.numpy()
@@ -684,22 +717,22 @@ class TestLayer(LayerTest):
 
     def test_split(self):
         with self.dynamic_graph():
-            input = base.dygraph.to_variable(np.random.random((3, 8, 5)))
+            input = paddle.to_tensor(np.random.random((3, 8, 5)))
             x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
             x00, x11 = paddle.split(
                 input,
                 num_or_sections=2,
-                axis=base.dygraph.to_variable(np.array([1])),
+                axis=paddle.to_tensor(np.array([1])),
             )
             np.testing.assert_array_equal(x0.numpy(), x00.numpy())
             np.testing.assert_array_equal(x1.numpy(), x11.numpy())
 
     def test_topk(self):
         with self.dynamic_graph():
-            input = base.dygraph.to_variable(np.random.random((13, 11)))
+            input = paddle.to_tensor(np.random.random((13, 11)))
             top5_values1, top5_indices1 = paddle.topk(input, k=5)
             top5_values2, top5_indices2 = paddle.topk(
-                input, k=base.dygraph.to_variable(np.array([5]))
+                input, k=paddle.to_tensor(np.array([5]))
             )
             np.testing.assert_array_equal(
                 top5_values1.numpy(), top5_values2.numpy()
@@ -739,7 +772,7 @@ class TestLayer(LayerTest):
             conv3d = paddle.nn.Conv3D(
                 in_channels=3, out_channels=3, kernel_size=2
             )
-            dy_ret = conv3d(to_variable(images))
+            dy_ret = conv3d(paddle.to_tensor(images))
             dy_rlt_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
@@ -760,8 +793,8 @@ class TestLayer(LayerTest):
                 kernel_size=2,
                 weight_attr=weight_attr,
             )
-            dy_ret1 = conv3d1(to_variable(images))
-            dy_ret2 = conv3d2(to_variable(images))
+            dy_ret1 = conv3d1(paddle.to_tensor(images))
+            dy_ret2 = conv3d2(paddle.to_tensor(images))
             self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
 
             conv3d1_weight_np = conv3d1.weight.numpy()
@@ -774,8 +807,8 @@ class TestLayer(LayerTest):
                 conv3d1_weight_np, conv3d2.weight.numpy()
             )
             conv3d1.bias.set_value(conv3d1_bias)
-            dy_ret1 = conv3d1(to_variable(images))
-            dy_ret2 = conv3d2(to_variable(images))
+            dy_ret1 = conv3d1(paddle.to_tensor(images))
+            dy_ret2 = conv3d2(paddle.to_tensor(images))
             np.testing.assert_array_equal(dy_ret1.numpy(), dy_ret2.numpy())
 
             conv3d2.weight = conv3d1.weight
@@ -795,61 +828,82 @@ class TestLayer(LayerTest):
 
         shape = (2, 4, 3, 3)
 
+        def _test_static_specific(input):
+            with self.static_graph():
+                X = paddle.static.data(
+                    name='X', shape=shape, dtype='float32', lod_level=1
+                )
+                ret = paddle.static.nn.group_norm(
+                    input=X,
+                    groups=2,
+                    param_attr=paddle.nn.initializer.Uniform(
+                        low=-0.5, high=0.5
+                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
+                )
+                static_ret = self.get_static_graph_result(
+                    feed={
+                        'X': base.create_lod_tensor(
+                            data=input, recursive_seq_lens=[[1, 1]], place=place
+                        )
+                    },
+                    fetch_list=[ret],
+                    with_lod=True,
+                )[0]
+
+            return static_ret
+
+        def _test_static(input):
+            with self.static_graph():
+                X = paddle.static.data(
+                    name='X', shape=shape, dtype='float32', lod_level=1
+                )
+                groupNorm = paddle.nn.GroupNorm(
+                    num_channels=shape[1],
+                    num_groups=2,
+                    weight_attr=paddle.nn.initializer.Uniform(
+                        low=-0.5, high=0.5
+                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
+                )
+                ret = groupNorm(X)
+                static_ret2 = self.get_static_graph_result(
+                    feed={
+                        'X': base.create_lod_tensor(
+                            data=input, recursive_seq_lens=[[1, 1]], place=place
+                        )
+                    },
+                    fetch_list=[ret, groupNorm.weight],
+                    with_lod=True,
+                )[0]
+
+            return static_ret2
+
+        def _test_dygraph(input):
+            with self.dynamic_graph():
+                groupNorm = paddle.nn.GroupNorm(
+                    num_channels=shape[1],
+                    num_groups=2,
+                    weight_attr=paddle.nn.initializer.Uniform(
+                        low=-0.5, high=0.5
+                    ),
+                    bias_attr=paddle.nn.initializer.Constant(value=1),
+                )
+                dy_ret = groupNorm(paddle.to_tensor(input))
+                dy_rlt_value = dy_ret.numpy()
+            return dy_rlt_value
+
         input = np.random.random(shape).astype('float32')
-
-        with self.static_graph():
-            X = paddle.static.data(
-                name='X', shape=shape, dtype='float32', lod_level=1
-            )
-            ret = paddle.static.nn.group_norm(
-                input=X,
-                groups=2,
-                param_attr=paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            static_ret = self.get_static_graph_result(
-                feed={
-                    'X': base.create_lod_tensor(
-                        data=input, recursive_seq_lens=[[1, 1]], place=place
-                    )
-                },
-                fetch_list=[ret],
-                with_lod=True,
-            )[0]
-
-        with self.static_graph():
-            X = paddle.static.data(
-                name='X', shape=shape, dtype='float32', lod_level=1
-            )
-            groupNorm = paddle.nn.GroupNorm(
-                num_channels=shape[1],
-                num_groups=2,
-                weight_attr=paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            ret = groupNorm(X)
-            static_ret2 = self.get_static_graph_result(
-                feed={
-                    'X': base.create_lod_tensor(
-                        data=input, recursive_seq_lens=[[1, 1]], place=place
-                    )
-                },
-                fetch_list=[ret],
-                with_lod=True,
-            )[0]
-
-        with self.dynamic_graph():
-            groupNorm = paddle.nn.GroupNorm(
-                num_channels=shape[1],
-                num_groups=2,
-                weight_attr=paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            dy_ret = groupNorm(to_variable(input))
-            dy_rlt_value = dy_ret.numpy()
-
+        static_ret = _test_static_specific(input)
+        static_ret2 = _test_static(input)
+        dy_rlt_value = _test_dygraph(input)
         np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
         np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
+
+        with paddle.pir_utils.IrGuard():
+            static_ret_pir = _test_static(input)
+
+        np.testing.assert_allclose(static_ret2, static_ret_pir, rtol=1e-05)
 
     def test_instance_norm(self):
         if core.is_compiled_with_cuda():
@@ -859,53 +913,81 @@ class TestLayer(LayerTest):
 
         shape = (2, 4, 3, 3)
 
+        def _test_static_specific(input):
+            with self.static_graph():
+                X = paddle.static.data(name='X', shape=shape, dtype='float32')
+                ret = paddle.static.nn.instance_norm(input=X)
+                static_ret = self.get_static_graph_result(
+                    feed={'X': input}, fetch_list=[ret]
+                )[0]
+            return static_ret
+
+        def _test_static(input):
+            with self.static_graph():
+                X = paddle.static.data(name='X', shape=shape, dtype='float32')
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
+                ret = instanceNorm(X)
+                static_ret2 = self.get_static_graph_result(
+                    feed={'X': input}, fetch_list=[ret]
+                )[0]
+            return static_ret2
+
+        def _test_dygraph_1(input):
+            with self.dynamic_graph():
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
+                dy_ret = instanceNorm(paddle.to_tensor(input))
+                dy_rlt_value = dy_ret.numpy()
+
+            return dy_rlt_value
+
+        def _test_dygraph_2(input):
+            with self.dynamic_graph():
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
+                dy_ret = instanceNorm(paddle.to_tensor(input))
+                dy_rlt_value2 = dy_ret.numpy()
+            return dy_rlt_value2
+
         input = np.random.random(shape).astype('float32')
-
-        with self.static_graph():
-            X = paddle.static.data(name='X', shape=shape, dtype='float32')
-            ret = paddle.static.nn.instance_norm(input=X)
-            static_ret = self.get_static_graph_result(
-                feed={'X': input}, fetch_list=[ret]
-            )[0]
-
-        with self.static_graph():
-            X = paddle.static.data(name='X', shape=shape, dtype='float32')
-            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-            ret = instanceNorm(X)
-            static_ret2 = self.get_static_graph_result(
-                feed={'X': input}, fetch_list=[ret]
-            )[0]
-
-        with self.dynamic_graph():
-            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-            dy_ret = instanceNorm(to_variable(input))
-            dy_rlt_value = dy_ret.numpy()
-
-        with self.dynamic_graph():
-            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-            dy_ret = instanceNorm(to_variable(input))
-            dy_rlt_value2 = dy_ret.numpy()
+        static_ret = _test_static_specific(input)
+        static_ret2 = _test_static(input)
+        dy_rlt_value = _test_dygraph_1(input)
+        dy_rlt_value2 = _test_dygraph_2(input)
 
         np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
         np.testing.assert_allclose(static_ret, dy_rlt_value2, rtol=1e-05)
         np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
 
-        with self.static_graph():
-            # the input of InstanceNorm must be Variable.
-            def test_Variable():
-                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-                ret1 = instanceNorm(input)
+        with paddle.pir_utils.IrGuard():
+            static_ret_pir = _test_static(input)
 
-            self.assertRaises(TypeError, test_Variable)
+        np.testing.assert_allclose(static_ret2, static_ret_pir, rtol=1e-05)
 
-            # the input dtype of InstanceNorm must be float32 or float64
-            def test_type():
-                input = np.random.random(shape).astype('int32')
-                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-                ret2 = instanceNorm(input)
+        def _test_errors():
+            with self.static_graph():
+                # the input of InstanceNorm must be Variable.
+                def test_Variable():
+                    instanceNorm = paddle.nn.InstanceNorm2D(
+                        num_features=shape[1]
+                    )
+                    ret1 = instanceNorm(input)
 
-            self.assertRaises(TypeError, test_type)
+                self.assertRaises(TypeError, test_Variable)
 
+                # the input dtype of InstanceNorm must be float32 or float64
+                def test_type():
+                    input = np.random.random(shape).astype('int32')
+                    instanceNorm = paddle.nn.InstanceNorm2D(
+                        num_features=shape[1]
+                    )
+                    ret2 = instanceNorm(input)
+
+                self.assertRaises(TypeError, test_type)
+
+        _test_errors()
+        with paddle.pir_utils.IrGuard():
+            _test_errors()
+
+    @test_with_pir_api
     def test_spectral_norm(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -951,7 +1033,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             spectralNorm = paddle.nn.SpectralNorm(shape, dim=1, power_iters=2)
-            dy_ret = spectralNorm(to_variable(input))
+            dy_ret = spectralNorm(paddle.to_tensor(input))
             dy_rlt_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
@@ -987,7 +1069,7 @@ class TestLayer(LayerTest):
             conv3d_transpose = paddle.nn.Conv3DTranspose(
                 in_channels=3, out_channels=12, kernel_size=12
             )
-            dy_rlt = conv3d_transpose(to_variable(input_array))
+            dy_rlt = conv3d_transpose(paddle.to_tensor(input_array))
             dy_rlt_value = dy_rlt.numpy()
         np.testing.assert_allclose(static_rlt2, static_rlt, rtol=1e-05)
         np.testing.assert_allclose(dy_rlt_value, static_rlt, rtol=1e-05)
@@ -1011,8 +1093,8 @@ class TestLayer(LayerTest):
                 weight_attr=weight_attr,
                 bias_attr='conv3d2_b',
             )
-            dy_ret1 = conv3d1(to_variable(images))
-            dy_ret2 = conv3d2(to_variable(images))
+            dy_ret1 = conv3d1(paddle.to_tensor(images))
+            dy_ret2 = conv3d2(paddle.to_tensor(images))
             self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
 
             conv3d1_weight_np = conv3d1.weight.numpy()
@@ -1025,8 +1107,8 @@ class TestLayer(LayerTest):
                 conv3d1_weight_np, conv3d2.weight.numpy()
             )
             conv3d1.bias.set_value(conv3d1_bias)
-            dy_ret1 = conv3d1(to_variable(images))
-            dy_ret2 = conv3d2(to_variable(images))
+            dy_ret1 = conv3d1(paddle.to_tensor(images))
+            dy_ret2 = conv3d2(paddle.to_tensor(images))
             np.testing.assert_array_equal(dy_ret1.numpy(), dy_ret2.numpy())
 
             conv3d2.weight = conv3d1.weight
@@ -1038,6 +1120,7 @@ class TestLayer(LayerTest):
                 conv3d1.bias.numpy(), conv3d2.bias.numpy()
             )
 
+    @test_with_pir_api
     def test_while_loop(self):
         with self.static_graph():
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
@@ -1091,8 +1174,8 @@ class TestLayer(LayerTest):
                 feed={"a": value_a, "b": value_b}, fetch_list=[cond]
             )[0]
         with self.dynamic_graph():
-            da = to_variable(value_a)
-            db = to_variable(value_b)
+            da = paddle.to_tensor(value_a)
+            db = paddle.to_tensor(value_b)
             dcond = paddle.less_than(x=da, y=db)
 
             for i in range(len(static_ret)):
@@ -1107,8 +1190,8 @@ class TestLayer(LayerTest):
                 feed={"a1": value_a, "b1": value_b}, fetch_list=[cond1]
             )[0]
         with self.dynamic_graph():
-            da1 = to_variable(value_a)
-            db1 = to_variable(value_b)
+            da1 = paddle.to_tensor(value_a)
+            db1 = paddle.to_tensor(value_b)
             dcond1 = paddle.less_equal(x=da1, y=db1)
 
             for i in range(len(static_ret1)):
@@ -1123,8 +1206,8 @@ class TestLayer(LayerTest):
                 feed={"a2": value_a, "b2": value_b}, fetch_list=[cond2]
             )[0]
         with self.dynamic_graph():
-            da2 = to_variable(value_a)
-            db2 = to_variable(value_b)
+            da2 = paddle.to_tensor(value_a)
+            db2 = paddle.to_tensor(value_b)
             dcond2 = paddle.greater_than(x=da2, y=db2)
 
             for i in range(len(static_ret2)):
@@ -1139,8 +1222,8 @@ class TestLayer(LayerTest):
                 feed={"a3": value_a, "b3": value_b}, fetch_list=[cond3]
             )[0]
         with self.dynamic_graph():
-            da3 = to_variable(value_a)
-            db3 = to_variable(value_b)
+            da3 = paddle.to_tensor(value_a)
+            db3 = paddle.to_tensor(value_b)
             dcond3 = paddle.greater_equal(x=da3, y=db3)
 
             for i in range(len(static_ret3)):
@@ -1155,8 +1238,8 @@ class TestLayer(LayerTest):
                 feed={"a4": value_a, "b4": value_b}, fetch_list=[cond4]
             )[0]
         with self.dynamic_graph():
-            da4 = to_variable(value_a)
-            db4 = to_variable(value_b)
+            da4 = paddle.to_tensor(value_a)
+            db4 = paddle.to_tensor(value_b)
             dcond4 = paddle.equal(x=da4, y=db4)
 
             for i in range(len(static_ret4)):
@@ -1171,13 +1254,14 @@ class TestLayer(LayerTest):
                 feed={"a5": value_a, "b5": value_b}, fetch_list=[cond5]
             )[0]
         with self.dynamic_graph():
-            da5 = to_variable(value_a)
-            db5 = to_variable(value_b)
+            da5 = paddle.to_tensor(value_a)
+            db5 = paddle.to_tensor(value_b)
             dcond5 = paddle.equal(x=da5, y=db5)
 
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
 
+    @test_with_pir_api
     def test_cond(self):
         def less_than_branch(a, b):
             return paddle.add(a, b)
@@ -1207,8 +1291,8 @@ class TestLayer(LayerTest):
             static_res = ret[0]
 
         with self.dynamic_graph():
-            a = base.dygraph.to_variable(np.array([0.1]).astype('float32'))
-            b = base.dygraph.to_variable(np.array([0.23]).astype('float32'))
+            a = paddle.to_tensor(np.array([0.1]).astype('float32'))
+            b = paddle.to_tensor(np.array([0.23]).astype('float32'))
             out = paddle.static.nn.cond(
                 a < b,
                 lambda: less_than_branch(a, b),
@@ -1229,10 +1313,11 @@ class TestLayer(LayerTest):
 
         np.testing.assert_array_equal(static_res, dynamic_res)
 
+    @test_with_pir_api
     def test_case(self):
         def fn_1():
             return paddle.tensor.fill_constant(
-                shape=[1, 2], dtype='float32', value=1
+                shape=[1, 2], dtype='int32', value=1
             )
 
         def fn_2():
@@ -1242,7 +1327,7 @@ class TestLayer(LayerTest):
 
         def fn_3():
             return paddle.tensor.fill_constant(
-                shape=[3], dtype='int32', value=3
+                shape=[3, 2], dtype='int32', value=3
             )
 
         with self.static_graph():
@@ -1302,10 +1387,11 @@ class TestLayer(LayerTest):
         np.testing.assert_array_equal(static_res1, dynamic_res1)
         np.testing.assert_array_equal(static_res2, dynamic_res2)
 
+    @test_with_pir_api
     def test_switch_case(self):
         def fn_1():
             return paddle.tensor.fill_constant(
-                shape=[1, 2], dtype='float32', value=1
+                shape=[1, 2], dtype='int32', value=1
             )
 
         def fn_2():
@@ -1315,7 +1401,7 @@ class TestLayer(LayerTest):
 
         def fn_3():
             return paddle.tensor.fill_constant(
-                shape=[3], dtype='int32', value=3
+                shape=[3, 2], dtype='int32', value=3
             )
 
         with self.static_graph():
@@ -1444,8 +1530,8 @@ class TestLayer(LayerTest):
             )
 
         with self.dynamic_graph(force_to_use_cpu=True):
-            data = to_variable(x)
-            label = to_variable(y)
+            data = paddle.to_tensor(x)
+            label = paddle.to_tensor(y)
             data_new = paddle.reshape(data, [3, 32 * 32])
             fc_out = paddle.nn.Linear(32 * 32, 10)(data_new)
             predict = paddle.nn.functional.softmax(fc_out)
@@ -1509,9 +1595,7 @@ class TestBook(LayerTest):
                     dy_result_value,
                     rtol=1e-05,
                     atol=0,
-                    err_msg='Result of function [{}] compare failed'.format(
-                        method.__name__
-                    ),
+                    err_msg=f'Result of function [{method.__name__}] compare failed',
                 )
                 continue
 
@@ -1519,9 +1603,7 @@ class TestBook(LayerTest):
                 np.testing.assert_array_equal(
                     static_result[0],
                     dy_result_value,
-                    err_msg='Result of function [{}] not equal'.format(
-                        method.__name__
-                    ),
+                    err_msg=f'Result of function [{method.__name__}] not equal',
                 )
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
@@ -1545,10 +1627,8 @@ class TestBook(LayerTest):
         self, name, shape, dtype, set_feed_dict=True, append_batch_size=True
     ):
         if dygraph.base.enabled():
-            return to_variable(
-                value=self._get_np_data(shape, dtype, append_batch_size),
-                name=name,
-                zero_copy=False,
+            return paddle.to_tensor(
+                self._get_np_data(shape, dtype, append_batch_size),
             )
         else:
             if set_feed_dict:
@@ -2108,6 +2188,7 @@ class TestBook(LayerTest):
             out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
+    @test_with_pir_api
     def test_affine_grid(self):
         with self.static_graph():
             data = paddle.static.data(
@@ -2127,6 +2208,7 @@ class TestBook(LayerTest):
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
 
+    @test_with_pir_api
     def test_stridedslice(self):
         axes = [0, 1, 2]
         starts = [1, 0, 2]
@@ -2148,7 +2230,7 @@ class TestBook(LayerTest):
                 name='X', shape=[-1, 4, 50], dtype='float32', lod_level=0
             )
             out1 = shuffle_batch(x)
-            default_main_program().random_seed = 1000
+            paddle.seed(1000)
             out2 = shuffle_batch(x)
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)
@@ -2371,6 +2453,16 @@ class TestSubLayerCount(unittest.TestCase):
             mySuperlayer = MySuperLayer()
             self.assertTrue(len(mySuperlayer.sublayers()) == 3)
             self.assertTrue(len(mySuperlayer.sublayers(include_self=True)) == 4)
+
+
+class TestExcludedLayersSupportBool(unittest.TestCase):
+    def test_support_tuple(self):
+        with base.dygraph.guard():
+            model = MyLayer()
+            model.float16(excluded_layers=[paddle.nn.Linear])
+            self.assertTrue(model._linear.weight.dtype == paddle.float32)
+            model.bfloat16(excluded_layers=(paddle.nn.Linear))
+            self.assertTrue(model._linear.weight.dtype == paddle.float32)
 
 
 if __name__ == '__main__':

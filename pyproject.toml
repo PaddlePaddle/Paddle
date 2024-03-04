@@ -8,38 +8,40 @@ extend-exclude = '''
 )
 '''
 
-[tool.isort]
-profile = "black"
-line_length = 80
-known_first_party = ["paddle"]
-skip = ["build", "third_party", "__init__.py"]
-extend_skip_glob = [
-    # These files do not need to be formatted,
-    # see .flake8 for more details
-    "python/paddle/base/**",
-    "python/paddle/utils/gast/**",
-]
-
 [tool.ruff]
 exclude = [
     "./build",
     "third_party",
     "./python/paddle/utils/gast/**",
 ]
-target-version = "py37"
+line-length = 80
+target-version = "py38"
+
+[tool.ruff.lint]
 select = [
+    # Pycodestyle
+    "E",
+    "W",
+
     # Pyflakes
     "F",
 
+    # Isort
+    "I",
+
     # Comprehensions
     "C4",
+
+    # Debugger
+    "T100",
 
     # Pyupgrade
     "UP",
 
     # NumPy-specific rules
     "NPY001",
-    # "NPY003",
+    "NPY003",
+    "NPY201",
 
     # Bugbear
     "B002",
@@ -69,15 +71,32 @@ select = [
     "PLC3002",
     "PLR0206",
     "PLR0402",
-    # "PLR1701",
-    # "PLR1711",  # Confirmation required
+    "PLR1701",
+    "PLR1711",
     "PLR1722",
-    "PLW3301",  # Confirmation required
+    "PLW3301",
+
+    # Pygrep-hooks
+    "PGH004",
 ]
 unfixable = [
     "NPY001"
 ]
 ignore = [
+    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
+    "E203",
+    # Module level import not at top of file
+    "E402",
+    # Line too long (82 > 79 characters)
+    "E501",
+    # Do not compare types, use `isinstance()`
+    "E721",
+    # Do not use bare except, specify exception instead
+    "E722",
+    # Do not assign a lambda expression, use a def
+    "E731",
+    # Do not use variables named ‘l’, ‘O’, or ‘I’
+    "E741",
     # `name` may be undefined, or defined from star imports: `module`
     "F405",
     # Local variable name is assigned to but never used
@@ -88,9 +107,15 @@ ignore = [
     "UP038",
 ]
 
-[tool.ruff.per-file-ignores]
-# Ignore unused imports in __init__.py
-"__init__.py" = ["F401"]
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["paddle"]
+
+[tool.ruff.lint.per-file-ignores]
+# These files need tabs for testing.
+"test/dygraph_to_static/test_legacy_error.py" = ["E101", "W191"]
+# Ignore compare with True in sot unittest
+"test/sot/test_dup_top.py" = ["E712"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
@@ -102,379 +127,7 @@ ignore = [
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
 
-# Temporarily ignored
-"python/paddle/base/**" = [
-    "UP032",
-    "UP031",
-    "C408",
-    "UP030",
-    "F403",
-    "F522",
-    "B010",
-    "PLR1722",
-    "UP028",
-    "C403",
-    "UP034",
-    "C405",
-    "C417",
-    "PLR0402",
-    "B004",
-    "B009",
-    "B016",
-    "B019", # Confirmation required
-    "C411",
-    "C416",
-    "F821",
-    "PLC0414",
-]
 
-# UP018
-"python/paddle/distributed/fleet/meta_optimizers/localsgd_optimizer.py" = ["UP018"]
-"python/paddle/distributed/fleet/meta_optimizers/sharding/utils.py" = ["UP018", "UP032"]
-"python/paddle/distributed/fleet/meta_optimizers/sharding_optimizer.py" = ["UP018", "UP032"]
-"python/paddle/distributed/fleet/utils/pp_parallel_adaptor.py" = ["UP018", "UP032"]
-"python/paddle/incubate/autograd/utils.py" = ["UP018"]
-"python/paddle/incubate/optimizer/gradient_merge.py" = ["UP018", "UP032"]
-"python/paddle/nn/functional/loss.py" = ["UP018", "UP032"]
-"python/paddle/distributed/passes/auto_parallel_gradient_merge.py" = ["UP018"]
-"python/paddle/hapi/dynamic_flops.py" = ["UP018", "UP032"]
-"python/paddle/incubate/optimizer/pipeline.py" = ["UP018", "UP032"]
-"python/paddle/static/nn/metric.py" = ["UP018"]
-"test/cinn/ops/test_fill_constant_op.py" = ["UP018"]
-"test/collective/fleet/parallel_dygraph_transformer.py" = ["UP018"]
-"test/collective/fleet/test_dgc_op.py" = ["UP018"]
-"test/dygraph_to_static/transformer_dygraph_model.py" = ["UP018"]
-"test/legacy_test/fleet_heter_ps_training.py" = ["UP018"]
-"test/legacy_test/test_fake_quantize_op.py" = ["UP018"]
-"test/legacy_test/test_generate_mask_labels_op.py" = ["UP018"]
-"test/legacy_test/test_imperative_transformer_sorted_gradient.py" = ["UP018"]
-"test/legacy_test/test_progressbar.py" = ["UP018"]
-"test/legacy_test/test_tensor_fill_.py" = ["UP018"]
-
-# B017
-"test/auto_parallel/spmd_rules/test_reshape_rule.py" = ["B017"]
-"test/dygraph_to_static/test_assert.py" = ["B017"]
-"test/legacy_test/test_cuda_max_memory_allocated.py" = ["B017"]
-"test/legacy_test/test_cuda_max_memory_reserved.py" = ["B017"]
-"test/legacy_test/test_cuda_memory_allocated.py" = ["B017"]
-"test/legacy_test/test_cuda_memory_reserved.py" = ["B017"]
-"test/legacy_test/test_eigvals_op.py" = ["B017"]
-"test/legacy_test/test_tensordot.py" = ["B017"]
-"test/legacy_test/test_top_k_v2_op.py" = ["B017"]
-
-# UP028
-"python/paddle/dataset/cifar.py" = ["UP028"]
-"python/paddle/dataset/common.py" = ["UP028", "UP032"]
-"python/paddle/io/dataloader/dataset.py" = ["UP028"]
-"python/paddle/nn/layer/layers.py" = ["UP028", "UP032"]
-"python/paddle/utils/layers_utils.py" = ["UP028", "UP032"]
-"test/legacy_test/test_lstm_cudnn_op.py" = ["UP028", "UP032"]
-"test/rnn/rnn_numpy.py" = ["UP028", "UP032"]
-
-# UP032
-"paddle/fluid/ir/dialect/op_generator/api_gen.py" = ["UP032"]
-"paddle/fluid/ir/dialect/op_generator/op_gen.py" = ["UP032"]
-"paddle/phi/api/yaml/generator/api_gen.py" = ["UP032"]
-"paddle/phi/api/yaml/generator/backward_api_gen.py" = ["UP032"]
-"paddle/phi/api/yaml/generator/dist_api_gen.py" = ["UP032"]
-"paddle/phi/api/yaml/generator/dist_bw_api_gen.py" = ["UP032"]
-"paddle/phi/api/yaml/generator/sparse_api_gen.py" = ["UP032"]
-"paddle/phi/api/yaml/generator/sparse_bw_api_gen.py" = ["UP032"]
-"paddle/phi/api/yaml/generator/strings_api_gen.py" = ["UP032"]
-"paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_kernels.py" = ["UP032"]
-"parse_build_time.py" = ["UP032"]
-"python/paddle/amp/accuracy_compare.py" = ["UP032"]
-"python/paddle/audio/backends/init_backend.py" = ["UP032"]
-"python/paddle/audio/backends/wave_backend.py" = ["UP032"]
-"python/paddle/batch.py" = ["UP032"]
-"python/paddle/device/cuda/__init__.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/interface.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/completion.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/converter.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/cost/base_cost.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/cost/tensor_cost.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/cost_model.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/dist_context.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/dist_op.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/dist_tensor.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/engine.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/graph.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/operators/dist_check_finite_and_unscale.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/operators/dist_default.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/operators/dist_embedding.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/operators/dist_matmul.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/operators/dist_pnorm.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/operators/dist_reduce_sum_p.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/operators/dist_reshape.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/operators/dist_update_loss_scaling.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/partitioner.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/reshard.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/tuner/algorithms.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/tuner/optimization_tuner.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/tuner/recorder.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/tuner/rule_based_tuner.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/tuner/tunable_variable.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/static/utils.py" = ["UP032"]
-"python/paddle/distributed/auto_parallel/strategy.py" = ["UP032"]
-"python/paddle/distributed/cloud_utils.py" = ["UP032"]
-"python/paddle/distributed/communication/group.py" = ["UP032"]
-"python/paddle/distributed/communication/stream/gather.py" = ["UP032"]
-"python/paddle/distributed/fleet/base/orthogonal_strategy.py" = ["UP032"]
-"python/paddle/distributed/fleet/base/role_maker.py" = ["UP032"]
-"python/paddle/distributed/fleet/base/strategy_group.py" = ["UP032"]
-"python/paddle/distributed/fleet/base/util_factory.py" = ["UP032"]
-"python/paddle/distributed/fleet/cloud_utils.py" = ["UP032"]
-"python/paddle/distributed/fleet/elastic/manager.py" = ["UP032"]
-"python/paddle/distributed/fleet/launch.py" = ["UP032"]
-"python/paddle/distributed/fleet/launch_utils.py" = ["UP032"]
-"python/paddle/distributed/fleet/layers/mpu/mp_layers.py" = ["UP032"]
-"python/paddle/distributed/fleet/layers/mpu/mp_ops.py" = ["UP032"]
-"python/paddle/distributed/fleet/meta_optimizers/dygraph_optimizer/dygraph_sharding_optimizer.py" = ["UP032"]
-"python/paddle/distributed/fleet/meta_optimizers/meta_optimizer_base.py" = ["UP032"]
-"python/paddle/distributed/fleet/meta_optimizers/sharding/fp16_helper.py" = ["UP032"]
-"python/paddle/distributed/fleet/meta_optimizers/sharding/weight_decay_helper.py" = ["UP032"]
-"python/paddle/distributed/fleet/meta_parallel/parallel_layers/pp_layers.py" = ["UP032"]
-"python/paddle/distributed/fleet/meta_parallel/pipeline_parallel.py" = ["UP032"]
-"python/paddle/distributed/fleet/recompute/recompute_hybrid.py" = ["UP032"]
-"python/paddle/distributed/fleet/runtime/parameter_server_runtime.py" = ["UP032"]
-"python/paddle/distributed/fleet/runtime/the_one_ps.py" = ["UP032"]
-"python/paddle/distributed/fleet/utils/fs.py" = ["UP032"]
-"python/paddle/distributed/fleet/utils/hybrid_parallel_inference.py" = ["UP032"]
-"python/paddle/distributed/fleet/utils/sequence_parallel_utils.py" = ["UP032"]
-"python/paddle/distributed/launch/context/device.py" = ["UP032"]
-"python/paddle/distributed/launch/controllers/collective.py" = ["UP032"]
-"python/paddle/distributed/launch/job/pod.py" = ["UP032"]
-"python/paddle/distributed/launch/plugins/__init__.py" = ["UP032"]
-"python/paddle/distributed/parallel.py" = ["UP032"]
-"python/paddle/distributed/passes/auto_parallel_amp.py" = ["UP032"]
-"python/paddle/distributed/passes/auto_parallel_data_parallel_optimization.py" = ["UP032"]
-"python/paddle/distributed/passes/auto_parallel_fp16.py" = ["UP032"]
-"python/paddle/distributed/passes/auto_parallel_grad_clip.py" = ["UP032"]
-"python/paddle/distributed/passes/auto_parallel_pipeline.py" = ["UP032"]
-"python/paddle/distributed/passes/auto_parallel_sharding.py" = ["UP032"]
-"python/paddle/distributed/passes/pipeline_scheduler_pass.py" = ["UP032"]
-"python/paddle/distributed/ps/coordinator.py" = ["UP032"]
-"python/paddle/distributed/ps/the_one_ps.py" = ["UP032"]
-"python/paddle/distributed/ps/utils/public.py" = ["UP032"]
-"python/paddle/distributed/utils/launch_utils.py" = ["UP032"]
-"python/paddle/distributed/utils/nccl_utils.py" = ["UP032"]
-"python/paddle/fft.py" = ["UP032"]
-"python/paddle/framework/io.py" = ["UP032"]
-"python/paddle/framework/random.py" = ["UP032"]
-"python/paddle/hapi/callbacks.py" = ["UP032"]
-"python/paddle/hapi/hub.py" = ["UP032"]
-"python/paddle/hapi/model_summary.py" = ["UP032"]
-"python/paddle/hapi/progressbar.py" = ["UP032"]
-"python/paddle/incubate/asp/asp.py" = ["UP032"]
-"python/paddle/incubate/asp/supported_layer_list.py" = ["UP032"]
-"python/paddle/incubate/asp/utils.py" = ["UP032"]
-"python/paddle/incubate/distributed/fleet/fleet_util.py" = ["UP032"]
-"python/paddle/incubate/distributed/fleet/parameter_server/distribute_transpiler/distributed_strategy.py" = ["UP032"]
-"python/paddle/incubate/distributed/fleet/parameter_server/ir/trainer_pass.py" = ["UP032"]
-"python/paddle/incubate/distributed/fleet/utils.py" = ["UP032"]
-"python/paddle/incubate/nn/layer/fused_dropout_nd.py" = ["UP032"]
-"python/paddle/incubate/nn/layer/fused_transformer.py" = ["UP032"]
-"python/paddle/incubate/optimizer/functional/bfgs.py" = ["UP032"]
-"python/paddle/incubate/optimizer/functional/lbfgs.py" = ["UP032"]
-"python/paddle/incubate/optimizer/recompute.py" = ["UP032"]
-"python/paddle/incubate/passes/ir.py" = ["UP032"]
-"python/paddle/io/dataloader/batch_sampler.py" = ["UP032"]
-"python/paddle/io/dataloader/collate.py" = ["UP032"]
-"python/paddle/io/dataloader/dataloader_iter.py" = ["UP032"]
-"python/paddle/io/dataloader/flat.py" = ["UP032"]
-"python/paddle/io/dataloader/sampler.py" = ["UP032"]
-"python/paddle/io/dataloader/worker.py" = ["UP032"]
-"python/paddle/io/reader.py" = ["UP032"]
-"python/paddle/jit/api.py" = ["UP032"]
-"python/paddle/jit/dy2static/base_transformer.py" = ["UP032"]
-"python/paddle/jit/dy2static/basic_api_transformer.py" = ["UP032"]
-"python/paddle/jit/dy2static/convert_operators.py" = ["UP032"]
-"python/paddle/jit/dy2static/decorator_transformer.py" = ["UP032"]
-"python/paddle/jit/dy2static/error.py" = ["UP032"]
-"python/paddle/jit/dy2static/function_spec.py" = ["UP032"]
-"python/paddle/jit/dy2static/logical_transformer.py" = ["UP032"]
-"python/paddle/jit/dy2static/origin_info.py" = ["UP032"]
-"python/paddle/jit/dy2static/utils.py" = ["UP032"]
-"python/paddle/jit/dy2static/variable_trans_func.py" = ["UP032"]
-"python/paddle/metric/metrics.py" = ["UP032"]
-"python/paddle/nn/functional/activation.py" = ["UP032"]
-"python/paddle/nn/functional/common.py" = ["UP032"]
-"python/paddle/nn/functional/conv.py" = ["UP032"]
-"python/paddle/nn/functional/extension.py" = ["UP032"]
-"python/paddle/nn/functional/input.py" = ["UP032"]
-"python/paddle/nn/functional/norm.py" = ["UP032"]
-"python/paddle/nn/functional/pooling.py" = ["UP032"]
-"python/paddle/nn/functional/vision.py" = ["UP032"]
-"python/paddle/nn/initializer/initializer.py" = ["UP032"]
-"python/paddle/nn/layer/activation.py" = ["UP032"]
-"python/paddle/nn/layer/common.py" = ["UP032"]
-"python/paddle/nn/layer/container.py" = ["UP032"]
-"python/paddle/nn/layer/loss.py" = ["UP032"]
-"python/paddle/nn/layer/norm.py" = ["UP032"]
-"python/paddle/nn/layer/pooling.py" = ["UP032"]
-"python/paddle/nn/layer/rnn.py" = ["UP032"]
-"python/paddle/nn/layer/transformer.py" = ["UP032"]
-"python/paddle/nn/layer/vision.py" = ["UP032"]
-"python/paddle/nn/utils/spectral_norm_hook.py" = ["UP032"]
-"python/paddle/nn/utils/weight_norm_hook.py" = ["UP032"]
-"python/paddle/onnx/export.py" = ["UP032"]
-"python/paddle/optimizer/lr.py" = ["UP032"]
-"python/paddle/optimizer/optimizer.py" = ["UP032"]
-"python/paddle/profiler/profiler.py" = ["UP032"]
-"python/paddle/profiler/profiler_statistic.py" = ["UP032"]
-"python/paddle/profiler/timer.py" = ["UP032"]
-"python/paddle/signal.py" = ["UP032"]
-"python/paddle/sparse/creation.py" = ["UP032"]
-"python/paddle/sparse/nn/functional/conv.py" = ["UP032"]
-"python/paddle/sparse/unary.py" = ["UP032"]
-"python/paddle/static/amp/bf16/amp_utils.py" = ["UP032"]
-"python/paddle/static/amp/fp16_utils.py" = ["UP032"]
-"python/paddle/static/io.py" = ["UP032"]
-"python/paddle/static/nn/common.py" = ["UP032"]
-"python/paddle/static/nn/control_flow.py" = ["UP032"]
-"python/paddle/static/quantization/quantization_pass.py" = ["UP032"]
-"python/paddle/tensor/linalg.py" = ["UP032"]
-"python/paddle/tensor/manipulation.py" = ["UP032"]
-"python/paddle/tensor/math.py" = ["UP032"]
-"python/paddle/tensor/to_string.py" = ["UP032"]
-"python/paddle/utils/cpp_extension/cpp_extension.py" = ["UP032"]
-"python/paddle/utils/cpp_extension/extension_utils.py" = ["UP032"]
-"python/paddle/utils/deprecated.py" = ["UP032"]
-"python/paddle/utils/dlpack.py" = ["UP032"]
-"python/paddle/utils/download.py" = ["UP032"]
-"python/paddle/utils/install_check.py" = ["UP032"]
-"python/paddle/vision/datasets/cifar.py" = ["UP032"]
-"python/paddle/vision/datasets/flowers.py" = ["UP032"]
-"python/paddle/vision/datasets/mnist.py" = ["UP032"]
-"python/paddle/vision/datasets/voc2012.py" = ["UP032"]
-"python/paddle/vision/image.py" = ["UP032"]
-"python/paddle/vision/models/densenet.py" = ["UP032"]
-"python/paddle/vision/models/mobilenetv3.py" = ["UP032"]
-"python/paddle/vision/models/squeezenet.py" = ["UP032"]
-"python/paddle/vision/transforms/functional_tensor.py" = ["UP032"]
-"python/paddle/vision/transforms/transforms.py" = ["UP032"]
-"test/book/test_word2vec_book.py" = ["UP032"]
-"test/cinn/op_mappers/op_mapper_test.py" = ["UP032"]
-"test/cinn/passes/pass_test.py" = ["UP032"]
-"test/cinn/test_paddle_model_convertor.py" = ["UP032"]
-"test/collective/fleet/parallel_dygraph_se_resnext.py" = ["UP032"]
-"test/collective/fleet/test_parallel_dygraph_pp_adaptor.py" = ["UP032"]
-"test/contrib/test_multi_precision_fp16_train.py" = ["UP032"]
-"test/cpp/inference/api/full_ILSVRC2012_val_preprocess.py" = ["UP032"]
-"test/cpp_extension/test_cpp_extension_setup.py" = ["UP032"]
-"test/cpp_extension/test_mixed_extension_setup.py" = ["UP032"]
-"test/cpp_extension/utils.py" = ["UP032"]
-"test/custom_kernel/test_custom_kernel_dot.py" = ["UP032"]
-"test/custom_op/test_context_pool.py" = ["UP032"]
-"test/custom_op/test_custom_attrs_jit.py" = ["UP032"]
-"test/custom_op/test_custom_cast_op_jit.py" = ["UP032"]
-"test/custom_op/test_custom_concat.py" = ["UP032"]
-"test/custom_op/test_custom_relu_op_jit.py" = ["UP032"]
-"test/custom_op/test_custom_relu_op_setup.py" = ["UP032"]
-"test/custom_op/test_custom_relu_op_xpu_setup.py" = ["UP032"]
-"test/custom_op/test_custom_simple_slice.py" = ["UP032"]
-"test/custom_op/test_custom_tensor_operator.py" = ["UP032"]
-"test/custom_op/utils.py" = ["UP032"]
-"test/custom_runtime/test_collective_process_group_xccl.py" = ["UP032"]
-"test/custom_runtime/test_custom_cpu_plugin.py" = ["UP032"]
-"test/custom_runtime/test_custom_cpu_profiler_plugin.py" = ["UP032"]
-"test/custom_runtime/test_custom_cpu_to_static.py" = ["UP032"]
-"test/custom_runtime/test_custom_op_setup.py" = ["UP032"]
-"test/distributed_passes/dist_pass_test_base.py" = ["UP032"]
-"test/dygraph_to_static/test_break_continue.py" = ["UP032"]
-"test/dygraph_to_static/test_build_strategy.py" = ["UP032"]
-"test/dygraph_to_static/test_cache_program.py" = ["UP032"]
-"test/dygraph_to_static/test_cast.py" = ["UP032"]
-"test/dygraph_to_static/test_container.py" = ["UP032"]
-"test/dygraph_to_static/test_convert_call.py" = ["UP032"]
-"test/dygraph_to_static/test_dict.py" = ["UP032"]
-"test/dygraph_to_static/test_error.py" = ["UP032"]
-"test/dygraph_to_static/test_fetch_feed.py" = ["UP032"]
-"test/dygraph_to_static/test_lac.py" = ["UP032"]
-"test/dygraph_to_static/test_layer_hook.py" = ["UP032"]
-"test/dygraph_to_static/test_list.py" = ["UP032"]
-"test/dygraph_to_static/test_logical.py" = ["UP032"]
-"test/dygraph_to_static/test_lstm.py" = ["UP032"]
-"test/dygraph_to_static/test_mnist.py" = ["UP032"]
-"test/dygraph_to_static/test_mnist_amp.py" = ["UP032"]
-"test/dygraph_to_static/test_mnist_pure_fp16.py" = ["UP032"]
-"test/dygraph_to_static/test_mobile_net.py" = ["UP032"]
-"test/dygraph_to_static/test_resnet.py" = ["UP032"]
-"test/dygraph_to_static/test_resnet_amp.py" = ["UP032"]
-"test/dygraph_to_static/test_resnet_pure_fp16.py" = ["UP032"]
-"test/dygraph_to_static/test_resnet_v2.py" = ["UP032"]
-"test/dygraph_to_static/test_se_resnet.py" = ["UP032"]
-"test/dygraph_to_static/test_seq2seq.py" = ["UP032"]
-"test/dygraph_to_static/yolov3.py" = ["UP032"]
-"test/fft/spectral_op_np.py" = ["UP032"]
-"test/ir/inference/test_trt_convert_multiclass_nms.py" = ["UP032"]
-"test/ir/inference/test_trt_convert_multiclass_nms3.py" = ["UP032"]
-"test/ir/inference/test_trt_pool3d_op.py" = ["UP032"]
-"test/ir/inference/test_trt_pool_op.py" = ["UP032"]
-"test/legacy_test/auto_parallel_autoconvert.py" = ["UP032"]
-"test/legacy_test/benchmark.py" = ["UP032"]
-"test/legacy_test/dist_fleet_ctr.py" = ["UP032"]
-"test/legacy_test/dist_fleet_ctr_ps_gpu.py" = ["UP032"]
-"test/legacy_test/dist_fleet_simnet_bow.py" = ["UP032"]
-"test/legacy_test/dist_fleet_sparse_embedding_ctr.py" = ["UP032"]
-"test/legacy_test/dist_fleet_sync_batch_norm.py" = ["UP032"]
-"test/legacy_test/dist_se_resnext.py" = ["UP032"]
-"test/legacy_test/eager_op_test.py" = ["UP032"]
-"test/legacy_test/fleet_meta_optimizer_base.py" = ["UP032"]
-"test/legacy_test/gradient_checker.py" = ["UP032"]
-"test/legacy_test/test_chunk_eval_op.py" = ["UP032"]
-"test/legacy_test/test_detach.py" = ["UP032"]
-"test/legacy_test/test_dist_base.py" = ["UP032"]
-"test/legacy_test/test_dist_fleet_base.py" = ["UP032"]
-"test/legacy_test/test_eager_deletion_delete_vars.py" = ["UP032"]
-"test/legacy_test/test_fused_dropout_add_op.py" = ["UP032"]
-"test/legacy_test/test_generate_proposals_op.py" = ["UP032"]
-"test/legacy_test/test_generator_dataloader.py" = ["UP032"]
-"test/legacy_test/test_imperative_resnet.py" = ["UP032"]
-"test/legacy_test/test_imperative_se_resnext.py" = ["UP032"]
-"test/legacy_test/test_inplace.py" = ["UP032"]
-"test/legacy_test/test_layers.py" = ["UP032"]
-"test/legacy_test/test_multi_dot_op.py" = ["UP032"]
-"test/legacy_test/test_multiprocess_dataloader_iterable_dataset_static.py" = ["UP032"]
-"test/legacy_test/test_multiprocess_dataloader_static.py" = ["UP032"]
-"test/legacy_test/test_ops_nms.py" = ["UP032"]
-"test/legacy_test/test_pylayer_op.py" = ["UP032"]
-"test/legacy_test/test_run.py" = ["UP032"]
-"test/legacy_test/test_sample_logits_op.py" = ["UP032"]
-"test/legacy_test/test_signal.py" = ["UP032"]
-"test/legacy_test/test_static_save_load.py" = ["UP032"]
-"test/legacy_test/test_sync_batch_norm_op.py" = ["UP032"]
-"test/legacy_test/test_translated_layer.py" = ["UP032"]
-"test/legacy_test/test_tril_triu_op.py" = ["UP032"]
-"test/legacy_test/test_variable.py" = ["UP032"]
-"test/legacy_test/test_view_op_reuse_allocation.py" = ["UP032"]
-"test/mkldnn/test_onnx_format_quantization_mobilenetv1.py" = ["UP032"]
-"test/ps/static_gpubox_trainer.py" = ["UP032"]
-"test/quantization/quant2_int8_image_classification_comparison.py" = ["UP032"]
-"test/quantization/quant2_int8_lstm_model.py" = ["UP032"]
-"test/quantization/quant_int8_image_classification_comparison.py" = ["UP032"]
-"test/quantization/test_imperative_ptq.py" = ["UP032"]
-"test/quantization/test_imperative_qat_amp.py" = ["UP032"]
-"test/quantization/test_post_training_quantization_lstm_model.py" = ["UP032"]
-"test/quantization/test_post_training_quantization_mnist.py" = ["UP032"]
-"test/quantization/test_post_training_quantization_mobilenetv1.py" = ["UP032"]
-"test/quantization/test_post_training_quantization_while.py" = ["UP032"]
-"test/quantization/test_quant_post_quant_aware.py" = ["UP032"]
-"test/quantization/test_weight_quantization_mobilenetv1.py" = ["UP032"]
-"test/tokenizer/bert_tokenizer.py" = ["UP032"]
-"test/tokenizer/tokenizer_utils.py" = ["UP032"]
-"test/xpu/test_generate_proposals_v2_op_xpu.py" = ["UP032"]
-"test/xpu/test_tril_triu_op_xpu.py" = ["UP032"]
-"tools/analysisPyXml.py" = ["UP032"]
-"tools/check_op_benchmark_result.py" = ["UP032"]
-"tools/check_op_desc.py" = ["UP032"]
-"tools/count_api_without_core_ops.py" = ["UP032"]
-"tools/coverage/gcda_clean.py" = ["UP032"]
-"tools/coverage/python_coverage.py" = ["UP032"]
-"tools/externalError/spider.py" = ["UP032"]
-"tools/get_single_test_cov.py" = ["UP032"]
-"tools/parse_kernel_info.py" = ["UP032"]
-"tools/print_signatures.py" = ["UP032"]
-"tools/sampcd_processor_utils.py" = ["UP032"]
-"test/custom_kernel/test_custom_kernel_load.py" = ["UP032"]
-"python/paddle/distributed/fleet/utils/tensor_parallel_utils.py" = ["UP032"]
+# temp ignore isort
+"python/paddle/distributed/__init__.py" = ["I001"]
+"python/paddle/distributed/passes/__init__.py" = ["I001"]

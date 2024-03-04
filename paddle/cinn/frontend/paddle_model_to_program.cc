@@ -98,7 +98,8 @@ void PaddleModelToProgram::AddOpMapper_scale() {
       CHECK(scale_tensor_var) << "No scale tensor found in the scope";
       auto& scale_tensor =
           absl::get<hlir::framework::Tensor>(*scale_tensor_var);
-      scale = scale_tensor->mutable_data<float>(common::DefaultHostTarget())[0];
+      scale = scale_tensor->mutable_data<float>(
+          cinn::common::DefaultHostTarget())[0];
     }
     if (op_desc.HasAttr("bias")) {  // the old model format
       bias = op_desc.GetAttr<float>("bias");

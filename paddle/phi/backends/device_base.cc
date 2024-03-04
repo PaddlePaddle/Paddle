@@ -15,8 +15,8 @@
 #include "paddle/phi/backends/device_base.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_double(fraction_of_gpu_memory_to_use);
 PD_DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -215,9 +215,9 @@ size_t DeviceInterface::AllocSize(size_t dev_id, bool realloc) {
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-      (flag_mb > 0ul
-           ? flag_mb << 20
-           : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
+      (flag_mb > 0ul ? flag_mb << 20
+                     : available_to_alloc *
+                           FLAGS_fraction_of_gpu_memory_to_use);  // NOLINT
   PADDLE_ENFORCE_GE(available_to_alloc,
                     alloc_bytes,
                     phi::errors::ResourceExhausted(
@@ -229,15 +229,12 @@ size_t DeviceInterface::AvailableAllocSize(size_t dev_id) {
   size_t total = 0;
   size_t available = 0;
   MemoryStats(dev_id, &total, &available);
-  size_t reserving =
-      static_cast<size_t>(fraction_reserve_gpu_memory * available);
   // If available size is less than minimum chunk size, no usable memory exists
-  size_t available_to_alloc = available - reserving;
   size_t min_chunk_size = GetMinChunkSize(dev_id);
-  if (available_to_alloc < min_chunk_size) {
-    available_to_alloc = 0;
+  if (available < min_chunk_size) {
+    available = 0;
   }
-  return available_to_alloc;
+  return available;
 }
 
 size_t DeviceInterface::GetInitAllocSize(size_t dev_id) {

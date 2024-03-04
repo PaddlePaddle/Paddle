@@ -146,7 +146,7 @@ static void AllReduce(const phi::SelectedRows &src,
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
   dims[0] = rows_num;
-  auto feature_size = phi::product(dims) / dims[0];
+  auto feature_size = common::product(dims) / dims[0];
   dst_tensor->Resize(dims);
   auto *dst_tensor_ptr = dst_tensor->mutable_data(place, src_tensor.dtype());
   const auto *src_tensor_ptr = src_tensor.data();

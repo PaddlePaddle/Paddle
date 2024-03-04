@@ -19,6 +19,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
+#include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -31,9 +32,12 @@ constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
 NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
     : CommContext(rank, size) {
-  PADDLE_ENFORCE_GPU_SUCCESS(
+  NCCL_CHECK(
       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
+  NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
 }
+
+int NCCLCommContext::GetNcclVersion() { return nccl_version_; }
 
 ncclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
 
@@ -73,14 +77,13 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
   if (FLAGS_enable_nccl_dynamic_check) {
     NCCLDynamicCheck::CheckShape(*out_tensor, root, rank_, nccl_comm_);
   }
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::ncclBroadcast(in_tensor.data(),
-                                  out_tensor->data(),
-                                  in_tensor.numel(),
-                                  ToNCCLDataType(in_tensor.type()),
-                                  root,
-                                  nccl_comm_,
-                                  stream));
+  NCCL_CHECK(phi::dynload::ncclBroadcast(in_tensor.data(),
+                                         out_tensor->data(),
+                                         in_tensor.numel(),
+                                         ToNCCLDataType(in_tensor.type()),
+                                         root,
+                                         nccl_comm_,
+                                         stream));
 }
 
 void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
@@ -97,13 +100,12 @@ void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                                    rank_,
                                                    nccl_comm_);
   }
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::ncclAllGather(in_tensor.data(),
-                                  out_tensor->data(),
-                                  in_tensor.numel(),
-                                  ToNCCLDataType(in_tensor.type()),
-                                  nccl_comm_,
-                                  stream));
+  NCCL_CHECK(phi::dynload::ncclAllGather(in_tensor.data(),
+                                         out_tensor->data(),
+                                         in_tensor.numel(),
+                                         ToNCCLDataType(in_tensor.type()),
+                                         nccl_comm_,
+                                         stream));
 }
 void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                     const phi::DenseTensor& in_tensor,
@@ -120,14 +122,13 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                                    rank_,
                                                    nccl_comm_);
   }
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::ncclReduceScatter(in_tensor.data(),
-                                      out_tensor->data(),
-                                      out_tensor->numel(),
-                                      ToNCCLDataType(in_tensor.type()),
-                                      reduce_type,
-                                      nccl_comm_,
-                                      stream));
+  NCCL_CHECK(phi::dynload::ncclReduceScatter(in_tensor.data(),
+                                             out_tensor->data(),
+                                             out_tensor->numel(),
+                                             ToNCCLDataType(in_tensor.type()),
+                                             reduce_type,
+                                             nccl_comm_,
+                                             stream));
 }
 
 void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
@@ -140,15 +141,14 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
     NCCLDynamicCheck::CheckShape(in_tensor, rank_, rank_, nccl_comm_);
   }
 
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::ncclSend(in_tensor.data(),
-                             count,
-                             ToNCCLDataType(in_tensor.dtype()),
-                             peer,
-                             nccl_comm_,
-                             stream));
-  VLOG(3) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
-          << " to " << peer;
+  NCCL_CHECK(phi::dynload::ncclSend(in_tensor.data(),
+                                    count,
+                                    ToNCCLDataType(in_tensor.dtype()),
+                                    peer,
+                                    nccl_comm_,
+                                    stream));
+  VLOG(3) << "rank " << GetRank() << " send "
+          << common::product(in_tensor.dims()) << " to " << peer;
 }
 
 void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
@@ -160,15 +160,14 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
     NCCLDynamicCheck::CheckShape(*out_tensor, peer, rank_, nccl_comm_);
   }
 
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::ncclRecv(out_tensor->data(),
-                             count,
-                             ToNCCLDataType(out_tensor->dtype()),
-                             peer,
-                             nccl_comm_,
-                             stream));
+  NCCL_CHECK(phi::dynload::ncclRecv(out_tensor->data(),
+                                    count,
+                                    ToNCCLDataType(out_tensor->dtype()),
+                                    peer,
+                                    nccl_comm_,
+                                    stream));
   VLOG(3) << "rank " << GetRank() << " recv "
-          << phi::product(out_tensor->dims()) << " from " << peer;
+          << common::product(out_tensor->dims()) << " from " << peer;
 }
 
 void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
@@ -186,14 +185,13 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                                    rank_,
                                                    nccl_comm_);
   }
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::ncclAllReduce(in_tensor.data(),
-                                  out_tensor->data(),
-                                  in_tensor.numel(),
-                                  ToNCCLDataType(in_tensor.type()),
-                                  reduce_type,
-                                  nccl_comm_,
-                                  stream));
+  NCCL_CHECK(phi::dynload::ncclAllReduce(in_tensor.data(),
+                                         out_tensor->data(),
+                                         in_tensor.numel(),
+                                         ToNCCLDataType(in_tensor.type()),
+                                         reduce_type,
+                                         nccl_comm_,
+                                         stream));
 }
 
 void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
@@ -212,21 +210,34 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                                                    rank_,
                                                    nccl_comm_);
   }
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::ncclReduce(in_tensor.data(),
-                               out_tensor->data(),
-                               in_tensor.numel(),
-                               ToNCCLDataType(in_tensor.type()),
-                               reduce_type,
-                               root,
-                               nccl_comm_,
-                               stream));
+  NCCL_CHECK(phi::dynload::ncclReduce(in_tensor.data(),
+                                      out_tensor->data(),
+                                      in_tensor.numel(),
+                                      ToNCCLDataType(in_tensor.type()),
+                                      reduce_type,
+                                      root,
+                                      nccl_comm_,
+                                      stream));
 }
 
 void NCCLCommContext::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
 }
 void NCCLCommContext::GroupEnd() { NCCL_CHECK(phi::dynload::ncclGroupEnd()); }
+
+#if NCCL_VERSION_CODE >= 21100
+void NCCLCommContext::RedOpCreatePreMulSum(ncclRedOp_t* op,
+                                           void* scalar,
+                                           ncclDataType_t dtype,
+                                           ncclScalarResidence_t residence) {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpCreatePreMulSum(
+      op, scalar, dtype, residence, nccl_comm_));
+}
+
+void NCCLCommContext::RedOpDestroy(ncclRedOp_t op) {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpDestroy(op, nccl_comm_));
+}
+#endif
 
 }  // namespace distributed
 }  // namespace phi

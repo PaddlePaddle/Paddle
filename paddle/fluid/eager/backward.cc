@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/backward.h"
 
 #include "paddle/fluid/eager/general_grad.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace egr {
@@ -83,19 +84,19 @@ void EnforceGradNodeHasInput(GradNodeBase* node) {
 }
 
 void DuplicateCheck(const std::vector<paddle::Tensor>& inputs, bool is_input) {
-  std::unordered_set<AutogradMeta*> visisted_ins;
+  std::unordered_set<AutogradMeta*> visited_ins;
   std::string msg = is_input ? "inputs" : "outputs";
-  for (auto in : inputs) {
+  for (auto const& in : inputs) {
     AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(in);
     PADDLE_ENFORCE_EQ(
-        visisted_ins.count(auto_grad_meta),
+        visited_ins.count(auto_grad_meta),
         0,
         paddle::platform::errors::AlreadyExists(
             "%s contain duplicate tensor %s, please check %s carefully.",
             msg,
             in.name(),
             msg));
-    visisted_ins.insert(auto_grad_meta);
+    visited_ins.insert(auto_grad_meta);
   }
 }
 
@@ -111,20 +112,8 @@ std::vector<paddle::Tensor> RunBackward(
     const std::vector<paddle::Tensor>& no_grad_vars = {}) {
   VLOG(3) << "Start Backward";
 
-  std::queue<GradNodeBase*> force_sequential_nodes_forward_queue =
-      egr::Controller::Instance().GetForceSequentialNodes();
-  std::deque<GradNodeBase*> force_sequential_nodes_queue;
-  std::set<GradNodeBase*> force_sequential_nodes_set;
-  std::set<GradNodeBase*> ready_force_sequential_nodes;
-  auto force_sequential_nodes_size =
-      force_sequential_nodes_forward_queue.size();
-  for (size_t i = 0; i < force_sequential_nodes_size; ++i) {
-    force_sequential_nodes_set.insert(
-        force_sequential_nodes_forward_queue.front());
-    force_sequential_nodes_queue.push_front(
-        force_sequential_nodes_forward_queue.front());
-    force_sequential_nodes_forward_queue.pop();
-  }
+  egr::EagerBackwardStateGuard guard;
+  auto place = egr::Controller::Instance().GetExpectedPlace();
 
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
@@ -233,6 +222,24 @@ std::vector<paddle::Tensor> RunBackward(
   // 3. Compute in_degree for each node
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
+
+  std::queue<GradNodeBase*> force_sequential_nodes_forward_queue =
+      egr::Controller::Instance().GetForceSequentialNodes();
+  std::deque<GradNodeBase*> force_sequential_nodes_queue;
+  std::set<GradNodeBase*> force_sequential_nodes_set;
+  std::set<GradNodeBase*> ready_force_sequential_nodes;
+  auto force_sequential_nodes_size =
+      force_sequential_nodes_forward_queue.size();
+  for (size_t i = 0; i < force_sequential_nodes_size; ++i) {
+    if (node_in_degree_map.count(
+            force_sequential_nodes_forward_queue.front())) {
+      force_sequential_nodes_set.insert(
+          force_sequential_nodes_forward_queue.front());
+      force_sequential_nodes_queue.push_front(
+          force_sequential_nodes_forward_queue.front());
+    }
+    force_sequential_nodes_forward_queue.pop();
+  }
 
   VLOG(5) << "Startup_ops's size is " << queue.size();
 
@@ -378,9 +385,9 @@ std::vector<paddle::Tensor> RunBackward(
         auto add_next_node_func = [&node_in_degree_map,
                                    &queue](GradNodeBase* next_node) {
           if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
-            queue.push_front(std::move(next_node));
+            queue.push_front(next_node);
           } else {
-            queue.push_back(std::move(next_node));
+            queue.push_back(next_node);
           }
         };
         if (node_in_degree_map[next_node] == 0) {
@@ -405,6 +412,7 @@ std::vector<paddle::Tensor> RunBackward(
         }
       }
     }
+    paddle::memory::LogDeviceMemoryStats(place, std::string((*node).name()));
   }
 
   VLOG(7) << "Run Backward Final hook size: "

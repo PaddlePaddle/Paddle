@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import bisect
+from typing import Iterable
+
 import paddle
 
 from ... import framework
@@ -263,7 +266,7 @@ class TensorDataset(Dataset):
     Dataset defined by a list of tensors.
 
     Each tensor should be in shape of [N, ...], while N is the sample number,
-    and ecah tensor contains a field of sample, :code:`TensorDataset` retrieve
+    and each tensor contains a field of sample, :code:`TensorDataset` retrieve
     each sample by indexing tensors in the 1st dimension.
 
     Args:
@@ -322,7 +325,7 @@ class ComposeDataset(Dataset):
     """
     A Dataset which composes fields of multiple datasets.
 
-    This dataset is used for composing fileds of multiple map-style
+    This dataset is used for composing fields of multiple map-style
     datasets of same length.
 
     Args:
@@ -361,7 +364,7 @@ class ComposeDataset(Dataset):
 
     def __init__(self, datasets):
         self.datasets = list(datasets)
-        assert len(self.datasets) > 0, "input datasets shoule not be empty"
+        assert len(self.datasets) > 0, "input datasets should not be empty"
         for i, dataset in enumerate(self.datasets):
             assert isinstance(
                 dataset, Dataset
@@ -426,7 +429,7 @@ class ChainDataset(IterableDataset):
 
     def __init__(self, datasets):
         self.datasets = list(datasets)
-        assert len(self.datasets) > 0, "input datasets shoule not be empty"
+        assert len(self.datasets) > 0, "input datasets should not be empty"
         for i, dataset in enumerate(self.datasets):
             assert isinstance(
                 dataset, IterableDataset
@@ -434,8 +437,7 @@ class ChainDataset(IterableDataset):
 
     def __iter__(self):
         for dataset in self.datasets:
-            for sample in dataset:
-                yield sample
+            yield from dataset
 
 
 class Subset(Dataset):
@@ -567,3 +569,81 @@ def _accumulate(iterable, fn=lambda x, y: x + y):
     for element in it:
         total = fn(total, element)
         yield total
+
+
+class ConcatDataset(Dataset):
+    """
+    Dataset as a concatenation of multiple datasets.
+
+    This class is useful to assemble different existing datasets.
+
+    Args:
+        datasets (sequence): List of datasets to be concatenated
+
+    Returns:
+        Dataset: A Dataset which concatenated by multiple datasets.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.io import Dataset, ConcatDataset
+
+
+            >>> # define a random dataset
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([32]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> dataset = ConcatDataset([RandomDataset(10), RandomDataset(10)])
+            >>> for i in range(len(dataset)):
+            ...     image, label = dataset[i]
+            ...     # do something
+    """
+
+    @staticmethod
+    def cumsum(sequence):
+        r, s = [], 0
+        for e in sequence:
+            l = len(e)
+            r.append(l + s)
+            s += l
+        return r
+
+    def __init__(self, datasets: Iterable[Dataset]):
+        self.datasets = list(datasets)
+        assert (
+            len(self.datasets) > 0
+        ), 'datasets should not be an empty iterable'
+        for d in self.datasets:
+            assert not isinstance(
+                d, IterableDataset
+            ), "ConcatDataset does not support IterableDataset"
+        self.cumulative_sizes = self.cumsum(self.datasets)
+
+    def __len__(self):
+        return self.cumulative_sizes[-1]
+
+    def __getitem__(self, idx):
+        if idx < 0:
+            if -idx > len(self):
+                raise ValueError(
+                    "absolute value of index should not exceed dataset length"
+                )
+            idx = len(self) + idx
+        dataset_idx = bisect.bisect_right(self.cumulative_sizes, idx)
+        if dataset_idx == 0:
+            sample_idx = idx
+        else:
+            sample_idx = idx - self.cumulative_sizes[dataset_idx - 1]
+        return self.datasets[dataset_idx][sample_idx]

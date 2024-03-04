@@ -58,18 +58,34 @@ class ConstantInitializer(Initializer):
 
         assert isinstance(
             var,
-            (framework.Variable, framework.EagerParamBase, paddle.ir.OpResult),
+            (
+                framework.Variable,
+                framework.EagerParamBase,
+                paddle.pir.Value,
+                paddle.pir.core.ParameterMeta,
+            ),
         )
-        assert isinstance(block, (framework.Block, paddle.ir.Block))
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
 
         if in_dynamic_or_pir_mode():
             place = _current_expected_place()
             if self._force_cpu:
                 place = core.CPUPlace()
             if in_dygraph_mode():
-                _C_ops.full_(
-                    var, var.shape, float(self._value), var.dtype, place
-                )
+                if isinstance(var, framework.EagerParamBase) and var.is_dist():
+                    out_var = _C_ops.full(
+                        var._local_shape, float(self._value), var.dtype, place
+                    )
+                    out_var = (
+                        paddle.distributed.auto_parallel.api.dtensor_from_local(
+                            out_var, var.process_mesh, var.placements
+                        )
+                    )
+                    out_var._share_underline_tensor_to(var)
+                else:
+                    _C_ops.full_(
+                        var, var.shape, float(self._value), var.dtype, place
+                    )
                 return None
             else:
                 return _C_ops.full(

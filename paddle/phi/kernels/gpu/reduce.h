@@ -27,15 +27,15 @@ template <typename T,
           template <typename>
           class ReduceOp,
           template <typename, typename>
-          class TransformOp>
+          class TransformOp,
+          bool IsMean = false>
 void Reduce(const KPDevice& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
             const std::vector<int64_t>& dims,
             bool keep_dim,
             DataType out_dtype,
-            DenseTensor* out,
-            bool is_mean = false) {
+            DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   std::vector<int> reduce_dims =
       phi::funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
@@ -59,33 +59,23 @@ void Reduce(const KPDevice& dev_ctx,
           phi::funcs::ReduceKernel<data_t,
                                    data_t,
                                    ReduceOp,
-                                   TransformOp<data_t, MPType>>(
+                                   TransformOp<data_t, MPType>,
+                                   IsMean>(
               dev_ctx,
               tmp_tensor,
               out,
               TransformOp<data_t, MPType>(reduce_num),
-              reduce_dims,
-              is_mean);
+              reduce_dims);
         }));
   } else {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-    phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
-        dev_ctx,
-        x,
-        out,
-        TransformOp<T, MPType>(reduce_num),
-        reduce_dims,
-        is_mean);
+    phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
+        dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
   }
 #else
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
-      dev_ctx,
-      x,
-      out,
-      TransformOp<T, MPType>(reduce_num),
-      reduce_dims,
-      is_mean);
+  phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
+      dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
 #endif
 }
 }  // namespace phi

@@ -38,7 +38,7 @@ BuildResult SimpleBuilder::Build(const MeasureInput& input) {
 
   BuildResult build_result;
   build_result.compiled_scope = graph_compiler_->GetScope().get();
-  build_result.runtime_program = std::move(compiled_result.runtime_program);
+  build_result.runtime_program = std::move(compiled_result.RuntimeProgram());
   return build_result;
 }
 

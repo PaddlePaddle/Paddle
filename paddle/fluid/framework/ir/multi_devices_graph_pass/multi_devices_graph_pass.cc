@@ -351,7 +351,7 @@ bool MultiDevSSAGraphBuilderBase::NeedCollectiveForGrad(
   // NOTE: This is for the case that all gradients should add collective ops
   for (auto *node : ops) {
     if (node->Op()->Type() != "allreduce") continue;
-    for (auto in_name : node->Op()->InputArgumentNames()) {
+    for (auto const &in_name : node->Op()->InputArgumentNames()) {
       if (in_name == grad_name) {
         return false;
       }
@@ -862,14 +862,14 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
 size_t BalanceVarSSAGraphBuilder::GetAppropriateDeviceID(
     const std::vector<std::string> &var_names) const {
   int64_t numel_sum = 0;
-  for (auto var_name : var_names) {
+  for (auto const &var_name : var_names) {
     if (all_vars_.find(var_name) == all_vars_.end()) continue;
     auto var_desc = all_vars_.at(var_name);
     PADDLE_ENFORCE_NOT_NULL(var_desc,
                             platform::errors::NotFound(
                                 "Can not find Var(%s) in Var Desc.", var_name));
-    auto dim = phi::make_ddim(var_desc->GetShape());
-    int64_t numel = phi::product(dim);
+    auto dim = common::make_ddim(var_desc->GetShape());
+    int64_t numel = common::product(dim);
     PADDLE_ENFORCE_GT(numel,
                       0,
                       platform::errors::InvalidArgument(
@@ -933,7 +933,7 @@ bool ReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
 
 void ReduceSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   if (UseGPU()) {
-    if (strategy_.fuse_broadcast_ops_ == true) {
+    if (strategy_.fuse_broadcast_ops_ == true) {  // NOLINT
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
@@ -1137,6 +1137,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
             details::BuildStrategy::ReduceStrategy::kAllReduce &&
         node->inputs[0]->Name().find(".block") == std::string::npos) {
       std::vector<std::string> input_var_names;
+      input_var_names.reserve(node->inputs.size());
       for (ir::Node *n : node->inputs) {
         input_var_names.push_back(n->Name());
       }
@@ -1162,6 +1163,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     }
   } else if (node->Op()->Type() == "recv") {
     std::vector<std::string> output_var_names;
+    output_var_names.reserve(node->inputs.size());
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
     }
@@ -1191,7 +1193,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
                                  node->Op()->Type()));
   // Create fetch_barrier op handle to enable output on all devices.
   // **NOTE** fetch_barrier should output variables list same as recv op does.
-  if (node->Op()->Type() == "fetch_barrier") {
+  if (node->Op()->Type() == "fetch_barrier") {  // NOLINT
     result->Get<GraphOps>(kGraphOps).emplace_back(
         new details::FetchBarrierOpHandle(
             result->CreateOpNode(node->Op()), local_scopes_, places_));
@@ -1245,6 +1247,8 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   int op_dev_id = -1;
   std::vector<std::string> input_var_names;
   std::vector<std::string> output_var_names;
+  input_var_names.reserve(node->inputs.size());
+  output_var_names.reserve(node->outputs.size());
   for (ir::Node *input : node->inputs) {
     input_var_names.push_back(input->Name());
   }
@@ -1350,7 +1354,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
         strategy_.reduce_ == details::BuildStrategy::ReduceStrategy::kReduce) {
       return;
     }
-    if (strategy_.fuse_broadcast_ops_ == true) {
+    if (strategy_.fuse_broadcast_ops_ == true) {  // NOLINT
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {

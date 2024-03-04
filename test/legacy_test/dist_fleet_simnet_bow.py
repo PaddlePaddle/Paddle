@@ -37,8 +37,7 @@ margin = 0.1
 sample_rate = 1
 
 # Fix seed for test
-base.default_startup_program().random_seed = 1
-base.default_main_program().random_seed = 1
+paddle.seed(2023)
 
 
 def fake_simnet_reader():
@@ -263,9 +262,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
                         fetch_list=[self.avg_cost.name],
                     )
                     loss_val = np.mean(loss_val)
-                    message = "TRAIN ---> pass: {} loss: {}\n".format(
-                        epoch_id, loss_val
-                    )
+                    message = f"TRAIN ---> pass: {epoch_id} loss: {loss_val}\n"
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start

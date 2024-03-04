@@ -39,6 +39,10 @@ class SimpleModel(nn.Layer):
         return x
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or float(paddle.version.cuda()) < 11.0,
+    "only support cuda >= 11.0",
+)
 class TestCudaGraphAttrAll(unittest.TestCase):
     def test_all_program(self):
         if not is_cuda_graph_supported():

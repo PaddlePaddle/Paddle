@@ -20,7 +20,7 @@ class DequantizeLinearOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_model) override {
-#if IS_TRT_VERSION_GE(8000)
+#if IS_TRT_VERSION_GE(8510)
     VLOG(4) << "convert a dequantize_linear op to tensorrt IDequantizeLayer";
 
     // Declare inputs and attributes
@@ -32,7 +32,7 @@ class DequantizeLinearOpConverter : public OpConverter {
     // Create constant layer for scale
     PADDLE_ENFORCE_NOT_NULL(
         scale_var,
-        platform::errors::NotFound("Can not find %s presistale var in scope.",
+        platform::errors::NotFound("Can not find %s presistable var in scope.",
                                    op_desc.Input("Scale")[0]));
     auto* scale_t = scale_var->GetMutable<phi::DenseTensor>();
     int n_scale = scale_t->numel();
@@ -45,14 +45,16 @@ class DequantizeLinearOpConverter : public OpConverter {
 
     // Add dequantize layer
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Dequantize, *x, *scale);
-    layer->setAxis(axis);
+    if (axis >= 0) {
+      layer->setAxis(axis);
+    }
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "dequantize_linear", {output_name}, test_model);
 #else
     PADDLE_THROW(
         platform::errors::Fatal("Paddle-TRT explicit quantization does not "
-                                "support Paddle compiled with TRT < 8.0"));
+                                "support Paddle compiled with TRT < 8.5"));
 #endif
   }
 };

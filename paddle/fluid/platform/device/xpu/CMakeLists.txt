@@ -20,6 +20,7 @@ cc_library(
        device_context
        place
        phi
+       common
        dynload_xpti)
 cc_library(
   xpu_op_list
@@ -30,6 +31,7 @@ cc_library(
        device_context
        op_kernel_type
        phi
+       common
        dynload_xpti)
 cc_library(
   xpu_resource_pool

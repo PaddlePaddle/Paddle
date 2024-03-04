@@ -22,15 +22,15 @@
 #include <utility>
 
 #include "paddle/cinn/common/axis.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/poly/compute_at_transform.h"
@@ -227,8 +227,8 @@ std::tuple<Iterator, Iterator, Iterator, Iterator>  //
 Stage::Tile(int level0, int level1, int factor0, int factor1) {
   AssertAxisIsNotLocked(level0);
   AssertAxisIsNotLocked(level1);
-  Iterator i0(common::axis_name(level0));
-  Iterator i1(common::axis_name(level1));
+  Iterator i0(cinn::common::axis_name(level0));
+  Iterator i1(cinn::common::axis_name(level1));
   return Tile(i0, i1, factor0, factor1);
 }
 
@@ -291,7 +291,7 @@ void Stage::ChangeIndex(Stage *other) {
   }
   this->tensor()->new_indices = indices[0];
 
-  std::vector<Var> axis_var = common::GenDefaultAxis(indices[0].size());
+  std::vector<Var> axis_var = cinn::common::GenDefaultAxis(indices[0].size());
   for (int i = 0; i < axis_var.size(); i++) {
     optim::ReplaceVarWithExpr(&(this->expr_), axis_var[i], indices[0][i]);
   }
@@ -325,7 +325,7 @@ void Stage::AddForLoopInTransform(std::vector<std::vector<Expr>> &indices) {
     int int_range = GetRange(indices, i);
     if (int_range == 0) continue;
 
-    std::string dim_name = common::axis_name(i) + "_at";
+    std::string dim_name = cinn::common::axis_name(i) + "_at";
     Var dim_var(dim_name);
     indices[0][i] = ir::Add::Make(indices[0][i], Expr(dim_var));
     std::string this_domain = isl_set_to_str(domain_.get());
@@ -432,7 +432,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
     if (isl_is_removed_axis(this->transformed_domain().get(), i)) {
       continue;
     }
-    int new_i = i - isl_get_precending_removed_axes_counts(
+    int new_i = i - isl_get_preceding_removed_axes_counts(
                         this->transformed_domain().get(), i);
     if (bind_info.count(new_i) != 0) {
       if (bind_info[new_i].for_type == ir::ForType::GPUThread &&
@@ -454,7 +454,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
     if (isl_is_removed_axis(this->transformed_domain().get(), i)) {
       continue;
     }
-    int new_i = i - isl_get_precending_removed_axes_counts(
+    int new_i = i - isl_get_preceding_removed_axes_counts(
                         this->transformed_domain().get(), i);
     if (bind_info.count(new_i) != 0) {
       if (bind_info[new_i].for_type == ir::ForType::GPUBlock &&
@@ -515,7 +515,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
 
   std::vector<Expr> new_shape;
   for (auto &i : this->tensor()->new_indices) {
-    new_shape.push_back(optim::IRCopy(i));
+    new_shape.push_back(ir::ir_utils::IRCopy(i));
   }
   for (auto &i : new_shape) {
     for (auto &j : dim_to_range) {
@@ -751,8 +751,8 @@ void Stage::ComputeAt2(Stage *other, int level) {
   other->CtrlDepend(ir::Tensor(tensor()));
   if (this->tensor()->buffer.defined()) {
     std::string t_name = this->tensor()->buffer->name;
-    if (utils::Endswith(t_name, "_read_cache") ||
-        utils::Endswith(t_name, "_write_cache")) {
+    if (utils::EndsWith(t_name, "_read_cache") ||
+        utils::EndsWith(t_name, "_write_cache")) {
       EditTempTensor(other, level);
     }
   }
@@ -776,8 +776,8 @@ void Stage::ComputeAt3(Stage *other, int level) {
   other->CtrlDepend(ir::Tensor(tensor()));
   if (this->tensor()->buffer.defined()) {
     std::string t_name = this->tensor()->buffer->name;
-    if (utils::Endswith(t_name, "_read_cache") ||
-        utils::Endswith(t_name, "_write_cache")) {
+    if (utils::EndsWith(t_name, "_read_cache") ||
+        utils::EndsWith(t_name, "_write_cache")) {
       EditTempTensor(other, level);
     }
   }
@@ -788,8 +788,8 @@ void Stage::SimpleComputeAt(Stage *other, int level) {
   other->CtrlDepend(ir::Tensor(tensor()));
   if (this->tensor()->buffer.defined()) {
     std::string t_name = this->tensor()->buffer->name;
-    if (utils::Endswith(t_name, "_read_cache") ||
-        utils::Endswith(t_name, "_write_cache")) {
+    if (utils::EndsWith(t_name, "_read_cache") ||
+        utils::EndsWith(t_name, "_write_cache")) {
       EditTempTensor(other, level);
     }
   }
@@ -805,7 +805,7 @@ void Stage::SimpleComputeAt(Stage *other, int level) {
   compute_ats_[other->id()] = relation;
   auto other_expr = other->expr();
   auto find_tensors =
-      ir::CollectIRNodesWithoutTensor(other_expr, [&](const Expr *x) {
+      ir::ir_utils::CollectIRNodesWithoutTensor(other_expr, [&](const Expr *x) {
         return x->as_tensor() && x->as_tensor_ref()->name == tensor()->name;
       });
   if (!find_tensors.empty()) {
@@ -1025,7 +1025,7 @@ Iterator Stage::Fuse(const Iterator &level0, const Iterator &level1) {
 std::vector<std::string> Stage::input_statements() const {
   if (!expr_.defined()) return {};
   VLOG(3) << "stage " << id() << " expr: " << expr_;
-  auto load_exprs = ir::CollectIRNodes(
+  auto load_exprs = ir::ir_utils::CollectIRNodes(
       expr_, [](const Expr *x) { return x->As<ir::Load>(); });
   std::set<std::string> statements;
   for (auto &expr : load_exprs) {
@@ -1133,7 +1133,7 @@ void Stage::Vectorize(int level, int factor) {
     return;
   }
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
   VLOG(3) << "removed_axes_counts are " << removed_axes_counts
           << " before axis " << ith_dim_name(level);
   VLOG(3) << "vectorize level: " << level - removed_axes_counts
@@ -1171,7 +1171,7 @@ void Stage::Parallel(int level) {
     return;
   }
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
   VLOG(3) << "removed_axes_counts are " << removed_axes_counts
           << " before axis " << ith_dim_name(level);
   parallel_info_.insert(level - removed_axes_counts);
@@ -1186,7 +1186,7 @@ void Stage::Unroll(int level) {
     return;
   }
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
   VLOG(3) << "removed_axes_counts are " << removed_axes_counts
           << " before axis " << ith_dim_name(level);
   unroll_info_.insert(level - removed_axes_counts);
@@ -1563,10 +1563,11 @@ void Stage::ShareBufferWith(Stage *other) {
 isl_map *__isl_give GatherAccesses(Stage *stage,
                                    const std::string &tensor_name) {
   CHECK(stage->tensor_);
-  auto loads = ir::CollectIRNodes(stage->tensor_->body(), [&](const Expr *x) {
-    return x->As<ir::Load>() &&
-           x->As<ir::Load>()->tensor.as_tensor()->name == tensor_name;
-  });
+  auto loads =
+      ir::ir_utils::CollectIRNodes(stage->tensor_->body(), [&](const Expr *x) {
+        return x->As<ir::Load>() &&
+               x->As<ir::Load>()->tensor.as_tensor()->name == tensor_name;
+      });
 
   auto vars = stage->tensor_->axis_with_reduce();
 
@@ -1608,7 +1609,7 @@ void Stage::AddForloopInfo(int level, const StageForloopInfo &info) {
   CHECK_LT(level, num_levels);
   auto transformed_domain = this->transformed_domain();
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
 
   if (isl_is_removed_axis(transformed_domain.get(), level)) {
     // For scalar case, forloop info will be lost after for-1 and reduce-axis
@@ -1888,7 +1889,7 @@ StageMap CreateStages(const std::vector<ir::Tensor> &tensors) {
   std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());
 
   for (auto &tensor : tensors) {
-    auto used_tensors = ir::CollectIRNodes(
+    auto used_tensors = ir::ir_utils::CollectIRNodes(
         tensor->body(), [](const Expr *x) { return x->as_tensor(); });
     for (const Expr &x : used_tensors) {
       all_tensors.insert(x.as_tensor_ref());

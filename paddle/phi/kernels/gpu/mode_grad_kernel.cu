@@ -66,14 +66,14 @@ void ModeGradKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, x_grad, 1.0);
+    phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(1.0));
     return;
   }
 
   int pre, n, post;
   funcs::GetDims(in_dims, axis, &pre, &n, &post);
 
-  // calcluate the block and grid num
+  // calculate the block and grid num
   int block_size = funcs::ComputeBlockSize(post);
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);

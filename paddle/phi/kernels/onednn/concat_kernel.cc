@@ -56,7 +56,7 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
       srcs_md.push_back(input->mem_desc());
     }
 
-    auto dst_dims = vectorize<int64_t>(output->dims());
+    auto dst_dims = common::vectorize<int64_t>(output->dims());
 
     memory::desc dst_md = memory::desc(dst_dims, dt, OneDNNMemoryFormat::any);
 
@@ -71,6 +71,16 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
   }
 };
 }  // namespace funcs
+
+bool ConcatCheckIfOneDNNSupport(const KernelContext* ctx) {
+  auto input0 = ctx->InputAt<DenseTensor>(0);
+  int batch_size =
+      !input0.lod().empty() ? input0.lod()[0].size() - 1 : input0.dims()[0];
+  if (ctx->InputsSize() > 64 && batch_size < 1000) {
+    return false;
+  }
+  return true;
+}
 
 static void EnforceLayouts(const std::vector<const DenseTensor*> inputs) {
   for (auto* input : inputs) {
@@ -104,7 +114,7 @@ void ConcatKernel(const Context& dev_ctx,
   auto multi_input = ReduceMultiInput(x);
   EnforceLayouts(multi_input);
 
-  auto out_dims_vec = vectorize(out->dims());
+  auto out_dims_vec = common::vectorize(out->dims());
   if (std::any_of(out_dims_vec.begin(), out_dims_vec.end(), [](int64_t i) {
         return i < 0;
       })) {
@@ -151,4 +161,6 @@ PD_REGISTER_KERNEL(concat,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->check_if_onednn_kernel_support_ = phi::ConcatCheckIfOneDNNSupport;
+}

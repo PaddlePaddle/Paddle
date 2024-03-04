@@ -90,7 +90,7 @@ void RepeatInterleaveGradKernel(const Context& ctx,
   for (int i = 0; i < x_grad->dims()[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
-  index.Resize(phi::make_ddim({index_size}));
+  index.Resize(common::make_ddim({index_size}));
   phi::TensorFromVector<int>(index_vec, ctx, &index);
   const DenseTensor index_copy = index;
   IndexSelectGradInner<Context, T, int>(ctx, out_grad, index_copy, x_grad, dim);
@@ -104,7 +104,8 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    CPU,
@@ -113,4 +114,5 @@ PD_REGISTER_KERNEL(repeat_interleave_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}

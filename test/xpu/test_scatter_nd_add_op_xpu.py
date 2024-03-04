@@ -34,11 +34,11 @@ def numpy_scatter_nd(ref, index, updates, fun):
     end_size = index_shape[-1]
 
     # as type int32, flat_index or flat_updates can't reshape to int64
-    remain_numl = np.prod(index_shape[:-1]).astype("int32")
+    remain_numel = np.prod(index_shape[:-1]).astype("int32")
     slice_size = np.prod(ref_shape[end_size : len(ref_shape)]).astype("int32")
 
-    flat_index = index.reshape([remain_numl] + list(index_shape[-1:]))
-    flat_updates = updates.reshape((remain_numl, slice_size))
+    flat_index = index.reshape([remain_numel] + list(index_shape[-1:]))
+    flat_updates = updates.reshape((remain_numel, slice_size))
     flat_output = ref.reshape(list(ref_shape[:end_size]) + [slice_size])
 
     for i_up, i_out in enumerate(flat_index):
@@ -91,6 +91,9 @@ class XPUTestScatterNdAdd(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X', 'Updates'], 'Out')
+
         def init_data(self):
             self.x_np = np.random.random([100]).astype(self.dtype)
             self.index_np = np.random.randint(0, 100, [100, 1]).astype("int32")
@@ -103,8 +106,10 @@ class XPUTestScatterNdAdd(XPUOpTestWrapper):
     class TestScatterNdAddWithEmptyIndex(TestScatterNdAdd):
         def init_data(self):
             self.x_np = np.random.random((10, 10)).astype(self.dtype)
-            self.index_np = np.array([[], []]).astype("int32")
-            self.updates_np = np.random.random((2, 10, 10)).astype(self.dtype)
+            self.index_np = np.array([[[], []], [[], []]]).astype("int32")
+            self.updates_np = np.random.random((2, 2, 10, 10)).astype(
+                self.dtype
+            )
 
     class TestScatterNdAddOpWithHighRankSame(TestScatterNdAdd):
         def init_data(self):
@@ -137,6 +142,13 @@ class XPUTestScatterNdAdd(XPUOpTestWrapper):
             self.index_np = np.random.rand(796, 4).astype("int32")
             update_shape = judge_update_shape(self.x_np, self.index_np)
             self.updates_np = np.random.rand(*update_shape).astype(self.dtype)
+
+    class TestScatterNdAddWithZeroDimUpdates(TestScatterNdAdd):
+        def init_data(self):
+            shape = (10,)
+            self.x_np = np.random.rand(*shape).astype(self.dtype)
+            self.index_np = np.random.randint(0, 10, [1]).astype("int32")
+            self.updates_np = np.array(np.random.rand()).astype(self.dtype)
 
 
 support_types = get_xpu_op_support_types('scatter_nd_add')

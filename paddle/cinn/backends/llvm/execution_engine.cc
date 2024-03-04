@@ -61,7 +61,7 @@
 #include "paddle/cinn/backends/llvm/llvm_optimizer.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/profiler.h"
 

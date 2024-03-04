@@ -202,7 +202,8 @@ int32_t PD_ConfigCustomDeviceId(__pd_keep PD_Config* pd_config) {
 char* PD_ConfigCustomDeviceType(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   auto device_type_str = config->custom_device_type();
-  char* c = reinterpret_cast<char*>(malloc(device_type_str.length() + 1));
+  char* c =
+      reinterpret_cast<char*>(malloc(device_type_str.length() + 1));  // NOLINT
   snprintf(c, device_type_str.length() + 1, "%s", device_type_str.c_str());
   return c;
 }
@@ -316,7 +317,7 @@ void PD_ConfigCollectShapeRangeInfo(__pd_keep PD_Config* pd_config,
 const char* PD_ConfigShapeRangeInfoPath(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   auto shape_str = config->shape_range_info_path();
-  char* c = reinterpret_cast<char*>(malloc(shape_str.length() + 1));
+  char* c = reinterpret_cast<char*>(malloc(shape_str.length() + 1));  // NOLINT
   snprintf(c, shape_str.length() + 1, "%s", shape_str.c_str());
   return c;
 }

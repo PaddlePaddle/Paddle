@@ -536,7 +536,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
     filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   }
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -579,7 +579,7 @@ void ConvCudnnGradKernel(const Context& ctx,
         input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
     }
-    DDim new_input_shape(make_ddim(new_input_shape_vec));
+    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     ctx.template Alloc<T>(&transformed_input);
 
@@ -906,7 +906,7 @@ void ConvCudnnGradGradKernel(
   auto filter_dims = W->dims();
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -935,7 +935,7 @@ void ConvCudnnGradGradKernel(
       input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
       input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
     }
-    DDim new_input_shape(make_ddim(new_input_shape_vec));
+    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
     transformed_X.Resize(new_input_shape);
     transformed_ddX.Resize(new_input_shape);
     transformed_dX.Resize(new_input_shape);

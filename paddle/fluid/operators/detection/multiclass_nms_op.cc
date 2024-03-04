@@ -101,11 +101,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     }
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
-    if (score_size == 3) {
-      ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
-    } else {
-      ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
-    }
+    ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }
@@ -254,7 +250,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     *num_nmsed_out = num_det;
     const T* scores_data = scores.data<T>();
     if (keep_top_k > -1 && num_det > keep_top_k) {
-      const T* sdata;
+      const T* sdata = nullptr;
       std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
       for (const auto& it : *indices) {
         int label = it.first;
@@ -314,7 +310,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* scores_data = scores.data<T>();
     auto* bboxes_data = bboxes.data<T>();
     auto* odata = outs->data<T>();
-    const T* sdata;
+    const T* sdata = nullptr;
     phi::DenseTensor bbox;
     bbox.Resize({scores.dims()[0], box_size});
     int count = 0;
@@ -329,7 +325,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
       for (auto idx : indices) {
         odata[count * out_dim] = label;  // label
-        const T* bdata;
+        const T* bdata = nullptr;
         if (scores_size == 3) {
           bdata = bboxes_data + idx * box_size;
           odata[count * out_dim + 1] = sdata[idx];  // score
@@ -359,7 +355,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto index = ctx.Output<phi::DenseTensor>("Index");
     bool has_roisnum = ctx.HasInput("RoisNum") ? true : false;
     auto rois_num = ctx.Input<phi::DenseTensor>("RoisNum");
-    auto score_dims = phi::vectorize<int>(scores->dims());
+    auto score_dims = common::vectorize<int>(scores->dims());
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
@@ -560,13 +556,13 @@ of boxes and scores.
 In the NMS step, this operator greedily selects a subset of detection bounding
 boxes that have high scores larger than score_threshold, if providing this
 threshold, then selects the largest nms_top_k confidences scores if nms_top_k
-is larger than -1. Then this operator pruns away boxes that have high IOU
+is larger than -1. Then this operator prunes away boxes that have high IOU
 (intersection over union) overlap with already selected boxes by adaptive
 threshold NMS based on parameters of nms_threshold and nms_eta.
-Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+After NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
-independently for each class. The outputs is a 2-D LoDTenosr, for each
+independently for each class. The outputs is a 2-D LoDTensor, for each
 image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image.
@@ -584,14 +580,7 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     MultiClassNMSOp::InferShape(ctx);
-
-    auto score_dims = ctx->GetInputDim("Scores");
-    auto score_size = score_dims.size();
-    if (score_size == 3) {
-      ctx->SetOutputDim("Index", {-1, 1});
-    } else {
-      ctx->SetOutputDim("Index", {-1, 1});
-    }
+    ctx->SetOutputDim("Index", {-1, 1});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }

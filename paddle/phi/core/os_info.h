@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #ifdef _POSIX_C_SOURCE

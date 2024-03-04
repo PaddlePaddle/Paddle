@@ -14,8 +14,9 @@
 
 #include "paddle/phi/kernels/nonzero_kernel.h"
 
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/backends/xpu/xpu_header.h"
+#include "glog/logging.h"
+
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -34,41 +35,37 @@ void NonZeroKernel(const Context& dev_ctx,
   int* true_num = RAII_GUARD.alloc_l3_or_gm<int32_t>(1);
   int true_num_cpu;
   int ret = xpu::nonzero_count(dev_ctx.x_context(), cond_data, true_num, numel);
-  PADDLE_ENFORCE_EQ(
-      ret,
-      XPU_SUCCESS,
-      phi::errors::External(
-          "XPU nonzero_count kernel return wrong value[%d %s] in WhereIndex",
-          ret,
-          XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "nonzero_count");
 
   memory_utils::Copy(phi::CPUPlace(),
                      static_cast<void*>(&true_num_cpu),
                      dev_ctx.GetPlace(),
                      static_cast<void*>(true_num),
                      sizeof(int32_t));
+  if (std::getenv("XPUSIM_SKIP_RUN") &&
+      std::strcmp(std::getenv("XPUSIM_SKIP_RUN"), "1") == 0) {
+    VLOG(3) << "WARNING: In the simulator mode, the variable true_num_cpu "
+               "stores an uninitialized value. To avoid allocating a memory of "
+               "random size, we assign numel to true_num_cpu";
+    true_num_cpu = numel;
+  }
 
-  out->Resize(phi::make_ddim({static_cast<int64_t>(true_num_cpu), rank}));
+  out->Resize(common::make_ddim({static_cast<int64_t>(true_num_cpu), rank}));
   auto* out_data = dev_ctx.template Alloc<int64_t>(out);
 
   if (true_num_cpu == 0) {
     return;
   }
 
-  auto condition_shape = phi::vectorize<int>(dims);
+  auto condition_shape = common::vectorize<int>(dims);
   ret = xpu::where(
       dev_ctx.x_context(), cond_data, out_data, condition_shape, true_num_cpu);
-  PADDLE_ENFORCE_EQ(ret,
-                    XPU_SUCCESS,
-                    phi::errors::External(
-                        "XPU masked_select kernel return wrong value[%d %s]",
-                        ret,
-                        XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "where");
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    nonzero, XPU, ALL_LAYOUT, phi::NonZeroKernel, int, bool, float) {
+    nonzero, XPU, ALL_LAYOUT, phi::NonZeroKernel, int, bool, float, int64_t) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }

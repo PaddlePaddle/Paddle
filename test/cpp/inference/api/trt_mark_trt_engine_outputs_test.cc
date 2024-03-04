@@ -25,7 +25,7 @@ TEST(TensorRT, mark_trt_engine_outputs) {
   config.EnableTensorRtEngine(
       1 << 30, 1, 5, AnalysisConfig::Precision::kFloat32, false, false);
   // The name of the tensor that needs to be marked
-  std::vector<std::string> markOutput = {};
+  std::vector<std::string> markOutput = {"pool2d_0.tmp_0"};
   config.MarkTrtEngineOutputs(markOutput);
 
   std::vector<std::vector<PaddleTensor>> inputs_all;

@@ -12,16 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/capi_exp/pd_config.h"
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/capi_exp/pd_utils.h"
-#include "test/cpp/inference/api/tester_helper.h"
+
+PD_DEFINE_string(infer_model, "", "model path");
 
 namespace paddle {
 namespace inference {
@@ -48,8 +53,8 @@ void predictor_run() {
   const int width = 318;
   float *input = new float[batch_size * channels * height * width]();
 
-  int32_t shape[4] = {batch_size, channels, height, width};
-  PD_TensorReshape(tensor, 4, shape);
+  std::array<int32_t, 4> shape = {batch_size, channels, height, width};
+  PD_TensorReshape(tensor, 4, shape.data());
   PD_TensorCopyFromCpuFloat(tensor, input);
   EXPECT_TRUE(PD_PredictorRun(predictor));
 

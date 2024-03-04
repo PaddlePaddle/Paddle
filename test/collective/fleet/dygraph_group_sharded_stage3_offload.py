@@ -250,7 +250,6 @@ def test_stage3_offload():
             rtol=1e-6,
             atol=1e-8,
         )
-    return
 
 
 if __name__ == '__main__':

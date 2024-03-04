@@ -14,36 +14,35 @@
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace pir {
 
 /**
- * @brief Get the [name, parameter] pair of pararmeter from a value.
+ * @brief Get the name of parameter from a value.
  *
- * @note The value must be a output of a GetParameterOp.
+ * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *
  * @param pir::Value
  *
- * @return std::pair<std::string, pir::Parameter*>
+ * @return std::string
  */
 
-std::pair<std::string, pir::Parameter*> GetParameterFromValue(pir::Value value);
+std::string GetParameterNameFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's shape from a value.
  *
  * @param pir::Value
  *
- * @return const phi::DDim&
+ * @return std::vector<int64_t>
  */
-const phi::DDim& GetShapeFromValue(pir::Value value);
+std::vector<int64_t> GetShapeFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's data type from a value.
@@ -57,22 +56,53 @@ pir::Type GetDataTypeFromValue(pir::Value value);
 /**
  * @brief Get an operation that defines the specific input of the operation.
  *
- * @param Operation* pointer to an operation
+ * @param const Operation* const pointer to an operation
  * @param uint32_t index of operand of the operation
  *
  * @return Operation*
  */
-Operation* GetDefiningOpForInput(Operation* op, uint32_t index);
+TEST_API Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
 
 /**
- * @brief Get an operation that is the first to use the specific output of the
- * operation.
+ * @brief Get operations and the index of designative op operand (op result)
+ that use the specific output of the operation.
  *
- * @param Operation* pointer to an operation
+ * @param const Operation* const pointer to an operation
  * @param uint32_t index of result of the operation
 
- * @return Operation*
+ * @return std::vector<std::pair<Operation*, int32_t>>
  */
-Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index);
+std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
+    const Operation* op, uint32_t index);
+
+/**
+* @brief Get the value of the input and output of the specified op in the
+external block.
+*
+* @param const Operation& const reference to an operation
+
+* @return std::vector<Value>
+*/
+std::vector<Value> GetUsedExternalValue(const Operation& op);
+
+/**
+ * @brief Get the external value of the input and output of all op which in the
+ specified block.
+ *
+ * @param const Block& const reference to an block
+
+ * @return std::vector<Value>
+ */
+std::vector<Value> GetUsedExternalValue(const Block& block);
+
+/**
+ * @brief Determine whether a value comes from a weight or has no input op. That
+ is to say, it is permissible.
+ *
+ * @param pir::Value
+
+ * @return bool
+ */
+bool ValueIsPersitable(pir::Value value);
 
 }  // namespace pir

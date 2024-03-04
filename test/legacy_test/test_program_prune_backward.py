@@ -81,6 +81,27 @@ def cond_net(use_feed=None):
     return avg_loss
 
 
+def pylayer_net(use_feed=None):
+    x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
+    label = paddle.static.data('label', shape=[-1, 1], dtype='int64')
+
+    def forward_fn(x):
+        y = 3 * x
+        return y
+
+    def backward_fn(dy):
+        grad = paddle.exp(dy)
+        return grad
+
+    y = paddle.static.nn.static_pylayer(forward_fn, [x], backward_fn)
+    hidden = paddle.static.nn.fc(x=[y], size=4, activation="softmax")
+    loss = paddle.nn.functional.cross_entropy(
+        input=hidden, label=label, reduction='none', use_softmax=False
+    )
+    loss = paddle.mean(loss, name='mean_softmax_loss')
+    return loss
+
+
 def optimization_in_cond_net(with_optimize=False):
     x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
     label = paddle.static.data('label', shape=[-1, 1], dtype='int64')
@@ -113,6 +134,31 @@ def optimization_in_cond_net(with_optimize=False):
         lambda: loss2(sgd, prediction, label, with_optimize),
     )
     return avg_loss
+
+
+def optimization_in_pylayer_net(with_optimize=False):
+    x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
+    label = paddle.static.data('label', shape=[-1, 1], dtype='int64')
+
+    def forward_fn(x):
+        y = 3 * x
+        return y
+
+    def backward_fn(dy):
+        grad = paddle.exp(dy)
+        return grad
+
+    y = paddle.static.nn.static_pylayer(forward_fn, [x], backward_fn)
+    hidden = 3 * y
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
+        logits=hidden, label=label
+    )
+    loss = paddle.mean(loss, name='mean_softmax_loss')
+    sgd = paddle.optimizer.SGD(learning_rate=0.1)
+    if with_optimize:
+        sgd.minimize(loss)
+
+    return loss
 
 
 class TestProgramPruneBackward(unittest.TestCase):
@@ -249,6 +295,19 @@ class TestProgramPruneBackward(unittest.TestCase):
                 method=cond_net, feed_dict=feed_dict, optimizer=optimizer
             )
 
+    def test_pylayer(self):
+        def optimizer():
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            return optimizer
+
+        with self.program_scope_guard():
+            x_in = np.random.random(size=(10, 4)).astype('float32')
+            label_in = np.random.randint(1, size=(10, 1)).astype('int64')
+            feed_dict = {'x': x_in, 'label': label_in}
+            self.check_prune_correctness(
+                method=pylayer_net, feed_dict=feed_dict, optimizer=optimizer
+            )
+
     def test_optimization_in_cond(self):
         x_in = np.random.random(size=(10, 4)).astype('float32')
         label_in = np.random.randint(1, size=(10, 1)).astype('int64')
@@ -266,6 +325,36 @@ class TestProgramPruneBackward(unittest.TestCase):
 
         with self.program_scope_guard():
             loss = optimization_in_cond_net(True)
+            main_program = base.default_main_program()
+            test_prog_prune = main_program.clone(for_test=True)
+
+            place = core.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
+            (loss_data_prune,) = exe.run(
+                test_prog_prune, feed=feed_dict, fetch_list=[loss.name]
+            )
+
+        self.program_compare(test_prog_orig, test_prog_prune)
+        self.assertEqual(loss_data_orig, loss_data_prune)
+
+    def test_optimization_in_pylayer(self):
+        x_in = np.random.random(size=(10, 4)).astype('float32')
+        label_in = np.random.randint(1, size=(10, 1)).astype('int64')
+        feed_dict = {'x': x_in, 'label': label_in}
+        with self.program_scope_guard():
+            loss = optimization_in_pylayer_net(False)
+            main_program = base.default_main_program()
+            test_prog_orig = main_program.clone(for_test=True)
+            place = core.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
+            (loss_data_orig,) = exe.run(
+                test_prog_orig, feed=feed_dict, fetch_list=[loss.name]
+            )
+
+        with self.program_scope_guard():
+            loss = optimization_in_pylayer_net(True)
             main_program = base.default_main_program()
             test_prog_prune = main_program.clone(for_test=True)
 

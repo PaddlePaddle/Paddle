@@ -12,14 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 from seq2seq_utils import Seq2SeqModelHyperParams as args
 
 import paddle
-from paddle import base
-from paddle.base import ParamAttr
-from paddle.base.dygraph.base import to_variable
-from paddle.jit.api import to_static
 from paddle.nn import Embedding, Layer
 
 INF = 1.0 * 1e5
@@ -42,7 +37,7 @@ class BasicLSTMUnit(Layer):
     ):
         super().__init__(dtype)
 
-        self._hiden_size = hidden_size
+        self._hidden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
@@ -53,13 +48,13 @@ class BasicLSTMUnit(Layer):
 
         self._weight = self.create_parameter(
             attr=self._param_attr,
-            shape=[self._input_size + self._hiden_size, 4 * self._hiden_size],
+            shape=[self._input_size + self._hidden_size, 4 * self._hidden_size],
             dtype=self._dtype,
         )
 
         self._bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[4 * self._hiden_size],
+            shape=[4 * self._hidden_size],
             dtype=self._dtype,
             is_bias=True,
         )
@@ -113,14 +108,16 @@ class BaseModel(paddle.nn.Layer):
         self.mode = mode
         self.kinf = 1e9
 
-        param_attr = ParamAttr(initializer=uniform_initializer(self.init_scale))
-        bias_attr = ParamAttr(initializer=zero_constant)
+        param_attr = paddle.ParamAttr(
+            initializer=uniform_initializer(self.init_scale)
+        )
+        bias_attr = paddle.ParamAttr(initializer=zero_constant)
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
             self.src_vocab_size,
             self.hidden_size,
-            weight_attr=base.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
@@ -129,7 +126,7 @@ class BaseModel(paddle.nn.Layer):
             self.tar_vocab_size,
             self.hidden_size,
             sparse=False,
-            weight_attr=base.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
@@ -138,7 +135,7 @@ class BaseModel(paddle.nn.Layer):
         for i in range(num_layers):
             self.enc_units.append(
                 self.add_sublayer(
-                    "enc_units_%d" % i,
+                    f"enc_units_{i}",
                     BasicLSTMUnit(
                         hidden_size=self.hidden_size,
                         input_size=self.hidden_size,
@@ -153,7 +150,7 @@ class BaseModel(paddle.nn.Layer):
         for i in range(num_layers):
             self.dec_units.append(
                 self.add_sublayer(
-                    "dec_units_%d" % i,
+                    f"dec_units_{i}",
                     BasicLSTMUnit(
                         hidden_size=self.hidden_size,
                         input_size=self.hidden_size,
@@ -203,7 +200,6 @@ class BaseModel(paddle.nn.Layer):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         return paddle.gather_nd(x, topk_coordinates)
 
-    @to_static
     def forward(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -213,11 +209,11 @@ class BaseModel(paddle.nn.Layer):
 
         # NOTE: modify model code about `enc_hidden` and `enc_cell` to transforme dygraph code successfully.
         # Because nested list can't be transformed now.
-        enc_hidden_0 = to_variable(
-            np.zeros((self.batch_size, self.hidden_size), dtype='float32')
+        enc_hidden_0 = paddle.zeros(
+            shape=[self.batch_size, self.hidden_size], dtype='float32'
         )
-        enc_cell_0 = to_variable(
-            np.zeros((self.batch_size, self.hidden_size), dtype='float32')
+        enc_cell_0 = paddle.zeros(
+            shape=[self.batch_size, self.hidden_size], dtype='float32'
         )
         zero = paddle.zeros(shape=[1], dtype="int64")
         enc_hidden = paddle.tensor.create_array(dtype="float32")
@@ -233,7 +229,7 @@ class BaseModel(paddle.nn.Layer):
 
         max_seq_len = src_emb.shape[0]
 
-        enc_len_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        enc_len_mask = paddle.nn.functional.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_len_mask = paddle.transpose(enc_len_mask, [1, 0])
@@ -294,12 +290,12 @@ class BaseModel(paddle.nn.Layer):
 
         dec_output = paddle.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
-        loss = paddle.nn.functional.softmax_with_cross_entropy(
-            logits=dec_output, label=label, soft_label=False
+        loss = paddle.nn.functional.cross_entropy(
+            input=dec_output, label=label, soft_label=False, reduction="none"
         )
         loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
-        tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        tar_mask = paddle.nn.functional.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
@@ -308,18 +304,17 @@ class BaseModel(paddle.nn.Layer):
 
         return loss
 
-    @to_static
     def beam_search(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
             self.batch_size = src.shape[0]
 
         src_emb = self.src_embeder(self._transpose_batch_time(src))
-        enc_hidden_0 = to_variable(
-            np.zeros((self.batch_size, self.hidden_size), dtype='float32')
+        enc_hidden_0 = paddle.zeros(
+            shape=[self.batch_size, self.hidden_size], dtype='float32'
         )
-        enc_cell_0 = to_variable(
-            np.zeros((self.batch_size, self.hidden_size), dtype='float32')
+        enc_cell_0 = paddle.zeros(
+            shape=[self.batch_size, self.hidden_size], dtype='float32'
         )
         zero = paddle.zeros(shape=[1], dtype="int64")
         enc_hidden = paddle.tensor.create_array(dtype="float32")
@@ -335,7 +330,7 @@ class BaseModel(paddle.nn.Layer):
 
         max_seq_len = src_emb.shape[0]
 
-        enc_len_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        enc_len_mask = paddle.nn.functional.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_len_mask = paddle.transpose(enc_len_mask, [1, 0])
@@ -370,23 +365,17 @@ class BaseModel(paddle.nn.Layer):
 
         # beam search
         batch_beam_shape = (self.batch_size, self.beam_size)
-        vocab_size_tensor = to_variable(
-            np.full((1), self.tar_vocab_size)
-        ).astype("int64")
-        start_token_tensor = to_variable(
-            np.full(batch_beam_shape, self.beam_start_token, dtype='int64')
+        vocab_size_tensor = paddle.full([1], self.tar_vocab_size, dtype="int64")
+        start_token_tensor = paddle.full(
+            batch_beam_shape, self.beam_start_token, dtype="int64"
         )
-        end_token_tensor = to_variable(
-            np.full(batch_beam_shape, self.beam_end_token, dtype='int64')
+        end_token_tensor = paddle.full(
+            batch_beam_shape, self.beam_end_token, dtype="int64"
         )
         step_input = self.tar_embeder(start_token_tensor)
-        beam_finished = to_variable(
-            np.full(batch_beam_shape, 0, dtype='float32')
-        )
-        beam_state_log_probs = to_variable(
-            np.array(
-                [[0.0] + [-self.kinf] * (self.beam_size - 1)], dtype="float32"
-            )
+        beam_finished = paddle.full(batch_beam_shape, 0, dtype="float32")
+        beam_state_log_probs = paddle.to_tensor(
+            [[0.0] + [-self.kinf] * (self.beam_size - 1)], dtype="float32"
         )
         beam_state_log_probs = paddle.expand(
             beam_state_log_probs,
@@ -398,8 +387,7 @@ class BaseModel(paddle.nn.Layer):
 
         batch_pos = paddle.expand(
             paddle.unsqueeze(
-                to_variable(np.arange(0, self.batch_size, 1, dtype="int64")),
-                [1],
+                paddle.arange(0, self.batch_size, 1, dtype="int64"), [1]
             ),
             [-1, self.beam_size],
         )
@@ -440,9 +428,7 @@ class BaseModel(paddle.nn.Layer):
             )
             noend_array = [-self.kinf] * self.tar_vocab_size
             noend_array[self.beam_end_token] = 0
-            noend_mask_tensor = to_variable(
-                np.array(noend_array, dtype='float32')
-            )
+            noend_mask_tensor = paddle.to_tensor(noend_array, dtype="float32")
 
             step_log_probs = paddle.multiply(
                 paddle.expand(
@@ -540,14 +526,16 @@ class AttentionModel(paddle.nn.Layer):
         self.mode = mode
         self.kinf = 1e9
 
-        param_attr = ParamAttr(initializer=uniform_initializer(self.init_scale))
-        bias_attr = ParamAttr(initializer=zero_constant)
+        param_attr = paddle.ParamAttr(
+            initializer=uniform_initializer(self.init_scale)
+        )
+        bias_attr = paddle.ParamAttr(initializer=zero_constant)
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
             self.src_vocab_size,
             self.hidden_size,
-            weight_attr=base.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name='source_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
@@ -557,7 +545,7 @@ class AttentionModel(paddle.nn.Layer):
             self.tar_vocab_size,
             self.hidden_size,
             sparse=False,
-            weight_attr=base.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name='target_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
@@ -567,7 +555,7 @@ class AttentionModel(paddle.nn.Layer):
         for i in range(num_layers):
             self.enc_units.append(
                 self.add_sublayer(
-                    "enc_units_%d" % i,
+                    f"enc_units_{i}",
                     BasicLSTMUnit(
                         hidden_size=self.hidden_size,
                         input_size=self.hidden_size,
@@ -583,12 +571,12 @@ class AttentionModel(paddle.nn.Layer):
             if i == 0:
                 self.dec_units.append(
                     self.add_sublayer(
-                        "dec_units_%d" % i,
+                        f"dec_units_{i}",
                         BasicLSTMUnit(
                             hidden_size=self.hidden_size,
                             input_size=self.hidden_size * 2,
-                            param_attr=ParamAttr(
-                                name="dec_units_%d" % i,
+                            param_attr=paddle.ParamAttr(
+                                name=f"dec_units_{i}",
                                 initializer=uniform_initializer(
                                     self.init_scale
                                 ),
@@ -601,12 +589,12 @@ class AttentionModel(paddle.nn.Layer):
             else:
                 self.dec_units.append(
                     self.add_sublayer(
-                        "dec_units_%d" % i,
+                        f"dec_units_{i}",
                         BasicLSTMUnit(
                             hidden_size=self.hidden_size,
                             input_size=self.hidden_size,
-                            param_attr=ParamAttr(
-                                name="dec_units_%d" % i,
+                            param_attr=paddle.ParamAttr(
+                                name=f"dec_units_{i}",
                                 initializer=uniform_initializer(
                                     self.init_scale
                                 ),
@@ -720,7 +708,6 @@ class AttentionModel(paddle.nn.Layer):
 
         return array
 
-    @to_static
     def forward(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -730,12 +717,12 @@ class AttentionModel(paddle.nn.Layer):
 
         # NOTE: modify model code about `enc_hidden` and `enc_cell` to transform dygraph code successfully.
         # Because nested list can't be transformed now.
-        enc_hidden_0 = to_variable(
-            np.zeros((self.batch_size, self.hidden_size), dtype='float32')
+        enc_hidden_0 = paddle.zeros(
+            shape=[self.batch_size, self.hidden_size], dtype='float32'
         )
         enc_hidden_0.stop_gradient = True
-        enc_cell_0 = to_variable(
-            np.zeros((self.batch_size, self.hidden_size), dtype='float32')
+        enc_cell_0 = paddle.zeros(
+            shape=[self.batch_size, self.hidden_size], dtype='float32'
         )
         enc_hidden_0.stop_gradient = True
         zero = paddle.zeros(shape=[1], dtype="int64")
@@ -752,7 +739,7 @@ class AttentionModel(paddle.nn.Layer):
 
         max_seq_len = src_emb.shape[0]
 
-        enc_len_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        enc_len_mask = paddle.nn.functional.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_padding_mask = enc_len_mask - 1.0
@@ -793,8 +780,8 @@ class AttentionModel(paddle.nn.Layer):
         enc_outputs = self._transpose_batch_time(enc_outputs)
 
         # train
-        input_feed = to_variable(
-            np.zeros((self.batch_size, self.hidden_size), dtype='float32')
+        input_feed = paddle.zeros(
+            shape=[self.batch_size, self.hidden_size], dtype='float32'
         )
         # NOTE: set stop_gradient here, otherwise grad var is null
         input_feed.stop_gradient = True
@@ -832,12 +819,12 @@ class AttentionModel(paddle.nn.Layer):
 
         dec_output = paddle.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
-        loss = paddle.nn.functional.softmax_with_cross_entropy(
-            logits=dec_output, label=label, soft_label=False
+        loss = paddle.nn.functional.cross_entropy(
+            input=dec_output, label=label, soft_label=False, reduction="none"
         )
         loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
-        tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
+        tar_mask = paddle.nn.functional.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask

@@ -15,7 +15,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_mode, in_pir_mode
 
 
 def fused_rms_norm(
@@ -54,14 +54,15 @@ def fused_rms_norm(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            paddle_x = paddle.cast(paddle.randn(shape=[32, 256]), dtype=paddle.float16)
-            paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
-            paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
-            epsilon = 1e-6
-            paddle_rmsnorm = paddle.incubate.nn.functional.fused_rms_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
+            >>> paddle_x = paddle.cast(paddle.randn(shape=[32, 256]), dtype=paddle.float16)
+            >>> paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
+            >>> paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
+            >>> epsilon = 1e-6
+            >>> paddle_rmsnorm = paddle.incubate.nn.functional.fused_rms_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
     if in_dynamic_mode():
         return _C_ops.rms_norm(
@@ -77,7 +78,21 @@ def fused_rms_norm(
             quant_max_bound,
             quant_min_bound,
         )
-
+    if in_pir_mode():
+        out, residual_out = _C_ops.rms_norm(
+            x,
+            bias,
+            residual,
+            norm_weight,
+            norm_bias,
+            epsilon,
+            begin_norm_axis,
+            quant_scale,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound,
+        )
+        return (out, residual_out) if residual is not None else out
     helper = LayerHelper('rms_norm', **locals())
     out = None
     if quant_scale <= 0:
@@ -90,8 +105,11 @@ def fused_rms_norm(
     residual_out = helper.create_variable_for_type_inference(dtype=x.dtype)
     outputs_dict['residual_out'] = residual_out
 
+    inv_var = helper.create_variable_for_type_inference(dtype=paddle.float32)
+    outputs_dict['inv_var'] = inv_var
+
     inputs = {'x': x, 'norm_weight': norm_weight}
-    if norm_bias:
+    if norm_bias is not None:
         inputs['norm_bias'] = norm_bias
     if residual is not None:
         inputs['residual'] = residual

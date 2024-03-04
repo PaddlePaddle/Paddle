@@ -773,6 +773,9 @@ class PsGpuPass(PassBase):
         optimize_op_role_vars = []
         optimize_need_delete_vars = []
         for op in get_optimize_ops(program):
+            # print("op=%s, input_names=%s" % (op, op.input_names))
+            if "Param" not in op.input_names:
+                continue
             for name in op.input("Param"):
                 if name in embedding_w:
                     optimize_op_role_vars.extend(op.attr("op_role_var"))
@@ -887,8 +890,8 @@ class SplitHeterWorkerOpsPass(PassBase):
         #         joint_var.0_1 -> slice -> reshape -> origin_var
         #         origin_var -> origin_program
         #         reshape -> concat -> joint_var.1_2
-        #     d) copy send op from origin program for var@grad which loacted in current heter block
-        #     e) re-check every op in current blcok if its device is not current heter devie
+        #     d) copy send op from origin program for var@grad which located in current heter block
+        #     e) re-check every op in current block if its device is not current heter device
         # 2. Create send op for step counter in last heter-block
         # 3. Create Listen&Serv OP and Send&Recv OP for distributed training
         # 4. update CompileTimeStrategy for heter_program
@@ -1037,9 +1040,9 @@ class SplitHeterWorkerOpsPass(PassBase):
         3. create heter worker program, add listen&serv op
         """
         attrs = pass_ctx._attrs
-        default_deveice = "cpu"
+        default_device = "cpu"
         program, heter_ops, _, program_block_ops = find_heter_ops(
-            main_program, default_deveice
+            main_program, default_device
         )
         if len(heter_ops) == 0:
             warnings.warn(
@@ -1391,7 +1394,6 @@ class SplitFlOpsPass(PassBase):
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
             },
         )
-        return
 
     def _insert_partB_communicate_op(self, block, idx):
         comm_info = f"backward_joint_{2}_{1}@fl_ps"
@@ -1416,7 +1418,6 @@ class SplitFlOpsPass(PassBase):
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
             },
         )
-        return
 
     def _create_var_for_block(self, vars, block):
         for var in vars:

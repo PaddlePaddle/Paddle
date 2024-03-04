@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_fp16.h>
+#endif
 #include <cstddef>
 #include <cstdint>
 #include <vector>
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 namespace paddle {
 namespace distributed {
 
@@ -27,7 +30,11 @@ class GraphEdgeBlob {
   size_t size() { return id_arr.size(); }
   virtual void add_edge(int64_t id, float weight);
   int64_t get_id(int idx) { return id_arr[idx]; }
-  virtual float get_weight(int idx UNUSED) { return 1; }
+#ifdef PADDLE_WITH_CUDA
+  virtual half get_weight(int idx UNUSED) { return (half)(1.0); }
+#else
+  virtual float get_weight(int idx UNUSED) { return 1.0; }
+#endif
   std::vector<int64_t>& export_id_array() { return id_arr; }
 
  protected:
@@ -39,10 +46,18 @@ class WeightedGraphEdgeBlob : public GraphEdgeBlob {
   WeightedGraphEdgeBlob() {}
   virtual ~WeightedGraphEdgeBlob() {}
   virtual void add_edge(int64_t id, float weight);
+#ifdef PADDLE_WITH_CUDA
+  virtual half get_weight(int idx) { return weight_arr[idx]; }
+#else
   virtual float get_weight(int idx) { return weight_arr[idx]; }
+#endif
 
  protected:
+#ifdef PADDLE_WITH_CUDA
+  std::vector<half> weight_arr;
+#else
   std::vector<float> weight_arr;
+#endif
 };
 }  // namespace distributed
 }  // namespace paddle

@@ -30,6 +30,8 @@ const char kRecurrent[] = "recurrent";  // NOLINT
 const char kStates[] = "states";        // NOLINT
 const char kExStates[] = "ex_states";   // NOLINT
 
+const char kPyLayer[] = "pylayer";  // NOLINT
+
 bool HasDependentInputVar(
     const proto::OpDesc& op_desc,
     const std::unordered_set<std::string>& dependent_vars) {
@@ -86,6 +88,23 @@ int GetSubBlockIndex(const proto::OpDesc& op_desc) {
   return -1;
 }
 
+void GetSubBlocksIndices(const proto::OpDesc& op_desc,
+                         std::vector<int>* indices) {
+  for (auto& attr : op_desc.attrs()) {
+    if (attr.type() == proto::AttrType::BLOCKS) {
+      PADDLE_ENFORCE_GT(
+          attr.blocks_idx_size(),
+          0,
+          platform::errors::NotFound(
+              "Attribute blocks is not found in operator %s", op_desc.type()));
+      indices->resize(attr.blocks_idx_size());
+      for (int i = 0; i < attr.blocks_idx_size(); i++) {
+        (*indices)[i] = attr.blocks_idx(i);
+      }
+    }
+  }
+}
+
 void SetSubBlockIndex(proto::OpDesc* op_desc, int sub_idx) {
   for (auto& attr : *op_desc->mutable_attrs()) {
     if (attr.type() == proto::AttrType::BLOCK) {
@@ -99,8 +118,41 @@ void SetSubBlockIndex(proto::OpDesc* op_desc, int sub_idx) {
   }
 }
 
+void SetSubBlocksIndices(proto::OpDesc* op_desc,
+                         const std::vector<int>& sub_indices) {
+  for (auto& attr : *op_desc->mutable_attrs()) {
+    if (attr.type() == proto::AttrType::BLOCKS) {
+      PADDLE_ENFORCE_GT(
+          attr.blocks_idx_size(),
+          0,
+          platform::errors::NotFound(
+              "Attribute blocks is not found in operator %s", op_desc->type()));
+      attr.clear_blocks_idx();
+      for (auto idx : sub_indices) {
+        attr.add_blocks_idx(idx);
+      }
+    }
+  }
+}
+
 bool HasSubBlock(const proto::OpDesc& op_desc) {
   return GetSubBlockIndex(op_desc) > 0;
+}
+
+bool HasSubBlocks(const proto::OpDesc& op_desc) {
+  // ``blocks_idx_size() == 0`` indicates no sub blocks.
+  for (auto& attr : op_desc.attrs()) {
+    if (attr.type() == proto::AttrType::BLOCKS) {
+      PADDLE_ENFORCE_GT(
+          attr.blocks_idx_size(),
+          0,
+          platform::errors::NotFound(
+              "Attribute blocks is not found in operator %s", op_desc.type()));
+      return true;
+    }
+  }
+
+  return false;
 }
 
 int GetOpRole(const proto::OpDesc& op_desc) {
@@ -116,7 +168,7 @@ int GetOpRole(const proto::OpDesc& op_desc) {
     }
   }
   // If attr op_role is not found, it may be operator created in c++ test, like
-  // prune_test.cc. In that case, the op_role should be defaut value, which is
+  // prune_test.cc. In that case, the op_role should be default value, which is
   // kNotSpecified.
   return static_cast<int>(OpRole::kNotSpecified);
 }
@@ -150,14 +202,15 @@ int FindMapByValue(const std::map<int, int>& m, int val) {
 }
 
 // In other two cases, the op that has feed vars as output vars is dependent:
-// 1. op has subblock, like while/for/ifelse/recurrent
+// 1. op has subblock, like while/for/ifelse/recurrent/pylayer
 // 2. op is in subblock
 bool IsSubBlockDependent(const proto::OpDesc& op_desc,
                          const std::set<std::string>& feed_vars,
                          int parent_block_id) {
   for (auto& var : op_desc.outputs()) {
     for (auto& argu : var.arguments()) {
-      if ((HasSubBlock(op_desc) || parent_block_id != -1) &&
+      if ((HasSubBlock(op_desc) || HasSubBlocks(op_desc) ||
+           parent_block_id != -1) &&
           feed_vars.count(argu) != 0) {
         return true;
       }
@@ -208,7 +261,7 @@ void prune_impl(const proto::ProgramDesc& input,
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
 
-    // TODO(wanghaipeng03) reconstruct the follwing if/else block
+    // TODO(wanghaipeng03) reconstruct the following if/else block
     //                     to extract common code
     //
     // bool should_run_flag = false;
@@ -228,7 +281,7 @@ void prune_impl(const proto::ProgramDesc& input,
     //
     // should_run.push_back(should_run_flag);
     // if (should_run_flag) {
-    //   for (auto & var: op_desc.iputs()) {
+    //   for (auto & var: op_desc.inputs()) {
     //     for (....) {
     //       if (.....) {
     //         dependent_vars->insert(argu);
@@ -251,7 +304,7 @@ void prune_impl(const proto::ProgramDesc& input,
           add_dependent_var(argu);
         }
       }
-      // NOTE(dev): All attibute with VarDesc type is considered as Input,
+      // NOTE(dev): All attribute with VarDesc type is considered as Input,
       // so they shall be added into dependent_vars.
       for (auto& attr : op_desc.attrs()) {
         if (attr.type() == proto::AttrType::VAR) {
@@ -289,7 +342,7 @@ void prune_impl(const proto::ProgramDesc& input,
     if (should_run[i]) {
       auto* op = op_field->Add();
       *op = input.blocks(block_id).ops(static_cast<int>(i));
-      if (HasSubBlock(*op)) {
+      if (HasSubBlock(*op) || HasSubBlocks(*op)) {
         VLOG(2) << "Pruning op which has sub block: " << op->type();
         // create sub_block_dependent_vars here to help prune the sub block
         std::unordered_set<std::string> sub_block_dependent_vars;
@@ -321,15 +374,41 @@ void prune_impl(const proto::ProgramDesc& input,
             }
           }
         }
-        // GetSubBlockIndex(*op) is the idx of the sub_block in the input desc
-        // output_block_id is the idx of the current block in the output desc
-        prune_impl(input,
-                   output,
-                   GetSubBlockIndex(*op),
-                   output_block_id,
-                   &sub_block_dependent_vars,
-                   feed_var_names,
-                   pruned_origin_block_id_map);
+        if (HasSubBlock(*op)) {
+          // GetSubBlockIndex(*op) is the idx of the sub_block in the input desc
+          // output_block_id is the idx of the current block in the output desc
+          prune_impl(input,
+                     output,
+                     GetSubBlockIndex(*op),
+                     output_block_id,
+                     &sub_block_dependent_vars,
+                     feed_var_names,
+                     pruned_origin_block_id_map);
+        } else if (HasSubBlocks(*op)) {
+          // GetSubBlocksIndices(*op) are the indices of the sub_blocks in the
+          // input desc output_block_id is the idx of the current block in the
+          // output desc
+          std::vector<int> sub_indices;
+          GetSubBlocksIndices(*op, &sub_indices);
+          for (auto& sub_index : sub_indices) {
+            // create a copy of dependent_vars to avoid being overwritten by the
+            // other sub_block
+            std::unordered_set<std::string> dependent_vars_copy =
+                sub_block_dependent_vars;
+            prune_impl(input,
+                       output,
+                       sub_index,
+                       output_block_id,
+                       &dependent_vars_copy,
+                       feed_var_names,
+                       pruned_origin_block_id_map);
+          }
+        } else {
+          PADDLE_ENFORCE(false,
+                         platform::errors::PreconditionNotMet(
+                             "Attr Block or Blocks must exist when recursively "
+                             "calling prune_impl"));
+        }
       }
     }
   }
@@ -359,7 +438,7 @@ void prune_impl(const proto::ProgramDesc& input,
         add_var_names(arg);
       }
     }
-    // NOTE(dev): All attibute with VarDesc type is considered as Input,
+    // NOTE(dev): All attribute with VarDesc type is considered as Input,
     // so they shall be added into dependent_vars.
     for (auto& attr : op.attrs()) {
       if (attr.type() == proto::AttrType::VAR) {
@@ -402,12 +481,29 @@ std::map<int, int> Prune(const proto::ProgramDesc& input,
         int origin_sub_idx = GetSubBlockIndex(op_desc);
         auto sub_idx =
             FindMapByValue(pruned_origin_block_id_map, origin_sub_idx);
-        PADDLE_ENFORCE_NE(sub_idx,
-                          -1,
-                          platform::errors::NotFound(
-                              "The origin sub block id should be found in "
-                              "pruned_progin_block_id_map"));
+        PADDLE_ENFORCE_NE(
+            sub_idx,
+            -1,
+            platform::errors::NotFound(
+                "The origin sub block id should be found in "
+                "pruned_progin_block_id_map when the op has sub_block"));
         SetSubBlockIndex(&op_desc, sub_idx);
+      } else if (HasSubBlocks(op_desc)) {
+        std::vector<int> origin_sub_indices;
+        GetSubBlocksIndices(op_desc, &origin_sub_indices);
+        std::vector<int> sub_indices;
+        for (int index : origin_sub_indices) {
+          auto sub_idx = FindMapByValue(pruned_origin_block_id_map, index);
+          PADDLE_ENFORCE_NE(
+              sub_idx,
+              -1,
+              platform::errors::NotFound(
+                  "The origin sub block id should be found in "
+                  "pruned_progin_block_id_map when the op has sub_blocks"));
+          sub_indices.push_back(sub_idx);
+        }
+
+        SetSubBlocksIndices(&op_desc, sub_indices);
       }
     }
   }
@@ -441,6 +537,19 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
       AppendOpInputVarNames(op_desc, &op_input_vars);
       AppendOpOutputVarNames(op_desc, &op_output_vars);
       *op = op_desc;
+
+      // if the type of op is "pylayer", we need to update the ``blocks``
+      // attribute because the backward block will be pruned
+      if (op->type() == kPyLayer && HasSubBlocks(*op)) {
+        std::vector<int> sub_indices;
+        GetSubBlocksIndices(*op, &sub_indices);
+        if (sub_indices.size() > 1) {
+          // sub_indices contains both forward block id and backward block id
+          std::vector<int> new_sub_indices(sub_indices.begin(),
+                                           sub_indices.end() - 1);
+          SetSubBlocksIndices(op, new_sub_indices);
+        }
+      }
     }
   }
 
@@ -471,9 +580,10 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   // Copy original ProgramDesc, origin can't be change
   framework::ProgramDesc origin_clone(origin);
 
-  // Step 1. check if the program contains grad loss operator.
-  // If not, the program need no pruning.
+  // Step 1. check if the program contains grad loss operator or pylayer
+  // operator. If not, the program need no pruning.
   bool has_loss_grad_op = false;
+  bool has_pylayer_op = false;
   std::queue<int> block_contains_loss;
   std::queue<int> block_contains_loss_grad;
   for (size_t i = 0; i < origin_clone.Size(); i++) {
@@ -485,13 +595,15 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
                       static_cast<int>(OpRole::kLoss))) {
         op->SetIsTarget(false);
         has_loss_grad_op = true;
-        break;
+      }
+      if (op->Type() == kPyLayer) {
+        has_pylayer_op = true;
       }
     }
   }
 
   std::map<int, int> pruned_progin_block_id_map;
-  if (!has_loss_grad_op) {
+  if (!has_loss_grad_op && !has_pylayer_op) {
     // No pruning, fast return a copy of the origin ProgramDesc with an empty
     // map, means default mapped, i.e.{0:0, 1:1, ..., n:n}.
     return std::make_tuple(framework::ProgramDesc(origin_clone),
@@ -544,12 +656,29 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
         int origin_sub_idx = GetSubBlockIndex(op_desc);
         auto sub_idx =
             FindMapByValue(pruned_progin_block_id_map, origin_sub_idx);
-        PADDLE_ENFORCE_NE(sub_idx,
-                          -1,
-                          platform::errors::NotFound(
-                              "The origin sub block id is not found in "
-                              "pruned_progin_block_id_map"));
+        PADDLE_ENFORCE_NE(
+            sub_idx,
+            -1,
+            platform::errors::NotFound(
+                "The origin sub block id is not found in "
+                "pruned_progin_block_id_map when the op has sub_block"));
         SetSubBlockIndex(&op_desc, sub_idx);
+      } else if (HasSubBlocks(op_desc)) {
+        std::vector<int> origin_sub_indices;
+        GetSubBlocksIndices(op_desc, &origin_sub_indices);
+        std::vector<int> sub_indices;
+        for (int index : origin_sub_indices) {
+          auto sub_idx = FindMapByValue(pruned_progin_block_id_map, index);
+          PADDLE_ENFORCE_NE(
+              sub_idx,
+              -1,
+              platform::errors::NotFound(
+                  "The origin sub block id should be found in "
+                  "pruned_progin_block_id_map when the op has sub_blocks"));
+          sub_indices.push_back(sub_idx);
+        }
+
+        SetSubBlocksIndices(&op_desc, sub_indices);
       }
     }
   }

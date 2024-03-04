@@ -115,9 +115,7 @@ class SqueezeNet(nn.Layer):
         supported_versions = ['1.0', '1.1']
         assert (
             version in supported_versions
-        ), "supported versions are {} but input version is {}".format(
-            supported_versions, version
-        )
+        ), f"supported versions are {supported_versions} but input version is {version}"
 
         if self.version == "1.0":
             self._conv = Conv2D(
@@ -205,9 +203,7 @@ def _squeezenet(arch, version, pretrained, **kwargs):
     if pretrained:
         assert (
             arch in model_urls
-        ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch
-        )
+        ), f"{arch} model do not have a pretrained model now, you should set pretrained=False"
         weight_path = get_weights_path_from_url(
             model_urls[arch][0], model_urls[arch][1]
         )
@@ -225,7 +221,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_models_SqueezeNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.0 model.
@@ -259,7 +255,7 @@ def squeezenet1_1(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_models_SqueezeNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.1 model.

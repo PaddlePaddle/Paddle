@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -121,7 +122,7 @@ void SetValueImpl(const Context& dev_ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
   }
 
   // Here copy data from input to avoid data loss at PE and Graph level.
@@ -145,7 +146,7 @@ void SetValueImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  int64_t slice_numels = phi::product(slice_dims);
+  int64_t slice_numels = common::product(slice_dims);
   XPUType* slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_numels);
 
   int in_size = in_dims.size();
@@ -226,8 +227,8 @@ void SetValueImpl(const Context& dev_ctx,
     }
   }
 
-  auto out_shape = phi::vectorize<int>(out->dims());
-  auto slice_shape = phi::vectorize<int>(slice_dims);
+  auto out_shape = common::vectorize<int>(out->dims());
+  auto slice_shape = common::vectorize<int>(slice_dims);
 
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),
@@ -262,7 +263,7 @@ void SetValueKernelImpl(const Context& dev_ctx,
                         const std::vector<int64_t>& decrease_axes,
                         const std::vector<int64_t>& none_axes,
                         DenseTensor* out) {
-  // rank是xtensor的维度信息
+  // rank是x tensor的维度信息
   const int rank = x.dims().size();
 
   switch (rank) {
@@ -386,20 +387,31 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& shape,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
-  std::vector<T> assign_values;
-  assign_values.reserve(values.size());
-  for (const auto& val : values) {
-    assign_values.push_back(val.to<T>());
+  // avoid using vector<T> if T is bool or phi::dtype::float16
+  int value_size = sizeof(T);
+  int values_size = values.size();
+  int values_length = values_size * value_size;
+  std::vector<uint8_t> assign_values(values_length);
+  uint8_t* value_data_uint8_cpu = assign_values.data();
+  for (int i = 0; i < values_size; i++) {
+    T value = values[i].to<T>();
+    memcpy(value_data_uint8_cpu + i * value_size, &value, value_size);
   }
 
-  auto value_dims = phi::make_ddim(shape);
-
-  DenseTensor value_tensor;
-  TensorFromVector<T>(assign_values, dev_ctx, &value_tensor);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  T* value_data =
+      reinterpret_cast<T*>(RAII_GUARD.alloc_l3_or_gm<XPUType>(values_size));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     value_data,
+                     phi::CPUPlace(),
+                     value_data_uint8_cpu,
+                     values_length);
+  auto value_dims = common::make_ddim(shape);
 
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,
-                                 value_tensor.data<T>(),
+                                 value_data,
                                  value_dims,
                                  starts,
                                  ends,

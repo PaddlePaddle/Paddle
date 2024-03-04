@@ -18,28 +18,84 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/op_result.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace dialect {
 
-pir::OpResult builtin_combine(const std::vector<pir::Value>& x);
+pir::Value builtin_combine(const std::vector<pir::Value>& x);
 
-pir::OpResult zeros_like(pir::Value x,
-                         phi::DataType dtype = phi::DataType::UNDEFINED,
-                         const Place& place = {});
+std::vector<pir::Value> add_n_grad(const std::vector<pir::Value>& inputs,
+                                   const pir::Value& out_grad);
 
-pir::OpResult get_parameter(const std::string& name,
-                            phi::DataType dtype,
-                            const std::vector<int64_t>& shape);
+pir::Value zeros_like(const pir::Value& x,
+                      phi::DataType dtype = phi::DataType::UNDEFINED,
+                      const Place& place = {});
 
-void set_parameter(pir::Value parameter, const std::string& name);
+pir::Value parameter(const std::string& name);
 
-pir::OpResult embedding_grad(pir::Value x,
-                             pir::Value weight,
-                             pir::Value out_grad,
-                             int64_t padding_idx = -1,
-                             bool sparse = false);
+void set_parameter(const pir::Value& parameter, const std::string& name);
+
+void shadow_output(const pir::Value& persist_value, const std::string& name);
+
+pir::Value embedding_grad(const pir::Value& x,
+                          const pir::Value& weight,
+                          const pir::Value& out_grad,
+                          int64_t padding_idx = -1,
+                          bool sparse = false);
+
+pir::Value split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                               int axis);
+
+pir::Value split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                               const pir::Value& axis);
+
+pir::Value ones(const std::vector<int64_t>& shape,
+                phi::DataType dtype = phi::DataType::FLOAT32,
+                const Place& place = phi::CPUPlace());
+
+pir::Value ones_like(pir::Value x_,
+                     phi::DataType dtype = phi::DataType::UNDEFINED,
+                     const Place& place = {});
+
+pir::Value zeros(const std::vector<int64_t>& shape,
+                 phi::DataType dtype = phi::DataType::FLOAT32,
+                 const Place& place = phi::CPUPlace());
+
+pir::Value create_array(phi::DataType dtype);
+
+pir::Value create_array_like(pir::Value input, float value);
+
+pir::Value array_length(pir::Value x);
+
+pir::Value array_read(pir::Value array, pir::Value i);
+
+pir::Value array_write_(pir::Value array, pir::Value x, pir::Value i);
+
+std::tuple<pir::Value, pir::Value> array_to_tensor(pir::Value x,
+                                                   int axis,
+                                                   bool use_stack);
+
+pir::Value tensor_to_array(pir::Value x,
+                           pir::Value out_grad,
+                           int axis,
+                           bool use_stack);
+
+pir::Value add_n_array(const std::vector<pir::Value>& inputs);
+
+pir::Value slice_array(pir::Value input, pir::Value starts, pir::Value ends);
+
+pir::Value slice_array_dense(pir::Value input, pir::Value starts);
+
+pir::Value assign(const pir::Value& x);
+
+std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
+                                                       pir::Value y,
+                                                       pir::Value bias,
+                                                       bool trans_x,
+                                                       bool trans_y,
+                                                       std::string activation);
+pir::Value array_pop(pir::Value input, int index);
 
 }  // namespace dialect
 }  // namespace paddle

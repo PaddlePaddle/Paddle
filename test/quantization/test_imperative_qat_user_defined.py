@@ -162,8 +162,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         imperative_qat = self.imperative_qat
         seed = 1
         np.random.seed(seed)
-        paddle.static.default_main_program().random_seed = seed
-        paddle.static.default_startup_program().random_seed = seed
+        paddle.seed(seed)
         lenet = ImperativeLenet()
         fixed_state = {}
         param_init_map = {}
@@ -174,9 +173,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                 value = np.zeros_like(p_value).astype('float32')
             else:
                 value = (
-                    np.random.normal(
-                        loc=0.0, scale=0.01, size=np.product(p_shape)
-                    )
+                    np.random.normal(loc=0.0, scale=0.01, size=np.prod(p_shape))
                     .reshape(p_shape)
                     .astype('float32')
                 )

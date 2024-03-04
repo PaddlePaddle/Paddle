@@ -107,7 +107,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     }
 
     for (size_t t = 0; t < 2; ++t) {
-      phi::DenseTensor *out;
+      phi::DenseTensor *out = nullptr;
       if (t == 0) {
         out = out_false;
       } else {

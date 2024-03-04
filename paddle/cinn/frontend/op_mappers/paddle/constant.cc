@@ -91,7 +91,7 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
     CHECK(value_tensor->shape == cinn::utils::ShapeType{1})
         << "The shape of [ValueTensor] should be [1], but here ["
         << cinn::utils::Join(value_tensor->shape, ", ") << "]";
-    if (common::Type2Str(value_tensor->type) != dtype) {
+    if (cinn::common::Type2Str(value_tensor->type) != dtype) {
       value_tensor = ctx.Builder()->Cast(value_tensor, dtype);
     }
     out = ctx.Builder()->BroadcastTo(value_tensor, shape);
@@ -131,7 +131,7 @@ void FillAnyLikeOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
   if (dtype.empty()) {
-    dtype = common::Type2Str(x->type);
+    dtype = cinn::common::Type2Str(x->type);
   }
 
   VLOG(4) << "FillAnyLikeOp: fill constant (" << value << ") with shape ("
@@ -198,12 +198,12 @@ void AssignValueOpMapper(const paddle::cpp::OpDesc& op_desc,
     if (adj_diff.first) {
       VLOG(4) << "The input of assign_value is a arithmetic sequence. Using "
                  "Arange instead of Constant.";
-      auto epsilone = adj_diff.second > 0
-                          ? std::numeric_limits<float>::epsilon()
-                          : -std::numeric_limits<float>::epsilon();
+      auto epsilon = adj_diff.second > 0
+                         ? std::numeric_limits<float>::epsilon()
+                         : -std::numeric_limits<float>::epsilon();
 
       out = ctx.Builder()->Arange(fp32_values.front(),
-                                  fp32_values.back() + epsilone,
+                                  fp32_values.back() + epsilon,
                                   adj_diff.second,
                                   "float32");
     } else {
@@ -218,11 +218,11 @@ void AssignValueOpMapper(const paddle::cpp::OpDesc& op_desc,
     if (adj_diff.first) {
       VLOG(4) << "The input of assign_value is a arithmetic sequence. Using "
                  "Arange instead of Constant.";
-      auto epsilone = adj_diff.second > 0 ? 1 : -1;
+      auto epsilon = adj_diff.second > 0 ? 1 : -1;
 
       out = ctx.Builder()->Arange(
           static_cast<float>(int32_values.front()),
-          static_cast<float>(int32_values.back() + epsilone),
+          static_cast<float>(int32_values.back() + epsilon),
           static_cast<float>(adj_diff.second),
           "int32");
     } else {
@@ -237,11 +237,11 @@ void AssignValueOpMapper(const paddle::cpp::OpDesc& op_desc,
     if (adj_diff.first) {
       VLOG(4) << "The input of assign_value is a arithmetic sequence. Using "
                  "Arange instead of Constant.";
-      auto epsilone = adj_diff.second > 0 ? 1 : -1;
+      auto epsilon = adj_diff.second > 0 ? 1 : -1;
 
       out = ctx.Builder()->Arange(
           static_cast<float>(int64_values.front()),
-          static_cast<float>(int64_values.back() + epsilone),
+          static_cast<float>(int64_values.back() + epsilon),
           static_cast<float>(adj_diff.second),
           "int64");
     } else {

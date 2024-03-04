@@ -174,9 +174,9 @@ def in_profiler_mode():
 
 
 def wrap_optimizers():
-    def optimizer_warpper(func):
+    def optimizer_wrapper(func):
         @functools.wraps(func)
-        def warpper(*args, **kwargs):
+        def wrapper(*args, **kwargs):
             if in_profiler_mode():
                 with RecordEvent(
                     'Optimization Step', event_type=TracerEventType.Optimization
@@ -185,7 +185,7 @@ def wrap_optimizers():
             else:
                 return func(*args, **kwargs)
 
-        return warpper
+        return wrapper
 
     global _has_optimizer_wrapped
     if _has_optimizer_wrapped:
@@ -196,7 +196,7 @@ def wrap_optimizers():
         if classname != 'Optimizer':
             classobject = getattr(optimizer, classname)
             if getattr(classobject, 'step', None) is not None:
-                classobject.step = optimizer_warpper(classobject.step)
+                classobject.step = optimizer_wrapper(classobject.step)
     _has_optimizer_wrapped = True
 
 
@@ -229,5 +229,22 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
             core.nvprof_nvtx_pop()
         if iter_id == end - 1:
             core.nvprof_stop()
+            if exit_after_prof:
+                sys.exit()
+
+
+@contextmanager
+def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
+    if start >= end:
+        yield False
+        return
+
+    try:
+        if iter_id >= start and iter_id < end:
+            yield True
+        else:
+            yield False
+    finally:
+        if iter_id == end - 1:
             if exit_after_prof:
                 sys.exit()

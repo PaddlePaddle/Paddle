@@ -49,11 +49,9 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-            out = np.zeros(shape=(np.product(x.shape), depth)).astype(
-                self.dtype
-            )
+            out = np.zeros(shape=(np.prod(x.shape), depth)).astype(self.dtype)
 
-            for i in range(np.product(x.shape)):
+            for i in range(np.prod(x.shape)):
                 out[i, x[i]] = 1.0
 
             self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -72,11 +70,11 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-            out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+            out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
                 self.dtype
             )
 
-            for i in range(np.product(x.shape)):
+            for i in range(np.prod(x.shape)):
                 out[i, 0, x[i]] = 1.0
 
             self.inputs = {'X': (x, x_lod)}
@@ -96,11 +94,9 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-            out = np.zeros(shape=(np.product(x.shape), depth)).astype(
-                self.dtype
-            )
+            out = np.zeros(shape=(np.prod(x.shape), depth)).astype(self.dtype)
 
-            for i in range(np.product(x.shape)):
+            for i in range(np.prod(x.shape)):
                 out[i, x[i]] = 1.0
 
             self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -116,11 +112,11 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-            out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+            out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
                 self.dtype
             )
 
-            for i in range(np.product(x.shape)):
+            for i in range(np.prod(x.shape)):
                 out[i, 0, x[i]] = 1.0
 
             self.inputs = {'X': (x, x_lod)}
@@ -135,9 +131,7 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.choice([-1, depth]) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-            out = np.zeros(shape=(np.product(x.shape), depth)).astype(
-                self.dtype
-            )
+            out = np.zeros(shape=(np.prod(x.shape), depth)).astype(self.dtype)
 
             self.inputs = {'X': (x, x_lod)}
             self.attrs = {'depth': depth, 'allow_out_of_range': True}
@@ -160,7 +154,7 @@ class TestOneHotOpApi(unittest.TestCase):
         ).reshape([6, 1])
         with base.dygraph.guard():
             one_hot_label = paddle.nn.functional.one_hot(
-                x=base.dygraph.to_variable(label), num_classes=depth
+                x=paddle.to_tensor(label), num_classes=depth
             )
 
     def _run(self, depth):

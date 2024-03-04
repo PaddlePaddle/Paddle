@@ -33,9 +33,9 @@ namespace hlir {
 namespace op {
 
 TEST(GenerateCode_Cpu, OneHot) {
-  common::Context::Global().ResetNameId();
+  cinn::common::Context::Global().ResetNameId();
 
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
 
   Expr m(4);
   Expr n(4);
@@ -52,7 +52,7 @@ TEST(GenerateCode_Cpu, OneHot) {
                           off_value,
                           depth,
                           axis,
-                          common::Str2Type(dtype),
+                          cinn::common::Str2Type(dtype),
                           "test_one_hot");
 
   poly::StageMap stages = poly::CreateStages({res});

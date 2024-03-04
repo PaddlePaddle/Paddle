@@ -27,7 +27,7 @@ class Conv3DTestCase(unittest.TestCase):
         self,
         methodName='runTest',
         batch_size=4,
-        spartial_shape=(8, 8, 8),
+        spatial_shape=(8, 8, 8),
         num_channels=6,
         num_filters=8,
         filter_size=3,
@@ -43,7 +43,7 @@ class Conv3DTestCase(unittest.TestCase):
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
-        self.spartial_shape = spartial_shape
+        self.spatial_shape = spatial_shape
         self.filter_size = filter_size
 
         self.padding = padding
@@ -58,13 +58,13 @@ class Conv3DTestCase(unittest.TestCase):
         self.channel_last = self.data_format == "NDHWC"
         if self.channel_last:
             input_shape = (
-                (self.batch_size,) + self.spartial_shape + (self.num_channels,)
+                (self.batch_size,) + self.spatial_shape + (self.num_channels,)
             )
         else:
             input_shape = (
                 self.batch_size,
                 self.num_channels,
-            ) + self.spartial_shape
+            ) + self.spatial_shape
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
@@ -137,13 +137,16 @@ class Conv3DTestCase(unittest.TestCase):
                 w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = paddle.static.data(
-                    "bias", (self.num_filters,), dtype=self.dtype
-                )
+                if not self.no_bias:
+                    b_var = paddle.static.data(
+                        "bias", (self.num_filters,), dtype=self.dtype
+                    )
+                else:
+                    b_var = None
                 y_var = F.conv3d(
                     x_var,
                     w_var,
-                    None if self.no_bias else b_var,
+                    b_var,
                     padding=self.padding,
                     stride=self.stride,
                     dilation=self.dilation,
@@ -181,7 +184,6 @@ class Conv3DTestCase(unittest.TestCase):
         return y_np, t1
 
     def _test_equivalence(self, place):
-        place = base.CPUPlace()
         result1 = self.base_layer(place)
         result2 = self.functional(place)
         with dg.guard(place):
@@ -189,13 +191,22 @@ class Conv3DTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
 
+    def _test_pir_equivalence(self, place):
+        with paddle.pir_utils.IrGuard():
+            result1 = self.functional(place)
+        with dg.guard(place):
+            result2, g1 = self.paddle_nn_layer()
+        np.testing.assert_array_almost_equal(result1, result2)
+
     def runTest(self):
         place = base.CPUPlace()
         self._test_equivalence(place)
+        self._test_pir_equivalence(place)
 
         if base.core.is_compiled_with_cuda():
             place = base.CUDAPlace(0)
             self._test_equivalence(place)
+            self._test_pir_equivalence(place)
 
 
 class Conv3DErrorTestCase(Conv3DTestCase):

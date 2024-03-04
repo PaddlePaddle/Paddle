@@ -70,13 +70,13 @@ def default_collate_fn(batch):
         sample_fields_num = len(sample)
         if not all(len(sample) == sample_fields_num for sample in iter(batch)):
             raise RuntimeError(
-                "fileds number not same among samples in a batch"
+                "fields number not same among samples in a batch"
             )
         return [default_collate_fn(fields) for fields in zip(*batch)]
 
     raise TypeError(
         "batch data con only contains: tensor, numpy.ndarray, "
-        "dict, list, number, but got {}".format(type(sample))
+        f"dict, list, number, but got {type(sample)}"
     )
 
 
@@ -88,8 +88,8 @@ def default_convert_fn(batch):
     dictionary, string, number, numpy array and paddle.Tensor.
 
     .. note::
-        This function is default :attr:`collate_fn` in **Distable
-        automatic batching** mode, for **Distable automatic batching**
+        This function is default :attr:`collate_fn` in **Disable
+        automatic batching** mode, for **Disable automatic batching**
         mode, please ses :attr:`paddle.io.DataLoader`
 
     Args:

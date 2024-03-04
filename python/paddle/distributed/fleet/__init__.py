@@ -13,30 +13,33 @@
 # limitations under the License.
 
 # TODO: define distributed api under this directory,
-from .base.role_maker import Role  # noqa: F401
-from .base.role_maker import UserDefinedRoleMaker  # noqa: F401
-from .base.role_maker import PaddleCloudRoleMaker  # noqa: F401
-from .base.distributed_strategy import DistributedStrategy  # noqa: F401
-from .base.util_factory import UtilBase  # noqa: F401
-from .dataset import DatasetBase  # noqa: F401
-from .dataset import InMemoryDataset  # noqa: F401
-from .dataset import QueueDataset  # noqa: F401
-from .dataset import FileInstantDataset  # noqa: F401
-from .dataset import BoxPSDataset  # noqa: F401
-from .data_generator.data_generator import MultiSlotDataGenerator  # noqa: F401
-from .data_generator.data_generator import (
-    MultiSlotStringDataGenerator,
-)  # noqa: F401
 from . import metrics  # noqa: F401
-from .base.topology import CommunicateTopology
-from .base.topology import HybridCommunicateGroup  # noqa: F401
+from .base.distributed_strategy import DistributedStrategy
+from .base.role_maker import (
+    PaddleCloudRoleMaker,
+    Role,
+    UserDefinedRoleMaker,
+)
+from .base.topology import CommunicateTopology, HybridCommunicateGroup
+from .base.util_factory import UtilBase
+from .data_generator.data_generator import (
+    MultiSlotDataGenerator,
+    MultiSlotStringDataGenerator,
+)
+from .dataset import (  # noqa: F401
+    BoxPSDataset,
+    DatasetBase,
+    FileInstantDataset,
+    InMemoryDataset,
+    QueueDataset,
+)
 from .fleet import Fleet
 from .model import distributed_model
 from .optimizer import distributed_optimizer
 from .scaler import distributed_scaler
 from .utils import log_util
 
-__all__ = [  # noqa
+__all__ = [
     "CommunicateTopology",
     "UtilBase",
     "HybridCommunicateGroup",
@@ -80,6 +83,7 @@ server_endpoints = fleet.server_endpoints
 is_server = fleet.is_server
 util = UtilBase()
 barrier_worker = fleet.barrier_worker
+all_reduce = fleet.all_reduce
 init_worker = fleet.init_worker
 init_server = fleet.init_server
 run_server = fleet.run_server
@@ -103,4 +107,5 @@ set_log_level = log_util.set_log_level
 get_log_level_code = log_util.get_log_level_code
 get_log_level_name = log_util.get_log_level_name
 save_cache_table = fleet.save_cache_table
-from .. import auto_parallel as auto
+collective_perf = fleet.collective_perf
+from .. import auto_parallel as auto  # noqa: F401

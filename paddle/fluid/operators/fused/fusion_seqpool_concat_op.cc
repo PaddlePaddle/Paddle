@@ -27,7 +27,7 @@ void FusionSeqPoolConcatOp::InferShape(
   PADDLE_ENFORCE_GE(ctx->Inputs("X").size(),
                     1UL,
                     platform::errors::InvalidArgument(
-                        "Inputs(X) of FusionSeqPoolConcatOp should be greated "
+                        "Inputs(X) of FusionSeqPoolConcatOp should be greater "
                         "than 1, but received value is %d.",
                         ctx->Inputs("X").size()));
   OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FusionSeqPoolConcat");

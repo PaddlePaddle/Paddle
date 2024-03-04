@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flip_kernel.h"
+#include "paddle/common/array.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/array.h"
 
 namespace phi {
 
@@ -40,7 +40,12 @@ __global__ void FlipCudaKernel(const T* in_data,
   int64_t cur_indices = idx;
   int64_t rem = 0;
   int64_t dst_offset = 0;
-  for (int i = 0; i < rank; ++i) {
+
+#pragma unroll
+  for (int i = 0; i < DDim::kMaxRank; ++i) {
+    if (i >= rank) {
+      break;
+    }
     int64_t temp = cur_indices;
     cur_indices = cur_indices / stride[i];
     rem = temp - cur_indices * stride[i];
@@ -69,7 +74,7 @@ void FlipKernel(const Context& dev_ctx,
   const int64_t numel = x.numel();
 
   size_t flip_dims_size = axis.size();
-  auto x_stride = phi::stride(x_dims);
+  auto x_stride = common::stride(x_dims);
 
   phi::Array<int64_t, DDim::kMaxRank> stride_array;
   phi::Array<int64_t, DDim::kMaxRank> shape_array;

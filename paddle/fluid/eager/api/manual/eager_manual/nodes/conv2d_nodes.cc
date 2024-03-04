@@ -24,11 +24,11 @@
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/phi/api/include/sparse_api.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 Conv2dGradNodeFinal::operator()(
@@ -126,16 +126,16 @@ Conv2dGradNodeFinal::operator()(
     auto grad_node = std::shared_ptr<Conv2dDoubleGradNodeFinal>(  // NOLINT
         new Conv2dDoubleGradNodeFinal(2, 3));
     // SetAttributes if needed
-    grad_node->SetAttributestrides(strides);
-    grad_node->SetAttributepaddings(paddings);
-    grad_node->SetAttributepadding_algorithm(padding_algorithm);
-    grad_node->SetAttributegroups(groups);
-    grad_node->SetAttributedilations(dilations);
-    grad_node->SetAttributedata_format(data_format);
+    grad_node->SetAttribute_strides(strides);
+    grad_node->SetAttribute_paddings(paddings);
+    grad_node->SetAttribute_padding_algorithm(padding_algorithm);
+    grad_node->SetAttribute_groups(groups);
+    grad_node->SetAttribute_dilations(dilations);
+    grad_node->SetAttribute_data_format(data_format);
     // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperinput(input);
-    grad_node->SetTensorWrapperfilter(filter);
-    grad_node->SetTensorWrappergrad_out(grad_out);
+    grad_node->SetTensorWrapper_input(input);
+    grad_node->SetTensorWrapper_filter(filter);
+    grad_node->SetTensorWrapper_grad_out(grad_out);
     // SetGradOutMeta & SetEdges
     if (grad_filter_autograd_meta) {
       grad_node->SetGradOutMeta(input, 0);
@@ -160,6 +160,41 @@ Conv2dGradNodeFinal::operator()(
     grad_node->SetGradInMeta(grad_input, 0);
     grad_node->SetGradInMeta(grad_filter, 1);
     // Set TensorWrappers for Forward Outputs if needed
+  }
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+
+    const char* TENSOR_INPUT_TEMPLATE = " \n( input , [%s]), ";
+    std::string input_input_str = paddle::string::Sprintf(
+        TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(input));
+    input_str += input_input_str;
+
+    const char* TENSOR_FILTER_TEMPLATE = " \n( filter , [%s]), ";
+    std::string input_filter_str = paddle::string::Sprintf(
+        TENSOR_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(filter));
+    input_str += input_filter_str;
+
+    const char* TENSOR_GRAD_OUT_TEMPLATE = " \n( grad_out , [%s]), ";
+    std::string input_grad_out_str = paddle::string::Sprintf(
+        TENSOR_GRAD_OUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    input_str += input_grad_out_str;
+
+    const char* TENSOR_GRAD_INPUT_TEMPLATE = " \n ( grad_input , [%s]), ";
+    std::string output_grad_input_str = paddle::string::Sprintf(
+        TENSOR_GRAD_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_input));
+    output_str += output_grad_input_str;
+
+    const char* TENSOR_GRAD_FILTER_TEMPLATE = " \n ( grad_filter , [%s]), ";
+    std::string output_grad_filter_str = paddle::string::Sprintf(
+        TENSOR_GRAD_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(grad_filter));
+    output_str += output_grad_filter_str;
+
+    VLOG(6) << "gradnode_ptr = " << this;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
   // Return
@@ -282,6 +317,61 @@ Conv2dDoubleGradNodeFinal::operator()(
     grad_out_grad_autograd_meta->SetStopGradient(false);
 
   // Create Grad Node
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+
+    const char* TENSOR_INPUT_TEMPLATE = " \n( input , [%s]), ";
+    std::string input_input_str = paddle::string::Sprintf(
+        TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(input));
+    input_str += input_input_str;
+
+    const char* TENSOR_FILTER_TEMPLATE = " \n( filter , [%s]), ";
+    std::string input_filter_str = paddle::string::Sprintf(
+        TENSOR_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(filter));
+    input_str += input_filter_str;
+
+    const char* TENSOR_GRAD_OUT_TEMPLATE = " \n( grad_out , [%s]), ";
+    std::string input_grad_out_str = paddle::string::Sprintf(
+        TENSOR_GRAD_OUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    input_str += input_grad_out_str;
+
+    const char* TENSOR_GRAD_INPUT_GRAD_TEMPLATE =
+        " \n( grad_input_grad , [%s]), ";
+    std::string input_grad_input_grad_str =
+        paddle::string::Sprintf(TENSOR_GRAD_INPUT_GRAD_TEMPLATE,
+                                egr::EagerUtils::TensorStr(grad_input_grad));
+    input_str += input_grad_input_grad_str;
+
+    const char* TENSOR_GRAD_FILTER_GRAD_TEMPLATE =
+        " \n( grad_filter_grad , [%s]), ";
+    std::string input_grad_filter_grad_str =
+        paddle::string::Sprintf(TENSOR_GRAD_FILTER_GRAD_TEMPLATE,
+                                egr::EagerUtils::TensorStr(grad_filter_grad));
+    input_str += input_grad_filter_grad_str;
+
+    const char* TENSOR_INPUT_GRAD_TEMPLATE = " \n( input_grad , [%s]), ";
+    std::string output_input_grad_str = paddle::string::Sprintf(
+        TENSOR_INPUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(input_grad));
+    output_str += output_input_grad_str;
+
+    const char* TENSOR_FILTER_GRAD_TEMPLATE = " \n( filter_grad , [%s]), ";
+    std::string output_filter_grad_str = paddle::string::Sprintf(
+        TENSOR_FILTER_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(filter_grad));
+    output_str += output_filter_grad_str;
+
+    const char* TENSOR_GRAD_OUT_GRAD_TEMPLATE = " \n( grad_out_grad , [%s]) ";
+    std::string output_grad_out_grad_str =
+        paddle::string::Sprintf(TENSOR_GRAD_OUT_GRAD_TEMPLATE,
+                                egr::EagerUtils::TensorStr(grad_out_grad));
+    output_str += output_grad_out_grad_str;
+
+    VLOG(6) << "gradnode_ptr = " << this;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
 
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);

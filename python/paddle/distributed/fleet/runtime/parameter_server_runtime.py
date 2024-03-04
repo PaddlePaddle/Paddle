@@ -43,7 +43,7 @@ class ParameterServerRuntime(RuntimeBase):
         self.origin_main_program = context["origin_main_program"]
         self.origin_startup_program = context["origin_startup_program"]
         self.async_strategy = self._get_distributed_strategy()
-        self.compiled_strategy = self.build_compiled_startegy()
+        self.compiled_strategy = self.build_compiled_strategy()
 
     def _get_distributed_strategy(self):
         strategy = None
@@ -69,7 +69,7 @@ class ParameterServerRuntime(RuntimeBase):
 
         return strategy
 
-    def build_compiled_startegy(self):
+    def build_compiled_strategy(self):
         from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             CompileTimeStrategy,
         )
@@ -111,9 +111,7 @@ class ParameterServerRuntime(RuntimeBase):
             var_path = os.path.join(dirname, origin_varname)
             if not os.path.exists(var_path):
                 raise ValueError(
-                    "SelectedRows var {} can not find at {}".format(
-                        new_var.name, var_path
-                    )
+                    f"SelectedRows var {new_var.name} can not find at {var_path}"
                 )
 
             if os.path.isfile(var_path):
@@ -205,7 +203,7 @@ class ParameterServerRuntime(RuntimeBase):
 
                 if len(dist_varnames) != 0:
                     raise ValueError(
-                        "GeoStrategy can not support large scale embeding now, please use paddle.static.nn.embedding"
+                        "GeoStrategy can not support large scale embedding now, please use paddle.static.nn.embedding"
                     )
 
                 init_attrs = []
@@ -309,9 +307,7 @@ class ParameterServerRuntime(RuntimeBase):
             )
             if heter_worker_device_guard not in ["GPU", "XPU", "CPU"]:
                 raise ValueError(
-                    "Heter Worker Not Support Device {}".format(
-                        heter_worker_device_guard
-                    )
+                    f"Heter Worker Not Support Device {heter_worker_device_guard}"
                 )
             if self.role_maker._is_heter_worker():
                 if heter_worker_device_guard == "GPU":
@@ -358,11 +354,11 @@ class ParameterServerRuntime(RuntimeBase):
         sparse_related_optimize_varnames = list(
             set(sparse_related_optimize_varnames)
         )
-        distribtued_varnames = self.compiled_strategy.get_sparse_varname_on_ps(
+        distributed_varnames = self.compiled_strategy.get_sparse_varname_on_ps(
             True
         )
         distributed_related_optimize_varnames = []
-        for var_name in distribtued_varnames:
+        for var_name in distributed_varnames:
             distributed_related_optimize_varnames += (
                 self.compiled_strategy.get_optimize_varname_on_ps(var_name)
             )
@@ -374,7 +370,7 @@ class ParameterServerRuntime(RuntimeBase):
             filter(
                 ParameterServerRuntime.__exclude_vars(
                     sparse_varnames
-                    + distribtued_varnames
+                    + distributed_varnames
                     + sparse_related_optimize_varnames
                     + distributed_related_optimize_varnames
                 ),
@@ -406,7 +402,7 @@ class ParameterServerRuntime(RuntimeBase):
         # load large scale
         self._load_distributed_params(
             dirname=model_dirname,
-            varnames=distribtued_varnames
+            varnames=distributed_varnames
             + distributed_related_optimize_varnames,
         )
 

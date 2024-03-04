@@ -149,7 +149,7 @@ class TestListenAndServOp(unittest.TestCase):
                 # on the /tmp directory until it was ready to process all the RPC call.
                 os.stat("/tmp/paddle.%d.port" % pid)
                 return
-            except os.error:
+            except OSError:
                 start_left_time -= sleep_time
 
     def test_rpc_interfaces(self):

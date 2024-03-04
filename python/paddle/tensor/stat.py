@@ -16,7 +16,10 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
@@ -90,7 +93,7 @@ def mean(x, axis=None, keepdim=False, name=None):
         check_variable_and_dtype(
             x,
             'x/input',
-            ['uint16', 'float16', 'float32', 'float64'],
+            ['uint16', "int32", 'float16', 'float32', 'float64'],
             'mean/reduce_mean',
         )
         check_type(
@@ -159,8 +162,8 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
 
     dtype = x.dtype
-    n = paddle.cast(paddle.numel(x), paddle.int64) / paddle.cast(
-        paddle.numel(out), paddle.int64
+    n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
+        paddle.numel(out), "int64"
     )
     n = n.astype(dtype)
     if unbiased:
@@ -221,7 +224,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             [1.       2.081666]
 
     """
-    if not in_dynamic_mode():
+    if not in_dynamic_or_pir_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
@@ -313,7 +316,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
             >>> print(y4.numpy())
             2.0
     """
-    if not isinstance(x, Variable):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
@@ -326,7 +329,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
     elif isinstance(axis, int):
         axis = [axis]
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.nanmedian(x, axis, keepdim)
     else:
         check_variable_and_dtype(
@@ -403,10 +406,11 @@ def median(x, axis=None, keepdim=False, name=None):
             [[4., 5., 6., 7.]])
 
     """
-    if not isinstance(x, Variable):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
-    if x.size == 0:
+    if in_dynamic_mode() and x.size == 0:
+        # TODO: Currently, `__eq__` don't support arguments (`pir.Value` & `int`)
         raise ValueError("In median, the size of input x should not be 0.")
 
     is_flatten = False
@@ -435,7 +439,12 @@ def median(x, axis=None, keepdim=False, name=None):
     sz = x.shape[axis]
     kth = sz >> 1
     tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
-    dtype = 'float64' if x.dtype == core.VarDesc.VarType.FP64 else 'float32'
+    dtype = (
+        'float64'
+        if x.dtype
+        in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
+        else 'float32'
+    )
     if sz & 1 == 0:
         out_tensor = paddle.slice(
             tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
@@ -489,7 +498,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         In order to obtain higher precision, data type of results will be float64.
     """
     # Validate x
-    if not isinstance(x, Variable):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("input x should be a Tensor.")
 
     # Validate q
@@ -550,7 +559,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for q_num in q:
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))
@@ -568,8 +577,8 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
 
     # TODO(chenjianye): replace the for-loop to directly take elements.
     for index in indices:
-        indices_below = paddle.floor(index).astype(paddle.int32)
-        indices_upper = paddle.ceil(index).astype(paddle.int32)
+        indices_below = paddle.floor(index).astype('int32')
+        indices_upper = paddle.ceil(index).astype('int32')
         tensor_upper = paddle.take_along_axis(
             sorted_tensor, indices_upper, axis=axis
         )

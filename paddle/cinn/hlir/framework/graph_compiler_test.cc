@@ -30,10 +30,10 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using common::Float;
+using cinn::common::Float;
 using frontend::Placeholder;
 
-TEST(GraphCompilerTest, TestRemoveInvaildVariables) {
+TEST(GraphCompilerTest, TestRemoveInvalidVariables) {
   frontend::NetBuilder builder("test");
   auto a = builder.CreateInput(Float(32), {1, 64, 112, 112}, "A");
   auto b = builder.CreateInput(Float(32), {64}, "B");
@@ -41,7 +41,7 @@ TEST(GraphCompilerTest, TestRemoveInvaildVariables) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
 
@@ -66,7 +66,7 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
@@ -75,7 +75,7 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   GraphCompiler gc_disable(context_disable);
   // disable with_buffer_handle_instruction_inserted: only 1 instruction
   auto runtime_program_disable =
-      gc_disable.Build(&context_disable).runtime_program;
+      gc_disable.Build(&context_disable).RuntimeProgram();
   ASSERT_EQ(runtime_program_disable->size(), 1);
   const auto& computation_instr_disable =
       runtime_program_disable->GetRunInstructions().front();
@@ -87,7 +87,7 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   context_enable.with_buffer_handle_instruction_inserted = true;
   GraphCompiler gc_enable(context_enable);
   auto runtime_program_enable =
-      gc_enable.Build(&context_enable).runtime_program;
+      gc_enable.Build(&context_enable).RuntimeProgram();
   const auto& instructions = runtime_program_enable->GetRunInstructions();
   ASSERT_EQ(instructions.size(), 3);
 
@@ -191,7 +191,7 @@ void RunCublas(
   auto C = net_builder.Matmul(A, B, trans_a, trans_b);
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
 
   hlir::framework::ApplyPass(graph.get(), "TransToCustomCallPass");
@@ -245,7 +245,7 @@ TEST(GraphCompilerTest, TestLowering) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
@@ -254,7 +254,7 @@ TEST(GraphCompilerTest, TestLowering) {
   GraphCompiler gc(context);
   CompilationResult result = gc.Lowering();
 
-  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+  ASSERT_EQ(result.Status(), CompilationStatus::SUCCESS);
 }
 
 TEST(GraphCompilerTest, TestCodegenAndJit) {
@@ -265,7 +265,7 @@ TEST(GraphCompilerTest, TestCodegenAndJit) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
@@ -274,7 +274,7 @@ TEST(GraphCompilerTest, TestCodegenAndJit) {
   GraphCompiler gc(context);
   CompilationResult result = gc.CodegenAndJit();
 
-  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+  ASSERT_EQ(result.Status(), CompilationStatus::SUCCESS);
 }
 
 TEST(GraphCompilerTest, TestBuildInstruction) {
@@ -285,7 +285,7 @@ TEST(GraphCompilerTest, TestBuildInstruction) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
@@ -294,7 +294,7 @@ TEST(GraphCompilerTest, TestBuildInstruction) {
   GraphCompiler gc(context);
   CompilationResult result = gc.BuildInstruction();
 
-  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+  ASSERT_EQ(result.Status(), CompilationStatus::SUCCESS);
 }
 
 #endif

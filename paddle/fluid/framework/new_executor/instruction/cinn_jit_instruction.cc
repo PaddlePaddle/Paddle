@@ -17,102 +17,181 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/common/errors.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#endif
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace paddle {
 namespace framework {
 
-// TODO(Aurelius84): Think deeply what's the responsibility is it.
-// Currently it assumes CinnLaunchContext role.
-class JitContext {
- public:
-  cinn_buffer_t* GetCinnBufferOfVar(const std::string& name) {
-    auto res = paddle2argument_.find(name);
-    PADDLE_ENFORCE_NE(
-        res,
-        paddle2argument_.end(),
-        platform::errors::NotFound(
-            "Variable(%s) not found in compilation result", name));
-    return static_cast<cinn_buffer_t*>(res->second);
-  }
+typedef void (*lower_func_ptr_g)(void*, int32_t, void*);
+typedef void (*infer_shape_func_ptr_g)(void*, int32_t, int64_t**);
 
-  // NOTE(Aurelius84): Before running each instruction, we should share Tensor
-  // memory from paddle scope with cinn_buffer_t from cinn scope including
-  // inputs and outputs.
-  void ShareMemToCinn(const std::string& var_name,
-                      const phi::Place& place,
-                      Scope* scope) {
-    cinn_buffer_t* buffer = GetCinnBufferOfVar(var_name);
-    auto* tensor = scope->GetVar(var_name)->GetMutable<phi::DenseTensor>();
-    // TODO(Aurelius84): Maybe we should consider to unify the Scope
-    // structure between paddle and cinn, so that we don't need to develop
-    // the glue code.
-    buffer->memory = reinterpret_cast<uint8_t*>(tensor->mutable_data(
-        place, paddle2cinn::TransToPaddleDataType(buffer->type)));
-  }
-
-  // TODO(Aurelius84): Add logic to parse stream for different device.
-  void* GetStream() { return nullptr; }
-
- private:
-  // because a cinn_pod_value_t does not own a cinn_buffer_t object,
-  // an extra stroage is necessary to keep those objects and they can
-  // not be released until the runtime program finish execution.
-  std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers_;
-  // this map saves all execution arguments with their cinn names as key,
-  // and it is passed to the Execute interface of a cinn runtime program.
-  std::map<std::string, cinn_pod_value_t> name2argument_;
-  // this map saves all execution arguments with paddle variables as key,
-  // this map conbine name2argument_ and paddle2cinn_varmap_
-  std::map<std::string, cinn_pod_value_t> paddle2argument_;
-};
-
-// TODO(Aurelius84): Impl should hold JitContext instance to
-// deliver the device context for 'instr->Run' and responsible
-// to deal with inner buffer_t shareing between framework::Scope
-// and cinn::Scope.
-class CinnJitInstruction::Impl {
-  using Instruction = cinn::hlir::framework::Instruction;
+class CinnJitInstruction::FnPtrImpl {
+  using CINNKernelInfo = cinn::hlir::framework::pir::CINNKernelInfo;
 
  public:
-  explicit Impl(Instruction* instr) : instr_(instr) {}
-  // TODO(Aurelus84): Support to specify name2podargs and stream arguments.
-  void Run() {
-    PADDLE_ENFORCE_NOT_NULL(
-        instr_, platform::errors::NotFound("instr_ should not be NULL"));
-    instr_->Run(/*name2podargs=*/nullptr,
-                false,
-                /*stream=*/nullptr,
-                /*use_cache=*/true);
+  explicit FnPtrImpl(const CINNKernelInfo& cinn_kernel_info)
+      : cinn_kernel_info_(cinn_kernel_info) {}
+
+  void Run(const std::vector<phi::DenseTensor*>& kernel_args, void* stream) {
+    func_args_.clear();
+
+    // 1. Convert the phi::DenseTensor type to cinn_pod_value_t
+    for (size_t i = 0; i < kernel_args.size(); ++i) {
+      auto* buffer = new cinn_buffer_t();
+      buffer->memory = reinterpret_cast<uint8_t*>(kernel_args[i]->data());
+      func_args_.emplace_back(buffer);
+    }
+    // 2. Convert arg's data about shape of Tensor to cinn_pod_value_t
+    for (const auto& int_arg_mp : cinn_kernel_info_.int_args_map) {
+      func_args_.emplace_back(static_cast<int64_t>(
+          kernel_args[int_arg_mp.second.arg_idx]->dims().at(
+              int_arg_mp.second.dim_idx)));
+    }
+
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "Run func_args_ size: " << func_args_.size();
+      for (const auto& args : func_args_) {
+        VLOG(4) << " args type_code: " << args.type_code();
+      }
+    }
+
+    // 3. Launch host kernel
+    ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+        static_cast<void*>(func_args_.data()), func_args_.size(), stream);
   }
-  const Instruction* pointer() const { return instr_; }
+
+  void InferShape(const std::vector<phi::DenseTensor*>& kernel_args,
+                  int32_t input_tensor_size,
+                  int32_t output_tensor_size) {
+    func_args_.clear();
+
+    // 1. Convert the phi::DenseTensor type to cinn_pod_value_t
+    for (size_t i = 0; i < kernel_args.size(); ++i) {
+      auto* buffer = new cinn_buffer_t();
+      func_args_.emplace_back(buffer);
+    }
+
+    // 2. Convert arg's data about shape of Tensor to cinn_pod_value_t
+    for (const auto& int_arg_mp : cinn_kernel_info_.int_args_map) {
+      func_args_.emplace_back(static_cast<int64_t>(
+          kernel_args[int_arg_mp.second.arg_idx]->dims().at(
+              int_arg_mp.second.dim_idx)));
+    }
+
+    // 3. Define an array of Pointers to hold the output tensor shape
+    std::vector<int64_t*> output_tensor_shapes(output_tensor_size);
+    for (int i = 0; i < output_tensor_size; ++i) {
+      output_tensor_shapes[i] = reinterpret_cast<int64_t*>(
+          malloc(kernel_args[input_tensor_size + i]->dims().size() *
+                 sizeof(int64_t*)));
+    }
+
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "InferShape func_args_ size: " << func_args_.size();
+      for (const auto& args : func_args_) {
+        VLOG(4) << " args type_code: " << args.type_code();
+      }
+    }
+
+    // 4. Launch infer_shape_fn_ptr to infer shape of output tensor
+    ((infer_shape_func_ptr_g)cinn_kernel_info_.infer_shape_fn_ptr)(
+        static_cast<void*>(func_args_.data()),
+        func_args_.size(),
+        output_tensor_shapes.data());
+
+    // 5. Resize shape of output tensor
+    for (int i = 0; i < output_tensor_size; ++i) {
+      DDim dim(output_tensor_shapes[i],
+               kernel_args[input_tensor_size + i]->dims().size());
+      kernel_args[input_tensor_size + i]->Resize(dim);
+      free(output_tensor_shapes[i]);
+    }
+  }
 
  private:
-  Instruction* instr_{nullptr};
+  CINNKernelInfo cinn_kernel_info_;
+
+  std::vector<cinn_pod_value_t> func_args_;
 };
 
-CinnJitInstruction::CinnJitInstruction(size_t id,
-                                       const platform::Place& place,
-                                       ::pir::Operation* op,
-                                       Scope* scope)
+CinnJitInstruction::CinnJitInstruction(
+    size_t id,
+    const platform::Place& place,
+    ::pir::Operation* op,
+    const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
-  // TODO(Aurelius84): We shall simplify members of JitKernelOp to make it
-  // only hold related function ptrs. Impl is the real runtime data structure
-  // responsible to construct hlir::framework::Instruction.
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
-  impl_ = std::make_shared<Impl>(jit_kernel_op.instruction());
+  fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cinn_kernel_info());
   op_ = op;
+  input_tensor_size = op->num_operands();
+  output_tensor_size = op->num_results();
+
+  place_ = place;
+
+  InitInputsOutputsIds(op, *value_exec_info);
+
+  for (size_t i = 0; i < op->num_operands(); ++i) {
+    auto in = op->operand_source(i);
+
+    auto var_name = value_exec_info->GetVarName(in);
+    auto tensor = value_exec_info->GetScope()
+                      ->FindVar(var_name)
+                      ->GetMutable<phi::DenseTensor>();
+
+    tensor_args_.push_back(tensor);
+  }
+
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    pir::Value result = op->result(i);
+    auto var_name = value_exec_info->GetVarName(result);
+
+    auto tensor = value_exec_info->GetScope()
+                      ->Var(var_name)
+                      ->GetMutable<phi::DenseTensor>();
+
+    tensor_args_.push_back(tensor);
+    auto alloc_tensor_type =
+        result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    tensor->set_type(
+        paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
+    tensor->Resize(alloc_tensor_type.dims());
+  }
 }
 
 void CinnJitInstruction::Run() {
-  VLOG(6) << "Run cinn jit_kernel_op : " << Name();
-  impl_->Run();
+#if defined(PADDLE_WITH_CUDA)
+  auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
+
+  auto stream = gpu_ctx->stream();
+
+  if (FLAGS_cinn_bucket_compile) {
+    fn_ptr_impl_->InferShape(
+        tensor_args_, input_tensor_size, output_tensor_size);
+  }
+  for (size_t i = 0; i < tensor_args_.size(); ++i) {
+    gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
+  }
+
+  // 2. exexute kernel
+  fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
+#else
+  VLOG(phi::FATAL) << "Not Supported: cinn jit instruction currently does not "
+                      "support non-CUDA kernel";
+#endif
 }
 
 const std::string& CinnJitInstruction::Name() const {
-  // TODO(Aurelius84): Consider the case for instrucitons constaning
-  // multipule function ptrs and function names.
-  return impl_->pointer()->function_name();
+  static const std::string name = "cinn_jit";
+  return name;
 }
 
 }  // namespace framework

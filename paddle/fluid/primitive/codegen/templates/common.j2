@@ -42,7 +42,7 @@ template <typename T>
 
 {%- macro ret(outputs) -%}
   {%- set names = [] -%}
-  {%- for i in outputs -%} {%- do names.append(i.typename|to_paddle_output_type) -%} {%- endfor -%}
+  {%- for i in outputs -%} {%- do names.append(i.typename|to_paddle_output_type(i.optional)) -%} {%- endfor -%}
   {%- if names|length > 1 -%} 
 std::tuple<{{sequence('', '', ', ', names)}}>
   {%- else -%}
@@ -73,5 +73,9 @@ std::tuple<{{sequence('', '', ', ', names)}}>
 
 
 {%- macro scalar2ir(name, data_type) -%}
+  {%- if data_type == 'std::vector<Scalar>' -%}
+{{name}}
+  {%- else -%}
 {{name}}.to<{{data_type}}>()
+  {%- endif -%}
 {%- endmacro -%}

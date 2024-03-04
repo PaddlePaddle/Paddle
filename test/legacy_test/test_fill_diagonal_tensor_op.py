@@ -103,10 +103,10 @@ class TensorFillDiagTensor_Test(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
@@ -157,7 +157,7 @@ class TensorFillDiagTensorFP16OP(TensorFillDiagTensor_Test):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TensorFillDiagTensorBF16(OpTest):
     def setUp(self):
@@ -193,11 +193,11 @@ class TensorFillDiagTensorBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
 if __name__ == '__main__':

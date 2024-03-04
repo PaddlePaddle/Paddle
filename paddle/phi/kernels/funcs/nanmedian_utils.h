@@ -56,7 +56,7 @@ void PostprocessMedianGradKernel(const Context& dev_ctx,
     }
   }
 
-  input->Resize(make_ddim(reshape_back));
+  input->Resize(common::make_ddim(reshape_back));
   funcs::TransCompute<Context, T>(
       static_cast<int>(trans_back.size()), dev_ctx, *input, x, trans_back);
 }
@@ -104,7 +104,7 @@ void PreprocessMedianKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x);
   funcs::TransCompute<Context, T>(ndims, dev_ctx, input, x, perm);
 
-  x->Resize(make_ddim(reshape));
+  x->Resize(common::make_ddim(reshape));
 }
 
 }  // namespace funcs

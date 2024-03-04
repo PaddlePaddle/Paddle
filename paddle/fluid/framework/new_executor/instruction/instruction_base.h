@@ -28,6 +28,7 @@ class Value;
 
 namespace paddle {
 namespace framework {
+class ValueExecutionInfo;
 
 using SchedulingPriority = int64_t;
 
@@ -79,7 +80,26 @@ class InstructionBase {
     next_instrs_in_same_thread_.push_back(id);
   }
 
-  const EventInter& EventToRecord() const { return *event_to_record_; }
+  bool IsForceRecordEvent() const { return force_record_event_; }
+  void SetForceRecordEvent(bool force_record) {
+    force_record_event_ = force_record;
+  }
+
+  const std::vector<std::string>& EventsToWaitInfo() const {
+    return events_to_wait_info_;
+  }
+  void SetEventsToWaitInfo(const std::vector<std::string>& info) {
+    events_to_wait_info_ = info;
+  }
+
+  const std::string& EventToRecordInfo() const { return event_to_record_info_; }
+  void SetEventToRecordInfo(const std::string& info) {
+    event_to_record_info_ = info;
+  }
+
+  const std::shared_ptr<EventInter>& EventToRecord() const {
+    return event_to_record_;
+  }
   void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
                         platform::DeviceType waiter_type) {
     event_to_record_ = std::make_shared<EventInter>(id_, event, waiter_type);
@@ -94,11 +114,18 @@ class InstructionBase {
     events_to_wait_.emplace_back(instr_id, event, waiter_type);
   }
 
+  void AddEventToWait(const EventInter* event_inter) {
+    events_to_wait_.push_back(*event_inter);
+  }
+
   void RecordEvent(const Place& place) const;
   void WaitEvent(const Place& place) const;
 
   const std::vector<size_t>& GCCheckVars() const;
   void AddGCCheckVar(size_t id);
+  const std::vector<Variable*>& EagerGCVars() const;
+  void AddEagerGCVar(Variable* var);
+  void ClearEagerGCVars();
 
   const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
   void AddInplace(Variable* in, Variable* out);
@@ -139,13 +166,12 @@ class InstructionBase {
 
   virtual ::pir::Operation* Operation() const = 0;
 
-  void InitInputsOutputsIds(
-      ::pir::Operation* op,
-      Scope* inner_scope,
-      const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-      const std::map<std::string, int>& var_name_2_id,
-      const std::unordered_map<const paddle::framework::Variable*, std::string>&
-          variable_2_var_name);
+  void InitInputsOutputsIds(::pir::Operation* op,
+                            const ValueExecutionInfo& value_exec_info);
+
+  // if scope is not null, also show dimensions of arguments
+  virtual std::string DebugStringEx(const paddle::framework::Scope* scope,
+                                    ValueExecutionInfo* value_exe_info) const;
 
  protected:
   size_t id_;
@@ -167,11 +193,19 @@ class InstructionBase {
 
   std::vector<size_t> next_instrs_in_same_thread_;
 
+  bool force_record_event_{false};
+
+  std::vector<std::string> events_to_wait_info_;
+
+  std::string event_to_record_info_{"default"};
+
   std::shared_ptr<EventInter> event_to_record_;
 
   std::vector<EventInter> events_to_wait_;
 
   std::vector<size_t> gc_check_vars_;
+
+  std::vector<Variable*> eager_gc_vars_;
 
   std::vector<std::pair<Variable*, Variable*>>
       vec_inplace_in_to_out_;  // If not use share data, need this ?

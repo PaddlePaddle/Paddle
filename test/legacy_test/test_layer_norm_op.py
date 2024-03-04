@@ -141,7 +141,9 @@ class TestLayerNormOpByOpTest(OpTest):
             no_check_set=["Mean", "Variance"],
             atol=self.ori_atol,
             rtol=self.ori_rtol,
-            check_prim=True,
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=self.check_pir,
         )
 
     def test_check_grad(self):
@@ -149,7 +151,9 @@ class TestLayerNormOpByOpTest(OpTest):
             self.check_grad_input_list,
             ['Y'],
             max_relative_error=self.max_relative_error,
-            check_prim=True,
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=self.check_pir,
         )
 
     def initConfig(self):
@@ -171,6 +175,9 @@ class TestLayerNormOpByOpTest(OpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = True
+        self.check_prim = True
+        self.check_prim_pir = True
+        self.check_pir = True
 
     def initTestCase(self):
         np.random.seed(123)
@@ -238,7 +245,9 @@ class TestLayerNormBF16OpByOpTest(OpTest):
             no_check_set=["Mean", "Variance"],
             atol=self.ori_atol,
             rtol=self.ori_rtol,
-            check_prim=True,
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=self.check_pir,
         )
 
     def test_check_grad(self):
@@ -247,7 +256,9 @@ class TestLayerNormBF16OpByOpTest(OpTest):
             self.check_grad_input_list,
             ['Y'],
             max_relative_error=self.max_relative_error,
-            check_prim=True,
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=self.check_pir,
         )
 
     def initConfig(self):
@@ -262,6 +273,9 @@ class TestLayerNormBF16OpByOpTest(OpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = True
+        self.check_prim = True
+        self.check_prim_pir = True
+        self.check_pir = True
 
     def initTestCase(self):
         np.random.seed(123)
@@ -331,6 +345,9 @@ class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = False
         self.has_bias = False
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
 
 
 @unittest.skipIf(
@@ -352,6 +369,9 @@ class TestLayerNormBF16OpByOpTest_case2(TestLayerNormBF16OpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = False
         self.has_bias = False
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
 
 
 @unittest.skipIf(
@@ -378,6 +398,9 @@ class TestLayerNormOpByOpTestFP64_case3(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = False
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
 
 
 @unittest.skipIf(
@@ -399,6 +422,9 @@ class TestLayerNormBF16OpByOpTest_case3(TestLayerNormBF16OpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = False
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
 
 
 @unittest.skipIf(
@@ -425,6 +451,9 @@ class TestLayerNormOpByOpTestFP64_case4(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = False
         self.has_bias = True
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
 
 
 @unittest.skipIf(
@@ -446,6 +475,9 @@ class TestLayerNormBF16OpByOpTest_case4(TestLayerNormBF16OpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = False
         self.has_bias = True
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
 
 
 class TestLayerNormOpByOpTestFP32(TestLayerNormOpByOpTest):
@@ -463,6 +495,29 @@ class TestLayerNormOpByOpTestFP32(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = True
+        self.check_prim = True
+        self.check_prim_pir = True
+        self.check_pir = True
+
+
+class TestLayerNormOpByOpTestFP32_case1(TestLayerNormOpByOpTest):
+    def initConfig(self):
+        self.rev_comp_atol = 1e-5
+        self.rev_comp_rtol = 1e-5
+
+        self.ori_atol = 1e-4
+        self.ori_rtol = 1e-4
+        self.max_relative_error = 1e-2
+
+        self.dtype = "float32"
+        self.x_shape = [2, 100]
+        self.epsilon = 0.00001
+        self.begin_norm_axis = 1
+        self.has_scale = True
+        self.has_bias = True
+        self.check_prim = True
+        self.check_prim_pir = True
+        self.check_pir = True
 
 
 class TestLayerNormOpByOpTestFP32_case2(TestLayerNormOpByOpTest):
@@ -480,6 +535,9 @@ class TestLayerNormOpByOpTestFP32_case2(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = False
         self.has_bias = False
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
 
 
 class TestLayerNormOpByOpTestFP32_case3(TestLayerNormOpByOpTest):
@@ -497,6 +555,9 @@ class TestLayerNormOpByOpTestFP32_case3(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = False
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
 
 
 class TestLayerNormOpByOpTestFP32_case4(TestLayerNormOpByOpTest):
@@ -514,11 +575,15 @@ class TestLayerNormOpByOpTestFP32_case4(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = False
         self.has_bias = True
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
 
 
 class TestLayerNormOp(unittest.TestCase):
     def setUp(self):
         self.use_cudnn = True
+        paddle.enable_static()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.testing.assert_allclose(
@@ -793,6 +858,11 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
                 name='x2', shape=[-1, 3, 32, 32], dtype="int32"
             )
             self.assertRaises(TypeError, layer_norm, x2)
+        with paddle.pir_utils.IrGuard(), program_guard(Program(), Program()):
+            layer_norm = paddle.nn.LayerNorm([32, 32])
+            # the input of LayerNorm must be Variable.
+            x1 = np.random.random((3, 32, 32)).astype('float32')
+            self.assertRaises(TypeError, layer_norm, x1)
 
 
 @unittest.skipIf(

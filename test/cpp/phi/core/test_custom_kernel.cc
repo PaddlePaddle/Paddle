@@ -200,19 +200,21 @@ TEST(CustomKernel, custom_kernel_dot) {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::UINT8,
+                           common::make_ddim({2, 3}),
+                           phi::DataLayout::NCHW));
   auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
   auto* dense_x_data = dev_ctx->template Alloc<uint8_t>(dense_x.get());
 
   auto dense_y = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::UINT8,
+                           common::make_ddim({2, 3}),
+                           phi::DataLayout::NCHW));
   auto* dense_y_data = dev_ctx->template Alloc<uint8_t>(dense_y.get());
 
   // dot x,y and result
-  uint8_t sum[2] = {0, 0};
+  std::array<uint8_t, 2> sum = {0, 0};
   for (size_t i = 0; i < 2; ++i) {
     for (size_t j = 0; j < 3; ++j) {
       dense_x_data[i * 3 + j] = (i * 3 + j);

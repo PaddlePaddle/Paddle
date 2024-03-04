@@ -15,12 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/recv_v2_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #include "paddle/fluid/distributed/collective/process_group.h"
@@ -150,7 +150,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       std::vector<phi::DenseTensor> out_tensor;
       auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
       auto out = ctx.Output<phi::DenseTensor>("Out");
-      auto out_dims = out->dims();
+      // auto out_dims = out->dims();
 
       if (dynamic_shape) {
         VLOG(3) << "recv_v2 will use dynamic shape with send_v2 for switch";
@@ -162,9 +162,9 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
                             peer,
                             pg);
         out->Resize(new_dim);
-        out->mutable_data<T>(new_dim, place);
+        ctx.cuda_device_context().Alloc<T>(out);
       } else {
-        out->mutable_data<T>(out_dims, place);
+        ctx.cuda_device_context().Alloc<T>(out);
       }
 
       out_tensor.emplace_back(*out);
@@ -230,7 +230,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto out = &out_array->at(idx);
         auto out_dims = out->dims();
-        out->mutable_data<T>(out_dims, place, 0);
+        ctx.cuda_device_context().Alloc<T>(out);
         auto numel = out->numel();
         if (comm_ctx) {
           comm_ctx->Recv(out, numel, peer, stream);
@@ -238,7 +238,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
               out->data<T>(), numel, dtype, peer, comm->comm(), stream));
           VLOG(3) << "rank " << comm->rank() << " recv "
-                  << phi::product(out_dims) << " from " << peer;
+                  << common::product(out_dims) << " from " << peer;
         }
       }
       return;
@@ -246,7 +246,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
     auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    auto out_dims = out->dims();
+    // auto out_dims = out->dims();
     auto numel = out->numel();
 
     if (dynamic_shape) {
@@ -259,9 +259,9 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
                                                 /* ProcessGroup* */ nullptr);
       out->Resize(new_dim);
       numel = out->numel();
-      out->mutable_data<T>(new_dim, place);
+      ctx.cuda_device_context().Alloc<T>(out);
     } else {
-      out->mutable_data<T>(out_dims, place);
+      ctx.cuda_device_context().Alloc<T>(out);
     }
     if (comm_ctx) {
       comm_ctx->Recv(out, numel, peer, stream);
@@ -277,7 +277,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           out->data<T>(), numel, dtype, peer, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " recv "
-              << phi::product(out->dims()) << " from " << peer;
+              << common::product(out->dims()) << " from " << peer;
     }
 #else
     PADDLE_THROW(platform::errors::Unavailable(

@@ -16,12 +16,25 @@
 
 #include <memory>
 
+#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace distributed {
 class ReshardFunction;
+class Shard;
+class Partial;
+class Replicate;
+
+TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
+                                const Placements& placements,
+                                const DDim& dims);
+
+Placements ToPlacements(const TensorDistAttr& dist_attr);
 
 class DistTensor final
     : public phi::TensorBase,
@@ -30,16 +43,43 @@ class DistTensor final
   /// \brief Careful to create dist tensor using default constructor.
   /// this should only used in reshard for now, and the dist properties
   /// will be set by reshard later.
-  DistTensor() = default;
+  DistTensor();
+
+  /// \brief Construct a dist tensor based dtype.
+  /// \param dtype The dtype of the current tensor.
+  explicit DistTensor(phi::DataType dtype);
 
   /// \brief Construct a dist tensor based dense tensor.
   /// \param global_value The global dense tensor of the current tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
-  DistTensor(const phi::DenseTensor& global_value,
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
              const TensorDistAttr& dist_attr);
 
+  /// \brief Construct a dist tensor based dense tensor.
+  /// \param process_mesh The process mesh of the current tensor.
+  /// \param placements The distributed placements of the current tensor.
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+             const ProcessMesh& process_mesh,
+             const Placements& placements);
+
+  /// \brief Construct a dist tensor based local dense tensor.
+  /// \param global_dims The global dim of the dist tensor.
+  /// \param dist_attr The distributed attributes of the current tensor.
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+             const DDim& global_dims,
+             const TensorDistAttr& dist_attr);
+
+  /// \brief Construct a dist tensor based local dense tensor.
+  /// \param global_dims The global dim of the dist tensor.
+  /// \param process_mesh The process mesh of the current tensor.
+  /// \param placements The distributed placements of the current tensor.
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+             const DDim& global_dims,
+             const ProcessMesh& process_mesh,
+             const Placements& placements);
+
   /// \brief Construct a empty dist tensor (for infer spmd)
-  /// \param dims The global dimension of the currnet Tensor.
+  /// \param dims The global dimension of the current Tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
   DistTensor(const DDim& dims, const TensorDistAttr& dist_attr);
 
@@ -52,7 +92,7 @@ class DistTensor final
 
   /// \brief Returns the global dims of the dist tensor.
   /// \return The global dims of the dist tensor.
-  const DDim& dims() const override { return dims_; }
+  const DDim& dims() const override { return global_dims_; }
 
   /// \brief Set the global dims of the dist tensor.
   /// \return void
@@ -62,9 +102,33 @@ class DistTensor final
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }
 
+  /// \brief Returns the process_mesh of current dist tensor.
+  /// \return The ProcessMesh's const reference
+  const ProcessMesh& process_mesh() const { return process_mesh_; }
+
+  /// \brief Returns the placements of current dist tensor.
+  /// \return The Placements's const reference
+  const Placements& placements() const { return placements_; }
+
+  /// \brief Returns the num_shard of current dist tensor.
+  /// \return int64_t
+  int64_t num_shard() const {
+    int64_t num_shard = 1;
+    const auto& mesh_shape = process_mesh_.shape();
+    for (size_t i = 0; i < placements_.size(); i++) {
+      if (placements_[i]->is_shard()) {
+        num_shard *= mesh_shape[i];
+      }
+    }
+    return num_shard;
+  }
+  /// \brief Set the dist attr of current dist tensor.
+  /// \return void
+  void unsafe_set_dist_attr(const TensorDistAttr& dist_attr);
+
   /// \brief Returns the dense tensor value's const reference in dist tensor.
   /// \return The DenseTensor value's const reference
-  const DenseTensor& value() const { return value_; }
+  const DenseTensor& value() const { return *value_; }
 
   /// \brief Returns the mutable dense tensor value in dist tensor.
   /// \note If DenseTensor value is modified externally, the corresponding
@@ -73,7 +137,7 @@ class DistTensor final
   /// so you need to make sure to consider it thoroughly when using
   /// this method.
   /// \return The mutable pointer of DenseTensor value
-  DenseTensor* unsafe_mutable_value() { return &value_; }
+  DenseTensor* unsafe_mutable_value() { return value_.get(); }
 
   /// \brief Returns the global dims of the dist tensor.
   /// \return The global dims of the dist tensor.
@@ -117,12 +181,16 @@ class DistTensor final
  private:
   friend class ReshardFunction;
 
-  // The global dimensions(shape)
-  DDim dims_;
-  // The distributed attributes
+  // The global dimensions(shape), will move to DistTensorMeta
+  DDim global_dims_;
+  // The distributed attributes, will remove in the future
   TensorDistAttr dist_attr_;
   // The local DenseTensor value
-  DenseTensor value_;
+  std::shared_ptr<DenseTensor> value_;
+
+  ProcessMesh process_mesh_;
+
+  Placements placements_;
 };
 
 }  // namespace distributed

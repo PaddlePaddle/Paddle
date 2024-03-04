@@ -14,19 +14,26 @@
 
 import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops
+import paddle
+from paddle import _C_ops
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
 
 from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import Variable, in_dygraph_mode
+from ..base.framework import (
+    Variable,
+    convert_np_dtype_to_dtype_,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from ..base.layer_helper import LayerHelper
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
 
-__all__ = [  # noqa
+__all__ = [
     'yolo_loss',
     'yolo_box',
     'prior_box',
@@ -105,13 +112,13 @@ def yolo_loss(
     box coordinates (w, h), sigmoid cross entropy loss is used for box
     coordinates (x, y), objectness loss and classification loss.
 
-    Each groud truth box finds a best matching anchor box in all anchors.
+    Each ground truth box finds a best matching anchor box in all anchors.
     Prediction of this anchor box will incur all three parts of losses, and
     prediction of anchor boxes with no GT box matched will only incur objectness
     loss.
 
     In order to trade off box coordinate losses between big boxes and small
-    boxes, box coordinate losses will be mutiplied by scale weight, which is
+    boxes, box coordinate losses will be multiplied by scale weight, which is
     calculated as follows.
 
     $$
@@ -127,10 +134,10 @@ def yolo_loss(
     While :attr:`use_label_smooth` is set to be :attr:`True`, the classification
     target will be smoothed when calculating classification loss, target of
     positive samples will be smoothed to :math:`1.0 - 1.0 / class\_num` and target of
-    negetive samples will be smoothed to :math:`1.0 / class\_num`.
+    negative samples will be smoothed to :math:`1.0 / class\_num`.
 
     While :attr:`gt_score` is given, which means the mixup score of ground truth
-    boxes, all losses incured by a ground truth box will be multiplied by its
+    boxes, all losses incurred by a ground truth box will be multiplied by its
     mixup score.
 
     Args:
@@ -139,7 +146,7 @@ def yolo_loss(
                       and the second dimension(C) stores box locations, confidence
                       score and classification one-hot keys of each anchor box.
                       The data type is float32 or float64.
-        gt_box (Tensor): groud truth boxes, should be in shape of [N, B, 4],
+        gt_box (Tensor): ground truth boxes, should be in shape of [N, B, 4],
                           in the third dimension, x, y, w, h should be stored.
                           x,y is the center coordinate of boxes, w, h are the
                           width and height, x, y, w, h should be divided by
@@ -156,7 +163,7 @@ def yolo_loss(
         ignore_thresh (float): The ignore threshold to ignore confidence loss.
         downsample_ratio (int): The downsample ratio from network input to YOLOv3
                                 loss input, so 32, 16, 8 should be set for the
-                                first, second, and thrid YOLOv3 loss operators.
+                                first, second, and third YOLOv3 loss operators.
         gt_score (Tensor, optional): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool, optional): Whether to use label smooth. Default True.
@@ -188,7 +195,7 @@ def yolo_loss(
             ...                                    scale_x_y=1.)
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         loss = _C_ops.yolo_loss(
             x,
             gt_box,
@@ -306,7 +313,7 @@ def yolo_box(
     The logistic regression value of the 5th channel of each anchor prediction boxes
     represents the confidence score of each prediction box, and the logistic
     regression value of the last :attr:`class_num` channels of each anchor prediction
-    boxes represents the classifcation scores. Boxes with confidence scores less than
+    boxes represents the classification scores. Boxes with confidence scores less than
     :attr:`conf_thresh` should be ignored, and box final scores is the product of
     confidence scores and classification scores.
 
@@ -333,7 +340,7 @@ def yolo_box(
                              be ignored.
         downsample_ratio (int): The downsample ratio from network input to
                                 :attr:`yolo_box` operator input, so 32, 16, 8
-                                should be set for the first, second, and thrid
+                                should be set for the first, second, and third
                                 :attr:`yolo_box` layer.
         clip_bbox (bool, optional): Whether clip output bonding box in :attr:`img_size`
                           boundary. Default true.
@@ -365,7 +372,7 @@ def yolo_box(
             ...                                             clip_bbox=True,
             ...                                             scale_x_y=1.)
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         boxes, scores = _C_ops.yolo_box(
             x,
             img_size,
@@ -510,7 +517,7 @@ def prior_box(
             max_sizes = [max_sizes]
         cur_max_sizes = max_sizes
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         step_w, step_h = steps
         if max_sizes is None:
             max_sizes = []
@@ -616,10 +623,10 @@ def box_coder(
             left top coordinate of the anchor box, if the input is image feature
             map, they are close to the origin of the coordinate system.
             [xmax, ymax] is the right bottom coordinate of the anchor box.
-        prior_box_var (List|Tensor|None): prior_box_var supports three types
+        prior_box_var (Tensor|List|tuple|None): prior_box_var supports four types
             of input. One is Tensor with shape [M, 4] which holds M group and
-            data type is float32 or float64. The second is list consist of
-            4 elements shared by all boxes and data type is float32 or float64.
+            data type is float32 or float64. The second is list or tuple consist
+            of 4 elements shared by all boxes and data type is float32 or float64.
             Other is None and not involved in calculation.
         target_box (Tensor): This input can be a 2-D LoDTensor with shape
             [N, 4] when code_type is 'encode_center_size'. This input also can
@@ -674,8 +681,8 @@ def box_coder(
             ...     box_normalized=False)
             ...
     """
-    if in_dygraph_mode():
-        if isinstance(prior_box_var, core.eager.Tensor):
+    if in_dynamic_or_pir_mode():
+        if isinstance(prior_box_var, (core.eager.Tensor, paddle.pir.Value)):
             output_box = _C_ops.box_coder(
                 prior_box,
                 prior_box_var,
@@ -685,7 +692,11 @@ def box_coder(
                 axis,
                 [],
             )
-        elif isinstance(prior_box_var, list):
+        elif isinstance(prior_box_var, (list, tuple)):
+            prior_box_var = list(prior_box_var)
+            assert (
+                len(prior_box_var) == 4
+            ), "Input prior_box_var must be Variable or list|tuple with 4 elements."
             output_box = _C_ops.box_coder(
                 prior_box,
                 None,
@@ -696,9 +707,10 @@ def box_coder(
                 prior_box_var,
             )
         else:
-            raise TypeError("Input prior_box_var must be Variable or list")
+            raise TypeError(
+                "Input prior_box_var must be Variable or list|tuple"
+            )
         return output_box
-
     else:
         check_variable_and_dtype(
             prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
@@ -720,10 +732,15 @@ def box_coder(
         }
         if isinstance(prior_box_var, Variable):
             inputs['PriorBoxVar'] = prior_box_var
-        elif isinstance(prior_box_var, list):
+        elif isinstance(prior_box_var, (list, tuple)):
             attrs['variance'] = prior_box_var
+            assert (
+                len(attrs['variance']) == 4
+            ), "Input prior_box_var must be Variable or list|tuple with 4 elements."
         else:
-            raise TypeError("Input prior_box_var must be Variable or list")
+            raise TypeError(
+                "Input prior_box_var must be Variable or list|tuple"
+            )
         helper.append_op(
             type="box_coder",
             inputs=inputs,
@@ -809,7 +826,7 @@ def deform_conv2d(
             dilation_H = dilation_W = dilation. Default: 1.
         deformable_groups (int): The number of deformable group partitions.
             Default: 1.
-        groups (int, optonal): The groups number of the deformable conv layer. According to
+        groups (int, optional): The groups number of the deformable conv layer. According to
             grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -862,7 +879,7 @@ def deform_conv2d(
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.deformable_conv(
             x,
             offset,
@@ -1215,7 +1232,7 @@ def distribute_fpn_proposals(
         num_lvl < 100
     ), "Only support max to 100 levels, (max_level - min_level + 1 < 100)"
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             rois_num is not None
         ), "rois_num should not be None in dygraph mode."
@@ -1308,8 +1325,9 @@ def read_file(filename, name=None):
             [142773]
     """
 
-    if in_dygraph_mode():
-        return _legacy_C_ops.read_file('filename', filename)
+    attr_dtype = convert_np_dtype_to_dtype_('uint8')
+    if in_dynamic_or_pir_mode():
+        return _C_ops.read_file(filename, attr_dtype, paddle.CPUPlace())
     else:
         inputs = {}
         attrs = {'filename': filename}
@@ -1338,7 +1356,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: A decoded image tensor with shape (imge_channels, image_height, image_width)
+        Tensor: A decoded image tensor with shape (image_channels, image_height, image_width)
 
     Examples:
         .. code-block:: python
@@ -1357,7 +1375,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             >>> print(img.shape)
             [3, 400, 300]
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.decode_jpeg(x, mode, _current_expected_place())
     else:
         inputs = {'X': x}
@@ -1419,7 +1437,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     if pooled_height * pooled_width == 0:
         raise ValueError('output_size should not contain 0.')
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.psroi_pool(
             x,
             boxes,
@@ -1537,7 +1555,7 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             boxes_num is not None
         ), "boxes_num should not be None in dygraph mode."
@@ -1697,7 +1715,7 @@ def roi_align(
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             boxes_num is not None
         ), "boxes_num should not be None in dygraph mode."
@@ -1791,18 +1809,18 @@ class RoIAlign(Layer):
 
 class ConvNormActivation(Sequential):
     """
-    Configurable block used for Convolution-Normalzation-Activation blocks.
+    Configurable block used for Convolution-Normalization-Activation blocks.
     This code is based on the torchvision code with modifications.
     You can also see at https://github.com/pytorch/vision/blob/main/torchvision/ops/misc.py#L68
     Args:
         in_channels (int): Number of channels in the input image
-        out_channels (int): Number of channels produced by the Convolution-Normalzation-Activation block
+        out_channels (int): Number of channels produced by the Convolution-Normalization-Activation block
         kernel_size: (int|list|tuple, optional): Size of the convolving kernel. Default: 3
         stride (int|list|tuple, optional): Stride of the convolution. Default: 1
         padding (int|str|tuple|list, optional): Padding added to all four sides of the input. Default: None,
-            in wich case it will calculated as ``padding = (kernel_size - 1) // 2 * dilation``
+            in which case it will calculated as ``padding = (kernel_size - 1) // 2 * dilation``
         groups (int, optional): Number of blocked connections from input channels to output channels. Default: 1
-        norm_layer (Callable[..., paddle.nn.Layer], optional): Norm layer that will be stacked on top of the convolutiuon layer.
+        norm_layer (Callable[..., paddle.nn.Layer], optional): Norm layer that will be stacked on top of the convolution layer.
             If ``None`` this layer wont be used. Default: ``paddle.nn.BatchNorm2D``
         activation_layer (Callable[..., paddle.nn.Layer], optional): Activation function which will be stacked on top of the normalization
             layer (if not ``None``), otherwise on top of the conv layer. If ``None`` this layer wont be used. Default: ``paddle.nn.ReLU``
@@ -1869,7 +1887,7 @@ def nms(
 
     If category_idxs and categories are provided, NMS will be performed with a batched style,
     which means NMS will be applied to each category respectively and results of each category
-    will be concated and sorted by scores.
+    will be concatenated and sorted by scores.
 
     If K is provided, only the first k elements will be returned. Otherwise, all box indices sorted by scores will be returned.
 
@@ -1927,7 +1945,7 @@ def nms(
     """
 
     def _nms(boxes, iou_threshold):
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.nms(boxes, iou_threshold)
 
         else:
@@ -1961,10 +1979,12 @@ def nms(
         categories is not None
     ), "if category_idxs is given, categories which is a list of unique id of all categories is necessary"
 
-    mask = paddle.zeros_like(scores, dtype=paddle.int32)
+    mask = paddle.zeros_like(scores, dtype='int32')
 
     for category_id in categories:
-        cur_category_boxes_idxs = paddle.where(category_idxs == category_id)[0]
+        cur_category_boxes_idxs = paddle.where(
+            paddle.equal(category_idxs, paddle.to_tensor(category_id))
+        )[0]
         shape = cur_category_boxes_idxs.shape[0]
         cur_category_boxes_idxs = paddle.reshape(
             cur_category_boxes_idxs, [shape]
@@ -1989,7 +2009,7 @@ def nms(
 
         updates = paddle.ones_like(
             cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs],
-            dtype=paddle.int32,
+            dtype='int32',
         )
         mask = paddle.scatter(
             mask,
@@ -2126,6 +2146,27 @@ def generate_proposals(
         )
 
         return rpn_rois, rpn_roi_probs, rpn_rois_num
+    elif in_pir_mode():
+        assert (
+            return_rois_num
+        ), "return_rois_num should be True in PaddlePaddle inner op mode."
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
+            scores,
+            bbox_deltas,
+            img_size,
+            anchors,
+            variances,
+            pre_nms_top_n,
+            post_nms_top_n,
+            nms_thresh,
+            min_size,
+            eta,
+            pixel_offset,
+        )
+        rpn_rois.stop_gradient = True
+        rpn_roi_probs.stop_gradient = True
+        rpn_rois_num.stop_gradient = True
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
     else:
         helper = LayerHelper('generate_proposals_v2', **locals())
 
@@ -2214,7 +2255,7 @@ def matrix_nms(
     than score_threshold (if provided), then the top k candidate is selected if
     nms_top_k is larger than -1. Score of the remaining candidate are then
     decayed according to the Matrix NMS scheme.
-    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    After NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
 
     Args:
@@ -2274,7 +2315,7 @@ def matrix_nms(
             ...                         score_threshold=0.5, post_threshold=0.1,
             ...                         nms_top_k=400, keep_top_k=200, normalized=False)
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out, index, rois_num = _C_ops.matrix_nms(
             bboxes,
             scores,

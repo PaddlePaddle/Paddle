@@ -16,14 +16,174 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace paddle {
 namespace framework {
+
+static DDim GetDimsDebug(const Scope& scope,
+                         const std::string& name,
+                         bool get_actual_dim = false) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return DDim({-1});
+  }
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    return tensor.dims();
+  } else if (var->IsType<phi::SelectedRows>()) {
+    if (get_actual_dim) {
+      return var->Get<phi::SelectedRows>().value().dims();
+    } else {
+      return var->Get<phi::SelectedRows>().GetCompleteDims();
+    }
+  } else if (var->IsType<Strings>()) {
+    return DDim({static_cast<int64_t>(var->Get<Strings>().size())});
+  } else {
+    return DDim({-1});
+  }
+}
+
+static bool VarInited(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) return false;
+  return var->IsInitialized();
+}
+
+static std::string GetDtype(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
+  } else if (var->IsType<phi::SelectedRows>()) {
+    auto tensor = var->Get<phi::SelectedRows>().value();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "uninited";
+    } else {
+      return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
+    }
+  } else if (var->IsType<Strings>()) {
+    return "strings";
+  } else {
+    return "";
+  }
+}
+
+static std::string GetPlace(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+  auto to_string = [](const platform::Place& p) {
+    std::stringstream sstream;
+    sstream << p;
+    return sstream.str();
+  };
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return to_string(tensor.place());
+  } else if (var->IsType<phi::SelectedRows>()) {
+    auto tensor = var->Get<phi::SelectedRows>().value();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "uninited";
+    } else {
+      return to_string(tensor.place());
+    }
+  } else {
+    return "";
+  }
+}
+
+static int GetRowSize(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return -1;
+  }
+
+  if (var->IsType<phi::SelectedRows>()) {
+    return static_cast<int>(var->Get<phi::SelectedRows>().rows().size());
+  } else if (var->IsType<VariableRefArray>()) {
+    return var->Get<VariableRefArray>().size();
+  } else if (var->IsType<phi::TensorArray>()) {
+    return var->Get<phi::TensorArray>().size();
+  }
+
+  return -1;
+}
+
+static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  auto default_lod = LoD({{}});
+
+  if (var == nullptr) {
+    return default_lod;
+  }
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    return tensor.lod();
+  } else {
+    return default_lod;
+  }
+}
+
+static double GetDenseTensorEleSum(const Scope& scope,
+                                   const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+  if (var->IsType<phi::DenseTensor>() &&
+      var->Get<phi::DenseTensor>().initialized()) {
+    phi::DenseTensor cpu_tensor;
+    paddle::platform::CPUPlace place;
+    paddle::framework::TensorCopy(
+        var->Get<phi::DenseTensor>(), place, &cpu_tensor);
+    paddle::platform::DeviceContextPool& pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(var->Get<phi::DenseTensor>().place());
+    dev_ctx.Wait();
+    double sum = 0.0;
+    for (int64_t i = 0; i < cpu_tensor.numel(); i++) {
+      if (cpu_tensor.dtype() == phi::DataType::FLOAT32) {
+        sum += static_cast<double>(cpu_tensor.data<float>()[i]);
+      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT64) {
+        sum += static_cast<double>(cpu_tensor.data<double>()[i]);
+      } else if (cpu_tensor.dtype() == phi::DataType::INT32) {
+        sum += static_cast<double>(cpu_tensor.data<int32_t>()[i]);
+      } else if (cpu_tensor.dtype() == phi::DataType::INT64) {
+        sum += static_cast<double>(cpu_tensor.data<int64_t>()[i]);
+      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT16) {
+        const phi::dtype::float16* data =
+            cpu_tensor.data<phi::dtype::float16>();
+        sum += static_cast<double>(data[0]);
+      } else if (cpu_tensor.dtype() == phi::DataType::BOOL) {
+        sum += static_cast<double>(cpu_tensor.data<bool>()[i]);
+      } else {
+        return std::numeric_limits<double>::quiet_NaN();
+      }
+    }
+    return sum;
+  }
+  return std::numeric_limits<double>::quiet_NaN();
+}
 
 InstructionBase::InstructionBase(size_t id, const platform::Place& place) {
   id_ = id;
@@ -78,6 +238,31 @@ const std::vector<size_t>& InstructionBase::GCCheckVars() const {
   return gc_check_vars_;
 }
 
+void InstructionBase::AddEagerGCVar(Variable* var) {
+  if (var->IsType<VariableRefArray>()) {
+    auto array = var->Get<VariableRefArray>();
+    for (size_t i = 0; i < array.size(); ++i) {
+      AddEagerGCVar(const_cast<Variable*>(array.at(i)));
+    }
+  } else {
+    if (std::find(eager_gc_vars_.begin(), eager_gc_vars_.end(), var) ==
+        eager_gc_vars_.end()) {
+      eager_gc_vars_.push_back(var);
+    }
+  }
+}
+
+const std::vector<Variable*>& InstructionBase::EagerGCVars() const {
+  // NOTE(chenxi67): eager_gc_vars_ contains the vars that need to be gc. Some
+  // vars in Instruction Node are created temporarily and are not the input or
+  // output of an OP (e.g. copy_var created by TuplePushOp). We cannot determine
+  // whether they need to be gc by analyzing OP(using GCCheckVars() function).
+  // These vars are added to eager_gc_vars_ and directly gc.
+  return eager_gc_vars_;
+}
+
+void InstructionBase::ClearEagerGCVars() { eager_gc_vars_.clear(); }
+
 const std::vector<std::pair<Variable*, Variable*>>&
 InstructionBase::InplaceInfo() const {
   return vec_inplace_in_to_out_;
@@ -100,31 +285,25 @@ void InstructionBase::SetOutputs(
 }
 
 void InstructionBase::InitInputsOutputsIds(
-    ::pir::Operation* op,
-    Scope* inner_scope,
-    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name) {
+    ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
-  auto op_name =
-      op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  std::string op_name;
+  if (op_attributes.count("op_name")) {
+    op_name =
+        op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
     pir::Value value = op->operand_source(i);
     if (value) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
+      PADDLE_ENFORCE_EQ(
+          value_exec_info.HasValue(value),
+          true,
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));
-      std::vector<int> inputs_id = GetValueIds(value,
-                                               inner_scope,
-                                               value_2_var_name,
-                                               var_name_2_id,
-                                               variable_2_var_name);
+      std::vector<int> inputs_id = GetValueIds(value, value_exec_info);
       inputs.emplace(value, inputs_id);
     }
   }
@@ -134,18 +313,14 @@ void InstructionBase::InitInputsOutputsIds(
   for (size_t i = 0; i < op->num_results(); i++) {
     pir::Value value = op->result(i);
     if (value && value.type()) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
+      PADDLE_ENFORCE_EQ(
+          value_exec_info.HasValue(value),
+          true,
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));
-      std::vector<int> outputs_id = GetValueIds(value,
-                                                inner_scope,
-                                                value_2_var_name,
-                                                var_name_2_id,
-                                                variable_2_var_name);
+      std::vector<int> outputs_id = GetValueIds(value, value_exec_info);
       outputs.emplace(value, outputs_id);
     }
   }
@@ -153,5 +328,75 @@ void InstructionBase::InitInputsOutputsIds(
   VLOG(8) << "finish process outputs_index";
 }
 
+std::string InstructionBase::DebugStringEx(
+    const paddle::framework::Scope* scope,
+    ValueExecutionInfo* value_exe_info) const {
+  std::stringstream ss;
+  ss << "Op(" << Name() << "), inputs:{";
+
+  const std::unordered_set<::pir::Value> no_need_buffer_vars = NoNeedBuffer();
+
+  for (auto it = Inputs().begin(); it != Inputs().end();) {
+    auto& input = *it;
+    bool is_no_need_buffer_var = (!no_need_buffer_vars.empty() &&
+                                  no_need_buffer_vars.count(input.first) > 0);
+    auto var_name = value_exe_info->GetVarName(input.first);
+    ss << var_name << ":[";
+    if (scope) {
+      if (!VarInited(*scope, var_name)) {
+        ss << "uninited";
+      } else {
+        std::string dtype = is_no_need_buffer_var ? "unknown_dtype"
+                                                  : GetDtype(*scope, var_name);
+        std::string place = is_no_need_buffer_var ? "unknown_place"
+                                                  : GetPlace(*scope, var_name);
+        ss << "dtype=" << dtype << ";";
+        ss << "place=" << place << ";";
+
+        ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
+        ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
+        int row_size = GetRowSize(*scope, var_name);
+        if (row_size >= 0) {
+          ss << "row_size=" << row_size << ";";
+        }
+      }
+    }
+    ++it;
+    if (it != Inputs().end()) {
+      ss << "], ";
+    } else {
+      ss << "]";
+    }
+  }
+  ss << "}, outputs:{";
+  for (auto it = Outputs().begin(); it != Outputs().end();) {
+    auto& output = *it;
+    auto var_name = value_exe_info->GetVarName(output.first);
+    ss << var_name << ":[";
+    if (scope) {
+      if (!VarInited(*scope, var_name)) {
+        ss << "uninited";
+      } else {
+        std::string dtype = GetDtype(*scope, var_name);
+        ss << "dtype=" << dtype << ";";
+        ss << "place=" << GetPlace(*scope, var_name) << ";";
+        ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
+        ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
+        int row_size = GetRowSize(*scope, var_name);
+        if (row_size >= 0) {
+          ss << "row_size=" << row_size << ";";
+        }
+      }
+    }
+    ++it;
+    if (it != Outputs().end()) {
+      ss << ", ";
+    } else {
+      ss << "]";
+    }
+  }
+  ss << "}.";
+  return ss.str();
+}
 }  // namespace framework
 }  // namespace paddle

@@ -14,13 +14,24 @@
 
 import os
 
+import numpy as np
+
 import paddle
 from paddle.base import Variable, core
 from paddle.base.data_feeder import check_type
-from paddle.base.framework import convert_np_dtype_to_dtype_, static_only
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+    in_pir_mode,
+    static_only,
+)
 from paddle.base.layer_helper import LayerHelper
+from paddle.base.libpaddle import DataType
+from paddle.base.libpaddle.pir import (
+    get_current_insertion_point,
+    set_insertion_point,
+)
 
-from ..base.variable_index import _setitem_impl_, _setitem_static
+from ..base.variable_index import _setitem_static
 
 __all__ = []
 
@@ -98,6 +109,17 @@ def data(name, shape, dtype=None, lod_level=0):
                     [2.]]], dtype=float32)]
 
     """
+
+    def _reset_data_op_insertion_point():
+        default_main_program = paddle.pir.core.default_main_program()
+        ops = default_main_program.global_block().ops
+        if len(ops) == 0:
+            return
+        for op in ops:
+            if op.name() != 'pd_op.data':
+                paddle.pir.set_insertion_point(op)
+                return
+
     helper = LayerHelper('data', **locals())
     check_type(name, 'name', (bytes, str), 'data')
     check_type(shape, 'shape', (list, tuple), 'data')
@@ -110,9 +132,16 @@ def data(name, shape, dtype=None, lod_level=0):
     if dtype is None:
         dtype = paddle.get_default_dtype()
 
-    if paddle.ir.core._use_new_ir_api():
-        ir_dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
-        return paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
+    if in_pir_mode():
+        ir_dtype = dtype
+        if not isinstance(ir_dtype, DataType):
+            ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+        prev_insertion_point = get_current_insertion_point()
+        _reset_data_op_insertion_point()
+        out = paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
+        out.lod_level = lod_level
+        set_insertion_point(prev_insertion_point)
+        return out
 
     out = helper.create_global_variable(
         name=name,
@@ -125,7 +154,7 @@ def data(name, shape, dtype=None, lod_level=0):
         need_check_feed=True,
     )
 
-    is_pir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
+    is_pir_mode = os.environ.get("FLAGS_enable_pir_in_executor", None)
     if evaluate_flag(is_pir_mode):
         helper = LayerHelper('data', **locals())
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -162,6 +191,7 @@ class InputSpec:
             uint8. Default: float32.
         name (str): The name/alias of the variable, see :ref:`api_guide_Name`
             for more details.
+        stop_gradient (bool, optional): A boolean that mentions whether gradient should flow. Default is False, means don't stop calculate gradients.
 
     Examples:
         .. code-block:: python
@@ -182,10 +212,11 @@ class InputSpec:
     def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
-        # convert dtype into united represention
+        # convert dtype into united representation
         if dtype is not None:
-            if not isinstance(dtype, core.VarDesc.VarType):
+            if isinstance(dtype, (np.dtype, str)):
                 dtype = convert_np_dtype_to_dtype_(dtype)
+
         self.dtype = dtype
         self.name = name
         self.stop_gradient = stop_gradient
@@ -396,12 +427,8 @@ def setitem(x, index, value):
        (3) a[1,:, 3] = v -> setitem(a, (1, slice(None,None,None),3), v)
        (4) a[1, ..., 2]=v -> setitem(a, (1, ..., 2), v)
 
-    3. You can always use TUPLE as index input， even there is only one index.
+    3. You can always use TUPLE as index input, even there is only one index.
        (1) a[Tensor([10,10])]=v -> setitem(a, (Tensor([10,10]),), v)
        (2) a[1] = v -> setitem(a, (1,), v)
     """
-    if core.is_compiled_with_xpu():
-        # (NOTE): Currently, there is no index_put_xpu kernel.
-        return _setitem_impl_(x, index, value)
-    else:
-        return _setitem_static(x, index, value)
+    return _setitem_static(x, index, value)

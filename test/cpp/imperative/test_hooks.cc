@@ -19,12 +19,12 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
@@ -32,11 +32,7 @@ PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_with_flatten, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_with_flatten_grad, CPU, ALL_LAYOUT);
 
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
-namespace memory = paddle::memory;
-
-PHI_DECLARE_bool(sort_sum_gradient);
+COMMON_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {
@@ -51,7 +47,7 @@ std::shared_ptr<imperative::VariableWrapper> DoubleHook(
   out_var->SetType(var->Type());
   out_var->SetDataType(var->DataType());
   out_var->SetForwardDataType(var->ForwardDataType());
-  out_var->InnerSetOverridedStopGradient(var->InnerOverridedStopGradient());
+  out_var->InnerSetOverriddenStopGradient(var->InnerOverriddenStopGradient());
 
   // 2. get input and output var's tensor
   auto* out_tensor = out_var->MutableVar()->GetMutable<phi::DenseTensor>();
@@ -74,8 +70,8 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   std::shared_ptr<VarBase> x(new VarBase(true, "x"));
   std::shared_ptr<VarBase> y(new VarBase(true, "y"));
   std::shared_ptr<VarBase> out(new VarBase(true, "out"));
-  x->SetOverridedStopGradient(false);
-  y->SetOverridedStopGradient(false);
+  x->SetOverriddenStopGradient(false);
+  y->SetOverriddenStopGradient(false);
 
   platform::CPUPlace place;
   std::vector<float> src_data(10, 2.0);
@@ -85,7 +81,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   auto* x_tensor = x->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* y_tensor = y->MutableVar()->GetMutable<phi::DenseTensor>();
 
-  x_tensor->Resize(phi::make_ddim(x_dims));
+  x_tensor->Resize(common::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_x,
@@ -93,7 +89,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
                src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(phi::make_ddim(y_dims));
+  y_tensor->Resize(common::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_y,
@@ -161,9 +157,9 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   std::shared_ptr<VarBase> out_xy(new VarBase(true, "out_xy"));
   std::shared_ptr<VarBase> out_xz(new VarBase(true, "out_xz"));
   std::shared_ptr<VarBase> out(new VarBase(true, "out"));
-  x->SetOverridedStopGradient(false);
-  y->SetOverridedStopGradient(false);
-  z->SetOverridedStopGradient(false);
+  x->SetOverriddenStopGradient(false);
+  y->SetOverriddenStopGradient(false);
+  z->SetOverriddenStopGradient(false);
 
   platform::CPUPlace place;
   std::vector<float> src_data(10, 2.0);
@@ -175,7 +171,7 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   auto* y_tensor = y->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* z_tensor = z->MutableVar()->GetMutable<phi::DenseTensor>();
 
-  x_tensor->Resize(phi::make_ddim(x_dims));
+  x_tensor->Resize(common::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_x,
@@ -183,7 +179,7 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
                src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(phi::make_ddim(y_dims));
+  y_tensor->Resize(common::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_y,
@@ -191,7 +187,7 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
                src_data.data(),
                sizeof(float) * src_data.size());
 
-  z_tensor->Resize(phi::make_ddim(z_dims));
+  z_tensor->Resize(common::make_ddim(z_dims));
   auto* mutable_z = z_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_z,

@@ -13,21 +13,39 @@
 # limitations under the License.
 
 import functools
+import inspect
 import os
+import pathlib
 import random
 import struct
 import sys
 import unittest
 import warnings
 from collections import defaultdict
+from contextlib import contextmanager
 from copy import copy
 
 import numpy as np
+from auto_parallel_op_test import (
+    dump_test_info,
+    gen_auto_parallel_test_file,
+    get_subprocess_command,
+    get_subprocess_runtime_envs,
+    get_test_info_and_generated_test_path,
+    is_ban_auto_parallel_test,
+    run_subprocess,
+)
 from op import Operator
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 
-sys.path.append("..")
+# Add test/legacy and test to sys.path
+legacy_test_dir = pathlib.Path(__file__).parent  # test/legacy_test
+test_dir = legacy_test_dir.parent  # test
+sys.path.append(str(legacy_test_dir.absolute()))
+sys.path.append(str(test_dir.absolute()))
+
+from utils import pir_executor_guard, static_guard
 from white_list import (
     check_shape_white_list,
     compile_vs_runtime_white_list,
@@ -52,8 +70,6 @@ from paddle.base.framework import (
     set_flags,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 
 @signature_safe_contextmanager
@@ -94,9 +110,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
                         shape, dtype = spec
                     else:
                         raise ValueError(
-                            "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
-                                index
-                            )
+                            f"Value of in_specs[{index}] should contains two elements: [shape, dtype]"
                         )
                     input_t.append(
                         paddle.static.data(
@@ -152,19 +166,19 @@ def get_numeric_gradient(
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
-    if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
+    if tensor_to_check_dtype == paddle.float32:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == core.VarDesc.VarType.FP64:
+    elif tensor_to_check_dtype == paddle.float64:
         tensor_to_check_dtype = np.float64
-    elif tensor_to_check_dtype == core.VarDesc.VarType.FP16:
+    elif tensor_to_check_dtype == paddle.float16:
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
-    elif tensor_to_check_dtype == core.VarDesc.VarType.BF16:
+    elif tensor_to_check_dtype == paddle.bfloat16:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX64:
+    elif tensor_to_check_dtype == paddle.complex64:
         tensor_to_check_dtype = np.complex64
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX128:
+    elif tensor_to_check_dtype == paddle.complex128:
         tensor_to_check_dtype = np.complex128
     else:
         raise ValueError(
@@ -182,7 +196,7 @@ def get_numeric_gradient(
             # numpy.dtype does not have bfloat16, thus we use numpy.uint16 to
             # store bfloat16 data, and need to be converted to float to check
             # the floating precision.
-            if tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+            if tensor_to_check._dtype() == paddle.bfloat16:
                 output_numpy = convert_uint16_to_float(output_numpy)
             sum.append(output_numpy.astype(tensor_to_check_dtype).mean())
         return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
@@ -194,7 +208,7 @@ def get_numeric_gradient(
             numpy_tensor = np.array(tensor).astype(np.float16)
             numpy_tensor = numpy_tensor.flatten()
             return numpy_tensor[i]
-        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+        elif tensor_to_check._dtype() == paddle.bfloat16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             numpy_tensor = numpy_tensor.flatten()
             return struct.unpack(
@@ -222,7 +236,7 @@ def get_numeric_gradient(
             numpy_tensor[i] = e
             numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
-        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+        elif tensor_to_check._dtype() == paddle.bfloat16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             shape = numpy_tensor.shape
             numpy_tensor = numpy_tensor.flatten()
@@ -377,6 +391,32 @@ def convert_uint16_to_float(in_list):
     return np.reshape(out, in_list.shape)
 
 
+@contextmanager
+def auto_parallel_test_guard(test_info_path, generated_test_file_path):
+    test_info_file, generated_test_file = None, None
+    if os.path.exists(test_info_path):
+        raise OSError(
+            f"{test_info_path} which stores test info should not exist. Please delete it firstly."
+        )
+    if os.path.exists(generated_test_file_path):
+        raise OSError(
+            f"{generated_test_file_path} which stores test code should not exist. Please delete it firstly."
+        )
+    test_info_file = open(test_info_path, "wb")
+    generated_test_file = open(generated_test_file_path, "wb")
+    try:
+        yield
+    finally:
+        if test_info_file is not None:
+            test_info_file.close()
+        if generated_test_file is not None:
+            generated_test_file.close()
+        if os.path.exists(test_info_path):
+            os.remove(test_info_path)
+        if os.path.exists(generated_test_file_path):
+            os.remove(generated_test_file_path)
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -391,6 +431,7 @@ class OpTest(unittest.TestCase):
         cls.check_prim = False
         cls.check_prim_pir = False
         cls._check_cinn = False
+        cls.check_pir_onednn = False
 
         np.random.seed(123)
         random.seed(124)
@@ -634,6 +675,8 @@ class OpTest(unittest.TestCase):
         input_dtype_set = set()
         infer_dtype(inputs, input_dtype_set)
         dtype_list = [
+            np.dtype(np.complex128),
+            np.dtype(np.complex64),
             np.dtype(np.float64),
             np.dtype(np.float32),
             np.dtype(np.float16),
@@ -852,11 +895,11 @@ class OpTest(unittest.TestCase):
         if isinstance(value, tuple):
             data = value[0]
             lod = value[1]
-            v = base.dygraph.base.to_variable(value=data)
+            v = paddle.to_tensor(data)
             v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
-            return base.dygraph.base.to_variable(value)
+            return paddle.to_tensor(value)
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
         """Get LoD input data whose batch size is 1.
@@ -1151,6 +1194,7 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_inputs,
                 attrs_outputs,
                 kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
             """
@@ -1231,7 +1275,6 @@ class OpTest(unittest.TestCase):
                 for attrs_name in self.attrs:
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
-
             kernel_sig = OpTestUtils._get_kernel_signature(
                 self.op_type,
                 dygraph_tensor_inputs,
@@ -1289,9 +1332,18 @@ class OpTest(unittest.TestCase):
                 input_dict.update({name: x})
         return static_inputs, attrs_outputs, input_dict, feed
 
-    def _calc_new_ir_output(
-        self, place, no_check_set=None, inps=None, oups=None
-    ):
+    def _need_fetch(self, sig_name):
+        if sig_name in self.outputs:
+            return True
+        for _, value in self.outputs.items():
+            if not isinstance(value, (tuple, list)):
+                continue
+            for var_name, _ in value:
+                if sig_name == var_name:
+                    return True
+        return False
+
+    def _calc_pir_output(self, place, no_check_set=None, inps=None, oups=None):
         """set egr_inps and egr_oups = None if you want to create it by yourself."""
 
         def construct_output_dict_by_kernel_sig(ret_tuple, output_sig):
@@ -1327,8 +1379,11 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
+                if hasattr(self, "python_out_sig"):
+                    outputs_sig = self.python_out_sig
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
@@ -1336,24 +1391,31 @@ class OpTest(unittest.TestCase):
                 fetch_list = getattr(self, "fetch_list", [])
                 # if the fetch_list is customized by user, we use it directly.
                 # if not, fill the fetch_list by the user configured outputs in test.
-
+                # filter ret_tuple
+                ret_to_check = []
                 if len(fetch_list) == 0:
                     if isinstance(ret_tuple, (tuple, list)):
-                        for var in ret_tuple:
+                        assert len(ret_tuple) == len(outputs_sig)
+                        for var, sig_name in zip(ret_tuple, outputs_sig):
                             if no_check_set is not None and var in no_check_set:
                                 continue
+                            if not self._need_fetch(sig_name):
+                                continue
                             if isinstance(var, list):
+                                ret_to_check.append(var)
                                 for v in var:
                                     fetch_list.append(v)
                             else:
+                                ret_to_check.append(var)
                                 fetch_list.append(var)
-                    elif isinstance(
-                        ret_tuple, paddle.base.libpaddle.ir.OpResult
-                    ):
+                    elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
                         fetch_list.append(ret_tuple)
+                        ret_to_check = ret_tuple
+                    elif ret_tuple is None:
+                        pass
                     else:
                         raise ValueError(
-                            "output of python api should be OpResult or list of OpResult or tuple of OpResult"
+                            "output of python api should be Value or list of Value or tuple of Value"
                         )
 
                 # executor run
@@ -1361,20 +1423,33 @@ class OpTest(unittest.TestCase):
                 outs = executor.run(
                     ir_program, feed=feed, fetch_list=[fetch_list]
                 )
+                outputs_sig = [
+                    sig_name
+                    for sig_name in outputs_sig
+                    if self._need_fetch(sig_name)
+                ]
+
+                if paddle.utils.is_sequence(
+                    ret_to_check
+                ) and paddle.utils.is_sequence(outs):
+                    outs = paddle.utils.pack_sequence_as(ret_to_check, outs)
 
                 result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():
-                        for i in range(len(self.python_out_sig_sub_name[key])):
-                            result[key][0][
-                                i
-                            ].name = self.python_out_sig_sub_name[key][i]
-            return result
+                        result[key][0] = {
+                            a: [b]
+                            for a, b in zip(
+                                self.python_out_sig_sub_name[key],
+                                result[key][0],
+                            )
+                        }
+                return result
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
-        if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
+        if os.getenv("FLAGS_PIR_OPTEST") is None:
             return
-        if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
+        if os.getenv("FLAGS_PIR_OPTEST_WHITE_LIST") is None:
             return
         if self.check_prim or self.check_prim_pir:
             return
@@ -1382,15 +1457,15 @@ class OpTest(unittest.TestCase):
             return
         stored_flag = get_flags(
             [
-                'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                'FLAGS_enable_pir_in_executor',
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
-                    "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_enable_pir_in_executor": True,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             new_scope = paddle.static.Scope()
@@ -1411,13 +1486,19 @@ class OpTest(unittest.TestCase):
             )
             assert len(outs) == len(
                 ir_outs
-            ), "Fetch result should have same length when executed in new ir"
+            ), "Fetch result should have same length when executed in pir"
 
             check_method = np.testing.assert_array_equal
-            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
-                check_method = lambda x, y, z: np.testing.assert_allclose(
-                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
-                )
+            if os.getenv("FLAGS_PIR_OPTEST_RELAX_CHECK", None) == "True":
+
+                def relaxed_check(x, y, err_msg=""):
+                    np.testing.assert_allclose(
+                        x, y, err_msg=err_msg, atol=1e-6, rtol=1e-6
+                    )
+
+                check_method = relaxed_check
+            if os.getenv("FLAGS_PIR_NO_CHECK", None) == "True":
+                check_method = lambda x, y, err_msg: None
 
             for i in range(len(outs)):
                 check_method(
@@ -1448,7 +1529,7 @@ class OpTest(unittest.TestCase):
         for_inplace_test=None,
         check_cinn=False,
     ):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1624,9 +1705,7 @@ class OpTest(unittest.TestCase):
             if fwd_var_name is None:
                 fwd_var_name = arg
             fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
-            assert fwd_var is not None, "{} cannot be found".format(
-                fwd_var_name
-            )
+            assert fwd_var is not None, f"{fwd_var_name} cannot be found"
             grad_var = grad_block.create_var(
                 name=arg,
                 dtype=fwd_var.dtype,
@@ -1794,7 +1873,7 @@ class OpTest(unittest.TestCase):
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
-        with paddle.base.framework._static_guard():
+        with static_guard():
             (
                 fwd_outs,
                 fwd_fetch_list,
@@ -1885,7 +1964,7 @@ class OpTest(unittest.TestCase):
         if getattr(self, "no_need_check_inplace", False):
             return
 
-        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+        if os.getenv("FLAGS_enable_pir_in_executor"):
             return
 
         has_infer_inplace = base.core.has_infer_inplace(self.op_type)
@@ -1948,10 +2027,14 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
-        check_new_ir=False,
+        check_pir=False,
+        check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
+        if not self.is_mkldnn_op():
+            set_flags({"FLAGS_use_mkldnn": False})
 
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2088,14 +2171,16 @@ class OpTest(unittest.TestCase):
                     expect, expect_np = self.find_expect_value(name)
                 else:
                     expect_np = (
-                        expect[0] if isinstance(expect, tuple) else expect
+                        expect[0]
+                        if isinstance(expect, (tuple, list))
+                        else expect
                     )
                 actual_np, expect_np = self.convert_uint16_to_float_ifneed(
                     actual_np, expect_np
                 )
                 # modify there for fp32 check
                 self._compare_numpy(name, actual_np, expect_np)
-                if isinstance(expect, tuple):
+                if isinstance(expect, (tuple, list)):
                     self._compare_list(name, actual, expect)
 
             def compare_outputs_with_expects(self):
@@ -2305,25 +2390,25 @@ class OpTest(unittest.TestCase):
                     return True
                 return super()._is_skip_name(name)
 
-        class NewIRChecker(Checker):
+        class PirChecker(Checker):
             def init(self):
-                self.checker_name = "new ir checker"
+                self.checker_name = "pir checker"
 
             def calculate_output(self):
                 self.is_python_api_test = True
-                new_ir_outs = self.op_test._calc_new_ir_output(place)
-                if new_ir_outs is None:
+                pir_outs = self.op_test._calc_pir_output(place)
+                if pir_outs is None:
                     self.is_python_api_test = False
                     # missing KernelSignature, fall back to eager middle output.
-                    new_ir_outs = self.op_test._calc_dygraph_output(
+                    pir_outs = self.op_test._calc_dygraph_output(
                         place, no_check_set=no_check_set
                     )
-                self.outputs = new_ir_outs
+                self.outputs = pir_outs
 
                 if self.op_test.is_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     self.is_python_api_test = True
-                    self.ref_outputs = self.op_test._calc_new_ir_output(place)
+                    self.ref_outputs = self.op_test._calc_pir_output(place)
                     if self.ref_outputs is None:
                         self.is_python_api_test = False
                         # missing KernelSignature, fall back to eager middle output.
@@ -2371,12 +2456,24 @@ class OpTest(unittest.TestCase):
                         expect_np = convert_uint16_to_float(expect_np)
                 return actual_np, expect_np
 
-            def find_imperative_actual(target_name, new_ir_outs, place):
-                for name in new_ir_outs:
+            def find_pir_actual(self, target_name, pir_outs, place):
+                for name in pir_outs:
                     if name == target_name:
-                        return new_ir_outs[name][0]
+                        return pir_outs[name][0]
 
-                    var_list = new_ir_outs[name]
+                    sub_dict = pir_outs[name][0]
+                    if isinstance(sub_dict, dict):
+                        for key, value in sub_dict.items():
+                            if key == target_name:
+                                return value[0]
+
+                raise AssertionError("No pir output named " + target_name)
+
+            def find_pir_expect(self, target_name, dygraph_outs, place):
+                for name in dygraph_outs:
+                    if name == target_name:
+                        return dygraph_outs[name][0]
+                    var_list = dygraph_outs[name]
                     for i, var in enumerate(var_list):
                         if isinstance(var, list):
                             for tensor in var:
@@ -2386,40 +2483,24 @@ class OpTest(unittest.TestCase):
                             isinstance(var, paddle.Tensor)
                             and var.name == target_name
                         ):
-                            return new_ir_outs[name][i]
-                    self.assertTrue(
-                        False,
-                        f"Found failed {new_ir_outs.keys()} {target_name}",
-                    )
-
-            def find_imperative_expect(target_name, new_ir_outs, place):
-                for name in new_ir_outs:
-                    if name == target_name:
-                        return new_ir_outs[name][0]
-                    var_list = new_ir_outs[name]
-                    for i, var in enumerate(var_list):
-                        if var.name == target_name:
-                            return new_ir_outs[name][i]
-                self.assertTrue(
-                    False,
-                    f"Found failed {new_ir_outs.keys()} {target_name}",
-                )
+                            return dygraph_outs[name][i]
+                raise AssertionError("No pir ref_output named " + target_name)
 
             def find_actual_value(self, target_name):
-                with paddle.ir.core.program_guard(
-                    paddle.ir.core.default_main_program()
+                with paddle.pir.core.program_guard(
+                    paddle.pir.core.default_main_program()
                 ):
-                    actual = find_imperative_actual(
+                    actual = self.find_pir_actual(
                         target_name, self.outputs, place
                     )
                     actual_t = np.array(actual)
                     return actual, actual_t
 
             def find_expect_value(self, target_name):
-                with paddle.ir.core.program_guard(
-                    paddle.ir.core.default_main_program()
+                with paddle.pir.core.program_guard(
+                    paddle.pir.core.default_main_program()
                 ):
-                    expect = find_imperative_expect(
+                    expect = self.find_pir_expect(
                         target_name, self.ref_outputs, place
                     )
                     expect_t = np.array(expect)
@@ -2427,7 +2508,7 @@ class OpTest(unittest.TestCase):
 
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
-                with paddle.ir.core.program_guard(place=place):
+                with paddle.pir.core.program_guard(place=place):
                     self.op_test.assertListEqual(
                         actual.value()
                         .get_tensor()
@@ -2504,7 +2585,7 @@ class OpTest(unittest.TestCase):
             self.__class__.op_type = self.op_type
 
         if check_prim_pir:
-            with paddle.new_ir_utils.IrGuard():
+            with paddle.pir_utils.IrGuard():
                 prim_checker = PrimForwardChecker(self, place)
                 prim_checker.check()
                 # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
@@ -2513,22 +2594,75 @@ class OpTest(unittest.TestCase):
         if only_check_prim:
             return
 
+        if check_auto_parallel:
+            if is_ban_auto_parallel_test(place):
+                pass
+            else:
+                (
+                    forward_test_info_path,
+                    generated_forward_test_path,
+                ) = get_test_info_and_generated_test_path(
+                    self.__class__.__name__, self.op_type, backward=False
+                )
+                with auto_parallel_test_guard(
+                    forward_test_info_path, generated_forward_test_path
+                ):
+                    dump_test_info(
+                        self, place, forward_test_info_path, backward=False
+                    )
+                    python_api_info = {
+                        "api_name": self.python_api.__name__,
+                        "api_module": inspect.getmodule(
+                            self.python_api
+                        ).__name__
+                        if inspect.getmodule(
+                            self.python_api
+                        ).__name__.startswith("paddle")
+                        else pathlib.Path(
+                            inspect.getmodule(self.python_api).__file__
+                        ).stem,
+                    }
+                    # code gen for auto parallel forward test
+                    gen_auto_parallel_test_file(
+                        check_grad=False,
+                        test_info_path=forward_test_info_path,
+                        test_file_path=generated_forward_test_path,
+                        python_api_info=python_api_info,
+                    )
+                    runtime_envs = get_subprocess_runtime_envs(place)
+                    start_command = get_subprocess_command(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"],
+                        generated_forward_test_path,
+                        log_dir=self.log_dir
+                        if hasattr(self, "log_dir")
+                        else None,
+                    )
+                    run_subprocess(start_command, runtime_envs, timeout=120)
+
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
+
+        if check_pir_onednn and isinstance(
+            place, paddle.base.libpaddle.CPUPlace
+        ):
+            with pir_executor_guard():
+                pir_onednn_static_checker = StaticChecker(self, self.outputs)
+                pir_onednn_static_checker.check()
+
         if check_dygraph:
             dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
             dygraph_dygraph_outs = dygraph_checker.outputs
 
-        if check_new_ir:
+        if check_pir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                with paddle.new_ir_utils.IrGuard():
-                    new_ir_checker = NewIRChecker(self, self.outputs)
-                    new_ir_checker.check()
+                with paddle.pir_utils.IrGuard():
+                    pir_checker = PirChecker(self, self.outputs)
+                    pir_checker.check()
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -2640,7 +2774,9 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_cinn=False,
         only_check_prim=False,
-        check_new_ir=False,
+        check_pir=False,
+        check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2666,7 +2802,9 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
-                check_new_ir=check_new_ir,
+                check_pir=check_pir,
+                check_auto_parallel=check_auto_parallel,
+                check_pir_onednn=check_pir_onednn,
             )
             if not res and only_check_prim:
                 continue
@@ -2678,11 +2816,13 @@ class OpTest(unittest.TestCase):
                 self.op_type
                 not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST
             ):
-                if os.getenv("FLAGS_enable_new_ir_in_executor"):
+                if os.getenv("FLAGS_enable_pir_in_executor"):
                     return
                 self.check_compile_vs_runtime(fetch_list, outs)
 
-    def check_output_customized(self, checker, custom_place=None):
+    def check_output_customized(
+        self, checker, custom_place=None, check_pir=False
+    ):
         self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
@@ -2692,12 +2832,26 @@ class OpTest(unittest.TestCase):
             outs = [np.array(out) for out in outs]
             outs.sort(key=len)
             checker(outs)
+            if check_pir:
+                with paddle.pir_utils.IrGuard():
+                    outs_p = self._calc_pir_output(place)
+                    outs_p = [outs_p[out] for out in outs_p]
+                    outs_p.sort(key=len)
+                    checker(outs_p[0])
 
-    def check_output_with_place_customized(self, checker, place):
+    def check_output_with_place_customized(
+        self, checker, place, check_pir=False
+    ):
         outs = self.calc_output(place)
         outs = [np.array(out) for out in outs]
         outs.sort(key=len)
         checker(outs)
+        if check_pir:
+            with paddle.pir_utils.IrGuard():
+                outs_p = self._calc_pir_output(place)
+                outs_p = [outs_p[out][0] for out in outs_p]
+                outs_p.sort(key=len)
+                checker(outs_p)
 
     def _assert_is_close(
         self,
@@ -2834,7 +2988,9 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
         check_cinn=False,
-        check_new_ir=False,
+        check_pir=False,
+        check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2858,141 +3014,26 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 atol=atol,
                 check_cinn=check_cinn,
-                check_new_ir=check_new_ir,
+                check_pir=check_pir,
+                check_auto_parallel=check_auto_parallel,
+                check_pir_onednn=check_pir_onednn,
             )
 
-    def check_grad_with_place(
+    def check_grad_with_place_for_static(
         self,
-        place,
+        user_defined_grads,
         inputs_to_check,
+        place,
         output_names,
-        no_grad_set=None,
-        numeric_grad_delta=0.005,
-        in_place=False,
-        max_relative_error=0.005,
-        user_defined_grads=None,
-        user_defined_grad_outputs=None,
-        check_dygraph=True,
-        check_prim=False,
-        check_prim_pir=False,
-        only_check_prim=False,
-        numeric_place=None,
-        atol=1e-5,
-        check_cinn=False,
-        check_new_ir=False,
+        no_grad_set,
+        user_defined_grad_outputs,
+        numeric_place,
+        numeric_grad_delta,
+        in_place,
+        check_cinn,
+        max_relative_error,
+        atol,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device:
-            check_dygraph = False
-
-        core._set_prim_all_enabled(False)
-        core.set_prim_eager_enabled(False)
-        if check_prim:
-            self._check_grad_helper()
-            prim_grad_checker = PrimGradChecker(
-                self,
-                place,
-                inputs_to_check,
-                output_names,
-                no_grad_set,
-                user_defined_grad_outputs,
-            )
-            prim_grad_checker.check()
-            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            self.__class__.check_prim = True
-
-        if check_prim_pir:
-            with paddle.new_ir_utils.IrGuard():
-                self._check_grad_helper()
-                prim_grad_checker = PrimGradChecker(
-                    self,
-                    place,
-                    inputs_to_check,
-                    output_names,
-                    no_grad_set,
-                    user_defined_grad_outputs,
-                )
-                prim_grad_checker.check()
-                # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-                self.__class__.check_prim_pir = True
-
-        if only_check_prim:
-            return
-        self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else {}
-        op_outputs = self.outputs if hasattr(self, "outputs") else {}
-        op_attrs = self.attrs if hasattr(self, "attrs") else {}
-
-        self._check_grad_helper()
-        if self.is_bfloat16_op():
-            if self.is_mkldnn_op():
-                check_dygraph = False
-            atol = 1e-2 if atol < 1e-2 else atol
-
-        if self.is_float16_op():
-            atol = 1e-3 if atol < 1e-3 else atol
-
-        if (
-            self.dtype == np.float64
-            and self.op_type
-            not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-        ):
-            numeric_grad_delta = 1e-5
-            max_relative_error = 1e-7
-
-        cache_list = None
-        if hasattr(self, "cache_name_list"):
-            cache_list = self.cache_name_list
-
-        # oneDNN numeric gradient should use CPU kernel
-        use_onednn = False
-        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
-            op_attrs["use_mkldnn"] = False
-            use_onednn = True
-        self.op = create_op(
-            self.scope,
-            self.op_type,
-            op_inputs,
-            op_outputs,
-            op_attrs,
-            cache_list=cache_list,
-        )
-
-        if use_onednn:
-            op_attrs["use_mkldnn"] = True
-
-        if no_grad_set is None:
-            no_grad_set = set()
-        else:
-            if (
-                (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST)
-                and (
-                    self.op_type not in no_grad_set_white_list.NOT_CHECK_OP_LIST
-                )
-                and (not self.is_bfloat16_op())
-            ):
-                raise AssertionError(
-                    "no_grad_set must be None, op_type is "
-                    + self.op_type
-                    + " Op."
-                )
-
-        for input_to_check in inputs_to_check:
-            set_input(self.scope, self.op, self.inputs, place)
-            tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
-            tensor_size = functools.reduce(
-                lambda a, b: a * b, tensor_to_check.shape(), 1
-            )
-            tensor_ndim = len(tensor_to_check.shape())
-            # for 0D Tensor, it's additional case for OP, so not raise error
-            if tensor_ndim > 0 and tensor_size < 100:
-                self.__class__.input_shape_is_large = False
-
-        if not type(output_names) is list:
-            output_names = [output_names]
-
-        if numeric_place is None:
-            numeric_place = place
-
         if user_defined_grads is None and self.is_compared_with_fp32():
             self.enable_cal_ref_output()
             numeric_grads = self._get_gradient(
@@ -3062,6 +3103,237 @@ class OpTest(unittest.TestCase):
             atol=atol,
         )
 
+        return numeric_grads
+
+    def check_grad_with_place(
+        self,
+        place,
+        inputs_to_check,
+        output_names,
+        no_grad_set=None,
+        numeric_grad_delta=0.005,
+        in_place=False,
+        max_relative_error=0.005,
+        user_defined_grads=None,
+        user_defined_grad_outputs=None,
+        check_dygraph=True,
+        check_prim=False,
+        check_prim_pir=False,
+        only_check_prim=False,
+        numeric_place=None,
+        atol=1e-5,
+        check_cinn=False,
+        check_pir=False,
+        check_auto_parallel=False,
+        check_pir_onednn=False,
+    ):
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
+            check_dygraph = False
+
+        if not self.is_mkldnn_op():
+            set_flags({"FLAGS_use_mkldnn": False})
+
+        core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
+        if check_prim:
+            self._check_grad_helper()
+            prim_grad_checker = PrimGradChecker(
+                self,
+                place,
+                inputs_to_check,
+                output_names,
+                no_grad_set,
+                user_defined_grad_outputs,
+            )
+            prim_grad_checker.check()
+            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+            self.__class__.check_prim = True
+
+        if check_prim_pir:
+            with paddle.pir_utils.IrGuard():
+                self._check_grad_helper()
+                prim_grad_checker = PrimGradChecker(
+                    self,
+                    place,
+                    inputs_to_check,
+                    output_names,
+                    no_grad_set,
+                    user_defined_grad_outputs,
+                )
+                prim_grad_checker.check()
+                # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+                self.__class__.check_prim_pir = True
+
+        if only_check_prim:
+            return
+
+        if check_auto_parallel:
+            if is_ban_auto_parallel_test(place):
+                pass
+            else:
+                (
+                    grad_test_info_path,
+                    generated_grad_test_path,
+                ) = get_test_info_and_generated_test_path(
+                    self.__class__.__name__, self.op_type, backward=True
+                )
+                with auto_parallel_test_guard(
+                    grad_test_info_path, generated_grad_test_path
+                ):
+                    backward_extra_test_info = {}
+                    backward_extra_test_info[
+                        "inputs_to_check"
+                    ] = inputs_to_check
+                    backward_extra_test_info["output_names"] = output_names
+                    backward_extra_test_info["no_grad_set"] = no_grad_set
+                    backward_extra_test_info[
+                        "user_defined_grad_outputs"
+                    ] = user_defined_grad_outputs
+                    dump_test_info(
+                        self,
+                        place,
+                        grad_test_info_path,
+                        backward=True,
+                        backward_extra_test_info=backward_extra_test_info,
+                    )
+                    python_api_info = {
+                        "api_name": self.python_api.__name__,
+                        "api_module": inspect.getmodule(
+                            self.python_api
+                        ).__name__
+                        if inspect.getmodule(
+                            self.python_api
+                        ).__name__.startswith("paddle")
+                        else pathlib.Path(
+                            inspect.getmodule(self.python_api).__file__
+                        ).stem,
+                    }
+                    # code gen for auto parallel grad test
+                    gen_auto_parallel_test_file(
+                        check_grad=False,
+                        test_info_path=grad_test_info_path,
+                        test_file_path=generated_grad_test_path,
+                        python_api_info=python_api_info,
+                    )
+                    runtime_envs = get_subprocess_runtime_envs(place)
+                    start_command = get_subprocess_command(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"],
+                        generated_grad_test_path,
+                        log_dir=self.log_dir
+                        if hasattr(self, "log_dir")
+                        else None,
+                    )
+                    run_subprocess(start_command, runtime_envs, timeout=120)
+
+        self.scope = core.Scope()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
+        self._check_grad_helper()
+        if self.is_bfloat16_op():
+            if self.is_mkldnn_op():
+                check_dygraph = False
+            atol = 1e-2 if atol < 1e-2 else atol
+
+        if self.is_float16_op():
+            atol = 1e-3 if atol < 1e-3 else atol
+
+        if (
+            self.dtype == np.float64
+            and self.op_type
+            not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+        ):
+            numeric_grad_delta = 1e-5
+            max_relative_error = 1e-7
+
+        cache_list = None
+        if hasattr(self, "cache_name_list"):
+            cache_list = self.cache_name_list
+
+        # oneDNN numeric gradient should use CPU kernel
+        use_onednn = False
+        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
+            op_attrs["use_mkldnn"] = False
+            use_onednn = True
+        self.op = create_op(
+            self.scope,
+            self.op_type,
+            op_inputs,
+            op_outputs,
+            op_attrs,
+            cache_list=cache_list,
+        )
+
+        if use_onednn:
+            op_attrs["use_mkldnn"] = True
+
+        if no_grad_set is None:
+            no_grad_set = set()
+        else:
+            if (
+                (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST)
+                and (
+                    self.op_type not in no_grad_set_white_list.NOT_CHECK_OP_LIST
+                )
+                and (not self.is_bfloat16_op())
+            ):
+                raise AssertionError(
+                    "no_grad_set must be None, op_type is "
+                    + self.op_type
+                    + " Op."
+                )
+
+        for input_to_check in inputs_to_check:
+            set_input(self.scope, self.op, self.inputs, place)
+            tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
+            tensor_size = functools.reduce(
+                lambda a, b: a * b, tensor_to_check.shape(), 1
+            )
+            tensor_ndim = len(tensor_to_check.shape())
+            # for 0D Tensor, it's additional case for OP, so not raise error
+            if tensor_ndim > 0 and tensor_size < 100:
+                self.__class__.input_shape_is_large = False
+
+        if type(output_names) is not list:
+            output_names = [output_names]
+
+        if numeric_place is None:
+            numeric_place = place
+
+        numeric_grads = self.check_grad_with_place_for_static(
+            user_defined_grads,
+            inputs_to_check,
+            place,
+            output_names,
+            no_grad_set,
+            user_defined_grad_outputs,
+            numeric_place,
+            numeric_grad_delta,
+            in_place,
+            check_cinn,
+            max_relative_error,
+            atol,
+        )
+
+        if check_pir_onednn and isinstance(
+            place, paddle.base.libpaddle.CPUPlace
+        ):
+            with pir_executor_guard():
+                self.check_grad_with_place_for_static(
+                    user_defined_grads,
+                    inputs_to_check,
+                    place,
+                    output_names,
+                    no_grad_set,
+                    user_defined_grad_outputs,
+                    numeric_place,
+                    numeric_grad_delta,
+                    in_place,
+                    check_cinn,
+                    max_relative_error,
+                    atol,
+                )
+
         if check_dygraph:
             with base.dygraph.base.guard(place):
                 dygraph_dygraph_grad = self._get_dygraph_grad(
@@ -3092,14 +3364,14 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                 )
 
-        # get new ir gradient
-        if check_new_ir:
+        # get pir gradient
+        if check_pir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                with paddle.new_ir_utils.IrGuard():
-                    new_ir_grad = self._get_ir_gradient(
+                with paddle.pir_utils.IrGuard():
+                    pir_grad = self._get_ir_gradient(
                         inputs_to_check,
                         place,
                         output_names,
@@ -3107,7 +3379,7 @@ class OpTest(unittest.TestCase):
                         no_grad_set,
                     )
                 fp32_analytic_grads = []
-                for grad in new_ir_grad:
+                for grad in pir_grad:
                     if grad.dtype == np.uint16:
                         grad = convert_uint16_to_float(grad)
                         max_relative_error = (
@@ -3116,7 +3388,7 @@ class OpTest(unittest.TestCase):
                             else max_relative_error
                         )
                     fp32_analytic_grads.append(grad)
-                new_ir_grad = fp32_analytic_grads
+                pir_grad = fp32_analytic_grads
                 if self.is_float16_op():
                     max_relative_error = (
                         0.01
@@ -3125,7 +3397,7 @@ class OpTest(unittest.TestCase):
                     )
                 self._assert_is_close(
                     numeric_grads,
-                    new_ir_grad,
+                    pir_grad,
                     inputs_to_check,
                     max_relative_error,
                     "Gradient Check On %s" % str(place),
@@ -3202,7 +3474,7 @@ class OpTest(unittest.TestCase):
                 for cast_input in cast_inputs:
                     if isinstance(cast_input, paddle.Tensor):
                         cast_outputs.append(
-                            paddle.cast(cast_input, core.VarDesc.VarType.FP32)
+                            paddle.cast(cast_input, paddle.float32)
                         )
                     else:
                         raise TypeError(
@@ -3298,9 +3570,9 @@ class OpTest(unittest.TestCase):
     def _check_ir_grad_output(
         self, place, program, scope, feed_dict, fetch_list, gradients
     ):
-        if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
+        if os.getenv("FLAGS_PIR_OPTEST") is None:
             return
-        if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
+        if os.getenv("FLAGS_PIR_OPTEST_WHITE_LIST") is None:
             return
         if self.check_prim or self.check_prim_pir:
             return
@@ -3309,15 +3581,15 @@ class OpTest(unittest.TestCase):
 
         stored_flag = get_flags(
             [
-                'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                'FLAGS_enable_pir_in_executor',
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
-                    "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_enable_pir_in_executor": True,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             executor = Executor(place)
@@ -3335,10 +3607,26 @@ class OpTest(unittest.TestCase):
             )
 
             check_method = np.testing.assert_array_equal
-            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
-                check_method = lambda x, y, z: np.testing.assert_allclose(
-                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
-                )
+            if os.getenv("FLAGS_PIR_OPTEST_RELAX_CHECK", None) == "True":
+
+                def relaxed_check_method(x, y, err_msg):
+                    atol = 1e-6
+                    rtol = 1e-6
+                    if x.dtype == np.float16:
+                        atol = 1e-5
+                        rtol = 1e-3
+                    np.testing.assert_allclose(
+                        x, y, err_msg=err_msg, atol=atol, rtol=rtol
+                    )
+
+                check_method = relaxed_check_method
+
+            if os.getenv("FLAGS_PIR_NO_CHECK", None) == "True":
+
+                def no_check_method(x, y, err_msg):
+                    pass
+
+                check_method = no_check_method
 
             for i in range(len(new_gradients)):
                 check_method(
@@ -3369,7 +3657,7 @@ class OpTest(unittest.TestCase):
         parallel=False,
         check_cinn=False,
     ):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             prog = Program()
             scope = core.Scope()
             ir_scope = core.Scope()
@@ -3427,7 +3715,7 @@ class OpTest(unittest.TestCase):
                     tensor = true_var.get_tensor()
                     tensor.set(grad_out_value, place)
                     grad_outputs.append(var)
-                    if os.getenv("FLAGS_NEW_IR_OPTEST") is not None:
+                    if os.getenv("FLAGS_PIR_OPTEST") is not None:
                         ir_true_var = ir_scope.var(var.name)
                         ir_tensor = ir_true_var.get_tensor()
                         ir_tensor.set(grad_out_value, place)
@@ -3485,6 +3773,20 @@ class OpTest(unittest.TestCase):
 
         return res
 
+    def _find_var_in_pir(self, output_vars, target_name):
+        for name in output_vars:
+            if name == target_name:
+                return output_vars[name]
+
+            sub_dict = output_vars[name][0]
+            if isinstance(sub_dict, dict):
+                for key, value in sub_dict.items():
+                    if key == target_name:
+                        return value
+        raise AssertionError(
+            target_name, " not in outputs:", output_vars.keys()
+        )
+
     def _get_ir_gradient(
         self,
         inputs_to_check,
@@ -3526,6 +3828,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
@@ -3557,21 +3860,47 @@ class OpTest(unittest.TestCase):
                 )
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():
-                        for i in range(len(self.python_out_sig_sub_name[key])):
-                            outputs[key][0][
-                                i
-                            ].name = self.python_out_sig_sub_name[key][i]
+                        outputs[key][0] = {
+                            a: [b]
+                            for a, b in zip(
+                                self.python_out_sig_sub_name[key],
+                                outputs[key][0],
+                            )
+                        }
                 fetch_list = getattr(self, "fetch_list", [])
 
                 # cast outputs
                 if self.dtype == np.uint16:
-                    for output in outputs:
-                        outputs[output][0] = paddle.cast(
-                            outputs[output][0],
-                            paddle.base.core.DataType.FLOAT32,
-                        )
+                    cast_inputs = []
+                    for output_name in output_names:
+                        cast_input = self._find_var_in_pir(outputs, output_name)
+                        cast_inputs = cast_inputs + cast_input
+                    cast_outputs = []
+                    for cast_input in cast_inputs:
+                        if isinstance(
+                            cast_input, paddle.base.libpaddle.pir.Value
+                        ):
+                            cast_outputs.append(
+                                paddle.cast(
+                                    cast_input,
+                                    paddle.base.core.DataType.FLOAT32,
+                                )
+                            )
+                        else:
+                            raise TypeError(
+                                "Unsupported test data type %s."
+                                % type(cast_input)
+                            )
 
-                outputs_valid = outputs
+                    outputs = {}
+                    for i in range(len(output_names)):
+                        outputs.update({output_names[i]: [cast_outputs[i]]})
+
+                outputs_valid = {}
+                for output_name in output_names:
+                    outputs_valid[output_name] = self._find_var_in_pir(
+                        outputs, output_name
+                    )
                 loss_inputs = []
                 for input_name in inputs_to_check:
                     loss_inputs.append(inputs_dict[input_name])
@@ -3606,9 +3935,8 @@ class OpTest(unittest.TestCase):
                         grad_outputs=grad_outputs,
                     )
                 fetch_list = list(grad_inputs)
-
                 # executor run
-                executor = paddle.static.Executor()
+                executor = paddle.static.Executor(place)
                 outs = executor.run(
                     ir_program,
                     feed=feed,

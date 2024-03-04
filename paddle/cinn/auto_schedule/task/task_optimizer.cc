@@ -49,12 +49,12 @@ using cinn::hlir::op::ExternalApiRegistry;
 
 // *** forward declarations of auxiliary functions to be used in this file only
 // *** update a scheduled function with several post-processors
-ir::LoweredFunc FuncWithUpdatedBody(const common::Target& target,
+ir::LoweredFunc FuncWithUpdatedBody(const cinn::common::Target& target,
                                     const ir::LoweredFunc& old_func,
                                     ir::Expr& body);  // NOLINT
 // check whether a scheduled lowered function is valid
 bool PruneInvalid(const ir::LoweredFunc& lowered_func,
-                  const common::Target& target);
+                  const cinn::common::Target& target);
 // exclude some special tasks
 bool IsForbiddenToTune(const TuneTask* task);
 // tell whether the task has been wrapped by custom_call in
@@ -247,7 +247,7 @@ TaskOptimizer::Result TaskOptimizer::OptimizeByEvolution(
   auto& optimized_funcs = result.functions;
   auto& best_cost = result.cost;
   // use initial lowered function as default result
-  optimized_funcs = optim::IRCopy(task_->lowered_funcs);
+  optimized_funcs = ir::ir_utils::IRCopy(task_->lowered_funcs);
   if (options.num_measure_trials ==
       0) {  // no need to measure and simply return the best searched
     std::vector<MeasureInput> measure_candidates;
@@ -347,7 +347,7 @@ std::vector<SearchState> TaskOptimizer::SearchOneRound(
     CHECK_EQ(best_exprs.size(), task_->lowered_funcs.size())
         << "RuntimeError: Expr size is not equal to LoweredFunc size in "
            "TaskOptimizer";
-    auto init_funcs = optim::IRCopy(task_->lowered_funcs);
+    auto init_funcs = ir::ir_utils::IRCopy(task_->lowered_funcs);
     std::vector<ir::LoweredFunc> valid_funcs;
     for (size_t j = 0; j < best_exprs.size(); ++j) {
       auto updated_f =
@@ -441,11 +441,11 @@ bool IsGPUMemoryUsageExceedLimit(const ir::LoweredFunc& lowered_func,
 }
 
 bool PruneInvalid(const ir::LoweredFunc& lowered_func,
-                  const common::Target& target) {
+                  const cinn::common::Target& target) {
   static const size_t kGPUSharedMemoryLimitBytes = GetGPUSharedMemoryLimit();
   static const size_t kGPULocalStackLimitBytes = GetGPULocalStackLimit();
 
-  if (target == common::DefaultNVGPUTarget()) {
+  if (target == cinn::common::DefaultNVGPUTarget()) {
     if (IsGPUMemoryUsageExceedLimit(lowered_func,
                                     ir::MemoryType::GPUShared,
                                     kGPUSharedMemoryLimitBytes)) {

@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/hostdevice.h"
 
 #if defined(__xpu__)
 #define CHAR_BIT 8
@@ -28,6 +28,11 @@ namespace phi {
 template <typename T>
 struct NeedVectorized {
   static constexpr bool value = sizeof(T) <= sizeof(float);
+};
+
+template <int N>
+struct MaxWithOne {
+  static constexpr auto kValue = (N >= 1 ? N : 1);
 };
 
 // Aligned vector generates vectorized load/store on CUDA.

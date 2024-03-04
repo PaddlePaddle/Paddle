@@ -43,7 +43,7 @@ def convert_to_unicode(text):
 
 def whitespace_tokenize(text):
     """
-    Runs basic whitespace cleaning and splitting on a peice of text.
+    Runs basic whitespace cleaning and splitting on a piece of text.
     Args:
         text (str): Text to be tokened.
     Returns:
@@ -60,7 +60,7 @@ def _is_whitespace(char):
     """
     Checks whether `chars` is a whitespace character.
     """
-    # \t, \n, and \r are technically contorl characters but we treat them
+    # \t, \n, and \r are technically control characters but we treat them
     # as whitespace since they are generally considered as such.
     if char == " " or char == "\t" or char == "\n" or char == "\r":
         return True
@@ -564,9 +564,7 @@ class PretrainedTokenizer:
         """
         assert not os.path.isfile(
             save_directory
-        ), "Saving directory ({}) should be a directory, not a file".format(
-            save_directory
-        )
+        ), f"Saving directory ({save_directory}) should be a directory, not a file"
         os.makedirs(save_directory, exist_ok=True)
 
         tokenizer_config_file = os.path.join(
@@ -632,9 +630,7 @@ class PretrainedTokenizer:
         elif name.endswith('_token_id'):
             return self.vocab[self.special_tokens_map[name[:-3]]]
         raise AttributeError(
-            "'{}' object has no attribute '{}'".format(
-                type(self).__name__, name
-            )
+            f"'{type(self).__name__}' object has no attribute '{name}'"
         )
 
     def truncate_sequences(

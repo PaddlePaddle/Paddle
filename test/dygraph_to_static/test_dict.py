@@ -15,11 +15,14 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle import base
-from paddle.jit import to_static
 
 PLACE = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
@@ -52,7 +55,7 @@ class SubNetWithDict(paddle.nn.Layer):
         )
 
     def forward(self, input, cache=None):
-        input = base.dygraph.to_variable(input)
+        input = paddle.to_tensor(input)
 
         q = self.q_fc(input)
         k = self.k_fc(input)
@@ -79,9 +82,8 @@ class MainNetWithDict(paddle.nn.Layer):
         self.output_size = output_size
         self.sub_net = SubNetWithDict(hidden_size, output_size)
 
-    @to_static
     def forward(self, input, max_len=4):
-        input = base.dygraph.to_variable(input)
+        input = paddle.to_tensor(input)
         cache = {
             "k": paddle.tensor.fill_constant(
                 shape=[self.batch_size, self.output_size],
@@ -116,37 +118,34 @@ def update_cache(cache):
     return cache
 
 
-class TestNetWithDict(unittest.TestCase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `base.layers.cond`.
-    """
-
+class TestNetWithDict(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.batch_size = self.x.shape[0]
 
-    @test_and_compare_with_new_ir(True)
     def _run_static(self):
-        return self.train(to_static=True)
+        with enable_to_static_guard(True):
+            return self.train()
 
     def _run_dygraph(self):
-        return self.train(to_static=False)
+        with enable_to_static_guard(False):
+            return self.train()
 
-    def train(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
+    def train(self):
         with base.dygraph.guard(PLACE):
-            net = MainNetWithDict(batch_size=self.batch_size)
+            net = paddle.jit.to_static(
+                MainNetWithDict(batch_size=self.batch_size)
+            )
             ret = net(self.x)
             return ret.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 # Tests for dict pop
-@paddle.jit.to_static
-def test_dic_pop(x):
+def test_dict_pop(x):
     x = paddle.to_tensor(x)
     dict_a = {"red": 0, "green": 1, "blue": 2}
 
@@ -157,8 +156,7 @@ def test_dic_pop(x):
     return out
 
 
-@paddle.jit.to_static
-def test_dic_pop_2(x):
+def test_dict_pop_2(x):
     x = paddle.to_tensor(x)
     dict_a = {"red": x, "green": x + 1, "blue": x + 3}
 
@@ -169,7 +167,7 @@ def test_dic_pop_2(x):
     return out
 
 
-class TestDictPop(unittest.TestCase):
+class TestDictPop(Dy2StTestBase):
     def setUp(self):
         self.input = np.random.random(3).astype('int32')
         self.place = (
@@ -180,9 +178,8 @@ class TestDictPop(unittest.TestCase):
         self._set_test_func()
 
     def _set_test_func(self):
-        self.dygraph_func = test_dic_pop
+        self.dygraph_func = paddle.jit.to_static(test_dict_pop)
 
-    @test_and_compare_with_new_ir(True)
     def _run_static(self):
         return self._run(to_static=True)
 
@@ -190,12 +187,11 @@ class TestDictPop(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
+        with enable_to_static_guard(to_static):
+            result = self.dygraph_func(self.input)
+            return result.numpy()
 
-        result = self.dygraph_func(self.input)
-
-        return result.numpy()
-
+    @test_legacy_and_pt_and_pir
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
@@ -203,22 +199,19 @@ class TestDictPop(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph result is {}\nstatic result is {}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph result is {dygraph_res}\nstatic result is {static_res}',
         )
 
 
 class TestDictPop2(TestDictPop):
     def _set_test_func(self):
-        self.dygraph_func = test_dic_pop_2
+        self.dygraph_func = paddle.jit.to_static(test_dict_pop_2)
 
 
 class NetWithDictPop(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @to_static
     def forward(self, x, **kwargs):
         x = paddle.to_tensor(x)
         y = kwargs.pop('y', None)
@@ -234,26 +227,25 @@ class TestDictPop3(TestNetWithDict):
     def setUp(self):
         self.x = np.array([2, 2]).astype('float32')
 
-    def train(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
+    def train(self):
         with base.dygraph.guard(PLACE):
-            net = NetWithDictPop()
+            net = paddle.jit.to_static(NetWithDictPop())
             ret = net(z=0, x=self.x, y=True)
             return ret.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         dygraph_result = self._run_dygraph()
         static_result = self._run_static()
 
         self.assertTrue(
             (dygraph_result == static_result).all(),
-            msg="dygraph result: {}\nstatic result: {}".format(
-                dygraph_result, static_result
-            ),
+            msg=f"dygraph result: {dygraph_result}\nstatic result: {static_result}",
         )
 
 
-class TestDictCmpInFor(unittest.TestCase):
+class TestDictCmpInFor(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_with_for(self):
         def func():
             pos = [1, 3]
@@ -270,6 +262,7 @@ class TestDictCmpInFor(unittest.TestCase):
 
         self.assertEqual(paddle.jit.to_static(func)()['minus'], 8)
 
+    @test_legacy_and_pt_and_pir
     def test_with_for_enumerate(self):
         def func():
             pos = [1, 3]

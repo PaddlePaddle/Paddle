@@ -27,7 +27,11 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 // clang-format off
-
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#endif
 namespace paddle {
 namespace experimental {
 // declare cast api
@@ -87,9 +91,7 @@ void Tensor::copy_(const Tensor &src,
     VLOG(8) << "Src is empty, skip copy";
     return;
   }
-  // Prepare copy kernel key and outputs
-  auto kernel_key_set = ParseKernelKeyByInputArgs(src);
-  KernelType kernel_type = ParseKernelTypeByInputArgs(src);
+
   VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
   if (initialized()) {
     PADDLE_ENFORCE_EQ(dtype(),
@@ -114,6 +116,12 @@ void Tensor::copy_(const Tensor &src,
                           "Copy cannot be performed!",
                           target_place,
                           place()));
+  }
+
+  // Prepare copy kernel key and outputs
+  auto kernel_key_set = ParseKernelKeyByInputArgs(src);
+  KernelType kernel_type = ParseKernelTypeByInputArgs(src);
+  if (initialized()) {
     kernel_key_set.backend_set = kernel_key_set.backend_set |
                                  BackendSet(phi::TransToPhiBackend(place()));
   } else {
@@ -128,25 +136,59 @@ void Tensor::copy_(const Tensor &src,
   auto *dev_ctx = pool.GetMutable(
       place.GetType() == target_place.GetType() ? target_place : place);
 
-  Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::UNDEFINED;
-  DataType kernel_data_type = DataType::UNDEFINED;
+  if (kernel_type == KernelType::DENSE_TENSOR_KERNEL) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  bool run_auto_parallel = AllInputsAreDistTensor(src);
+  bool rank_is_in_current_mesh = false;
+  if (run_auto_parallel) {
+    auto mesh = std::static_pointer_cast<phi::distributed::DistTensor>(
+                    src.impl())->dist_attr().process_mesh();
+    rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
 
-  if (kernel_backend == Backend::UNDEFINED ||
-      kernel_layout == DataLayout::UNDEFINED ||
-      kernel_data_type == DataType::UNDEFINED) {
-    if (kernel_backend == Backend::UNDEFINED) {
-      kernel_backend = kernel_key.backend();
+    auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
+
+    if (this->initialized()) {
+      auto this_dist_attr =
+                std::static_pointer_cast<phi::distributed::DistTensor>(
+                this->impl())->dist_attr();
+      PADDLE_ENFORCE_EQ((meta_dist_input_x.dist_attr() == this_dist_attr
+                        || this_dist_attr.empty()),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "DistAttr is different of dst "
+                            "tensor and args %s, which "
+                            "current tensor holds %s "
+                            "Copy cannot be performed!",
+                            meta_dist_input_x.dist_attr(),
+                            this_dist_attr));
     }
-    if (kernel_layout == DataLayout::UNDEFINED) {
-      kernel_layout = kernel_key.layout();
+
+    auto dist_out = SetKernelDistOutput(this, meta_dist_input_x.dist_attr());
+    auto dense_out = dist_out->unsafe_mutable_value();
+    if (!rank_is_in_current_mesh) {
+      *dense_out = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr,
+            0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
     }
-    if (kernel_data_type == DataType::UNDEFINED) {
-      kernel_data_type = kernel_key.dtype();
+
+    phi::MetaTensor meta_dist_out(dist_out);
+    phi::UnchangedInferMeta(MakeMetaTensor(*(src.impl_)), &meta_dist_out);
+
+    if (rank_is_in_current_mesh) {
+      auto dist_input_x = static_cast<phi::distributed::DistTensor*>(
+                          src.impl().get());;
+
+      auto input_x = &dist_input_x->value();
+
+      phi::MetaTensor meta_dense_out(dense_out);
+      phi::UnchangedInferMeta(MakeMetaTensor(*input_x), &meta_dense_out);
+
+      phi::Copy(*dev_ctx, *input_x, target_place, blocking, dense_out);
     }
+    return;
   }
-
-  if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
+#endif
     SetKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
@@ -158,7 +200,7 @@ void Tensor::copy_(const Tensor &src,
               target_place,
               blocking,
               static_cast<phi::DenseTensor *>(impl_.get()));
-  } else if (kernel_type == KernelType::SELECTED_ROWS_KENREL) {
+  } else if (kernel_type == KernelType::SELECTED_ROWS_KERNEL) {
     SetSelectedRowsKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(

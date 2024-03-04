@@ -14,6 +14,7 @@
 
 import copy
 import os
+import time
 
 import paddle
 from paddle.base import compiler
@@ -98,62 +99,59 @@ is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 
 class Fleet:
     """
-    Unified API for distributed training of PaddlePaddle
+    Unified API for distributed training of PaddlePaddle.
     Please reference the https://github.com/PaddlePaddle/PaddleFleetX for details
-
 
     Returns:
         Fleet: A Fleet instance
 
-
+    Examples:
         .. code-block:: python
             :name: code-example1
 
-            # Example1: for collective training
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
+            >>> # Example1: for collective training
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> import paddle.distributed.fleet as fleet
 
-            fleet.init(is_collective=True)
+            >>> fleet.init(is_collective=True)
 
-            strategy = fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+            >>> strategy = fleet.DistributedStrategy()
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001, parameters=linear.parameters())
+            >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
-            # do distributed training
-
-
+            >>> # do distributed training
 
         .. code-block:: python
             :name: code-example2
 
-            # Example2: for parameter server training
-            import paddle
-            paddle.enable_static()
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            fleet.init(strategy=strategy)
+            >>> # Example2: for parameter server training
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> import paddle.distributed.fleet as fleet
+            >>> strategy = fleet.DistributedStrategy()
+            >>> fleet.init(strategy=strategy)
 
-            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer = fleet.distributed_optimizer(optimizer)
+            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            >>> optimizer = fleet.distributed_optimizer(optimizer)
 
-            if fleet.is_first_worker():
-                print("this is first worker")
+            >>> if fleet.is_first_worker():
+            ...     print("this is first worker")
 
-            print("current node index: {}".format(fleet.worker_index()))
-            print("total number of worker num: {}".format(fleet.worker_num()))
+            >>> print("current node index: {}".format(fleet.worker_index()))
+            >>> print("total number of worker num: {}".format(fleet.worker_num()))
 
-            if fleet.is_worker():
-                print("this is worker")
-            print("worker endpoints: {}".format(fleet.worker_endpoints(to_string=True)))
+            >>> if fleet.is_worker():
+            ...     print("this is worker")
+            >>> print("worker endpoints: {}".format(fleet.worker_endpoints(to_string=True)))
 
-            print("server num: {}".format(fleet.server_num()))
-            print("server endpoints: {}".format(fleet.server_endpoints(to_string=True)))
+            >>> print("server num: {}".format(fleet.server_num()))
+            >>> print("server endpoints: {}".format(fleet.server_endpoints(to_string=True)))
 
-            if fleet.is_server():
-                print("this is server")
-            fleet.stop_worker()
-
+            >>> if fleet.is_server():
+            ...     print("this is server")
+            >>> fleet.stop_worker()
 
     """
 
@@ -193,46 +191,42 @@ class Fleet:
             log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
                 the logging level is. Default is "INFO".
 
-
         Returns:
             None
 
         Examples:
+            .. code-block:: python
+                :name: code-init-example1
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
             .. code-block:: python
-                :name: code-example1
+                :name: code-init-example2
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-
-
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init(is_collective=True)
 
             .. code-block:: python
-                :name: code-example2
+                :name: code-init-example3
 
-                import paddle.distributed.fleet as fleet
-                fleet.init(is_collective=True)
-
-
-            .. code-block:: python
-                :name: code-example3
-                import paddle.distributed.fleet as fleet
-                role = fleet.PaddleCloudRoleMaker()
-                fleet.init(role)
-
+                >>> import paddle.distributed.fleet as fleet
+                >>> role = fleet.PaddleCloudRoleMaker()
+                >>> fleet.init(role)
 
             .. code-block:: python
-                :name: code-example4
-                import paddle.distributed.fleet as fleet
-                strategy = fleet.DistributedStrategy()
-                fleet.init(strategy=strategy)
+                :name: code-init-example4
 
+                >>> import paddle.distributed.fleet as fleet
+                >>> strategy = fleet.DistributedStrategy()
+                >>> fleet.init(strategy=strategy)
 
             .. code-block:: python
-                :name: code-example5
-                import paddle.distributed.fleet as fleet
-                strategy = fleet.DistributedStrategy()
-                fleet.init(log_level = "DEBUG")
+                :name: code-init-example5
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> strategy = fleet.DistributedStrategy()
+                >>> fleet.init(log_level = "DEBUG")
 
         """
         from paddle.distributed import parallel_helper
@@ -369,6 +363,243 @@ class Fleet:
                 )
         return self
 
+    # test allreduce perf
+    def allreduce_perf(
+        self,
+        iteration,
+        x,
+        group,
+        perf_size,
+        perf_threshold_time,
+        warmup=False,
+    ):
+        if group is None or group.nranks <= 1:
+            logger.warning("allreduce_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        start_t = time.time()
+        for _ in range(iteration):
+            paddle.distributed.all_reduce(x, group=group)
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        if warmup:
+            return
+        logger.info(
+            f"[AllReduceTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] AllReduce Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    # test reduce perf
+    def reduce_perf(self, iteration, x, group, perf_size, perf_threshold_time):
+        if group is None or group.nranks <= 1:
+            logger.warning("reduce_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        start_t = time.time()
+        for _ in range(iteration):
+            paddle.distributed.reduce(x, dst=min(group.ranks), group=group)
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        logger.info(
+            f"[ReduceTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] Reduce Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    # test broadcast perf
+    def broadcast_perf(
+        self, iteration, x, group, perf_size, perf_threshold_time
+    ):
+        if group is None or group.nranks <= 1:
+            logger.warning("broadcast_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        start_t = time.time()
+        for _ in range(iteration):
+            paddle.distributed.broadcast(x, src=min(group.ranks), group=group)
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        logger.info(
+            f"[BroadcastTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] Broadcast Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    # test allgather perf
+    def allgather_perf(
+        self, iteration, x, group, perf_size, perf_threshold_time
+    ):
+        if group is None or group.nranks <= 1:
+            logger.warning("allgather_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        start_t = time.time()
+        for _ in range(iteration):
+            tmp = []
+            paddle.distributed.all_gather(tmp, x, group=group)
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        logger.info(
+            f"[AllgatherTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] Allgather Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    # test reduce_scatter perf
+    def reduce_scatter_perf(
+        self,
+        iteration,
+        x,
+        group,
+        perf_size,
+        perf_threshold_time,
+    ):
+        if group is None or group.nranks <= 1:
+            logger.warning("reduce_scatter_perf is invalid, group invalid!")
+            return
+        paddle.distributed.barrier()
+        paddle.device.cuda.synchronize()
+        parallelism = group.nranks
+        output_shape = x.shape
+        if x.shape[0] % parallelism != 0:
+            logger.warning(
+                f"the shape of input[{x.shape[0]}] can't be divided exactly by reduce_scatter parallelism[{parallelism}], test stopped!"
+            )
+            return
+        output_shape[0] = output_shape[0] // parallelism
+        output = paddle.empty(shape=output_shape, dtype=x.dtype)
+        start_t = time.time()
+        for _ in range(iteration):
+            paddle.distributed.stream.reduce_scatter(
+                output,
+                x,
+                op=paddle.distributed.ReduceOp.SUM,
+                group=group,
+                sync_op=True,
+            )
+        paddle.device.cuda.synchronize()
+        end_t = time.time()
+        ret = (end_t - start_t) / iteration
+        logger.info(
+            f"[ReduceScatterTest] nbytes {perf_size}B test result: {ret} s/iter"
+        )
+        if perf_threshold_time > -1 and ret > perf_threshold_time:
+            logger.warning(
+                f"[Perf Warnning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
+            )
+
+    def _collective_perf_impl(self, round=50, context={}, hcg=None):
+        if hcg is None:
+            hcg = self.get_hybrid_communicate_group()
+
+        collective_perf_func_map = {
+            "allreduce": self.allreduce_perf,
+            "reduce": self.reduce_perf,
+            "broadcast": self.broadcast_perf,
+            "allgather": self.allgather_perf,
+            "reduce_scatter": self.reduce_scatter_perf,
+        }
+        dp_group = hcg.get_data_parallel_group()
+        sharding_group = hcg.get_sharding_parallel_group()
+        mp_group = hcg.get_model_parallel_group()
+        data_group = None
+        if dp_group.nranks > 1:
+            data_group = dp_group
+        elif sharding_group.nranks > 1:
+            data_group = sharding_group
+
+        collective_perf_group_map = {
+            "allreduce": data_group,
+            "reduce": data_group,
+            "broadcast": data_group,
+            "allgather": mp_group,
+            "reduce_scatter": mp_group,
+        }
+
+        for comm_type, size_and_time in context.items():
+            # test 1M ~ 1G as default
+            nbytes = 1 << 20  # 1048576(1MB)
+            final_nbytes = 1 << 30  # 1073741824(1GB)
+            dtype = paddle.float32
+            time_threshold = 0
+
+            if size_and_time is not None:
+                nbytes = size_and_time[0]
+                # Run only once when test specific message size.
+                final_nbytes = nbytes
+                time_threshold = size_and_time[1]
+            if nbytes <= 0:
+                logger.warning(
+                    f"Size for collective performance check should be positive, but got {nbytes}"
+                )
+                return
+
+            while nbytes <= final_nbytes:
+                x = paddle.zeros([nbytes // 4], dtype=dtype)
+                # warmup
+                self.allreduce_perf(10, x, None, nbytes, 1, warmup=True)
+
+                collective_perf_func_map[comm_type](
+                    iteration=round,
+                    x=x,
+                    group=collective_perf_group_map[comm_type],
+                    perf_size=nbytes,
+                    perf_threshold_time=time_threshold,
+                )
+                nbytes = nbytes << 1
+
+    def collective_perf(self, comm_type, round=50, size_and_time={}):
+        """
+        Run performance test for given communication type
+        and compare the time cost with the threshold.
+
+        Args:
+            comm_type (str): Communication type for performance test. Currently support
+                            "allreduce", "broadcast", "reduce", "allgather" and "reduce_scatter".
+            round (int, optional): Loop times for performance test. More loops will cost more time
+                            and provide more accurate result. Defaults to 50.
+            size_and_time (dict, optional): Message sizes and time thresholds for performance test.
+                            each pair will invoke a performance check. Defaults to {}, which indicates
+                            acting performance check from 1MB to 1GB without threshold set.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init(is_collective=True)
+                >>> # run two tests, one with 1MB (threshold 0.5s) and another with 1GB (threshold 1s)
+                >>> size_and_time = {1<<20: 0.5, 1<<30: 1}
+                >>> fleet.collective_perf("allreduce", round=50, size_and_time = size_and_time)
+        """
+        if not self._is_collective:
+            logger.warning(
+                "fleet.collective_perf is only for collective mode, will return with no test acted."
+            )
+            return
+        for size, time_threshold in size_and_time.items():
+            context = {comm_type: [size, time_threshold]}
+            self._collective_perf_impl(round=round, context=context)
+
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
@@ -447,16 +678,14 @@ class Fleet:
         Check whether the node is the first instance of worker.
 
         Returns:
-            bool: True if this is the first node of worker,
-                  False if not.
+            bool: True if this is the first node of worker, False if not.
 
         Examples:
-
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.is_first_worker()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.is_first_worker()
 
         """
         return self._role_maker._is_first_worker()
@@ -472,9 +701,9 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.worker_index()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.worker_index()
 
         """
         return self._role_maker._worker_index()
@@ -490,9 +719,9 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.worker_num()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.worker_num()
 
         """
         return self._role_maker._worker_num()
@@ -521,9 +750,9 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.is_worker()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.is_worker()
 
         """
         return self._role_maker._is_worker()
@@ -542,9 +771,9 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.worker_endpoints()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.worker_endpoints()
 
         """
         if to_string:
@@ -563,9 +792,9 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.server_num()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.server_num()
         """
         return len(self._role_maker._get_pserver_endpoints())
 
@@ -580,9 +809,9 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.server_index()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.server_index()
 
         """
         return self._role_maker._server_index()
@@ -598,9 +827,9 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.server_endpoints()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.server_endpoints()
 
         """
 
@@ -621,9 +850,9 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.is_server()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.is_server()
 
         """
         return self._role_maker._is_server()
@@ -639,11 +868,29 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.barrier_worker()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> fleet.barrier_worker()
         """
         self._role_maker._barrier("worker")
+
+    def all_reduce(self, input, mode="sum"):
+        """
+        all reduce input between all workers, mode can be sum, mean or max, default is sum
+
+        Returns:
+            list/int: all reduce result
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> res = fleet.all_reduce(5)
+
+        """
+        return self._role_maker._all_reduce(input, mode, "worker")
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -659,13 +906,13 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                fleet.init_worker()
+                >>> fleet.init_worker()
 
         """
         self._runtime_handle._init_worker(scopes)
@@ -704,13 +951,13 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                fleet.init_server()
+                >>> fleet.init_server()
 
         """
         self._runtime_handle._init_server(*args, **kwargs)
@@ -729,13 +976,13 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                fleet.load_model("path", mode=0)
+                >>> fleet.load_model("path", mode=0)
 
         """
         self._runtime_handle._load_persistables(path, mode)
@@ -754,13 +1001,13 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                fleet.load_one_table(0, "path", mode=0)
+                >>> fleet.load_one_table(0, "path", mode=0)
 
         """
         self._runtime_handle._load_one_table(table_id, path, mode)
@@ -779,13 +1026,13 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                fleet.load_inference_model("path", mode=1)
+                >>> fleet.load_inference_model("path", mode=1)
 
         """
         self._runtime_handle._load_inference_model(path, mode)
@@ -803,14 +1050,14 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                if fleet.is_server():
-                    fleet.init_server()
+                >>> if fleet.is_server():
+                ...     fleet.init_server()
 
         """
         self._runtime_handle._run_server()
@@ -828,13 +1075,13 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                fleet.init_server()
+                >>> fleet.init_server()
 
         """
         self._runtime_handle._stop_worker()
@@ -908,13 +1155,13 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                fleet.init_server()
+                >>> fleet.init_server()
 
         """
 
@@ -947,7 +1194,7 @@ class Fleet:
 
             dirname(str, optional): The saving directory path.
                                 When you need to save the parameter to the memory, set it to None.
-            main_program(Program, optional): The program whose persistbale tensors will
+            main_program(Program, optional): The program whose persistable tensors will
                                              be saved. Default: None.
 
 
@@ -956,19 +1203,19 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: text
+            .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
-                import paddle.distributed.fleet as fleet
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> import paddle.distributed.fleet as fleet
 
-                fleet.init()
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
+                >>> exe = paddle.static.Executor(paddle.CPUPlace())
+                >>> fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
 
         """
         self._runtime_handle._save_persistables(
@@ -1008,13 +1255,13 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                fleet.save_one_table(0, "path", mode=0)
+                >>> fleet.save_one_table(0, "path", mode=0)
 
         """
         self._runtime_handle._save_one_table(table_id, path, mode)
@@ -1035,16 +1282,16 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                import paddle
-                place = paddle.CPUPlace()
-                exe =  paddle.static.Executor(place)
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> import paddle
+                >>> place = paddle.CPUPlace()
+                >>> exe =  paddle.static.Executor(place)
 
-                # build net
-                # fleet.distributed_optimizer(...)
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
 
-                fleet.save_dense_params(exe, "path", scope=paddle.static.global_scope(), program=paddle.static.default_main_program())
+                >>> fleet.save_dense_params(exe, "path", scope=paddle.static.global_scope(), program=paddle.static.default_main_program())
 
         """
         self._runtime_handle._save_dense_params(
@@ -1078,12 +1325,13 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle
-                import paddle.distributed.fleet as fleet
-                fleet.init(is_collective=True)
-                strategy = fleet.DistributedStrategy()
-                optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-                optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+                >>> import paddle
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init(is_collective=True)
+                >>> linear = paddle.nn.Linear(10, 10)
+                >>> strategy = fleet.DistributedStrategy()
+                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001, parameters=linear.parameters())
+                >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
         """
         self.user_defined_optimizer = optimizer
@@ -1141,46 +1389,46 @@ class Fleet:
         Examples:
             .. code-block:: python
 
-                import paddle
-                import paddle.nn.functional as F
-                paddle.enable_static()
+                >>> import paddle
+                >>> import paddle.nn.functional as F
+                >>> paddle.enable_static()
 
-                def run_example_code():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
-                    conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
-                    # 1) Use fp16_guard to control the range of fp16 kernels used.
-                    with paddle.static.amp.fp16_guard():
-                        bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
-                        pool = F.max_pool2d(bn, kernel_size=2, stride=2)
-                        hidden = paddle.static.nn.fc(pool, size=10)
-                        loss = paddle.mean(hidden)
-                    # 2) Create the optimizer and set `multi_precision` to True.
-                    # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way.
-                    optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
-                    # 3) These ops in `custom_black_list` will keep in the float32 computation type.
-                    amp_list = paddle.static.amp.CustomOpLists(
-                        custom_black_list=['pool2d'])
-                    # 4) The entry of Paddle AMP.
-                    # Enable pure fp16 training by setting `use_pure_fp16` to True.
-                    optimizer = paddle.static.amp.decorate(
-                        optimizer,
-                        amp_list,
-                        init_loss_scaling=128.0,
-                        use_dynamic_loss_scaling=True,
-                        use_pure_fp16=True)
-                    # If you don't use the default_startup_program(), you sholud pass
-                    # your defined `startup_program` into `minimize`.
-                    optimizer.minimize(loss)
-                    exe.run(paddle.static.default_startup_program())
-                    # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
-                    # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
-                    optimizer.amp_init(place, scope=paddle.static.global_scope())
+                >>> def run_example_code():
+                ...     place = paddle.CUDAPlace(0)
+                ...     exe = paddle.static.Executor(place)
+                ...     data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+                ...     conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+                ...     # 1) Use fp16_guard to control the range of fp16 kernels used.
+                ...     with paddle.static.amp.fp16_guard():
+                ...         bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+                ...         pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+                ...         hidden = paddle.static.nn.fc(pool, size=10)
+                ...         loss = paddle.mean(hidden)
+                ...     # 2) Create the optimizer and set `multi_precision` to True.
+                ...     # Setting `multi_precision` to True can avoid the poor accuracy
+                ...     # or the slow convergence in a way.
+                ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
+                ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
+                ...     amp_list = paddle.static.amp.CustomOpLists(
+                ...         custom_black_list=['pool2d'])
+                ...     # 4) The entry of Paddle AMP.
+                ...     # Enable pure fp16 training by setting `use_pure_fp16` to True.
+                ...     optimizer = paddle.static.amp.decorate(
+                ...         optimizer,
+                ...         amp_list,
+                ...         init_loss_scaling=128.0,
+                ...         use_dynamic_loss_scaling=True,
+                ...         use_pure_fp16=True)
+                ...     # If you don't use the default_startup_program(), you should pass
+                ...     # your defined `startup_program` into `minimize`.
+                ...     optimizer.minimize(loss)
+                ...     exe.run(paddle.static.default_startup_program())
+                ...     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
+                ...     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
+                ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
 
-                if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-                    run_example_code()
+                >>> if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+                ...     run_example_code()
         """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
@@ -1252,9 +1500,9 @@ class Fleet:
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_base_Program` for
+            startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameter_list``. The default value
-                is None, at this time :ref:`api_base_default_startup_program` will be used.
+                is None, at this time :ref:`api_paddle_static_default_startup_program` will be used.
             parameter_list (Iterable, optional): Iterable of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
@@ -1273,28 +1521,29 @@ class Fleet:
 
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
-                import paddle.distributed.fleet as fleet
-                import paddle.nn.functional as F
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> import paddle.distributed.fleet as fleet
+                >>> import paddle.nn.functional as F
 
-                hid_dim = 10
-                label_dim = 2
-                input_x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
-                input_y = paddle.static.data(name='y', shape=[None, 1], dtype='int64')
-                fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim, activation='tanh')
-                fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
-                prediction = paddle.static.nn.fc(x=[fc_2], size=label_dim, activation='softmax')
-                cost = F.cross_entropy(input=prediction, label=input_y)
-                avg_cost = paddle.mean(x=cost)
+                >>> hid_dim = 10
+                >>> label_dim = 2
+                >>> input_x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
+                >>> input_y = paddle.static.data(name='y', shape=[None, 1], dtype='int64')
+                >>> fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim, activation='tanh')
+                >>> fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
+                >>> prediction = paddle.static.nn.fc(x=[fc_2], size=label_dim, activation='softmax')
+                >>> cost = F.cross_entropy(input=prediction, label=input_y)
+                >>> avg_cost = paddle.mean(x=cost)
 
-                fleet.init(is_collective=True)
-                strategy = fleet.DistributedStrategy()
-                optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-                optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-                optimizer.minimize(avg_cost)
+                >>> fleet.init(is_collective=True)
+                >>> strategy = fleet.DistributedStrategy()
+                >>> linear = paddle.nn.Linear(10, 10)
+                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001, parameters=linear.parameters())
+                >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+                >>> optimizer.minimize(avg_cost)
 
-                # for more examples, please reference https://github.com/PaddlePaddle/PaddleFleetX
+                >>> # for more examples, please reference https://github.com/PaddlePaddle/PaddleFleetX
 
         """
         if not isinstance(loss, list):
@@ -1396,12 +1645,54 @@ class Fleet:
             )
 
             can_not_apply_optimizer_list = []
+
+            valid_optimizer_list = []
+            valid_graph_optimizer_list = []
+            skip_names = []
+            if (
+                self._is_collective
+                and len(self._user_defined_strategy.sparse_table_configs) > 0
+            ):
+                skip_names.append("ShardingOptimizer")
+            # compile time
+            distributed_optimizer_list = (
+                MetaOptimizerFactory()._get_valid_meta_optimizers(
+                    self.user_defined_optimizer, skip_names
+                )
+            )
+            # trigger the auto-parallel in very strict condition
+            # strategy = DistributedStrategy()
+            # strategy.auto = True
+            # optimizer = paddle.optimizer.SGD(learning_rate=0.1)
+            # optimizer = fleet.distributed_optimizer(optimizer, strategy)
+            if copy_user_defined_strategy._is_strict_auto():
+                # turn on all the strategy for each optimizer
+                for opt in distributed_optimizer_list:
+                    opt._enable_strategy(copy_user_defined_strategy, context)
+
+            valid_optimizer_list = []
+            valid_graph_optimizer_list = []
+            # recall meta optimizers for ranking
+            for opt in distributed_optimizer_list:
+                opt._set_basic_info(
+                    loss,
+                    self._role_maker,
+                    self.user_defined_optimizer,
+                    copy_user_defined_strategy,
+                )
+                if opt._can_apply() and not opt._is_graph_out():
+                    valid_optimizer_list.append(opt)
+                elif opt._can_apply() and opt._is_graph_out():
+                    valid_graph_optimizer_list.append(opt)
+                else:
+                    can_not_apply_optimizer_list.append(opt)
             # fix set collective and fleet ps gpu error
             if (
                 self._is_collective
                 and len(self._user_defined_strategy.sparse_table_configs) > 0
             ):
                 context["use_fleet_ps"] = True
+
                 from .meta_optimizers import ParameterServerOptimizer
 
                 meta_optimizer = ParameterServerOptimizer(
@@ -1413,58 +1704,32 @@ class Fleet:
                     self.user_defined_optimizer,
                     copy_user_defined_strategy,
                 )
+                valid_optimizer_list.clear()
+                valid_optimizer_list.append(meta_optimizer)
                 can_not_apply_optimizer_list.append(meta_optimizer)
 
                 # meaningless, just for compatibility with other code
                 graph_optimizer = None
 
-            else:
-                # compile time
-                distributed_optimizer_list = (
-                    MetaOptimizerFactory()._get_valid_meta_optimizers(
-                        self.user_defined_optimizer
-                    )
-                )
-                # trigger the auto-parallel in very strict condition
-                # strategy = DistributedStrategy()
-                # strategy.auto = True
-                # optimizer = paddle.optimizer.SGD(learning_rate=0.1)
-                # optimizer = fleet.distributed_optimizer(optimizer, strategy)
-                if copy_user_defined_strategy._is_strict_auto():
-                    # turn on all the strategy for each optimizer
-                    for opt in distributed_optimizer_list:
-                        opt._enable_strategy(
-                            copy_user_defined_strategy, context
-                        )
+                # valid_graph_optimizer_list.clear()
+                # valid_graph_optimizer_list.append(graph_optimizer)
+                # can_not_apply_optimizer_list.append(graph_optimizer)
 
-                valid_optimizer_list = []
-                valid_graph_optimizer_list = []
-                # recall meta optimizers for ranking
-                for opt in distributed_optimizer_list:
-                    opt._set_basic_info(
-                        loss,
-                        self._role_maker,
-                        self.user_defined_optimizer,
-                        copy_user_defined_strategy,
-                    )
-                    if opt._can_apply() and not opt._is_graph_out():
-                        valid_optimizer_list.append(opt)
-                    elif opt._can_apply() and opt._is_graph_out():
-                        valid_graph_optimizer_list.append(opt)
-                    else:
-                        can_not_apply_optimizer_list.append(opt)
-                # combine recalled meta optimizers to be a valid meta optimizer
-                (
-                    meta_optimizer,
-                    graph_optimizer,
-                ) = self.strategy_compiler.generate_optimizer(
-                    loss,
-                    self._role_maker,
-                    self.user_defined_optimizer,
-                    copy_user_defined_strategy,
-                    valid_optimizer_list,
-                    valid_graph_optimizer_list,
-                )
+            print("valid_optimizer_list=", valid_optimizer_list)
+            # combine recalled meta optimizers to be a valid meta optimizer
+            (
+                meta_optimizer,
+                graph_optimizer,
+            ) = self.strategy_compiler.generate_optimizer(
+                loss,
+                self._role_maker,
+                self.user_defined_optimizer,
+                copy_user_defined_strategy,
+                valid_optimizer_list,
+                valid_graph_optimizer_list,
+            )
+            print("meta_optimizer=", meta_optimizer)
+            print("graph_optimizer=", graph_optimizer)
 
             valid_strategy = self.strategy_compiler._get_valid_strategy(
                 copy_user_defined_strategy, can_not_apply_optimizer_list
@@ -1673,7 +1938,7 @@ class Fleet:
                 if v or k not in opt_info:
                     opt_info[k] = v
             program._fleet_opt = opt_info
-            logger.debug(
+            logger.info(
                 "fleet base opt info: "
                 + str(id(program))
                 + str(program._fleet_opt)

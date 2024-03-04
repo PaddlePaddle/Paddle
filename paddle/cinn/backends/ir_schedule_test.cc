@@ -24,8 +24,8 @@
 #include "paddle/cinn/backends/codegen_c_x86.h"
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
@@ -41,7 +41,7 @@ TEST(IrSchedule, split_and_fuse1) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -100,7 +100,7 @@ TEST(IrSchedule, split_and_fuse2) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -163,7 +163,7 @@ void TestSplitThrow() {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -205,7 +205,7 @@ TEST(IrSchedule, reorder1) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -272,7 +272,7 @@ TEST(IrSchedule, reorder2) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -338,7 +338,7 @@ TEST(IrSchedule, reorder3) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -408,7 +408,7 @@ TEST(IrSchedule, reorder4) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -482,7 +482,7 @@ TEST(IrSchedule, parallel) {
   Expr M(32);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -548,7 +548,7 @@ TEST(IrSchedule, vectorize) {
   Expr M(32);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -622,7 +622,7 @@ TEST(IrSchedule, unroll) {
   Expr M(32);
   Expr N(2);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -690,12 +690,13 @@ void test_unroll(void* _args, int32_t num_args)
   ASSERT_EQ(utils::Trim(target_code), utils::Trim(source_code));
 }
 
+#ifdef CINN_WITH_CUDA
 TEST(IrSchedule, bind) {
   Context::Global().ResetNameId();
   Expr M(32);
   Expr N(2);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -733,13 +734,14 @@ function test_bind (_A, _B)
 }
 )ROC"));
 }
+#endif
 
 TEST(IrSchedule, simple_compute_at) {
   Context::Global().ResetNameId();
   Expr M(128);
   Expr N(10);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -812,7 +814,7 @@ TEST(IrSchedule, compute_at0) {
   Expr M(128);
   Expr N(10);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -886,7 +888,7 @@ TEST(IrSchedule, compute_at1) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -958,7 +960,7 @@ TEST(IrSchedule, compute_at2) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1030,7 +1032,7 @@ TEST(IrSchedule, compute_at3) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1110,7 +1112,7 @@ TEST(IrSchedule, compute_at4) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -1172,7 +1174,7 @@ TEST(IrSchedule, compute_at5) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1235,7 +1237,7 @@ TEST(IrSchedule, compute_at6) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1301,7 +1303,7 @@ TEST(IrSchedule, cache_read1) {
   Expr N(32);
   Expr P(16);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1386,7 +1388,7 @@ TEST(IrSchedule, cache_read2) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1454,7 +1456,7 @@ TEST(IrSchedule, cache_write1) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1540,7 +1542,7 @@ TEST(IrSchedule, cache_write2) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1608,7 +1610,7 @@ TEST(IrSchedule, cache_read3) {
   Expr N(32);
   Expr P(16);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1689,7 +1691,7 @@ TEST(IrSchedule, cache_write3) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1736,7 +1738,8 @@ TEST(IrSchedule, cache_write3) {
   std::string target_code = codegen.GetSourceHeader() + R"ROC(__global__
 void test_cache_write3(const float* __restrict__ A, float* __restrict__ C)
 {
-  __shared__ float _B_temp_buffer [ 2048 ];
+  extern __shared__ uint8_t dyn_shared_buffer[];
+  float *_B_temp_buffer = (float*)&dyn_shared_buffer[ 0 ];
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
@@ -1771,7 +1774,7 @@ TEST(IrSchedule, sync_threads) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1816,7 +1819,8 @@ TEST(IrSchedule, sync_threads) {
   std::string target_code = codegen.GetSourceHeader() + R"ROC(__global__
 void test_sync_threads(const float* __restrict__ A, float* __restrict__ C)
 {
-  __shared__ float _B_temp_buffer [ 2048 ];
+  extern __shared__ uint8_t dyn_shared_buffer[];
+  float *_B_temp_buffer = (float*)&dyn_shared_buffer[ 0 ];
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
@@ -1852,7 +1856,7 @@ TEST(IrSchedule, cache_write4) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, N});
   Var k(32, "k0");
@@ -1928,7 +1932,7 @@ TEST(IrSchedule, rfactor) {
   Expr N(2);
   Expr K(16);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, K});
   Var j(2, "j0");
@@ -2055,7 +2059,7 @@ TEST(IrSchedule, rfactor1) {
   Expr N(2);
   Expr K(16);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, K});
   Var j(2, "j0");
@@ -2183,7 +2187,7 @@ TEST(IrSchedule, rfactor2) {
   Expr N(2);
   Expr K(16);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, K});
   Placeholder<float> B("B", {K, N});
@@ -2310,13 +2314,277 @@ void test_rfactor(void* _args, int32_t num_args)
   ASSERT_EQ(utils::Trim(target_code), utils::Trim(source_code));
 }
 
+TEST(IrSchedule, factorize_reduction) {
+  Context::Global().ResetNameId();
+  Expr M(3);
+  Expr N(4);
+  Expr K(5);
+
+  Target target = cinn::common::DefaultHostTarget();
+
+  Placeholder<float> A("A", {M, N, K});
+  Var j(4, "j0");
+  Var k(5, "k0");
+  auto B = Compute(
+      {M},
+      [&](Var i) {
+        return lang::ReduceSum(A(i, j, k), {j, k});
+      },
+      "B");
+
+  auto stages = CreateStages({A, B});
+  auto func = cinn::lang::LowerVec("test_factorize_reduction",
+                                   stages,
+                                   {A, B},
+                                   {},
+                                   {},
+                                   nullptr,
+                                   target,
+                                   true);
+  CHECK(!func.empty());
+  auto ast_expr = func[0]->body;
+  std::vector<Expr> vec_ast{ast_expr};
+  ir::ModuleExpr mod_expr(vec_ast);
+  ir::IRSchedule ir_sch(mod_expr);
+  auto loops = ir_sch.GetLoops("B");
+  CHECK_EQ(loops.size(), 3U);
+  auto new_rf_tensor = ir_sch.FactorizeReduction(loops[1], 0);
+  auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
+  CHECK(new_rf_tensor_ref);
+  CHECK(new_rf_tensor_ref->buffer.defined());
+  func[0]->temp_bufs.push_back(new_rf_tensor_ref->buffer);
+  func[0]->PrepareBufferCastExprs();
+  std::string origin = utils::GetStreamCnt(func[0]);
+  LOG(INFO) << origin;
+  EXPECT_EQ(origin, utils::Trim(R"ROC(
+function test_factorize_reduction (_A, _B)
+{
+  ScheduleBlock(root)
+  {
+    {
+      serial for (i, 0, 3)
+      {
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B_rf__reduce_init)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B_rf__reduce_init[vj0, i0_0] = 0.00000000f
+          }
+          serial for (k0, 0, 5)
+          {
+            ScheduleBlock(B_rf)
+            {
+              vj0, i0_0, i2 = axis.bind(j0, i, k0)
+              B_rf[vj0, i0_0] = (B_rf[vj0, i0_0] + A[i0_0, vj0, i2])
+            }
+          }
+        }
+      }
+      serial for (i, 0, 3)
+      {
+        ScheduleBlock(B__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          B__reduce_init[i0_0] = 0.00000000f
+        }
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B[i0_0] = (B[i0_0] + B_rf[vj0, i0_0])
+          }
+        }
+      }
+    }
+  }
+}
+)ROC"));
+}
+
+TEST(IrSchedule, factorize_reduction1) {
+  Context::Global().ResetNameId();
+  Expr M(3);
+  Expr N(4);
+  Expr K(5);
+
+  Target target = cinn::common::DefaultHostTarget();
+
+  Placeholder<float> A("A", {M, N, K});
+  Var j(4, "j0");
+  Var k(5, "k0");
+  auto B = Compute(
+      {M},
+      [&](Var i) {
+        return lang::ReduceSum(A(i, j, k), {j, k});
+      },
+      "B");
+
+  auto stages = CreateStages({A, B});
+  auto func = cinn::lang::LowerVec("test_factorize_reduction",
+                                   stages,
+                                   {A, B},
+                                   {},
+                                   {},
+                                   nullptr,
+                                   target,
+                                   true);
+  CHECK(!func.empty());
+  auto ast_expr = func[0]->body;
+  std::vector<Expr> vec_ast{ast_expr};
+  ir::ModuleExpr mod_expr(vec_ast);
+  ir::IRSchedule ir_sch(mod_expr);
+  auto loops = ir_sch.GetLoops("B");
+  CHECK_EQ(loops.size(), 3U);
+  auto new_rf_tensor = ir_sch.FactorizeReduction(loops[1], 1);
+  auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
+  CHECK(new_rf_tensor_ref);
+  CHECK(new_rf_tensor_ref->buffer.defined());
+  func[0]->temp_bufs.push_back(new_rf_tensor_ref->buffer);
+  func[0]->PrepareBufferCastExprs();
+  std::string origin = utils::GetStreamCnt(func[0]);
+  LOG(INFO) << origin;
+  EXPECT_EQ(origin, utils::Trim(R"ROC(
+function test_factorize_reduction (_A, _B)
+{
+  ScheduleBlock(root)
+  {
+    {
+      serial for (i, 0, 3)
+      {
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B_rf__reduce_init)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B_rf__reduce_init[i0_0, vj0] = 0.00000000f
+          }
+          serial for (k0, 0, 5)
+          {
+            ScheduleBlock(B_rf)
+            {
+              vj0, i0_0, i2 = axis.bind(j0, i, k0)
+              B_rf[i0_0, vj0] = (B_rf[i0_0, vj0] + A[i0_0, vj0, i2])
+            }
+          }
+        }
+      }
+      serial for (i, 0, 3)
+      {
+        ScheduleBlock(B__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          B__reduce_init[i0_0] = 0.00000000f
+        }
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B[i0_0] = (B[i0_0] + B_rf[i0_0, vj0])
+          }
+        }
+      }
+    }
+  }
+}
+)ROC"));
+}
+
+TEST(IrSchedule, factorize_reduction2) {
+  Context::Global().ResetNameId();
+  Expr M(3);
+  Expr N(4);
+  Expr K(5);
+
+  Target target = cinn::common::DefaultHostTarget();
+
+  Placeholder<float> A("A", {M, N * K});
+  Var j(4 * 5, "j0");
+  auto B = Compute(
+      {M}, [&](Var i) { return lang::ReduceSum(A(i, j), {j}); }, "B");
+
+  auto stages = CreateStages({A, B});
+  auto func = cinn::lang::LowerVec("test_factorize_reduction",
+                                   stages,
+                                   {A, B},
+                                   {},
+                                   {},
+                                   nullptr,
+                                   target,
+                                   true);
+  CHECK(!func.empty());
+  auto ast_expr = func[0]->body;
+  std::vector<Expr> vec_ast{ast_expr};
+  ir::ModuleExpr mod_expr(vec_ast);
+  ir::IRSchedule ir_sch(mod_expr);
+  auto loops = ir_sch.GetLoops("B");
+  CHECK_EQ(loops.size(), 2U);
+  auto splited_loops = ir_sch.Split(loops[1], {4, 5});
+  CHECK_EQ(splited_loops.size(), 2U);
+  auto new_rf_tensor = ir_sch.FactorizeReduction(splited_loops[0], 1);
+  auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
+  CHECK(new_rf_tensor_ref);
+  CHECK(new_rf_tensor_ref->buffer.defined());
+  func[0]->temp_bufs.push_back(new_rf_tensor_ref->buffer);
+  func[0]->PrepareBufferCastExprs();
+  std::string origin = utils::GetStreamCnt(func[0]);
+  LOG(INFO) << origin;
+  EXPECT_EQ(origin, utils::Trim(R"ROC(
+function test_factorize_reduction (_A, _B)
+{
+  ScheduleBlock(root)
+  {
+    {
+      serial for (i, 0, 3)
+      {
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B_rf__reduce_init)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B_rf__reduce_init[i0_0, vj0] = 0.00000000f
+          }
+          serial for (j0_0, 0, 5)
+          {
+            ScheduleBlock(B_rf)
+            {
+              vj0, i0_0, vj0_0 = axis.bind(j0, i, j0_0)
+              B_rf[i0_0, vj0] = (B_rf[i0_0, vj0] + A[i0_0, ((5 * vj0) + vj0_0)])
+            }
+          }
+        }
+      }
+      serial for (i, 0, 3)
+      {
+        ScheduleBlock(B__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          B__reduce_init[i0_0] = 0.00000000f
+        }
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B[i0_0] = (B[i0_0] + B_rf[i0_0, vj0])
+          }
+        }
+      }
+    }
+  }
+}
+)ROC"));
+}
+
 TEST(IrSchedule, compute_inline1) {
   Context::Global().ResetNameId();
   Expr M(32);
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2387,7 +2655,7 @@ TEST(IrSchedule, compute_inline2) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2462,7 +2730,7 @@ TEST(IrSchedule, compute_inline3) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2524,7 +2792,7 @@ TEST(IrSchedule, compute_inline4) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2586,7 +2854,7 @@ TEST(IrSchedule, reverse_compute_inline1) {
   Expr M(32);
   Expr N(64);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -2649,7 +2917,7 @@ TEST(IrSchedule, reverse_compute_inline2) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2718,7 +2986,7 @@ TEST(IrSchedule, copytransform1) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2809,7 +3077,7 @@ TEST(IrSchedule, copytransform2) {
   Expr N(64);
   Expr P(128);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2905,7 +3173,7 @@ TEST(IrSchedule, Annotate) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
   auto fused = ir_sch.Fuse("B", {0, 1});
@@ -2949,7 +3217,7 @@ TEST(IrSchedule, Unannotate) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
   auto fused = ir_sch.Fuse("B", {0, 1});
@@ -2987,7 +3255,7 @@ TEST(IrSchedule, Unannotate) {
 }
 
 TEST(IrSchedule, ComplexIndices) {
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   ir::Expr M(32);
   ir::Expr K(64);
 
@@ -3109,7 +3377,7 @@ TEST(IrSchedule, SamplePerfectTile) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
 
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
@@ -3134,7 +3402,7 @@ TEST(IrSchedule, GetChildBlocks) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
 
@@ -3174,7 +3442,7 @@ TEST(IrSchedule, SampleCategorical) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
 
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));

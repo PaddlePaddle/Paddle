@@ -55,7 +55,6 @@ class DeviceMode:
     GPU = 1
     KUNLUN = 2
     XPU = 2
-    UNKNOWN = 3
 
 
 class Cluster:
@@ -139,7 +138,7 @@ class JobServer:
         return f"{self.endpoint}"
 
     def __eq__(self, j):
-        return self.endpint == j.endpoint
+        return self.endpoint == j.endpoint
 
     def __ne__(self, j):
         return not self == j
@@ -340,12 +339,12 @@ def terminate_local_procs(procs):
                 p.log_fn.close()
             logger.debug(f"terminate process id:{p.proc.pid}")
 
-    # wait all process terminiated
+    # wait all process terminated
     time.sleep(3)
     for step in range(0, 50):
         alive = False
         for p in procs:
-            if p.proc.poll() is None:  # not termniate
+            if p.proc.poll() is None:  # not terminate
                 os.kill(p.proc.pid, signal.SIGKILL)
                 alive = True
 
@@ -415,7 +414,7 @@ def find_free_ports(num):
         step += 1
         if step > 400:
             print(
-                "can't find avilable port and use the specified static port now!"
+                "can't find available port and use the specified static port now!"
             )
             return None
 
@@ -583,8 +582,8 @@ def start_local_trainers(
             )
             logger.info(
                 "details about PADDLE_TRAINER_ENDPOINTS can be found in "
-                "{}/endpoints.log, and detail running logs maybe found in "
-                "{}/workerlog.0".format(log_dir, log_dir)
+                f"{log_dir}/endpoints.log, and detail running logs maybe found in "
+                f"{log_dir}/workerlog.0"
             )
         fn = None
         pre_fn = None if os.name == 'nt' else os.setsid
@@ -699,20 +698,16 @@ def get_gpus(gpus):
             for x in gpus.split(','):
                 assert x in cuda_visible_devices_list, (
                     "Can't find "
-                    "your gpus {} in CUDA_VISIBLE_DEVICES[{}].".format(
-                        x, cuda_visible_devices
-                    )
+                    f"your gpus {x} in CUDA_VISIBLE_DEVICES[{cuda_visible_devices}]."
                 )
             res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
             ]
             logger.info(
-                "Change selected_gpus into reletive values. --ips:{} "
-                "will change into relative_ips:{} according to your "
-                "CUDA_VISIBLE_DEVICES:{}".format(
-                    gpus, res_gpus, cuda_visible_devices_list
-                )
+                f"Change selected_gpus into relative values. --ips:{gpus} "
+                f"will change into relative_ips:{res_gpus} according to your "
+                f"CUDA_VISIBLE_DEVICES:{cuda_visible_devices_list}"
             )
 
     return res_gpus
@@ -734,21 +729,16 @@ def get_xpus(xpus):
             for x in xpus.split(','):
                 assert x in xpu_visible_devices_list, (
                     "Can't find "
-                    "your xpus {} in XPU_VISIBLE_DEVICES[{}].".format(
-                        x,
-                        xpu_visible_devices,
-                    )
+                    f"your xpus {x} in XPU_VISIBLE_DEVICES[{xpu_visible_devices}]."
                 )
             res_xpus = [
                 xpu_visible_devices_list.index(x.strip())
                 for x in xpus.split(',')
             ]
             logger.info(
-                "Change selected_xpus into reletive values. --ips:{} "
-                "will change into relative_ips:{} according to your "
-                "XPU_VISIBLE_DEVICES:{}".format(
-                    xpus, res_xpus, xpu_visible_devices_list
-                )
+                f"Change selected_xpus into relative values. --ips:{xpus} "
+                f"will change into relative_ips:{res_xpus} according to your "
+                f"XPU_VISIBLE_DEVICES:{xpu_visible_devices_list}"
             )
 
     return res_xpus
@@ -826,9 +816,7 @@ def get_device_proc_info(args):
             devices_per_proc = list(range(0, args.nproc_per_node))
     else:
         raise AssertionError(
-            "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
-                device_mode
-            )
+            f"Can't support device_mode:{device_mode}, support only cpu|gpu|xpu now."
         )
 
     return (device_mode, devices_per_proc)
@@ -843,7 +831,6 @@ def direct_start(args):
     ] + args.training_script_args
     proc = subprocess.Popen(cmd)
     proc.wait()
-    return
 
 
 def get_custom_endpoints(origin_endpoints, offset=0):
@@ -872,9 +859,9 @@ def get_custom_endpoints(origin_endpoints, offset=0):
 #    assert paddle_pserver_endpoints != None
 #
 #    # hard code for paddlecloud custom-framework
-#    avilable_ports = os.getenv("TRAINER_PORTS", "").split(",")
+#    available_ports = os.getenv("TRAINER_PORTS", "").split(",")
 #    assert len(
-#        avilable_ports
+#        available_ports
 #    ) >= 2, "set paddle_ports_num >= 2 in config.ini for paddlecloud job submit"
 #
 #    # hard code for paddlecloud custom-framework
@@ -966,10 +953,8 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
     ), "ranks length should be equal to ips length."
 
     logger.debug(
-        "parsed from args: node_ips:{} node_ip:{} "
-        "node_rank:{} node_ranks:{}".format(
-            node_ips, node_ip, node_rank, node_ranks[node_rank]
-        )
+        f"parsed from args: node_ips:{node_ips} node_ip:{node_ip} "
+        f"node_rank:{node_rank} node_ranks:{node_ranks[node_rank]}"
     )
 
     # NOTE: there are different number of global mapped ranks on each node.
@@ -1097,16 +1082,14 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
 
     assert (
         len(node_ranks[node_rank]) <= gpus_num
-    ), "number of ranks mapped to one node should not exceed the avaiable ones."
+    ), "number of ranks mapped to one node should not exceed the available ones."
     assert len(node_ranks) == len(
         node_ips
     ), "ranks length should be equal to ips length."
 
     logger.debug(
-        "parsed from args: node_ips:{} node_ip:{} "
-        "node_rank:{} node_ranks:{}".format(
-            node_ips, node_ip, node_rank, node_ranks[node_rank]
-        )
+        f"parsed from args: node_ips:{node_ips} node_ip:{node_ip} "
+        f"node_rank:{node_rank} node_ranks:{node_ranks[node_rank]}"
     )
 
     # NOTE: there are different number of global mapped ranks on each node.
@@ -1181,7 +1164,7 @@ class ParameterServerLauncher:
             if args.servers:
                 assert (
                     len(args.servers.split(",")) == self.server_num
-                ), "The server_num and servers doesn't match. Expect servers endpoints num epual to server_num, but received servers enpoint num: {} and server_num {}".format(
+                ), "The server_num and servers doesn't match. Expect servers endpoints num equal to server_num, but received servers endpoint num: {} and server_num {}".format(
                     len(args.servers.split(",")), self.server_num
                 )
                 self.server_endpoints = args.servers
@@ -1203,7 +1186,7 @@ class ParameterServerLauncher:
             if args.workers:
                 assert (
                     len(args.workers.split(",")) == self.worker_num
-                ), "The worker_num and workers doesn't match. Expect workers endpoints num epual to worker_num, but received workers enpoint num: {} and worker_num {}".format(
+                ), "The worker_num and workers doesn't match. Expect workers endpoints num equal to worker_num, but received workers endpoint num: {} and worker_num {}".format(
                     len(args.workers.split(",")), self.worker_num
                 )
 
@@ -1255,7 +1238,7 @@ class ParameterServerLauncher:
             if args.coordinators:
                 assert (
                     len(args.coordinators.split(",")) == self.coordinator_num
-                ), "The coordinator_num and coordinators doesn't match. Expect coordinators endpoints num epual to coordinator_num, but received coordinator enpoint num: {} and coordinator_num {}".format(
+                ), "The coordinator_num and coordinators doesn't match. Expect coordinators endpoints num equal to coordinator_num, but received coordinator endpoint num: {} and coordinator_num {}".format(
                     len(args.coordinators.split(",")), self.coordinator_num
                 )
 
@@ -1288,7 +1271,7 @@ class ParameterServerLauncher:
                 if args.heter_workers:
                     assert len(args.heter_workers.split(";")) == len(
                         self.stage_heter_trainer_num
-                    ), "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num epual to heter_worker_num stage, but received heter_workers enpoint stage num: {} and heter_worker_num stage {}".format(
+                    ), "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num equal to heter_worker_num stage, but received heter_workers endpoint stage num: {} and heter_worker_num stage {}".format(
                         len(args.heter_workers.split(";")),
                         len(self.stage_heter_trainer_num),
                     )
@@ -1303,9 +1286,7 @@ class ParameterServerLauncher:
                         assert (
                             len(heter_worker_endpoints)
                             == self.stage_heter_trainer_num[i]
-                        ), "The heter trainer num in stage {} is not equal in args.heter_worker_num and args.heter_workers".format(
-                            i
-                        )
+                        ), f"The heter trainer num in stage {i} is not equal in args.heter_worker_num and args.heter_workers"
 
                         heter_worker_endpoints_ips = [
                             x.strip().split(":")[0]
@@ -1516,20 +1497,14 @@ class ParameterServerLauncher:
             for i in range(len(self.server_endpoints_ips)):
                 if ip == self.server_endpoints_ips[i]:
                     server = Trainer()
-                    server.endpoint = "{}:{}".format(
-                        ip,
-                        self.server_endpoints_port[i],
-                    )
+                    server.endpoint = f"{ip}:{self.server_endpoints_port[i]}"
                     server.rank = server_rank
                     server_rank += 1
                     pod.servers.append(server)
             for j in range(len(self.worker_endpoints_ips)):
                 if ip == self.worker_endpoints_ips[j]:
                     worker = Trainer()
-                    worker.endpoint = "{}:{}".format(
-                        ip,
-                        self.worker_endpoints_port[j],
-                    )
+                    worker.endpoint = f"{ip}:{self.worker_endpoints_port[j]}"
                     worker.rank = worker_rank
                     worker.stage = 1
                     worker_rank += 1
@@ -1537,9 +1512,8 @@ class ParameterServerLauncher:
             for m in range(len(self.coordinator_endpoints_ips)):
                 if ip == self.coordinator_endpoints_ips[m]:
                     coordinator = Trainer()
-                    coordinator.endpoint = "{}:{}".format(
-                        ip,
-                        self.coordinator_endpoints_port[m],
+                    coordinator.endpoint = (
+                        f"{ip}:{self.coordinator_endpoints_port[m]}"
                     )
                     coordinator.rank = coordinator_rank
                     coordinator.stage = 1
@@ -1563,7 +1537,7 @@ class ParameterServerLauncher:
         pod = cluster.pods[self.node_rank]
         self.gloo_rendezvous_dir = tempfile.mkdtemp()
 
-        # 3. subproces start
+        # 3. subprocess start
         self.procs = {
             "worker": [],
             "coordinator": [],

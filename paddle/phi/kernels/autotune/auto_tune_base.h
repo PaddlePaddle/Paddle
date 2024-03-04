@@ -76,7 +76,7 @@ class AutoTuneBase {
     } else {
       bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
       if (use_autotune) {
-        // All avaliable kernels have ran while picking the best kernel,
+        // All available kernels have ran while picking the best kernel,
         // so there may be no need for another kernel run.
         auto best_idx = PickBestKernel(ctx, args...);
         cache.Set(key, best_idx);
@@ -105,7 +105,7 @@ class AutoTuneBase {
     size_t best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
 
-    // Time cost test estabulished in default stream.
+    // Time cost test established in default stream.
     for (size_t i = 0; i < kernels_.size(); ++i) {
       auto time = RunAndMeasureKernel<Context>(ctx, i, args...);
       if (time < min_time) {
@@ -244,7 +244,7 @@ class GatherGemmScatterAutoTuner
     size_t best_idx = NO_KERNEL_WORKS;
     float min_time = std::numeric_limits<float>::max();
 
-    // Time cost test estabulished in default stream.
+    // Time cost test established in default stream.
     for (int i = 0; i < this->kernels_.size(); ++i) {
       float time = 0;
       // Some kernels may require more shared memory than available, skip these

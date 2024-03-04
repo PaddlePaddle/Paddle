@@ -78,7 +78,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> lenet = LeNet()
 
             >>> params_info = paddle.summary(lenet, (1, 1, 28, 28))
-            >>> # doctest: +SKIP
             >>> print(params_info)
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
@@ -103,7 +102,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
             {'total_params': 61610, 'trainable_params': 61610}
-            >>> # doctest: -SKIP
             >>> # multi input demo
             >>> class LeNetMultiInput(LeNet):
             ...     def forward(self, inputs, y):
@@ -119,7 +117,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> params_info = paddle.summary(lenet_multi_input,
             ...                              [(1, 1, 28, 28), (1, 400)],
             ...                              dtypes=['float32', 'float32'])
-            >>> # doctest: +SKIP
             >>> print(params_info)
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
@@ -144,7 +141,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
             {'total_params': 61610, 'trainable_params': 61610}
-            >>> # doctest: -SKIP
             >>> # list input demo
             >>> class LeNetListInput(LeNet):
             ...     def forward(self, inputs):
@@ -158,7 +154,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> lenet_list_input = LeNetListInput()
             >>> input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
             >>> params_info = paddle.summary(lenet_list_input, input=input_data)
-            >>> # doctest: +SKIP
             >>> print(params_info)
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
@@ -183,7 +178,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
             {'total_params': 61610, 'trainable_params': 61610}
-            >>> # doctest: -SKIP
             >>> # dict input demo
             >>> class LeNetDictInput(LeNet):
             ...     def forward(self, inputs):
@@ -198,7 +192,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> input_data = {'x1': paddle.rand([1, 1, 28, 28]),
             ...               'x2': paddle.rand([1, 400])}
             >>> params_info = paddle.summary(lenet_dict_input, input=input_data)
-            >>> # doctest: +SKIP
             >>> print(params_info)
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
@@ -223,7 +216,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
             {'total_params': 61610, 'trainable_params': 61610}
-            >>> # doctest: -SKIP
 
     """
     if input_size is None and input is None:
@@ -256,10 +248,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
                 item = (item,)
             assert isinstance(
                 item, (tuple, InputSpec)
-            ), 'When input_size is list, \
-            expect item in input_size is a tuple or InputSpec, but got {}'.format(
-                type(item)
-            )
+            ), f'When input_size is list, \
+            expect item in input_size is a tuple or InputSpec, but got {type(item)}'
 
             if isinstance(item, InputSpec):
                 _input_size.append(tuple(item.shape))
@@ -302,9 +292,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             elif isinstance(item, numbers.Number):
                 if item <= 0:
                     raise ValueError(
-                        "Expected element in input size greater than zero, but got {}".format(
-                            item
-                        )
+                        f"Expected element in input size greater than zero, but got {item}"
                     )
             new_shape.append(item)
         return tuple(new_shape)

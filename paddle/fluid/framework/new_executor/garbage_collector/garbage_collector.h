@@ -15,12 +15,15 @@
 
 #include <queue>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+
+COMMON_DECLARE_bool(fast_eager_deletion_mode);
+COMMON_DECLARE_bool(new_executor_use_cuda_graph);
 
 namespace paddle {
 namespace framework {
@@ -46,7 +49,23 @@ class InterpreterCoreGarbageCollector {
   memory::SpinLock spinlock_;
 };
 
-bool IsInterpretercoreFastGCEnabled();
+inline bool IsInterpretercoreFastGCEnabled() {
+  // When using cuda graph, fast GC must be used. Because
+  // `EventQuery` method in event GC cannot be used in
+  // cuda graph.
+  PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
+                                .IsStreamSafeCUDAAllocatorUsed() == false &&
+                        FLAGS_new_executor_use_cuda_graph,
+                    false,
+                    platform::errors::InvalidArgument(
+                        "When FLAGS_new_executor_use_cuda_graph is true, "
+                        "IsStreamSafeCUDAAllocatorUsed must be true, but "
+                        "got false."));
+  return (memory::allocation::AllocatorFacade::Instance()
+              .IsStreamSafeCUDAAllocatorUsed() &&
+          FLAGS_fast_eager_deletion_mode) ||
+         FLAGS_new_executor_use_cuda_graph;
+}
 
 std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(

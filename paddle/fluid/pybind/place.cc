@@ -164,17 +164,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/place.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -213,9 +213,10 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-          fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
-                                             )DOC");
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+            >>> fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
+                                                )DOC");
   g_customplace_pytype = reinterpret_cast<PyTypeObject *>(customplace.ptr());
   customplace
       .def("__init__",
@@ -293,7 +294,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   py::class_<platform::CUDAPlace> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.
-    It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
+    It represents a GPU device allocated or to be allocated with Tensor.
     Each CUDAPlace has a dev_id to indicate the graphics card ID represented by the current CUDAPlace,
     staring from 0.
     The memory of CUDAPlace with different dev_id is not accessible.
@@ -309,9 +310,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-
-          place = paddle.CUDAPlace(0)
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> place = paddle.CUDAPlace(0)
 
         )DOC");
   g_cudaplace_pytype = reinterpret_cast<PyTypeObject *>(cudaplace.ptr());
@@ -391,11 +392,14 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   });
 #endif
   py::class_<platform::XPUPlace> xpuplace(m, "XPUPlace", R"DOC(
-    **Note**:
+    Return a Baidu Kunlun Place
+
     Examples:
         .. code-block:: python
-          import paddle.base as base
-          xpu_place = base.XPUPlace(0)
+
+            >>> # doctest: +REQUIRES(env:XPU)
+            >>> import paddle.base as base
+            >>> xpu_place = base.XPUPlace(0)
         )DOC");
   g_xpuplace_pytype = reinterpret_cast<PyTypeObject *>(xpuplace.ptr());
   xpuplace
@@ -455,6 +459,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   py::enum_<phi::backends::xpu::XPUVersion>(m, "XPUVersion", py::arithmetic())
       .value("XPU1", phi::backends::xpu::XPUVersion::XPU1)
       .value("XPU2", phi::backends::xpu::XPUVersion::XPU2)
+      .value("XPU3", phi::backends::xpu::XPUVersion::XPU3)
       .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
@@ -492,8 +497,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-          cpu_place = paddle.CPUPlace()
+            >>> import paddle
+            >>> cpu_place = paddle.CPUPlace()
 
         )DOC");
   g_cpuplace_pytype = reinterpret_cast<PyTypeObject *>(cpuplace.ptr());
@@ -531,22 +536,22 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-          import paddle
-          place = paddle.CUDAPinnedPlace()
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> place = paddle.CUDAPinnedPlace()
 
         )DOC");
   g_cudapinnedplace_pytype =
       reinterpret_cast<PyTypeObject *>(cudapinnedplace.ptr());
   cudapinnedplace
-      .def("__init__",
-           [](platform::CUDAPinnedPlace &self) {
+      .def(py::init([]() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-             PADDLE_THROW(platform::errors::PermissionDenied(
-                 "Cannot use CUDAPinnedPlace in CPU only version, "
-                 "Please recompile or reinstall Paddle with CUDA support."));
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "Cannot use CUDAPinnedPlace in CPU only version, "
+            "Please recompile or reinstall Paddle with CUDA support."));
 #endif
-             new (&self) platform::CUDAPinnedPlace();
-           })
+        return std::make_unique<platform::CUDAPinnedPlace>();
+      }))
       .def("_type", &PlaceIndex<platform::CUDAPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPinnedPlace, platform::Place>)
       .def("_equals",
@@ -567,11 +572,10 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
-          import paddle
 
-          # required: ipu
-
-          ipu_place = paddle.IPUPlace()
+            >>> # doctest: +REQUIRES(env:IPU)
+            >>> import paddle
+            >>> ipu_place = paddle.IPUPlace()
 
         )DOC");
   g_ipuplace_pytype = reinterpret_cast<PyTypeObject *>(ipuplace.ptr());
@@ -585,8 +589,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                              "machine.";
                std::exit(-1);
              }
-             // use ipu(0) to comile, while run with the number user configure
-             // in sharding and pipline.
+             // use ipu(0) to compile, while run with the number user configure
+             // in sharding and pipeline.
              new (&self) platform::IPUPlace(0);
 #else
              LOG(ERROR) << string::Sprintf(

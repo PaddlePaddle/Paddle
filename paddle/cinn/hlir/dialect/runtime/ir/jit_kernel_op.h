@@ -14,44 +14,31 @@
 
 #pragma once
 
-#include "paddle/pir/core/op_base.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/pir/include/core/op_base.h"
 
 namespace cinn {
 
-namespace hlir {
-namespace framework {
-class Instruction;
-}  // namespace framework
-}  // namespace hlir
-
 namespace dialect {
 
-/*
- * TODO(Aurelius84): THIS IS NOT FINAL STATE!
- *   JitKernel is unified runtime operation to represent
- *   jit compiled function ptr from backend, such as
- *   nvrct.
-
- *   Ideally, JitKernel should only contains ArrayAttribute
- *   with each element is PointerAttribute, which is jit
- *   function ptr indeed.
-
- *   Currently, we regard hlir::framework::Instruction
- *   temporarily, and will spilt executor information like
- *   scope, inputs, outputs into InterpretorCore module.
-*/
 class JitKernelOp : public ::pir::Op<JitKernelOp> {
  public:
   using Op::Op;
   static const char* name() { return "cinn_runtime.jit_kernel"; }
   // TODO(Aurelius84): Think deeply what should contains
   static constexpr uint32_t attributes_num = 1;
-  static constexpr char* kAttrName = "instruction";
+  static constexpr char* kAttrName = "kernel_info";
   static const char* attributes_name[attributes_num];
 
-  hlir::framework::Instruction* instruction();
+  static void Build(::pir::Builder& builder,             // NOLINT
+                    ::pir::OperationArgument& argument,  // NOLINT
+                    const std::vector<::pir::Value>& x,
+                    const ::pir::AttributeMap& attributes,
+                    const std::vector<::pir::Type>& out_types);
 
-  void Verify();
+  const hlir::framework::pir::CINNKernelInfo& cinn_kernel_info();
+
+  void VerifySig();
 };
 
 }  // namespace dialect

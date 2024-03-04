@@ -32,14 +32,17 @@ using float16 = dtype::float16;
 #ifdef PADDLE_WITH_XPU
 
 template <typename Context, typename T1, typename T2>
-static int ConvertDataByType(
-    const T1* x, T2** y, int len, bool allocateFlag, const Context& dev_ctx) {
+static int ConvertDataByType(const T1* x,
+                             T2** y,
+                             int len,
+                             bool allocateFlag,
+                             const Context& dev_ctx,
+                             xpu::ctx_guard* ctx_guard) {
   if (nullptr == x || nullptr == y || len <= 0)
     return xpu::Error_t::INVALID_PARAM;
-  int r = 0;
   if (allocateFlag) {
-    r = xpu_malloc(reinterpret_cast<void**>(y), sizeof(T2) * len);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
+    *y = ctx_guard->alloc_l3_or_gm<T2>(len);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(*y);
   }
 
   T1* cpu_data = reinterpret_cast<T1*>(malloc(sizeof(T1) * len));
@@ -62,13 +65,14 @@ static int ConvertDataByType(
 template <typename Context, typename T>
 static void GetDataPointer(const phi::DenseTensor& tensorData,
                            T** result,
-                           const Context& dev_ctx) {
+                           const Context& dev_ctx,
+                           xpu::ctx_guard* ctx_guard) {
   if (tensorData.dtype() == DataType::FLOAT16) {
     const float16* real_data = tensorData.template data<float16>();
     int len = tensorData.numel();
 
     int r = ConvertDataByType<Context, float16, T>(
-        real_data, result, len, true, dev_ctx);
+        real_data, result, len, true, dev_ctx, ctx_guard);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
   }
 }
@@ -88,21 +92,17 @@ static void GetOutDataPointer(DenseTensor* tensorData,
 template <typename Context, typename T>
 static void CopyOutData(const DenseTensor& srcTensor,
                         phi::DenseTensor* dstTensor,
-                        const Context& dev_ctx) {
+                        const Context& dev_ctx,
+                        xpu::ctx_guard* ctx_guard) {
   if (dstTensor->dtype() == DataType::FLOAT16) {
     const T* xpu_out_data = srcTensor.template data<T>();
     float16* out_data = dev_ctx.template Alloc<float16>(dstTensor);
     int len = srcTensor.numel();
 
     int r = ConvertDataByType<Context, T, float16>(
-        xpu_out_data, &out_data, len, false, dev_ctx);
+        xpu_out_data, &out_data, len, false, dev_ctx, ctx_guard);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
   }
-}
-
-template <typename T>
-static void FreeData(const phi::DenseTensor& tensorData, T* dataPtr) {
-  if (tensorData.dtype() == DataType::FLOAT16) xpu_free(dataPtr);
 }
 
 template <typename Context, typename T>
@@ -125,7 +125,8 @@ static void Scale(phi::DenseTensor* beta_pow_out,
                   const phi::DenseTensor& beta_pow,
                   T* beta_pow_ptr,
                   const T& beta,
-                  const Context& dev_ctx) {
+                  const Context& dev_ctx,
+                  xpu::ctx_guard* ctx_guard) {
   float16* beta_pow_out_p2 = dev_ctx.template Alloc<float16>(beta_pow_out);
 
   DenseTensor xpu_beta_pow_out;
@@ -149,7 +150,7 @@ static void Scale(phi::DenseTensor* beta_pow_out,
   int len = xpu_beta_pow_out.numel();
 
   r = ConvertDataByType<Context, T, float16>(
-      xpu_beta_pow_out_data, &beta_pow_out_p2, len, false, dev_ctx);
+      xpu_beta_pow_out_data, &beta_pow_out_p2, len, false, dev_ctx, ctx_guard);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
 }
 #endif

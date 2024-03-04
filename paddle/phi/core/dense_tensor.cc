@@ -42,26 +42,23 @@ limitations under the License. */
 
 namespace phi {
 
+DenseTensor::~DenseTensor() = default;
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
+    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
-DenseTensor::DenseTensor(const DenseTensor& other) {
+DenseTensor::DenseTensor(const DenseTensor& other) {  // NOLINT
   this->meta_ = other.meta();
   holder_ = other.holder_;
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
-
-#ifdef PADDLE_WITH_DNNL
-  mem_desc_ = other.mem_desc_;
-#endif
 }
 
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
@@ -73,9 +70,6 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
-#ifdef PADDLE_WITH_DNNL
-  mem_desc_ = other.mem_desc_;
-#endif
   return *this;
 }
 
@@ -84,9 +78,6 @@ DenseTensor& DenseTensor::operator=(DenseTensor&& other) noexcept {
   std::swap(holder_, other.holder_);
   storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
-#ifdef PADDLE_WITH_DNNL
-  mem_desc_ = other.mem_desc_;
-#endif
   return *this;
 }
 
@@ -232,9 +223,6 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   } else {
     meta_.strides = meta.strides;
   }
-#ifdef PADDLE_WITH_XPU
-  meta_.scale_value = meta.scale_value;
-#endif
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
@@ -270,9 +258,9 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
 
 void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)      \
-  template const dtype* DenseTensor::data() const; \
-  template dtype* DenseTensor::data();
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)               \
+  template TEST_API const dtype* DenseTensor::data() const; \
+  template TEST_API dtype* DenseTensor::data();
 
 DATA_MEMBER_FUNC_INSTANTIATION(bool);
 DATA_MEMBER_FUNC_INSTANTIATION(int8_t);
@@ -311,9 +299,30 @@ template const NPUStorageProperties& DenseTensor::storage_properties() const;
 #ifdef PADDLE_WITH_DNNL
 template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
 #endif
+#ifdef PADDLE_WITH_XPU
+template const XPUStorageProperties& DenseTensor::storage_properties() const;
+#endif
 
 bool DenseTensor::storage_properties_initialized() const {
-  return storage_properties_ != nullptr;
+  if (storage_properties_ == nullptr) {
+    return false;
+  } else if (NPUStorageProperties::classof(storage_properties_.get())) {
+    return place().GetType() == AllocationType::CUSTOM;
+#ifdef PADDLE_WITH_XPU
+  } else if (XPUStorageProperties::classof(storage_properties_.get())) {
+    return place().GetType() == AllocationType::XPU;
+#endif
+#ifdef PADDLE_WITH_DNNL
+  } else if (OneDNNStorageProperties::classof(storage_properties_.get())) {
+    return place().GetType() == AllocationType::CPU;
+#endif
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The type of storage_properties [%s] is "
+                                     "inconsistent with tensor place [%s]",
+                                     storage_properties_->type_info().name(),
+                                     AllocationTypeStr(place().GetType())));
+  }
 }
 
 void DenseTensor::set_storage_properties(

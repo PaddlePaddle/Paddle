@@ -15,6 +15,7 @@
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
+from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
@@ -45,6 +46,15 @@ def sdp_kernel(enable_math=False, enable_flash=True, enable_mem_efficient=True):
         g_enable_mem_efficient = original_enable_mem_efficient
 
 
+# special for XPU device
+def get_triangle_upper_mask(x):
+    mask = paddle.full_like(x, -1e4)
+    mask.stop_gradient = True
+    mask = paddle.triu(mask, diagonal=1)
+    mask.stop_gradient = True
+    return mask
+
+
 def _math_attention(
     query,
     key,
@@ -65,11 +75,19 @@ def _math_attention(
     product = paddle.matmul(
         x=query * (head_dim**-0.5), y=key, transpose_y=True
     )
-    weights = (
-        paddle.incubate.softmax_mask_fuse_upper_triangle(product)
-        if causal
-        else F.softmax(product)
-    )
+
+    if not causal:
+        weights = F.softmax(product)
+    else:
+        # special for XPU device
+        place = paddle.get_device()
+        if "xpu" in place:
+            # softmax_mask_fuse_upper_triangle is not supported on XPU, use plain implementation
+            mask = get_triangle_upper_mask(product)
+            product = product + mask
+            weights = F.softmax(product)
+        else:
+            weights = paddle.incubate.softmax_mask_fuse_upper_triangle(product)
     if dropout_rate > 0.0:
         weights = F.dropout(
             weights, dropout_rate, training=training, mode="upscale_in_train"
@@ -94,6 +112,10 @@ def _select_sdp(head_dim):
     is determined by the sdp_kernel configuration or specified through input values.
     """
     place = paddle.get_device()
+
+    if "xpu" in place:
+        return "flash_attn"
+
     # not use sdp_kernel
     if g_enable_flash is None:
         if "gpu" not in place:
@@ -183,20 +205,29 @@ def flash_attention(
 
             >>> import paddle
 
-            >>> paddle.seed(1)
+            >>> paddle.seed(2023)
             >>> q = paddle.rand((1, 128, 2, 16))
 
             >>> output = paddle.nn.functional.flash_attention.flash_attention(q, q, q, 0.9, False, False)
+            >>> print(output)
+            (Tensor(shape=[1, 128, 2, 16], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.34992966, 0.34456208, 0.45826620, ..., 0.39883569,
+                0.42132431, 0.39157745],
+               [0.76687670, 0.65837246, 0.69117945, ..., 0.82817286,
+                0.76690865, 0.71485823]],
+              ...,
+              [[0.71662450, 0.57275224, 0.57053083, ..., 0.48108247,
+                0.53336465, 0.54540104],
+               [0.59137970, 0.51350880, 0.50449550, ..., 0.38860250,
+                0.40526697, 0.60541755]]]]), None)
+
     """
     head_dim = query.shape[3]
     sdp_func_name = _select_sdp(head_dim)
 
     if sdp_func_name == "flash_attn":
-        if in_dynamic_mode():
-            (
-                result_attention,
-                result_softmax,
-            ) = _C_ops.flash_attn(
+        if in_dynamic_or_pir_mode():
+            (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
                 query,
                 key,
                 value,
@@ -340,11 +371,12 @@ def flash_attn_unpadded(
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.seed(1)
-            >>> q = paddle.rand((1, 128, 2, 16))
+            >>> paddle.seed(2023)
+            >>> q = paddle.rand((2, 128, 8, 16), dtype='float16')
+            >>> cu = paddle.arange(0, 384, 128, dtype='int32')
+            >>> qq = paddle.reshape(q, [256, 8, 16])
+            >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(qq, qq, qq, cu, cu, 128, 128, 0.25, 0.0, False, False)
 
-            >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(q, q, q, 0.9, False, False)
-            >>> print(output)
     """
     if in_dynamic_mode():
         (
@@ -461,29 +493,69 @@ def scaled_dot_product_attention(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP()
+            >>> # doctest: +SKIP('bfloat need V100 compile')
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
             >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
             >>> print(output)
             >>> # doctest: -SKIP
     """
+
     if attn_mask is None:
+        # downgraded to ordinary flash attention implementation
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+        return out
     else:
-        fixed_seed_offset = (None,)
-        return_softmax = False
-        rng_name = ""
-        out, _ = _C_ops.flash_attn(
-            query,
-            key,
-            value,
-            fixed_seed_offset,
-            attn_mask,
-            dropout_p,
-            is_causal,
-            return_softmax,
-            not training,
-            rng_name,
-        )
-    return out
+        if in_dynamic_or_pir_mode():
+            fixed_seed_offset = (None,)
+            return_softmax = False
+            rng_name = ""
+            out, _, _, _ = _C_ops.flash_attn(
+                query,
+                key,
+                value,
+                fixed_seed_offset,
+                attn_mask,
+                dropout_p,
+                is_causal,
+                return_softmax,
+                not training,
+                rng_name,
+            )
+            return out
+        else:
+            helper = LayerHelper('flash_attn', **locals())
+            dtype = helper.input_dtype(input_param_name='q')
+            out = helper.create_variable_for_type_inference(dtype)
+            softmax = helper.create_variable_for_type_inference(dtype)
+            softmax_lse = helper.create_variable_for_type_inference(
+                paddle.float32
+            )
+            seed_offset = helper.create_variable_for_type_inference(
+                paddle.int64
+            )
+            inputs = {
+                'q': query,
+                'k': key,
+                'v': value,
+                'attn_mask': attn_mask,
+            }
+            outputs = {
+                'out': out,
+                'softmax': softmax,
+                'softmax_lse': softmax_lse,
+                'seed_offset': seed_offset,
+            }
+            helper.append_op(
+                type='flash_attn',
+                inputs=inputs,
+                outputs=outputs,
+                attrs={
+                    'dropout': dropout_p,
+                    'causal': is_causal,
+                    'return_softmax': False,
+                    'is_test': not training,
+                    'rng_name': '',
+                },
+            )
+            return out

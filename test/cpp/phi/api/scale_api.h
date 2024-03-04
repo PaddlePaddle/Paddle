@@ -15,26 +15,25 @@
 #pragma once
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/scale_kernel.h"
-#include "paddle/utils/flags.h"
 
-PHI_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 namespace paddle {
 namespace experimental {
 
-PADDLE_API Tensor scale_kernel_context(const Tensor& x,
-                                       const Scalar& scale,
-                                       float bias,
-                                       bool bias_after_scale) {
+Tensor scale_kernel_context(const Tensor& x,
+                            const Scalar& scale,
+                            float bias,
+                            bool bias_after_scale) {
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;

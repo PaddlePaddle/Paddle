@@ -18,6 +18,7 @@ import json
 import logging
 import math
 import os
+import re
 import sys
 import time
 
@@ -480,8 +481,8 @@ class FleetUtil:
                     )
                 else:
                     self.rank0_error(
-                        "not write {} because {}/{} already "
-                        "exists".format(donefile_name, day, pass_id)
+                        f"not write {donefile_name} because {day}/{pass_id} already "
+                        "exists"
                     )
             else:
                 with open(donefile_name, "w") as f:
@@ -598,8 +599,8 @@ class FleetUtil:
                     )
                 else:
                     self.rank0_error(
-                        "not write {} because {}/{} already "
-                        "exists".format(donefile_name, day, pass_id)
+                        f"not write {donefile_name} because {day}/{pass_id} already "
+                        "exists"
                     )
             else:
                 with open(donefile_name, "w") as f:
@@ -1021,11 +1022,7 @@ class FleetUtil:
             if pass_id == "-1":
                 dest = f"{output_path}/{day}/base/dnn_plugin/"
             else:
-                dest = "{}/{}/delta-{}/dnn_plugin/".format(
-                    output_path,
-                    day,
-                    pass_id,
-                )
+                dest = f"{output_path}/{day}/delta-{pass_id}/dnn_plugin/"
             if not client.is_exist(dest):
                 client.makedirs(dest)
 
@@ -1130,11 +1127,7 @@ class FleetUtil:
             if pass_id == "-1":
                 dest = f"{output_path}/{day}/base/dnn_plugin/"
             else:
-                dest = "{}/{}/delta-{}/dnn_plugin/".format(
-                    output_path,
-                    day,
-                    pass_id,
-                )
+                dest = f"{output_path}/{day}/delta-{pass_id}/dnn_plugin/"
             if not client.is_exist(dest):
                 client.mkdirs(dest)
             client.upload(model_name, dest, multi_processes=5, overwrite=True)
@@ -1325,7 +1318,12 @@ class FleetUtil:
                 ...     is_data_hourly_placed=False)
 
         """
+        pattern = r'^\d+|{[0-9]+}|{[0-9]+\.\.[0-9]+}$'
+        if not re.fullmatch(pattern, str(days)):
+            raise Exception("days format is not right")
         days = os.popen("echo -n " + days).read().split(" ")
+        if not re.fullmatch(pattern, str(hours)):
+            raise Exception("hours format is not right")
         hours = os.popen("echo -n " + hours).read().split(" ")
         split_interval = int(split_interval)
         split_per_pass = int(split_per_pass)
@@ -2048,8 +2046,8 @@ class GPUPSUtil(FleetUtil):
                     )
                 else:
                     self.rank0_error(
-                        "not write {} because {}/{} already "
-                        "exists".format(donefile_name, day, pass_id)
+                        f"not write {donefile_name} because {day}/{pass_id} already "
+                        "exists"
                     )
             else:
                 with open(donefile_name, "w") as f:
@@ -2165,8 +2163,8 @@ class GPUPSUtil(FleetUtil):
                     )
                 else:
                     self.rank0_info(
-                        "not write {} because {}/{} already "
-                        "exists".format(donefile_name, day, pass_id)
+                        f"not write {donefile_name} because {day}/{pass_id} already "
+                        "exists"
                     )
             else:
                 with open(donefile_name, "w") as f:

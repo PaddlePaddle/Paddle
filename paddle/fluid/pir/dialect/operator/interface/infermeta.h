@@ -11,10 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
 namespace dialect {
@@ -22,9 +23,15 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
  public:
   /// Defined these methods with the interface.
   struct Concept {
-    explicit Concept(void (*infer_meta)(phi::InferMetaContext *))
-        : infer_meta_(infer_meta) {}
+    explicit Concept(void (*infer_meta)(phi::InferMetaContext *),
+                     std::vector<pir::Type> (*infer_meta_by_value)(
+                         const std::vector<pir::Value> &,
+                         const pir::AttributeMap &))
+        : infer_meta_(infer_meta), infer_meta_by_value_(infer_meta_by_value) {}
+
     void (*infer_meta_)(phi::InferMetaContext *);
+    std::vector<pir::Type> (*infer_meta_by_value_)(
+        const std::vector<pir::Value> &, const pir::AttributeMap &);
   };
 
   template <class ConcreteOp>
@@ -32,8 +39,12 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
     static inline void InferMeta(phi::InferMetaContext *infer_meta) {
       return ConcreteOp::InferMeta(infer_meta);
     }
-
-    Model() : Concept(InferMeta) {}
+    static inline std::vector<pir::Type> InferMetaByValue(
+        const std::vector<pir::Value> &input_values,
+        const pir::AttributeMap &attributes) {
+      return ConcreteOp::InferMeta(input_values, attributes);
+    }
+    Model() : Concept(InferMeta, InferMetaByValue) {}
   };
 
   /// Constructor
@@ -42,6 +53,11 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
 
   void InferMeta(phi::InferMetaContext *infer_meta) {
     impl_->infer_meta_(infer_meta);
+  }
+
+  std::vector<pir::Type> InferMeta(const std::vector<pir::Value> &input_values,
+                                   const pir::AttributeMap &attributes) {
+    return impl_->infer_meta_by_value_(input_values, attributes);
   }
 
  private:

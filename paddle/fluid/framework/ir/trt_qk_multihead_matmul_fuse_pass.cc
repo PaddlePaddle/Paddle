@@ -310,7 +310,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     int hidden_out = wq_tensor->dims()[1];
     int head_size = hidden_out / head_number;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
-      VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
+      VLOG(3) << "scale of multi-head matmul do not fit the requirement of "
                  "qk attention plugin, Stop fusing.";
       return;
     }
@@ -324,8 +324,8 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
 
     // combined_w_dims = [in,2,out]
     auto combined_w_qk_dims =
-        phi::make_ddim({wq_tensor->dims()[0], 2, wq_tensor->dims()[1]});
-    auto combined_bias_dims = phi::make_ddim({2, bq_tensor->dims()[0]});
+        common::make_ddim({wq_tensor->dims()[0], 2, wq_tensor->dims()[1]});
+    auto combined_bias_dims = common::make_ddim({2, bq_tensor->dims()[0]});
 
     VLOG(3) << "trt qk attention trt wq_dim in:" << wq_tensor->dims()[0]
             << "trt qk attention trt wk_dim out:" << wq_tensor->dims()[1];

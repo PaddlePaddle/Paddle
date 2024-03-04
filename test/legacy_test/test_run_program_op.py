@@ -208,7 +208,6 @@ class RunProgramOpTest(unittest.TestCase):
 
         outputs['OutScope'] = [core.Scope()]
 
-        outputs['DOut'] = [create_var_base(False, "Fake_var")]
         return outputs
 
     def calc_dygraph_output(self, place):
@@ -256,7 +255,6 @@ class RunProgramOpTest(unittest.TestCase):
                 inputs['Params'],
                 outputs['Out'],
                 outputs['OutScope'],
-                outputs['DOut'],
                 None,
                 *self.attrs
             )
@@ -309,7 +307,6 @@ class RunProgramOpTest(unittest.TestCase):
                 inputs['Params'],
                 outputs['Out'],
                 outputs['OutScope'],
-                outputs['DOut'],
                 None,
                 *self.attrs
             )
@@ -430,8 +427,8 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # NOTE: fecth not support SelectedRows, catnot compare
-        # sparse gradients with staic mode, only run dygraph
+        # NOTE: fetch not support SelectedRows, cannot compare
+        # sparse gradients with static mode, only run dygraph
         places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))

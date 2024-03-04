@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/include/core/dialect.h"
 
 namespace cinn {
 namespace dialect {
@@ -24,6 +24,10 @@ class OperatorDialect : public ::pir::Dialect {
   explicit OperatorDialect(::pir::IrContext* context);
 
   static const char* name() { return "cinn_op"; }
+
+  void PrintType(pir::Type type, std::ostream& os) const override;
+  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
  private:
   void initialize();

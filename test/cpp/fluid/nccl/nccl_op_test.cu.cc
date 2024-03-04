@@ -102,7 +102,7 @@ class NCCLTester : public ::testing::Test {
     if (!send_tensor->numel()) {
       send_tensor->mutable_data<T>(kDims, place);
 
-      std::vector<T> send_vector(phi::product(kDims), GetGPUData(gpu_id));
+      std::vector<T> send_vector(common::product(kDims), GetGPUData(gpu_id));
       paddle::framework::TensorFromVector<T>(send_vector, *ctx, send_tensor);
       VLOG(1) << "Send Tensor filled with elements " << send_tensor->numel();
     }
@@ -111,7 +111,7 @@ class NCCLTester : public ::testing::Test {
 
     PADDLE_ENFORCE_EQ(
         send_tensor->numel(),
-        phi::product(kDims),
+        common::product(kDims),
         paddle::platform::errors::InvalidArgument("Tensor numel not match!"));
 
     auto op = f::OpRegistry::CreateOp(*op1);
@@ -184,7 +184,7 @@ void NCCLTester::testNcclAllReduceOp() {
                          dev_ctx->stream());
     dev_ctx->Wait();
 
-    for (int64_t j = 0; j < phi::product(kDims); ++j) {
+    for (int64_t j = 0; j < common::product(kDims); ++j) {
       ASSERT_NEAR(ct[j], expected_result, 1e-5);
     }
   }
@@ -241,7 +241,7 @@ void NCCLTester::testNcclReduceOp() {
                        dev_ctx->stream());
   dev_ctx->Wait();
 
-  for (int64_t j = 0; j < phi::product(kDims); ++j) {
+  for (int64_t j = 0; j < common::product(kDims); ++j) {
     ASSERT_NEAR(ct[j], expected_result, 1e-5);
   }
 }
@@ -299,7 +299,7 @@ void NCCLTester::testNcclBcastOp() {
                        dev_ctx->stream());
   dev_ctx->Wait();
 
-  for (int64_t j = 0; j < phi::product(kDims); ++j) {
+  for (int64_t j = 0; j < common::product(kDims); ++j) {
     ASSERT_NEAR(ct[j], result, 1e-5);
   }
 }

@@ -21,6 +21,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+import paddle.distributed as dist
 from paddle import base
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
@@ -56,8 +57,8 @@ class TestElementwiseAddOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(
             check_dygraph=self.check_dygraph(),
-            check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_normal(self):
@@ -69,10 +70,12 @@ class TestElementwiseAddOp(OpTest):
             'Out',
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
@@ -82,10 +85,12 @@ class TestElementwiseAddOp(OpTest):
             no_grad_set=set("X"),
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
@@ -95,7 +100,9 @@ class TestElementwiseAddOp(OpTest):
             no_grad_set=set('Y'),
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def init_input_output(self):
@@ -151,15 +158,14 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             place,
             atol=1e-3,
             check_dygraph=self.check_dygraph(),
-            check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
         )
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_prim=True)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -167,10 +173,11 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             'Out',
             no_grad_set=set("X"),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -178,7 +185,8 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             'Out',
             no_grad_set=set('Y'),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
 
@@ -212,7 +220,7 @@ class TestBF16ElementwiseAddOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -221,10 +229,11 @@ class TestBF16ElementwiseAddOp(OpTest):
             ['X', 'Y'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -232,10 +241,11 @@ class TestBF16ElementwiseAddOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -243,7 +253,8 @@ class TestBF16ElementwiseAddOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
     def if_enable_cinn(self):
@@ -341,10 +352,10 @@ class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 
@@ -510,10 +521,10 @@ class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 
@@ -639,8 +650,8 @@ class TestAddApi(unittest.TestCase):
         with base.dygraph.guard():
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
-            x = base.dygraph.to_variable(np_x)
-            y = base.dygraph.to_variable(np_y)
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
             z_expected = np.array([3.0, 8.0, 6.0])
@@ -738,27 +749,16 @@ class TestComplexElementwiseAddOp(OpTest):
         self.out = self.x + self.y
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-        )
+    def test_check_grad_ignore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-        )
+    def test_check_grad_ignore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
 
 class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
@@ -776,8 +776,12 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         a = 1.5
         b = paddle.full([4, 5, 6], True, dtype='bool')
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
-        paddle.enable_static()
+        self.assertTrue(c.dtype == paddle.float32)
+        with paddle.pir_utils.IrGuard():
+            a = 1.5
+            b = paddle.full([4, 5, 6], True, dtype='bool')
+            c = a + b
+            self.assertTrue(c.dtype == core.DataType.FLOAT32)
 
     def test_dygraph_add(self):
         paddle.disable_static()
@@ -785,7 +789,7 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         b = paddle.full([2], True, dtype='bool')
         # special case: scalar + tensor(bool)
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(c.dtype == paddle.float32)
 
         np_a = np.random.random((2, 3, 4)).astype(np.float64)
         np_b = np.random.random((2, 3, 4)).astype(np.float64)
@@ -839,7 +843,7 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
         a = paddle.full([4, 5, 6], 1.5, dtype='float32')
         b = np.array([1.5], dtype='float32')[0]
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(c.dtype == paddle.float32)
 
     def test_float16_add(self):
         if not core.is_compiled_with_cuda():
@@ -848,7 +852,7 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
         a = paddle.full([4, 5, 6], 1.5, dtype='float16')
         b = np.array([1.5], dtype='float16')[0]
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP16)
+        self.assertTrue(c.dtype == paddle.float16)
 
 
 class TestTensorAddAPIWarnings(unittest.TestCase):
@@ -918,6 +922,122 @@ class TestTensorFloa32Float16Add(TestTensorFloa32Bfloat16OrFloat16Add):
         place = core.CUDAPlace(0)
         with base.dygraph.base.guard(place=place):
             self._floa32_bfloat16_or_float16_add(y_dtype=paddle.float16)
+
+
+class TestElementwiseAddOpAutoParallel(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.python_api = paddle.add
+        self.public_python_api = paddle.add
+        self.prim_op_type = "prim"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+        self.if_check_prim()
+        self.if_enable_cinn()
+        self.init_placements()
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': self.out}
+
+    def check_dygraph(self):
+        return not self.use_mkldnn and self.axis == -1
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_auto_parallel=True,
+        )
+
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Replicate()],
+        }
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_axis(self):
+        self.axis = -1
+
+    def if_check_prim(self):
+        self.check_prim = self.axis == -1
+
+    def if_enable_cinn(self):
+        pass
+
+
+class TestElementwiseAddOpAutoParallelXShardBoardcast(
+    TestElementwiseAddOpAutoParallel
+):
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Replicate()],
+        }
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [8, 16]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [2, 8, 16]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseAddOpAutoParallelXYShard(TestElementwiseAddOpAutoParallel):
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Shard(1)],
+        }
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', check_auto_parallel=True
+        )
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [16, 32]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOpAutoParallelXYShardBroardcast(
+    TestElementwiseAddOpAutoParallelXYShard
+):
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Replicate()],
+        }
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', check_auto_parallel=True
+        )
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [8, 16]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [2, 8, 16]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
 
 
 if __name__ == '__main__':

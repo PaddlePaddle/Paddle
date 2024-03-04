@@ -19,6 +19,7 @@ from op_test import OpTest
 from test_conv2d_transpose_op import TestConv2DTransposeOp
 
 from paddle import enable_static
+from paddle.base import core
 
 
 def conv2d_bias_naive(out, bias):
@@ -38,6 +39,18 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
 
     def test_check_grad_no_filter(self):
         return
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(
+                place,
+                atol=1e-5,
+                check_dygraph=(not self.use_mkldnn),
+            )
+        else:
+            self.check_output(check_dygraph=(not self.use_mkldnn))
 
     def init_op_type(self):
         self.data_format = "NCHW"

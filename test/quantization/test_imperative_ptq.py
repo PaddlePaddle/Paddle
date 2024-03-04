@@ -86,13 +86,12 @@ class TestImperativePTQ(unittest.TestCase):
 
         seed = 1
         np.random.seed(seed)
-        paddle.static.default_main_program().random_seed = seed
-        paddle.static.default_startup_program().random_seed = seed
+        paddle.seed(seed)
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
-                target_folder, zip_path
+            cmd = (
+                f'mkdir {target_folder} && tar xf {zip_path} -C {target_folder}'
             )
             os.system(cmd)
 

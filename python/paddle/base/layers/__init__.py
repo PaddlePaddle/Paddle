@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import io
-from .io import *
-from . import math_op_patch
-from .math_op_patch import *
-from ..layer_helper import LayerHelper
-
+from . import io, math_op_patch  # noqa: F401
 
 __all__ = []
-__all__ += io.__all__

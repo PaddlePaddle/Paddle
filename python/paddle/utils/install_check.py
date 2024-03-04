@@ -60,7 +60,7 @@ def _is_cuda_available():
         logging.warning(
             "You are using GPU version PaddlePaddle, but there is no GPU "
             "detected on your machine. Maybe CUDA devices is not set properly."
-            "\n Original Error is {}".format(e)
+            f"\n Original Error is {e}"
         )
         return False
 
@@ -76,7 +76,7 @@ def _is_xpu_available():
         logging.warning(
             "You are using XPU version PaddlePaddle, but there is no XPU "
             "detected on your machine. Maybe XPU devices is not set properly."
-            "\n Original Error is {}".format(e)
+            f"\n Original Error is {e}"
         )
         return False
 
@@ -281,30 +281,22 @@ def run_check():
 
                 os.environ['PADDLE_DISTRI_BACKEND'] = "xccl"
             _run_parallel(device_list)
-            print(
-                "PaddlePaddle works well on {} {}s.".format(
-                    device_count, device_str
-                )
-            )
+            print(f"PaddlePaddle works well on {device_count} {device_str}s.")
         print(
             "PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now."
         )
     except Exception as e:
         logging.warning(
-            "PaddlePaddle meets some problem with {} {}s. This may be caused by:"
+            f"PaddlePaddle meets some problem with {device_count} {device_str}s. This may be caused by:"
             "\n 1. There is not enough GPUs visible on your system"
             "\n 2. Some GPUs are occupied by other process now"
             "\n 3. NVIDIA-NCCL2 is not installed correctly on your system. Please follow instruction on https://github.com/NVIDIA/nccl-tests "
-            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html".format(
-                device_count, device_str
-            )
+            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
         )
 
         logging.warning(f"\n Original Error is: {e}")
         print(
-            "PaddlePaddle is installed successfully ONLY for single {}! "
-            "Let's start deep learning with PaddlePaddle now.".format(
-                device_str
-            )
+            f"PaddlePaddle is installed successfully ONLY for single {device_str}! "
+            "Let's start deep learning with PaddlePaddle now."
         )
         raise e

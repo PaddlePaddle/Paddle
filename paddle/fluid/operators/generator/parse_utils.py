@@ -365,6 +365,9 @@ def check_op_config(op_entry, op_name):
         'data_transform',
         'composite',
         'support_dygraph_mode',
+        'support_tensor',
+        'traits',
+        'interfaces',
     )
     infer_meta_key_set = ('func', 'param', 'spmd_rule')
     kernel_key_set = (
@@ -508,6 +511,21 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     else:
         data_trans = None
 
+    if "support_tensor" in op_entry.keys():
+        support_tensor = op_entry["support_tensor"]
+    else:
+        support_tensor = []
+
+    if "traits" in op_entry.keys():
+        trait_list = parse_plain_list(op_entry["traits"])
+    else:
+        trait_list = []
+
+    if "interfaces" in op_entry.keys():
+        interface_list = parse_plain_list(op_entry["interfaces"])
+    else:
+        interface_list = []
+
     op = {
         "name": op_name,
         "inputs": inputs,
@@ -515,6 +533,9 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         "outputs": outputs,
         "no_need_buffer": no_buffer_args,
         "data_transform": data_trans,
+        "support_tensor": support_tensor,
+        "traits": trait_list,
+        "interfaces": interface_list,
     }
 
     # op should be is_base_op or is_invoke_op or is_only_composite_op
@@ -606,11 +627,11 @@ def validate_backward_attrs(op, forward_attrs, backward_attrs):
 def validate_backward_inputs(
     op, forward_inputs, forward_outputs, backward_inputs
 ):
-    foward_input_names = [item["name"] for item in forward_inputs]
+    forward_input_names = [item["name"] for item in forward_inputs]
     forward_output_names = [item["name"] for item in forward_outputs]
     backward_input_names = [item["name"] for item in backward_inputs]
 
-    assert len(backward_input_names) <= len(foward_input_names) + 2 * len(
+    assert len(backward_input_names) <= len(forward_input_names) + 2 * len(
         forward_output_names
     ), f"{op } has too many inputs."
 
