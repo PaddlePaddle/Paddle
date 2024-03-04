@@ -34,6 +34,41 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+bool checkForDynamicShapes(const framework::OpDesc& desc) {
+  VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
+  auto* block = desc.Block();
+  auto inputs = desc.Inputs();
+  for (auto iter : inputs) {
+    for (auto var_name : iter.second) {
+      if (block) {
+        auto* var_desc = block->FindVar(var_name);
+        const auto shape = var_desc->GetShape();
+        for (auto ele : shape) {
+          if (ele < 0) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  auto outputs = desc.Outputs();
+  for (auto iter : outputs) {
+    for (auto var_name : iter.second) {
+      if (block) {
+        auto* var_desc = block->FindVar(var_name);
+        const auto shape = var_desc->GetShape();
+        for (auto ele : shape) {
+          if (ele < 0) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {  // NOLINT
@@ -103,39 +138,9 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
       return false;
     }
-
     if (forbid_dynamic_op_enter_into_trt) {
-      VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
-      auto* block = desc.Block();
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
-
-      auto outputs = desc.Outputs();
-      for (auto iter : outputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
+      bool is_dynamic = checkForDynamicShapes(desc);
+      return is_dynamic;
     }
 
     // do not support the op which is labeled the `skip_quant`
@@ -3248,37 +3253,8 @@ struct GenericPluginTeller : public Teller {
     }
 
     if (forbid_dynamic_op_enter_into_trt) {
-      VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
-      auto* block = desc.Block();
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
-
-      auto outputs = desc.Outputs();
-      for (auto iter : outputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
+      bool is_dynamic = checkForDynamicShapes(desc);
+      return is_dynamic;
     }
     // only consider dynamic_shape mode
     if (!with_dynamic_shape) {
@@ -3365,37 +3341,8 @@ struct CustomPluginTeller : public Teller {
     }
 
     if (forbid_dynamic_op_enter_into_trt) {
-      VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
-      auto* block = desc.Block();
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
-
-      auto outputs = desc.Outputs();
-      for (auto iter : outputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
+      bool is_dynamic = checkForDynamicShapes(desc);
+      return is_dynamic;
     }
 
     if (with_dynamic_shape) {
@@ -3436,37 +3383,8 @@ struct CustomGenericPluginTeller : public Teller {
     }
 
     if (forbid_dynamic_op_enter_into_trt) {
-      VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
-      auto* block = desc.Block();
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
-
-      auto outputs = desc.Outputs();
-      for (auto iter : outputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
+      bool is_dynamic = checkForDynamicShapes(desc);
+      return is_dynamic;
     }
 
     auto& op_meta_info_map = OpMetaInfoMap::Instance();
