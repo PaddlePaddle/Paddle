@@ -25,7 +25,8 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class AddStoreInFusionOpPattern : public pir::OpRewritePattern<::pir::YieldOp> {
+class AddYieldStoreInFusionOpPattern
+    : public pir::OpRewritePattern<::pir::YieldOp> {
  public:
   using pir::OpRewritePattern<::pir::YieldOp>::OpRewritePattern;
 
@@ -43,7 +44,7 @@ class AddStoreInFusionOpPattern : public pir::OpRewritePattern<::pir::YieldOp> {
 
         if ((pre_name != "cinn_op.reduce_sum") &&
             (pre_name != "cinn_op.reduce_max")) {
-          auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
+          auto new_full = rewriter.Build<cinn::dialect::YieldStoreOp>(
               op->operand_source(i).defining_op()->operand_source(0),
               op->operand_source(i).type());
 
@@ -57,7 +58,7 @@ class AddStoreInFusionOpPattern : public pir::OpRewritePattern<::pir::YieldOp> {
         continue;
       }
 
-      auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
+      auto new_full = rewriter.Build<cinn::dialect::YieldStoreOp>(
           op->operand_source(i), op->operand_source(i).type());
 
       op->operand(i).set_source(new_full.result(0));
@@ -74,7 +75,7 @@ class AddStoreInFusionOpPass : public pir::Pass {
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<AddStoreInFusionOpPattern>(context);
+    ps.Add<AddYieldStoreInFusionOpPattern>(context);
 
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;

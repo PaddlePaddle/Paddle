@@ -59,8 +59,6 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
         loss = out.sum()
         loss.backward()
 
-        # print(self.hidden_states.gradient())
-        # print("=========")
         return out, net.weight.gradient(), self.hidden_states.gradient()
 
     def test_eval(self):

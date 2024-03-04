@@ -287,10 +287,13 @@ std::vector<pir::Type> BuildOutType(
     auto new_op = op->Clone(*ir_mapping, clone_options);
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
     for (size_t i = 0; i < op->num_results(); ++i) {
-      shape_analysis.SetShapeOrDataForValue(
-          new_op->result(i),
-          shape_analysis.GetShapeOrDataForValue(op->result(i)));
+      if (shape_analysis.HasShapeOrDataForValue(op->result(i))) {
+        shape_analysis.SetShapeOrDataForValue(
+            new_op->result(i),
+            shape_analysis.GetShapeOrDataForValue(op->result(i)));
+      }
     }
 
     vec_new_op_list.push_back(new_op);
@@ -541,7 +544,6 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
   } else if (op->name() == "cinn_op.generate_shape") {
     // do nothing for now
   } else {
-    std::cerr << "cluster type " << cluster_node->group_kind << std::endl;
     PADDLE_THROW(phi::errors::Unimplemented(
         "only support elementwise, broadcast, reduce type"));
   }
@@ -573,7 +575,7 @@ bool CanOpMergeNode(
   }
 
   // TODO(phlrain): need update here
-  // diffrent loop range can merge, like [128, 128, 1], with [128, 128]
+  // different loop range can merge, like [128, 128, 1], with [128, 128]
   if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
        cinn::hlir::framework::kBroadcast) &&
       (op_path_info.at(cur_op).loop_ranges !=
@@ -594,7 +596,7 @@ bool ShouldOutputPreNode(
   }
 
   // TODO(phlrain): need update here
-  // diffrent loop range can merge, like [128, 128, 1], with [128, 128]
+  // different loop range can merge, like [128, 128, 1], with [128, 128]
   if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
        cinn::hlir::framework::kBroadcast) &&
       (op_path_info.at(cur_op).loop_ranges !=
@@ -609,7 +611,7 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
     const std::vector<GroupClusterNode>& first_stage_output) {
   // stage 2 merge
   // for now we merge node in same pass
-  // only for vertial fuse
+  // only for vertical fuse
   std::vector<GroupClusterNode> second_stage_output = first_stage_output;
   while (true) {
     bool fused = false;

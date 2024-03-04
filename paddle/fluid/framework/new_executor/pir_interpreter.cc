@@ -1025,7 +1025,7 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
       // CUDA runtime callback to the H2D stream may lead a high performance
       // overhead. As all the cases we meet in H2D are copies from CPUPlace at
       // present, we just log a WARNING here. A better design is required.
-      LOG(WARNING) << "Copy data from a CUDAPinned tensor in an asynchronous"
+      LOG(WARNING) << "Copy data from a CUDAPinned tensor in an asynchronous "
                       "manner may lead a data inconsistent";
     } else {
       // memory copies involve CPUPlace are always synchronous, so just do

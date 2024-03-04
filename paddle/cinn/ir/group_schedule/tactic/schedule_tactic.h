@@ -16,6 +16,7 @@
 
 #include <string>
 #include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule_block_graph.h"
 
@@ -79,19 +80,19 @@ struct GroupTileInfo {
 
   int64_t block_num{-1};
   int64_t warp_num;
-  int64_t flatten_inner_num;
+  int64_t spatial_inner_num;
   int64_t reduce_numel;
   int64_t reduce_inner_num;
   int64_t reduce_block;
 
-  std::set<std::string> reduce_var_names;
+  std::set<std::string> reduce_tensor_names;
   std::set<std::string> temp_var_names;
 
   std::set<std::string> shared_var_names;
   std::set<std::string> direct_output_var_names;
   std::vector<std::string> thread_sync_before_names;
 
-  int reduce_type{-1};
+  ReduceMethod reduce_method{NoneReduceMethod()};
 
   std::unordered_map<std::string, BroadcastInfo> broadcast_info;
   std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;

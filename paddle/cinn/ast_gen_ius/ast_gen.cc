@@ -244,7 +244,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
       if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
         continue;
       }
-      if (!FLAGS_group_schedule_tiling_first && !FLAGS_cinn_bucket_compile &&
+      if ((!FLAGS_group_schedule_tiling_first || !FLAGS_cinn_bucket_compile) &&
           shape[i] == Expr(1)) {
         continue;
       }

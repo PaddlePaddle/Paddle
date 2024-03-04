@@ -19,6 +19,7 @@
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
 #include <vector>
 
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/hlir/pe/reduction.h"
 #include "paddle/cinn/ir/ir.h"
@@ -73,21 +74,22 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
           });
     }
 
-    std::vector<int> thread_binded_reduce_loop_indices;
-    bool thread_binded_inner = false;
-    for (int i = 0; i < cur_loops_.size(); ++i) {
-      if (thread_binded_inner ||
-          reduce_var_names.count(cur_loops_[i].As<ir::For>()->loop_var->name) >
-              0) {
-        if (thread_binded_inner ||
-            cur_loops_[i].As<ir::For>()->is_gpu_thread_binded()) {
-          if (ir::GetLoopExtent(cur_loops_[i]) > 1024) {
-            return false;
-          }
+    auto IsThreadBindOnReduceAxis = [&](const ir::For* for_node) {
+      return reduce_var_names.count(for_node->loop_var->name) > 0 &&
+             for_node->is_gpu_thread_binded();
+    };
 
-          thread_binded_inner = true;
-          thread_binded_reduce_loop_indices.push_back(i);
+    std::vector<int> thread_binded_reduce_loop_indices;
+    bool is_thread_binded_inner_loop = false;
+    for (int i = 0; i < cur_loops_.size(); ++i) {
+      if (is_thread_binded_inner_loop ||
+          IsThreadBindOnReduceAxis(cur_loops_[i].As<ir::For>())) {
+        if (ir::GetLoopExtent(cur_loops_[i]) > 1024) {
+          return false;
         }
+
+        is_thread_binded_inner_loop = true;
+        thread_binded_reduce_loop_indices.push_back(i);
       }
     }
     if (thread_binded_reduce_loop_indices.size() == 0 ||
@@ -145,12 +147,13 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
       original_update_stmt = original_update_body;
     }
 
-    // std::cerr << "reduce type " << schedule_block->reduce_type << std::endl;
-    ir::Expr return_warp(false);
-
-    if (schedule_block->reduce_type == 0) {
-      return_warp = ir::Expr(true);
-    }
+    const auto& IsWarpReduce = cinn::adt::match{
+        [&](const ir::NoneReduceMethod&) { return ir::Expr(false); },
+        [&](const ir::WarpReduceMethod&) { return ir::Expr(true); },
+        [&](const ir::BlockReduceMethod&) { return ir::Expr(false); },
+    };
+    ir::Expr return_warp =
+        std::visit(IsWarpReduce, schedule_block->reduce_method);
 
 #define REPLACE_TO_EXTERNAL_CALL(Op)                                     \
   if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {            \

@@ -330,7 +330,6 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
   for (int i = 0; i < loops_index.size(); ++i) {
-    std::cerr << "loop index  " << i << std::endl;
     if (i > 0) {
       if (loops_index[i - 1] + 1 != loops_index[i]) {
         os << "Loops index in Fuse should be continuous!\n";

@@ -82,12 +82,12 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
-// StoreOp represents a store operation for
+// YieldStoreOp represents a store operation for
 // seperate local variable and ouptut
-class IR_API StoreOp : public pir::Op<StoreOp> {
+class IR_API YieldStoreOp : public pir::Op<YieldStoreOp> {
  public:
   using Op::Op;
-  static const char *name() { return "cinn_op.store"; }
+  static const char *name() { return "cinn_op.yield_store"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
@@ -96,7 +96,6 @@ class IR_API StoreOp : public pir::Op<StoreOp> {
                     pir::Type output_type);
 
   void VerifySig();
-  // void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
 class IR_API ConcatOp
@@ -187,4 +186,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::StoreOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::YieldStoreOp);

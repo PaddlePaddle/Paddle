@@ -131,7 +131,21 @@ std::unordered_set<std::string> GetReduceVarNames(ir::Expr block) {
   return reduce_var_names;
 }
 
-void StaticShapeGroupScheduler::Schedule() { CINN_NOT_IMPLEMENTED; }
+void StaticShapeGroupScheduler::Schedule() {
+  feasible_conditions_.emplace_back(
+      &StaticShapeGroupScheduler::IsKeepGraphDependency);
+  DoLoopAlignment();
+  DoComputeInline();
+#ifdef CINN_WITH_CUDA
+  OptimizeReduction();
+#endif
+  DoHorizontalLoopFusion();
+  DoVerticalLoopFusion();
+#ifdef CINN_WITH_CUDA
+  BindCudaAxis();
+  AllocateStorage();
+#endif
+}
 
 void StaticShapeGroupScheduler::MapExprSchedule() {
   DoComputeInline();
