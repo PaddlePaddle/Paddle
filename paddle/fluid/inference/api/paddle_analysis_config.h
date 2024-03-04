@@ -813,6 +813,10 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableTensorRtSubgraph(
       const std::vector<std::string>& var_name_not_trt);
 
+  void Specify_TensorRT_Subgraph_Precision(
+      const std::vector<std::string>& trt_parameters_fp16,
+      const std::vector<std::string>& trt_parameters_int8);
+
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
   /// https://github.com/NVIDIA/TensorRT), with which some models's inference
@@ -1273,6 +1277,9 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_mark_output_{false};
   std::vector<std::string> trt_output_tensor_names_{};
   std::vector<std::string> trt_exclude_var_names_{};
+  std::vector<std::string> trt_parameters_run_fp16_{};
+  std::vector<std::string> trt_parameters_run_int8_{};
+
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};

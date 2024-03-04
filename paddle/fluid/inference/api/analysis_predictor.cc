@@ -1755,6 +1755,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_->SetTRTMarkOutput(config_.trt_mark_output_);
     argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
+    argument_->SetTRTParameterRunFp16(config_.trt_parameters_run_fp16_);
+    argument_->SetTRTParameterRunInt8(config_.trt_parameters_run_int8_);
     argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
     argument_->SetTRTExcludeVarNames(config_.trt_exclude_var_names_);
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);

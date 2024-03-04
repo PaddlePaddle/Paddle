@@ -471,9 +471,31 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   }
   auto precision_mode =
       static_cast<phi::DataType>(Get<int>("trt_precision_mode"));
+  auto trt_params_run_fp16 =
+      Get<std::vector<std::string>>("trt_parameter_run_fp16");
+  auto trt_params_run_int8 =
+      Get<std::vector<std::string>>("trt_parameter_run_int8");
+  for (auto para : parameters) {
+    if (std::find(trt_params_run_fp16.begin(),
+                  trt_params_run_fp16.end(),
+                  para) != trt_params_run_fp16.end()) {
+      precision_mode = phi::DataType::FLOAT16;
+    }
+  }
+
   bool enable_fp16 = false;
   if (precision_mode == phi::DataType::FLOAT16) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
+
+  for (auto para : parameters) {
+    if (std::find(trt_params_run_int8.begin(),
+                  trt_params_run_int8.end(),
+                  para) != trt_params_run_int8.end()) {
+      enable_int8 = true;
+      precision_mode = phi::DataType::INT8;
+    }
+  }
+
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
   auto min_input_shape =
