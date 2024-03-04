@@ -25,6 +25,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
@@ -78,6 +79,7 @@ void ApplyCinnPreprocessPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   bool has_dynamic_shape = HasDynamicShape(*program);
+  // has_dynamic_shape = true;
 
   pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
   if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
@@ -85,7 +87,7 @@ void ApplyCinnPreprocessPass(
     pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
   }
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+
   pass_manager->AddPass(
       cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -102,6 +104,7 @@ void ApplyCinnPreprocessPass(
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
 
   pass_manager->Run(program);
 }
@@ -132,7 +135,7 @@ void ApplyGroupOpPass(::pir::Program* program,
 
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   pass_manager->Run(program);
@@ -145,6 +148,7 @@ void ApplyDivideGroupOpToFusionOpPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (FLAGS_group_schedule_tiling_first) {
     pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   } else {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
@@ -156,6 +160,8 @@ void ApplyCinnLowerPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
+  auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
+  std::cerr << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
 
   bool has_dynamic_shape = HasDynamicShape(*program);
