@@ -274,6 +274,9 @@ def _move_reduce_to_optimizer_ops_block(
     for idx, op in list(enumerate(main_block.ops)):
         if is_data_parallel_reduce_op(op):
             op_input_names = op.desc.input_arg_names()
+            # NOTE(sonder): When "@RENAME@" is in the input name, it means that the op has been renamed.
+            # Such types input names are caused by shared parameter policy.
+            # Gradient merge should accumulate the gradient of ops without renaming.
             if "@RENAME" in op_input_names[0]:
                 continue
 
