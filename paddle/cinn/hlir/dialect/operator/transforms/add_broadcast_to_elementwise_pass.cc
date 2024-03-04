@@ -170,6 +170,7 @@ class AddBroadcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
 
   bool MatchAndRewrite(OPTYPE op,
                        pir::PatternRewriter& rewriter) const override {
+    std::cerr << "add broadcat \n";
     return ProcessOp(op, &rewriter);
   }
 };
