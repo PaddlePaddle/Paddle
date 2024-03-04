@@ -25,6 +25,8 @@ PHI_DECLARE_bool(use_stride_kernel);
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
+#include "paddle/phi/core/kernel_factory.h"
+
 namespace paddle {
 namespace experimental {
 
@@ -417,6 +419,33 @@ void TransStride(phi::DeviceContext* dev_ctx,
       return;
     }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+    if (custom_ctx) {
+      auto kernel_result =
+          phi::KernelFactory::Instance().SelectKernelOrThrowError(
+              "strided_copy",
+              phi::KernelKey(phi::TransToPhiBackend(to->place()),
+                             phi::DataLayout::ALL_LAYOUT,
+                             to->dtype()));
+      const auto& kernel = kernel_result.kernel;
+      using kernel_signature = void (*)(const phi::DeviceContext&,
+                                        const phi::DenseTensor&,
+                                        const std::vector<int64_t>&,
+                                        const std::vector<int64_t>&,
+                                        int64_t,
+                                        phi::DenseTensor*);
+      auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+      (*kernel_fn)(*custom_ctx,
+                   *from,
+                   common::vectorize<int64_t>(to->dims()),
+                   common::vectorize<int64_t>(to->strides()),
+                   to->offset(),
+                   to);
+      delete from;
+      return;
+    }
+#endif
   }
 }
 
@@ -464,6 +493,32 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                                to->offset(),
                                to);
                          }));
+      return;
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+    if (custom_ctx) {
+      auto kernel_result =
+          phi::KernelFactory::Instance().SelectKernelOrThrowError(
+              "strided_copy",
+              phi::KernelKey(phi::TransToPhiBackend(to->place()),
+                             phi::DataLayout::ALL_LAYOUT,
+                             to->dtype()));
+      const auto& kernel = kernel_result.kernel;
+      using kernel_signature = void (*)(const phi::DeviceContext&,
+                                        const phi::DenseTensor&,
+                                        const std::vector<int64_t>&,
+                                        const std::vector<int64_t>&,
+                                        int64_t,
+                                        phi::DenseTensor*);
+      auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+      (*kernel_fn)(*custom_ctx,
+                   *from,
+                   common::vectorize<int64_t>(to->dims()),
+                   common::vectorize<int64_t>(to->strides()),
+                   to->offset(),
+                   to);
       return;
     }
 #endif
@@ -519,6 +574,33 @@ void TransStride(phi::DeviceContext* dev_ctx,
                            }));
         delete from[i];
         continue;
+      }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+      if (custom_ctx) {
+        auto kernel_result =
+            phi::KernelFactory::Instance().SelectKernelOrThrowError(
+                "strided_copy",
+                phi::KernelKey(phi::TransToPhiBackend(to[i]->place()),
+                               phi::DataLayout::ALL_LAYOUT,
+                               to[i]->dtype()));
+        const auto& kernel = kernel_result.kernel;
+        using kernel_signature = void (*)(const phi::DeviceContext&,
+                                          const phi::DenseTensor&,
+                                          const std::vector<int64_t>&,
+                                          const std::vector<int64_t>&,
+                                          int64_t,
+                                          phi::DenseTensor*);
+        auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+        (*kernel_fn)(*custom_ctx,
+                     *from[i],
+                     common::vectorize<int64_t>(to[i]->dims()),
+                     common::vectorize<int64_t>(to[i]->strides()),
+                     to[i]->offset(),
+                     to[i]);
+        delete from[i];
+        return;
       }
 #endif
     }

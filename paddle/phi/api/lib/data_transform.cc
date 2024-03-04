@@ -256,6 +256,27 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
     auto* dev_ctx = static_cast<phi::XPUContext*>(pool.Get(tensor.place()));
     return TensorContiguous<phi::XPUContext>(*dev_ctx, tensor);
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (tensor.place().GetType() == phi::AllocationType::CUSTOM) {
+    auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(tensor.place()));
+    phi::DenseTensor dense_out;
+    phi::MetaTensor meta_input(tensor);
+    phi::MetaTensor meta_out(&dense_out);
+    UnchangedInferMeta(meta_input, &meta_out);
+    auto kernel_result =
+        phi::KernelFactory::Instance().SelectKernelOrThrowError(
+            "contiguous",
+            phi::KernelKey(phi::TransToPhiBackend(tensor.place()),
+                           phi::DataLayout::ALL_LAYOUT,
+                           tensor.dtype()));
+    const auto& kernel = kernel_result.kernel;
+    VLOG(6) << "contiguous kernel: " << kernel;
+    using kernel_signature = void (*)(
+        const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx, tensor, &dense_out);
+    return dense_out;
+#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Place type is not supported when casting data type."));
