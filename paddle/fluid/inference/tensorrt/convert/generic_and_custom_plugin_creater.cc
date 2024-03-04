@@ -31,7 +31,7 @@ class CustomPluginCreater : public OpConverter {
                   const framework::Scope &scope,
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3) << "convert " << op_desc.Type() << " op to custom pluign layer";
+    VLOG(3) << "convert " << op_desc.Type() << " op to custom plugin layer";
 
     std::string plugin_name;
 
@@ -175,7 +175,7 @@ class GenericPluginCreater : public OpConverter {
                   const framework::Scope &scope,
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3) << "convert " << op_desc.Type() << " op to generic pluign layer";
+    VLOG(3) << "convert " << op_desc.Type() << " op to generic plugin layer";
 
     CHECK(block_);
     const framework::BlockDesc block_desc(
@@ -259,7 +259,7 @@ class CustomGenericPluginCreater : public OpConverter {
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     VLOG(3) << "convert " << op_desc.Type()
-            << " op to custom generic pluign layer";
+            << " op to custom generic plugin layer";
 
     nvinfer1::ILayer *layer = nullptr;
     std::vector<nvinfer1::ITensor *> inputs;
