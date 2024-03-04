@@ -22,9 +22,9 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 namespace paddle {
 namespace framework {
 
@@ -66,5 +66,10 @@ void InsertInplacedExternalInputsToOuts(
     std::unordered_map<pir::Value, std::vector<int>>* outputs);
 
 bool GetCondData(const phi::DenseTensor& cond);
+
+void CopyBranchOutput(const std::vector<std::string>& var_names,
+                      const std::vector<Variable*>& output_vars,
+                      Scope* inner_scope);
+
 }  // namespace framework
 }  // namespace paddle

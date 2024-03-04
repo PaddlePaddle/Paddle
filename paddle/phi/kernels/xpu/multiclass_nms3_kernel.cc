@@ -90,7 +90,7 @@ void MultiClassNMSKernel(const Context& ctx,
     PADDLE_ENFORCE_EQ(
         boxes_count == score_dims[0],
         true,
-        phi::errors::InvalidArgument("boxes_count shuold equal score_dims[0].",
+        phi::errors::InvalidArgument("boxes_count should equal score_dims[0].",
                                      "But received: (%d) and (%d)",
                                      boxes_count,
                                      score_dims[0]));

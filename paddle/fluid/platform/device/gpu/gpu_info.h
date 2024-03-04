@@ -29,7 +29,7 @@ namespace platform {
 int DnnVersion();
 
 //! Get the total number of GPU devices in system.
-int GetGPUDeviceCount();
+TEST_API int GetGPUDeviceCount();
 
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
 TEST_API int GetGPUComputeCapability(int id);
@@ -133,6 +133,15 @@ gpuError_t RecordedGpuMalloc(void **ptr,
 
 //! CudaFree with recorded info
 void RecordedGpuFree(void *p, size_t size, int dev_id);
+
+//! CudaMalloc with recorded info
+gpuError_t RecordedGpuMallocAsync(void **ptr,
+                                  size_t size,
+                                  int dev_id,
+                                  gpuStream_t stream);
+
+//! CudaFree with recorded info
+void RecordedGpuFreeAsync(void *p, size_t size, int dev_id, gpuStream_t stream);
 
 gpuError_t GpuGetLastError();
 

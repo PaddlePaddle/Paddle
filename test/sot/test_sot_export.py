@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import tempfile
 import unittest
 
 import paddle
@@ -37,12 +38,15 @@ class Net(paddle.nn.Layer):
 
 class TestSotExport(unittest.TestCase):
     @min_graph_size_guard(0)
-    @with_export_guard("/tmp")
     def test_basic(self):
+        temp_dir = tempfile.TemporaryDirectory()
+        temp_dir_name = temp_dir.name
         net = Net()
         x = paddle.to_tensor([2, 3], dtype="float32", stop_gradient=True)
-        y = paddle.jit.to_static(net)(x)
-        assert os.path.exists("/tmp/SIR_0.py")
+        with with_export_guard(temp_dir_name):
+            y = paddle.jit.to_static(net)(x)
+        assert os.path.exists(os.path.join(temp_dir_name, "SIR_0.py"))
+        temp_dir.cleanup()
 
 
 if __name__ == "__main__":

@@ -608,6 +608,12 @@ PD_REGISTER_KERNEL(hardsigmoid,
                    phi::HardSigmoidKernel,
                    float,
                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(hardswish,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::HardSwishKernel,
+                   float,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(leaky_relu,
                    XPU,
                    ALL_LAYOUT,
@@ -662,7 +668,6 @@ PD_REGISTER_KERNEL(
 
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)

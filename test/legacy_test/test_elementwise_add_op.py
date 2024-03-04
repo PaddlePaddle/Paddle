@@ -75,7 +75,7 @@ class TestElementwiseAddOp(OpTest):
             check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
@@ -90,7 +90,7 @@ class TestElementwiseAddOp(OpTest):
             check_pir_onednn=self.check_pir_onednn,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
@@ -165,7 +165,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_prim=True)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -177,7 +177,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -233,7 +233,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -245,7 +245,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -352,10 +352,10 @@ class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 
@@ -521,10 +521,10 @@ class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 
@@ -650,8 +650,8 @@ class TestAddApi(unittest.TestCase):
         with base.dygraph.guard():
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
-            x = base.dygraph.to_variable(np_x)
-            y = base.dygraph.to_variable(np_y)
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
             z_expected = np.array([3.0, 8.0, 6.0])
@@ -754,10 +754,10 @@ class TestComplexElementwiseAddOp(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
 
@@ -776,7 +776,7 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         a = 1.5
         b = paddle.full([4, 5, 6], True, dtype='bool')
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(c.dtype == paddle.float32)
         with paddle.pir_utils.IrGuard():
             a = 1.5
             b = paddle.full([4, 5, 6], True, dtype='bool')
@@ -789,7 +789,7 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         b = paddle.full([2], True, dtype='bool')
         # special case: scalar + tensor(bool)
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(c.dtype == paddle.float32)
 
         np_a = np.random.random((2, 3, 4)).astype(np.float64)
         np_b = np.random.random((2, 3, 4)).astype(np.float64)
@@ -843,7 +843,7 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
         a = paddle.full([4, 5, 6], 1.5, dtype='float32')
         b = np.array([1.5], dtype='float32')[0]
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(c.dtype == paddle.float32)
 
     def test_float16_add(self):
         if not core.is_compiled_with_cuda():
@@ -852,7 +852,7 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
         a = paddle.full([4, 5, 6], 1.5, dtype='float16')
         b = np.array([1.5], dtype='float16')[0]
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP16)
+        self.assertTrue(c.dtype == paddle.float16)
 
 
 class TestTensorAddAPIWarnings(unittest.TestCase):

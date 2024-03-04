@@ -24,6 +24,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
+from paddle.pir import Value
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1131,7 +1132,7 @@ def multiply_(x, y, name=None):
     return _C_ops.multiply_(x, y)
 
 
-def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undifined"):
+def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undefined"):
     assert (
         in_dynamic_or_pir_mode()
     ), "You can only call `_elementwise_op_with_axis` function within in_dynamic_or_pir_mode"
@@ -1667,7 +1668,7 @@ def nan_to_num_(x, nan=0.0, posinf=None, neginf=None, name=None):
     Please refer to :ref:`api_paddle_nan_to_num`.
     """
     # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
-    # incorrectly, so we have to explicitly contruct tensors here
+    # incorrectly, so we have to explicitly construct tensors here
     posinf_value = paddle.full_like(x, float("+inf"))
     neginf_value = paddle.full_like(x, float("-inf"))
     nan = paddle.full_like(x, nan)
@@ -2715,7 +2716,7 @@ def inverse(x, name=None):
             if len(x.shape) < 2:
                 raise ValueError(
                     "The input of inverse is expected to be a Tensor whose number "
-                    "of dimensions is no less than 2. But reviced: %d, "
+                    "of dimensions is no less than 2. But received: %d, "
                     "x's shape: %s." % (len(x.shape), x.shape)
                 )
 
@@ -5128,11 +5129,15 @@ def gammaincc(x, y, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1.        , 0.15729916, 0.00000774, 0.        , 0.        ])
     """
-    if not paddle.all(paddle.greater_equal(x, paddle.zeros_like(x))):
+    if not isinstance(x, Value) and not paddle.all(
+        paddle.greater_equal(x, paddle.zeros_like(x))
+    ):
         raise ValueError(
             "The input argument x must be greater than or equal to 0."
         )
-    if not paddle.all(paddle.greater_equal(y, paddle.zeros_like(y))):
+    if not isinstance(x, Value) and not paddle.all(
+        paddle.greater_equal(y, paddle.zeros_like(y))
+    ):
         raise ValueError(
             "The input argument y must be greater than or equal to 0."
         )
@@ -6414,7 +6419,7 @@ def take(x, index, mode='raise', name=None):
     Args:
         x (Tensor): An N-D Tensor, its data type should be int32, int64, float32, float64.
         index (Tensor): An N-D Tensor, its data type should be int32, int64.
-        mode (str, optional): Specifies how out-of-bounds index will behave. the candicates are ``'raise'``, ``'wrap'`` and ``'clip'``.
+        mode (str, optional): Specifies how out-of-bounds index will behave. the candidates are ``'raise'``, ``'wrap'`` and ``'clip'``.
 
             - ``'raise'``: raise an error (default);
             - ``'wrap'``: wrap around;

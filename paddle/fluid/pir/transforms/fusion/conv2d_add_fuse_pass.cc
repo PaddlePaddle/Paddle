@@ -14,16 +14,23 @@
 
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 
+#include <string>
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
 class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "Conv2dAddFusePattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &conv2d =
@@ -38,7 +45,28 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
     conv2d({&pat.Tensor("input"), &pat.Tensor("filter")},
            {&pat.Tensor("conv2d_out")});
     pat.Tensor("add_out") = add(pat.Tensor("conv2d_out"), pat.Tensor("bias"));
+    pat.RequireNativeCall(
+        [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          if (!pir::ValueIsPersitable(match_ctx.Tensor("bias"))) {
+            return false;
+          }
 
+          auto padding_algorithm =
+              match_ctx.Attr<std::string>("padding_algorithm");
+          if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+              padding_algorithm != "VALID") {
+            return false;
+          }
+          auto groups = match_ctx.Attr<int>("groups");
+          if (groups < 1) {
+            return false;
+          }
+          auto data_format = match_ctx.Attr<std::string>("data_format");
+          if (data_format != "NCHW" && data_format != "AnyLayout") {
+            return false;
+          }
+          return true;
+        });
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv2d_add_act =
@@ -60,11 +88,9 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
     fused_conv2d_add_act({&res.Tensor("input"),
                           &res.Tensor("filter"),
                           &res.Tensor("bias"),
-                          &res.NoneTensor()},
+                          &res.InputNoneTensor()},
                          {&res.Tensor("add_out")});
   }
-
-  std::string name() const override { return "Conv2dAddFusePattern"; }
 };
 
 class Conv2dAddFusePass : public pir::PatternRewritePass {
@@ -73,7 +99,7 @@ class Conv2dAddFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(Conv2dAddFusePattern().Build(context));
+    ps.Add(paddle::drr::Create<Conv2dAddFusePattern>(context));
     return ps;
   }
 };

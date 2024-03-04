@@ -29,6 +29,7 @@
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -103,6 +104,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
                                                      bool apply_op_schedule,
                                                      bool apply_group_schedule,
                                                      bool apply_pass) {
+  VLOG(4) << "BucketLower Group : \n" << *group;
   // 1.Do compute, lower and schedule for each op.
   auto& ops = group->ops;
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
@@ -131,9 +133,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
-    for (auto it = group->output_ops.begin(); it != group->output_ops.end();
-         ++it) {
-      output_tensor_names.insert(ValueName((*it)->result(0)));
+    for (auto value : group->GetGroupOutputValues()) {
+      output_tensor_names.insert(ValueName(value));
     }
 
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
@@ -158,7 +159,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   std::vector<ir::Argument> group_func_args;
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
-                                                   apply_op_schedule,
+                                                   apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args);
@@ -276,18 +277,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
-    for (auto it = group->output_ops.begin(); it != group->output_ops.end();
-         ++it) {
-      output_tensor_names.insert(ValueName((*it)->result(0)));
+    for (auto value : group->GetGroupOutputValues()) {
+      output_tensor_names.insert(ValueName(value));
     }
-    // std::transform(
-    //     group->output_ops.begin(),
-    //     group->output_ops.end(),
-    //     std::inserter(output_tensor_names, output_tensor_names.begin()),
-    //     [](::pir::Operation* node) {
-    //       ::pir::Value node_data = node->result(0);
-    //       return this->ValueName(node_data);
-    //     });
     ir::StaticShapeGroupScheduler group_scheduler(
         &ir_sch, output_tensor_names, target_);
     group_scheduler.MapExprSchedule();
@@ -428,27 +420,22 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   }
 
   group->output_names.clear();
-  // TODO(phlrain): output values not stable here
-  for (auto& op : group->output_ops) {
-    // collect all output tensor.
-    for (auto opresult : op->results()) {
-      if (tensor_map.count(opresult) == 0) {
-        continue;
-      }
-      auto tensor = tensor_map.at(opresult);
-      if (arg_name_set.count(tensor->buffer->name) != 0) {
-        continue;
-      }
-
-      group->output_values.push_back(opresult);
-      // output arg tensors
-      group_func_arg_tensors->push_back(tensor);
-      // output args
-      group->output_names.push_back(tensor->name);
-      (*group_func_args)
-          .emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
-      arg_name_set.insert(tensor->buffer->name);
+  // collect all output tensor.
+  for (auto op_result : group->GetGroupOutputValues()) {
+    if (tensor_map.count(op_result) == 0) {
+      continue;
     }
+    auto tensor = tensor_map.at(op_result);
+    if (arg_name_set.count(tensor->buffer->name) != 0) {
+      continue;
+    }
+
+    // output arg tensors
+    group_func_arg_tensors->push_back(tensor);
+    // output args
+    group->output_names.push_back(tensor->name);
+    (*group_func_args).emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
+    arg_name_set.insert(tensor->buffer->name);
   }
 
   if (!done_op_schedule) {
@@ -505,6 +492,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (ir::Expr func_body : func_bodies) {
+    optim::EliminateDeadScheduleBlock(&(func_body), group->output_names);
 #ifdef CINN_WITH_CUDA
     optim::OptimizeExprGPU(&(func_body));
 #endif
@@ -705,11 +693,9 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   VLOG(3) << "using StaticShapeGroupScheduler to schedule group.";
   std::unordered_set<std::string> output_tensor_names;
-  std::transform(
-      group->output_ops.begin(),
-      group->output_ops.end(),
-      std::inserter(output_tensor_names, output_tensor_names.begin()),
-      [&](::pir::Operation* op) { return ValueName(op->result(0)); });
+  for (auto value : group->GetGroupOutputValues()) {
+    output_tensor_names.insert(ValueName(value));
+  }
   std::unique_ptr<ir::GroupScheduler> group_scheduler =
       ir::GroupScheduler::Make(
           &ir_sch, output_tensor_names, target_, /* is_dy_shape = */ false);
@@ -720,20 +706,38 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
 ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
                                     const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
-  if (!group->value_to_shape_or_data_exprs.empty()) {
-    const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+
+  auto ForEachDimExpr = [&](const auto& DoEach) {
+    const auto& dims = type_info.dims();
+    if (::common::contain_unknown_dim(dims)) {  // dynamic shape
+      const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+      for (const auto& dim_expr : sym_vec) {
+        DoEach(dim_expr);
+      }
+    } else {  // static shape
+      for (int i = 0; i < dims.size(); ++i) {
+        DoEach(::symbol::DimExpr{dims[i]});
+      }
+    }
+  };
+  if (FLAGS_cinn_bucket_compile) {
     std::vector<ir::Dim> sym_shape;
-    for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(input_id, sym);
+    ForEachDimExpr(
+        [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
+    if (sym_shape.empty()) {
+      sym_shape.emplace_back(input_id, symbol::DimExpr{1});
     }
     return lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   } else {
+    auto shape = ::common::vectorize<int>(type_info.dims());
+    if (shape.empty()) {
+      shape.push_back(1);
+    }
     return lang::CreatePlaceHolder(
-        in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+        shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   }
 }
 
@@ -785,6 +789,9 @@ void OpLowererImpl::CollectOutputInfo(::pir::Operation* op,
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
     auto out_shape = ::common::vectorize<int>(type_info.dims());
+    if (out_shape.empty()) {
+      out_shape.push_back(1);
+    }
     out_shapes->push_back(std::move(out_shape));
   }
 }
@@ -804,14 +811,15 @@ void OpLowererImpl::CollectOutputInfo(
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
 
     auto ForEachDimExpr = [&](const auto& DoEach) {
-      if (!group->value_to_shape_or_data_exprs.empty()) {
-        auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
+      const auto& dims = type_info.dims();
+      if (::common::contain_unknown_dim(dims)) {  // dynamic shape
+        const auto& sym_vec = group->GetShapeOrDataExprs(out_value).shape();
         std::vector<ir::Dim> sym_shape;
         for (const auto& sym : sym_vec) {
           DoEach(sym);
         }
-      } else {
-        auto out_shape = ::common::vectorize<int64_t>(type_info.dims());
+      } else {  // static shape
+        auto out_shape = ::common::vectorize<int64_t>(dims);
         for (int64_t dim : out_shape) {
           DoEach(symbol::DimExpr{dim});
         }
@@ -820,6 +828,9 @@ void OpLowererImpl::CollectOutputInfo(
     std::vector<ir::Dim> sym_shape;
     ForEachDimExpr(
         [&](const auto& sym) { sym_shape.emplace_back(output_id, sym); });
+    if (sym_shape.empty()) {
+      sym_shape.emplace_back(output_id, symbol::DimExpr{1});
+    }
     out_shapes->emplace_back(std::move(sym_shape));
   }
 }

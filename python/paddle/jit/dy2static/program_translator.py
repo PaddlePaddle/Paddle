@@ -350,7 +350,11 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
         # TODO(chenzhuo): Remove this after lowering prim into C++
-        if input_spec is not None and prim_is_enabled():
+        if (
+            input_spec is not None
+            and prim_is_enabled()
+            and not core._enable_prim_dynamic_shape()
+        ):
             from paddle.static import InputSpec
 
             for spec in flatten(input_spec):
@@ -1435,7 +1439,11 @@ class InplaceMap:
         self.params_dict = checkpoint
 
     def save_checkpoint(self):
-        return dict(self.params_dict.items())
+        ckp = {}
+        for program_id, params in self.params_dict.items():
+            new_params = dict(params.items())
+            ckp[program_id] = new_params
+        return ckp
 
 
 class FallbackProgramLayer:

@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import inspect
 import logging
 from collections import defaultdict
+
+import numpy as np
 
 import paddle
 from paddle.jit import not_to_static, to_static
@@ -27,6 +30,7 @@ from paddle.nn import Layer
 from paddle.static import Parameter, global_scope, program_guard
 from paddle.static.amp.fp16_utils import (
     DEFAULT_AMP_OPTIONS,
+    _convert_float_to_bfloat16,
     prepare_op_amp_options,
 )
 
@@ -211,8 +215,8 @@ class ProgramHelper:
 
     def __init__(self, layer, loss_func, metrics, inputs_spec, labels_spec):
         # original model config information
-        # TODO(Aurelius84): Implenet append_backward and optimizer in ProxyLayer
-        # after distribute engine satisify basic condition.
+        # TODO(Aurelius84): Implement append_backward and optimizer in ProxyLayer
+        # after distribute engine satisfy basic condition.
         self.proxy_layer = ProxyLayer(layer, loss_func, metrics)
         self.inputs_spec = inputs_spec
         self.labels_spec = labels_spec
@@ -267,9 +271,11 @@ class ProgramHelper:
         """
         Create and Sync parameters into startup program.
         """
-        if len(self.startup_program.global_block().ops) > 1:
+        startup_program = self.startup_program
+        if len(startup_program.global_block().ops) > 1:
             self.lazy_init = True
             return
+
         for param in self.concrete_program.parameters:
             Parameter(
                 name=param.name,
@@ -278,7 +284,7 @@ class ProgramHelper:
                 shape=param.shape,
                 dtype=param.dtype,
                 stop_gradient=param.stop_gradient,
-                block=self.startup_program.global_block(),
+                block=startup_program.global_block(),
             )
 
     def apply_optimizer(self, optimizer):
@@ -383,6 +389,55 @@ class ProgramHelper:
                 dense_tensor = global_scope().var(param.name).get_tensor()
                 dense_tensor._share_data_with(param.get_tensor().get_tensor())
 
+        # transform the parameter in eager mode for amp.
+        amp_stragety = dist_context.strategy.amp
+        amp_config = copy.deepcopy(amp_stragety.to_dict())
+        if amp_stragety.enable and amp_config["level"] in ["o2", "o3"]:
+            for param in self.concrete_program.parameters:
+                amp_dtype = amp_config["dtype"]
+                scope_var = global_scope().find_var(param.name)
+                scope_tensor = global_scope().var(param.name).get_tensor()
+                # The parameter is not in this rank.
+                if not scope_var:
+                    continue
+                # The parameter do not need to transform
+                if param.dtype in [paddle.float16, paddle.bfloat16]:
+                    continue
+                assert (
+                    scope_var and scope_tensor._is_initialized()
+                ), f"Parameter: {param.name} is not put into global_scope or not initialized."
+                var = main_program.global_block().vars[param.name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                dist_attr = {
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                    "process_shape": var_dist_attr.process_mesh.shape,
+                    "process_group": var_dist_attr.process_mesh.process_ids,
+                }
+                if amp_dtype == "float16":
+                    if param.is_dist():
+                        sliced_param = np.float16(param._local_value().numpy())
+                    else:
+                        sliced_param = Converter.slice_with_dist_attr(
+                            np.float16(param.numpy()), dist_attr
+                        )
+                    scope_tensor.set(sliced_param, place)
+                elif amp_dtype == "bfloat16":
+                    if param.is_dist():
+                        sliced_param = _convert_float_to_bfloat16(
+                            place, param._local_value().numpy()
+                        )
+                    else:
+                        sliced_param = Converter.slice_with_dist_attr(
+                            _convert_float_to_bfloat16(place, param.numpy()),
+                            dist_attr,
+                        )
+                    scope_tensor.set(
+                        sliced_param,
+                        place,
+                    )
+
         world_group = get_world_process_group()
         if (
             is_comm
@@ -409,7 +464,9 @@ class ProgramHelper:
         try:
             return self.proxy_layer.startup_program
         except Exception as err:
-            self._logger.warning("`lazy init` failed.")
+            self._logger.warning(
+                "The startup_program is not built by `lazy init`."
+            )
             if isinstance(err, AssertionError):
                 return self.concrete_program.startup_program
             raise err

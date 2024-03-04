@@ -164,15 +164,15 @@ class Lamb(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
             else:
                 self._add_moments_pows(p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
 
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype

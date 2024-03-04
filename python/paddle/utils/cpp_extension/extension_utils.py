@@ -331,7 +331,7 @@ def clean_object_if_change_cflags(so_path, extension):
     """
     If already compiling source before, we should check whether cflags
     have changed and delete the built object to re-compile the source
-    even though source file content keeps unchanaged.
+    even though source file content keeps unchanged.
     """
 
     def serialize(path, version_info):
@@ -418,13 +418,13 @@ def prepare_win_cudaflags(cflags):
     return cflags
 
 
-def add_std_without_repeat(cflags, compiler_type, use_std14=False):
+def add_std_without_repeat(cflags, compiler_type, use_std17=False):
     """
-    Append -std=c++11/14 in cflags if without specific it before.
+    Append -std=c++14/17 in cflags if without specific it before.
     """
     cpp_flag_prefix = '/std:' if compiler_type == 'msvc' else '-std='
     if not any(cpp_flag_prefix in flag for flag in cflags):
-        suffix = 'c++14' if use_std14 else 'c++11'
+        suffix = 'c++17' if use_std17 else 'c++14'
         cpp_flag = cpp_flag_prefix + suffix
         cflags.append(cpp_flag)
 
@@ -938,7 +938,7 @@ def get_build_directory(verbose=False):
 
 def parse_op_info(op_name):
     """
-    Parse input names and outpus detail information from registered custom op
+    Parse input names and outputs detail information from registered custom op
     from OpInfoMap.
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
@@ -1326,6 +1326,7 @@ def _jit_compile(file_path, verbose=False):
     """
     Build shared library in subprocess
     """
+    assert os.path.exists(file_path)
     ext_dir = os.path.dirname(file_path)
     setup_file = os.path.basename(file_path)
 
@@ -1356,7 +1357,7 @@ def _jit_compile(file_path, verbose=False):
 
 def parse_op_name_from(sources):
     """
-    Parse registerring custom op name from sources.
+    Parse registering custom op name from sources.
     """
 
     def regex(content):

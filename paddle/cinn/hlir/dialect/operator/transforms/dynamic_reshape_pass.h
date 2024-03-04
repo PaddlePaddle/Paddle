@@ -15,7 +15,7 @@
 #pragma once
 
 #include <memory>
-#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/include/pass/pass.h"
 
 namespace cinn {
 namespace dialect {

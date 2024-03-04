@@ -120,7 +120,7 @@ class Bilinear(Initializer):
             weight[i] = (1 - abs(x / f - c)) * (1 - abs(y / f - c))
         weight = np.reshape(weight, shape)
 
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype in [
             core.VarDesc.VarType.FP16,
             core.VarDesc.VarType.BF16,

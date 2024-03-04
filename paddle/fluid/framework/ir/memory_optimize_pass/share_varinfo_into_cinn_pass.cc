@@ -111,7 +111,7 @@ static void TakeVarInfoFromMainGraph(
 }
 
 // This pass will be applied on both the main graph and all cinn subgraphs,
-// and it distinguishs them according to whether the graph has the
+// and it distinguishes them according to whether the graph has the
 // kMemOptVarInfoFromMainGraph attribute or not.
 // On the main graph, it finds all cinn_launch ops and shares MemOptVarInfos
 // to their subgraphs.

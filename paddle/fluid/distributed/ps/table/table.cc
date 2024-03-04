@@ -97,7 +97,7 @@ int32_t Table::InitializeAccessor() {
                << ", accessor_name:" << _config.accessor().accessor_class();
     return -1;
   }
-  _value_accesor.reset(accessor);
+  _value_accessor.reset(accessor);
   return 0;
 }
 

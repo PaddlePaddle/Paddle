@@ -16,15 +16,15 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace pir {
 
 /**
- * @brief Get the name of pararmeter from a value.
+ * @brief Get the name of parameter from a value.
  *
  * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *
@@ -61,7 +61,7 @@ pir::Type GetDataTypeFromValue(pir::Value value);
  *
  * @return Operation*
  */
-Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
+TEST_API Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
 
 /**
  * @brief Get operations and the index of designative op operand (op result)
@@ -94,5 +94,15 @@ std::vector<Value> GetUsedExternalValue(const Operation& op);
  * @return std::vector<Value>
  */
 std::vector<Value> GetUsedExternalValue(const Block& block);
+
+/**
+ * @brief Determine whether a value comes from a weight or has no input op. That
+ is to say, it is permissible.
+ *
+ * @param pir::Value
+
+ * @return bool
+ */
+bool ValueIsPersitable(pir::Value value);
 
 }  // namespace pir

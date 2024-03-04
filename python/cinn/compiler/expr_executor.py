@@ -81,14 +81,15 @@ class ExprExecutor:
             value = exec_func(cls_fields)
         else:
             new_node = node.__class__(**cls_fields)
-            ast.copy_location(new_node, node)
-            new_node = ast.Expression(new_node)
             value = self.exec_expr(new_node)
         return self.save_temp_value(value)
 
     def exec_expr(self, node):
-        if isinstance(node, ast.expr):
-            node = ast.Expression(body=node)
+        assert isinstance(node, ast.expr)
+        if type(node).__name__ == "Constant":
+            return node.value
+
+        node = ast.Expression(node)
         node = ast.fix_missing_locations(node)
         exec = compile(node, filename="<ast>", mode="eval")
         return eval(exec, self.var_table)

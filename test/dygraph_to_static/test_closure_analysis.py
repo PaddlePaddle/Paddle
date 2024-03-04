@@ -22,7 +22,7 @@ from dygraph_to_static_utils import (
 from numpy import append
 
 import paddle
-from paddle.jit.dy2static.utils import FunctionNameLivenessAnalysis
+from paddle.jit.dy2static.transformers.utils import FunctionNameLivenessAnalysis
 from paddle.utils import gast
 
 global_a = []

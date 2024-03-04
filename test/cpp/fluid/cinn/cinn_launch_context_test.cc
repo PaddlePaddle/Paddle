@@ -36,8 +36,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 USE_OP_ITSELF(cinn_instruction_run);
 PD_DECLARE_KERNEL(cinn_instruction_run, CPU, ALL_LAYOUT);

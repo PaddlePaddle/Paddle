@@ -30,7 +30,7 @@ using gpuStream_t = hipStream_t;
 #endif
 
 #include "paddle/common/layout.h"
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"

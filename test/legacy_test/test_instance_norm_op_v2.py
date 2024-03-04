@@ -91,17 +91,17 @@ class TestInstanceNorm(unittest.TestCase):
             def error1d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
                 instance_norm1d = paddle.nn.InstanceNorm1D(1)
-                instance_norm1d(base.dygraph.to_variable(x_data_4))
+                instance_norm1d(paddle.to_tensor(x_data_4))
 
             def error2d():
                 x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
                 instance_norm2d = paddle.nn.InstanceNorm2D(1)
-                instance_norm2d(base.dygraph.to_variable(x_data_3))
+                instance_norm2d(paddle.to_tensor(x_data_3))
 
             def error3d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
                 instance_norm3d = paddle.nn.InstanceNorm3D(1)
-                instance_norm3d(base.dygraph.to_variable(x_data_4))
+                instance_norm3d(paddle.to_tensor(x_data_4))
 
             def weight_bias_false():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
@@ -127,13 +127,13 @@ class TestInstanceNorm(unittest.TestCase):
             def compute_v1(x):
                 with base.dygraph.guard(p):
                     bn = paddle.nn.InstanceNorm2D(shape[1])
-                    y = bn(base.dygraph.to_variable(x))
+                    y = bn(paddle.to_tensor(x))
                 return y.numpy()
 
             def compute_v2(x):
                 with base.dygraph.guard(p):
                     bn = paddle.nn.InstanceNorm2D(shape[1])
-                    y = bn(base.dygraph.to_variable(x))
+                    y = bn(paddle.to_tensor(x))
                 return y.numpy()
 
             x = np.random.randn(*shape).astype("float32")

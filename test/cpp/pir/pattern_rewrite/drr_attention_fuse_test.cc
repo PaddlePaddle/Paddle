@@ -25,8 +25,8 @@
 #include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 

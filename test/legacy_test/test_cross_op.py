@@ -197,8 +197,8 @@ class TestCrossAPI(unittest.TestCase):
         self.input_data()
         # case 1:
         # with base.dygraph.guard():
-        #     x = base.dygraph.to_variable(self.data_x)
-        #     y = base.dygraph.to_variable(self.data_y)
+        #     x = paddle.to_tensor(self.data_x)
+        #     y = paddle.to_tensor(self.data_y)
         #     z = paddle.cross(x, y)
         #     np_z = z.numpy()
         # expect_out = np.array([[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0],
@@ -207,8 +207,8 @@ class TestCrossAPI(unittest.TestCase):
 
         # case 2:
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            y = base.dygraph.to_variable(self.data_y)
+            x = paddle.to_tensor(self.data_x)
+            y = paddle.to_tensor(self.data_y)
             z = paddle.cross(x, y, axis=1)
             np_z = z.numpy()
         expect_out = np.array(

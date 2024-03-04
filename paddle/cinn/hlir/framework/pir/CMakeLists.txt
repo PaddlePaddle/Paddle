@@ -3,6 +3,7 @@ if(NOT CINN_ONLY)
   gather_srcs(
     cinnapi_src
     SRCS
+    group.cc
     utils.cc
     op_lowering_impl.cc
     op_mapper.cc

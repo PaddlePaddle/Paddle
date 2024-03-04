@@ -134,7 +134,7 @@ class CoalesceGradTensorPass : public ir::Pass {
 
     auto &pinned_var_set =
         graph->GetOrInit<details::PinnedVars>(details::kPinnedVars);
-    if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {
+    if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {  // NOLINT
       RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
       CoalesceTensors(vars_info, p_g_dense_grad, &result);
     } else {
