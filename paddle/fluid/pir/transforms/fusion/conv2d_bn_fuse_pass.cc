@@ -57,6 +57,16 @@ class Conv2dBnFusePattern
       return false;
     }
     if (!conv2d_op.out().HasOneUse()) return false;
+    // bn input
+    if (!op.mean().HasOneUse()) return false;
+    if (!op.variance().HasOneUse()) return false;
+    if (!op.scale().HasOneUse()) return false;
+    if (!op.bias().HasOneUse()) return false;
+    // bn output
+    if (!op.mean_out().HasOneUse()) return false;
+    if (!op.variance_out().HasOneUse()) return false;
+    if (!op.saved_mean().HasOneUse()) return false;
+    if (!op.saved_variance().HasOneUse()) return false;
 
     pir::Value conv2d_filter = conv2d_op.filter();
     pir::Value bn_mean = op.mean();
