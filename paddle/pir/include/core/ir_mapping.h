@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+
 #include <unordered_map>
+
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/value.h"
 

@@ -67,17 +67,19 @@ class SkipLayerNormOpConverter : public OpConverter {
 
     if ((x_rank == 2 && y_rank == 4) || (y_rank == 2 && x_rank == 4)) {
       if (x_rank == 2 && y_rank == 4) {
-        auto* reshape_before_skiplayn =
+        auto* reshape_before_skip_layer_n =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
         std::vector<nvinfer1::ITensor*> reshape_before_tensor;
         reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input1), 0));
         reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input1), 1));
         reshape_before_tensor.push_back(Add1DConstantLayer(1));
         reshape_before_tensor.push_back(Add1DConstantLayer(1));
-        reshape_before_skiplayn->setInput(1, *Concat(reshape_before_tensor));
-        reshape_before_skiplayn->setName(
-            ("reshape_before_skiplayn(Output: " + output_name + ")").c_str());
-        input1 = reshape_before_skiplayn->getOutput(0);
+        reshape_before_skip_layer_n->setInput(1,
+                                              *Concat(reshape_before_tensor));
+        reshape_before_skip_layer_n->setName(
+            ("reshape_before_skip_layer_n(Output: " + output_name + ")")
+                .c_str());
+        input1 = reshape_before_skip_layer_n->getOutput(0);
 
         if (enable_int8) {
           if (op_desc.HasAttr("X")) {
@@ -85,17 +87,19 @@ class SkipLayerNormOpConverter : public OpConverter {
           }
         }
       } else {
-        auto* reshape_before_skiplayn =
+        auto* reshape_before_skip_layer_n =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input2);
         std::vector<nvinfer1::ITensor*> reshape_before_tensor;
         reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input2), 0));
         reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input2), 1));
         reshape_before_tensor.push_back(Add1DConstantLayer(1));
         reshape_before_tensor.push_back(Add1DConstantLayer(1));
-        reshape_before_skiplayn->setInput(1, *Concat(reshape_before_tensor));
-        reshape_before_skiplayn->setName(
-            ("reshape_before_skiplayn(Output: " + output_name + ")").c_str());
-        input2 = reshape_before_skiplayn->getOutput(0);
+        reshape_before_skip_layer_n->setInput(1,
+                                              *Concat(reshape_before_tensor));
+        reshape_before_skip_layer_n->setName(
+            ("reshape_before_skip_layer_n(Output: " + output_name + ")")
+                .c_str());
+        input2 = reshape_before_skip_layer_n->getOutput(0);
 
         if (enable_int8) {
           if (op_desc.HasAttr("Y")) {

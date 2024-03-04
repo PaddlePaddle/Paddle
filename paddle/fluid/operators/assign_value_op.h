@@ -29,7 +29,7 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
     const char* value_name,
     phi::DenseTensor* out,
     const framework::ExecutionContext& ctx) {
-  // phi::DenseTensore dtype is vector<bool>, it will be converted to
+  // phi::DenseTensor dtype is vector<bool>, it will be converted to
   //  vector<int>.
   //  at the same time, we can not use vector<bool> to hold the value, because
   //  the c++ use bit value to replace byte value.

@@ -21,7 +21,13 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from ...utils import InnerError
-from .opcode_info import ABS_JUMP, ALL_JUMP, REL_BWD_JUMP, REL_JUMP
+from .opcode_info import (
+    ABS_JUMP,
+    ALL_JUMP,
+    PYOPCODE_CACHE_SIZE,
+    REL_BWD_JUMP,
+    REL_JUMP,
+)
 
 if TYPE_CHECKING:
     import types
@@ -239,7 +245,8 @@ def relocate_jump_target(instructions: list[Instruction]) -> None:
             if instr.opname in ABS_JUMP:
                 new_arg = jump_target
             else:  # instr.opname in REL_JUMP
-                new_arg = jump_target - instr.offset - 2
+                cache_size = PYOPCODE_CACHE_SIZE.get(instr.opname, 0)
+                new_arg = jump_target - (2 * cache_size) - instr.offset - 2
                 if instr.opname in REL_BWD_JUMP:
                     new_arg = -new_arg
 
@@ -315,12 +322,12 @@ def modify_extended_args(instructions: list[Instruction]) -> bool:
     return modify_completed
 
 
-def modify_vars(instructions, code_options):
+def modify_vars(instructions: list[Instruction], code_options):
     co_names = code_options['co_names']
     co_varnames = code_options['co_varnames']
     co_freevars = code_options['co_freevars']
     for instrs in instructions:
-        if instrs.opname == 'LOAD_FAST' or instrs.opname == 'STORE_FAST':
+        if instrs.opname in ['LOAD_FAST', 'LOAD_FAST_CHECK', 'STORE_FAST']:
             assert (
                 instrs.argval in co_varnames
             ), f"`{instrs.argval}` not in {co_varnames}"

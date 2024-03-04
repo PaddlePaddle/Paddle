@@ -88,7 +88,7 @@ class GPUContextResource {
   void DestroyGPUResource();
   void InitGpuProperties();
   void InitGpuEigenDevice();
-  void InitDnnHanlde();
+  void InitDnnHandle();
   void DestroyDnnHandle();
   void DestroyBlasHandle();
   void InitBlasLtHandle();

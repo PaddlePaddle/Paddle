@@ -298,7 +298,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
-    platform::CUDADeviceGuard(place.device);
+    platform::CUDADeviceGuard guard(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
     PADDLE_THROW(platform::errors::ResourceExhausted(

@@ -376,7 +376,7 @@ static framework::Variable RandomSelectedRows(framework::DDim dims,
 
 static std::unique_ptr<GradientAccumulator> CreateAccumulator(
     const std::shared_ptr<VariableWrapper>& var, bool sort_gradient) {
-  if (sort_gradient) {
+  if (sort_gradient) {  // NOLINT
     return std::unique_ptr<GradientAccumulator>(
         new SortedGradientAccumulator(var.get()));
   } else {
@@ -400,7 +400,7 @@ static void TestGradientAccumulatorTestUnchangeInput(
   std::mt19937 engine(seed);
 
   auto create_var = [&](bool use_tensor) {
-    if (use_tensor) {
+    if (use_tensor) {  // NOLINT
       return RandomTensor<float>(dim, place);
     } else {
       return RandomSelectedRows<float>(dim, place, dist(engine));

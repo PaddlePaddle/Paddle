@@ -66,7 +66,7 @@ SparseCsrTensor::SparseCsrTensor(const DenseTensor& non_zero_crows,
   meta_.dtype = non_zero_elements.dtype();
 }
 
-SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other) {
+SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other) {  // NOLINT
   this->non_zero_crows_ = other.non_zero_crows_;
   this->non_zero_cols_ = other.non_zero_cols_;
   this->non_zero_elements_ = other.non_zero_elements_;

@@ -301,7 +301,7 @@ for WITH_STATIC_LIB in ON OFF; do
         -DCUSTOM_OPERATOR_FILES=$CUSTOM_OPERATOR_FILES \
         -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
       make -j$(nproc)
-      FLAGS_enable_pir_in_executor=1 ./custom_op_demo \
+      ./custom_op_demo \
         --modeldir=$DATA_DIR/custom_op/custom_relu_infer_model
       if [ $? -ne 0 ]; then
         echo "custom_op_demo runs failed " >> ${current_dir}/test_summary.txt

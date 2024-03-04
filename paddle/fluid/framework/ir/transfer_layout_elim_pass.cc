@@ -239,7 +239,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init(pattern_name, graph);
 
   auto transfer_format = [&](std::string data_format) -> std::string {
-    if (data_format == "NCHW") {
+    if (data_format == "NCHW") {  // NOLINT
       return "NHWC";
     } else if (data_format == "NHWC") {
       return "NCHW";

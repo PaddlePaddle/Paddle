@@ -236,8 +236,8 @@ const char* edges[] = {"37\t45\t0.34",
                        "59\t122\t0.21",
                        "97\t48\t0.34",
                        "97\t247\t0.31",
-                       "97\t111\t0.21"};
-char edge_file_name[] = "edges.txt";
+                       "97\t111\t0.21"};  // NOLINT
+char edge_file_name[] = "edges.txt";      // NOLINT
 
 const char* nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",
                        "user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd",
@@ -254,10 +254,10 @@ const char* nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",
                        "item\t122\ta 0.21",
                        "item\t49\ta 0.21",
                        "item\t248\ta 0.21",
-                       "item\t113\ta 0.21"};
-char node_file_name[] = "nodes.txt";
+                       "item\t113\ta 0.21"};  // NOLINT
+char node_file_name[] = "nodes.txt";          // NOLINT
 
-void prepare_file(char file_name[], bool load_edge) {
+void prepare_file(char file_name[], bool load_edge) {  // NOLINT
   std::ofstream ofile;
   ofile.open(file_name);
   if (load_edge) {

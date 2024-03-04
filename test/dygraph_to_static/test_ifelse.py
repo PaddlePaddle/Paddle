@@ -23,7 +23,6 @@ from dygraph_to_static_utils import (
     enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
-    test_legacy_only,
     test_pir_only,
 )
 from ifelse_simple_func import (
@@ -338,7 +337,7 @@ class TestDygraphIfElseNet(Dy2StTestBase):
             ret = net(x_v)
             return ret.numpy()
 
-    @test_legacy_only
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 

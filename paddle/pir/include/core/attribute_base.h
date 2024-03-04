@@ -16,8 +16,8 @@
 
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/storage_manager.h"
+#include "paddle/pir/include/core/storage_manager_support.h"
 #include "paddle/pir/include/core/type_id.h"
-
 namespace pir {
 class Dialect;
 
@@ -238,6 +238,16 @@ struct IR_API AttributeManager {
             });
   }
 };
+
+template <typename ConcreteType,
+          typename BaseType,
+          typename StorageType,
+          class... TraitOrInterface>
+using AttrBase = detail::StorageHelperBase<ConcreteType,
+                                           BaseType,
+                                           StorageType,
+                                           AttributeManager,
+                                           TraitOrInterface...>;
 
 ///
 /// \brief Add some necessary functions to the custom Attribute class.

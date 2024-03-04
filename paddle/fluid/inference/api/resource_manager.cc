@@ -191,7 +191,7 @@ void GPUContextResource::InitGpuEigenDevice() {
   gpu_eigen_device_ = std::make_unique<Eigen::GpuDevice>(eigen_stream_.get());
 }
 
-void GPUContextResource::InitDnnHanlde() {
+void GPUContextResource::InitDnnHandle() {
   phi::InitDnnHandle(&dnn_handle_, stream_, place_);
 }
 
@@ -237,7 +237,7 @@ dnnHandle_t GPUContextResource::GetDnnHandle() const { return dnn_handle_; }
 
 std::function<phi::dnnHandle_t()> GPUContextResource::GetDnnHandleCreator() {
   return [&]() -> phi::dnnHandle_t {
-    InitDnnHanlde();
+    InitDnnHandle();
     return dnn_handle_;
   };
 }
@@ -367,7 +367,7 @@ ResourceManager& ResourceManager::Instance() {
 }
 
 void ResourceManager::InitCPUResource() {
-  std::lock_guard<std::mutex> lock_gurad(cpu_mutex_);
+  std::lock_guard<std::mutex> lock_guard(cpu_mutex_);
   if (cpu_resource_ == nullptr) {
     cpu_resource_ = std::make_unique<CPUContextResource>();
   }
@@ -382,7 +382,7 @@ CPUContextResource* ResourceManager::GetCPUResource() const {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void* ResourceManager::InitGPUResource(const phi::Place& place, void* stream) {
-  std::lock_guard<std::mutex> lock_gurad(gpu_mutex_);
+  std::lock_guard<std::mutex> lock_guard(gpu_mutex_);
   if (gpu_resources_.count(stream)) {
     Increase(stream);
     return stream;
@@ -427,7 +427,7 @@ GPUContextResource* ResourceManager::GetGPUResource(void* stream) const {
 void ResourceManager::GpuResourceSwitchStream(void* old_stream,
                                               void* new_stream) {
   // NOTE: add lock to support stream rebind in multi-thread
-  std::lock_guard<std::mutex> lock_gurad(gpu_mutex_);
+  std::lock_guard<std::mutex> lock_guard(gpu_mutex_);
   if (old_stream == new_stream) return;
   PADDLE_ENFORCE_EQ(
       gpu_resources_.count(old_stream),

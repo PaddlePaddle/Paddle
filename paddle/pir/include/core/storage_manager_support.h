@@ -15,10 +15,9 @@
 #pragma once
 
 #include <set>
+
 #include "paddle/pir/include/core/interface_support.h"
 #include "paddle/pir/include/core/ir_context.h"
-#include "paddle/pir/include/core/type.h"
-#include "paddle/pir/include/core/type_base.h"
 #include "paddle/pir/include/core/type_id.h"
 
 namespace pir {
@@ -67,7 +66,7 @@ class StorageHelperBase : public BaseT {
       typename Filter<TypeInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
   static ConcreteT dyn_cast_impl(BaseT type) {
-    if (type && type.abstract_type().type_id() == TypeId::get<ConcreteT>()) {
+    if (type && type.type_id() == TypeId::get<ConcreteT>()) {
       return ConcreteT(type.storage());
     }
     return ConcreteT(nullptr);
@@ -106,8 +105,8 @@ class StorageHelperBase : public BaseT {
   /// \brief Get or create a new ConcreteT instance within the ctx.
   ///
   template <typename... Args>
-  static ConcreteT get(pir::IrContext *ctx, Args... args) {
-    return ManagerT::template get<ConcreteT>(ctx, args...);
+  static ConcreteT get(pir::IrContext *ctx, Args &&...args) {
+    return ManagerT::template get<ConcreteT>(ctx, std::forward<Args>(args)...);
   }
 
   ///

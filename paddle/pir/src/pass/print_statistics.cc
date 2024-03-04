@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
+
 #include "paddle/common/macros.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/pass/pass.h"

@@ -181,9 +181,9 @@ class STanhOpConverter : public ActivationOpConverter {
   STanhOpConverter() { op_type_ = "stanh"; }
 };
 
-class ThreasholdedReluOpConverter : public ActivationOpConverter {
+class ThresholdedReluOpConverter : public ActivationOpConverter {
  public:
-  ThreasholdedReluOpConverter() { op_type_ = "thresholded_relu"; }
+  ThresholdedReluOpConverter() { op_type_ = "thresholded_relu"; }
 };
 #endif
 
@@ -201,5 +201,5 @@ REGISTER_TRT_OP_CONVERTER(selu, SeluOpConverter);
 REGISTER_TRT_OP_CONVERTER(softsign, SoftsignOpConverter);
 REGISTER_TRT_OP_CONVERTER(softplus, SoftplusOpConverter);
 REGISTER_TRT_OP_CONVERTER(stanh, STanhOpConverter);
-REGISTER_TRT_OP_CONVERTER(thresholded_relu, ThreasholdedReluOpConverter);
+REGISTER_TRT_OP_CONVERTER(thresholded_relu, ThresholdedReluOpConverter);
 #endif

@@ -137,7 +137,7 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
         dequant_op->Op()->HasAttr("Scale")
             ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Scale"))
             : 1;
-    float reorder_scale = 1.0 / scale;
+    float reorder_scale = static_cast<float>(1.0) / scale;
     float shift =
         dequant_op->Op()->HasAttr("Shift")
             ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Shift"))

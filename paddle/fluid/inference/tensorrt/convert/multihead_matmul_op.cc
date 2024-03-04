@@ -25,7 +25,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a multihead_mamul op to a corresponding tensorrt "
+    VLOG(3) << "convert a multihead_matmul op to a corresponding tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -377,7 +377,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           reshape_before_multihead_layer->setInput(1, *Concat(reshape_tensor));
           reshape_before_multihead_layer->setName(
-              ("reshape_before_multihead_mamul(Output: " + output_name + ")")
+              ("reshape_before_multihead_matmul(Output: " + output_name + ")")
                   .c_str());
 
           if (op_desc.HasAttr("fc_out_threshold")) {
@@ -625,7 +625,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                      bias);
           }
           fc_layer->setName(
-              ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+              ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
 
           // add shuffle for CustomQKVToContextPluginDynamic layer
           auto* reshape_after_fc_layer =
@@ -798,7 +798,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           reshape_before_fc_layer->setInput(
               1, *Concat(reshape_before_fc_shape_tensor));
           reshape_before_fc_layer->setName(
-              ("shuffle_before_multihead_mamul(Output: " + output_name + ")")
+              ("shuffle_before_multihead_matmul(Output: " + output_name + ")")
                   .c_str());
 
           // add layer fc
@@ -834,7 +834,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
             engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
           }
           fc_layer->setName(
-              ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+              ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
 
           // no need to add shuffle after fc, just change it in
           // QkvToContextPluginDynamic

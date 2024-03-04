@@ -29,7 +29,8 @@
 namespace cinn {
 namespace dialect {
 
-class IR_API GroupOp : public pir::Op<GroupOp> {
+class IR_API GroupOp
+    : public pir::Op<GroupOp, paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.group"; }
@@ -50,6 +51,8 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
 
   pir::Block *block();
   std::vector<pir::Operation *> GetOperators();
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT

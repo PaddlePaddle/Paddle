@@ -199,7 +199,7 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     const int64_t* inference_data = inference->data<int64_t>();
     const int64_t* label_data = label->data<int64_t>();
     T* precision_data = precision->mutable_data<T>(place);
-    T* racall_data = recall->mutable_data<T>(place);
+    T* recall_data = recall->mutable_data<T>(place);
     T* f1_data = f1->mutable_data<T>(place);
     int64_t* num_infer_chunks_data =
         num_infer_chunks->mutable_data<int64_t>(place);
@@ -280,14 +280,14 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
                           ? 0
                           : static_cast<T>(*num_correct_chunks_data) /
                                 (*num_infer_chunks_data);
-    *racall_data = !(*num_label_chunks_data)
+    *recall_data = !(*num_label_chunks_data)
                        ? 0
                        : static_cast<T>(*num_correct_chunks_data) /
                              (*num_label_chunks_data);
     *f1_data = !(*num_correct_chunks_data)
                    ? 0
-                   : 2 * (*precision_data) * (*racall_data) /
-                         ((*precision_data) + (*racall_data));
+                   : 2 * (*precision_data) * (*recall_data) /
+                         ((*precision_data) + (*recall_data));
   }
 
   void EvalOneSeq(const int64_t* output,

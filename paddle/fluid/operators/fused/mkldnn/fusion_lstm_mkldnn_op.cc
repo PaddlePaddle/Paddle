@@ -321,7 +321,7 @@ class LSTMMKLDNNHandler
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -473,9 +473,11 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(fusion_lstm,
-                   MKLDNN,
-                   phi::CPUPlace,
-                   ops::FusionLSTMMKLDNNKernel<float>,
-                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>,
-                   ops::FusionLSTMMKLDNNKernel<uint8_t>);
+
+PD_REGISTER_STRUCT_KERNEL(fusion_lstm,
+                          OneDNN,
+                          ONEDNN,
+                          ops::FusionLSTMMKLDNNKernel,
+                          float,
+                          uint8_t,
+                          paddle::platform::bfloat16) {}

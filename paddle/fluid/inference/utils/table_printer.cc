@@ -57,18 +57,18 @@ std::string TablePrinter::PrintTable() {
 }
 
 TablePrinter::TablePrinter(const std::vector<std::string>& header) {
-  size_t terminal_witdh = 500;
+  size_t terminal_width = 500;
 #ifdef _WIN32
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   int ret = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
   if (ret && (csbi.dwSize.X != 0)) {
-    terminal_witdh = csbi.dwSize.X;
+    terminal_width = csbi.dwSize.X;
   }
 #else
   struct winsize terminal_size;
   int status = ioctl(STDOUT_FILENO, TIOCGWINSZ, &terminal_size);
   if (status == 0 && terminal_size.ws_col != 0) {
-    terminal_witdh = terminal_size.ws_col;
+    terminal_width = terminal_size.ws_col;
   }
 #endif
 
@@ -77,8 +77,8 @@ TablePrinter::TablePrinter(const std::vector<std::string>& header) {
     widths_.emplace_back(0);
   }
 
-  terminal_witdh = terminal_witdh - (2 * num_cols) - (num_cols + 1);
-  int avg_width = static_cast<int>(terminal_witdh / num_cols);  // NOLINT
+  terminal_width = terminal_width - (2 * num_cols) - (num_cols + 1);
+  int avg_width = static_cast<int>(terminal_width / num_cols);  // NOLINT
 
   for (size_t i = 0; i < num_cols; ++i) {
     shares_.emplace_back(avg_width);

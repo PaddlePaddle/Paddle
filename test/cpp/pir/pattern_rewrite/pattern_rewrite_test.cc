@@ -20,6 +20,7 @@
 #include <sstream>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -31,8 +32,7 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
-
-#include "paddle/common/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
@@ -54,7 +54,6 @@
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "test/cpp/pir/tools/macros_utils.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
@@ -85,11 +84,13 @@ void Operation1::VerifySig() {
   auto &attributes = this->attributes();
   if (attributes.count("op2_attr1") == 0 ||
       (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op2_attr2") == 0 ||
       (!attributes.at("op2_attr2").isa<pir::StrAttribute>())) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Type of attribute: parameter_name is not right."));
   }
 }
 const char *Operation1::attributes_name[attributes_num] = {  // NOLINT

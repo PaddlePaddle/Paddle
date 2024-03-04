@@ -1132,7 +1132,7 @@ def multiply_(x, y, name=None):
     return _C_ops.multiply_(x, y)
 
 
-def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undifined"):
+def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undefined"):
     assert (
         in_dynamic_or_pir_mode()
     ), "You can only call `_elementwise_op_with_axis` function within in_dynamic_or_pir_mode"

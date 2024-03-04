@@ -236,7 +236,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
     if (flatten) {
-      if (keepdims) {
+      if (keepdims) {  // NOLINT
         vec = std::vector<int64_t>(x.dims().size(), -1);
       } else {
         vec = {};
@@ -307,7 +307,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 
   std::vector<int64_t> vec;
   if (flatten) {
-    if (keepdims) {
+    if (keepdims) {  // NOLINT
       vec = std::vector<int64_t>(x.dims().size(), 1);
     } else {
       vec = {};
@@ -2188,7 +2188,7 @@ void KthvalueInferMeta(const MetaTensor& x,
   indices->set_dtype(x.dtype());
 }
 
-void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out) {
+void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out) {
   UnchangedInferMeta(x, out);
   if (!(out->is_same_tensor(x))) {
     out->set_dtype(DataType::BOOL);
@@ -3588,11 +3588,28 @@ void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,
                       MetaTensor* out,
                       MetaConfig config) {
-  auto& shape_data = shape.GetData();
+  auto shape_data = shape.GetData();
   PADDLE_ENFORCE_NOT_NULL(out,
                           phi::errors::InvalidArgument(
                               "Output(Out) of ReshapeOp should not be null."));
   if (!config.is_runtime && shape.FromTensor()) {
+    const int64_t copy_dim_flag = 0;
+    const auto& in_dims = x.dims();
+    for (size_t i = 0; i < shape_data.size(); ++i) {
+      if (shape_data[i] == copy_dim_flag) {
+        PADDLE_ENFORCE_LT(
+            static_cast<int>(i),
+            in_dims.size(),
+            phi::errors::InvalidArgument(
+                "The index of 0 in `shape` must be less than "
+                "the input tensor X's dimensions. But received shape[%d] "
+                "= 0, X's dimensions = %d, X's shape = [%s].",
+                i,
+                in_dims.size(),
+                in_dims));
+        shape_data[i] = static_cast<int>(in_dims[static_cast<int>(i)]);
+      }
+    }
     out->set_dims(common::make_ddim(shape_data));
     out->share_lod(x);
     out->set_dtype(x.dtype());
@@ -4017,7 +4034,8 @@ void SplitInferMeta(const MetaTensor& x,
   if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1 ||
       (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims;
-    if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1) {
+    if ((sections.FromTensor() && !config.is_runtime) ||
+        axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
           sections_data.size(),
           common::make_ddim(std::vector<int>(x.dims().size(), -1)));
@@ -4109,7 +4127,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
   // fill out dims with -1
   if (axis_value == -1 || (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims;
-    if (axis_value == -1) {
+    if (axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
           num, common::make_ddim(std::vector<int>(x.dims().size(), -1)));
     } else {
@@ -5398,7 +5416,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> dim_out;
-  if (algo == "weight_only_int8" || algo == "llm.int8") {
+  if (algo == "weight_only_int8" || algo == "llm.int8") {  // NOLINT
     dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
   } else if (algo == "weight_only_int4") {
     dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});

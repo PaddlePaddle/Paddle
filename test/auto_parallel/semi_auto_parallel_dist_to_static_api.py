@@ -37,6 +37,14 @@ def create_numpy_like_random(name):
     )
 
 
+def create_data_loader():
+    images = np.random.rand(BATCH_SIZE, IMAGE_SIZE).astype('float32')
+    labels = np.random.rand(BATCH_SIZE, CLASS_NUM).astype('float32')
+    dataset = RandomDataset(images, labels, BATCH_SIZE)
+    loader = DataLoader(dataset, batch_size=BATCH_SIZE)
+    return loader
+
+
 class RandomDataset(paddle.io.Dataset):
     def __init__(self, images, labels, num_samples):
         self.images = images
@@ -96,19 +104,12 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
     def __init__(self):
         self._seed = eval(os.getenv("seed"))
         self.set_random_seed(self._seed)
-        self.data_loader = self.create_data_loader()
+        self.data_loader = create_data_loader()
 
     def set_random_seed(self, seed):
         random.seed(seed)
         np.random.seed(seed)
         paddle.seed(seed)
-
-    def create_data_loader(self):
-        images = np.random.rand(BATCH_SIZE, IMAGE_SIZE).astype('float32')
-        labels = np.random.rand(BATCH_SIZE, CLASS_NUM).astype('float32')
-        dataset = RandomDataset(images, labels, BATCH_SIZE)
-        loader = DataLoader(dataset, batch_size=BATCH_SIZE)
-        return loader
 
     def get_program_test(self, dist_model):
         with self.assertRaises(ValueError):

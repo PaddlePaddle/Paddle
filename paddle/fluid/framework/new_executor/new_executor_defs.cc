@@ -94,7 +94,7 @@ void VariableScope::AddVar(const std::string& name,
     auto id = VarSize();
     name2id_[name] = static_cast<int>(id);
     vec_meta_info_.emplace_back(0, var_desc);
-    if (local_scope_ != nullptr) {
+    if (local_scope_ != nullptr) {  // NOLINT
       var_list_.push_back(local_scope_->FindVar(name));
     } else {
       var_list_.push_back(scope_->FindVar(name));

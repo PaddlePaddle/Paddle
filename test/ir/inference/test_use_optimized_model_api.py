@@ -18,6 +18,7 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
+from paddle.framework import core
 from paddle.inference import Config, create_predictor
 
 # -------------------------- TestNet --------------------------
@@ -68,18 +69,18 @@ class UseOptimizedModel(InferencePassTest):
         )
 
     def test_check_output(self):
-        out_origin_model = self.inference()
-        out_optimized_model = self.inference()
-        np.testing.assert_allclose(
-            out_origin_model, out_optimized_model, rtol=1e-5, atol=1e-2
-        )
+        if core.is_compiled_with_cuda():
+            out_origin_model = self.inference()
+            out_optimized_model = self.inference()
+            np.testing.assert_allclose(
+                out_origin_model, out_optimized_model, rtol=1e-5, atol=1e-2
+            )
 
     def inference(self):
         # Config
         config = Config(
             self.path_prefix + ".pdmodel", self.path_prefix + ".pdiparams"
         )
-        # if core.is_compiled_with_cuda():
         config.enable_use_gpu(100, 0)
         config.enable_tensorrt_engine(
             workspace_size=1 << 30,

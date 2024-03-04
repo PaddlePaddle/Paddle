@@ -252,7 +252,7 @@ cinn::dialect::GroupInfo BuildGroupInfo(
     const GroupClusterNode& node,
     const std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>&
         new_align_info) {
-  cinn::dialect::GroupInfo group_info({});
+  cinn::dialect::GroupInfo group_info(vec_new_op_list);
   group_info.group_id = BuildGroupId(vec_new_op_list);
   group_info.loop_ranges = node.loop_ranges;
   group_info.reduce_axis = node.reduce_axis;

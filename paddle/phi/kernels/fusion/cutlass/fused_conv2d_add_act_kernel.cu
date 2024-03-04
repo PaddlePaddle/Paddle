@@ -98,30 +98,66 @@ void FusedConv2dAddActKernel(const Context& ctx,
   const int oh = out_dims[1];
   const int ow = out_dims[2];
 
-  ConvAllParams params = {reinterpret_cast<const half*>(x.data<T>()),
-                          reinterpret_cast<const half*>(filter.data<T>()),
-                          reinterpret_cast<const half*>(bias.data<T>()),
-                          nullptr,
-                          reinterpret_cast<half*>(output->data<T>()),
-                          batch,
-                          ic,
-                          ih,
-                          iw,
-                          kh,
-                          kw,
-                          oc,
-                          pad_h0,
-                          pad_h1,
-                          pad_w0,
-                          pad_w1,
-                          stride_h,
-                          stride_w,
-                          dilation_h,
-                          dilation_w,
-                          oh,
-                          ow,
-                          groups,
-                          ctx.stream()};
+  int64_t device_id = ctx.GetPlace().GetDeviceId();
+  int sm_version = backends::gpu::GetGPUComputeCapability(device_id);
+
+  auto get_conv2d_dtype = [&](decltype(x.dtype()) x_type)
+      -> phi::fusion::cutlass_internal::Conv2dDataType {
+    switch (x_type) {
+      case phi::DataType::FLOAT32:
+        return Conv2dDataType::fp32;
+      case phi::DataType::FLOAT16:
+        return Conv2dDataType::fp16;
+      case phi::DataType::BFLOAT16:
+        return Conv2dDataType::bf16;
+    }
+  };
+
+  auto cutlass_dispatch_sm_version = [&](int device_sm_version) -> int {
+    if (device_sm_version < 75) {
+      PADDLE_ENFORCE_GE(
+          device_sm_version,
+          75,
+          phi::errors::PreconditionNotMet(
+              "fused_conv2d_add_act only supports sm >= 75, but got %d.",
+              device_sm_version));
+    } else if (device_sm_version > 80) {
+      return 80;
+    } else {
+      return device_sm_version;
+    }
+  };
+
+  ConvAllParams params = {
+      reinterpret_cast<const void*>(x.data<T>()),
+      reinterpret_cast<const void*>(filter.data<T>()),
+      reinterpret_cast<const void*>(bias.data<T>()),
+      nullptr,
+      reinterpret_cast<void*>(output->data<T>()),
+      batch,
+      ic,
+      ih,
+      iw,
+      kh,
+      kw,
+      oc,
+      pad_h0,
+      pad_h1,
+      pad_w0,
+      pad_w1,
+      stride_h,
+      stride_w,
+      dilation_h,
+      dilation_w,
+      oh,
+      ow,
+      groups,
+      ctx.stream(),
+      0,  // alpha
+      cutlass_dispatch_sm_version(sm_version),
+      get_conv2d_dtype(x.dtype()),
+      nullptr,
+  };
 
   void* dlhandler = phi::dynload::GetCutlassConv2dHandle();
   func conv_func = NULL;
@@ -161,11 +197,13 @@ void FusedConv2dAddActKernel(const Context& ctx,
   CHECK_EQ(groups == 1, true);
   if (residual) {
     if (activation == "relu") {
-      params.residual = reinterpret_cast<const half*>(residual->data<T>());
+      params.residual = reinterpret_cast<const void*>(residual->data<T>());
       conv_func = (func)(dlsym(dlhandler, "Conv2dBiasAddRelu"));
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "Cutlass now only support relu activation in a residual block"));
+          "Cutlass now only support relu activation in a residual block, but "
+          "got %s.",
+          activation.c_str()));
     }
   } else if (activation == "relu") {
     conv_func = (func)(dlsym(dlhandler, "Conv2dBiasRelu"));
@@ -194,4 +232,5 @@ PD_REGISTER_KERNEL(fused_conv2d_add_act,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::FusedConv2dAddActKernel,
                    float,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}

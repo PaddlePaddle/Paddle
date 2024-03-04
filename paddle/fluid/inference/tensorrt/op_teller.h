@@ -34,7 +34,7 @@ namespace tensorrt {
 
 /*
  * Single Op teller definition.
- * One can override this and define a more complex tell logic, considerring more
+ * One can override this and define a more complex tell logic, considering more
  * issues such as op_desc.
  */
 struct Teller {

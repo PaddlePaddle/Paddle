@@ -428,7 +428,7 @@ Expr DyScheduleImpl::SampleCategorical(
   std::string primitive = "SampleCategorical";
   std::ostringstream os;
   if (candidates.size() != probs.size()) {
-    os << "vector<int> params(candidates) and vector<int> prama(probs) must "
+    os << "vector<int> params(candidates) and vector<int> params(probs) must "
           "have same size in SampleCategorical!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }

@@ -38,7 +38,7 @@ class RegisterHookTransformer(BaseTransformer):
         self.visit(self.root)
 
     def reorder_block_statements(self, stmts):
-        regisiter_hook_nodes = [
+        register_hook_nodes = [
             n
             for n in stmts
             for stmt in gast.walk(n)
@@ -46,7 +46,7 @@ class RegisterHookTransformer(BaseTransformer):
         ]
         # Analyze the register_hook nodes name dependency
         dependents = {}
-        for n in regisiter_hook_nodes:
+        for n in register_hook_nodes:
             if n not in stmts:
                 continue
             for load_node in get_loads(n):

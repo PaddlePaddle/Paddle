@@ -232,7 +232,7 @@ class AllocatorFacadePrivate {
 
         // Note(Ruibiao): For GPU multi-stream case without CUDA graph
         // capturing, the 'allocators_' map(place -> Allocator) hold the
-        // StreamSafeCUDAAllocator relate to defaultstream (i.e., the stream
+        // StreamSafeCUDAAllocator relate to default stream (i.e., the stream
         // directly got from DeviceContext), while the 'cuda_allocators_' map
         // (place -> map(stream -> Allocator)) hold the StreamSafeCUDAAllocator
         // relate to non-default stream (i.e., the stream users pass in). The

@@ -70,14 +70,7 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias,
     }
   }
 
-  if (convWithExistingBias) {
-    SetOp(&prog,
-          "conv2d",
-          "conv",
-          std::vector<std::string>({"c", "weights", "conv_bias"}),
-          std::vector<std::string>({"f"}),
-          scale_weights);
-  } else if (scale_weights.size() > 1) {
+  if (convWithExistingBias || scale_weights.size() > 1) {
     SetOp(&prog,
           "conv2d",
           "conv",

@@ -29,7 +29,7 @@ namespace prim {
 // We put some api like utils here
 template <typename T>
 Tensor empty(const paddle::experimental::IntArray& shape,
-             phi::DataType dype,
+             phi::DataType dtype,
              const paddle::Place& place);
 
 template <typename T>
@@ -37,7 +37,7 @@ Tensor empty_like(const Tensor& x,
                   phi::DataType dtype,
                   const paddle::Place& place);
 
-// copy tensor for output ptr, in static need use assigh op
+// copy tensor for output ptr, in static need use assign op
 template <typename T>
 void by_pass(const Tensor& x, Tensor* out);
 
@@ -114,7 +114,7 @@ static std::vector<DST_T> unsafe_vector_cast(const std::vector<SRC_T>& src) {
   return dst;
 }
 
-// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+// This function compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
     const Tensor& origin, const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();

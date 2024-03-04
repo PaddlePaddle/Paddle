@@ -52,7 +52,7 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
 #endif
     default:
       paddle::platform::errors::InvalidArgument(
-          "Paddle-TRT loads weighths failed, found not supported data type %s.",
+          "Paddle-TRT loads weights failed, found not supported data type %s.",
           type);
       break;
   }

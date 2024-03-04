@@ -69,6 +69,10 @@ PD_DEFINE_bool(cinn_bucket_compile,
                BoolFromEnv("FLAGS_cinn_bucket_compile", false),
                "Whether to enable bucket compile for dynamic shape.");
 
+PD_DEFINE_bool(group_schedule_tiling_first,
+               BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
+               "Whether to enable new group scheduler tiling first strategy.");
+
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                            false),

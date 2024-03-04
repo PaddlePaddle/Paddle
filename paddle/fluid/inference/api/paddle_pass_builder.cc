@@ -528,6 +528,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
       "gather_squeeze_pass",
+      "roformer_relative_pos_fuse_pass",
       "delete_repeated_ops_pass",
       "identity_op_clean_pass",
       "fused_continuous_same_ops_pass",

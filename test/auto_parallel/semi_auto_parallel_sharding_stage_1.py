@@ -15,9 +15,11 @@
 import os
 
 import numpy as np
+from semi_auto_parallel_dist_to_static_api import DemoNet, create_data_loader
 
 import paddle
 import paddle.distributed as dist
+from paddle import nn
 
 
 class TestSemiAutoParallelShardingStage1:
@@ -50,7 +52,7 @@ class TestSemiAutoParallelShardingStage1:
         batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
         # shard optimizer with stage 1 fn
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
-        opt = dist.shard_optimizer(opt, dist.ShardingStage1())
+        opt = dist.shard_optimizer(opt, dist.ShardingStage1(self._mesh))
         for _ in range(5):
             loss = linear(batch)
             loss.backward()
@@ -58,6 +60,28 @@ class TestSemiAutoParallelShardingStage1:
             opt.clear_grad()
         self.check_tensor_eq(self.weight, linear.weight.numpy())
         self.check_tensor_eq(self.bias, linear.bias.numpy())
+
+    def test_sharding_stage_1_to_static(self):
+        data_loader = create_data_loader()
+        layer = DemoNet(self._mesh, "sharding_demonet")
+        opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=layer.parameters()
+        )
+        opt = dist.shard_optimizer(opt, dist.ShardingStage1(self._mesh))
+        loss_fn = nn.MSELoss()
+
+        dist_loader = dist.shard_dataloader(
+            dataloader=data_loader,
+            meshes=[self._mesh],
+            shard_dims=0,
+        )
+
+        dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
+
+        dist_model.train()
+        for epoch in range(2):
+            for batch_id, (image, label) in enumerate(dist_loader()):
+                loss = dist_model(image, label)
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -69,6 +93,7 @@ class TestSemiAutoParallelShardingStage1:
 
         self.get_single_card_rst()
         self.test_pure_sharding_stage_1()
+        self.test_sharding_stage_1_to_static()
 
 
 if __name__ == '__main__':

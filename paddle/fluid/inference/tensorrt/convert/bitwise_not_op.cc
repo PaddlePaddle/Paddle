@@ -42,7 +42,7 @@ class BitwiseNotConverter : public OpConverter {
       nvinfer1::Dims input_dims = input_tensor->getDimensions();
 
       // set up a elementwise -1 tensor, can not get the dims info for
-      // dynamic_shape so just let it broadcaste
+      // dynamic_shape so just let it broadcast
       nvinfer1::Dims neg_one_tensor_dims;
       neg_one_tensor_dims.nbDims = input_dims.nbDims;
       for (int i = 0; i < input_dims.nbDims; ++i) {

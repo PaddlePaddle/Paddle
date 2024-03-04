@@ -32,21 +32,21 @@ namespace ir {
   GET_IR_NODE(quant_dequant_op_out);
 
 void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
-  const std::string pattern_name = "delete_quantdequant_op_pattern";
+  const std::string pattern_name = "delete_quant_dequant_op_pattern";
   FusePassBase::Init(pattern_name, graph);
   GraphPatternDetector gpd;
 
-  std::string quantdequant_types =
+  std::string quant_dequant_types =
       "fake_quantize_dequantize_moving_average_abs_max";
 
   auto* input_node = gpd.mutable_pattern()
                          ->NewNode("input_node")
-                         ->assert_is_op_input(quantdequant_types, "X")
+                         ->assert_is_op_input(quant_dequant_types, "X")
                          ->AsInput();
 
   patterns::DeleteQuantDequantOpPattern pattern(gpd.mutable_pattern(),
                                                 pattern_name);
-  pattern(input_node, quantdequant_types);
+  pattern(input_node, quant_dequant_types);
   auto* scope = param_scope();
   int found_count = 0;
 

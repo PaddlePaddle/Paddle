@@ -1869,9 +1869,9 @@ struct DeleteDropoutOpPattern : public PatternBase {
 
 struct DeleteQuantDequantOpPattern : public PatternBase {
   DeleteQuantDequantOpPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "delete_quantdequant_op_pattern") {}
+      : PatternBase(pattern, name_scope, "delete_quant_dequant_op_pattern") {}
 
-  void operator()(PDNode* input_node, const std::string& quantdequant_types);
+  void operator()(PDNode* input_node, const std::string& quant_dequant_types);
 
   PATTERN_DECL_NODE(quant_dequant_op_inscale);
   PATTERN_DECL_NODE(quant_dequant_op);
@@ -1883,7 +1883,7 @@ struct DeleteQuantDequantFilterOpPattern : public PatternBase {
   DeleteQuantDequantFilterOpPattern(PDPattern* pattern,
                                     const std::string& name_scope)
       : PatternBase(
-            pattern, name_scope, "delete_quantdequant_filter_op_pattern") {}
+            pattern, name_scope, "delete_quant_dequant_filter_op_pattern") {}
 
   void operator()();
 

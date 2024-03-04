@@ -33,14 +33,12 @@ endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} executor)
 
 if(WITH_XPU)
-  cc_test(
-    beam_search_decode_op_xpu_test
-    SRCS beam_search_decode_op_xpu_test.cc
-    DEPS lod_tensor)
+  paddle_test(beam_search_decode_op_xpu_test SRCS
+              beam_search_decode_op_xpu_test.cc)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 
-cc_test(
+nv_test(
   test_common_infer_shape_functions
   SRCS test_common_infer_shape_functions.cc
   DEPS common_infer_shape_functions
@@ -51,30 +49,12 @@ cc_test(
        phi
        common
        generated_static_op)
-cc_test(
-  gather_test
-  SRCS gather_test.cc
-  DEPS tensor)
-cc_test(
-  assign_op_test
-  SRCS assign_op_test.cc
-  DEPS generated_static_op)
-cc_test(
-  scatter_test
-  SRCS scatter_test.cc
-  DEPS tensor phi common)
-cc_test(
-  beam_search_decode_op_test
-  SRCS beam_search_decode_op_test.cc
-  DEPS lod_tensor)
-cc_test(
-  save_load_op_test
-  SRCS save_load_op_test.cc
-  DEPS save_op load_op)
-cc_test(
-  save_load_combine_op_test
-  SRCS save_load_combine_op_test.cc
-  DEPS save_combine_op load_combine_op)
+paddle_test(gather_test SRCS gather_test.cc)
+paddle_test(assign_op_test SRCS assign_op_test.cc)
+paddle_test(scatter_test SRCS scatter_test.cc DEPS common)
+paddle_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc)
+paddle_test(save_load_op_test SRCS save_load_op_test.cc)
+paddle_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc)
 if(WITH_CINN)
   set(CINN_DEPS python)
 endif()
@@ -109,15 +89,10 @@ elseif(WITH_ROCM)
          test_leaky_relu_grad_grad_functor.cu
     DEPS tensor device_context eigen3)
 else()
-  cc_test(
-    test_leaky_relu_grad_grad_functor
-    SRCS test_leaky_relu_grad_grad_functor.cc
-    DEPS tensor device_context eigen3)
+  paddle_test(test_leaky_relu_grad_grad_functor SRCS
+              test_leaky_relu_grad_grad_functor.cc)
 endif()
-cc_test(
-  share_buffer_op_cpp_test
-  SRCS share_buffer_op_test.cc
-  DEPS lod_tensor device_context generated_static_op)
+paddle_test(share_buffer_op_cpp_test SRCS share_buffer_op_test.cc)
 
 if(WITH_CINN)
   paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
@@ -126,16 +101,7 @@ else()
 endif()
 
 if(WITH_GPU)
-  cc_test(
-    copy_cross_scope_test
-    SRCS copy_cross_scope_test.cc
-    DEPS op_registry
-         copy_cross_scope_op
-         scope
-         device_context
-         enforce
-         executor
-         common)
+  paddle_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc)
 endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)

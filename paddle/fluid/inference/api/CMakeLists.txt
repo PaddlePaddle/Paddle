@@ -77,33 +77,29 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
+set(ANALYSIS_PREDICTOR_SRCS analysis_predictor.cc resource_manager.cc
+                            infer_context.cc ${mkldnn_quantizer_src})
+set(ANALYSIS_PREDICTOR_DEPS
+    ${inference_deps}
+    zero_copy_tensor
+    ir_pass_manager
+    op_compatible_info
+    infer_io_utils
+    model_utils
+    fleet_executor)
+
 if(WITH_ONNXRUNTIME)
-  cc_library(
-    analysis_predictor
-    SRCS analysis_predictor.cc onnxruntime_predictor.cc resource_manager.cc
-         infer_context.cc ${mkldnn_quantizer_src}
-    DEPS ${inference_deps}
-         zero_copy_tensor
-         ir_pass_manager
-         op_compatible_info
-         infer_io_utils
-         model_utils
-         onnxruntime
-         paddle2onnx
-         fleet_executor)
-else()
-  cc_library(
-    analysis_predictor
-    SRCS analysis_predictor.cc resource_manager.cc infer_context.cc
-         ${mkldnn_quantizer_src}
-    DEPS ${inference_deps}
-         zero_copy_tensor
-         ir_pass_manager
-         op_compatible_info
-         infer_io_utils
-         model_utils
-         fleet_executor)
+  set(ANALYSIS_PREDICTOR_SRCS ${ANALYSIS_PREDICTOR_SRCS}
+                              onnxruntime_predictor.cc)
+  set(ANALYSIS_PREDICTOR_DEPS ${ANALYSIS_PREDICTOR_DEPS} onnxruntime
+                              paddle2onnx)
+elseif(WITH_CINN)
+  set(ANALYSIS_PREDICTOR_DEPS ${ANALYSIS_PREDICTOR_DEPS} add_cinn_pass)
 endif()
+cc_library(
+  analysis_predictor
+  SRCS ${ANALYSIS_PREDICTOR_SRCS}
+  DEPS ${ANALYSIS_PREDICTOR_DEPS})
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

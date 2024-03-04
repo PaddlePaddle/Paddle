@@ -1295,7 +1295,7 @@ def top_p_sampling(
               [2]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         res = _C_ops.top_p_sampling(x, ps, threshold, topp_seed, seed, k, mode)
         if return_top:
             return res

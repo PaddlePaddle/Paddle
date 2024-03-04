@@ -245,16 +245,16 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   }
   VLOG(6) << "finish process infer meta context";
 
-  auto kernel_name =
+  auto kernel_name_ =
       op_attributes.at("kernel_name").dyn_cast<pir::StrAttribute>().AsString();
-  auto kernel_key = op_attributes.at("kernel_key")
-                        .dyn_cast<paddle::dialect::KernelAttribute>()
-                        .data();
+  auto kernel_key_ = op_attributes.at("kernel_key")
+                         .dyn_cast<paddle::dialect::KernelAttribute>()
+                         .data();
 
   phi_kernel_ = new phi::Kernel(
-      phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key));
+      phi::KernelFactory::Instance().SelectKernel(kernel_name_, kernel_key_));
   PADDLE_ENFORCE_EQ(
-      phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
+      phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name_);
   VLOG(6) << "finish process select kernel";
 
   BuildPhiContext<phi::KernelContext,
@@ -266,13 +266,13 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
       op, *value_exec_info_, yaml_info_parser, &kernel_context_);
 
   kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
-      phi::TransToPhiPlace(kernel_key.backend())));
+      phi::TransToPhiPlace(kernel_key_.backend())));
   VLOG(6) << "finish process kernel context";
 
   SetDeviceContext(
       ParseDeviceContext(op,
                          phi::DeviceContextPool::Instance().Get(
-                             phi::TransToPhiPlace(kernel_key.backend())),
+                             phi::TransToPhiPlace(kernel_key_.backend())),
                          place,
                          GetExecutionStream(),
                          GetStreamPriority()));
@@ -409,28 +409,42 @@ void OneDNNPhiKernelInstruction::Run() {
     VLOG(6) << "input[" << i << "].layout() = " << input->layout();
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
-
-      //  Handle 'layout_transform' in
-      //  ops_onednn_extra.yaml(GetKernelTypeForVar)
-      if (data_format_tensors_.count(i) &&
-          input_layout_ != phi::DataLayout::kAnyLayout) {
-        from_layout = input_layout_;
-      }
-      VLOG(6) << "from_layout = " << from_layout;
-
       auto transed_tensor = const_cast<phi::DenseTensor*>(input);
 
-      if (from_layout == DataLayout::kNHWC ||
-          from_layout == DataLayout::kNDHWC) {
-        phi::funcs::MatchShapeToLayout(
-            transed_tensor, from_layout, phi::DataLayout::ONEDNN);
-        // We register only NHWC assuming that model is consistent e.g. either
-        // NHWC or NCHW
-        phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
-      }
+      std::set<std::string> elementwise_kernels = {
+          "add", "subtract", "multiply", "divide"};
+      if (elementwise_kernels.count(kernel_name_)) {
+        if (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+                phi::DataLayout::kNHWC &&
+            !(kernel_key_.dtype() == phi::DataType::COMPLEX64 ||
+              kernel_key_.dtype() == phi::DataType::COMPLEX128)) {
+          phi::funcs::MatchShapeToLayout(
+              transed_tensor, from_layout, phi::DataLayout::ONEDNN);
+          from_layout = phi::DataLayout::kNHWC;
+        } else {
+          continue;
+        }
+      } else {
+        //  Handle 'layout_transform' in
+        //  ops_onednn_extra.yaml(GetKernelTypeForVar)
+        if (data_format_tensors_.count(i) &&
+            input_layout_ != phi::DataLayout::kAnyLayout) {
+          from_layout = input_layout_;
+        }
+        VLOG(6) << "from_layout = " << from_layout;
 
-      if (from_layout == DataLayout::kAnyLayout) {
-        from_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+        if (from_layout == DataLayout::kNHWC ||
+            from_layout == DataLayout::kNDHWC) {
+          phi::funcs::MatchShapeToLayout(
+              transed_tensor, from_layout, phi::DataLayout::ONEDNN);
+          // We register only NHWC assuming that model is consistent e.g. either
+          // NHWC or NCHW
+          phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
+        }
+
+        if (from_layout == DataLayout::kAnyLayout) {
+          from_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+        }
       }
 
       dnnl::memory::desc out_mem_desc =

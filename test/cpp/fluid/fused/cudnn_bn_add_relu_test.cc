@@ -764,7 +764,7 @@ class CudnnBNAddReluTester {
     int c = channels_;
     int64_t nhw = ele_count_;
     int32_t c_int32_elems = ((c + 63) & ~63) / 32;
-    int32_t nhw_int32_elems = (nhw + 31) & ~31;
+    int32_t nhw_int32_elems = (static_cast<int32_t>(nhw) + 31) & ~31;
     bitmask.Resize(common::make_ddim({nhw_int32_elems, c_int32_elems, 1}));
 
     auto data_shape = common::vectorize<int>(x.dims());

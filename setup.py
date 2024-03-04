@@ -1370,6 +1370,27 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # pir init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/pir/include',
+                recursive=True,
+            )
+        )
+        + list(  # drr init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/drr/include',
+                recursive=True,
+            )
+        )
+        + list(  # pass utils init headers
+            find_files(
+                'transform_general_functions.h',
+                paddle_source_dir + '/paddle/fluid/pir/transforms',
+                recursive=True,
+            )
+        )
     )
 
     jit_layer_headers = [

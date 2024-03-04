@@ -78,7 +78,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForRNNWeights(
     check_var(wh_var, wh_name);
     phi::DenseTensor* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
     phi::DenseTensor* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
-    if (gru) {
+    if (gru) {  // NOLINT
       scales_[wx_name] = GetMaxChGRUScalingFactor(*wx_tensor, *wh_tensor);
     } else {
       scales_[wx_name] = GetMaxChLSTMScalingFactor(*wx_tensor, *wh_tensor);
@@ -215,6 +215,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
 
   switch (rule) {
     case ScaleAlgo::MAX:
+    case ScaleAlgo::KL:
       scales_[var_name] = GetMaxScalingFactor(var_tensor, is_unsigned);
       break;
     case ScaleAlgo::MAX_CH:
@@ -226,9 +227,6 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
       scales_[var_name] = GetMaxChScalingFactor(var_tensor,
                                                 is_unsigned,
                                                 /*is_transposed*/ true);
-      break;
-    case ScaleAlgo::KL:
-      scales_[var_name] = GetKLScalingFactor(var_tensor, is_unsigned);
       break;
     default:
       throw std::runtime_error(

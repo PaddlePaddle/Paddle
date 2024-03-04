@@ -23,6 +23,8 @@ namespace ir {
 
 std::unique_ptr<pir::Pass> CreateAddBroadcastToElementwisePass();
 
+std::unique_ptr<pir::Pass> CreateDeleteUselessBroadcastPass();
+
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn

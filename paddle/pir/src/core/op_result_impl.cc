@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/src/core/op_result_impl.h"
+#include <glog/logging.h>
+
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/src/core/op_result_impl.h"
 
 namespace pir {
 namespace detail {

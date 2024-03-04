@@ -366,7 +366,7 @@ class GradientAccumulationInfo {
       if (!grad_var_) {
         grad_var_ = std::make_shared<VarBase>(true, mapped_grad_var_->Name());
         grad_var_->SetOverriddenStopGradient(false);
-        if (sort_gradient_) {
+        if (sort_gradient_) {  // NOLINT
           accumulator_ = std::make_unique<SortedGradientAccumulator>(
               grad_var_->SharedVar().get());
         } else {
