@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +15,15 @@
 import os
 import unittest
 
-import paddle
 from paddle.base.framework import in_pir_executor_mode
-
-paddle.enable_static()
 
 
 class TestPrimFlags(unittest.TestCase):
     def test_prim_flags(self):
         self.assertTrue(in_pir_executor_mode())
-        os.environ["FLAGS_enable_pir_api"] = "true"
+        os.environ["FLAGS_enable_pir_in_executor"] = "false"
         self.assertFalse(in_pir_executor_mode())
+
+
+if __name__ == '__main__':
+    unittest.main()
