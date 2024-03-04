@@ -3353,6 +3353,18 @@ struct CustomPluginTeller : public Teller {
     const std::string op_type = desc.Type();
     std::string expect_plugin_name;
 
+    std::unordered_set<std::string> control_set = {"conditional_block",
+                                                   "while"};
+    std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
+    if (control_set.find(op_type) != control_set.end()) {
+      return false;
+    }
+
+    if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
+      return false;
+    }
+
+
     if (forbid_dynamic_op_enter_into_trt) {
       LOG(INFO) << "forbid_dynamic_op_enter_into_trt is open";
       auto* block = desc.Block();
@@ -3412,6 +3424,17 @@ struct CustomGenericPluginTeller : public Teller {
                   bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
+
+    std::unordered_set<std::string> control_set = {"conditional_block",
+                                                   "while"};
+    std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
+    if (control_set.find(op_type) != control_set.end()) {
+      return false;
+    }
+
+    if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
+      return false;
+    }
 
     if (forbid_dynamic_op_enter_into_trt) {
       LOG(INFO) << "forbid_dynamic_op_enter_into_trt is open";
