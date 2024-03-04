@@ -41,7 +41,7 @@ void InverseKernel(const Context& dev_ctx,
                     8192,
                     phi::errors::InvalidArgument(
                         "The size of a single matrix (%d bytes) exceeds the "
-                        "maxinum numbers of bytes xpu supports (8192).",
+                        "maximum numbers of bytes xpu supports (8192).",
                         n * n * sizeof(T)));
   auto RAII_GUARD = xpu::ctx_guard(dev_ctx.x_context());
   auto* info_xpu = RAII_GUARD.alloc_l3_or_gm<int>(batch);

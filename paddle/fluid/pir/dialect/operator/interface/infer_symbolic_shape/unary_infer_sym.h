@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,13 @@
 
 #pragma once
 
-#include <memory>
-#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace paddle::dialect {
 
-std::unique_ptr<pir::Pass> CreateAddBroadcastToElementwisePass();
+bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
+                                pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool ArgminOpInferSymbolicShape(pir::Operation *op,
+                                pir::ShapeConstraintIRAnalysis *shape_analysis);
 
-std::unique_ptr<pir::Pass> CreateDeleteUselessBroadcastPass();
-
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace paddle::dialect

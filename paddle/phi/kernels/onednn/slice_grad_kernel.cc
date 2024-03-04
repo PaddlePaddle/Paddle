@@ -19,6 +19,13 @@
 
 namespace phi {
 
+bool SliceGradCheckIfOneDNNSupport(const KernelContext* ctx) {
+  if (ctx->InputAt<phi::DenseTensor>(1).mem_desc().get_inner_nblks() == 0) {
+    return true;
+  }
+  return false;
+}
+
 template <typename T, typename Context>
 void SliceGradKernel(const Context& dev_ctx,
                      const DenseTensor& input UNUSED,
@@ -83,4 +90,6 @@ PD_REGISTER_KERNEL(slice_grad,
                    ONEDNN,
                    phi::SliceGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::SliceGradCheckIfOneDNNSupport;
+}
