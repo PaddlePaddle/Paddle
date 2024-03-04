@@ -227,6 +227,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_cutlass, UseCutlass, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+  DECL_ARGUMENT_FIELD(use_pir, UsePIR, bool);
 
   // Usually use for trt dynamic shape.
   // TRT will select the best kernel according to opt shape
@@ -246,6 +247,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(trt_mark_output, TRTMarkOutput, bool);
   DECL_ARGUMENT_FIELD(trt_output_tensor_names,
                       TRTOutputTensorNames,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_exclude_var_names,
+                      TRTExcludeVarNames,
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,

@@ -402,7 +402,7 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
   int32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+    LOG(ERROR) << "request cmd_id:" << cmd_id
                << " failed, "
                   "err:"
                << _cntls[request_idx]->ErrorText();
@@ -426,7 +426,7 @@ std::string DownpourBrpcClosure::get_response(size_t request_idx, int cmd_id) {
 
 int FlClientBrpcClosure::check_response(size_t request_idx, int cmd_id) {
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+    LOG(ERROR) << "request cmd_id:" << cmd_id
                << " failed, "
                   "err:"
                << _cntls[request_idx]->ErrorText();
@@ -1712,7 +1712,7 @@ void BrpcPsClient::PushSparseTaskConsume() {
           merge_status[shard_idx].wait();
         }
 
-        // meger到task_list[0]
+        // merge到task_list[0]
         auto async_task = new SparseAsyncTask(*(task_list[0].get()));
 
         task_queue->Put(std::move(async_task));

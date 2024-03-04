@@ -17,6 +17,8 @@
 #include <pybind11/stl.h>
 #include <utility>
 
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -24,24 +26,18 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
-#include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
-#include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
-#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
-#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
-#include "paddle/utils/optional.h"
-#include "paddle/utils/pybind.h"
-
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
-#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
@@ -53,6 +49,8 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/x_to_r_reshard_function.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/optional.h"
+#include "paddle/utils/pybind.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
@@ -74,8 +72,6 @@ static bool PyCheckInteger(PyObject *obj) {
 using paddle::distributed::auto_parallel::DistTensorSpec;
 using paddle::distributed::auto_parallel::kDefault;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
-using paddle::distributed::auto_parallel::SPMDRuleBase;
-using paddle::distributed::auto_parallel::SPMDRuleMap;
 using paddle::framework::BlockDesc;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
@@ -590,17 +586,6 @@ void BindAutoParallel(py::module *m) {
            })
       .def("_clean_partial_status", &TensorDistAttr::clean_partial_status);
 
-  py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
-      .def("infer_forward", &SPMDRuleBase::InferForward)
-      .def("infer_backward",
-           static_cast<std::pair<std::vector<TensorDistAttr>,
-                                 std::vector<TensorDistAttr>> (SPMDRuleBase::*)(
-               const std::vector<DistTensorSpec> &,
-               const std::vector<DistTensorSpec> &,
-               const paddle::framework::AttributeMap &)>(
-               &SPMDRuleBase::InferBackward));
-  // .def("infer_backward", &SPMDRuleBase::InferBackward) [revert in future]
-
   py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")
       .def("infer_forward", &infer_forward)
       .def("infer_backward", &infer_backward);
@@ -750,15 +735,7 @@ void BindAutoParallel(py::module *m) {
       "contains_spmd_rule",
       [](const std::string op_type) {
         return phi::distributed::SpmdRuleFactory::Instance().ContainsSpmdRule(
-                   op_type) ||
-               SPMDRuleMap::Instance().Has(op_type);  // TODO(ljz): unify here
-      },
-      py::return_value_policy::reference);
-
-  m->def(
-      "get_spmd_rule",
-      [](const std::string op_type) {
-        return SPMDRuleMap::Instance().Get(op_type);
+            op_type);
       },
       py::return_value_policy::reference);
 

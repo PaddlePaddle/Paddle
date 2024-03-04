@@ -1174,9 +1174,13 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_gemm_epilogue_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"fused_bias_residual_layernorm",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_attention",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_attention_grad",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"fused_bias_act",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_feedforward",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
@@ -1195,6 +1199,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT32,
                      phi::DataType::INT32})},
       {"sine_pos_xpu",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
+      {"roformer_relative_embedding_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
   };
 

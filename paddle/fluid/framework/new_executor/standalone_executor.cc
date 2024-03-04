@@ -57,7 +57,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program = nullptr;
     std::shared_ptr<::pir::Program> ir_program = nullptr;
-    if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {
+    if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {  // NOLINT
       ir_program = plan_.IrProgram(job_type);
     } else {
       // NOTE (liuchenghao): std::make_shared will duplicate ProgramDesc object,
