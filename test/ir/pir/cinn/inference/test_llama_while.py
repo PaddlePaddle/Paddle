@@ -50,6 +50,8 @@ class LlamaWhile(nn.Layer):
             input_ids = paddle.concat([input_ids, next_tokens], axis=1)
             paddle.increment(cur_len)
 
+        return input_ids
+
 
 class TestLlamaPostProcess(unittest.TestCase):
     def setUp(self):
