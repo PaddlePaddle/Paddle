@@ -40,7 +40,7 @@ class TestExpandAsBasic(OpTest):
         x = np.random.rand(100).astype(self.dtype)
         target_tensor = np.random.rand(2, 100).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [2, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -60,7 +60,7 @@ class TestExpandAs_ZeroDim1(TestExpandAsBasic):
         x = np.random.random(()).astype(self.dtype)
         target_tensor = np.random.random(1).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -71,7 +71,7 @@ class TestExpandAs_ZeroDim2(TestExpandAsBasic):
         x = np.random.random(()).astype(self.dtype)
         target_tensor = np.random.random(()).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = []
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -96,7 +96,7 @@ class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
             'X': convert_float_to_uint16(x),
             "Y": convert_float_to_uint16(target_tensor),
         }
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [2, 1]
         output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
@@ -118,7 +118,7 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
         x = np.random.rand(10, 12).astype(self.dtype)
         target_tensor = np.random.rand(10, 12).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -137,7 +137,7 @@ class TestExpandAsOpRank2BFP16OP(TestExpandAsBasicBFP16OP):
             'X': convert_float_to_uint16(x),
             "Y": convert_float_to_uint16(target_tensor),
         }
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [1, 1]
         output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
@@ -148,7 +148,7 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
         x = np.random.rand(2, 3, 20).astype(self.dtype)
         target_tensor = np.random.rand(2, 3, 20).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [1, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -167,7 +167,7 @@ class TestExpandAsOpRank3BFP16OP(TestExpandAsBasicBFP16OP):
             'X': convert_float_to_uint16(x),
             "Y": convert_float_to_uint16(target_tensor),
         }
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [1, 1, 1]
         output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
@@ -178,7 +178,7 @@ class TestExpandAsOpRank4(TestExpandAsBasic):
         x = np.random.rand(1, 1, 7, 16).astype(self.dtype)
         target_tensor = np.random.rand(4, 6, 7, 16).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -197,7 +197,7 @@ class TestExpandAsOpRank4BFP16OP(TestExpandAsBasicBFP16OP):
             'X': convert_float_to_uint16(x),
             "Y": convert_float_to_uint16(target_tensor),
         }
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
@@ -214,7 +214,7 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
         x = np.random.rand(1, 1, 7, 16).astype("int64")
         target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
         self.inputs = {'X': x, "Y": target_tensor}
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -237,7 +237,7 @@ class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
         x = np.random.rand(1, 1, 7, 16).astype("int64")
         target_tensor = np.random.rand(4, 6, 7, 16).astype("float32")
         self.inputs = {'X': x, "Y": convert_float_to_uint16(target_tensor)}
-        self.attrs = {'target_shape': target_tensor.shape}
+        self.attrs = {'shape': target_tensor.shape}
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
