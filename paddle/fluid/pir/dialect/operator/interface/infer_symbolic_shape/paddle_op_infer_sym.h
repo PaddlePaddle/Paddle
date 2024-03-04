@@ -18,91 +18,42 @@
 
 namespace paddle::dialect {
 
-bool DataOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
+#define ADD_OP(name)               \
+  bool name##OpInferSymbolicShape( \
+      pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 
-bool ShapeOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ShapeSrOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool StackOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SumOpInferSymbolicShape(pir::Operation *op,
-                             pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool FullIntArrayOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SliceOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool FullOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ConcatOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool GatherNdOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SqueezeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Squeeze_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool UnsqueezeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Unsqueeze_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TileOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TransposeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Transpose_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ProdOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ArangeOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool EmbeddingOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SparseWeightEmbeddingOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool MatmulOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool MaxOpInferSymbolicShape(pir::Operation *op,
-                             pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TransposeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool WhereOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool Where_OpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool FeedOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TopPSamplingOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ExpandAsOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SplitOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
+ADD_OP(Data)
+ADD_OP(Shape)
+ADD_OP(ShapeSr)
+ADD_OP(Stack)
+ADD_OP(Sum)
+ADD_OP(Reshape)
+ADD_OP(Reshape_)
+ADD_OP(FullIntArray)
+ADD_OP(Slice)
+ADD_OP(Full)
+ADD_OP(Concat)
+ADD_OP(GatherNd)
+ADD_OP(Squeeze)
+ADD_OP(Squeeze_)
+ADD_OP(Unsqueeze)
+ADD_OP(Unsqueeze_)
+ADD_OP(Tile)
+ADD_OP(Transpose)
+ADD_OP(Transpose_)
+ADD_OP(Prod)
+ADD_OP(Arange)
+ADD_OP(Embedding)
+ADD_OP(SparseWeightEmbedding)
+ADD_OP(Matmul)
+ADD_OP(Max)
+ADD_OP(Where)
+ADD_OP(Where_)
+ADD_OP(Feed)
+ADD_OP(TopPSampling)
+ADD_OP(ExpandAs)
+ADD_OP(Split)
+#undef ADD_OP
 
 //  Not Impelmented Ops.
 
