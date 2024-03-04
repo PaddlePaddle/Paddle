@@ -118,7 +118,8 @@ TEST(dist_dense_tensor_type_test, base) {
   auto dist_densor_type =
       DistDenseTensorType::get(ctx, dense_tensor_type, tensor_dist_attr, dims);
 
-  EXPECT_EQ(dist_densor_type.process_mesh(), process_mesh);
+  EXPECT_EQ(dist_densor_type.process_mesh_attr(), mesh_attr);
+  EXPECT_EQ(dist_densor_type.process_mesh_attr().process_mesh(), process_mesh);
   EXPECT_EQ(dist_densor_type.dims_mapping(), dims_mapping);
   EXPECT_EQ(dist_densor_type.partial_status(), partial_status);
   EXPECT_EQ(dist_densor_type.dtype().isa<pir::Float32Type>(), true);
