@@ -3735,6 +3735,12 @@
   outputs:
     {cost : Cost, sample_logits : SampleLogits, sample_labels : SampleLabels}
 
+- op: nop
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op: number_count
   inputs :
     {numbers: numbers}
