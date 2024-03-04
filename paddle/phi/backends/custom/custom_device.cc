@@ -535,6 +535,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_extra_padding_size(device, &padding_size));
       VLOG(10) << Type() << " extra padding size:" << padding_size;
+      PD_CHECK(padding_size >= 0, "padding_size must be positive");
       return padding_size;
     } else {
       return DeviceInterface::GetExtraPaddingSize(dev_id);
