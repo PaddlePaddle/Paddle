@@ -49,11 +49,12 @@ class AllocatorFacade {
   const AllocatorFacade& operator=(const AllocatorFacade& o) = delete;
   ~AllocatorFacade();
 
-  static AllocatorFacade& Instance();
+  TEST_API static AllocatorFacade& Instance();
 
   AllocatorFacadePrivate* GetPrivate() const;
 
-  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
+  TEST_API const std::shared_ptr<Allocator>& GetAllocator(
+      const platform::Place& place);
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
@@ -88,8 +89,8 @@ class AllocatorFacade {
   void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
   void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
-  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
-                                                 gpuStream_t stream);
+  TEST_API const std::shared_ptr<Allocator>& GetAllocator(
+      const platform::Place& place, gpuStream_t stream);
   gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
   void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream);
 #endif
@@ -104,8 +105,8 @@ class AllocatorFacade {
                    phi::stream::stream_t stream);
   void RecordStream(std::shared_ptr<Allocation> allocation,
                     phi::stream::stream_t stream);
-  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
-                                                 phi::stream::stream_t stream);
+  TEST_API const std::shared_ptr<Allocator>& GetAllocator(
+      const platform::Place& place, phi::stream::stream_t stream);
   phi::stream::stream_t GetStream(
       const std::shared_ptr<Allocation>& allocation) const;
   void SetDefaultStream(const platform::CustomPlace& place,

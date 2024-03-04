@@ -22,11 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(save_combine);
-USE_OP_ITSELF(load_combine);
-PD_DECLARE_KERNEL(save_combine_tensor, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(load_combine, CPU, ALL_LAYOUT);
-
 template <typename T, typename U>
 T* CreateForSaveCombineOp(int x,
                           int y,

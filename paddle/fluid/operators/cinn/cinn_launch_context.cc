@@ -412,10 +412,10 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
 
   // build a map that links the name of a Paddle variable to its VarDesc
   const std::unordered_set<framework::ir::Node*>& nodes = graph.Nodes();
-  std::unordered_map<std::string, framework::VarDesc*> original_vardescs;
+  std::unordered_map<std::string, framework::VarDesc*> original_var_descs;
   for (auto* node : nodes) {
     if (node->IsVar() && node->Var()) {
-      original_vardescs.emplace(node->Name(), node->Var());
+      original_var_descs.emplace(node->Name(), node->Var());
     }
   }
 
@@ -433,8 +433,8 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
     framework::VarDesc* var_desc = block->Var(var_name);
     var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
 
-    auto res = original_vardescs.find(var_name);
-    if (res != original_vardescs.end()) {
+    auto res = original_var_descs.find(var_name);
+    if (res != original_var_descs.end()) {
       auto* ori_desc = res->second;
       var_desc->SetPersistable(ori_desc->Persistable());
       var_desc->SetIsParameter(ori_desc->IsParameter());

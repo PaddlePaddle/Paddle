@@ -35,8 +35,8 @@ auto_parallel::ProcessMeshProto to_proto(const ProcessMesh& process_mesh) {
 }
 
 auto_parallel::DeviceCapabilityProto to_proto(
-    const auto_parallel::DeviceCapability& device_capibilty) {
-  TO_PROTO_HELPER(device_capibilty, auto_parallel::DeviceCapabilityProto);
+    const auto_parallel::DeviceCapability& device_capability) {
+  TO_PROTO_HELPER(device_capability, auto_parallel::DeviceCapabilityProto);
 }
 
 auto_parallel::DeviceProto to_proto(const auto_parallel::Device& device) {
@@ -44,8 +44,8 @@ auto_parallel::DeviceProto to_proto(const auto_parallel::Device& device) {
 }
 
 auto_parallel::LinkCapabilityProto to_proto(
-    const auto_parallel::LinkCapability& link_capibilty) {
-  TO_PROTO_HELPER(link_capibilty, auto_parallel::LinkCapabilityProto);
+    const auto_parallel::LinkCapability& link_capability) {
+  TO_PROTO_HELPER(link_capability, auto_parallel::LinkCapabilityProto);
 }
 
 auto_parallel::LinkProto to_proto(const auto_parallel::Link& link) {

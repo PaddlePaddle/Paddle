@@ -1357,8 +1357,9 @@ void BindImperative(py::module *m_ptr) {
           auto *index_data = index_tensor.data<int64_t>();
           auto *buffer_data =
               buffer_tensor->mutable_data<float>(buffer_tensor->place());
-          const int &slice_size = src_tensor.numel() / src_tensor.dims()[0];
-          const int &copy_bytes = slice_size * sizeof(float);
+          const int &slice_size =
+              static_cast<int>(src_tensor.numel()) / src_tensor.dims()[0];
+          const int &copy_bytes = static_cast<int>(slice_size) * sizeof(float);
           int64_t c = 0;
           for (int64_t i = 0; i < index_tensor.numel(); i++) {
             std::memcpy(buffer_data + c * slice_size,

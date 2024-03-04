@@ -18,6 +18,7 @@
 
 #include "paddle/pir/include/core/cast_utils.h"
 #include "paddle/pir/include/core/storage_manager_support.h"
+#include "paddle/pir/include/core/type_base.h"
 #include "paddle/pir/include/core/type_id.h"
 
 namespace pir {
@@ -42,7 +43,6 @@ class IR_API Type {
                                              StorageType,
                                              TypeManager,
                                              TraitOrInterface...>;
-
   using Storage = TypeStorage;
   using AbstractT = AbstractType;
 
@@ -125,6 +125,8 @@ class IR_API Type {
   bool IsIntOrIndex() const;
   bool IsIndex() const;
 
+  std::size_t hash() const { return std::hash<const void *>()(storage_); }
+
  protected:
   const Storage *storage_{nullptr};
 
@@ -184,8 +186,6 @@ namespace std {
 ///
 template <>
 struct hash<pir::Type> {
-  std::size_t operator()(const pir::Type &obj) const {
-    return std::hash<const void *>()(obj);
-  }
+  std::size_t operator()(const pir::Type &obj) const { return obj.hash(); }
 };
 }  // namespace std

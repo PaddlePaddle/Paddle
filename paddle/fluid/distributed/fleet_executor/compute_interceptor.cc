@@ -176,7 +176,7 @@ bool ComputeInterceptor::IsInputReady() {
       flag = flag && (ready_size_map.at(i) != 0);
     }
     if (flag) {
-      if (scope_id_to_finish_flag.empty()) {
+      if (scope_id_to_finish_flag.empty()) {  // NOLINT
         cur_scope_id_ = i;
         return true;
       } else if (scope_id_to_finish_flag.find(i) !=
@@ -303,7 +303,7 @@ void ComputeInterceptor::RunOps() {
                           cur_scope_id_));
   }
 
-  if (!cores_.empty()) {
+  if (!cores_.empty()) {  // NOLINT
     cores_[cur_scope_id_]->Run(/*feed_names=*/{}, /*need_fetch=*/false);
   } else {
     for (auto op : node_->ops()) {

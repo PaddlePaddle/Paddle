@@ -48,7 +48,7 @@ PD_SPECIALIZE_CppTypeToIrAttribute(phi::IntArray,
                                    paddle::dialect::IntArrayAttribute);
 
 template <typename T>
-struct IrAttrbuteCreator {
+struct IrAttributeCreator {
   typename CppTypeToIrAttribute<T>::type operator()(T obj) const {
     return CppTypeToIrAttribute<T>::type::template get(
         pir::IrContext::Instance(), obj);
@@ -56,7 +56,7 @@ struct IrAttrbuteCreator {
 };
 
 template <>
-struct IrAttrbuteCreator<std::vector<int32_t>> {
+struct IrAttributeCreator<std::vector<int32_t>> {
   pir::ArrayAttribute operator()(std::vector<int32_t> obj) const {
     std::vector<pir::Attribute> attr_vec;
     attr_vec.reserve(obj.size());
@@ -69,7 +69,7 @@ struct IrAttrbuteCreator<std::vector<int32_t>> {
 };
 
 template <>
-struct IrAttrbuteCreator<std::vector<float>> {
+struct IrAttributeCreator<std::vector<float>> {
   pir::ArrayAttribute operator()(std::vector<float> obj) const {
     std::vector<pir::Attribute> attr_vec;
     attr_vec.reserve(obj.size());

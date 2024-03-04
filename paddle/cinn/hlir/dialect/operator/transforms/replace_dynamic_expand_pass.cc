@@ -93,41 +93,20 @@ class DynamicExpandOpPattern
   }
 };
 
-class ReplaceDynamicExpandOpPass : public pir::Pass {
+class ReplaceDynamicExpandOpPass : public pir::PatternRewritePass {
  public:
   ReplaceDynamicExpandOpPass()
-      : pir::Pass("replace_dynamic_expand_op_pass", /*opt_level=*/1) {}
+      : pir::PatternRewritePass("replace_dynamic_expand_op_pass", 1) {}
 
-  bool Initialize(pir::IrContext* context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<DynamicExpandOpPattern>(context);
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
-
-  void Run(pir::Operation* op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    for (uint32_t i = 0; i < op->num_regions(); ++i) {
-      for (auto& block : op->region(i)) {
-        for (auto& op : block) {
-          if (op.isa<cinn::dialect::GroupOp>()) {
-            const auto& [_, num_rewrites] =
-                pir::ApplyPatternsGreedily(&op, patterns_, cfg);
-            AddStatistics(num_rewrites);
-          }
-        }
-      }
-    }
+    return ps;
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->num_regions() > 0;
+    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
   }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 std::unique_ptr<pir::Pass> CreateReplaceDynamicExpandOpPass() {

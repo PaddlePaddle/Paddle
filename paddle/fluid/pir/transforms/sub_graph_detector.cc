@@ -83,7 +83,8 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       }
       auto* defined_op = operand.source().defining_op();
       --pending_count[defined_op];
-      if (defined_op && pending_count[defined_op] == 0) {
+      if (defined_op && pending_count[defined_op] == 0 &&
+          defined_op->GetParent() == block) {
         queue.push(defined_op);
       }
     }
@@ -109,7 +110,8 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
       continue;
     }
     auto* source_op = operand.source().defining_op();
-    if (source_op && !producers.count(source_op)) {
+    if (source_op && !producers.count(source_op) &&
+        source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
       PADDLE_ENFORCE(
           op2id.count(source_op),
@@ -134,7 +136,8 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     if (!operand || !(operand.source())) {
       continue;
     }
-    if (auto* source_op = operand.source().defining_op()) {
+    auto* source_op = operand.source().defining_op();
+    if (source_op && source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
     }
   }

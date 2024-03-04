@@ -644,7 +644,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     } else if (attr_type_str == "std::string") {
       ctx.EmplaceBackAttr(
           CastPyArg2AttrString(obj, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "std::vector<int>") {
+    } else if (attr_type_str == "std::vector<int>") {      // NOLINT
       ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
     } else if (attr_type_str == "std::vector<float>") {
       ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));

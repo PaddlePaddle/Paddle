@@ -1122,7 +1122,9 @@ def init_parallel_env():
 
         if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
             paddle.distributed.all_reduce(
-                paddle.zeros([1], dtype=paddle.uint8), group=group, sync_op=True
+                paddle.zeros([1], dtype=paddle.float32),
+                group=group,
+                sync_op=True,
             )
         return group
 

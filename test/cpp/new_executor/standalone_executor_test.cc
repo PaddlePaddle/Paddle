@@ -284,8 +284,8 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   add->SetInput("Y", {"b"});
   add->SetOutput("Out", {"c"});
 
-  float data_a[] = {0, 1, 2, 3};
-  float data_b[] = {0.0, 0.1, 0.2, 0.3};
+  std::array<float, 4> data_a = {0, 1, 2, 3};
+  std::array<float, 4> data_b = {0.0, 0.1, 0.2, 0.3};
 
   phi::DDim dims = common::make_ddim({2, 2});
   const platform::CPUPlace place = platform::CPUPlace();
@@ -293,8 +293,8 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   phi::DenseTensor tensor_a = phi::DenseTensor();
   phi::DenseTensor tensor_b = phi::DenseTensor();
 
-  std::copy_n(data_a, 4, tensor_a.mutable_data<float>(dims, place));
-  std::copy_n(data_b, 4, tensor_b.mutable_data<float>(dims, place));
+  std::copy_n(data_a.data(), 4, tensor_a.mutable_data<float>(dims, place));
+  std::copy_n(data_b.data(), 4, tensor_b.mutable_data<float>(dims, place));
 
   TestShareWorkQueue(
       program, {"a", "b"}, {tensor_a, tensor_b}, {"c"}, {0.0, 1.1, 2.2, 3.3});

@@ -87,7 +87,7 @@ class TRTCalibratorEngine {
   std::unique_ptr<TensorRTEngine> engine_;
 };
 /*
- * Manager to control the TensorRT Int8 calibration creation and deltetion.
+ * Manager to control the TensorRT Int8 calibration creation and deletion.
  */
 class TRTCalibratorEngineManager {
  public:

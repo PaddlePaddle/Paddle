@@ -818,10 +818,10 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    if (PyFloat_Check(other_obj)) {
+    if (PyFloat_Check(other_obj)) {  // NOLINT
       other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
       has_other_double = true;
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {  // NOLINT
       other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
       has_other_double = true;
     }

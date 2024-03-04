@@ -124,14 +124,18 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     */
-    std::unordered_set<const Node*> nodes2rm = {};
-
-    // delete Scale and ZeroPoint tensor in scope
+    // Scale and ZeroPoint tensor should be removed in save_optimized_model_pass
     std::vector<std::string> vars2rm = {};
     vars2rm.emplace_back(quantize_linear_op->Op()->Input("Scale")[0]);
     vars2rm.emplace_back(quantize_linear_op->Op()->Input("ZeroPoint")[0]);
     vars2rm.emplace_back(dequantize_linear_op->Op()->Input("Scale")[0]);
     vars2rm.emplace_back(dequantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    auto& scale_and_zero_point_param = g->GetOrInit<std::vector<std::string>>(
+        framework::ir::kScaleAndZeroPointParamAttr);
+    scale_and_zero_point_param.insert(
+        scale_and_zero_point_param.end(), vars2rm.begin(), vars2rm.end());
+
+    std::unordered_set<const Node*> nodes2rm = {};
 
     // Get input scale from tensor
     const phi::DenseTensor& input_scale_tensor =
@@ -182,13 +186,6 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     nodes2rm.insert(dequantize_linear_op);
     nodes2rm.insert(dequantize_linear_op_out);
     GraphSafeRemoveNodes(graph, nodes2rm);
-
-    for (auto& var_name : vars2rm) {
-      if (scope->FindVar(var_name)) {
-        scope->EraseVars({var_name});
-      }
-    }
-
     found_count++;
   };
   gpd(graph, handler);

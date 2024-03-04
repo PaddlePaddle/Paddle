@@ -737,13 +737,11 @@ def amp_decorate(
         for opt in optimizers:
             _set_multi_precision(opt, use_multi_precision)
 
-        # support master_grad
-        if master_grad:
-            amp_global_state().use_master_grad = True
-            for idx in range(len(models)):
-                amp_global_state().model_parameters.extend(
-                    models[idx].parameters()
-                )
+    # support master_grad
+    if master_grad:
+        amp_global_state().use_master_grad = True
+        for idx in range(len(models)):
+            amp_global_state().model_parameters.extend(models[idx].parameters())
 
     if save_dtype is not None:
         if save_dtype not in ['float16', 'bfloat16', 'float32', 'float64']:

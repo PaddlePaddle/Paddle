@@ -35,25 +35,25 @@ void PriorBoxKernel(const Context& ctx,
                     DenseTensor* out,
                     DenseTensor* var);
 
-inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
+inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratio,
                                bool flip,
-                               std::vector<float>* output_aspect_ratior) {
+                               std::vector<float>* output_aspect_ratio) {
   constexpr float epsilon = 1e-6;
-  output_aspect_ratior->clear();
-  output_aspect_ratior->push_back(1.0f);
-  for (size_t i = 0; i < input_aspect_ratior.size(); ++i) {
-    float ar = input_aspect_ratior[i];
+  output_aspect_ratio->clear();
+  output_aspect_ratio->push_back(1.0f);
+  for (size_t i = 0; i < input_aspect_ratio.size(); ++i) {
+    float ar = input_aspect_ratio[i];
     bool already_exist = false;
-    for (size_t j = 0; j < output_aspect_ratior->size(); ++j) {
-      if (fabs(ar - output_aspect_ratior->at(j)) < epsilon) {
+    for (size_t j = 0; j < output_aspect_ratio->size(); ++j) {
+      if (fabs(ar - output_aspect_ratio->at(j)) < epsilon) {
         already_exist = true;
         break;
       }
     }
     if (!already_exist) {
-      output_aspect_ratior->push_back(ar);
+      output_aspect_ratio->push_back(ar);
       if (flip) {
-        output_aspect_ratior->push_back(1.0f / ar);
+        output_aspect_ratio->push_back(1.0f / ar);
       }
     }
   }

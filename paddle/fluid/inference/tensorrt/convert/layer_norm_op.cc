@@ -74,7 +74,7 @@ class LayerNormOpConverter : public OpConverter {
 #endif
 #if IS_TRT_VERSION_LT(8600)
       // For dynamic shape & trt<8.6,
-      // the shape of mean and variance will be determine in configuPlugin.
+      // the shape of mean and variance will be determine in configurePlugin.
       auto* X = engine_->GetITensor(op_desc.Input("X").front());
       auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
       auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());

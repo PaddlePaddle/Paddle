@@ -247,7 +247,7 @@ void GraphBrpcService::service(google::protobuf::RpcController *cntl_base,
   brpc::ClosureGuard done_guard(done);
   std::string log_label("ReceiveCmd-");
   if (!request->has_table_id()) {
-    set_response_code(*response, -1, "PsRequestMessage.tabel_id is required");
+    set_response_code(*response, -1, "PsRequestMessage.table_id is required");
     return;
   }
 

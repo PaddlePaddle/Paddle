@@ -185,7 +185,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
                 "be -1. But received shape = [%s], shape[%d] is also -1.",
                 common::make_ddim(shape),
                 i));
-        unk_dim_idx = i;
+        unk_dim_idx = static_cast<int>(i);
       } else if (shape[i] == copy_dim_val) {
         PADDLE_ENFORCE_LT(
             static_cast<int>(i),
@@ -212,9 +212,9 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
                 shape[i]));
       }
 
-      capacity *= (shape[i] ? shape[i] : in_dims[i]);
+      capacity *= (shape[i] ? shape[i] : in_dims[i]);  // NOLINT
       output_shape[i] =
-          (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
+          (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);  // NOLINT
     }
 
     if (unk_dim_idx != -1) {

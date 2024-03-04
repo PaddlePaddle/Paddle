@@ -127,7 +127,7 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Test whether the non_zero_elements_ storage is allocated.
   /// In special cases, when nnz=0, non_zero_elements_ will not need to be
-  /// initialized, but it is neccessary to return true here, otherwise the
+  /// initialized, but it is necessary to return true here, otherwise the
   /// gradient will be None. return Whether the non_zero_elements_ storage is
   /// allocated.
   bool initialized() const override {
@@ -189,7 +189,7 @@ class SparseCooTensor : public TensorBase,
   /// \brief get the sparse dim
   int32_t sparse_dim() const;
 
-  /// \brief get the dnese dim
+  /// \brief get the dense dim
   int32_t dense_dim() const;
 
   /// \brief Returns the meta information of the tensor.

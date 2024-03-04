@@ -33,8 +33,6 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-USE_NO_KERNEL_OP(copy_cross_scope);
-
 template <typename T>
 void Compare1(f::Scope* scope,
               const p::DeviceContext& ctx,

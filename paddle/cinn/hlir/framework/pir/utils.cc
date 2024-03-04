@@ -32,6 +32,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
@@ -177,6 +178,86 @@ bool AllInputDenseTensor(const ::pir::Operation& op) {
   return true;
 }
 
+bool IsSmallNumelOp(const ::pir::Operation& op) {
+  auto GetNumElementsFromDim = [](const ::pir::DDim& dim) -> int64_t {
+    if (::common::contain_unknown_dim(dim)) {
+      return std::numeric_limits<int32_t>::max();
+    } else {
+      return ::common::product(dim);
+    }
+  };
+
+  auto GetNumElementsFromValue = [&](const ::pir::Value& value) {
+    int64_t numel = -1;
+    if (value && value.type()) {
+      auto type = value.type().dyn_cast<::pir::DenseTensorType>();
+      if (type) {
+        numel = GetNumElementsFromDim(type.dims());
+      }
+    }
+    return numel;
+  };
+  const int64_t max_value_numel = [&] {
+    int64_t max_value_numel = -1;
+    if (op.num_operands() == 0) {  // no input
+      return max_value_numel;
+    }
+
+    for (uint32_t i = 0; i < op.num_operands(); ++i) {
+      max_value_numel = std::max(GetNumElementsFromValue(op.operand_source(i)),
+                                 max_value_numel);
+    }
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      max_value_numel =
+          std::max(GetNumElementsFromValue(op.result(i)), max_value_numel);
+    }
+    return max_value_numel;
+  }();
+
+  // max value check
+  if (0 <= max_value_numel && max_value_numel < 32) {
+    return true;
+  }
+
+  return false;
+}
+
+bool IsShapeComputeOp(const ::pir::Operation& op) {
+  const auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
+      op.GetParent()->parent_program());
+  if (op.num_operands() == 0) {
+    return false;
+  }
+  bool all_input_has_shape_data = true;
+  for (uint32_t i = 0; i < op.num_operands(); ++i) {
+    if (shape_analysis.HasShapeOrDataForValue(op.operand_source(i))) {
+      const auto& shape_expr =
+          shape_analysis.GetShapeOrDataForValue(op.operand_source(i));
+      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          shape_expr.data()) {  // has shape data
+        continue;
+      }
+    }
+    all_input_has_shape_data = false;
+    break;
+  }
+  return all_input_has_shape_data;
+}
+
+// TODO(zyfncg): This function is a temporary solution, we need to remove it in
+// the future.
+bool IsTempDenySpecialOp(const ::pir::Operation& op) {
+  if (op.name() == "cinn_op.generate_shape") {
+    return false;
+  }
+
+  if (IsShapeComputeOp(op) || IsSmallNumelOp(op)) {
+    return true;
+  }
+
+  return false;
+}
+
 bool IsRegisteredInCINN(const ::pir::Operation& op) {
   if (CompatibleInfo::OP_NAMES.find(op.name()) !=
       CompatibleInfo::OP_NAMES.end()) {
@@ -190,6 +271,9 @@ bool IsSupportForCinn(const ::pir::Operation& op) {
     VLOG(4) << "Found " << op.name()
             << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
             << "So mark IsSupportForCinn: " << false;
+    return false;
+  }
+  if (IsTempDenySpecialOp(op)) {
     return false;
   }
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);

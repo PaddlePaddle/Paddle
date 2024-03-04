@@ -166,6 +166,14 @@ Tensor DoReduce(const Tensor& tensor,
     int indice_cnt = 0;
     int reduce_cnt = 0;
 
+    // Set keepdim flags of indices.
+    if (tensor->shape.size() == indices.size()) {
+      for (const auto& i : real_axes) {
+        VLOG(4) << "Set is_keepdim = true for var(" << i << ")";
+        indices[i].as_var_ref()->is_keepdim = true;
+      }
+    }
+
     for (size_t i = 0; i < tensor->shape.size(); ++i) {
       bool squeeze_i = std::find(squeeze_axes.begin(), squeeze_axes.end(), i) !=
                        squeeze_axes.end();

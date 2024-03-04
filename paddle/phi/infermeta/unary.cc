@@ -236,7 +236,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
     if (flatten) {
-      if (keepdims) {
+      if (keepdims) {  // NOLINT
         vec = std::vector<int64_t>(x.dims().size(), -1);
       } else {
         vec = {};
@@ -307,7 +307,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 
   std::vector<int64_t> vec;
   if (flatten) {
-    if (keepdims) {
+    if (keepdims) {  // NOLINT
       vec = std::vector<int64_t>(x.dims().size(), 1);
     } else {
       vec = {};
@@ -4034,7 +4034,8 @@ void SplitInferMeta(const MetaTensor& x,
   if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1 ||
       (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims;
-    if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1) {
+    if ((sections.FromTensor() && !config.is_runtime) ||
+        axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
           sections_data.size(),
           common::make_ddim(std::vector<int>(x.dims().size(), -1)));
@@ -4126,7 +4127,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
   // fill out dims with -1
   if (axis_value == -1 || (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims;
-    if (axis_value == -1) {
+    if (axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
           num, common::make_ddim(std::vector<int>(x.dims().size(), -1)));
     } else {
@@ -5415,7 +5416,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> dim_out;
-  if (algo == "weight_only_int8" || algo == "llm.int8") {
+  if (algo == "weight_only_int8" || algo == "llm.int8") {  // NOLINT
     dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
   } else if (algo == "weight_only_int4") {
     dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});

@@ -931,7 +931,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
       .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) -> py::object {
-            if (self.memory_optimize_) {
+            if (self.memory_optimize_) {  // NOLINT
               return py::cast(self.memory_optimize_.get());
             } else {
               return py::cast(nullptr);

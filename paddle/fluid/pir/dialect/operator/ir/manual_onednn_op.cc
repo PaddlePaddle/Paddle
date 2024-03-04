@@ -18,7 +18,6 @@ paddle::onednn::dialect::ExpandOp
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/paddle_op_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
@@ -334,8 +333,9 @@ phi::DataType ExpandOp::GetKernelTypeForVar(
 bool ExpandOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   VLOG(4) << "Infer symbolic shape for op: ExpandOp";
-  return paddle::dialect::ExpandOpInferSymbolicShape(this->operation(),
-                                                     shape_analysis);
+  PADDLE_THROW(phi::errors::Unimplemented(
+      " ExpandOp's InferSymbolicShape interface is NOT implemented now."));
+  return true;
 }
 
 }  // namespace dialect

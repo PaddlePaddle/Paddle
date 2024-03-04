@@ -966,7 +966,7 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
     CHECK(output_channels_data_size == 0);  // NOLINT
     cur_channel = 1;
   }
-  if (cur_channel == 0) {
+  if (cur_channel == 0) {  // NOLINT
     origin_channels = &multi_output_channel_;
     other_channels = &multi_consume_channel_;
     origin_pv_channels = &multi_pv_output_;
@@ -1111,8 +1111,8 @@ void DatasetImpl<T>::CreateReaders() {
     if (input_pv_channel_ != nullptr) {
       readers_[i]->SetInputPvChannel(input_pv_channel_.get());
     }
-    if (cur_channel_ == 0 &&
-        static_cast<size_t>(channel_idx) < multi_output_channel_.size()) {
+    if (cur_channel_ == 0 && static_cast<size_t>(channel_idx) <
+                                 multi_output_channel_.size()) {  // NOLINT
       readers_[i]->SetOutputChannel(multi_output_channel_[channel_idx].get());
       readers_[i]->SetConsumeChannel(multi_consume_channel_[channel_idx].get());
       readers_[i]->SetOutputPvChannel(multi_pv_output_[channel_idx].get());
@@ -1722,7 +1722,7 @@ void MultiSlotDataset::PreprocessChannel(
     const std::set<std::string>& slots_to_replace,
     std::unordered_set<uint16_t>& index_slots) {  // NOLINT
   int out_channel_size = 0;
-  if (cur_channel_ == 0) {
+  if (cur_channel_ == 0) {  // NOLINT
     for (auto& item : multi_output_channel_) {
       out_channel_size += static_cast<int>(item->Size());
     }
@@ -1757,7 +1757,7 @@ void MultiSlotDataset::PreprocessChannel(
       input_channel_->ReadAll(slots_shuffle_original_data_);
     } else {
       CHECK(out_channel_size > 0);  // NOLINT
-      if (cur_channel_ == 0) {
+      if (cur_channel_ == 0) {      // NOLINT
         for (auto& item : multi_output_channel_) {
           std::vector<Record> vec_data;
           item->Close();
@@ -1792,7 +1792,7 @@ void MultiSlotDataset::PreprocessChannel(
   } else {
     // if already have original data for slots shuffle, clear channel
     input_channel_->Clear();
-    if (cur_channel_ == 0) {
+    if (cur_channel_ == 0) {  // NOLINT
       for (auto& item : multi_output_channel_) {
         if (!item) {
           continue;
@@ -1809,7 +1809,7 @@ void MultiSlotDataset::PreprocessChannel(
     }
   }
   int end_size = 0;
-  if (cur_channel_ == 0) {
+  if (cur_channel_ == 0) {  // NOLINT
     for (auto& item : multi_output_channel_) {
       if (!item) {
         continue;

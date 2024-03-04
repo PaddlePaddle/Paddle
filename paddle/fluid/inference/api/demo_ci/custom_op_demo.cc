@@ -52,6 +52,7 @@ int main(int argc, char **argv) {
   config.SetModel(FLAGS_modeldir + "/custom_relu.pdmodel",
                   FLAGS_modeldir + "/custom_relu.pdiparams");
   config.EnableNewExecutor(true);
+  config.EnableNewIR(true);
   auto predictor{paddle_infer::CreatePredictor(config)};
   std::vector<int> input_shape = {1, 1, 28, 28};
   std::vector<float> input_data(1 * 1 * 28 * 28, 1);

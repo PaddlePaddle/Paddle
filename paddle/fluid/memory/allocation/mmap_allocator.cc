@@ -90,7 +90,7 @@ void AllocateMemoryMap(
   PADDLE_ENFORCE_EQ(ftruncate(fd, size),
                     0,
                     platform::errors::Unavailable(
-                        "Fruncate a file to a specified length failed!"));
+                        "Truncate a file to a specified length failed!"));
 
   if (flags & MAPPED_SHAREDMEM) {
     *map_ptr_ = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -109,7 +109,7 @@ void AllocateMemoryMap(
     PADDLE_ENFORCE_NE(::close(fd),
                       -1,
                       platform::errors::Unavailable(
-                          "Error closing memory maped file <", filename, ">"));
+                          "Error closing memory mapped file <", filename, ">"));
 
     *fd_ = -1;
   }
@@ -129,10 +129,10 @@ AllocateRefcountedMemoryMapAllocation(std::string filename,
     base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
     VLOG(4) << "Get a cached shm " << filename;
   }
-  void *aliged_base_ptr =
+  void *aligned_base_ptr =
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
   return std::make_shared<RefcountedMemoryMapAllocation>(
-      aliged_base_ptr, size, filename, flags, fd, buffer_id);
+      aligned_base_ptr, size, filename, flags, fd, buffer_id);
 }
 
 RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
@@ -267,7 +267,7 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
   PADDLE_ENFORCE_EQ(ftruncate(fd, size),
                     0,
                     platform::errors::Unavailable(
-                        "Fruncate a file to a specified length failed!"));
+                        "Truncate a file to a specified length failed!"));
 
   void *ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr,
@@ -337,7 +337,7 @@ MemoryMapAllocationPool *MemoryMapAllocationPool::pool_ = nullptr;
 void MemoryMapAllocationPool::Insert(const MemoryMapInfo &memory_map) {
   std::lock_guard<std::mutex> guard(mtx_);
   memory_map_allocations_.push_back(memory_map);
-  VLOG(4) << this << "Intsert a new shm: " << memory_map.file_name_;
+  VLOG(4) << this << "Insert a new shm: " << memory_map.file_name_;
 }
 
 int MemoryMapAllocationPool::FindFromCache(const int &flag,

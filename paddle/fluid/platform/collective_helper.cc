@@ -133,7 +133,7 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
                                         dev_ids.size()));
 
   const int kDevices = dev_ids.size();
-  ncclComm_t comms[kDevices];
+  ncclComm_t comms[kDevices];  // NOLINT
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclCommInitAll(
       comms, dev_ids.size(), dev_ids.data()));
 
@@ -169,7 +169,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
   VLOG(1) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
           << ", rind_id: " << ring_id;
-  ncclComm_t comms[kDevices];
+  ncclComm_t comms[kDevices];  // NOLINT
   {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupStart());
     for (int i = 0; i < kDevices; i++) {

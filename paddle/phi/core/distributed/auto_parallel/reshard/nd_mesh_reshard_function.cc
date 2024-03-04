@@ -228,7 +228,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       bool is_partial = in_partial_status.count(out_mesh_axis) != 0;
 
       VLOG(3) << "Step4: out_mesh axis : " << out_mesh_axis
-              << "; paratial state :" << is_partial;
+              << "; partial state :" << is_partial;
       // 4.1 Calculate the dist_attr after this transform
       TensorDistAttr real_out_dist_attr(out->dist_attr());
       std::vector<int64_t> real_dims_mapping =

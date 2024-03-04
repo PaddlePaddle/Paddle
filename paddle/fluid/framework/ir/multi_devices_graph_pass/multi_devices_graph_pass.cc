@@ -933,7 +933,7 @@ bool ReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
 
 void ReduceSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   if (UseGPU()) {
-    if (strategy_.fuse_broadcast_ops_ == true) {
+    if (strategy_.fuse_broadcast_ops_ == true) {  // NOLINT
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
@@ -1193,7 +1193,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
                                  node->Op()->Type()));
   // Create fetch_barrier op handle to enable output on all devices.
   // **NOTE** fetch_barrier should output variables list same as recv op does.
-  if (node->Op()->Type() == "fetch_barrier") {
+  if (node->Op()->Type() == "fetch_barrier") {  // NOLINT
     result->Get<GraphOps>(kGraphOps).emplace_back(
         new details::FetchBarrierOpHandle(
             result->CreateOpNode(node->Op()), local_scopes_, places_));
@@ -1354,7 +1354,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
         strategy_.reduce_ == details::BuildStrategy::ReduceStrategy::kReduce) {
       return;
     }
-    if (strategy_.fuse_broadcast_ops_ == true) {
+    if (strategy_.fuse_broadcast_ops_ == true) {  // NOLINT
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {

@@ -59,7 +59,7 @@ bool DrrRewritePattern::MatchAndRewrite(
   if (PatternGraphMatch(op, src_match_ctx.get())) {
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is matched in program.";
     PatternGraphRewrite(*src_match_ctx, rewriter);
-    VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewrited in program.";
+    VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewritten in program.";
     return true;
   }
   return false;
@@ -258,95 +258,128 @@ bool DrrRewritePattern::MatchFromOutputToInput(
   std::unordered_set<pir::Operation*> ir_visited;
   std::queue<const OpCall*> drr_q;
   std::queue<pir::Operation*> ir_q;
+  // Initialize DRR matched queue.
+  const auto& InitDrrQueue = [&]() -> void {
+    for (auto it = output_op_map.begin(); it != output_op_map.end(); ++it) {
+      VLOG(6) << "match (" << it->first->name() << " @" << it->first << " : @"
+              << it->second << ") in source_pattern_graph ";
+      drr_q.push(it->first);
+      drr_visited.insert(it->first);
+      ir_q.push(it->second);
+      ir_visited.insert(it->second);
+    }
+  };
+  // Check whether DrrNode and Operation have the same Operands and Results
+  // information.
+  const auto& IsSameOperandsAndResults =
+      [](const OpCall* drr_node, const pir::Operation* ir_node) -> bool {
+    if (drr_node->name() != ir_node->name()) {
+      VLOG(8) << "Match failed: drr_node(" << drr_node->name()
+              << ") != pir_node(" << ir_node->name() << ").";
+      return false;
+    }
+    const auto& drr_input_tensors = drr_node->inputs();
+    auto ir_input_value_size = ir_node->num_operands();
+    if (drr_input_tensors.size() != ir_input_value_size) {
+      VLOG(8) << drr_node->name() << " Match failed: drr input tensors("
+              << drr_input_tensors.size() << ") != pir input tensors("
+              << ir_input_value_size << ").";
+      return false;
+    }
+    if (drr_node->outputs().size() != ir_node->num_results()) {
+      VLOG(8) << drr_node->name() << " Match failed: drr output tensors("
+              << drr_node->outputs().size() << ") != pir output tensors("
+              << ir_node->num_results() << ").";
+      return false;
+    }
+    return true;
+  };
+  // Check whether source_pattern_match_ctx has visited Operation's Operands.
+  const auto& HasVisitedOperands = [&](const Tensor* drr_input_tensor,
+                                       pir::Value ir_value) -> bool {
+    const auto& tensor_name = drr_input_tensor->name();
+    if (ir_value.isa<pir::BlockArgument>()) {
+      VLOG(8) << "Match Attention! Found BlockArgument as input of "
+              << tensor_name;
+    }
+    return source_pattern_match_ctx->tensor_map().count(tensor_name) != 0 &&
+           ir_value != source_pattern_match_ctx->tensor_map().at(tensor_name);
+  };
+  // Update drr_q et.al information. Return false if faild.
+  const auto& TryUpdateDrrQueue = [&](const OpCall* drr_producer_op,
+                                      pir::Operation* ir_producer_op) -> bool {
+    // still return true if both visited.
+    if (drr_visited.count(drr_producer_op) &&
+        ir_visited.count(ir_producer_op)) {
+      return true;
+    }
+    // insert map if both not visited.
+    if (!drr_visited.count(drr_producer_op) &&
+        !ir_visited.count(ir_producer_op)) {
+      drr_q.push(drr_producer_op);
+      ir_q.push(ir_producer_op);
+      drr_visited.insert(drr_producer_op);
+      ir_visited.insert(ir_producer_op);
+      return true;
+    }
+    return false;
+  };
+
+  // Step 1: Initialize DRR matched queue.
   bool matched = true;
   size_t step = 0;
-  for (auto it = output_op_map.begin(); it != output_op_map.end(); ++it) {
-    VLOG(6) << "match (" << it->first->name() << " @" << it->first << " : @"
-            << it->second << ") in source_pattern_graph ";
-    drr_q.push(it->first);
-    drr_visited.insert(it->first);
-    ir_q.push(it->second);
-    ir_visited.insert(it->second);
-  }
+  InitDrrQueue();
+
   while (!drr_q.empty()) {
     if (!matched) break;
     auto* drr_node = drr_q.front();
     auto* ir_node = ir_q.front();
     drr_q.pop();
     ir_q.pop();
-    if (drr_node->name() != ir_node->name()) {
+    if (!IsSameOperandsAndResults(drr_node, ir_node)) {
       matched = false;
-      VLOG(8) << "Match failed: drr_node(" << drr_node->name()
-              << ") != pir_node(" << ir_node->name() << ").";
       break;
     }
-    const auto& drr_input_tensors = drr_node->inputs();
-    auto ir_input_value_size = ir_node->num_operands();
-    if (drr_input_tensors.size() != ir_input_value_size) {
-      matched = false;
-      VLOG(8) << drr_node->name() << " Match failed: drr input tensors("
-              << drr_input_tensors.size() << ") != pir input tensors("
-              << ir_input_value_size << ").";
-      break;
-    }
-    if (drr_node->outputs().size() != ir_node->num_results()) {
-      matched = false;
-      VLOG(8) << drr_node->name() << " Match failed: drr output tensors("
-              << drr_node->outputs().size() << ") != pir output tensors("
-              << ir_node->num_results() << ").";
-      break;
-    }
+    // Step 1: Bind Operation of current op to match_ctx.
     source_pattern_match_ctx->BindIrOperation(drr_node, ir_node);
-    // binding input_tensor of current_op
+
+    // Step 2: Bind input_tensor of current op to match_ctx.
+    const auto& drr_input_tensors = drr_node->inputs();
+    auto ir_input_values = ir_node->operands_source();
     for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
-      if (source_pattern_match_ctx->tensor_map().count(
-              drr_input_tensors[i]->name()) != 0 &&
-          ir_node->operand(i).source() !=
-              source_pattern_match_ctx->tensor_map().at(
-                  drr_input_tensors[i]->name())) {
+      if (HasVisitedOperands(drr_input_tensors[i], ir_input_values[i])) {
         matched = false;
         VLOG(8) << " tensor_map key[" << drr_input_tensors[i]->name()
                 << "] already exists,but value is different!";
         break;
-      } else {
-        source_pattern_match_ctx->BindIrValue(drr_input_tensors[i]->name(),
-                                              ir_node->operand(i).source());
       }
-
-      if (ir_node->operand_source(i).isa<pir::BlockArgument>()) {
-        VLOG(8) << "Match Attention! Found BlockArgument as input of "
-                << drr_node->name();
-      }
-
+      source_pattern_match_ctx->BindIrValue(drr_input_tensors[i]->name(),
+                                            ir_input_values[i]);
+      // Skip it while drr_producer_op is nullptr for trigger pattern boundary.
       auto* drr_producer_op = drr_input_tensors[i]->producer();
       if (drr_producer_op == nullptr) {
         continue;
       }
-
+      // Check whether tensor and value have the same use_count.
       if (drr_input_tensors[i]->consumers().size() !=
-          ir_node->operand(i).source().use_count()) {
+          ir_input_values[i].use_count()) {
         matched = false;
         VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
                 << i << "] { " << drr_node->outputs().size()
                 << " } != consumers of pir intput[" << i << "] { "
-                << ir_node->operand(i).source().use_count() << " }.";
+                << ir_input_values[i].use_count() << " }.";
         break;
       }
 
-      auto* ir_producer_op = ir_node->operand_source(i).defining_op();
-      // bfs producer_op of current_op
-      if (drr_visited.count(drr_producer_op) &&
-          ir_visited.count(ir_producer_op)) {
-        continue;
+      auto* ir_producer_op = ir_input_values[i].defining_op();
+      // Tigger early stop while operand is BlockArgument with
+      // producer_op==nullptr.
+      if (drr_producer_op && ir_producer_op == nullptr) {
+        matched = false;
+        break;
       }
-
-      if (!drr_visited.count(drr_producer_op) &&
-          !ir_visited.count(ir_producer_op)) {
-        drr_q.push(drr_producer_op);
-        ir_q.push(ir_producer_op);
-        drr_visited.insert(drr_producer_op);
-        ir_visited.insert(ir_producer_op);
-      } else {
+      // bfs producer_op of current_op
+      if (!TryUpdateDrrQueue(drr_producer_op, ir_producer_op)) {
         matched = false;
         VLOG(8) << "Match failed: status of visiting for" << drr_node->name()
                 << " is different.";
