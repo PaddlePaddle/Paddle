@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/distributed/collective/process_group_custom.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 #include "paddle/phi/api/lib/data_transform.h"

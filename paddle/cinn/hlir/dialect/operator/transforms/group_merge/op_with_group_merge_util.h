@@ -27,9 +27,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 namespace dialect {
@@ -246,6 +246,11 @@ inline bool horizontal_or_vertical_reduce_relation(
   // check producer has same shape with reducer op.
   auto reduce_shape = ::common::vectorize(GetFirstInputShape(reducer));
   auto reduce_axes = GetVectorAttr(reducer, "dim");
+  if (reduce_axes.empty()) {
+    for (size_t i = 0; i < reduce_shape.size(); ++i) {
+      reduce_axes.push_back(i);
+    }
+  }
 
   for (auto& axis : reduce_axes) {
     // if axis = -1, set as shape.size() - 1

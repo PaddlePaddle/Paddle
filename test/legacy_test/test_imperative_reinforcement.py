@@ -63,18 +63,18 @@ class TestImperativeMnist(unittest.TestCase):
 
             policy = Policy(input_size=4)
 
-            dy_state = base.dygraph.base.to_variable(state)
+            dy_state = paddle.to_tensor(state)
             dy_state.stop_gradient = True
             loss_probs = policy(dy_state)
 
-            dy_mask = base.dygraph.base.to_variable(mask)
+            dy_mask = paddle.to_tensor(mask)
             dy_mask.stop_gradient = True
 
             loss_probs = paddle.log(loss_probs)
             loss_probs = paddle.multiply(loss_probs, dy_mask)
             loss_probs = paddle.sum(loss_probs, axis=-1)
 
-            dy_reward = base.dygraph.base.to_variable(reward)
+            dy_reward = paddle.to_tensor(reward)
             dy_reward.stop_gradient = True
 
             loss_probs = paddle.multiply(dy_reward, loss_probs)

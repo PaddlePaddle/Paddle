@@ -699,7 +699,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def _worker_num(self):
         """
-        retrun the current number of worker
+        return the current number of worker
         """
         if not self._role_is_generated:
             self._generate_role()

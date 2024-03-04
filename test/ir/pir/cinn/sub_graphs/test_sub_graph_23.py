@@ -31,8 +31,7 @@ class LayerCase(paddle.nn.Layer):
         var_0,  # (shape: [11, 24, 56, 56], dtype: paddle.float32, stop_gradient: False)
         var_1,  # (shape: [11, 24, 56, 56], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_2 = paddle.tensor.attribute.shape(var_0)
-        var_3 = var_2[0]
+        var_3 = var_0.shape[0]
         var_4 = paddle.tensor.random.rand(shape=[var_3, 1, 1, 1])
         var_5 = 0.975 + var_4
         var_6 = paddle.tensor.ops.floor(var_5)
@@ -65,16 +64,15 @@ class TestLayer(unittest.TestCase):
         outs = net(*self.inputs)
         return outs
 
-    # NOTE prim + cinn lead to error
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':

@@ -161,13 +161,21 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
                                                     int throw_flag) {
   Py_ssize_t nlocalsplus_new = code->co_nlocalsplus;
   Py_ssize_t nlocalsplus_old = frame->f_code->co_nlocalsplus;
+#if PY_VERSION_HEX >= 0x030c0000
+  int size = code->co_framesize;
+#else
   // Create a new PyInterpreterFrame. Refer to CALL.
   // PyInterpreterFrame has a head section calls "specials". It follows
   // a contiguous section containing localplus and interpreter stack space.
-  size_t size = nlocalsplus_new + code->co_stacksize + FRAME_SPECIALS_SIZE;
+  int size = nlocalsplus_new + code->co_stacksize + FRAME_SPECIALS_SIZE;
+#endif
   CALL_STAT_INC(frames_pushed);
+#if PY_VERSION_HEX >= 0x030c0000
+  _PyInterpreterFrame *shadow = Internal_PyThreadState_PushFrame(tstate, size);
+#else
   _PyInterpreterFrame *shadow =
       (_PyInterpreterFrame *)malloc(sizeof(PyObject *) * size);
+#endif
   if (shadow == NULL) {
     // VLOG(7) << "Failed to allocate memory for shadow frame.";
     return NULL;
@@ -180,18 +188,19 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   Py_XINCREF(((PyFunctionObject *)frame->f_funcobj)->func_closure);
   func->func_closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
   _PyFrame_Initialize(shadow, func, NULL, code, 0);
+  PyObject **fastlocals_new = shadow->localsplus;
 #else
   Py_XINCREF(frame->f_func->func_closure);
   func->func_closure = frame->f_func->func_closure;
   _PyFrame_InitializeSpecials(shadow, func, NULL, code->co_nlocalsplus);
-#endif
-
-  PyObject **fastlocals_old = frame->localsplus;
   PyObject **fastlocals_new = shadow->localsplus;
 
   for (Py_ssize_t i = 0; i < nlocalsplus_new; ++i) {
     fastlocals_new[i] = NULL;
   }
+#endif
+
+  PyObject **fastlocals_old = frame->localsplus;
 
   // The namemap to map the name to index in new frame localsplus.
   PyObject *namemap = PyDict_New();
@@ -216,8 +225,18 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   }
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
+#if PY_VERSION_HEX >= 0x030c0000
+  // In Python 3.12+ believes that eval will be cleaned up, but we did not pass
+  // in the frame to _PyEval_EvalFrameDefault, so we need to clean it up.
+  // elaborate on see:
+  // https://github.com/PaddlePaddle/Paddle/pull/61703#issuecomment-1933812625
+  Internal_PyEvalFrameClearAndPop(tstate, frame);
+#else
+  // In Python 3.11 we to create our own isolated frame(namely shadow) and
+  // release it after completion
   Internal_PyFrame_Clear(shadow);
   free(shadow);
+#endif
   Py_DECREF(func);
   Py_DECREF(namemap);
   return result;

@@ -236,8 +236,8 @@ def _get_args_values(op, phi_name):
 def prepare_python_api_arguments(op):
     """
     Generate all args inputs of composite op. Because inputs of composite op is
-    the same as phi op desribed in ops.yaml. So we need to map origin op to phi op
-    and then push input data and attrs of origin op to correspondng phi op.
+    the same as phi op described in ops.yaml. So we need to map origin op to phi op
+    and then push input data and attrs of origin op to corresponding phi op.
     """
     if op.input_names is None:
         return []

@@ -21,6 +21,15 @@ limitations under the License. */
 #include <internal/pycore_frame.h>
 #define Py_BUILD_CORE       // internal/pycore_opcode.h need this macro
 #define NEED_OPCODE_TABLES  // To get _PyOpcode_Caches and _PyOpcode_Deopt
+
+#if PY_VERSION_HEX >= 0x030c0000
+// see https://github.com/python/cpython/issues/105268#issuecomment-1678256123
+#undef _PyGC_FINALIZED
+#include <internal/pycore_runtime.h>
+#define Internal_PyObject_Arena (_PyRuntime.allocators.obj_arena)
+#define _PyGC_FINALIZED
+#endif
+
 #include <internal/pycore_opcode.h>
 #undef NEED_OPCODE_TABLES
 #undef Py_BUILD_CORE
@@ -63,6 +72,73 @@ static int Internal_PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
 }
 
 #if PY_VERSION_HEX >= 0x030c0000
+void Internal_PyObject_VirtualFree(void *obj, size_t size) {
+  Internal_PyObject_Arena.free(Internal_PyObject_Arena.ctx, obj, size);
+}
+
+void *Internal_PyObject_VirtualAlloc(size_t size) {
+  return Internal_PyObject_Arena.alloc(Internal_PyObject_Arena.ctx, size);
+}
+
+void Internal_PyThreadState_PopFrame(PyThreadState *tstate,
+                                     _PyInterpreterFrame *frame) {
+  assert(tstate->datastack_chunk);
+  PyObject **base = (PyObject **)frame;
+  if (base == &tstate->datastack_chunk->data[0]) {
+    _PyStackChunk *chunk = tstate->datastack_chunk;
+    _PyStackChunk *previous = chunk->previous;
+    // push_chunk ensures that the root chunk is never popped:
+    assert(previous);
+    tstate->datastack_top = &previous->data[previous->top];
+    tstate->datastack_chunk = previous;
+    Internal_PyObject_VirtualFree(chunk, chunk->size);
+    tstate->datastack_limit =
+        (PyObject **)(((char *)previous) + previous->size);
+  } else {
+    assert(tstate->datastack_top);
+    assert(tstate->datastack_top >= base);
+    tstate->datastack_top = base;
+  }
+}
+static void Internal_clear_thread_frame(PyThreadState *tstate,
+                                        _PyInterpreterFrame *frame) {
+  assert(frame->owner == FRAME_OWNED_BY_THREAD);
+  // Make sure that this is, indeed, the top frame. We can't check this in
+  // _PyThreadState_PopFrame, since f_code is already cleared at that point:
+  assert((PyObject **)frame + frame->f_code->co_framesize ==
+         tstate->datastack_top);
+  tstate->c_recursion_remaining--;
+  assert(frame->frame_obj == NULL || frame->frame_obj->f_frame == frame);
+  Internal_PyFrame_Clear(frame);  // see _PyFrame_ClearExceptCode
+  Py_DECREF(frame->f_code);
+  tstate->c_recursion_remaining++;
+  Internal_PyThreadState_PopFrame(tstate, frame);
+}
+
+static void Internal_clear_gen_frame(PyThreadState *tstate,
+                                     _PyInterpreterFrame *frame) {
+  assert(frame->owner == FRAME_OWNED_BY_GENERATOR);
+  PyGenObject *gen = _PyFrame_GetGenerator(frame);
+  gen->gi_frame_state = FRAME_CLEARED;
+  assert(tstate->exc_info == &gen->gi_exc_state);
+  tstate->exc_info = gen->gi_exc_state.previous_item;
+  gen->gi_exc_state.previous_item = NULL;
+  tstate->c_recursion_remaining--;
+  assert(frame->frame_obj == NULL || frame->frame_obj->f_frame == frame);
+  Internal_PyFrame_Clear(frame);  // see _PyFrame_ClearExceptCode
+  tstate->c_recursion_remaining++;
+  frame->previous = NULL;
+}
+
+void Internal_PyEvalFrameClearAndPop(PyThreadState *tstate,
+                                     _PyInterpreterFrame *frame) {
+  if (frame->owner == FRAME_OWNED_BY_THREAD) {
+    Internal_clear_thread_frame(tstate, frame);
+  } else {
+    Internal_clear_gen_frame(tstate, frame);
+  }
+}
+
 // Initialize frame free variables if needed
 static void Internal_frame_init_get_vars(_PyInterpreterFrame *frame) {
   // COPY_FREE_VARS has no quickened forms, so no need to use _PyOpcode_Deopt
@@ -226,6 +302,58 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   return 0;
 }
 
+static _PyStackChunk *Internal_allocate_chunk(int size_in_bytes,
+                                              _PyStackChunk *previous) {
+  assert(size_in_bytes % sizeof(PyObject **) == 0);
+  _PyStackChunk *res = Internal_PyObject_VirtualAlloc(size_in_bytes);
+  if (res == NULL) {
+    return NULL;
+  }
+  res->previous = previous;
+  res->size = size_in_bytes;
+  res->top = 0;
+  return res;
+}
+
+/* Minimum size of data stack chunk */
+#define DATA_STACK_CHUNK_SIZE (16 * 1024)
+#define MINIMUM_OVERHEAD 1000
+
+static PyObject **Internal_push_chunk(PyThreadState *tstate, int size) {
+  int allocate_size = DATA_STACK_CHUNK_SIZE;
+  while (allocate_size < (int)sizeof(PyObject *) * (size + MINIMUM_OVERHEAD)) {
+    allocate_size *= 2;
+  }
+  _PyStackChunk *new =
+      Internal_allocate_chunk(allocate_size, tstate->datastack_chunk);
+  if (new == NULL) {
+    return NULL;
+  }
+  if (tstate->datastack_chunk) {
+    tstate->datastack_chunk->top =
+        tstate->datastack_top - &tstate->datastack_chunk->data[0];
+  }
+  tstate->datastack_chunk = new;
+  tstate->datastack_limit = (PyObject **)(((char *)new) + allocate_size);
+  // When new is the "root" chunk (i.e. new->previous == NULL), we can keep
+  // _PyThreadState_PopFrame from freeing it later by "skipping" over the
+  // first element:
+  PyObject **res = &new->data[new->previous == NULL];
+  tstate->datastack_top = res + size;
+  return res;
+}
+
+_PyInterpreterFrame *Internal_PyThreadState_PushFrame(PyThreadState *tstate,
+                                                      size_t size) {
+  assert(size < INT_MAX / sizeof(PyObject *));
+  if (_PyThreadState_HasStackSpace(tstate, (int)size)) {
+    _PyInterpreterFrame *res = (_PyInterpreterFrame *)tstate->datastack_top;
+    tstate->datastack_top += size;
+    return res;
+  }
+  return (_PyInterpreterFrame *)Internal_push_chunk(tstate, (int)size);
+}
+
 #else
 int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   /* Merge fast locals into f->f_locals */
@@ -313,7 +441,7 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   }
   return 0;
 }
-#endif
+#endif  // Python 3.11
 
 PyFrameObject *Internal_PyFrame_New_NoTrack(PyCodeObject *code) {
   CALL_STAT_INC(frame_objects_created);
@@ -463,7 +591,7 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
          _PyFrame_GetGenerator(frame)->gi_frame_state == FRAME_CLEARED);
   // GH-99729: Clearing this frame can expose the stack (via finalizers). It's
   // crucial that this frame has been unlinked, and is no longer visible:
-  assert(_PyThreadState_GET()->cframe->current_frame != frame);
+  assert(PyThreadState_GET()->cframe->current_frame != frame);
   if (frame->frame_obj) {
     PyFrameObject *f = frame->frame_obj;
     frame->frame_obj = NULL;
@@ -489,4 +617,4 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
 #endif
 }
 
-#endif  // Python 3.11
+#endif  // Python 3.11, Python 3.12

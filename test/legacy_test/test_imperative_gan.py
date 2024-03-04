@@ -20,7 +20,6 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import Linear
 
 
@@ -155,20 +154,23 @@ class TestDygraphGAN(unittest.TestCase):
                 ),
             )
 
-            d_real = discriminator(to_variable(np.ones([2, 1], np.float32)))
+            d_real = discriminator(
+                paddle.to_tensor(np.ones([2, 1], np.float32))
+            )
             d_loss_real = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
-                    logit=d_real, label=to_variable(np.ones([2, 1], np.float32))
+                    logit=d_real,
+                    label=paddle.to_tensor(np.ones([2, 1], np.float32)),
                 )
             )
 
             d_fake = discriminator(
-                generator(to_variable(np.ones([2, 2], np.float32)))
+                generator(paddle.to_tensor(np.ones([2, 2], np.float32)))
             )
             d_loss_fake = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_fake,
-                    label=to_variable(np.zeros([2, 1], np.float32)),
+                    label=paddle.to_tensor(np.zeros([2, 1], np.float32)),
                 )
             )
 
@@ -179,11 +181,12 @@ class TestDygraphGAN(unittest.TestCase):
             generator.clear_gradients()
 
             d_fake = discriminator(
-                generator(to_variable(np.ones([2, 2], np.float32)))
+                generator(paddle.to_tensor(np.ones([2, 2], np.float32)))
             )
             g_loss = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
-                    logit=d_fake, label=to_variable(np.ones([2, 1], np.float32))
+                    logit=d_fake,
+                    label=paddle.to_tensor(np.ones([2, 1], np.float32)),
                 )
             )
             g_loss.backward()
@@ -210,21 +213,23 @@ class TestDygraphGAN(unittest.TestCase):
                 ),
             )
 
-            d_real2 = discriminator2(to_variable(np.ones([2, 1], np.float32)))
+            d_real2 = discriminator2(
+                paddle.to_tensor(np.ones([2, 1], np.float32))
+            )
             d_loss_real2 = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_real2,
-                    label=to_variable(np.ones([2, 1], np.float32)),
+                    label=paddle.to_tensor(np.ones([2, 1], np.float32)),
                 )
             )
 
             d_fake2 = discriminator2(
-                generator2(to_variable(np.ones([2, 2], np.float32)))
+                generator2(paddle.to_tensor(np.ones([2, 2], np.float32)))
             )
             d_loss_fake2 = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_fake2,
-                    label=to_variable(np.zeros([2, 1], np.float32)),
+                    label=paddle.to_tensor(np.zeros([2, 1], np.float32)),
                 )
             )
 
@@ -235,12 +240,12 @@ class TestDygraphGAN(unittest.TestCase):
             generator2.clear_gradients()
 
             d_fake2 = discriminator2(
-                generator2(to_variable(np.ones([2, 2], np.float32)))
+                generator2(paddle.to_tensor(np.ones([2, 2], np.float32)))
             )
             g_loss2 = paddle.mean(
                 paddle.nn.functional.binary_cross_entropy_with_logits(
                     logit=d_fake2,
-                    label=to_variable(np.ones([2, 1], np.float32)),
+                    label=paddle.to_tensor(np.ones([2, 1], np.float32)),
                 )
             )
             g_loss2.backward()

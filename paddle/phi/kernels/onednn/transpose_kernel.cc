@@ -32,7 +32,7 @@ void TransposeKernel(const Context& dev_ctx,
   if ((x_dims.size() >= 3) &&
       (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
        phi::DataLayout::kNHWC)) {
-    int axis_size = axis.size();
+    int axis_size = static_cast<int>(axis.size());
     std::vector<int> formated_axis = axis;
     std::vector<int> count(axis_size, 0);
     for (int i = 0; i < axis_size; i++) {
@@ -49,7 +49,7 @@ void TransposeKernel(const Context& dev_ctx,
 
     phi::DDim out_dims(x_dims);
     for (size_t i = 0; i < axis.size(); i++) {
-      out_dims[i] = x_dims[formated_axis[i]];
+      out_dims[i] = x_dims[formated_axis[i]];  // NOLINT
     }
     out->Resize(out_dims);
   }

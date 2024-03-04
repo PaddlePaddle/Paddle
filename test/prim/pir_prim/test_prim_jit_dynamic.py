@@ -54,33 +54,35 @@ class TestPrimMode1(unittest.TestCase):
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.net = rms_norm1
+        self.enable_cinn = False
 
     def base_net(self, flag=None):
-        if flag == "prim":
-            core._set_prim_all_enabled(True)
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
-        fn = apply_to_static(
-            self.net,
-            use_cinn=False,
-            input_spec=[
-                InputSpec(shape=[None, None, 4096], dtype='float32'),
-                InputSpec(shape=[4096], dtype='float32'),
-            ],
-        )
+        if flag == "prim":
+            core._set_prim_all_enabled(True)
+            fn = apply_to_static(
+                self.net,
+                use_cinn=self.enable_cinn,
+                input_spec=[
+                    InputSpec(shape=[None, None, 4096], dtype='float32'),
+                    InputSpec(shape=[4096], dtype='float32'),
+                ],
+            )
+            fn.eval()
+        else:
+            fn = self.net
         res = fn(x, y)
-        ops = [
-            op.name()
-            for op in fn.program_cache.last()[-1][-1]
-            .infer_program.program.global_block()
-            .ops
-        ]
 
         if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.program_cache.last()[-1][-1]
+                .infer_program.program.global_block()
+                .ops
+            ]
             assert "pd_op.mean" not in ops
             core._set_prim_all_enabled(False)
-        else:
-            assert "pd_op.mean" in ops
         return res
 
     def test_prim_all_dynamic(self):
@@ -98,6 +100,7 @@ class TestPrimMode2(TestPrimMode1):
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.net = rms_norm2
+        self.enable_cinn = False
 
 
 if __name__ == "__main__":

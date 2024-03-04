@@ -285,7 +285,7 @@ class EagerVariable final {
   template <typename VarType>
   void ConstructVariableFromTensor(const paddle::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<VarType>();
-    // Contruct phi::DenseTensor from egr::EagerVariable
+    // Construct phi::DenseTensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
 
     PADDLE_ENFORCE_EQ(
@@ -308,7 +308,7 @@ class EagerVariable final {
   template <typename VarType>
   void ConstructVariableFromCompatTensor(const paddle::Tensor& tensor) {
     auto* framework_holder = var_.GetMutable<VarType>();
-    // Contruct phi::DenseTensor from egr::EagerVariable
+    // Construct phi::DenseTensor from egr::EagerVariable
     auto* compat_tensor =
         static_cast<VariableCompatTensor*>(tensor.impl().get());
     PADDLE_ENFORCE_NOT_NULL(compat_tensor,

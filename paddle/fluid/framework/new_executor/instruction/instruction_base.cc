@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace paddle {
 namespace framework {
@@ -288,7 +288,7 @@ void InstructionBase::InitInputsOutputsIds(
     ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
   std::string op_name;
-  if (op_attributes.count("op_name ")) {
+  if (op_attributes.count("op_name")) {
     op_name =
         op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   }

@@ -319,8 +319,8 @@ class TestGroupNormBF16Op(OpTest):
         self.rev_comp_rtol = 1e-2
         # prim bf16 has diff in windows
         if sys.platform == "win32":
-            self.rev_comp_atol = 1e-1
-            self.rev_comp_rtol = 1e-1
+            self.rev_comp_atol = 5e-2
+            self.rev_comp_rtol = 5e-2
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -589,12 +589,12 @@ class TestGroupNormEager(unittest.TestCase):
         input = np.random.random(self.shape).astype(self.dtype)
 
         with base.dygraph.guard():
-            tensor_1 = base.dygraph.to_variable(input)
+            tensor_1 = paddle.to_tensor(input)
             tensor_1.stop_gradient = False
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            tensor_eager_1 = base.dygraph.to_variable(input)
+            tensor_eager_1 = paddle.to_tensor(input)
             tensor_eager_1.stop_gradient = False
             groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
@@ -609,12 +609,12 @@ class TestGroupNormEager(unittest.TestCase):
         input = np.random.random(self.shape).astype(self.dtype)
 
         with base.dygraph.guard():
-            tensor_1 = base.dygraph.to_variable(input)
+            tensor_1 = paddle.to_tensor(input)
             tensor_1.stop_gradient = False
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            tensor_eager_1 = base.dygraph.to_variable(input)
+            tensor_eager_1 = paddle.to_tensor(input)
             tensor_eager_1.stop_gradient = False
             groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
@@ -635,12 +635,12 @@ class TestGroupNormEager_fp16(unittest.TestCase):
         input = np.random.random(self.shape).astype(self.dtype)
 
         with base.dygraph.guard():
-            tensor_1 = base.dygraph.to_variable(input)
+            tensor_1 = paddle.to_tensor(input)
             tensor_1.stop_gradient = False
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            tensor_eager_1 = base.dygraph.to_variable(input)
+            tensor_eager_1 = paddle.to_tensor(input)
             tensor_eager_1.stop_gradient = False
             groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)

@@ -310,7 +310,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
       if (*beam >= MaxLength) break;
     } else {
 #ifdef PADDLE_WITH_HIP
-      uint64 mask = 0;
+      unsigned mask = 0u;
       mask = __ballot(true);
       if (tid_max / WARP_SIZE == wid) {
         if (__shfl_down(*beam, tid_max % WARP_SIZE, WARP_SIZE) == MaxLength)

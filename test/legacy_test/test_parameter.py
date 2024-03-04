@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.base import core
 from paddle.base.dygraph import guard
 from paddle.base.executor import Executor
 from paddle.base.framework import Variable, default_main_program
@@ -41,7 +40,7 @@ class ParameterChecks(unittest.TestCase):
         self.assertIsNotNone(param)
         self.assertEqual('fc.w', param.name)
         self.assertEqual((784, 100), param.shape)
-        self.assertEqual(core.VarDesc.VarType.FP32, param.dtype)
+        self.assertEqual(paddle.float32, param.dtype)
         self.assertEqual(0, param.block.idx)
         exe = Executor(paddle.CPUPlace())
         p = exe.run(main_program, fetch_list=[param])[0]

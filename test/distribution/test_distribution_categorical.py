@@ -313,7 +313,7 @@ class CategoricalTest6(CategoricalTest):
 class CategoricalTest7(CategoricalTest):
     def init_numpy_data(self, batch_size, dims):
         # input logtis is 3-D Tensor
-        # value used in probs and log_prob method has the same number of distribuions with input
+        # value used in probs and log_prob method has the same number of distributions with input
         self.logits_np = np.random.rand(3, 2, 5).astype('float32')
         self.other_logits_np = np.random.rand(3, 2, 5).astype('float32')
         self.value_np = np.array([2, 1, 3]).astype('int64')

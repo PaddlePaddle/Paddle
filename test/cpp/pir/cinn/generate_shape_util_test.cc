@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 
 #include "test/cpp/pir/tools/test_pir_utils.h"
 

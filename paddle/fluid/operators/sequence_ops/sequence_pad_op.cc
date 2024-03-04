@@ -188,7 +188,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           X.data = [a, b, c, d, e]
       and Input(PadValue):
           PadValue.data = [0]
-      and attribite 'padded_length' = 4,
+      and attribute 'padded_length' = 4,
       then we get phi::DenseTensor:
           Out.data = [[a, b, 0, 0],
                       [c, d, e, 0]]
@@ -201,7 +201,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [0]
-      and attribite 'padded_length' = -1, which mean using the length
+      and attribute 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
       then we get phi::DenseTensor:
           Out.data = [[[a1, a2], [b1, b2], [0, 0]],
@@ -215,7 +215,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [p1, p2]
-      and attribite 'padded_length' = -1, which mean using the length
+      and attribute 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
       then we get phi::DenseTensor:
           Out.data = [[[a1, a2], [b1, b2], [p1, p2]],

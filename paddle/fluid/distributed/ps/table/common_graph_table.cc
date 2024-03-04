@@ -22,6 +22,7 @@
 #include <sstream>
 #include <tuple>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
@@ -31,15 +32,14 @@
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 
-PHI_DECLARE_bool(graph_load_in_parallel);
-PHI_DECLARE_bool(graph_get_neighbor_id);
-PHI_DECLARE_int32(gpugraph_storage_mode);
-PHI_DECLARE_uint64(gpugraph_slot_feasign_max_num);
-PHI_DECLARE_bool(graph_metapath_split_opt);
-PHI_DECLARE_double(graph_neighbor_size_percent);
+COMMON_DECLARE_bool(graph_load_in_parallel);
+COMMON_DECLARE_bool(graph_get_neighbor_id);
+COMMON_DECLARE_int32(gpugraph_storage_mode);
+COMMON_DECLARE_uint64(gpugraph_slot_feasign_max_num);
+COMMON_DECLARE_bool(graph_metapath_split_opt);
+COMMON_DECLARE_double(graph_neighbor_size_percent);
 
 PHI_DEFINE_EXPORTED_bool(graph_edges_split_only_by_src_id,
                          false,

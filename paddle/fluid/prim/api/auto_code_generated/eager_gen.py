@@ -317,7 +317,7 @@ return {dygraph_ad_func_name}({dygraph_ad_func_parameters});
         indent = "  "
         api_func_name = self.get_api__func_name()
         template = '<Tensor>'
-        # func decalaration
+        # func declaration
         if api_func_name[-1] != '_':
             api_code = f"""
 template <>

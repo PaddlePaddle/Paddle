@@ -24,7 +24,7 @@
 #endif
 #include "paddle/fluid/platform/flags.h"
 
-PHI_DECLARE_bool(cache_inference_while_scope);
+COMMON_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace framework {

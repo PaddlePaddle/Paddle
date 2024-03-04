@@ -19,7 +19,7 @@
 namespace paddle {
 
 MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
-  // The default configuration of scale computing algorightms
+  // The default configuration of scale computing algorithms
   rules_["conv2d"]["Input"] = ScaleAlgo::KL;
   rules_["conv2d"]["Filter"] = ScaleAlgo::MAX_CH;
   rules_["conv2d"]["Bias"] = ScaleAlgo::NONE;  // do not compute scale

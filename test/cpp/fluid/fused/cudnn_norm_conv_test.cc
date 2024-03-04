@@ -63,8 +63,8 @@ void TransposeNchwToNhwc(const phi::DenseTensor &cpu_in,
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < hw; ++j) {
       for (int k = 0; k < c; ++k) {
-        int dst_idx = i * hw * c + j * c + k;
-        int src_idx = i * c * hw + k * hw + j;
+        int dst_idx = i * hw * c + j * c + k;   // NOLINT
+        int src_idx = i * c * hw + k * hw + j;  // NOLINT
         cpu_out_ptr[dst_idx] = cpu_in_ptr[src_idx];
       }
     }

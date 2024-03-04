@@ -54,6 +54,7 @@ test_conv2d_op
 test_conv2d_transpose_op
 test_conv2d_transpose_op_depthwise_conv
 test_conv3d_op
+test_conv3d_transpose_op
 test_conv3d_transpose_part2_op
 test_crop_tensor_op
 test_cross_op

@@ -413,6 +413,13 @@ class ThreadPoolTempl {
       return false;
     }
 
+    // Cancel wait if always_spinning_
+    if (always_spinning_) {
+      ec_.CancelWait();
+      blocked_--;
+      return true;
+    }
+
     // Wait for work
     platform::RecordEvent record(
         "WaitForWork", platform::TracerEventType::UserDefined, 10);

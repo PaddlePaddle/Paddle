@@ -33,7 +33,7 @@ void QuantDequantXPUPass::CollectWeightScalesInfoFromDequantize(
     const {
   VLOG(3) << "gather weight_thresholds from fake dequantized ops";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (fake_dequantize_types.count(op_node->Name())) {
@@ -90,7 +90,7 @@ void QuantDequantXPUPass::CollectWeightScalesInfoFromONNXFormatDequantize(
     const {
   VLOG(3) << "gather weight_thresholds from onnx format dequantized ops";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (op_node->Name() == "dequantize_linear") {
@@ -138,7 +138,7 @@ void QuantDequantXPUPass::CollectInputScalesFromQuantize(
     const {
   VLOG(3) << "gather input scales from fake quantized ops";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (op_node->Name() == "fake_quantize_dequantize_moving_average_abs_max" ||
@@ -191,7 +191,6 @@ void QuantDequantXPUPass::CollectInputScalesFromQuantize(
         if (out->Name() == out_var_name) {
           for (auto* var : out->outputs) {
             auto op_desc = var->Op();
-            std::string quantized_op_type = op_desc->Type();
             op_desc->SetAttr("enable_int8", true);
             op_desc->Flush();
           }
@@ -207,7 +206,7 @@ void QuantDequantXPUPass::CollectOutputScalesFromAttr(
     const {
   VLOG(3) << "gather output scales from op's attr";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     auto* op_desc = op_node->Op();
@@ -391,7 +390,7 @@ void QuantDequantXPUPass::RemoveFakeOps(
 
   std::unordered_set<const Node*> nodes2rm = {};
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (fake_quantize_types.count(op_node->Name())) {

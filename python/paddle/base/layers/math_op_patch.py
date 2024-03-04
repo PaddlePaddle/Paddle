@@ -258,7 +258,7 @@ def monkey_patch_variable():
         """
         Variable don't have 'place' interface in static graph mode
         But this interface can greatly facilitate dy2static.
-        So we give a warnning here and return None.
+        So we give a warning here and return None.
         """
         warnings.warn(
             "Variable do not have 'place' interface for static graph mode, try not to use it. None will be returned."
@@ -269,7 +269,7 @@ def monkey_patch_variable():
         """
         Variable don't have 'contiguous' interface in static graph mode
         But this interface can greatly facilitate dy2static.
-        So we give a warnning here and return None.
+        So we give a warning here and return None.
         """
         warnings.warn(
             "Variable do not have 'contiguous' interface for static graph mode, try not to use it. self will be returned."
@@ -281,7 +281,7 @@ def monkey_patch_variable():
         """
         Variable don't have 'is_contiguous' interface in static graph mode
         But this interface can greatly facilitate dy2static.
-        So we give a warnning here and return None.
+        So we give a warning here and return None.
         """
         warnings.warn(
             "Variable do not have 'is_contiguous' interface for static graph mode, try not to use it. True will be returned."
@@ -326,11 +326,12 @@ def monkey_patch_variable():
             .. code-block:: python
 
                 >>> import paddle.base as base
+                >>> import paddle
                 >>> import numpy as np
 
                 >>> x = np.ones([2, 2], np.float32)
                 >>> with base.dygraph.guard():
-                ...     original_variable = base.dygraph.to_variable(x)
+                ...     original_variable = paddle.to_tensor(x)
                 ...     print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
                 ...     new_variable = original_variable.astype('int64')
                 ...     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
@@ -359,7 +360,7 @@ def monkey_patch_variable():
         """
         if not isinstance(var, Variable):
             if in_to_static_mode():
-                """in dy2static mode, x may be tensorable values such as int, float, np.array"""
+                """In dy2static mode, x may be tensor values such as int, float, np.array"""
                 from paddle.tensor.creation import to_tensor
 
                 var = to_tensor(var)

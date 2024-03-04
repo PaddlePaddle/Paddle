@@ -55,36 +55,6 @@ endif()
 
 if(WITH_CUTLASS)
   execute_process(
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated_tmp"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_depthwise_bias_act.py"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
-  set(generated_tmp_dir
-      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/conv2d/generated_tmp
-  )
-  set(generated_dir
-      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/conv2d/generated)
-  file(GLOB con2d_generated_files ${generated_tmp_dir}/*.cu)
-
-  if(EXISTS ${generated_dir})
-    foreach(gen_file ${con2d_generated_files})
-      string(REPLACE "generated_tmp" "generated" now_file ${gen_file})
-      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                              "${gen_file}" "${now_file}")
-    endforeach()
-    message("copy if different ${generated_dir}")
-  else()
-    foreach(gen_file ${con2d_generated_files})
-      string(REPLACE "generated_tmp" "generated" now_file ${gen_file})
-      execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${gen_file}"
-                              "${now_file}")
-    endforeach()
-    message("copy ${generated_dir}")
-  endif()
-
-  execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE}
       ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_kernels.py
@@ -204,8 +174,6 @@ if(WITH_CUTLASS)
   file(
     GLOB cutlass_cu
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "fusion/cutlass/conv2d/generated/*.cu"
-    "fusion/cutlass/conv2d/*.cu"
     "fusion/cutlass/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
@@ -225,6 +193,32 @@ if(NOT WITH_CUDNN_FRONTEND)
     "fusion/gpu/fused_dot_product_attention_op.cu"
     "fusion/gpu/max_pool2d_v2_grad_kernel.cu"
     "fusion/gpu/max_pool2d_v2_kernel.cu")
+endif()
+
+# Note(qili93): remove kernels not supported on DCU yet
+if(WITH_ROCM)
+  list(
+    REMOVE_ITEM
+    kernel_cu
+    "gpu/affine_grid_grad_kernel.cu"
+    "gpu/apply_per_channel_scale_kernel.cu"
+    "gpu/cholesky_solve_kernel.cu"
+    "gpu/eigh_kernel.cu"
+    "gpu/eigvalsh_kernel.cu"
+    "gpu/lstsq_kernel.cu"
+    "gpu/lu_kernel.cu"
+    "gpu/matrix_rank_kernel.cu"
+    "gpu/matrix_rank_tol_kernel.cu"
+    "gpu/multiclass_nms3_kernel.cu"
+    "gpu/put_along_axis_grad_kernel.cu"
+    "gpu/put_along_axis_kernel.cu"
+    "gpu/qr_kernel.cu"
+    "gpu/svd_kernel.cu"
+    "gpudnn/mha_cudnn_frontend.cu"
+    "fusion/gpu/block_multi_head_attention_kernel.cu"
+    "fusion/gpu/fused_bn_add_activation_grad_kernel.cu"
+    "fusion/gpu/fused_bn_add_activation_kernel.cu"
+    "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu")
 endif()
 
 set(cc_search_pattern

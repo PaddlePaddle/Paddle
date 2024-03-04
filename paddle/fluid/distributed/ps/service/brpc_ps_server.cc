@@ -262,7 +262,7 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
   brpc::ClosureGuard done_guard(done);
   std::string log_label("ReceiveCmd-");
   if (!request->has_table_id()) {
-    set_response_code(*response, -1, "PsRequestMessage.tabel_id is required");
+    set_response_code(*response, -1, "PsRequestMessage.table_id is required");
     return;
   }
 
@@ -307,14 +307,15 @@ int32_t BrpcPsService::PullDense(Table *table,
     set_response_code(
         response,
         -1,
-        "PsRequestMessage.datas is requeired at least 1 for num of dense");
+        "PsRequestMessage.datas is required at least 1 for num of dense");
     return 0;
   }
   CostTimer timer("pserver_server_pull_dense");
   uint32_t num = *(const uint32_t *)request.params(0).c_str();
 
   auto res_data = butil::get_object<std::vector<float>>();
-  res_data->resize(num * table->ValueAccesor()->GetAccessorInfo().select_size /
+  res_data->resize(num *
+                   table->GetValueAccessor()->GetAccessorInfo().select_size /
                    sizeof(float));
 
   TableContext table_context;
@@ -408,7 +409,7 @@ int32_t BrpcPsService::Barrier(Table *table,
   if (request.params_size() < 1) {
     set_response_code(response,
                       -1,
-                      "PsRequestMessage.params is requeired at "
+                      "PsRequestMessage.params is required at "
                       "least 1 for num of sparse_key");
     return 0;
   }
@@ -435,7 +436,7 @@ int32_t BrpcPsService::PushSparseParam(Table *table,
   if (request.params_size() < 1) {
     set_response_code(response,
                       -1,
-                      "PsRequestMessage.params is requeired at "
+                      "PsRequestMessage.params is required at "
                       "least 1 for num of sparse_key");
     return 0;
   }
@@ -514,7 +515,7 @@ int32_t BrpcPsService::PullSparse(Table *table,
   if (request.params_size() < 1) {
     set_response_code(response,
                       -1,
-                      "PsRequestMessage.params is requeired at "
+                      "PsRequestMessage.params is required at "
                       "least 1 for num of sparse_key");
     return 0;
   }
@@ -522,7 +523,7 @@ int32_t BrpcPsService::PullSparse(Table *table,
   CostTimer timer("pserver_server_pull_sparse");
   const uint32_t num =
       *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
-  auto dim = table->ValueAccesor()->GetAccessorInfo().select_dim;
+  auto dim = table->GetValueAccessor()->GetAccessorInfo().select_dim;
 
   thread_local std::string req_buffer;
   req_buffer.reserve(req_buffer_size);
@@ -564,7 +565,7 @@ int32_t BrpcPsService::PushSparse(Table *table,
   if (request.params_size() < 1) {
     set_response_code(response,
                       -1,
-                      "PsRequestMessage.params is requeired at "
+                      "PsRequestMessage.params is required at "
                       "least 1 for num of sparse_key");
     return 0;
   }
@@ -615,7 +616,7 @@ int32_t BrpcPsService::LoadOneTable(Table *table,
     set_response_code(
         response,
         -1,
-        "PsRequestMessage.datas is requeired at least 2 for path & load_param");
+        "PsRequestMessage.datas is required at least 2 for path & load_param");
     return -1;
   }
   if (table->Load(request.params(0), request.params(1)) != 0) {
@@ -648,7 +649,7 @@ int32_t BrpcPsService::SaveOneTable(Table *table,
     set_response_code(
         response,
         -1,
-        "PsRequestMessage.datas is requeired at least 2, path&mode");
+        "PsRequestMessage.datas is required at least 2, path&mode");
     return -1;
   }
   table->Flush();
@@ -690,7 +691,7 @@ int32_t BrpcPsService::SaveCacheTable(Table *table,
     set_response_code(
         response,
         -1,
-        "PsRequestMessage.datas is requeired at least 3, path&mode");
+        "PsRequestMessage.datas is required at least 3, path&mode");
     return -1;
   }
   table->Flush();
@@ -716,7 +717,7 @@ int32_t BrpcPsService::CacheShuffle(Table *table,
   if (request.params_size() < 3) {
     set_response_code(response,
                       -1,
-                      "PsRequestMessage.datas is requeired at least 3, "
+                      "PsRequestMessage.datas is required at least 3, "
                       "path&mode&cache_threshold");
     return -1;
   }
@@ -804,7 +805,7 @@ int32_t BrpcPsService::ShrinkTable(Table *table,
     set_response_code(
         response,
         -1,
-        "PsRequestMessage.datas is requeired at least 1, threshold");
+        "PsRequestMessage.datas is required at least 1, threshold");
     return -1;
   }
   table->Flush();

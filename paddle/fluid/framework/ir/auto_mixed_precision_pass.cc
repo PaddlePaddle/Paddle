@@ -786,6 +786,8 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
           if (real_in_var_node->Var()->Persistable()) {
             real_in_var_node->Var()->SetDataType(
                 framework::TransToProtoVarType(low_precision_));
+            VLOG(4) << real_in_var_node->Var()->Name()
+                    << "'s data type was set to low precision";
             vars_convert_to_low_precision_.insert(in_var_name);
           }
         }
@@ -804,6 +806,8 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
 
           real_out_var_node->Var()->SetDataType(
               framework::TransToProtoVarType(low_precision_));
+          VLOG(4) << real_out_var_node->Var()->Name()
+                  << "'s data type was set to low precision";
           if (real_out_var_node->Var()->Persistable()) {
             vars_convert_to_low_precision_.insert(out_var_name);
           }
@@ -823,6 +827,8 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
       if (vars_convert_to_low_precision_.count(var_name)) {
         var_node->Var()->SetDataType(
             framework::TransToProtoVarType(low_precision_));
+        VLOG(4) << var_node->Var()->Name()
+                << "'s data type was set to low precision";
       }
     }
   }

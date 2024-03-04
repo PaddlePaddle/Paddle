@@ -144,6 +144,16 @@ void ArrayWriteInferMeta(const MetaTensor& array,
                          const MetaTensor& x,
                          MetaTensor* out,
                          MetaConfig config) {
+  if (array.dtype() != phi::DataType::UNDEFINED &&
+      x.dtype() != phi::DataType::UNDEFINED) {
+    PADDLE_ENFORCE_EQ(array.dtype(),
+                      x.dtype(),
+                      phi::errors::InvalidArgument(
+                          "The dtype (%s) of input x shall be same as "
+                          "dtype (%d) of array.",
+                          x.dtype(),
+                          array.dtype()));
+  }
   out->set_dtype(array.dtype());
   out->set_layout(array.layout());
 }
@@ -156,8 +166,8 @@ void ArrayReadInferMeta(const MetaTensor& array,
     out->set_dims({-1});
   } else {
     double index = i.to<int64_t>();
-    out->set_dims(array.dims(index));
-    out->share_lod(array, index);
+    out->set_dims(array.dims(index));  // NOLINT
+    out->share_lod(array, index);      // NOLINT
   }
   out->set_dtype(array.dtype());
   out->set_layout(array.layout());
@@ -3384,6 +3394,31 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void SwiGLUInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     MetaTensor* out) {
+  if (y) {
+    PADDLE_ENFORCE_EQ(
+        x.dims(),
+        y.dims(),
+        phi::errors::InvalidArgument(
+            "The shape of Input(X) should be equal of the shape of Input(Y)."));
+    out->share_meta(x);
+  } else {
+    auto dims = x.dims();
+    PADDLE_ENFORCE_EQ(
+        dims[dims.size() - 1] % 2,
+        0,
+        phi::errors::InvalidArgument(
+            "The last dim of Input(X) should be exactly divided by 2."));
+    dims[dims.size() - 1] /= 2;
+    out->set_dims(dims);
+    out->set_dtype(x.dtype());
+    out->set_layout(x.layout());
+    out->share_lod(x);
+  }
+}
+
 void UnpoolInferMeta(const MetaTensor& x,
                      const MetaTensor& indices,
                      const std::vector<int>& ksize,
@@ -3522,8 +3557,8 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                 dim_scale[0],
                                 (x.dims()[1] + (group_size - 1)) / group_size));
   }
-  int n = x.dims()[1];
-  int k = x.dims()[0];
+  int n = static_cast<int>(x.dims()[1]);
+  int k = static_cast<int>(x.dims()[0]);
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(out_dtype);
 }

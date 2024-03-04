@@ -14,15 +14,15 @@
 
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
 #include "glog/logging.h"  // For VLOG()
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-PD_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 

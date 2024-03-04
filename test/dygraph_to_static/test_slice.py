@@ -47,7 +47,7 @@ def test_slice_in_if(x):
     if x.numpy()[0] > 0:
         a.append(x)
     else:
-        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int32"))
+        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="float32"))
 
     if x.numpy()[0] > 0:
         a[0] = x
@@ -116,7 +116,7 @@ class TestSliceBase(Dy2StTestBase):
         self.dygraph_func = None
 
     def init_input(self):
-        self.input = np.random.random(3).astype('int32')
+        self.input = np.random.random(3).astype('float32')
 
     def init_dygraph_func(self):
         raise NotImplementedError(

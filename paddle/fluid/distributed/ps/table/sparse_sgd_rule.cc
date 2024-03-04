@@ -16,7 +16,7 @@
 
 #include "glog/logging.h"
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 PD_DEFINE_bool(enable_show_scale_gradient, true, "enable show scale gradient");
 

@@ -547,7 +547,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
               << ir_sch.GetModule().GetExprs().at(0);
       continue;
     }
-    // find master to computeat.
+    // find master to compute at.
     auto master = GetMasterToComputeAt(node,
                                        nodes_in_order,
                                        nodes_inline,

@@ -219,7 +219,7 @@ class TestDistSPSyncTraining(unittest.TestCase):
 
     def build_model_optimizer_train(
         self,
-        batchs,
+        batches,
         fp16=False,
         amp_level="O1",
         mp_sync_param=False,
@@ -271,14 +271,16 @@ class TestDistSPSyncTraining(unittest.TestCase):
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
-        return self.train_batch(batchs, model, optimizer, fp16, amp_level)
+        return self.train_batch(batches, model, optimizer, fp16, amp_level)
 
-    def train_batch(self, batchs, model, optimizer, fp16=False, amp_level="O1"):
+    def train_batch(
+        self, batches, model, optimizer, fp16=False, amp_level="O1"
+    ):
         losses = []
         if fp16:
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             scaler = fleet.distributed_scaler(scaler)
-        for batch in batchs:
+        for batch in batches:
             with paddle.amp.auto_cast(enable=fp16, level=amp_level):
                 output = model(batch)
                 loss = output.mean()
@@ -297,7 +299,7 @@ class TestDistSPSyncTraining(unittest.TestCase):
     def mp_sync_base(
         self, mp_sync_param=False, mp_sync_grad=False, mp_sync_moment=False
     ):
-        batchs = []
+        batches = []
         for _ in range(5):
             np_data = np.random.randint(
                 0,
@@ -307,11 +309,11 @@ class TestDistSPSyncTraining(unittest.TestCase):
                     seq_length,
                 ),
             )
-            batchs.append(paddle.to_tensor(np_data))
+            batches.append(paddle.to_tensor(np_data))
 
-        losses = self.build_model_optimizer_train(batchs)
+        losses = self.build_model_optimizer_train(batches)
         losses_sync = self.build_model_optimizer_train(
-            batchs,
+            batches,
             mp_sync_param=mp_sync_param,
             mp_sync_grad=mp_sync_grad,
             mp_sync_moment=mp_sync_moment,
@@ -323,9 +325,9 @@ class TestDistSPSyncTraining(unittest.TestCase):
             )
 
         # test fp16 O1
-        losses_fp16 = self.build_model_optimizer_train(batchs, fp16=True)
+        losses_fp16 = self.build_model_optimizer_train(batches, fp16=True)
         losses_sync_fp16 = self.build_model_optimizer_train(
-            batchs,
+            batches,
             fp16=True,
             mp_sync_param=mp_sync_param,
             mp_sync_grad=mp_sync_grad,
@@ -339,10 +341,10 @@ class TestDistSPSyncTraining(unittest.TestCase):
 
         # test fp16 O2
         losses_fp16_O2 = self.build_model_optimizer_train(
-            batchs, fp16=True, amp_level="O2"
+            batches, fp16=True, amp_level="O2"
         )
         losses_sync_fp16_O2 = self.build_model_optimizer_train(
-            batchs,
+            batches,
             fp16=True,
             amp_level="O2",
             mp_sync_param=mp_sync_param,

@@ -30,7 +30,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/flags.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_op.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr_inline);
 

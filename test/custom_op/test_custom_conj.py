@@ -41,10 +41,7 @@ custom_ops = load(
 
 
 def is_complex(dtype):
-    return (
-        dtype == paddle.base.core.VarDesc.VarType.COMPLEX64
-        or dtype == paddle.base.core.VarDesc.VarType.COMPLEX128
-    )
+    return dtype == paddle.complex64 or dtype == paddle.complex128
 
 
 def to_complex(dtype):

@@ -587,7 +587,7 @@ class TestPutAlongAxisOpMaxNotIncludeSelf(TestPutAlongAxisOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestPutAlongAxisBF16Op(OpTest):
     def setUp(self):
@@ -676,7 +676,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             np.put_along_axis(
                 self.x_np, self.index_np, self.value_np, self.axis
             )
-            # numpy put_along_axis is an inplace opearion.
+            # numpy put_along_axis is an inplace operation.
             out_ref = self.x_np
 
             for out in res:
@@ -740,7 +740,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPILargeCase(unittest.TestCase):
     def setUp(self):
@@ -983,7 +983,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
     def setUp(self):
@@ -1033,7 +1033,7 @@ class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
     def setUp(self):
@@ -1084,7 +1084,7 @@ class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
     def setUp(self):
@@ -1133,7 +1133,7 @@ class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
     def setUp(self):
@@ -1182,7 +1182,7 @@ class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulUint8(unittest.TestCase):
     def setUp(self):

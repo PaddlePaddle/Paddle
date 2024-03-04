@@ -57,7 +57,7 @@ class _InstanceNormBase(Layer):
     """
     This class is based class for InstanceNorm1D, 2d, 3d.
 
-    See InstaceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
+    See InstanceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
     """
 
     def __init__(
@@ -779,7 +779,7 @@ class _BatchNormBase(Layer):
         )
         self._variance.stop_gradient = True
 
-        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        # TODO(qili93): temporary for ascend npu performance to be removed along with npu_identity op
         if (
             _global_flags()['FLAGS_npu_storage_format']
             and 'npu' in get_all_custom_device_type()
@@ -935,17 +935,13 @@ class BatchNorm(Layer):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
             >>> import paddle.nn as nn
-            >>> from paddle.base.dygraph.base import to_variable
+            >>> import paddle
             >>> import numpy as np
 
-
-            >>> x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-            >>> with base.dygraph.guard():
-            ...     x = to_variable(x)
-            ...     batch_norm = nn.layer.norm.BatchNorm(10)
-            ...     hidden1 = batch_norm(x)
+            >>> x = paddle.rand(shape=(3, 10, 3, 7), dtype="float32")
+            >>> batch_norm = nn.BatchNorm(10)
+            >>> hidden1 = batch_norm(x)
     """
 
     def __init__(
@@ -1022,7 +1018,7 @@ class BatchNorm(Layer):
         )
         self._variance.stop_gradient = True
 
-        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        # TODO(qili93): temporary for ascend npu performance to be removed along with npu_identity op
         if (
             _global_flags()['FLAGS_npu_storage_format']
             and 'npu' in get_all_custom_device_type()
@@ -1161,7 +1157,7 @@ class BatchNorm(Layer):
 
 class BatchNorm1D(_BatchNormBase):
     r"""
-    Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
+    Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
@@ -1278,7 +1274,7 @@ class BatchNorm1D(_BatchNormBase):
 
 class BatchNorm2D(_BatchNormBase):
     r"""
-    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
+    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
@@ -1369,7 +1365,7 @@ class BatchNorm2D(_BatchNormBase):
 
 class BatchNorm3D(_BatchNormBase):
     r"""
-    Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
+    Applies Batch Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
@@ -1543,7 +1539,7 @@ class SyncBatchNorm(_BatchNormBase):
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of this layer. If it is set to None or one attribute of ParamAttr, this layerr
+             of this layer. If it is set to None or one attribute of ParamAttr, this layer
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with ones. If it is set to False,
              this layer will not have trainable scale parameter. Default: None.

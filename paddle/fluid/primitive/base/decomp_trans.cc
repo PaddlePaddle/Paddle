@@ -14,14 +14,17 @@
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/prim/utils/utils.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/fluid/primitive/base/primitive_ops.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/program.h"
 
-PHI_DECLARE_bool(prim_skip_dynamic);
+COMMON_DECLARE_bool(prim_skip_dynamic);
+COMMON_DECLARE_bool(prim_check_ops);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -37,25 +40,49 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.flatten",
                                                           "pd_op.batch_norm",
                                                           "pd_op.batch_norm_"};
+//
+std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
+                                                           "pd_op.unsqueeze"};
 
-static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
-  if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
+static bool has_dynamic_shape(const phi::DDim& dims) {
+  std::vector<int64_t> vec = common::vectorize<int64_t>(dims);
+  if (std::find(vec.begin(), vec.end(), -1) != vec.end()) {
     return true;
   } else {
     return false;
   }
 }
 
-static const phi::DDim& GetValueDims(pir::Value value) {
-  if (value.type().isa<DenseTensorType>()) {
-    return value.type().dyn_cast<DenseTensorType>().dims();
-  } else if (value.type().isa<SelectedRowsType>()) {
-    return value.type().dyn_cast<SelectedRowsType>().dims();
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "[Prim] Currently, we can only get shape for dense "
-        "tensor."));
+static const phi::DDim GetValueDims(pir::Value value) {
+  pir::Type origin_type = value.type();
+  if (!origin_type) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
   }
+  auto getdims = [](pir::Type value_type) -> phi::DDim {
+    if (value_type.isa<DenseTensorType>()) {
+      return value_type.dyn_cast<DenseTensorType>().dims();
+    } else if (value_type.isa<SelectedRowsType>()) {
+      return value_type.dyn_cast<SelectedRowsType>().dims();
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "[Prim] Currently, we can only get shape for dense "
+          "tensor."));
+    }
+  };
+  phi::DDim value_dim;
+  if (origin_type.isa<pir::VectorType>()) {
+    pir::VectorType types = origin_type.dyn_cast<pir::VectorType>();
+    // all tensor dim in VectorType must be the same, expect dynamic shape.
+    for (size_t idx = 0; idx < types.size(); idx++) {
+      value_dim = getdims(types[idx]);
+      if (has_dynamic_shape(value_dim)) {
+        return value_dim;
+      }
+    }
+  } else {
+    value_dim = getdims(origin_type);
+  }
+  return value_dim;
 }
 
 static phi::DataType GetValueDtype(pir::Value value) {
@@ -75,9 +102,8 @@ static phi::DataType GetValueDtype(pir::Value value) {
 static bool check_dynamic_shape(const pir::OpOperand& item,
                                 const pir::Operation& op) {
   auto dims = GetValueDims(item.source());
-  std::vector<int64_t> shape = common::vectorize<int64_t>(dims);
-  if (find_value(shape, -1)) {
-    VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << dims
+  if (has_dynamic_shape(dims)) {
+    VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << dims
             << "] in inputs of op " << op.name();
     return true;
   } else {
@@ -94,13 +120,36 @@ bool has_decomp_rule(const pir::Operation& op) {
   return true;
 }
 
+void DecompProgram::check_ops() {
+  auto primitives_set = GetPrimitiveOpNames();
+  std::set<std::string> undecomposed_set;
+  for (const auto& element : decomposed_prog_ops_set_) {
+    auto iter = primitives_set.find(element);
+    if (iter == primitives_set.end()) {
+      undecomposed_set.insert(element);
+    }
+  }
+  if (!undecomposed_set.empty()) {
+    std::string decomposed_ops_stream;
+    for (const auto& item : undecomposed_set) {
+      decomposed_ops_stream.append(" ");
+      decomposed_ops_stream.append(item);
+    }
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "[Prim] Currently, decomposed program "
+        "should not contain none primitive ops: %s .",
+        decomposed_ops_stream));
+  }
+  return;
+}
+
 bool DecompProgram::check_decomp_dynamic_shape(pir::Operation* op) {
   for (auto item : op->operands()) {
     auto value = item.source();
     // check if initialized in case of optional input.
     if (!paddle::dialect::IsEmptyValue(value)) {
       pir::Operation* prev_op = value.defining_op();
-      if (prev_op->name() == "builtin.combine") {
+      if (prev_op && prev_op->name() == "builtin.combine") {
         for (pir::OpOperand& sub_item : prev_op->operands()) {
           if (check_dynamic_shape(sub_item, *op)) {
             return true;
@@ -155,25 +204,41 @@ void DecompProgram::check_decomp_outputs(
 
       auto orig_dim = GetValueDims(orig_outs[i]);
       auto decomp_dim = GetValueDims(decomp_outs[i]);
-      std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
-      if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
-        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
+
+      PADDLE_ENFORCE(
+          orig_dim.size() == decomp_dim.size(),
+          paddle::platform::errors::PreconditionNotMet(
+              "[Prim] For op %s, its origin %d-index output rank of shape"
+              "[%s] is not equal to "
+              "decomp output rank of shape[%s] ",
+              op_name,
+              i,
+              orig_dim,
+              decomp_dim));
+
+      if (has_dynamic_shape(orig_dim)) {
+        VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
                 << "] in " << i << "-index output of origin op " << op_name;
       }
-      if (find_value(common::vectorize<int64_t>(decomp_dim), -1)) {
-        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
+      if (has_dynamic_shape(decomp_dim)) {
+        VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
                 << "] in " << i << "-index output of decomp op " << op_name;
       }
 
-      PADDLE_ENFORCE(orig_dim == decomp_dim,
-                     paddle::platform::errors::PreconditionNotMet(
-                         "[Prim] For op %s, its origin %d-index output shape "
-                         "[%s] is not equal to "
-                         "decomp output shape [%s] ",
-                         op_name,
-                         i,
-                         orig_dim,
-                         decomp_dim));
+      for (int j = 0; j < orig_dim.size(); j++) {
+        if (orig_dim[j] != -1 && decomp_dim[j] != -1) {
+          PADDLE_ENFORCE(
+              orig_dim[j] == decomp_dim[j],
+              paddle::platform::errors::PreconditionNotMet(
+                  "[Prim] For op %s, its origin %d-index output shape "
+                  "[%s] is not equal to "
+                  "decomp output shape [%s] ",
+                  op_name,
+                  i,
+                  orig_dim,
+                  decomp_dim));
+        }
+      }
     }
   }
   return;
@@ -275,25 +340,58 @@ void DecompProgram::decomp_program() {
   }
   std::ostringstream orig_prog_stream;
   program_->Print(orig_prog_stream);
-  // Todo: Use cout instead of VLOG in case of incomplete log.
-  VLOG(4) << "[Prim] Origin program before decomp :\n"
-          << orig_prog_stream.str();
+  if (VLOG_IS_ON(4)) {
+    std::cout << "[Prim] Origin program before decomp :\n"
+              << orig_prog_stream.str() << std::endl;
+  }
 
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return;
   }
   std::vector<pir::Value> tar_vars(src_vars_.size());
   pir::Block* block = program_->block();
+  decomp_block(block, orig_vars_dict, tar_vars);
+  std::ostringstream decomp_prog_stream;
+  program_->Print(decomp_prog_stream);
+  if (VLOG_IS_ON(4)) {
+    std::cout << "[Prim] New program after decomp :\n"
+              << decomp_prog_stream.str() << std::endl;
+  }
+  if (FLAGS_prim_check_ops) {
+    check_ops();
+  }
+  dst_vars_ = tar_vars;
+  return;
+}
+
+void DecompProgram::decomp_block(
+    pir::Block* block,
+    const std::unordered_map<pir::Value, int>& orig_vars_dict,
+    std::vector<pir::Value>& tar_vars) {  // NOLINT
   std::vector<pir::Operation*> ops_list;
   for (auto& op : *block) {
     ops_list.push_back(&op);
   }
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
+    if (op->name() == "pd_op.if") {
+      auto& sub_true_block = op->dyn_cast<dialect::IfOp>().true_block();
+      auto& sub_false_block = op->dyn_cast<dialect::IfOp>().false_block();
+      decomp_block(&sub_true_block, orig_vars_dict, tar_vars);
+      decomp_block(&sub_false_block, orig_vars_dict, tar_vars);
+    } else if (op->name() == "pd_op.while") {
+      auto& sub_body = op->dyn_cast<dialect::WhileOp>().body();
+      decomp_block(&sub_body, orig_vars_dict, tar_vars);
+    }
     bool enable_prim =
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
     if (enable_prim && FLAGS_prim_skip_dynamic &&
         check_decomp_dynamic_shape(op)) {
+      enable_prim = false;
+    }
+    if (enable_prim && check_decomp_dynamic_shape(op) &&
+        dynamic_shape_blacklist.find(op->name()) !=
+            dynamic_shape_blacklist.end()) {
       enable_prim = false;
     }
     if (enable_prim) {
@@ -323,6 +421,11 @@ void DecompProgram::decomp_program() {
       }
     }
   }
+  if (FLAGS_prim_check_ops) {
+    for (auto& op : *block) {
+      decomposed_prog_ops_set_.insert(op.name());
+    }
+  }
   for (size_t i = 0; i < tar_vars.size(); i++) {
     if (!tar_vars[i]) {
       tar_vars[i] = src_vars_[i];
@@ -330,12 +433,6 @@ void DecompProgram::decomp_program() {
   }
   auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
   builder.SetInsertionPointToBlockEnd(block);
-  std::ostringstream decomp_prog_stream;
-  program_->Print(decomp_prog_stream);
-  // Todo: Use cout instead of VLOG in case of incomplete log.
-  VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
-  dst_vars_ = tar_vars;
-  return;
 }
 
 }  // namespace paddle

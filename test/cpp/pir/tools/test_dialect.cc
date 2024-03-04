@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "test/cpp/pir/tools/test_dialect.h"
-#include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/include/core/ir_printer.h"
 #include "test/cpp/pir/tools/test_op.h"
 namespace test {
 

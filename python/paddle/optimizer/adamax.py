@@ -152,11 +152,11 @@ class Adamax(Optimizer):
         assert beta2 is not None
         assert epsilon is not None
         if not 0 <= beta1 < 1:
-            raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
+            raise ValueError("Invalid value of beta1, expect beta1 in [0,1).")
         if not 0 <= beta2 < 1:
-            raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
+            raise ValueError("Invalid value of beta2, expect beta2 in [0,1).")
         if not 0 <= epsilon:
-            raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
+            raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
         super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
@@ -197,12 +197,12 @@ class Adamax(Optimizer):
 
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -213,7 +213,7 @@ class Adamax(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

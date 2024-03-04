@@ -59,7 +59,7 @@ def get_action(is_dp, shard_split_param=False):
     return HOOK_ACTION.REDUCE
 
 
-# assume only the first stage and last stage need data, and data consumption is ordred
+# assume only the first stage and last stage need data, and data consumption is ordered
 # to be replaced by real micro dataset from reader
 class FakeMicroDataset:
     def __init__(
@@ -118,7 +118,7 @@ class FakeMicroDataset:
                         else None
                     )
                 elif data is not None:
-                    self._check_data_vaild(data)
+                    self._check_data_valid(data)
                     output.append(data[begin:end, :].detach())
                 else:
                     output.append(None)
@@ -133,12 +133,12 @@ class FakeMicroDataset:
             )
             return inputs[micro_step].detach()
         elif inputs is not None:
-            self._check_data_vaild(inputs)
+            self._check_data_valid(inputs)
             return inputs[begin:end, :].detach()
         else:
             return None
 
-    def _check_data_vaild(self, data):
+    def _check_data_valid(self, data):
         batch_size = data.shape[0]
         assert self._micro_batch_size * self._acc_steps == batch_size, (
             "batch_size needs to be divisible by micro_batch_size. Currently, "
@@ -170,7 +170,7 @@ class PipelineParallel(MetaParallelBase):
             'accumulate_steps'
         ]
         # If sent tensor are not the same from different hosts,
-        # they shouldn't been sent partially and then concated as a whole tensor.
+        # they shouldn't been sent partially and then concatenated as a whole tensor.
         self._enable_partial_send_recv = self._strategy.pipeline_configs[
             'enable_partial_send_recv'
         ]
@@ -198,7 +198,7 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].delay_scale_loss
         # TODO(PP Dev): support dp_comm_overlap without use_main_grad training.
-        # This combination will trigger inplace check error during `reshape_` in funct `_split_tensors`.
+        # This combination will trigger inplace check error during `reshape_` in function `_split_tensors`.
         self._dp_comm_overlap = self._strategy.hybrid_configs[
             "pp_configs"
         ].dp_comm_overlap
@@ -215,6 +215,12 @@ class PipelineParallel(MetaParallelBase):
         self._sharding_split_param = self._strategy.hybrid_configs[
             "sharding_configs"
         ].split_param
+
+        self._overlap_p2p_comm = self._strategy.hybrid_configs[
+            "pp_configs"
+        ].overlap_p2p_comm
+
+        self._batch_p2p_comm = not self._overlap_p2p_comm
 
         logger.info(
             f"dp_comm_overlap {self._dp_comm_overlap}; \
@@ -640,7 +646,7 @@ class PipelineParallel(MetaParallelBase):
 
     def _wrap_data(self, data):
         """
-        for backward compatibilty, wrap data to Fake FakeMicroDataset if it is of type list or tuple
+        for backward compatibility, wrap data to Fake FakeMicroDataset if it is of type list or tuple
         """
         if (not isinstance(data, tuple)) and (not isinstance(data, list)):
             return data
@@ -818,7 +824,7 @@ class PipelineParallel(MetaParallelBase):
         if self.is_pipeline_last_stage(ignore_virtual=True):
             assert (
                 self.total_loss is not None
-            ), "train_batch() in last stage should obtain vaild loss"
+            ), "train_batch() in last stage should obtain valid loss"
             loss = (
                 self.total_loss.detach()
                 if not self._delay_scale_loss
@@ -947,8 +953,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
         ), "virtual pipeline must run under pp degree > 2"
 
         assert (
-            self.accumulate_steps % self.num_stages == 0
-        ), "accumulate_steps should be evenly divisible by num_stages for pipeline with interleave"
+            self.accumulate_steps >= 2 * self.num_stages
+        ), "accumulate_steps({}) should be greater than or equal to 2 * num_stages({}) for pipeline with interleave".format(
+            self.accumulate_steps, self.num_stages
+        )
 
     def _reset_counter(self):
         for i in range(self.num_model_chunks):
@@ -996,10 +1004,20 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._reset_counter()
 
     def _get_virtual_pp_rank(self, micro_step, forward):
-        virtual_pp_stage = micro_step % (
-            self.num_stages * self.num_model_chunks
+        first_chunk_acc = (
+            self.accumulate_steps % self.num_stages + self.num_stages
         )
-        virtual_pp_stage = virtual_pp_stage // self.num_stages
+        first_chunk_steps = first_chunk_acc * self.num_model_chunks
+
+        if micro_step < first_chunk_steps:
+            virtual_pp_stage = micro_step // first_chunk_acc
+        else:
+            micro_step -= first_chunk_steps
+            virtual_pp_stage = micro_step % (
+                self.num_stages * self.num_model_chunks
+            )
+            virtual_pp_stage = virtual_pp_stage // self.num_stages
+
         if not forward:
             virtual_pp_stage = self.num_model_chunks - virtual_pp_stage - 1
         return virtual_pp_stage
@@ -1146,15 +1164,47 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self.micro_batch_id = 0
         self._forward_only = forward_only
 
-        # store the number of backward steps
-        assert (
-            self.accumulate_steps % self.num_stages == 0
-        ), "accumulate_steps({}) should be evenly divisible by num_stages({}) for pipeline with interleave".format(
-            self.accumulate_steps, self.num_stages
+        first_chunk_acc = (
+            self.accumulate_steps % self.num_stages + self.num_stages
         )
+        first_chunk_steps = first_chunk_acc * self.num_model_chunks
+        fwd_buffer_queue = queue.Queue()
+        bwd_buffer_queue = queue.Queue()
+        skip_steps = self.accumulate_steps % self.num_stages
+
+        left_id = skip_steps
+        right_id = left_id + first_chunk_acc * (self.num_model_chunks - 1)
+
+        def _process_fwd_buffer(step_id, tensor):
+            if step_id < first_chunk_steps:
+                if not self.is_pipeline_last_stage():
+                    fwd_buffer_queue.put(tensor)
+                if left_id <= step_id < right_id:
+                    tensor = fwd_buffer_queue.get()
+                else:
+                    tensor = None
+            else:
+                if self.is_pipeline_last_stage():
+                    tensor = None
+            return tensor
+
+        def _process_bwd_buffer(step_id, tensor):
+            if step_id < first_chunk_steps:
+                if not self.is_pipeline_first_stage():
+                    bwd_buffer_queue.put(tensor)
+                if left_id <= step_id < right_id:
+                    tensor = bwd_buffer_queue.get()
+                else:
+                    tensor = None
+            else:
+                if self.is_pipeline_first_stage():
+                    tensor = None
+            return tensor
+
         per_stage_accumulate_steps = self.accumulate_steps // self.num_stages
-        self._backward_step_count = (
-            -(per_stage_accumulate_steps - 1)
+        self._backward_step_count = -(
+            first_chunk_steps
+            + (per_stage_accumulate_steps - 2)
             * self.num_stages
             * self.num_model_chunks
         )
@@ -1176,7 +1226,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             # end_to_first_backward_cross = (self.num_stages - self.stage_id - 1)
             # startup_steps = first_forward_cross_to_end + end_to_first_backward_cross
             startup_steps = (self.num_stages - self.stage_id - 1) * 2
-            startup_steps += (self.num_model_chunks - 1) * self.num_stages
+            startup_steps += (self.num_model_chunks - 1) * first_chunk_acc
             startup_steps = min(startup_steps, num_steps)
 
         steady_steps = num_steps - startup_steps
@@ -1185,12 +1235,21 @@ class PipelineParallelWithInterleave(PipelineParallel):
         if not static_scheduler:
             self.input_tensors[0].append(
                 self._p2p_helper.recv_forward(
-                    self.is_pipeline_first_stage(), sync_recv=False
+                    self.is_pipeline_first_stage(),
+                    sync_recv=False,
+                    batch_p2p_comm=self._batch_p2p_comm,
                 )
             )
 
+        fwd_wait_handles = None
+        bwd_wait_handles = None
+
         # run startup steps
         for micro_step in range(startup_steps):
+            if fwd_wait_handles is not None:
+                for req in fwd_wait_handles:
+                    req.wait()
+
             if static_scheduler:
                 virtual_pp_rank = self._get_virtual_pp_rank(
                     micro_step, forward=True
@@ -1223,42 +1282,80 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 recv_prev = False
 
             # last stage shouldn't send tensor to downstream
-            if self.is_pipeline_last_stage():
-                output_tensor = None
+            if self.is_pipeline_last_stage(ignore_virtual=True):
+                output_tensor = _process_fwd_buffer(micro_step, output_tensor)
 
-            # prepare for the first steady step
-            if (
-                micro_step == (startup_steps - 1)
-                and (not forward_only)
-                and steady_steps
-            ):
-                input_tensor_grad = None
-                recv_next = True
-                if self.is_pipeline_last_stage(ignore_virtual=True):
-                    recv_next = False
+            if not self._overlap_p2p_comm:
+                # prepare for the first steady step
+                if (
+                    micro_step == (startup_steps - 1)
+                    and (not forward_only)
+                    and steady_steps
+                ):
+                    input_tensor_grad = None
+                    recv_next = True
+                    if self.is_pipeline_last_stage(ignore_virtual=True):
+                        recv_next = False
 
-                # the last startup step needs on four direction comm to set up for steady 1f1b
+                    # the last startup step needs on four direction comm to set up for steady 1f1b
+                    (
+                        input_tensor,
+                        output_tensor_grad,
+                    ) = self._p2p_helper.send_forward_backward_recv_forward_backward(
+                        output_tensor,
+                        input_tensor_grad,
+                        recv_prev=recv_prev,
+                        recv_next=recv_next,
+                        batch_p2p_comm=self._batch_p2p_comm,
+                    )
+                    # output_tensor_grad is not none if recv_next
+                    # append output_tensor_grad no matter none or not
+                    self.output_tensor_grads[self.num_model_chunks - 1].append(
+                        output_tensor_grad
+                    )
+                else:
+                    input_tensor = self._p2p_helper.send_forward_recv_forward(
+                        output_tensor,
+                        recv_prev=recv_prev,
+                        batch_p2p_comm=self._batch_p2p_comm,
+                    )
+                # append input_tensor no matter none or not
+                self.input_tensors[next_virtual_pp_rank].append(input_tensor)
+            else:
                 (
                     input_tensor,
-                    output_tensor_grad,
-                ) = self._p2p_helper.send_forward_backward_recv_forward_backward(
+                    fwd_wait_handles,
+                ) = self._p2p_helper.send_forward_recv_forward(
                     output_tensor,
-                    input_tensor_grad,
                     recv_prev=recv_prev,
-                    recv_next=recv_next,
+                    batch_p2p_comm=self._batch_p2p_comm,
+                    overlap_p2p_comm=True,
                 )
-                # output_tensor_grad is not none if recv_next
-                # append output_tensor_grad no matter none or not
-                self.output_tensor_grads[self.num_model_chunks - 1].append(
-                    output_tensor_grad
-                )
-            else:
-                input_tensor = self._p2p_helper.send_forward_recv_forward(
-                    output_tensor, recv_prev=recv_prev
-                )
-            # append input_tensor no matter none or not
-            self.input_tensors[next_virtual_pp_rank].append(input_tensor)
+                if (
+                    micro_step == (startup_steps - 1)
+                    and (not forward_only)
+                    and steady_steps
+                ):
+                    input_tensor_grad = None
+                    recv_next = True
+                    if self.is_pipeline_last_stage(ignore_virtual=True):
+                        recv_next = False
 
+                    (
+                        output_tensor_grad,
+                        bwd_wait_handles,
+                    ) = self._p2p_helper.send_backward_recv_backward(
+                        input_tensor_grad,
+                        recv_next=recv_next,
+                        batch_p2p_comm=self._batch_p2p_comm,
+                        overlap_p2p_comm=True,
+                    )
+                    self.output_tensor_grads[self.num_model_chunks - 1].append(
+                        output_tensor_grad
+                    )
+
+                # append input_tensor no matter none or not
+                self.input_tensors[next_virtual_pp_rank].append(input_tensor)
             self._release_output(output_tensor)
 
         # run 1f1b steady steps
@@ -1295,81 +1392,186 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 continue
             # forward
             forward_micro_step_id = micro_step + startup_steps
-            self._record_stamp("F", forward_micro_step_id, '"B"', forward=True)
-            output_tensor = self._forward_step_helper(
-                micro_dataset, forward_micro_step_id
-            )
-            self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
 
-            # backward
-            backward_micro_step_id = micro_step
-            self._record_stamp(
-                "B", backward_micro_step_id, '"B"', forward=False
-            )
-            input_tensor_grad = self._backward_step_helper(
-                backward_micro_step_id
-            )
-            self._record_stamp(
-                "B", backward_micro_step_id, '"E"', forward=False
-            )
+            if self._overlap_p2p_comm:
+                if fwd_wait_handles is not None:
+                    for req in fwd_wait_handles:
+                        req.wait()
 
-            # four directions comm
-            # send output tensor to downstream
-            # send input tensor grad to upstream
-            # recv input tensor from upstream
-            # recv output tensor grad from downstream
+                self._release_output(output_tensor)
+                output_tensor = self._forward_step_helper(
+                    micro_dataset, forward_micro_step_id
+                )
 
-            # last stage doesn't send rst to downstream
-            forward_virtual_pp_rank = self._get_virtual_pp_rank(
-                forward_micro_step_id, forward=True
-            )
-            self.set_virtual_pipeline_rank(forward_virtual_pp_rank)
-            if self.is_pipeline_last_stage():
-                output_tensor = None
+                forward_virtual_pp_rank = self._get_virtual_pp_rank(
+                    forward_micro_step_id, forward=True
+                )
+                self.set_virtual_pipeline_rank(forward_virtual_pp_rank)
+                if self.is_pipeline_last_stage(ignore_virtual=True):
+                    output_tensor = _process_fwd_buffer(
+                        forward_micro_step_id, output_tensor
+                    )
 
-            # first stage doesn't send grad to upstream
-            backward_virtual_pp_rank = self._get_virtual_pp_rank(
-                backward_micro_step_id, forward=False
-            )
-            self.set_virtual_pipeline_rank(backward_virtual_pp_rank)
-            if self.is_pipeline_first_stage():
-                input_tensor_grad = None
+                # determine whether to recv input tensor from upstream
+                recv_prev = True
+                if self.is_pipeline_first_stage(ignore_virtual=True):
+                    next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
+                        forward_micro_step_id + 1, forward=True
+                    )
+                    if next_forward_virtual_pp_rank == 0:
+                        # next chunk is the first chunk, not need to pre recv an input tensor
+                        recv_prev = False
+                else:
+                    next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
+                        forward_micro_step_id + 1, forward=True
+                    )
 
-            # determine whether to recv input tensor from upstream
-            recv_prev = True
-            next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
-                forward_micro_step_id + 1, forward=True
-            )
-            if self.is_pipeline_first_stage(ignore_virtual=True) and (
-                next_forward_virtual_pp_rank == 0
-            ):
-                # first pp stage and first virtual stage
-                recv_prev = False
+                # last iteration doesn't need recv from upstream
+                if micro_step == (steady_steps - 1):
+                    recv_prev = False
 
-            # last iteration doesn't need recv from upstream
-            if micro_step == (steady_steps - 1):
-                recv_prev = False
+                # Send activation tensor to the next stage and receive activation tensor from the
+                # previous stage
+                (
+                    input_tensor,
+                    fwd_wait_handles,
+                ) = self._p2p_helper.send_forward_recv_forward(
+                    output_tensor,
+                    recv_prev=recv_prev,
+                    batch_p2p_comm=self._batch_p2p_comm,
+                    overlap_p2p_comm=True,
+                )
 
-            # determine whether to recv grad from downstream
-            recv_next = True
-            next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
-                backward_micro_step_id + 1, forward=False
-            )
-            if self.is_pipeline_last_stage(ignore_virtual=True) and (
-                next_backward_virtual_pp_rank == (self.num_model_chunks - 1)
-            ):
-                # last pp stage and last virtual stage
-                recv_next = False
+                if bwd_wait_handles is not None:
+                    for req in bwd_wait_handles:
+                        req.wait()
 
-            (
-                input_tensor,
-                output_tensor_grad,
-            ) = self._p2p_helper.send_forward_backward_recv_forward_backward(
-                output_tensor,
-                input_tensor_grad,
-                recv_prev=recv_prev,
-                recv_next=recv_next,
-            )
+                # backward pass
+                backward_micro_step_id = micro_step
+                input_tensor_grad = self._backward_step_helper(
+                    backward_micro_step_id
+                )
+
+                # first stage doesn't send grad to upstream
+                backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                    backward_micro_step_id, forward=False
+                )
+                self.set_virtual_pipeline_rank(backward_virtual_pp_rank)
+                if self.is_pipeline_first_stage(ignore_virtual=True):
+                    input_tensor_grad = _process_bwd_buffer(
+                        backward_micro_step_id, input_tensor_grad
+                    )
+
+                recv_next = True
+                if self.is_pipeline_last_stage(ignore_virtual=True):
+                    next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                        backward_micro_step_id + 1,
+                        forward=False,
+                    )
+                    if next_backward_virtual_pp_rank == (
+                        self.num_model_chunks - 1
+                    ):
+                        # next chunk is the last chunk, not need to pre recv an output tensor grad
+                        recv_next = False
+                else:
+                    next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                        backward_micro_step_id + 1, forward=False
+                    )
+
+                (
+                    output_tensor_grad,
+                    bwd_wait_handles,
+                ) = self._p2p_helper.send_backward_recv_backward(
+                    input_tensor_grad,
+                    recv_next=recv_next,
+                    batch_p2p_comm=self._batch_p2p_comm,
+                    overlap_p2p_comm=True,
+                )
+            else:
+                self._record_stamp(
+                    "F", forward_micro_step_id, '"B"', forward=True
+                )
+                output_tensor = self._forward_step_helper(
+                    micro_dataset, forward_micro_step_id
+                )
+                self._record_stamp(
+                    "F", forward_micro_step_id, '"E"', forward=True
+                )
+
+                # backward
+                backward_micro_step_id = micro_step
+                self._record_stamp(
+                    "B", backward_micro_step_id, '"B"', forward=False
+                )
+                input_tensor_grad = self._backward_step_helper(
+                    backward_micro_step_id
+                )
+                self._record_stamp(
+                    "B", backward_micro_step_id, '"E"', forward=False
+                )
+
+                # four directions comm
+                # send output tensor to downstream
+                # send input tensor grad to upstream
+                # recv input tensor from upstream
+                # recv output tensor grad from downstream
+
+                # last stage doesn't send rst to downstream
+                forward_virtual_pp_rank = self._get_virtual_pp_rank(
+                    forward_micro_step_id, forward=True
+                )
+                self.set_virtual_pipeline_rank(forward_virtual_pp_rank)
+                if self.is_pipeline_last_stage(ignore_virtual=True):
+                    output_tensor = _process_fwd_buffer(
+                        forward_micro_step_id, output_tensor
+                    )
+
+                # first stage doesn't send grad to upstream
+                backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                    backward_micro_step_id, forward=False
+                )
+                self.set_virtual_pipeline_rank(backward_virtual_pp_rank)
+                if self.is_pipeline_first_stage(ignore_virtual=True):
+                    input_tensor_grad = _process_bwd_buffer(
+                        backward_micro_step_id, input_tensor_grad
+                    )
+
+                # determine whether to recv input tensor from upstream
+                recv_prev = True
+                next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
+                    forward_micro_step_id + 1, forward=True
+                )
+                if self.is_pipeline_first_stage(ignore_virtual=True) and (
+                    next_forward_virtual_pp_rank == 0
+                ):
+                    # first pp stage and first virtual stage
+                    recv_prev = False
+
+                # last iteration doesn't need recv from upstream
+                if micro_step == (steady_steps - 1):
+                    recv_prev = False
+
+                # determine whether to recv grad from downstream
+                recv_next = True
+                next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                    backward_micro_step_id + 1, forward=False
+                )
+                if self.is_pipeline_last_stage(ignore_virtual=True) and (
+                    next_backward_virtual_pp_rank == (self.num_model_chunks - 1)
+                ):
+                    # last pp stage and last virtual stage
+                    recv_next = False
+
+                (
+                    input_tensor,
+                    output_tensor_grad,
+                ) = self._p2p_helper.send_forward_backward_recv_forward_backward(
+                    output_tensor,
+                    input_tensor_grad,
+                    recv_prev=recv_prev,
+                    recv_next=recv_next,
+                    batch_p2p_comm=self._batch_p2p_comm,
+                )
             # append input_tensor no matter none or not
             self.input_tensors[next_forward_virtual_pp_rank].append(
                 input_tensor
@@ -1380,15 +1582,21 @@ class PipelineParallelWithInterleave(PipelineParallel):
             )
             self._release_output(output_tensor)
 
+        assert fwd_buffer_queue.empty(), "forward buffer should be empty"
         if not static_scheduler:
             self._release_output(output_tensor)
 
         # remaining backward steps
         if not forward_only:
+            if self._overlap_p2p_comm and bwd_wait_handles is not None:
+                for wait_handles in bwd_wait_handles:
+                    wait_handles.wait()
+
             # no steady steps, which only occurs when accumulate_step == num_stage
             if not steady_steps:
                 output_tensor_grad = p2p.recv_backward(
-                    self.is_pipeline_last_stage()
+                    self.is_pipeline_last_stage(),
+                    batch_p2p_comm=self._batch_p2p_comm,
                 )
                 self.output_tensor_grads[self.num_model_chunks - 1].append(
                     output_tensor_grad
@@ -1424,10 +1632,18 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
                 if micro_step == (num_steps - 1):
                     recv_next = False
+
+                if self.is_pipeline_first_stage(ignore_virtual=True):
+                    input_tensor_grad = _process_bwd_buffer(
+                        micro_step, input_tensor_grad
+                    )
+
                 # append output_tensor_grad no matter none or not
                 self.output_tensor_grads[next_backward_virtual_pp_rank].append(
                     self._p2p_helper.send_backward_recv_backward(
-                        input_tensor_grad, recv_next=recv_next
+                        input_tensor_grad,
+                        recv_next=recv_next,
+                        batch_p2p_comm=self._batch_p2p_comm,
                     )
                 )
 
@@ -1445,6 +1661,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         self._flush_records()
 
+        assert bwd_buffer_queue.empty(), "backward buffer should be empty"
         if compute_loss:
             # return loss if compute loss
             if self._enable_timer:

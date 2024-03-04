@@ -20,10 +20,10 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/type.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/type.h"
 
 template <typename IR_TYPE>
 void test_parameterless_type() {
@@ -51,7 +51,7 @@ void test_parameterless_type_helper() {
                                    (test_parameterless_type<IR_TYPE>(), 0)...};
 }
 
-TEST(TypeConverterTest, paramterless_type) {
+TEST(TypeConverterTest, parameterless_type) {
   test_parameterless_type_helper<pir::UInt8Type,
                                  pir::Int8Type,
                                  pir::BFloat16Type,

@@ -127,6 +127,7 @@ class TestWriteContainer(Dy2StTestBase):
         self.assertEqual(out_static, out_dygraph)
 
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_write_container(self):
         func_static = paddle.jit.to_static(self.func)
         input = paddle.to_tensor([1, 2, 3])
