@@ -16,6 +16,7 @@
 
 #include <string>
 #include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule_block_graph.h"
 
@@ -71,11 +72,41 @@ struct BucketInfo {
   int rb_upper_bound = UINT_MAX;
 };
 
+struct GroupTileInfo {
+  GroupTileInfo() {}
+
+  std::vector<int64_t> reduce_axis_;
+  int64_t data_rank;
+
+  int64_t block_num{-1};
+  int64_t warp_num;
+  int64_t spatial_inner_num;
+  int64_t reduce_numel;
+  int64_t reduce_inner_num;
+  int64_t reduce_block;
+
+  std::set<std::string> reduce_tensor_names;
+  std::set<std::string> temp_var_names;
+
+  std::set<std::string> shared_var_names;
+  std::set<std::string> direct_output_var_names;
+  std::vector<std::string> thread_sync_before_names;
+
+  ReduceMethod reduce_method{NoneReduceMethod()};
+
+  std::unordered_map<std::string, BroadcastInfo> broadcast_info;
+  std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
+};
+
 struct ScheduleContext {
+  // TODO(BiynXu): Unify fields with similar meanings
   std::unordered_set<std::string> output_names;
   Target target;
   IterativeSpaceInfo iter_space_info;
   BucketInfo bucket_info;
+  // Will tile information be modified during the schedule process?
+  // If so, it is necessary to store a separate copy for each context
+  std::shared_ptr<GroupTileInfo> group_tile_info;
 };
 
 class ScheduleTactic {

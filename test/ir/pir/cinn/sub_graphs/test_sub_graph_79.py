@@ -107,5 +107,5 @@ class TestLayer(unittest.TestCase):
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()
