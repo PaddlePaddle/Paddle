@@ -3276,8 +3276,8 @@ void ExpandOp::Build(pir::Builder &builder,
 
 bool ExpandOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto x_shape_or_data = shape_analysis->GetShapeOrDataForValue(x());
-  const auto expand_shape_shape_or_data =
+  const auto &x_shape_or_data = shape_analysis->GetShapeOrDataForValue(x());
+  const auto &expand_shape_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(shape());
 
   const std::vector<symbol::DimExpr> &x_dims = [&] {
@@ -3292,12 +3292,23 @@ bool ExpandOp::InferSymbolicShape(
 
   const std::vector<symbol::DimExpr> &expand_shape = [&] {
     std::vector<symbol::DimExpr> dims;
-    if (expand_shape_shape_or_data.data().has_value()) {
-      dims = expand_shape_shape_or_data.data().value();
-    } else {
-      dims = expand_shape_shape_or_data.shape();
-    }
 
+    if (expand_shape_shape_or_data
+            .isa<symbol::TensorListShapeOrDataDimExprs>()) {
+      const auto &dims_list =
+          expand_shape_shape_or_data
+              .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+      for (const auto &shape_data : dims_list) {
+        const auto &dim_expr = shape_data.data().has_value()
+                                   ? shape_data.data().value()[0]
+                                   : shape_data.shape()[0];
+        dims.emplace_back(dim_expr);
+      }
+    } else {
+      dims = expand_shape_shape_or_data.data().has_value()
+                 ? expand_shape_shape_or_data.data().value()
+                 : expand_shape_shape_or_data.shape();
+    }
     if (dims.empty()) {
       dims = std::vector<symbol::DimExpr>(x_dims.size(), -1);
     }

@@ -218,6 +218,16 @@
     func : c_identity
   inplace : (x -> out)
 
+- op : c_reduce_max
+  args : (Tensor x, int ring_id, int root_id, bool use_calc_stream)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_reduce_max
+  inplace : (x -> out)
+
 - op : c_reduce_min
   args : (Tensor x, int ring_id, int root_id, bool use_calc_stream)
   output : Tensor(out)
@@ -226,6 +236,16 @@
     param : [x]
   kernel :
     func : c_reduce_min
+  inplace : (x -> out)
+
+- op : c_reduce_prod
+  args : (Tensor x, int ring_id, int root_id, bool use_calc_stream)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_reduce_prod
   inplace : (x -> out)
 
 - op : c_reduce_sum

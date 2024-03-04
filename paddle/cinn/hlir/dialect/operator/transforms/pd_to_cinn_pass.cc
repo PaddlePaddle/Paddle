@@ -740,7 +740,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
 }
 
 bool PdOpToCinnOpPass::CanApplyOn(pir::Operation *op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  return op->num_regions() > 0;
 }
 
 std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass() {

@@ -177,6 +177,22 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+    phi::KernelKey any_layout_kernel_key(
+        kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+    kernel_iter = iter->second.find(any_layout_kernel_key);
+  }
+
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+    kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                     phi::DataLayout::ALL_LAYOUT,
+                                     kernel_key.dtype()});
+  }
+#endif
+
   if (kernel_iter == iter->second.end()) {
     return false;
   }

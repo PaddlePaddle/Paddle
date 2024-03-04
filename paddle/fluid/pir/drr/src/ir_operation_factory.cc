@@ -65,33 +65,33 @@ void OperationFactory::RegisterManualOpCreator() {
 
 pir::Attribute CreateIrAttribute(const std::any& obj) {
   if (obj.type() == typeid(bool)) {
-    return IrAttrbuteCreator<bool>()(std::any_cast<bool>(obj));
+    return IrAttributeCreator<bool>()(std::any_cast<bool>(obj));
   } else if (obj.type() == typeid(int32_t)) {
-    return IrAttrbuteCreator<int32_t>()(std::any_cast<int32_t>(obj));
+    return IrAttributeCreator<int32_t>()(std::any_cast<int32_t>(obj));
   } else if (obj.type() == typeid(int64_t)) {
-    return IrAttrbuteCreator<int64_t>()(std::any_cast<int64_t>(obj));
+    return IrAttributeCreator<int64_t>()(std::any_cast<int64_t>(obj));
   } else if (obj.type() == typeid(float)) {
-    return IrAttrbuteCreator<float>()(std::any_cast<float>(obj));
+    return IrAttributeCreator<float>()(std::any_cast<float>(obj));
   } else if (obj.type() == typeid(std::string)) {
-    return IrAttrbuteCreator<std::string>()(std::any_cast<std::string>(obj));
+    return IrAttributeCreator<std::string>()(std::any_cast<std::string>(obj));
   } else if (obj.type() == typeid(const char*)) {
-    return IrAttrbuteCreator<std::string>()(std::any_cast<const char*>(obj));
+    return IrAttributeCreator<std::string>()(std::any_cast<const char*>(obj));
   } else if (obj.type() == typeid(phi::DataType)) {
-    return IrAttrbuteCreator<phi::DataType>()(
+    return IrAttributeCreator<phi::DataType>()(
         std::any_cast<phi::DataType>(obj));
   } else if (obj.type() == typeid(phi::Place)) {
-    return IrAttrbuteCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
+    return IrAttributeCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
   } else if (obj.type() == typeid(std::vector<int32_t>)) {  // NOLINT
-    return IrAttrbuteCreator<std::vector<int32_t>>()(
+    return IrAttributeCreator<std::vector<int32_t>>()(
         std::any_cast<std::vector<int32_t>>(obj));
   } else if (obj.type() == typeid(std::vector<int64_t>)) {
-    return IrAttrbuteCreator<std::vector<int64_t>>()(
+    return IrAttributeCreator<std::vector<int64_t>>()(
         std::any_cast<std::vector<int64_t>>(obj));
   } else if (obj.type() == typeid(std::vector<float>)) {
-    return IrAttrbuteCreator<std::vector<float>>()(
+    return IrAttributeCreator<std::vector<float>>()(
         std::any_cast<std::vector<float>>(obj));
   } else if (obj.type() == typeid(phi::IntArray)) {
-    return IrAttrbuteCreator<phi::IntArray>()(
+    return IrAttributeCreator<phi::IntArray>()(
         std::any_cast<phi::IntArray>(obj));
   } else {
     PADDLE_THROW(
