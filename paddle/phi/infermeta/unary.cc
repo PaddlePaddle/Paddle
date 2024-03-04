@@ -738,7 +738,12 @@ void CropInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+void CScatterInferMeta(const MetaTensor& x,
+                       int ring_id,
+                       int root,
+                       int nranks,
+                       bool use_calc_stream,
+                       MetaTensor* out) {
   auto dim = x.dims();
   dim[0] = dim[0] / nranks;
   if (dim[0] < 0) dim[0] = -1;
