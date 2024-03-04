@@ -631,6 +631,12 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     // Interface
     auto scope = std::make_shared<cinn::hlir::framework::Scope>();
     auto* program = fusion_op->GetParentProgram();
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+        fusion_op->GetParentProgram());
+
+    VLOG(4) << "Program before lowering: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
+
     auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
         *program, target, scope);
     auto group = RebuildGroup(fusion_op);
@@ -638,8 +644,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
     // so a mapping is required.
 
-    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-        fusion_op->GetParentProgram());
     group->set_value_to_shape_or_data_exprs(
         CreateGroupShapeOrDataExprs(group, shape_analysis));
     if (FLAGS_cinn_enable_map_expr) {

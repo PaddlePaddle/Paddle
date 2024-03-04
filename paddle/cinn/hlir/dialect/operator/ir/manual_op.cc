@@ -99,7 +99,7 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   printer.PrintOpReturnType(op);
   os << " {";
   for (auto& sub_op : GetOperators()) {
-    os << "\n";
+    os << "\n  ";
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
@@ -164,7 +164,7 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   printer.PrintOpReturnType(op);
   os << " {";
   for (auto& sub_op : GetOperators()) {
-    os << "\n";
+    os << "\n  ";
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
