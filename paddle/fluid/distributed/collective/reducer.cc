@@ -846,19 +846,16 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         }
 
         group_tensor
-            .ShareDataWith(*(
-                std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl())))
+            .ShareDataWith(*(std::dynamic_pointer_cast<phi::DenseTensor>(
+                grad_tensor.impl())))
             .Resize({grad_tensor.numel()});
       } else {
         VLOG(3) << "Tensor[" << tensors_[var_index].name()
                 << "] doesn't have grad";
-        if (!group_tensor.initialized()) {
-          group_tensor.Resize({static_cast<int64_t>(length)});
-          group_tensor.mutable_data(inner_place_, group.dtype_);
-        }
         auto *dev_ctx =
             platform::DeviceContextPool::Instance().Get(inner_place_);
         group_tensor.Resize({static_cast<int64_t>(length)});
+        dev_ctx->Alloc(&group_tensor, group.dtype_);
         phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0f);
       }
     } else {
