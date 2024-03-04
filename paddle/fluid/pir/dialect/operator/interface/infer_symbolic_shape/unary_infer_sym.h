@@ -22,5 +22,25 @@ bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
                                 pir::ShapeConstraintIRAnalysis *shape_analysis);
 bool ArgminOpInferSymbolicShape(pir::Operation *op,
                                 pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool AsComplexOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool AsRealOpInferSymbolicShape(pir::Operation *op,
+                                pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool CummaxOpInferSymbolicShape(pir::Operation *op,
+                                pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool CumminOpInferSymbolicShape(pir::Operation *op,
+                                pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool CumprodOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool Cumprod_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool CumsumOpInferSymbolicShape(pir::Operation *op,
+                                pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool Cumsum_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool ReshapeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool Reshape_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 
 }  // namespace paddle::dialect

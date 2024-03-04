@@ -3549,7 +3549,19 @@
   outputs :
     out: Out
 
+- op: c_reduce_max
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_reduce_min
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_prod
   inputs :
     x : X
   outputs :
