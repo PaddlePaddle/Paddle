@@ -82,9 +82,6 @@ bool EmbeddingOpInferSymbolicShape(
 bool SparseWeightEmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 
-bool ExpandOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
 bool MatmulOpInferSymbolicShape(pir::Operation *op,
                                 pir::ShapeConstraintIRAnalysis *shape_analysis);
 
@@ -113,11 +110,6 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis);
 
 //  Not Impelmented Ops.
-
-bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ArgminOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
 
 bool AsComplexOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
@@ -210,5 +202,6 @@ bool UniformOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 bool UniqueOpInferSymbolicShape(pir::Operation *op,
                                 pir::ShapeConstraintIRAnalysis *shape_analysis);
-
+bool FullWithTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 }  // namespace paddle::dialect

@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -51,12 +52,13 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   const auto& y_shape = shape_analysis.GetShapeOrDataForValue(y);
   const auto& out_shape = shape_analysis.GetShapeOrDataForValue(op->result(0));
 
-  bool has_insert_broadcast = false;
+  if (x_shape == y_shape) {
+    return false;
+  }
 
   pir::Value output_dim_tensor = GetOutputDimTensor(rewriter, x, y);
   if (x_shape.shape() != out_shape.shape() ||
       x_shape.data() != out_shape.data()) {
-    has_insert_broadcast = true;
     pir::Value broadcasted_x =
         rewriter->Build<paddle::dialect::ExpandOp>(x, output_dim_tensor).out();
     op->operand(0).set_source(broadcasted_x);
@@ -64,13 +66,12 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   }
   if (y_shape.shape() != out_shape.shape() ||
       y_shape.data() != out_shape.data()) {
-    has_insert_broadcast = true;
     pir::Value broadcasted_y =
         rewriter->Build<paddle::dialect::ExpandOp>(y, output_dim_tensor).out();
     op->operand(1).set_source(broadcasted_y);
     shape_analysis.SetShapeOrDataForValue(broadcasted_y, out_shape);
   }
-  return has_insert_broadcast;
+  return true;
 }
 
 }  // namespace
@@ -120,7 +121,7 @@ class InsertBroadcastPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
   }
 };
 
