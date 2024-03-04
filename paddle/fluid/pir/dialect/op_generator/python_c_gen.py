@@ -83,7 +83,12 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         before_insertion_iterator++;
         pir::InsertionPoint after_insertion_point =
             paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-        PADDLE_ENFORCE_EQ(before_insertion_point.first,after_insertion_point.first);
+        PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
         auto after_insertion_iterator = after_insertion_point.second;
         for (auto block_iterator = before_insertion_iterator;
             block_iterator != after_insertion_iterator;
@@ -122,7 +127,12 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         before_insertion_iterator++;
         pir::InsertionPoint after_insertion_point =
             paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-        PADDLE_ENFORCE_EQ(before_insertion_point.first,after_insertion_point.first);
+        PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
         auto after_insertion_iterator = after_insertion_point.second;
         for (auto block_iterator = before_insertion_iterator;
             block_iterator != after_insertion_iterator;
@@ -173,7 +183,12 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         before_insertion_iterator++;
         pir::InsertionPoint after_insertion_point =
             paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-        PADDLE_ENFORCE_EQ(before_insertion_point.first,after_insertion_point.first);
+        PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
         auto after_insertion_iterator = after_insertion_point.second;
         for (auto block_iterator = before_insertion_iterator;
             block_iterator != after_insertion_iterator;

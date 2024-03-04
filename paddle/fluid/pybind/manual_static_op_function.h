@@ -54,8 +54,12 @@ static PyObject *static_api_parameter(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -96,8 +100,12 @@ static PyObject *static_api_set_parameter(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -138,8 +146,12 @@ static PyObject *static_api_set_persistable_value(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -272,8 +284,12 @@ static PyObject *static_api_create_array(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -314,8 +330,12 @@ static PyObject *static_api_create_array_like(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -353,8 +373,12 @@ static PyObject *static_api_array_length(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -404,8 +428,12 @@ static PyObject *static_api_array_read(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -456,8 +484,12 @@ static PyObject *static_api_array_write_(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -513,8 +545,12 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -551,8 +587,12 @@ PyObject *static_api_add_n_array(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -620,8 +660,12 @@ static PyObject *static_api_slice_array(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -674,8 +718,12 @@ static PyObject *static_api_slice_array_dense(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -1091,8 +1139,12 @@ static PyObject *static_api_fused_gemm_epilogue(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
@@ -1131,8 +1183,12 @@ static PyObject *static_api_array_pop(PyObject *self,
     before_insertion_iterator++;
     pir::InsertionPoint after_insertion_point =
         paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-    PADDLE_ENFORCE_EQ(before_insertion_point.first,
-                      after_insertion_point.first);
+    PADDLE_ENFORCE_EQ(
+        before_insertion_point.first,
+        after_insertion_point.first,
+        platform::errors::PreconditionNotMet(
+            "The block before the operator is inserted is not the same as the "
+            "block after the operator is inserted."));
     auto after_insertion_iterator = after_insertion_point.second;
     for (auto block_iterator = before_insertion_iterator;
          block_iterator != after_insertion_iterator;
