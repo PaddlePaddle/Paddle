@@ -280,7 +280,8 @@ def dtensor_from_local(local_tensor, mesh, placements):
         dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
             local_tensor.type(), global_dims, mesh, dims_mapping
         )
-        return local_tensor.set_type(dist_dense_tensor_type)
+        local_tensor.set_type(dist_dense_tensor_type)
+        return local_tensor
     else:
         raise RuntimeError(
             "dtensor_from_local() are only supported in dynamic or pir mode."

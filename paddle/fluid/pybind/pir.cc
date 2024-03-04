@@ -854,7 +854,49 @@ void BindValue(py::module *m) {
                  BoolAttribute::get(pir::IrContext::Instance(), true));
              return out;
            })
-      .def("__repr__", &Value2String);
+      .def("__repr__", &Value2String)
+      .def_property(
+          "dims_mapping",
+          [](Value self) {
+            if (!self.type().isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "dims_mapping is only for distdense tensor."));
+            }
+            return self.type().dyn_cast<DistDenseTensorType>().dims_mapping();
+          },
+          [](Value self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "set dims_mapping when building static graph is un-supported "
+                "now."));
+          })
+      .def_property(
+          "partial_dims",
+          [](Value self) {
+            if (!self.type().isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "partial_dims is only for distdense tensor."));
+            }
+            return self.type().dyn_cast<DistDenseTensorType>().partial_dims();
+          },
+          [](Value self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "set partial_dims when building static graph is un-supported "
+                "now."));
+          })
+      .def_property(
+          "process_mesh",
+          [](Value self) {
+            if (!self.type().isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "process_mesh is only for distdense tensor."));
+            }
+            return self.type().dyn_cast<DistDenseTensorType>().process_mesh();
+          },
+          [](Value self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "set process_mesh when building static graph is un-supported "
+                "now."));
+          });
 }
 
 void BindOpOperand(py::module *m) {
