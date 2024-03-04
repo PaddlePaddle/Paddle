@@ -146,7 +146,7 @@ def _safe_load_pickle(file, encoding="ASCII"):
     try:
         load_dict = pickle.Unpickler(file, encoding=encoding).load()
     except pickle.UnpicklingError:
-        raise RuntimeError("Error occurred during unpickling.")
+        raise RuntimeError("Error occurred during unpickling")
     return load_dict
 
 
