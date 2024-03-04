@@ -210,7 +210,7 @@ std::string CodeGenerator::Generate(
 std::set<int> CodeGenerator::DistilInputIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> input_ids;
-  // Use std::set to remove the reptead id and get a ordered list.
+  // Use std::set to remove the repeated id and get a ordered list.
   for (const auto& expression : expressions) {
     for (auto id : expression.GetInputIds()) {
       if (id >= 0) {
@@ -224,7 +224,7 @@ std::set<int> CodeGenerator::DistilInputIds(
 std::set<int> CodeGenerator::DistilOutputIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> output_ids;
-  // Use std::set to remove the reptead id and get a ordered list.
+  // Use std::set to remove the repeated id and get a ordered list.
   for (const auto& expression : expressions) {
     for (auto id : expression.GetOutputIds()) {
       output_ids.insert(id);
@@ -236,7 +236,7 @@ std::set<int> CodeGenerator::DistilOutputIds(
 std::set<int> CodeGenerator::DistilIntermediateIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> intermediate_output_ids;
-  // Use std::set to remove the reptead id and get a ordered list.
+  // Use std::set to remove the repeated id and get a ordered list.
   for (const auto& expression : expressions) {
     for (auto id : expression.GetIntermediateOutputIds()) {
       intermediate_output_ids.insert(id);
@@ -366,7 +366,7 @@ std::unordered_map<Node*, int> CodeGenerator::EncodeVarNodes(
 
   // Encoding output vars.
   for (auto* out : output_var_nodes) {
-    VLOG(3) << "Ecoding output names:" << out->Name() << "(" << out
+    VLOG(3) << "Encoding output names:" << out->Name() << "(" << out
             << "), id:" << id;
     if (var_ids.find(out) == var_ids.end()) {
       var_ids[out] = id++;

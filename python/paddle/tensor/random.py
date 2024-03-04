@@ -1023,7 +1023,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. Default is [1].
         dtype (str|np.dtype, optional): The data type of the
-            output tensor. Supported data types: int32, int64. If ``dytpe``
+            output tensor. Supported data types: int32, int64. If ``dtype``
             is None, the data type is int64. Default is None.
         name (str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
@@ -1162,7 +1162,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             If ``high`` is None, the range is [0, ``low``).
         dtype (str|np.dtype, optional): The data type of the
             output tensor. Supported data types: bool, int32, int64, float16,
-            float32, float64. If ``dytpe`` is None, the data type is the
+            float32, float64. If ``dtype`` is None, the data type is the
             same as x's data type. Default is None.
         name (str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/reduce_mean_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/onednn/reduce_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_kernel_impl.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -33,11 +34,11 @@ void MeanGradKernel(const Context& dev_ctx,
     for (size_t i = 0; i < dims.size(); ++i) {
       reduce_dims[i] = (reduce_dims[i] >= 0)
                            ? reduce_dims[i]
-                           : input_dims.size() + reduce_dims[i];
-      number_of_elements *= input_dims[reduce_dims[i]];
+                           : input_dims.size() + reduce_dims[i];  // NOLINT
+      number_of_elements *= input_dims[reduce_dims[i]];           // NOLINT
     }
   } else {
-    number_of_elements = x.numel();
+    number_of_elements = static_cast<int>(x.numel());
   }
   const IntArray new_dims = IntArray(reduce_dims);
   ReduceGradKernel<T, Context>(dev_ctx,
@@ -59,4 +60,6 @@ PD_REGISTER_KERNEL(mean_grad,
                    ONEDNN,
                    phi::MeanGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::ReduceGradCheckIfOneDNNSupport;
+}

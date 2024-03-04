@@ -1106,7 +1106,7 @@ void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle) {
   }
   LoadCustomRuntimeLib(
       runtime_params, std::move(device_interface), dso_lib_path, dso_handle);
-  LOG(INFO) << "Successed in loading custom runtime in lib: " << dso_lib_path;
+  LOG(INFO) << "Succeed in loading custom runtime in lib: " << dso_lib_path;
 }
 
 #undef INTERFACE_UNIMPLEMENT

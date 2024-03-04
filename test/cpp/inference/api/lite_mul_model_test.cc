@@ -19,7 +19,7 @@ limitations under the License. */
 #include <mutex>   // NOLINT
 #include <thread>  // NOLINT
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {

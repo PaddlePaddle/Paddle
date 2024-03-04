@@ -22,7 +22,6 @@ import paddle
 from paddle.base.core import (  # noqa: F401
     contains_spmd_rule,
     get_phi_spmd_rule,
-    get_spmd_rule,
 )
 from paddle.base.framework import Operator
 from paddle.base.log_helper import get_logger
@@ -182,6 +181,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "unsqueeze2",
         "silu",
         "concat",
+        "expand_as_v2",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":
@@ -202,7 +202,7 @@ def _update_op_dims_mapping_and_distoperatorimpl(
 
     updated = dist_op_container.update_dims_mapping(dist_op)
     changed = updated or changed
-    # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
+    # TODO(ljz) remove the below code once we introduce general reshard to replace specific distopimpls
     reverted = dist_op_container.mapping_to_dist_operator_impl(
         dist_op, original_op_dist_attr
     )
@@ -1150,7 +1150,7 @@ class Completer:
         num_chunks = pp_degree * vpp_degree
         assert (
             len(seg_op_deps) % num_chunks == 0
-        ), "The number of layers[{}] ({}) should be devided by part number ({}).".format(
+        ), "The number of layers[{}] ({}) should be divided by part number ({}).".format(
             seg_method, len(seg_op_deps), num_chunks
         )
 
@@ -1621,7 +1621,7 @@ class Completer:
                     continue
 
                 else:
-                    raise ValueError(f"got unexpect op [{str(grad_op.type)}]")
+                    raise ValueError(f"got unexpected op [{str(grad_op.type)}]")
 
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr
@@ -1818,9 +1818,9 @@ class Completer:
                         f"Backward Partial is not adapted for {str(grad_op)}"
                     )
 
-                # resulote partial
+                # resolute partial
                 # NOTE We set the Partial status in op_dist_attr instead tensor_dist_attr
-                # since the Partial will be reshard as Replicated immedidately after op output in static mode.
+                # since the Partial will be reshard as Replicated immediately after op output in static mode.
                 if len(param_grads) > 0:
                     activation_grad_dims_mapping = (
                         grad_op_dist_attr.get_input_dims_mapping(
@@ -2059,7 +2059,7 @@ class Completer:
                         grad_op, grad_op_dist_attr
                     )
                 else:
-                    raise ValueError(f"got unexpect op [{str(grad_op.type)}]")
+                    raise ValueError(f"got unexpected op [{str(grad_op.type)}]")
 
     def complete_update_annotation(self, serial_main_program):
         """Complete the annotation of vars and ops in the update phase for parallel program."""

@@ -32,6 +32,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
                          bool use_neox_rotary_style,
+                         bool time_major,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
@@ -41,13 +42,16 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   phi::Array<int64_t, 3> inputs_num_heads;
   // small size for broadcast
-  auto batch_size = dout_q.dims()[0];
-  auto seq_len = dout_q.dims()[1];
+
+  const int kBatchDimIndex = time_major ? 1 : 0;
+  const int kSeqlenDimIndex = time_major ? 0 : 1;
+  auto batch_size = dout_q.dims()[kBatchDimIndex];
+  auto seq_len = dout_q.dims()[kSeqlenDimIndex];
   inputs_num_heads[0] = dout_q.dims()[2];
   auto head_dim = dout_q.dims()[3];
 
-  int64_t batch_stride_q = dout_q.strides()[0];
-  int64_t seq_stride_q = dout_q.strides()[1];
+  int64_t batch_stride_q = dout_q.strides()[kBatchDimIndex];
+  int64_t seq_stride_q = dout_q.strides()[kSeqlenDimIndex];
   int64_t batch_stride_kv = batch_stride_q;
   int64_t seq_stride_kv = seq_stride_q;
 
@@ -75,8 +79,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     ins_data[num_inputs] = dout_k->data<T>();
     inputs_num_heads[num_inputs] = dk->dims()[2];
 
-    batch_stride_kv = dout_k->strides()[0];
-    seq_stride_kv = dout_k->strides()[1];
+    batch_stride_kv = dout_k->strides()[kBatchDimIndex];
+    seq_stride_kv = dout_k->strides()[kSeqlenDimIndex];
 
     num_inputs++;
   }
@@ -87,8 +91,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     ins_data[num_inputs] = dout_v->data<T>();
     inputs_num_heads[num_inputs] = dv->dims()[2];
 
-    batch_stride_kv = dout_v->strides()[0];
-    seq_stride_kv = dout_v->strides()[1];
+    batch_stride_kv = dout_v->strides()[kBatchDimIndex];
+    seq_stride_kv = dout_v->strides()[kSeqlenDimIndex];
 
     num_inputs++;
   }

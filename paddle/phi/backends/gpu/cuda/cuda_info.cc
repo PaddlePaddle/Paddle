@@ -28,7 +28,7 @@ namespace gpu {
 
 int DnnVersion() {
   if (!dynload::HasCUDNN()) return -1;
-  return dynload::cudnnGetVersion();
+  return dynload::cudnnGetVersion();  // NOLINT
 }
 
 static int GetGPUDeviceCountImpl() {

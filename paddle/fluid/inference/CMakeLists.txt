@@ -37,10 +37,6 @@ get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
 set(utils_modules pretty_log string_helper utf8proc)
 
-if(NOT WITH_GFLAGS)
-  set(utils_modules ${utils_modules} paddle_flags)
-endif()
-
 add_subdirectory(api)
 
 # Create static inference library if needed
@@ -70,14 +66,8 @@ if(WIN32)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  create_static_lib(
-    paddle_inference
-    ${phi_modules}
-    ${fluid_modules}
-    ${ir_targets}
-    ${STATIC_INFERENCE_API}
-    ${utils_modules}
-    common_static)
+  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
@@ -103,7 +93,7 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc)
 
-# NOTE(Aurelius84): For inference library, some DEPS is usless
+# NOTE(Aurelius84): For inference library, some DEPS is useless
 # such as non-infer operator related targets et.al.
 list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # NOTE(Aurelisu84): Remove pir dialect related target DEPS for inference

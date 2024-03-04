@@ -96,7 +96,8 @@ void SetConfig(AnalysisConfig *cfg, bool memory_load = false) {
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
   std::vector<PaddleTensor> input_slots;
-  int epoch = FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+  int epoch =
+      FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;  // NOLINT
   LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
   for (int bid = 0; bid < epoch; ++bid) {
     PrepareInputs(&input_slots, &data);
@@ -119,7 +120,7 @@ void profile(bool memory_load = false) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    const int chinese_ner_result_data[] = {
+    const std::array<int, 11> chinese_ner_result_data = {
         30, 45, 41, 48, 17, 26, 48, 39, 38, 16, 25};
     PADDLE_ENFORCE_GT(outputs.size(),
                       0,

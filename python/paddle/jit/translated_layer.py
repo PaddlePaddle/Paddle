@@ -503,7 +503,7 @@ class _ProgramHolder:
     def _append_scale_to_output(self, program):
         # 0. scale don't support bool output, we skip append scale for it
         for out_desc in self._output_descs:
-            if out_desc.dtype() == core.VarDesc.VarType.BOOL:
+            if out_desc.dtype() == paddle.bool:
                 return
 
         # 1. append scale & save var
@@ -998,8 +998,6 @@ def _run_dygraph(instance, input, program_holder):
                     program_holder.backward_program.block(0),
                 )
             )
-    # Note(lvyongkang): Current PIR don't support save/load
-    attrs.extend(['in_pir_pt_mode', False])
 
     _legacy_C_ops.run_program(
         _valid_vars(input_vars),
@@ -1399,13 +1397,13 @@ class TranslatedLayer(layers.Layer):
 
         # NOTE(chenweihang): [ why not use var name directly? ]
         # When add parameter or buffer to Layer by follow apis,
-        # the variable name can't contain `.`, beccause which may cause
+        # the variable name can't contain `.`, because which may cause
         # AttributeError when access the newly added parameter or buffer
         # in the form of `self.**.**``, but the EagerParamBase or BarBase
         # name contains `.` originally, such as `linear_0.w_0`, so here
         # need to generate new var name for each var
         self._persistable_var_name_dict = {}
-        # the TranslatedLayer object holded var names count started from 0
+        # the TranslatedLayer object held var names count started from 0
         with unique_name.guard():
             for name, var in persistable_vars.items():
                 if isinstance(var, framework.EagerParamBase):
@@ -1501,7 +1499,7 @@ class TranslatedLayer(layers.Layer):
         Gets translated program of specified method.
 
         Args:
-            - method_name (string): mehtod name corresponding to the program
+            - method_name (string): method name corresponding to the program
                 to be obtained. Default: 'forward'.
 
         Returns:

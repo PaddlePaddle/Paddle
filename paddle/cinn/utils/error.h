@@ -55,9 +55,9 @@ inline std::string demangle(std::string name) {
 inline std::string demangle(std::string name) { return name; }
 #endif
 
-static std::string GetErrorSumaryString(const std::string& what,
-                                        const char* file,
-                                        int line) {
+static std::string GetErrorSummaryString(const std::string& what,
+                                         const char* file,
+                                         int line) {
   std::ostringstream sout;
   sout << "\n----------------------\nError Message "
           "Summary:\n----------------------\n";
@@ -99,7 +99,7 @@ static std::string GetCurrentTraceBackString() {
 static std::string GetTraceBackString(const std::string& what,
                                       const char* file,
                                       int line) {
-  return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
+  return GetCurrentTraceBackString() + GetErrorSummaryString(what, file, line);
 }
 
 struct EnforceNotMet : public std::exception {

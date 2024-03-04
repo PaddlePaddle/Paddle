@@ -353,7 +353,7 @@ class OptimizerWithMixedPrecision:
                 ...         init_loss_scaling=128.0,
                 ...         use_dynamic_loss_scaling=True,
                 ...         use_pure_fp16=True)
-                ...     # If you don't use the default_startup_program(), you sholud pass
+                ...     # If you don't use the default_startup_program(), you should pass
                 ...     # your defined `startup_program` into `minimize`.
                 ...     optimizer.minimize(loss)
                 ...     exe.run(paddle.static.default_startup_program())
@@ -480,7 +480,7 @@ class OptimizerWithMixedPrecision:
         found_inf = self._check_finite_and_unscale(params_grads)
         if (
             self._use_dynamic_loss_scaling
-            and self._amp_vartype == core.VarDesc.VarType.FP16
+            and self._amp_vartype == paddle.float16
         ):
             self._add_dynamic_loss_scaling(params_grads, found_inf)
 
@@ -507,7 +507,7 @@ class OptimizerWithMixedPrecision:
 
     def _split_grads(self, params_grads):
         grads = [g for _, g in params_grads]
-        fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
+        fp32_grads = [g for g in grads if g.dtype == paddle.float32]
         fp16_grads = [g for g in grads if g.dtype == self._amp_vartype]
         assert len(fp32_grads) + len(fp16_grads) == len(
             grads
@@ -778,7 +778,7 @@ def decorate(
             ...         init_loss_scaling=128.0,
             ...         use_dynamic_loss_scaling=True,
             ...         use_pure_fp16=True)
-            ...     # If you don't use the default_startup_program(), you sholud pass
+            ...     # If you don't use the default_startup_program(), you should pass
             ...     # your defined `startup_program` into `minimize`.
             ...     optimizer.minimize(loss)
             ...     exe.run(paddle.static.default_startup_program())
@@ -846,10 +846,10 @@ def decorate(  # noqa: F811
              will be converted to float16/bfloat16, and that have any float32 input will be converted to float32. For the OD level, operators in
              default white list will compute in float16/bfloat16, and the others will compute in float32. Default is O1.
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision
+        master_weight(bool, optional): For level='O2', whether to use multi-precision
             during weight updating. If master_weight is None, in O2 level optimizer
             will use multi-precision. Default is None.
-        master_grad(bool, optinal): For level='O2', whether to use master_grad
+        master_grad(bool, optional): For level='O2', whether to use master_grad
             during weight updating. If master_grad is False, in O2 level optimizer
             will not use master grad. Default is False.
         init_loss_scaling(float, optional): The initial loss scaling factor.

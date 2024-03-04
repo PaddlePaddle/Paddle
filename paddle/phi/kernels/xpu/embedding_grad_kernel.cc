@@ -28,7 +28,7 @@ void EmbeddingGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
                          int64_t padding_idx,
                          DenseTensor* weight_grad) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   DDim table_dim;
   table_dim = weight.dims();
 
@@ -63,11 +63,11 @@ void EmbeddingGradKernel(const Context& ctx,
   int ym = static_cast<int>(ids_numel);
   int n = d_table_t->dims()[1];
 
-  int r = xpu::embedding_grad<XPUT, int64_t>(
+  int r = xpu::embedding_grad<XPUType, int64_t>(
       dev_ctx.x_context(),
-      reinterpret_cast<const XPUT*>(d_output_data),
+      reinterpret_cast<const XPUType*>(d_output_data),
       ids_data,
-      reinterpret_cast<XPUT*>(d_table_data),
+      reinterpret_cast<XPUType*>(d_table_data),
       xm,
       n,
       ym,
@@ -109,7 +109,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
     ids = CopyIdsToVector<int, int64_t>(ids_cpu);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64"));
+        "embedding input only support int32 and int64"));
   }
 
   auto ids_num = static_cast<int64_t>(input.numel());

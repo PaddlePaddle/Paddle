@@ -16,8 +16,8 @@
 
 #include <optional>
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn::common {
 

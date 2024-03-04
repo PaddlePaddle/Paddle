@@ -120,7 +120,7 @@ std::string CodeGenC::GetTypeName(Type type) {
     auto customized_name = type.customized_type();
     // get name of a cuda built-in vector type, it is started with a
     // 'CudaVectorType::' prefix
-    if (utils::Startswith(
+    if (utils::StartsWith(
             customized_name,
             cinn::common::customized_type::kcuda_builtin_vector_t)) {
       customized_name.erase(
@@ -300,12 +300,13 @@ void CodeGenC::Visit(const ir::Block *op) {
 
   IncIndent();
 
-  for (int i = 0; i < op->stmts.size() - 1; i++) {
-    DoIndent();
-    IrPrinter::Visit(op->stmts[i]);
-    str_ += ";\n";
-  }
+  // Note: size_t (0 - 1) = 18446744073709551615
   if (op->stmts.size() >= 1) {
+    for (int i = 0; i < op->stmts.size() - 1; i++) {
+      DoIndent();
+      IrPrinter::Visit(op->stmts[i]);
+      str_ += ";\n";
+    }
     DoIndent();
     IrPrinter::Visit(op->stmts.back());
     str_ += ";";

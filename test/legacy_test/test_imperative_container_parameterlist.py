@@ -42,7 +42,7 @@ class TestImperativeContainerParameterList(unittest.TestCase):
     def paramter_list(self, use_base_api):
         data_np = np.random.uniform(-1, 1, [5, 2]).astype('float32')
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(data_np)
+            x = paddle.to_tensor(data_np)
             num_stacked_param = 4
             model = MyLayer(num_stacked_param, use_base_api)
             self.assertEqual(len(model.params), num_stacked_param)

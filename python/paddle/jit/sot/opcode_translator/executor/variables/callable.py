@@ -646,6 +646,16 @@ class BuiltinVariable(FunctionVariable):
                 )
                 assert isinstance(fn_var, VariableBase)
                 return fn_var(*args)
+            # If __bool__ and __len__ method are absent, inline bool calls return True.
+            # See https://github.com/python/cpython/blob/3.11/Objects/typeobject.c#L7463
+            elif magic_method.name == "__bool__" and not hasattr(
+                arg_type, "__len__"
+            ):
+                return VariableFactory.from_value(
+                    True,
+                    self.graph,
+                    DummyTracker([self] + list(args) + list(kwargs.values())),
+                )
 
         # Break graph if neither of the above conditions is met
         arg_types = ", ".join([type(arg).__name__ for arg in args])
@@ -671,9 +681,9 @@ class BuiltinVariable(FunctionVariable):
         }
 
 
-class UserDefinedGeneratorVariable(FunctionVariable):
+class UserDefinedGeneratorFunctionVariable(FunctionVariable):
     """
-    UserDefinedGeneratorVariable is a subclass of FunctionVariable used to wrap a user-defined generator.
+    UserDefinedGeneratorFunctionVariable is a subclass of FunctionVariable used to wrap a user-defined generator.
     Args:
         fn (Callable[..., Any]): The user-defined generator to be wrapped.
         graph(FunctionGraph): The FunctionGraph object that this variable is associated with.
@@ -701,7 +711,7 @@ class UserDefinedGeneratorVariable(FunctionVariable):
     )
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isgeneratorfunction(value):
-            return UserDefinedGeneratorVariable(value, graph, tracker)
+            return UserDefinedGeneratorFunctionVariable(value, graph, tracker)
         return None
 
 

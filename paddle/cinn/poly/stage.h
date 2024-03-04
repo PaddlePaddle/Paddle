@@ -59,7 +59,7 @@ struct StageForloopInfo {
   ir::DeviceAPI device;
 };
 
-//! Store the infomations about some other tensor `compute_at` this tensor.
+//! Store the informations about some other tensor `compute_at` this tensor.
 struct ComputeAtInfo {
   ComputeAtInfo(const std::string& consumer_tensor_name,
                 const std::string& producer_tensor_name,
@@ -277,7 +277,7 @@ class Stage : public Object {
    * \brief Mark the stage compute at the level of some other stage. Usually
    * used when there is no access relation between two tensors.
    *
-   * The difference bewteen ComputeAt2 and ComputeAt is that ComputeAt2 can be
+   * The difference between ComputeAt2 and ComputeAt is that ComputeAt2 can be
    * used when there is no access relation between two tensors.
    *
    * @param other the target stage to compute at.
@@ -373,7 +373,7 @@ class Stage : public Object {
   const isl::map& transform() const { return transform_; }
   isl::set transformed_domain() const;
 
-  // Dealing with the `ComputateAt` transform.
+  // Dealing with the `ComputeAt` transform.
   std::vector<ComputeAtRelation> compute_ats() const;
 
   //! Get the level-th dimensional name.
@@ -470,7 +470,7 @@ class Stage : public Object {
    */
   void InitTransform();
 
-  //! Lock the \p level-th axis and disallow the futher schedules on this axis.
+  //! Lock the \p level-th axis and disallow the further schedules on this axis.
   void LockAxis(uint32_t level);
   //! Unlock the \p level-th axis.
   void UnlockAxis(uint32_t level);

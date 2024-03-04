@@ -168,7 +168,7 @@ class ValueSet:
 class State:
     """
     record relationship of forward op/value and backward op/value
-    one state must be bining with a block, if block has parent block,
+    one state must be binding with a block, if block has parent block,
     state will include parent block info.
 
     """
@@ -188,7 +188,7 @@ class State:
         self.opgrad_to_op = collections.defaultdict(list)
         # only for controlflow
         # inside_value is sub block value, which will yield to parent block,
-        # parant block value is outside_value
+        # parent block value is outside_value
         self.inside_value_to_outside_value_map = ValueDict()
 
     def turn_map(self) -> None:
@@ -319,7 +319,7 @@ def inverse_sort_op(ops):
 
     '''
 
-    # init pending_count[op] which descibes number of
+    # init pending_count[op] which describes number of
     # pending edges for its grad_op
 
     pending_count = collections.defaultdict(int)
@@ -381,7 +381,7 @@ def inverse_sort_op(ops):
 
 def is_inplace_net(op_list):
     '''
-    when program has inpalce op , it's difficult to find the actual pending_count.
+    when program has inplace op , it's difficult to find the actual pending_count.
     '''
     for op in op_list:
         if op.name() in ["pd_op.array_write_", "pd_op.assign_out_"]:
@@ -419,16 +419,21 @@ def remove_useless_full_like_ops(block, ops, state):
     remove ops which are not in use recursively,
 
     '''
+    remove_ops = []
+    inverse_ops = inverse_sort_op(list(ops))
     # from output to input
-    for op in inverse_sort_op(list(ops)):
-        if op.name() == 'pd_op.full_like':
+    for op in inverse_ops:
+        if op.name() == "pd_op.full_like":
             if op.result(0).use_empty():
                 full_op = op.operand_source(1).get_defining_op()
-                remove_op(block, op, state)
-                remove_op(block, full_op, state)
+                remove_ops.append(op)
+                remove_ops.append(full_op)
         elif is_control_flow(op):
             for sub_block in op.blocks():
                 remove_useless_full_like_ops(sub_block, sub_block.ops, state)
+
+    for op in remove_ops:
+        remove_op(block, op, state)
 
 
 def all_stop_gradient_true(block):
@@ -439,10 +444,18 @@ def all_stop_gradient_true(block):
     return True
 
 
+def all_output_grad_none(list_of_list):
+    for list_ in list_of_list:
+        for value in list_:
+            if value is not None:
+                return False
+    return True
+
+
 def parent_total_ops(block):
     '''
     when block is sub_block, forward op should include its parent block ops
-    (sub block nest should Add on demand to aviod block copy)
+    (sub block nest should Add on demand to avoid block copy)
     '''
     total_ops = []
     if block.parent_block is not None:
@@ -510,3 +523,10 @@ def get_grad_semantic_info(op):
     else:
         grad_semantic_info = op.get_input_grad_semantics()
     return grad_semantic_info
+
+
+def get_split_op(value):
+    for op in value.all_used_ops():
+        if op.name() == "builtin.split":
+            return op
+    return None

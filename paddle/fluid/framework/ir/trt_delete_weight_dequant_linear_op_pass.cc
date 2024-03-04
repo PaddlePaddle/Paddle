@@ -201,7 +201,7 @@ TrtDeleteWeightQuantDequantLinearOpPass::
 void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     ir::Graph* graph) const {
   const std::string pattern_name =
-      "delete_weight_quantdequant_linear_op_pattern";
+      "delete_weight_quant_dequant_linear_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
@@ -231,7 +231,18 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
       return;
     }
     */
+    // Scale and ZeroPoint tensor should be removed in save_optimized_model_pass
+    std::vector<std::string> vars2rm = {};
+    vars2rm.emplace_back(weight_dequantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(
+        weight_dequantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    auto& scale_and_zero_point_param = g->GetOrInit<std::vector<std::string>>(
+        framework::ir::kScaleAndZeroPointParamAttr);
+    scale_and_zero_point_param.insert(
+        scale_and_zero_point_param.end(), vars2rm.begin(), vars2rm.end());
+
     std::unordered_set<const Node*> nodes2rm = {};
+
     int bit_length = PADDLE_GET_CONST(
         int, weight_dequantize_linear_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);

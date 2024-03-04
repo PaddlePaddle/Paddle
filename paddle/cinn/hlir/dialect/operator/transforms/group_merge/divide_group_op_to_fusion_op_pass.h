@@ -15,8 +15,8 @@
 #pragma once
 
 #include <memory>
-#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
-#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/pass/pass.h"
 
 namespace cinn {
 namespace dialect {

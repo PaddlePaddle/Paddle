@@ -32,6 +32,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& cos,
                      const paddle::optional<DenseTensor>& position_ids,
                      bool use_neox_rotary_style,
+                     bool time_major,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
@@ -41,14 +42,19 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   phi::Array<int64_t, 3> inputs_num_heads;
 
-  // q.shape: [batch_size, seq_len, num_heads, head_dim]
-  auto batch_size = q.dims()[0];
-  auto seq_len = q.dims()[1];
+  // q.shape: [seq_len, batch_size, num_heads, head_dim] if time_major else
+  // [batch_size, seq_len, num_heads, head_dim]
+
+  const int kBatchDimIndex = time_major ? 1 : 0;
+  const int kSeqlenDimIndex = time_major ? 0 : 1;
+
+  auto batch_size = q.dims()[kBatchDimIndex];
+  auto seq_len = q.dims()[kSeqlenDimIndex];
   inputs_num_heads[0] = q.dims()[2];
   auto head_dim = q.dims()[3];
 
-  int64_t batch_stride_q = q.strides()[0];
-  int64_t seq_stride_q = q.strides()[1];
+  int64_t batch_stride_q = q.strides()[kBatchDimIndex];
+  int64_t seq_stride_q = q.strides()[kSeqlenDimIndex];
   int64_t batch_stride_kv = batch_stride_q;
   int64_t seq_stride_kv = seq_stride_q;
 
@@ -76,8 +82,8 @@ void FusedRopeKernel(const Context& dev_ctx,
     outs_data[num_inputs] = out_k->data<T>();
     inputs_num_heads[num_inputs] = k->dims()[2];
 
-    batch_stride_kv = k->strides()[0];
-    seq_stride_kv = k->strides()[1];
+    batch_stride_kv = k->strides()[kBatchDimIndex];
+    seq_stride_kv = k->strides()[kSeqlenDimIndex];
 
     num_inputs++;
   }
@@ -88,8 +94,8 @@ void FusedRopeKernel(const Context& dev_ctx,
     outs_data[num_inputs] = out_v->data<T>();
     inputs_num_heads[num_inputs] = v->dims()[2];
 
-    batch_stride_kv = v->strides()[0];
-    seq_stride_kv = v->strides()[1];
+    batch_stride_kv = v->strides()[kBatchDimIndex];
+    seq_stride_kv = v->strides()[kSeqlenDimIndex];
 
     num_inputs++;
   }

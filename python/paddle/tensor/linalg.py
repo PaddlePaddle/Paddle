@@ -52,7 +52,7 @@ def transpose(x, perm, name=None):
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float16, bfloat16, float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str, optional): The name of this layer. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -119,8 +119,12 @@ def transpose(x, perm, name=None):
             [
                 'bool',
                 'float16',
+                'bfloat16',
                 'float32',
                 'float64',
+                'int8',
+                'uint8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
@@ -1510,7 +1514,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': max_out, 'Y': min_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis},
+                    attrs={'axis': -1},
                 )
                 return out
             if porder == -2:
@@ -1518,7 +1522,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': min_out, 'Y': max_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis},
+                    attrs={'axis': -1},
                 )
                 return out
 
@@ -1533,7 +1537,7 @@ def cond(x, p=None, name=None):
     if not len(x_shape) >= 2:
         raise ValueError(
             "input should be a matrix or batches of matrices, "
-            + f"but the dimention of received input is {len(x_shape)}"
+            + f"but the dimension of received input is {len(x_shape)}"
         )
     if p is None:
         p = 2
@@ -1776,8 +1780,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         norm_factor = w_sum - (w * aweights).sum() / w_sum
     else:
         norm_factor = w_sum - ddof
-    if norm_factor <= 0:
-        norm_factor = paddle.to_tensor(0, dtype=nx.dtype)
+    norm_factor = paddle.clip(norm_factor, min=0)
     nx = nx - avg.unsqueeze(1)
     xxt = paddle.mm(nx, nx_w.t().conj())
     cov = paddle.divide(xxt, norm_factor).squeeze()
@@ -1968,7 +1971,7 @@ def cross(x, y, axis=9, name=None):
 def cholesky(x, upper=False, name=None):
     r"""
     Computes the Cholesky decomposition of one symmetric positive-definite
-    matrix or batches of symmetric positive-definite matrice.
+    matrix or batches of symmetric positive-definite matrices.
 
     If `upper` is `True`, the decomposition has the form :math:`A = U^{T}U` ,
     and the returned matrix :math:`U` is upper-triangular. Otherwise, the
@@ -2113,7 +2116,7 @@ def bmm(x, y, name=None):
     """
     Applies batched matrix multiplication to two tensors.
 
-    Both of the two input tensors must be three-dementional and share the same batch size.
+    Both of the two input tensors must be three-dimensional and share the same batch size.
 
     If x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
 
@@ -2155,7 +2158,7 @@ def bmm(x, y, name=None):
         y_shape = y.shape
         if not len(x_shape) == len(y_shape) == 3:
             raise ValueError(
-                "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".format(
+                "x and y should be 3-dimensional. But received x's dimension: {}, y's dimension: {}".format(
                     x_shape, y_shape
                 )
             )
@@ -2332,11 +2335,11 @@ def mv(x, vec, name=None):
             vec_shape = list(vec.shape)
             if len(x_shape) != 2:
                 raise ValueError(
-                    f"x should be 2-dimensional. But received x's dimention: {x_shape}"
+                    f"x should be 2-dimensional. But received x's dimension: {x_shape}"
                 )
             if len(vec_shape) != 1:
                 raise ValueError(
-                    "vec should be 1-dimensional. But received vec's dimention: {}".format(
+                    "vec should be 1-dimensional. But received vec's dimension: {}".format(
                         vec_shape
                     )
                 )
@@ -2704,7 +2707,7 @@ def matrix_power(x, n, name=None):
 
     Computes the n-th power of a square matrix or a batch of square matrices.
 
-    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
+    Let :math:`X` be a square matrix or a batch of square matrices, :math:`n` be
     an exponent, the equation should be:
 
     .. math::
@@ -2776,7 +2779,7 @@ def matrix_power(x, n, name=None):
 
 def qr(x, mode="reduced", name=None):
     r"""
-    Computes the QR decomposition of one matrix or batches of matrice (backward is unsupported now).
+    Computes the QR decomposition of one matrix or batches of matrices (backward is unsupported now).
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
@@ -3150,7 +3153,7 @@ def eigvals(x, name=None):
     x_shape = list(x.shape)
     if len(x_shape) < 2:
         raise ValueError(
-            "The dimension of Input(x) should be at least 2, but received x's dimention = {}, x's shape = {}".format(
+            "The dimension of Input(x) should be at least 2, but received x's dimension = {}, x's shape = {}".format(
                 len(x_shape), x_shape
             )
         )
@@ -3304,7 +3307,7 @@ def eigh(x, UPLO='L', name=None):
             )
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
-                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+                f"The input matrix must be batches of square matrices. But received x's dimension: {x_shape}"
             )
         if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
@@ -3359,7 +3362,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             where * is zero or more batch dimensions. m and n can be
             arbitrary positive number. The data type of x should be
             float32 or float64 or complex64 or complex128. When data
-            type is complex64 or cpmplex128, hermitian should be set
+            type is complex64 or complex128, hermitian should be set
             True.
         rcond (Tensor, optional): the tolerance value to determine
             when is a singular value zero. Default:1e-15.
@@ -3583,7 +3586,7 @@ def solve(x, y, name=None):
     r"""
 
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
-    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
+    Let :math:`X` be a square matrix or a batch of square matrices, :math:`Y` be
     a vector/matrix or a batch of vectors/matrices, the equation should be:
 
     .. math::
@@ -3821,7 +3824,7 @@ def eigvalsh(x, UPLO='L', name=None):
             )
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
-                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+                f"The input matrix must be batches of square matrices. But received x's dimension: {x_shape}"
             )
         if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
@@ -4923,11 +4926,14 @@ def histogramdd(
     for i in range(D):
         on_edge = reshaped_input[:, i] == edges[i][-1]
         if paddle.in_dynamic_mode():
-            index_list[i][on_edge] -= 1
-        else:
-            index_list = paddle.static.setitem(
-                index_list, (i, on_edge), index_list[i][on_edge] - 1
+            index_list[i] = paddle.where(
+                on_edge, index_list[i] - 1, index_list[i]
             )
+        else:
+            index_list_i = paddle.where(
+                on_edge, index_list[i] - 1, index_list[i]
+            )
+            index_list = paddle.static.setitem(index_list, i, index_list_i)
     index_list = tuple(index_list)
     lut = paddle.arange(
         paddle.to_tensor(hist_shape).prod(),

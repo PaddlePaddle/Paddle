@@ -105,7 +105,7 @@
     func : batch_norm_grad
     data_type : out_grad
   optional : scale, bias, mean_out, variance_out, reserve_space
-  composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_format, is_test, use_global_stats, trainable_statistics)
+  composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_format, is_test, use_global_stats, trainable_statistics, x_grad, scale_grad, bias_grad)
   backward : batch_norm_double_grad
 
 - backward_op : c_embedding_grad
@@ -412,6 +412,16 @@
     func : matmul_grad
   backward : matmul_double_grad
 
+- backward_op : matmul_with_flatten_grad
+  forward : matmul_with_flatten (Tensor x, Tensor y, int x_num_col_dims=1, int y_num_col_dims=1) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int x_num_col_dims=1, int y_num_col_dims=1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : matmul_with_flatten_grad
+
 - backward_op : max_grad
   forward: max (Tensor x,  IntArray axis={},  bool keepdim=false) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={}, bool keepdim=false, bool reduce_all=false)
@@ -515,7 +525,7 @@
   backward : multiply_double_grad
 
 - backward_op : multiply_triple_grad
-  forward : multiply_double_grad (Tensor x, Tensor y, Tensor fwd_grad_out, Tensor fwd_grad_grad_x, Tensor fwd_grad_grad_y, int aixs = -1) -> Tensor(grad_x), Tensor(grad_y), Tensor(grad_grad_out)
+  forward : multiply_double_grad (Tensor x, Tensor y, Tensor fwd_grad_out, Tensor fwd_grad_grad_x, Tensor fwd_grad_grad_y, int axis = -1) -> Tensor(grad_x), Tensor(grad_y), Tensor(grad_grad_out)
   args : (Tensor x, Tensor y, Tensor fwd_grad_out, Tensor fwd_grad_grad_x, Tensor fwd_grad_grad_y, Tensor grad_x_grad, Tensor grad_y_grad, Tensor grad_grad_out_grad, int axis = -1)
   output : Tensor(x_grad), Tensor(y_grad), Tensor(fwd_grad_out_grad), Tensor(fwd_grad_grad_x_grad), Tensor(fwd_grad_grad_y_grad)
   infer_meta :

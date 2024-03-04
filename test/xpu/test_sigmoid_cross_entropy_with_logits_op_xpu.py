@@ -86,7 +86,7 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
     class TestSigmoidCrossEntropyWithLogitsOp2(
         TestSigmoidCrossEntropyWithLogitsOp
     ):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+        """Test sigmoid_cross_entropy_with_logit_op with probabilistic label"""
 
         def set_inputs(self):
             batch_size = 64
@@ -119,7 +119,7 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
     class TestSigmoidCrossEntropyWithLogitsOp3(
         TestSigmoidCrossEntropyWithLogitsOp
     ):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+        """Test sigmoid_cross_entropy_with_logit_op with probabilistic label"""
 
         def set_inputs(self):
             batch_size = 64
@@ -148,7 +148,7 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
     class TestSigmoidCrossEntropyWithLogitsOp4(
         TestSigmoidCrossEntropyWithLogitsOp
     ):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+        """Test sigmoid_cross_entropy_with_logit_op with probabilistic label"""
 
         def set_inputs(self):
             batch_size = 64
@@ -185,7 +185,7 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
     class TestSigmoidCrossEntropyWithLogitsOp5(
         TestSigmoidCrossEntropyWithLogitsOp
     ):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+        """Test sigmoid_cross_entropy_with_logit_op with probabilistic label"""
 
         def set_inputs(self):
             batch_size = [10, 10]
@@ -278,7 +278,7 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
     class TestSigmoidCrossEntropyWithLogitsNorm(
         TestSigmoidCrossEntropyWithLogitsOp
     ):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+        """Test sigmoid_cross_entropy_with_logit_op with probabilistic label"""
 
         def set_inputs(self):
             batch_size = [10, 10]

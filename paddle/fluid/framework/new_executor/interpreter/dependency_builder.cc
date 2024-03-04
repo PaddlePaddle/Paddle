@@ -39,7 +39,7 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
                             false,
                             "Enable sequential execution for standalone "
                             "executor, only applied to GPU OPs.");
-PHI_DECLARE_int32(enable_adjust_op_order);
+COMMON_DECLARE_int32(enable_adjust_op_order);
 // add debug info
 PADDLE_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
                             false,

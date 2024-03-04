@@ -81,7 +81,7 @@ class IrTensor : public phi::TensorBase,
  private:
   phi::DDim dims_;
   phi::DataType dtype_{phi::DataType::FLOAT32};
-  phi::DataLayout layout_{phi::DataLayout::ANY};
+  phi::DataLayout layout_{phi::DataLayout::NCHW};
   LoD lod_;
   size_t offset_{0};
 };

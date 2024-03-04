@@ -46,10 +46,10 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/platform/flags.h"
 
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_bool(sync_nccl_allreduce);
+COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 #ifdef WITH_GPERFTOOLS
@@ -639,15 +639,15 @@ void InitP2P(const std::vector<platform::Place> &places) {
     for (int i = 0; i < count; ++i) {
       for (int j = 0; j < count; ++j) {
         if (devices[i] == devices[j]) continue;
-        int can_acess = -1;
+        int can_access = -1;
 #ifdef PADDLE_WITH_HIP
         hipError_t ret =
-            hipDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
-        if (ret != hipSuccess || can_acess != 1) {
+            hipDeviceCanAccessPeer(&can_access, devices[i], devices[j]);
+        if (ret != hipSuccess || can_access != 1) {
 #else
         cudaError_t ret =
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
-        if (ret != cudaSuccess || can_acess != 1) {
+            cudaDeviceCanAccessPeer(&can_access, devices[i], devices[j]);
+        if (ret != cudaSuccess || can_access != 1) {
 #endif
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];
@@ -1314,7 +1314,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
     device_name = "XPU";
   } else {
     PADDLE_THROW(
-        platform::errors::Unavailable("Only CPU/CUDA/XPU is supportted. "
+        platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
                                       "please use CPU/CUDA/XPU backend."));
   }
 

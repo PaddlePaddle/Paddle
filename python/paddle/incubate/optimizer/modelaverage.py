@@ -163,7 +163,7 @@ class ModelAverage(Optimizer):
             >>> with model_average.apply(need_restore=False):
             ...     evaluate(layer, eval_loader, loss_fn)
 
-            >>> print("\nEvaluate With Restored Paramters")
+            >>> print("\nEvaluate With Restored Parameters")
             >>> model_average.restore()
             >>> evaluate(layer, eval_loader, loss_fn)
 

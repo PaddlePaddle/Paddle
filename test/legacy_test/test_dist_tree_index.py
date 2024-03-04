@@ -163,7 +163,7 @@ class TestIndexSampler(unittest.TestCase):
             tree_path=path,
             tdm_layer_counts=tdm_layer_counts,
             start_sample_layer=1,
-            with_hierachy=False,
+            with_hierarchy=False,
             seed=0,
             id_slot=2,
         )

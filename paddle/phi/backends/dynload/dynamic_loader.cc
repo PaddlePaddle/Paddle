@@ -27,22 +27,23 @@ limitations under the License. */
 // TODO(wilber): The phi computing library requires a component to manage flags
 // (maybe not use gflags).
 #include "glog/logging.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_string(cudnn_dir);
-PHI_DECLARE_string(cuda_dir);
-PHI_DECLARE_string(cublas_dir);
-PHI_DECLARE_string(nccl_dir);
-PHI_DECLARE_string(cupti_dir);
-PHI_DECLARE_string(tensorrt_dir);
-PHI_DECLARE_string(mklml_dir);
-PHI_DECLARE_string(lapack_dir);
-PHI_DECLARE_string(mkl_dir);
-PHI_DECLARE_string(op_dir);
-PHI_DECLARE_string(cusparselt_dir);
-PHI_DECLARE_string(curand_dir);
-PHI_DECLARE_string(cusolver_dir);
-PHI_DECLARE_string(cusparse_dir);
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_string(cudnn_dir);
+COMMON_DECLARE_string(cuda_dir);
+COMMON_DECLARE_string(cublas_dir);
+COMMON_DECLARE_string(nccl_dir);
+COMMON_DECLARE_string(cupti_dir);
+COMMON_DECLARE_string(tensorrt_dir);
+COMMON_DECLARE_string(mklml_dir);
+COMMON_DECLARE_string(lapack_dir);
+COMMON_DECLARE_string(mkl_dir);
+COMMON_DECLARE_string(op_dir);
+COMMON_DECLARE_string(cusparselt_dir);
+COMMON_DECLARE_string(curand_dir);
+COMMON_DECLARE_string(cusolver_dir);
+COMMON_DECLARE_string(cusparse_dir);
 #ifdef PADDLE_WITH_HIP
 
 PHI_DEFINE_string(miopen_dir,

@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -28,14 +29,13 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/flags.h"
-#include "paddle/utils/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     fleet_executor_with_standalone,
     false,
     "Use standalone executor to run ops. Temporary FLAGS, will be removed "
     "after all fleet executor cases are modified to run ops with standalone "
     "executor.");
-PHI_DECLARE_bool(cache_inference_while_scope);
+COMMON_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace distributed {
