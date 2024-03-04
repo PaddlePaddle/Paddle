@@ -983,13 +983,6 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
   return true;
 }
 
-bool ExpandOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
 bool MatmulOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // x_dims can't be const or ref here, in case to be broadcasted
@@ -1494,4 +1487,18 @@ bool UniqueOpInferSymbolicShape(
   return true;
 }
 
+bool FullWithTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+
+  const auto &out_shape = operand_shape_or_data.data().has_value()
+                              ? operand_shape_or_data.data().value()
+                              : operand_shape_or_data.shape();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+  return true;
+}
 }  // namespace paddle::dialect
