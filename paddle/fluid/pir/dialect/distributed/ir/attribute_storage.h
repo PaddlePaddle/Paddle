@@ -101,8 +101,7 @@ struct TensorDistAttrStorage : public pir::AttributeStorage {
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
   bool operator==(const ParamKey& key) const {
-    return mesh_attr == std::get<0>(key) &&
-           dims_mapping == std::get<1>(key) &&
+    return mesh_attr == std::get<0>(key) && dims_mapping == std::get<1>(key) &&
            partial_status == std::get<2>(key);
   }
 

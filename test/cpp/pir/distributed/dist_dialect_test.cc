@@ -149,8 +149,8 @@ TEST(operation_dist_attr_test, base) {
       TensorDistAttribute::get(ctx, process_mesh, dims_mapping, partial_status);
   auto y_tensor_dist_attr =
       TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
-  auto out_tensor_dist_attr = TensorDistAttribute::get(
-      ctx, mesh_attr, dims_mapping, partial_status);
+  auto out_tensor_dist_attr =
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
 
   auto operand_dist_attrs =
       std::vector<TensorDistAttribute>{x_tensor_dist_attr, y_tensor_dist_attr};
@@ -170,11 +170,11 @@ TEST(operation_dist_attr_test, base) {
       TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
   auto y_tensor_dist_attr_2 =
       TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
-  auto out_tensor_dist_attr_2 = TensorDistAttribute::get(
-      ctx, mesh_attr_2, dims_mapping, partial_status);
+  auto out_tensor_dist_attr_2 =
+      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
 
-  auto operand_dist_attrs_2 =
-      std::vector<TensorDistAttribute>{x_tensor_dist_attr_2, y_tensor_dist_attr_2};
+  auto operand_dist_attrs_2 = std::vector<TensorDistAttribute>{
+      x_tensor_dist_attr_2, y_tensor_dist_attr_2};
   auto result_dist_attrs_2 =
       std::vector<TensorDistAttribute>{out_tensor_dist_attr_2};
   auto op_attr_2 = OperationDistAttribute::get(
