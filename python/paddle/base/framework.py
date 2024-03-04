@@ -337,6 +337,19 @@ def in_dynamic_or_pir_mode():
     return global_var._dygraph_tracer_ is not None or global_var._use_pir_api_
 
 
+def in_pir_executor_mode():
+    """
+
+    This API checks whether paddle runs in static graph mode and use pir api.
+
+    Returns:
+        bool: Whether paddle runs in static graph mode and in pir executor.
+
+    """
+    flag = str(os.environ.get("FLAGS_enable_pir_in_executor")).lower()
+    return flag in ("true", "1") and not in_pir_mode()
+
+
 global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
