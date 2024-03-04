@@ -55,7 +55,6 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
     std::string var_name = for_ir->loop_var->name;
     Expr extent = for_ir->extent;
     var_name_to_extent_[var_name] = extent;
-    VLOG(6) << "Get extent of " << var_name << ", extent = " << extent;
     if (for_ir->is_binded()) {
       const ir::BindInfo& bind_info = for_ir->bind_info();
       if (bind_info.valid()) {
@@ -91,14 +90,6 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       const std::string& var_name = iter_vars[i]->name;
       VLOG(6) << "Analyzing var_name = " << var_name
               << ", expression = " << iter_values[i];
-      std::stringstream ss;
-      ss << iter_values[i];
-      auto var_1 = ss.str();
-
-      if (var_name_to_extent_.count(var_1)) {
-        std::cerr << "update var name " << var_1 << std::endl;
-        var_name_to_extent_[var_name] = var_name_to_extent_.at(var_1);
-      }
       Expr bind_value = MaxIndexRange(iter_values[i]);
 
       VLOG(6) << "Get extent of " << var_name
@@ -119,8 +110,6 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
     std::vector<ir::Expr> indice_extent;
     for (int i = 0; i < indices.size(); ++i) {
       Expr simplified_idx_extent = MaxIndexRange(indices[i]);
-      VLOG(6) << tensor->buffer->name << " indice " << indices[i]
-              << " simplified_idx_extent " << simplified_idx_extent;
       indice_extent.push_back(simplified_idx_extent);
     }
 
@@ -138,18 +127,11 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
               indice_extent[i].is_constant()) {
             int64_t stored_extent = stored_indice_extent[i].as_int64();
             int64_t cur_extent = indice_extent[i].as_int64();
-            VLOG(10) << "compare " << stored_indice_extent[i] << "\t"
-                     << stored_extent << "\t" << cur_extent;
             if (cur_extent > stored_extent) {
               stored_indice_extent[i] = ir::Expr(cur_extent);
               stored_indice_extent[i]->set_type(indice_extent[i].type());
             }
           }
-          // else if( indice_extent[i].is_constant() &&
-          // (!stored_indice_extent[i].is_constant()) )
-          // {
-          //   stored_indice_extent[i] = indice_extent[i];
-          // }
           // if there indice extent is not constant, which means dynamic shape
           // we don't change the value now.
         }

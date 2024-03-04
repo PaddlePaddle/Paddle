@@ -46,8 +46,9 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
       pir::ShapeConstraintIRAnalysis& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-      return shape_analysis.GetShapeOrDataForValue(op->operand_source(0)) ==
-             shape_analysis.GetShapeOrDataForValue(op->result(0));
+      return shape_analysis.GetShapeOrDataForValue(op->operand_source(0))
+                 .shape() ==
+             shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
     }
 
     return (op->operand_source(0)
