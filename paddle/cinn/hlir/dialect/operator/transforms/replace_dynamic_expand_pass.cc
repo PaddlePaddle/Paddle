@@ -33,11 +33,11 @@ class DynamicExpandOpPattern
 
   bool MatchAndRewrite(paddle::dialect::ExpandOp op,
                        pir::PatternRewriter& rewriter) const override {
-    if (!op->operand_source(1)
-             .defining_op()
-             ->isa<cinn::dialect::GenerateShapeOp>()) {
-      return false;
-    }
+    // if (!op->operand_source(1)
+    //          .defining_op()
+    //          ->isa<cinn::dialect::GenerateShapeOp>()) {
+    //   return false;
+    // }
 
     const ::pir::Operation* broadcast = [&] {
       int x_rank = op->operand_source(0)
