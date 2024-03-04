@@ -204,7 +204,7 @@ bool ReshapeOpInferSymbolicShape(
     if (dim_expr.isa<int64_t>()) {
       return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
     }
-    return true;
+    return false;
   };
 
   const std::vector<symbol::DimExpr> out_dims = [&] {
