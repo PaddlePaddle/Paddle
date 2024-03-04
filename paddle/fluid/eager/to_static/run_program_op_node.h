@@ -1080,6 +1080,7 @@ inline void PirRunProgramGradAPI(
   details::ShareTensorsIntoScopeByValue(
       backward_global_block, params, parameter_values, global_inner_scope);
 
+  // Clear out and middles to avoid hold memory until backward finish.
   out.clear();
   middles.clear();
 
