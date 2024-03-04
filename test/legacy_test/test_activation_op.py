@@ -3443,7 +3443,11 @@ class TestELU(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_output(self):
