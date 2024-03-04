@@ -35,11 +35,14 @@ NCCLCommContext::NCCLCommContext(int rank,
                                  ncclUniqueId nccl_id,
                                  int nccl_comm_init_option)
     : CommContext(rank, size) {
-  if (nccl_comm_init_option > 0) {
+  if (nccl_comm_init_option > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
     NCCL_CHECK(phi::dynload::ncclCommInitRank2(
         &nccl_comm_, size_, nccl_id, rank_, nccl_comm_init_option));
   } else {
+    if (nccl_comm_init_option > 0) {
+      LOG(WARNING) << "ncclCommInitRank2 is not supported.";
+    }
     NCCL_CHECK(
         phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
   }

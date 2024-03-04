@@ -40,15 +40,21 @@ extern void* nccl_dso_handle;
 
 #define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                   \
   struct DynLoad__##__name {                                     \
-    template <typename... Args>                                  \
-    auto operator()(Args... args) -> decltype(__name(args...)) { \
+    static auto GetNCCLFunc() {                                  \
       using nccl_func = decltype(&::__name);                     \
       std::call_once(nccl_dso_flag, []() {                       \
         nccl_dso_handle = phi::dynload::GetNCCLDsoHandle();      \
       });                                                        \
       static void* p_##__name = dlsym(nccl_dso_handle, #__name); \
-      return reinterpret_cast<nccl_func>(p_##__name)(args...);   \
+      return reinterpret_cast<nccl_func>(p_##__name);            \
     }                                                            \
+                                                                 \
+    template <typename... Args>                                  \
+    auto operator()(Args... args) -> decltype(__name(args...)) { \
+      return GetNCCLFunc()(args...);                             \
+    }                                                            \
+                                                                 \
+    static bool IsValid() { return GetNCCLFunc() != nullptr; }   \
   };                                                             \
   extern DynLoad__##__name __name
 
