@@ -43,11 +43,11 @@ class MultiAddNet(nn.Layer):
         y = mask.cast("float64")
         z = x.cast("float64")
 
-        s0 = x3 + x4
-        s1 = s0 + y
-        s2 = x1 + s1
-        s3 = x2 + s1
-        s4 = (z + s1).cast("bool")
+        s0 = x3 + x4  # without broadcast
+        s1 = s0 + y  # with broadcast, 1 to S0, 1, S1, S2
+        s2 = x1 + s1  # with broadcast, 1 to S0, 1, S1, S2
+        s3 = x2 + s1  # with broadcast, 1 to S0, 1, S1, S2
+        s4 = (z + s1).cast("bool")  # without broadcast
 
         return s2, s3, s4
 

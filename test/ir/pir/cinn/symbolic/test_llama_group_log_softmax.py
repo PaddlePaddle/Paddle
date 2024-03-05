@@ -21,6 +21,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
+from paddle.base import core
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
@@ -105,8 +106,10 @@ class TestGroupOp(unittest.TestCase):
         return out
 
     def test_eval(self):
+        core._set_prim_all_enabled(True)
         dy_out = self.eval(mode="eager")
-        cinn_out = self.eval(use_cinn=utils.unittest_use_cinn())
+        cinn_out = self.eval(use_cinn=True)
+
         np.testing.assert_allclose(
             cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
         )

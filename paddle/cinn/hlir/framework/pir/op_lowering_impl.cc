@@ -97,18 +97,22 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   int64_t spatial_numel = 1;
   int64_t reduce_numel = 1;
 
+  bool spatial_is_dynamic = false;
+  bool reduce_is_dynamic = false;
   for (int64_t i = 0; i < group_tile_info->data_rank; ++i) {
     if (reduce_set.count(i)) {
       reduce_numel *= data_dim[i];
+      reduce_is_dynamic = true;
     } else {
       spatial_numel *= data_dim[i];
+      spatial_is_dynamic = true;
     }
   }
 
-  PADDLE_ENFORCE_GT(
-      reduce_numel,
-      0,
-      phi::errors::Unimplemented("negative reduce numel or flaten numel"));
+  PADDLE_ENFORCE_EQ(
+      reduce_is_dynamic,
+      false,
+      phi::errors::Unimplemented("not support dynamic reduce yet"));
 
   int64_t reduce_block = 1;
   int64_t spatial_block = 1;
@@ -117,22 +121,21 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   int64_t spatial_inner_num = 1;
   int warp_num = 1;
 
+  std::cerr << "spatial " << spatial_numel << std::endl;
   if (reduce_numel == 1) {
     reduce_block = 1;
-    if (spatial_numel < 0) {
+    if (spatial_numel < 0 || spatial_is_dynamic) {
       spatial_block = 1024;
 
       reduce_inner_num = 1;
-      warp_num = spatial_block / 128;
+      warp_num = 8;
 
-      spatial_inner_num = spatial_block / (warp_num * 32);
-      if (spatial_inner_num == 0) {
-        spatial_inner_num = 1;
-      }
+      spatial_inner_num = 4;
 
       group_tile_info->block_num = -1;
     } else {
       spatial_block = Next2Power(spatial_numel);
+      std::cerr << "spatial block " << spatial_block << std::endl;
       if (spatial_block > 1024) {
         spatial_block = 1024;
       }
@@ -636,6 +639,7 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       cinn::ir::BroadcastInfo info;
       if (in_dim.size() == 1u && in_dim[0] == 1u) {
         info.full_broadcast = true;
+        std::cerr << "full broadcast !!!!!!!!!!!!\n";
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
           info.output_shape.push_back(output_shape[i]);
