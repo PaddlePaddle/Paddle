@@ -1139,6 +1139,15 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : random_routing
+  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomRoutingInferMeta
+  kernel :
+    func : random_routing
+    data_type : dtype
+
 - op : randperm
   args : (int n, DataType dtype, Place place={})
   output : Tensor(out)

@@ -2801,6 +2801,35 @@ void PriorBoxInferMeta(const MetaTensor& input,
   var->set_dims(common::make_ddim(dim_vec));
 }
 
+void RandomRoutingInferMeta(const MetaTensor& prob,
+                            const MetaTensor& topk_value,
+                            const MetaTensor& topk_idx,
+                            MetaTensor* out) {
+  // check dims
+  auto topk_val_dims = topk_value.dims();
+  auto prob_dims = prob.dims();
+  auto topk_idx_dims = topk_idx.dims();
+
+  PADDLE_ENFORCE_EQ(prob_dims[0],
+                    topk_val_dims[0],
+                    phi::errors::InvalidArgument(
+                        "Output(Out) of ScatterNdAddOp should not be null."));
+
+  PADDLE_ENFORCE_EQ(topk_idx_dims[1],
+                    topk_val_dims[1],
+                    phi::errors::InvalidArgument(
+                        "Output(Out) of ScatterNdAddOp should not be null."));
+
+  PADDLE_ENFORCE_EQ(topk_idx_dims[0],
+                    topk_val_dims[0],
+                    phi::errors::InvalidArgument(
+                        "Output(Out) of ScatterNdAddOp should not be null."));
+
+  out->set_dims(topk_idx_dims);
+  out->set_dtype(topk_idx.dtype());
+  out->share_lod(topk_idx);
+}
+
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
