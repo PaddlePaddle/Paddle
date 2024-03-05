@@ -2287,6 +2287,3 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         for name, var in zip(output_var_names[:-1], ret[slice_variable]):
             self.set_var(name, var)
-
-        for name, var in zip(output_var_names[:-1], ret[slice_variable]):
-            self.set_var(name, var)
