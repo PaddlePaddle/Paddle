@@ -55,6 +55,10 @@ atype_to_parsing_function = {
     "phi::DataType": "CastPyArg2DataType",
 }
 
+EAGER_MANUAL_OP_LIST = {
+    'flash_attn',
+}
+
 
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
@@ -546,6 +550,8 @@ class PythonCGenerator(GeneratorBase):
 
         forward_api_list = self.forward_api_list
         for forward_api_content in forward_api_list:
+            if forward_api_content['op'] in EAGER_MANUAL_OP_LIST:
+                continue
             f_generator = PythonCSingleFunctionGenerator(
                 forward_api_content, namespace
             )
