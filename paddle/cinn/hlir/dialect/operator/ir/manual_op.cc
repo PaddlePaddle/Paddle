@@ -99,7 +99,7 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   printer.PrintOpReturnType(op);
   os << " {";
   for (auto& sub_op : GetOperators()) {
-    os << "\n";
+    os << "\n  ";
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
@@ -164,11 +164,21 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   printer.PrintOpReturnType(op);
   os << " {";
   for (auto& sub_op : GetOperators()) {
-    os << "\n";
+    os << "\n  ";
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
 }
+
+void YieldStoreOp::Build(pir::Builder& builder,
+                         pir::OperationArgument& argument,
+                         pir::Value x,
+                         pir::Type output_type) {
+  argument.inputs = {x};
+  argument.output_types = {output_type};
+}
+
+void YieldStoreOp::VerifySig() {}
 
 bool ConcatOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
@@ -501,3 +511,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::YieldStoreOp);

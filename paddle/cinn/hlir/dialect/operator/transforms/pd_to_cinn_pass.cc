@@ -203,13 +203,15 @@ class ReshapeOpPattern
     auto scale_factor_gen_op = op->operand_source(1).defining_op();
     auto full_op =
         scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    return flag && full_op;
+    auto not_combine_input =
+        op->result(0).use_count() == 1 &&
+        op->result(0).first_use().owner()->name() == "builtin.combine";
+    return flag && full_op && (!not_combine_input);
   }
 
   void Rewrite(paddle::dialect::ReshapeOp op,
                pir::PatternRewriter &rewriter) const override {
     auto scale_factor_gen_op = op->operand_source(1).defining_op();
-
     auto full_op =
         scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
     // scale is generator by full op
@@ -725,16 +727,10 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(paddle::drr::Create<MinOpPattern>(context));
   ps.Add(paddle::drr::Create<ProdOpPattern>(context));
   ps.Add<ReshapeOpPattern>(context);
-  ps.Add<Pool2dOpPattern>(context);
-  ps.Add<ConcatOpPattern>(context);
-  ps.Add<SliceOpPattern>(context);
   ps.Add<PowOpPattern>(context);
-  ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
-  ps.Add<SplitOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
-  // ps.Add(paddle::drr::Create<UniformOpPattern>(context));
 
   return ps;
 }
