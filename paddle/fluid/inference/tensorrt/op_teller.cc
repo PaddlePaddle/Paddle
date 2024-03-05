@@ -3241,20 +3241,6 @@ struct GenericPluginTeller : public Teller {
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
-    std::unordered_set<std::string> control_set = {"conditional_block",
-                                                   "while"};
-    std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
-    if (control_set.find(op_type) != control_set.end()) {
-      return false;
-    }
-
-    if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
-      return false;
-    }
-
-    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
-      return false;
-    }
     // only consider dynamic_shape mode
     if (!with_dynamic_shape) {
       return false;
@@ -3312,6 +3298,9 @@ struct GenericPluginTeller : public Teller {
         VLOG(3) << op_type << " has no DynamicMetaFn.";
         return false;
       }
+      if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+        return false;
+      }
       return true;
     }
   }
@@ -3328,21 +3317,6 @@ struct CustomPluginTeller : public Teller {
     const std::string op_type = desc.Type();
     std::string expect_plugin_name;
 
-    std::unordered_set<std::string> control_set = {"conditional_block",
-                                                   "while"};
-    std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
-    if (control_set.find(op_type) != control_set.end()) {
-      return false;
-    }
-
-    if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
-      return false;
-    }
-
-    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
-      return false;
-    }
-
     if (with_dynamic_shape) {
       expect_plugin_name = op_type + "_paddle_trt_dynamic_plugin";
     } else {
@@ -3357,6 +3331,9 @@ struct CustomPluginTeller : public Teller {
         return true;
     }
     return false;
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+      return false;
+    }
   }
 };
 
@@ -3368,21 +3345,6 @@ struct CustomGenericPluginTeller : public Teller {
                   bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
-
-    std::unordered_set<std::string> control_set = {"conditional_block",
-                                                   "while"};
-    std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
-    if (control_set.find(op_type) != control_set.end()) {
-      return false;
-    }
-
-    if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
-      return false;
-    }
-
-    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
-      return false;
-    }
 
     auto& op_meta_info_map = OpMetaInfoMap::Instance();
     const auto& meta_info_map = op_meta_info_map.GetMap();
@@ -3408,6 +3370,9 @@ struct CustomGenericPluginTeller : public Teller {
     }
     VLOG(3) << op_type << " has no meta info";
     return false;
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+      return false;
+    }
   }
 };
 
