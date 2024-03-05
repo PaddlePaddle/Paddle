@@ -34,7 +34,8 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-// 检查是否是动态shape,如果是动态shape,则返回true,否则返回false
+// Check if it is a dynamic shape. If it is a dynamic shape, return true;
+// otherwise, return false
 bool IsDynamicShapeOp(const framework::OpDesc& desc) {
   VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
   auto* block = desc.Block();
