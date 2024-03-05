@@ -64,7 +64,7 @@ struct CompatibleInfo {
 
   static bool IsDeniedForCinn(const ::pir::Operation& op);
 
-  static bool IsSupportCinn(const ::pir::Operation& op);
+  static bool IsSupportForCinn(const ::pir::Operation& op);
 
   static std::string OpName(const ::pir::Operation& op);
 
