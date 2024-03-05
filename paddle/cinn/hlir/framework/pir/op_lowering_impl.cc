@@ -291,23 +291,6 @@ bool IsTrivialKind(OpPatternKind kind) {
          kind == OpPatternKind::kBroadcast || kind == OpPatternKind::kInjective;
 }
 
-void RemoveUseless(int upstream,
-                   std::vector<OpPatternKind>* op_patterns,
-                   std::vector<ir::Expr>* funcs) {
-  bool keep = false;
-  for (int i = 0; i < op_patterns->size(); i++) {
-    if (i != upstream && IsAdjecent(funcs->at(upstream), funcs->at(i))) {
-      keep = true;
-    }
-  }
-  if (!keep) {
-    funcs->erase(funcs->begin() + upstream);
-    op_patterns->erase(op_patterns->begin() + upstream);
-    VLOG(4) << "RemoveUseless: " << upstream
-            << ", size of remains: " << funcs->size();
-  }
-}
-
 ir::Expr TrivalFusion(ir::Expr upper, ir::Expr down) {
   VLOG(4) << "TrivalFusion begin.";
   TrivialOp upper_op(upper);
@@ -383,7 +366,7 @@ std::vector<FusionNode> FuseEachUpstreamUse(
   return fused_nodes;
 }
 
-std::vector<FusionNode> RemoveUpstream(
+std::vector<FusionNode> RemoveUpstreamTrivial(
     const FusionNode& upstream_node,
     const std::vector<FusionNode>& fusion_nodes) {
   auto removed_nodes = fusion_nodes;
