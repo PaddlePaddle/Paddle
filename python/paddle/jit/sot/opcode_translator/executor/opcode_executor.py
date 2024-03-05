@@ -1790,8 +1790,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 2. create true_fn and false_fn
         def create_if_branch_fn(start_idx, input_var_names):
-            if self._instructions[start_idx].opname == "RETURN_VALUE":
-                return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
             pycode_gen.set_function_inputs(
@@ -1847,8 +1845,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         var_loader.load(result)
         if_code = self._graph.pycode_gen.add_instr(instr.opname)
 
-        assert true_fn is not None
-
+        # Generate true_fn and false_fn
         self._graph.pycode_gen.gen_load_object(
             true_fn, true_fn.__code__.co_name
         )
@@ -1863,22 +1860,20 @@ class OpcodeExecutor(OpcodeExecutorBase):
         )
         self._graph.pycode_gen.gen_return()
 
-        if false_fn is not None:
-            false_start_code = self._graph.pycode_gen.gen_load_object(
-                false_fn, false_fn.__code__.co_name
-            )
-            for stack_arg in list(self.stack)[:-1]:
-                var_loader.load(stack_arg)
-            for name in false_fn_input_var_names:
-                var_loader.load(self.get_var(name, allow_undefined=True))
+        false_start_code = self._graph.pycode_gen.gen_load_object(
+            false_fn, false_fn.__code__.co_name
+        )
+        for stack_arg in list(self.stack)[:-1]:
+            var_loader.load(stack_arg)
+        for name in false_fn_input_var_names:
+            var_loader.load(self.get_var(name, allow_undefined=True))
 
-            self._graph.pycode_gen.gen_call_function(
-                argc=false_fn.__code__.co_argcount,
-            )
-            self._graph.pycode_gen.gen_return()
-        else:
-            false_start_code = self._graph.pycode_gen.gen_return()
+        self._graph.pycode_gen.gen_call_function(
+            argc=false_fn.__code__.co_argcount,
+        )
+        self._graph.pycode_gen.gen_return()
 
+        # Replace the jump instruction with the new if structure
         if_code.jump_to = false_start_code
 
         self.new_code = self._graph.pycode_gen.gen_pycode()
@@ -2274,6 +2269,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
         slice_variable = SliceVariable(
             slice_const, self._graph, ConstTracker(slice_const)
         )
+
+        for name, var in zip(output_var_names[:-1], ret[slice_variable]):
+            self.set_var(name, var)
 
         for name, var in zip(output_var_names[:-1], ret[slice_variable]):
             self.set_var(name, var)
