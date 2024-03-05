@@ -32,6 +32,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
@@ -86,7 +87,24 @@ class OpTransInfo {
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
   std::unordered_set<std::string> default_deny_ops_{
-      "feed", "fetch", "conv2d", "conv2d_grad", "dropout", "matmul"};
+      "feed",
+      "fetch",
+      "conv2d",
+      "conv2d_grad",
+      "dropout",
+      "slice",
+      "concat",
+      "gather_nd",
+      "pool2d",
+      "split",
+      "matmul",
+      "matmul_grad",
+      "transpose",
+      "embedding_grad",
+      "embedding",
+      "gather",
+      "arange",
+  };
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
@@ -131,6 +149,21 @@ bool HaveZeroDimInput(const ::pir::Operation& op) {
     auto tensor_type = type.dyn_cast<::pir::DenseTensorType>();
     return tensor_type && tensor_type.dims().size() == 0U;
   };
+
+  auto HasNegDim = [](const ::pir::Type& type) {
+    auto tensor_type = type.dyn_cast<::pir::DenseTensorType>();
+
+    if (tensor_type) {
+      for (size_t i = 0; i < tensor_type.dims().size(); ++i) {
+        if (tensor_type.dims()[i] < 0) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
   // Judge for vector<Type>
   auto HasZeroDimInVT = [&](const std::vector<::pir::Type>& types) {
     for (auto& type : types) {
@@ -144,7 +177,7 @@ bool HaveZeroDimInput(const ::pir::Operation& op) {
     if (!value || !value.type()) continue;
     if (auto vector_type = value.type().dyn_cast<::pir::VectorType>()) {
       if (HasZeroDimInVT(vector_type.data())) return true;
-    } else if (HasZeroDim(value.type())) {
+    } else if (HasZeroDim(value.type()) || HasNegDim(value.type())) {
       return true;
     }
   }
@@ -177,6 +210,86 @@ bool AllInputDenseTensor(const ::pir::Operation& op) {
   return true;
 }
 
+bool IsSmallNumelOp(const ::pir::Operation& op) {
+  auto GetNumElementsFromDim = [](const ::pir::DDim& dim) -> int64_t {
+    if (::common::contain_unknown_dim(dim)) {
+      return std::numeric_limits<int32_t>::max();
+    } else {
+      return ::common::product(dim);
+    }
+  };
+
+  auto GetNumElementsFromValue = [&](const ::pir::Value& value) {
+    int64_t numel = -1;
+    if (value && value.type()) {
+      auto type = value.type().dyn_cast<::pir::DenseTensorType>();
+      if (type) {
+        numel = GetNumElementsFromDim(type.dims());
+      }
+    }
+    return numel;
+  };
+  const int64_t max_value_numel = [&] {
+    int64_t max_value_numel = -1;
+    if (op.num_operands() == 0) {  // no input
+      return max_value_numel;
+    }
+
+    for (uint32_t i = 0; i < op.num_operands(); ++i) {
+      max_value_numel = std::max(GetNumElementsFromValue(op.operand_source(i)),
+                                 max_value_numel);
+    }
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      max_value_numel =
+          std::max(GetNumElementsFromValue(op.result(i)), max_value_numel);
+    }
+    return max_value_numel;
+  }();
+
+  // max value check
+  if (0 <= max_value_numel && max_value_numel < 32) {
+    return true;
+  }
+
+  return false;
+}
+
+bool IsShapeComputeOp(const ::pir::Operation& op) {
+  const auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
+      op.GetParent()->parent_program());
+  if (op.num_operands() == 0) {
+    return false;
+  }
+  bool all_input_has_shape_data = true;
+  for (uint32_t i = 0; i < op.num_operands(); ++i) {
+    if (shape_analysis.HasShapeOrDataForValue(op.operand_source(i))) {
+      const auto& shape_expr =
+          shape_analysis.GetShapeOrDataForValue(op.operand_source(i));
+      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          shape_expr.data()) {  // has shape data
+        continue;
+      }
+    }
+    all_input_has_shape_data = false;
+    break;
+  }
+  return all_input_has_shape_data;
+}
+
+// TODO(zyfncg): This function is a temporary solution, we need to remove it in
+// the future.
+bool IsTempDenySpecialOp(const ::pir::Operation& op) {
+  if (op.name() == "cinn_op.generate_shape") {
+    return false;
+  }
+
+  if (IsShapeComputeOp(op) || IsSmallNumelOp(op)) {
+    return true;
+  }
+
+  return false;
+}
+
 bool IsRegisteredInCINN(const ::pir::Operation& op) {
   if (CompatibleInfo::OP_NAMES.find(op.name()) !=
       CompatibleInfo::OP_NAMES.end()) {
@@ -186,10 +299,13 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
 }
 
 bool IsSupportForCinn(const ::pir::Operation& op) {
-  if (!AllInputDenseTensor(op) || HaveZeroDimInput(op) || UnimplementOps(op)) {
+  if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
     VLOG(4) << "Found " << op.name()
             << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
             << "So mark IsSupportForCinn: " << false;
+    return false;
+  }
+  if (IsTempDenySpecialOp(op)) {
     return false;
   }
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
@@ -319,6 +435,8 @@ static utils::Attribute ConvertArrayAttribute(
                       "ArrayAttribute";
       }
     }
+  } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
+    // do nothing for now
   } else {
     LOG(FATAL) << "unknown Attribute: " << src_attr;
   }
@@ -399,14 +517,14 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   auto op_name = CompatibleInfo::OpName(op);
   if (op_name == "generate_shape") {
-    return hlir::framework::kNonFusible;
+    return hlir::framework::kElementWise;
   }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
   CHECK(op_pattern_dict.Find(cinn_op));
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
     // As binary op was defined as broadcast, actually it should be
-    // element-wise. See fusion_hepler_base.h for detail.
+    // element-wise. See fusion_helper_base.h for detail.
     if (op_name != "broadcast_to") {
       kind = hlir::framework::kElementWise;
     }

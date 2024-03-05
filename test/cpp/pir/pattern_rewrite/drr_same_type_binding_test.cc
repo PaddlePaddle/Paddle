@@ -30,7 +30,7 @@
                                     /  |  \  \  \
                                   /    |   \   \    \
              full               /      |    |    \     \           full_tmp
-            /  |        transpose1      | trans2 trans3    \         /   |
+            /  |        transpose1      | trans2 trans3    \        /   |
            /   |         /    |        |    |      |        \      /    |
     softmax1   |        /     |        |    |      |          \   /     |
          \     |      /    softmax2    |    |      |          add1      |

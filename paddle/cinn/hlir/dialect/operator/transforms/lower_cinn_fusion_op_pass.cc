@@ -618,7 +618,6 @@ CreateGroupShapeOrDataExprs(
   }
   return value2shape;
 }
-
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
   explicit FusionOpPattern(::pir::IrContext* context)
@@ -691,11 +690,23 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   std::shared_ptr<Group> RebuildGroup(cinn::dialect::FusionOp fusion_op) const {
     auto group = std::make_shared<Group>();
     group->op_pattern_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
+    if (fusion_op.attributes().count("group_info")) {
+      auto attr = fusion_op.attribute("group_info")
+                      .dyn_cast<cinn::dialect::GroupInfoAttribute>()
+                      .data();
+
+      group->op_pattern_kind = attr.op_pattern_kind;
+      group->loop_ranges = attr.loop_ranges;
+
+      group->reduce_axis = attr.reduce_axis;
+      group->alignment_schedule_info = attr.alignment_schedule_info;
+    }
 
     // Rebuild ops of the group
     for (auto op : fusion_op.GetOperators()) {
       if (!op->isa<::pir::YieldOp>()) {
         group->ops.push_back(op);
+
         group->ops_set.insert(op);
         group->op_pattern_kind =
             static_cast<int>(CompatibleInfo::OpKind(*op)) >
@@ -708,7 +719,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     // Rebuild output_ops and input_ops of the group
     auto yield_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-      group->output_ops.insert(yield_op->operand_source(i).defining_op());
+      auto in = yield_op->operand_source(i);
+      group->output_values.push_back(in);
+      group->output_ops.insert(in.defining_op());
     }
 
     // Rebuild other informations
@@ -748,7 +761,7 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 
@@ -769,7 +782,7 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 

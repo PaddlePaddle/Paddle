@@ -167,11 +167,11 @@ MultiplyGradNode::operator()(
       auto grad_node = std::shared_ptr<MultiplyDoubleGradNode>(  // NOLINT
           new MultiplyDoubleGradNode(2, 3));
       // SetAttributes if needed
-      grad_node->SetAttributeaxis(axis);
+      grad_node->SetAttribute_axis(axis);
       // Set TensorWrappers for Forward Inputs if needed
-      grad_node->SetTensorWrapperx(x);
-      grad_node->SetTensorWrappery(y);
-      grad_node->SetTensorWrappergrad_out(grad_out);
+      grad_node->SetTensorWrapper_x(x);
+      grad_node->SetTensorWrapper_y(y);
+      grad_node->SetTensorWrapper_grad_out(grad_out);
       // SetGradOutMeta & SetEdges
       grad_node->SetGradOutMeta(x, 0);
       grad_node->SetGradOutMeta(y, 1);

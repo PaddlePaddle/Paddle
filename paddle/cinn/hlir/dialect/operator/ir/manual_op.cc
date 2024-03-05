@@ -24,6 +24,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
@@ -104,6 +105,20 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   os << " \n }";
 }
 
+bool GroupOp::InferSymbolicShape(
+    ::pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  ::pir::InferSymExprForBlock(*block(), shape_analysis);
+
+  for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+    auto inner_yield_value = block()->back().operand_source(rst_idx);
+    const auto& shape =
+        shape_analysis->GetShapeOrDataForValue(inner_yield_value);
+    shape_analysis->SetShapeOrDataForValue(result(rst_idx), shape);
+  }
+
+  return true;
+}
+
 void FusionOp::Build(pir::Builder& builder,
                      pir::OperationArgument& argument,
                      const std::vector<pir::Type>& output_types) {
@@ -154,6 +169,16 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   }
   os << " \n }";
 }
+
+void YieldStoreOp::Build(pir::Builder& builder,
+                         pir::OperationArgument& argument,
+                         pir::Value x,
+                         pir::Type output_type) {
+  argument.inputs = {x};
+  argument.output_types = {output_type};
+}
+
+void YieldStoreOp::VerifySig() {}
 
 bool ConcatOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
@@ -267,13 +292,12 @@ void GenerateShapeOp::Build(
     const std::vector<pir::Value>& inputs,
     const std::vector<pir::Attribute>& output_dim_exprs,
     const GenerateShapeOp::SymbolBindings& symbol_bindings) {
-  CHECK(!inputs.empty()) << ". output_dim_exprs: " << [&] {
-    std::stringstream ss;
+  if (inputs.empty()) {
+    VLOG(3) << "GenerateShapeOp inputs is empty";
     for (const auto& attr : output_dim_exprs) {
-      ss << attr;
+      CHECK(attr.isa<pir::Int64Attribute>());
     }
-    return ss.str();
-  }();
+  }
   argument.AddInputs(inputs);
   argument.AddAttribute("output_dim_exprs",
                         builder.array_attr(output_dim_exprs));
@@ -487,3 +511,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::YieldStoreOp);

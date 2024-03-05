@@ -50,7 +50,11 @@ class TestTransposeOp(OpTest):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output_with_place(
-            core.CPUPlace(), 1e-5, no_check_set=['XShape'], check_dygraph=False
+            core.CPUPlace(),
+            1e-5,
+            no_check_set=['XShape'],
+            check_dygraph=False,
+            check_pir_onednn=True,
         )
 
     def initTestCase(self):

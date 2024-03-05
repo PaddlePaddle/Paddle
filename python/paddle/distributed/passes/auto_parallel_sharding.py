@@ -1187,7 +1187,7 @@ class ShardingPass(PassBase):
             2.2 insert after communication dependencies only when need
         3. there is not need to add explicit dependencies for non-coalesce gradient communication
 
-        P.S. this overlap pass is ONLY adapted for standalone executor (graph based) and stream awared allocator.
+        P.S. this overlap pass is ONLY adapted for standalone executor (graph based) and stream award allocator.
         """
 
         if not self.enable_overlap:
@@ -1309,7 +1309,7 @@ class ShardingPass(PassBase):
         # hierarchical grad comm
         if self.enable_hierarchical_comm:
             # NOTE so far we only support Isomorphic cluster with 8 ranks per node
-            # TODO unifiy here create communicators
+            # TODO unify here create communicators
             # create communicators
             nranks_per_node = 8
             assert self.sharding_world_size % nranks_per_node == 0

@@ -173,8 +173,8 @@ TEST(BuddyAllocator, FractionRefillPool) {
   // Max chunk size should be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
 
-  size_t alloc =
-      platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
+  size_t alloc = platform::GpuAvailableMemToAlloc() *
+                 FLAGS_fraction_of_gpu_memory_to_use;  // NOLINT
   // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
   // be able to alloc 60% of the remaining GPU
   int* p1 = TestBuddyAllocator(&buddy_allocator,
@@ -184,8 +184,8 @@ TEST(BuddyAllocator, FractionRefillPool) {
   // Max chunk size should be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
 
-  alloc =
-      platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
+  alloc = platform::GpuAvailableMemToAlloc() *
+          FLAGS_fraction_of_gpu_memory_to_use;  // NOLINT
   // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
   // be able to alloc 60% of the remaining GPU
   TestBuddyAllocator(&buddy_allocator,

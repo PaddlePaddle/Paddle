@@ -62,7 +62,7 @@ class AmpScaler:
                                 steps with finite gradients. Default is 1000.
         decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
                                     accumulated steps with nan or inf gradients. Default is 2.
-        use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
+        use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamically. Default is True.
     Returns:
         An AmpScaler object.
 
@@ -258,7 +258,7 @@ class AmpScaler:
                 self._cache_founf_inf = False
 
         if self._use_dynamic_loss_scaling:
-            # uopdate the scale
+            # update the scale
             self._update()
 
         self._optimizer_states = defaultdict(_refresh_optimizer_state)
@@ -412,7 +412,7 @@ class AmpScaler:
         Whether to use dynamic loss scaling.
 
         Returns:
-            bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamicly return true.
+            bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamically return true.
         """
         return self._use_dynamic_loss_scaling
 
@@ -420,7 +420,7 @@ class AmpScaler:
         """
         Return the initial loss scaling factor.
 
-        Reurns:
+        Returns:
             float:  the initial loss scaling factor.
         """
         return self._init_loss_scaling
@@ -441,7 +441,7 @@ class AmpScaler:
         """
         Return the multiplier to use when increasing the loss scaling.
 
-        Reurns:
+        Returns:
             float:  the multiplier to use when increasing the loss scaling.
         """
         return self._incr_ratio
@@ -460,7 +460,7 @@ class AmpScaler:
         """
         Get the less-than-one-multiplier to use when decreasing the loss scaling.
 
-        Reurns:
+        Returns:
             float:  the less-than-one-multiplier to use when decreasing the loss scaling.
         """
         return self._decr_ratio
@@ -479,7 +479,7 @@ class AmpScaler:
         """
         Return the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
 
-        Reurns:
+        Returns:
             int:  the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
         """
         return self._incr_every_n_steps
@@ -497,7 +497,7 @@ class AmpScaler:
         """
         Return the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
-        Reurns:
+        Returns:
             int:  the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
         """
         return self._decr_every_n_nan_or_inf
@@ -515,7 +515,7 @@ class AmpScaler:
         """
         Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
 
-        Reurns:
+        Returns:
             A dict of scaler includes:
             scale (tensor): The loss scaling factor.
             incr_ratio(float): The multiplier to use when increasing the loss scaling.
@@ -524,7 +524,7 @@ class AmpScaler:
             decr_every_n_nan_or_inf(int): Decreases loss scaling every n accumulated steps with nan or inf gradients.
             incr_count(int): The number of recent consecutive unskipped steps.
             decr_count(int): The number of recent consecutive skipped steps.
-            use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
+            use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamically. Default is True.
         """
         return (
             {
@@ -597,7 +597,7 @@ class GradScaler(AmpScaler):
                                 steps with finite gradients. Default is 2000.
         decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
                                     accumulated steps with nan or inf gradients. Default is 1.
-        use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
+        use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamically. Default is True.
     Returns:
         An GradScaler object.
 
@@ -869,7 +869,7 @@ class GradScaler(AmpScaler):
         Whether to use dynamic loss scaling.
 
         Returns:
-            bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamicly return true.
+            bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamically return true.
 
         Examples:
             .. code-block:: python
@@ -895,7 +895,7 @@ class GradScaler(AmpScaler):
         """
         Return the initial loss scaling factor.
 
-        Reurns:
+        Returns:
             float:  the initial loss scaling factor.
 
         Examples:
@@ -952,7 +952,7 @@ class GradScaler(AmpScaler):
         """
         Return the multiplier to use when increasing the loss scaling.
 
-        Reurns:
+        Returns:
             float:  the multiplier to use when increasing the loss scaling.
 
         Examples:
@@ -1009,7 +1009,7 @@ class GradScaler(AmpScaler):
         """
         Get the less-than-one-multiplier to use when decreasing the loss scaling.
 
-        Reurns:
+        Returns:
             float:  the less-than-one-multiplier to use when decreasing the loss scaling.
 
         Examples:
@@ -1066,7 +1066,7 @@ class GradScaler(AmpScaler):
         """
         Return the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
 
-        Reurns:
+        Returns:
             int:  the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
 
         Examples:
@@ -1123,7 +1123,7 @@ class GradScaler(AmpScaler):
         """
         Return the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
-        Reurns:
+        Returns:
             int:  the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
         Examples:
@@ -1189,7 +1189,7 @@ class GradScaler(AmpScaler):
             decr_every_n_nan_or_inf(int): Decreases loss scaling every n accumulated steps with nan or inf gradients.
             incr_count(int): The number of recent consecutive unskipped steps.
             decr_count(int): The number of recent consecutive skipped steps.
-            use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
+            use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamically. Default is True.
 
 
         Examples:

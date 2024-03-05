@@ -72,15 +72,25 @@ const std::unordered_set<std::string> LegacyOpList = {
     NceGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
+    MovingAverageAbsMaxScaleOp::name(),
+    MovingAverageAbsMaxScale_Op::name(),
+    QuantizeLinearOp::name(),
+    QuantizeLinear_Op::name(),
+    DequantizeLinearOp::name(),
+    DequantizeLinear_Op::name(),
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
     paddle::onednn::dialect::QuantizeOp::name(),
     paddle::onednn::dialect::RequantizeOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
+    paddle::onednn::dialect::FusionLstmOp::name(),
 #endif
+    CReduceMaxOp::name(),
     CReduceMinOp::name(),
-    PushSparseV2Op::name()};
+    CReduceProdOp::name(),
+    PushSparseV2Op::name(),
+    PartialSendOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -180,7 +190,7 @@ static std::unordered_map<
         {AttrType::ARRAY,
          [](const pir::Attribute& attr) {
            auto attr_vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
-           if (attr_vec.size() == 0) {
+           if (attr_vec.empty()) {
              return VariantType{std::vector<int>()};
            }
            AttrType element_type = GetAttributeType(attr_vec[0]);

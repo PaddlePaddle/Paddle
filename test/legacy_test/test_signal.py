@@ -574,7 +574,7 @@ def place(devices, key='place'):
 def setUpModule():
     global rtol
     global atol
-    # All test case will use float64 for compare percision, refs:
+    # All test case will use float64 for compare precision, refs:
     # https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64
     rtol = {
         'float32': 1e-06,

@@ -58,7 +58,7 @@ static int close_open_fds_internal() {
     long d_ino = 0;  // NOLINT
     off_t d_off;
     unsigned short d_reclen = 0;  // NOLINT
-    char d_name[256];
+    char d_name[256];             // NOLINT
   };
 
   int dir_fd = -1;
@@ -66,7 +66,7 @@ static int close_open_fds_internal() {
     PADDLE_THROW(platform::errors::Unavailable("Failed to open proc/self/fd."));
     return -1;
   }
-  char buffer[sizeof(linux_dirent)];
+  char buffer[sizeof(linux_dirent)];  // NOLINT
 
   for (;;) {
     int bytes = 0;
@@ -187,8 +187,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
   std::string real_cmd = "set -o pipefail; " + cmd;
 
-  int pipe_fds[2];
-  if (pipe(pipe_fds) != 0) {
+  std::array<int, 2> pipe_fds;
+  if (pipe(pipe_fds.data()) != 0) {
     *err_no = -1;
     return nullptr;
   }
@@ -300,17 +300,17 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 
   std::string real_cmd = "set -o pipefail; " + cmd;
 
-  int pipein_fds[2];
-  int pipeout_fds[2];
-  if (pipe(pipein_fds) != 0) {
+  std::array<int, 2> pipein_fds;
+  std::array<int, 2> pipeout_fds;
+  if (pipe(pipein_fds.data()) != 0) {
     return {nullptr, nullptr};
   }
-  if (pipe(pipeout_fds) != 0) {
+  if (pipe(pipeout_fds.data()) != 0) {
     return {nullptr, nullptr};
   }
 
-  int child_pid =
-      shell_p2open_fork_internal(real_cmd.c_str(), pipein_fds, pipeout_fds);
+  int child_pid = shell_p2open_fork_internal(
+      real_cmd.c_str(), pipein_fds.data(), pipeout_fds.data());
 
   close(pipein_fds[1]);
   close(pipeout_fds[0]);

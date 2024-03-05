@@ -148,7 +148,7 @@ def grid_sample(
     indexing the 5th dimension (in width dimension) of input data x, y is
     indexing the 4th dimension (in height dimension) and z is indexing the
     3rd dimension (in depth dimension) finally results is the bilinear
-    interpolation or nearest value of 8 nearest cornerpoints. The output
+    interpolation or nearest value of 8 nearest corner points. The output
     tensor shape will be [N, C, D, H, W].
 
 
