@@ -137,12 +137,7 @@ void CropInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
-void CScatterInferMeta(const MetaTensor& x,
-                       int ring_id,
-                       int root,
-                       int nranks,
-                       bool use_calc_stream,
-                       MetaTensor* out);
+void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void CumInferMeta(const MetaTensor& x,
                   int axis,

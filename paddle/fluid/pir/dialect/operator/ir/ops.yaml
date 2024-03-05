@@ -273,10 +273,10 @@
   output : Tensor(out)
   infer_meta :
     func : CScatterInferMeta
-    param : [x, ring_id, root, nranks, use_calc_stream]
+    param : [x, nranks]
   kernel :
     func : c_scatter
-    param : [x, ring_id, root, nranks, use_calc_stream]
+    param : [x, nranks]
 
 - op : c_sync_calc_stream
   args : (Tensor x)
