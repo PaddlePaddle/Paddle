@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
@@ -60,6 +59,7 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Exp)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Exp_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Expm1)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Expm1_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Exponential_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Fetch)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Flip)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Floor)

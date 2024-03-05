@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
@@ -53,7 +52,6 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Split)
 
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Gather)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Kron)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Kthvalue)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logcumsumexp)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(MaskedSelect)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Poisson)
@@ -64,7 +62,6 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(TakeAlongAxis)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Topk)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unbind)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(UniqueConsecutive)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Exponential_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Linspace)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logspace)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logsumexp)
