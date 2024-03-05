@@ -3696,6 +3696,14 @@ phi::DataType IncrementOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+bool IncrementOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(x());
+  shape_analysis->SetShapeOrDataForValue(out(), operand_shape_or_data);
+  return true;
+}
+
 const char *Increment_Op::attributes_name[1] = {"value"};
 
 OpInfoTuple Increment_Op::GetOpInfo() {
