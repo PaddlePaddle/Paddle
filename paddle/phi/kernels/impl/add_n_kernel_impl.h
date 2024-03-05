@@ -23,8 +23,6 @@
 
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
-#include "paddle/common/enforce.h"
-
 namespace phi {
 
 template <typename T, typename Context>

@@ -15,17 +15,22 @@
 #include <Python.h>
 #include <frameobject.h>
 
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/op_callstack_utils.h"
 
-pir::Attribute get_op_callstack_info() {
+pir::Attribute CallStackRecorder::get_op_callstack_info() {
   PyObject* traceback_str = PyUnicode_FromString("traceback");
   PyObject* traceback_module = PyImport_Import(traceback_str);
 
   if (NULL == traceback_module) {
     Py_DECREF(traceback_str);
     Py_DECREF(traceback_module);
-    return pir::ArrayAttribute::get(pir::IrContext::Instance(),
-                                    std::vector<pir::Attribute>());
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "Failed to import traceback module when getting callstack information "
+        "for %s.",
+        api_name));
   }
   PyObject* tb = PyObject_GetAttrString(traceback_module, "extract_stack");
   PyObject* stack = PyObject_CallObject(tb, NULL);
@@ -33,8 +38,10 @@ pir::Attribute get_op_callstack_info() {
     Py_DECREF(tb);
     Py_DECREF(traceback_str);
     Py_DECREF(traceback_module);
-    return pir::ArrayAttribute::get(pir::IrContext::Instance(),
-                                    std::vector<pir::Attribute>());
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "Failed to get callstack object when getting callstack information for "
+        "%s.",
+        api_name));
   }
   Py_ssize_t stack_size = PyList_Size(stack);
   std::vector<pir::Attribute> op_callstack_infos;
@@ -65,4 +72,31 @@ pir::Attribute get_op_callstack_info() {
   Py_DECREF(traceback_module);
   return pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                   op_callstack_infos);
+}
+
+void CallStackRecorder::record() {
+  before_insertion_point =
+      paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+  before_insertion_point.second--;
+}
+
+void CallStackRecorder::attach_to_ops() {
+  before_insertion_point.second++;
+  pir::Attribute callstack_info_attr = get_op_callstack_info();
+  pir::InsertionPoint after_insertion_point =
+      paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+  PADDLE_ENFORCE_EQ(before_insertion_point.first,
+                    after_insertion_point.first,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "The block obtained before and after calling the "
+                        "static API %s is inconsistent.",
+                        api_name));
+  auto after_insertion_iterator = after_insertion_point.second;
+  for (auto block_iterator = before_insertion_point.second;
+       block_iterator != after_insertion_iterator;
+       block_iterator++) {
+    block_iterator->set_attribute(paddle::framework::OpProtoAndCheckerMaker::
+                                      OpCreationCallstackAttrName(),
+                                  callstack_info_attr);
+  }
 }
