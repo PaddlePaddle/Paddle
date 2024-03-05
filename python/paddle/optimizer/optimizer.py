@@ -795,7 +795,9 @@ class Optimizer:
         else:
             var_name = self._gen_master_weight_var_name(param)
             if in_pir_mode():
-                with paddle.static.program_guard(self.helper.startup_program):
+                startup_program = paddle.static.default_startup_program()
+                main_program = paddle.static.default_main_program()
+                with paddle.static.program_guard(startup_program):
 
                     def get_param_from_startup(startup, name):
                         for op in startup.global_block().ops:
@@ -807,15 +809,13 @@ class Optimizer:
                         return None
 
                     startup_param = get_param_from_startup(
-                        self.helper.startup_program, param.name
+                        startup_program, param.name
                     )
                     var = paddle.cast(startup_param, 'float32')
                     var.persistable = True
                     paddle._pir_ops.set_parameter(var, var_name)
-                self.helper.main_program.set_parameters_from(
-                    self.helper.startup_program
-                )
-                with paddle.static.program_guard(self.helper.main_program):
+                main_program.set_parameters_from(startup_program)
+                with paddle.static.program_guard(main_program):
                     var = paddle._pir_ops.parameter(var_name)
             elif framework.in_dygraph_mode():
                 var = paddle.cast(param, 'float32')

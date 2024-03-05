@@ -214,7 +214,64 @@ def set_excluded_layers(models, excluded_layers):
                 layer._cast_to_low_precision = False
 
 
-@dygraph_only
+def _pir_apply(self, func, dtype, include_sublayers=True):
+    if include_sublayers:
+        for layer in self.children():
+            _pir_apply(layer, func, dtype, include_sublayers)
+
+    for key, param in self._parameters.items():
+        if param is not None:
+            param_applied = func(param, dtype)
+
+    for key, buf in self._buffers.items():
+        if buf is not None:
+            self._buffers[key] = func(buf, dtype)
+
+    self._dtype = dtype
+
+
+def _pir_transform(t, dtype):
+    main = paddle.static.default_main_program()
+    startup = paddle.static.default_startup_program()
+    name = t.name
+    with paddle.static.program_guard(startup):
+        block = startup.global_block()
+        for op in block.ops:
+            if (
+                op.name() == 'builtin.set_parameter'
+                and op.attrs()['parameter_name'] == name
+            ):
+                param = op.operand(0).source()
+                cast_param = paddle.cast(param, dtype)
+                cast_param.persistable = True
+                paddle._pir_ops.set_parameter(cast_param, name)
+                block.remove_op(op)
+                break
+    main.set_parameters_from(startup)
+    with paddle.static.program_guard(main):
+        block = main.global_block()
+        cast_param = paddle._pir_ops.parameter(name)
+        cast_param.stop_gradient = t.stop_gradient
+        cast_param.persistable = t.persistable
+        op = t.get_defining_op()
+        block.remove_op(op)
+        t.share_impl_with(cast_param)
+
+
+def _pir_to_impl(self, dtype, include_sublayers, floating_only):
+    def transform(t, dtype):
+        if floating_only and (not paddle.is_floating_point(t)):
+            return t
+        return _pir_transform(t, dtype)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        _pir_apply(self, transform, dtype, include_sublayers)
+
+    self._dtype = dtype
+    return self
+
+
 def amp_initialize(models, dtype, excluded_layers):
     set_excluded_layers(models, excluded_layers)
     for idx in range(len(models)):
@@ -231,9 +288,17 @@ def amp_initialize(models, dtype, excluded_layers):
                 layer._amp_decorate(dtype=dtype)
                 continue
 
-            layer._to_impl(
-                dtype=dtype, include_sublayers=False, floating_only=True
-            )
+            if in_pir_mode():
+                _pir_to_impl(
+                    layer,
+                    dtype=dtype,
+                    include_sublayers=False,
+                    floating_only=True,
+                )
+            else:
+                layer._to_impl(
+                    dtype=dtype, include_sublayers=False, floating_only=True
+                )
     return models
 
 
@@ -961,32 +1026,9 @@ def decorate(
                 )
                 return models, optimizers
         elif level == 'O2':
-            main = paddle.static.default_main_program()
-            startup = paddle.static.default_startup_program()
-            with paddle.static.program_guard(startup):
-                block = startup.global_block()
-                for op in block.ops:
-                    if op.name() != 'builtin.set_parameter':
-                        continue
-
-                    name = op.attrs()['parameter_name']
-                    param = op.operand(0).source()
-                    cast_param = paddle.cast(param, dtype)
-                    cast_param.persistable = True
-                    paddle._pir_ops.set_parameter(cast_param, name)
-                    block.remove_op(op)
-
-            main.set_parameters_from(startup)
-            with paddle.static.program_guard(main):
-                block = main.global_block()
-                for _, param in models._parameters.items():
-                    cast_param = paddle._pir_ops.parameter(param.name)
-                    cast_param.stop_gradient = param.stop_gradient
-                    cast_param.persistable = param.persistable
-                    op = param.get_defining_op()
-                    block.remove_op(op)
-                    param.share_impl_with(cast_param)
-
+            amp_initialize(
+                models=[models], dtype=dtype, excluded_layers=excluded_layers
+            )
             use_multi_precision = master_weight is not False
             _set_multi_precision(optimizers, use_multi_precision)
             if optimizers is None:
