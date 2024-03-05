@@ -744,7 +744,7 @@ void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
   if (dim[0] < 0) dim[0] = -1;
   out->set_dims(dim);
   out->set_layout(x.layout());
-  out->set_dtype(x.dtype())
+  out->set_dtype(x.dtype());
 }
 
 void DecodeJpegInferMeta(const MetaTensor& x,
