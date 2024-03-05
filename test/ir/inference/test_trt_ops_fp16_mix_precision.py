@@ -95,19 +95,20 @@ class TestTRTOptimizationLevel(unittest.TestCase):
         config = Config(
             self.model_prefix + '.pdmodel', self.model_prefix + '.pdiparams'
         )
-        config.enable_use_gpu(256, 0, PrecisionType.Half)
+        config.enable_use_gpu(256, 0, PrecisionType.Float32)
         config.exp_disable_tensorrt_ops(["relu_1.tmp_0"])
         config.enable_tensorrt_engine(
             workspace_size=1 << 30,
             max_batch_size=1,
             min_subgraph_size=3,
-            precision_mode=PrecisionType.Half,
+            precision_mode=PrecisionType.Float32,
             use_static=False,
             use_calib_mode=False,
         )
-        config.switch_ir_debug(True)
+
+        config.specify_tensorrt_subgraph_precision(["conv2d_1.w_0"], [" "])
         config.enable_memory_optim()
-        # config.disable_glog_info()
+        config.disable_glog_info()
         config.set_tensorrt_optimization_level(0)
         self.assertEqual(config.tensorrt_optimization_level(), 0)
         predictor = create_predictor(config)
