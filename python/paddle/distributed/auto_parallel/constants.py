@@ -42,6 +42,7 @@ NOT_FOUND = "not_found"
 BASE = "base"
 set_field_default_config(BASE, "auto_mode", "semi")
 set_field_default_config(BASE, "gradient_scale", True)
+set_field_default_config(BASE, "gradient_scale_using_allreduce_avg", False)
 set_field_default_config(BASE, "use_cache", True)
 set_field_default_config(BASE, "return_numpy", True)
 set_field_default_config(BASE, "all_ranks", False)
@@ -104,6 +105,9 @@ GRADIENT_MERGE = "gradient_merge"
 set_field_default_config(GRADIENT_MERGE, "enable", False)
 set_field_default_config(GRADIENT_MERGE, "k_steps", 1)
 set_field_default_config(GRADIENT_MERGE, "avg", True)
+set_field_default_config(
+    GRADIENT_MERGE, "dp_gradient_sync_after_accumulate", False
+)
 
 #########################################
 # pipeline configuration

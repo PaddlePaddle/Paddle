@@ -118,6 +118,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'c_allgather',
+    'c_allreduce_avg',
+    'c_allreduce_avg_',
     'c_allreduce_max',
     'c_allreduce_min',
     'c_allreduce_min_',
@@ -157,6 +159,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'soft_relu',
     'uniform_random_batch_size_like',
     'match_matrix_tensor',
+    'c_reduce_avg',
+    'c_reduce_avg_',
     'c_reduce_max',
     'c_reduce_max_',
     'c_reduce_min',
