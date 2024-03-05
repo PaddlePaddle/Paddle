@@ -39,7 +39,6 @@
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR); \
   }
 
-PD_REGISTER_SPARSE_UNARY_GPU_GRAD_KERNEL(sin, Sin)
 PD_REGISTER_SPARSE_UNARY_GPU_GRAD_KERNEL(tan, Tan)
 PD_REGISTER_SPARSE_UNARY_GPU_GRAD_KERNEL(asin, Asin)
 PD_REGISTER_SPARSE_UNARY_GPU_GRAD_KERNEL(atan, Atan)
@@ -56,6 +55,30 @@ PD_REGISTER_SPARSE_UNARY_GPU_GRAD_KERNEL(pow, Pow)
 PD_REGISTER_SPARSE_UNARY_GPU_GRAD_KERNEL(expm1, Expm1)
 PD_REGISTER_SPARSE_UNARY_GPU_GRAD_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_GPU_GRAD_KERNEL(leaky_relu, LeakyRelu)
+
+PD_REGISTER_KERNEL(sin_coo_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SinCooGradKernel,
+                   phi::dtype::float16,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(sin_csr_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SinCsrGradKernel,
+                   phi::dtype::float16,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
 
 PD_REGISTER_KERNEL(cast_coo_grad,
                    GPU,

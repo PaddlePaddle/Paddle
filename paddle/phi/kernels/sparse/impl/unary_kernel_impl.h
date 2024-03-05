@@ -74,7 +74,6 @@ namespace sparse {
                                     out->mutable_non_zero_elements()); \
   }
 
-DEFINE_SPARSE_UNARY_KERNEL(Sin)
 DEFINE_SPARSE_UNARY_KERNEL(Tan)
 DEFINE_SPARSE_UNARY_KERNEL(Asin)
 DEFINE_SPARSE_UNARY_KERNEL(Atan)
@@ -91,6 +90,36 @@ DEFINE_SPARSE_UNARY_KERNEL(Expm1)
 DEFINE_SPARSE_UNARY_KERNEL(Relu6)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+
+template <typename T, typename Context>
+void SinCooKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  SparseCooTensor* out) {
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+  phi::SinKernel<T, Context>(
+      dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
+  out->SetIndicesDict(x.GetIndicesDict());
+  if (out->dtype() == DataType::COMPLEX64 ||
+      out->dtype() == DataType::COMPLEX128) {
+    DenseTensor* out_values = out->mutable_non_zero_elements();
+    out->set_type(out_values->dtype());
+  }
+}
+
+template <typename T, typename Context>
+void SinCsrKernel(const Context& dev_ctx,
+                  const SparseCsrTensor& x,
+                  SparseCsrTensor* out) {
+  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
+  phi::SinKernel<T, Context>(
+      dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
+
+  if (out->dtype() == DataType::COMPLEX64 ||
+      out->dtype() == DataType::COMPLEX128) {
+    DenseTensor* out_values = out->mutable_non_zero_elements();
+    out->set_type(out_values->dtype());
+  }
+}
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,

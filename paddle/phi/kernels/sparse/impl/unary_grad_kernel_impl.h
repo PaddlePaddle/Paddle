@@ -80,7 +80,6 @@ namespace sparse {
                                         dx->mutable_non_zero_elements()); \
   }
 
-DEFINE_SPARSE_UNARY_GRAD_KERNEL(Sin)
 DEFINE_SPARSE_UNARY_GRAD_KERNEL(Tan)
 DEFINE_SPARSE_UNARY_GRAD_KERNEL(Asin)
 DEFINE_SPARSE_UNARY_GRAD_KERNEL(Atan)
@@ -97,6 +96,40 @@ DEFINE_SPARSE_UNARY_GRAD_KERNEL(Expm1)
 DEFINE_SPARSE_UNARY_GRAD_KERNEL(Relu6)
 DEFINE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(Pow, factor)
 DEFINE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+
+template <typename T, typename Context>
+void SinCooGradKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x_or_out,
+                      const SparseCooTensor& dout,
+                      SparseCooTensor* dx) {
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x_or_out, dx);
+  phi::SinGradKernel<T, Context>(dev_ctx,
+                                 x_or_out.non_zero_elements(),
+                                 dout.non_zero_elements(),
+                                 dx->mutable_non_zero_elements());
+  if (dx->dtype() == DataType::COMPLEX64 ||
+      dx->dtype() == DataType::COMPLEX128) {
+    DenseTensor* out_values = dx->mutable_non_zero_elements();
+    dx->set_type(out_values->dtype());
+  }
+}
+
+template <typename T, typename Context>
+void SinCsrGradKernel(const Context& dev_ctx,
+                      const SparseCsrTensor& x_or_out,
+                      const SparseCsrTensor& dout,
+                      SparseCsrTensor* dx) {
+  EmptyLikeCsrKernel<T, Context>(dev_ctx, x_or_out, dx);
+  phi::SinGradKernel<T, Context>(dev_ctx,
+                                 x_or_out.non_zero_elements(),
+                                 dout.non_zero_elements(),
+                                 dx->mutable_non_zero_elements());
+  if (dx->dtype() == DataType::COMPLEX64 ||
+      dx->dtype() == DataType::COMPLEX128) {
+    DenseTensor* out_values = dx->mutable_non_zero_elements();
+    dx->set_type(out_values->dtype());
+  }
+}
 
 template <typename T, typename Context>
 void CastCooGradKernel(const Context& dev_ctx,

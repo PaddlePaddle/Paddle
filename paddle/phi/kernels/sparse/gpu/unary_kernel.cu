@@ -69,7 +69,6 @@ void DivScalarCsrKernel(const Context& dev_ctx,
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR); \
   }
 
-PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(sin, Sin)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(tan, Tan)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(asin, Asin)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(atan, Atan)
@@ -87,6 +86,30 @@ PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(scale, Scale)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(expm1, Expm1)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
+
+PD_REGISTER_KERNEL(sin_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SinCooKernel,
+                   phi::dtype::float16,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(sin_csr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SinCsrKernel,
+                   phi::dtype::float16,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
 
 PD_REGISTER_KERNEL(divide_scalar_coo,
                    GPU,
