@@ -160,8 +160,6 @@ void ApplyCinnLowerPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
-  auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
-  std::cerr << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
 
   bool has_dynamic_shape = HasDynamicShape(*program);
