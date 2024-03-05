@@ -125,10 +125,63 @@ bool ReshapeOpInferSymbolicShape(
   std::vector<int> shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "shape");
 
-  std::vector<symbol::DimExpr> out_dims;
-  for (int dim : shape) {
-    out_dims.emplace_back(static_cast<std::int64_t>(dim));
-  }
+  const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
+    symbol::DimExpr product{1};
+    for (const auto &dim_expr : dim_exprs) {
+      if (Filter(dim_expr)) {
+        product = product * dim_expr;
+      }
+    }
+    return product;
+  };
+
+  const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
+    if (dim_expr.isa<int64_t>()) {
+      return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
+    }
+    return true;
+  };
+
+  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
+    if (dim_expr.isa<int64_t>()) {
+      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
+    }
+    return false;
+  };
+
+  const auto &original_shape =
+      [&] {
+        std::vector<symbol::DimExpr> original_shape;
+        for (int dim : shape) {
+          original_shape.emplace_back(static_cast<std::int64_t>(dim));
+        }
+        return original_shape;
+      }
+
+  const std::vector<symbol::DimExpr>
+      out_dims = [&] {
+        const auto &numel =
+            GetProduct(original_shape, [](const auto &) { return true; });
+
+        const auto &product_exclude_minus_one =
+            GetProduct(operand_shape_or_data.data().value(), IsNotMinusOne);
+
+        const auto &input_dims = operand_shape_or_data.data().value();
+
+        std::vector<symbol::DimExpr> out_dims;
+        out_dims.reserve(input_dims.size());
+        for (size_t i = 0; i < input_dims.size(); ++i) {
+          auto out_dim_expr = IsNotMinusOne(input_dims[i])
+                                  ? input_dims[i]
+                                  : (numel / product_exclude_minus_one);
+          out_dim_expr =
+              IsZero(input_dims[i]) ? original_shape[i] : out_dim_expr;
+          out_dims.emplace_back(out_dim_expr);
+        }
+
+        return out_dims;
+      }();
+
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_dims)};
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
