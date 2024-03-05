@@ -91,6 +91,7 @@ elif [[ "$1" == "cudnn900" ]]; then
   tar xJvf cudnn-linux-x86_64-9.0.0.312_cuda12-archive.tar.xz && \
   cd cudnn-linux-x86_64-9.0.0.312_cuda12-archive && \
   cp -r include /usr && \
+  mkdir -p /usr/lib/x86_64-linux-gnu && \
   cp -r lib/libcudnn* /usr/lib/x86_64-linux-gnu && \
   cp -r lib /usr && cd ../ && \
   rm -f cudnn-linux-x86_64-9.0.0.312_cuda12-archive.tar.xz && \
