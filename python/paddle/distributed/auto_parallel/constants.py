@@ -105,6 +105,9 @@ GRADIENT_MERGE = "gradient_merge"
 set_field_default_config(GRADIENT_MERGE, "enable", False)
 set_field_default_config(GRADIENT_MERGE, "k_steps", 1)
 set_field_default_config(GRADIENT_MERGE, "avg", True)
+set_field_default_config(
+    GRADIENT_MERGE, "dp_gradient_sync_after_accumulate", False
+)
 
 #########################################
 # pipeline configuration
