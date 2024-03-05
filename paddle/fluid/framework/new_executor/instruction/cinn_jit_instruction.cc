@@ -163,6 +163,12 @@ CinnJitInstruction::CinnJitInstruction(
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     tensor->set_type(
         paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
+    for (size_t j = 0; j < alloc_tensor_type.dims().size(); ++j) {
+      if (alloc_tensor_type.dims()[j] < 0) {
+        need_update_shape = true;
+        continue;
+      }
+    }
     tensor->Resize(alloc_tensor_type.dims());
   }
 }
@@ -173,7 +179,7 @@ void CinnJitInstruction::Run() {
 
   auto stream = gpu_ctx->stream();
 
-  if (FLAGS_cinn_bucket_compile) {
+  if (FLAGS_cinn_bucket_compile && need_update_shape) {
     fn_ptr_impl_->InferShape(
         tensor_args_, input_tensor_size, output_tensor_size);
   }
