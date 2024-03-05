@@ -50,7 +50,7 @@ class Conv2DTransposeBiasFusePass : public ConvBiasFusePass {
  public:
   Conv2DTransposeBiasFusePass();
   std::string type() const override { return "conv2d_transpose"; }
-  std::string fused_type() const override { return "conv2d_transpose"; }
+  std::string fused_type() const override { return "conv2d_transpose_bias"; }
 };
 
 class Conv3DBiasFusePass : public ConvBiasFusePass {

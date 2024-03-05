@@ -617,6 +617,20 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
+- op : conv2d_transpose_bias
+  inputs :
+    {x : Input, filter : Filter, bias : Bias}
+  outputs :
+    out : Output
+  int_array :
+    output_size :
+      data_type : int
+      support_tensor : true
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = false, bool use_mkldnn = true, bool force_fp32_output = false,
+             str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f]
+
 - op : conv3d
   backward : conv3d_grad, conv3d_double_grad (conv3d_grad_grad)
   inputs :
@@ -3513,6 +3527,12 @@
   outputs :
     out: Out
 
+- op: c_allreduce_avg
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_allreduce_max
   inputs :
     x : X
@@ -3549,7 +3569,25 @@
   outputs :
     out: Out
 
+- op: c_reduce_avg
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_max
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_reduce_min
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_prod
   inputs :
     x : X
   outputs :
