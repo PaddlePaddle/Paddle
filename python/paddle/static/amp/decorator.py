@@ -266,7 +266,7 @@ class OptimizerWithMixedPrecision:
             parameter_list (list|None): A list of Variables to update.
             no_grad_set (set|None): A set of Variables should be ignored.
             callbacks (list|None): A list of callable objects to run when appending
-                                   backward operator for one parameter.d
+                                   backward operator for one parameter.
 
         Returns:
             A list of (param, grad), which is a tuple of a parameter and its
@@ -760,11 +760,6 @@ class OptimizerWithMixedPrecision:
             warnings.warn(
                 "The decorated optimizer has its own `minimize` method, but it will not be executed."
             )
-
-        # if in_pir_mode():
-        #     return self._optimizer.minimize(
-        #         loss, startup_program, parameter_list, no_grad_set
-        #     )
 
         scaled_params_grads = self.backward(
             loss,
