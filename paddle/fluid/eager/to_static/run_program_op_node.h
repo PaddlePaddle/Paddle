@@ -85,108 +85,8 @@ static std::vector<std::string> GetTensorsName(
   return in_names;
 }
 
-static void CheckInputVarStatus(const Tensor &tensor) {
-  PADDLE_ENFORCE_EQ(tensor.defined() && tensor.is_dense_tensor(),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input tensor %s of "
-                        "RunProgram(Grad)Op holds "
-                        "wrong type. Expect type is DenseTensor.",
-                        tensor.name()));
-}
-
-static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
-                                 const Tensor &dst_tensor) {
-  auto name = dst_tensor.name();
-  PADDLE_ENFORCE_EQ(dst_tensor.defined(),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "dst_tensor `%s` shall be defined.", name));
-
-  if (dst_tensor.is_dense_tensor()) {
-    auto &src_tensor = src_var.Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(phi::DenseTensor::classof(&src_tensor),
-                      true,
-                      paddle::platform::errors::InvalidArgument(
-                          "The output tensor %s get from "
-                          "RunProgram(Grad)Op's internal scope holds "
-                          "wrong type. Expect type is DenseTensor",
-                          name));
-  } else if (dst_tensor.is_selected_rows()) {
-    auto &src_tensor = src_var.Get<phi::SelectedRows>();
-    PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor),
-                      true,
-                      paddle::platform::errors::InvalidArgument(
-                          "The output tensor %s get from "
-                          "RunProgram(Grad)Op's internal scope holds "
-                          "wrong type. Expect type is SelectedRows",
-                          name));
-  } else if (paddle::framework::VariableRefArray::classof(
-                 dst_tensor.impl().get())) {
-    auto &src_tensor = src_var.Get<paddle::framework::VariableRefArray>();
-    PADDLE_ENFORCE_EQ(paddle::framework::VariableRefArray::classof(&src_tensor),
-                      true,
-                      paddle::platform::errors::InvalidArgument(
-                          "The output tensor %s get from "
-                          "RunProgram(Grad)Op's internal scope holds "
-                          "wrong type. Expect type is VariableRefArray",
-                          name));
-  } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The RunProgram(Grad)Op only support output "
-        "variable of type DenseTensor, SelectedRows or VariableRefArray",
-        name));
-  }
-}
-
-static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
-                                  paddle::framework::Scope *scope) {
-  for (size_t i = 0; i < tensors.size(); ++i) {
-    VLOG(4) << "Share Tensor Into Scope: " << i;
-    auto name = tensors[i].name();
-    if (name == paddle::framework::kFakeVarName ||
-        name == paddle::framework::kEmptyVarName) {
-      continue;
-    }
-    auto *var = scope->Var(name);
-    CheckInputVarStatus(tensors[i]);
-    // share tensor
-    auto tensor_base = tensors[i].impl();
-    if (phi::DenseTensor::classof(tensor_base.get())) {
-      auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
-      auto t = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_base);
-      *dst_tensor = *t;
-    } else if (phi::SelectedRows::classof(tensor_base.get())) {
-      auto *dst_tensor = var->GetMutable<phi::SelectedRows>();
-      auto t = std::dynamic_pointer_cast<phi::SelectedRows>(tensor_base);
-      *dst_tensor = *t;
-    }
-  }
-}
-
-static void ShareTensorsIntoScopeWithName(
-    const std::vector<Tensor> &tensors,
-    const std::vector<std::string> &tensor_names,
-    paddle::framework::Scope *scope) {
-  for (size_t i = 0; i < tensors.size(); ++i) {
-    auto name = tensor_names[i];
-    if (name == paddle::framework::kFakeVarName) {
-      continue;
-    }
-    auto *var = scope->Var(name);
-    CheckInputVarStatus(tensors[i]);
-    // share tensor
-    auto tensor_base = tensors[i].impl();
-    if (phi::DenseTensor::classof(tensor_base.get())) {
-      auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
-      auto t = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_base);
-      *dst_tensor = *t;
-    } else if (phi::SelectedRows::classof(tensor_base.get())) {
-      auto *dst_tensor = var->GetMutable<phi::SelectedRows>();
-      auto t = std::dynamic_pointer_cast<phi::SelectedRows>(tensor_base);
-      *dst_tensor = *t;
-    }
-  }
+static bool IsVariableRefArray(const Tensor &tensor) {
+  return paddle::framework::VariableRefArray::classof(tensor.impl().get());
 }
 
 static auto GetNameFromValue(const ::pir::Block *block,
@@ -242,45 +142,105 @@ static auto GetNameFromValue(const ::pir::Block *block,
   return names;
 }
 
-static void ShareTensorsFromScope(
-    const std::vector<Tensor *> &tensors,
-    const paddle::framework::BlockDesc &global_block,
+static void CheckInputVarStatus(const Tensor &tensor) {
+  PADDLE_ENFORCE_EQ(
+      tensor.defined() &&
+          (tensor.is_dense_tensor() || IsVariableRefArray(tensor)),
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "The input tensor %s of RunProgram(Grad)Op holds "
+          "wrong type. Expect type is DenseTensor or VariableRefArray.",
+          tensor.name()));
+}
+
+static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
+                                 const Tensor &dst_tensor) {
+  auto name = dst_tensor.name();
+  PADDLE_ENFORCE_EQ(dst_tensor.defined(),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "dst_tensor `%s` shall be defined.", name));
+
+  if (dst_tensor.is_dense_tensor()) {
+    auto &src_tensor = src_var.Get<phi::DenseTensor>();
+    PADDLE_ENFORCE_EQ(phi::DenseTensor::classof(&src_tensor),
+                      true,
+                      paddle::platform::errors::InvalidArgument(
+                          "The output tensor %s get from "
+                          "RunProgram(Grad)Op's internal scope holds "
+                          "wrong type. Expect type is DenseTensor",
+                          name));
+  } else if (dst_tensor.is_selected_rows()) {
+    auto &src_tensor = src_var.Get<phi::SelectedRows>();
+    PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor),
+                      true,
+                      paddle::platform::errors::InvalidArgument(
+                          "The output tensor %s get from "
+                          "RunProgram(Grad)Op's internal scope holds "
+                          "wrong type. Expect type is SelectedRows",
+                          name));
+  } else if (IsVariableRefArray(dst_tensor)) {
+    auto &src_tensor = src_var.Get<paddle::framework::VariableRefArray>();
+    PADDLE_ENFORCE_EQ(paddle::framework::VariableRefArray::classof(&src_tensor),
+                      true,
+                      paddle::platform::errors::InvalidArgument(
+                          "The output tensor %s get from "
+                          "RunProgram(Grad)Op's internal scope holds "
+                          "wrong type. Expect type is VariableRefArray",
+                          name));
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The RunProgram(Grad)Op only support output "
+        "variable of type DenseTensor, SelectedRows or VariableRefArray",
+        name));
+  }
+}
+
+static void ShareTensorsIntoScopeWithName(
+    const std::vector<Tensor> &tensors,
+    const std::vector<std::string> &tensor_names,
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
-    // NOTE: In case of setting out_tmp.stop_gradient = True in model code, all
-    // parameters before generating out_tmp have no @GRAD, it will raise error
-    // because we can't find them in scope. So we skip sharing these vars or
-    // var@GRAD if they don't appear in global block.
-    auto &name = tensors[i]->name();
-    if (name == paddle::framework::kEmptyVarName ||
-        name == paddle::framework::kFakeVarName || !global_block.HasVar(name)) {
-      VLOG(2) << "find tensor name is " << name << ", skip it!";
+    VLOG(4) << "Share Tensor Into Scope: " << i;
+    auto name = tensor_names[i];
+    if (name == paddle::framework::kFakeVarName ||
+        name == paddle::framework::kEmptyVarName) {
       continue;
     }
-    // NOTE: Here skip not found var is dangerous, if a bug is caused here,
-    // the result is grad calculation error, which will be very hidden!
-    auto *var = scope->FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        paddle::platform::errors::NotFound("The output tensor %s is not in "
-                                           "RunProgram(Grad)Op'"
-                                           "s internal scope.",
-                                           name));
-    CheckOutputVarStatus(*var, *tensors[i]);
+    auto *var = scope->Var(name);
+    CheckInputVarStatus(tensors[i]);
     // share tensor
-    if (var->IsType<phi::DenseTensor>()) {
-      auto &src_tensor = var->Get<phi::DenseTensor>();
-      auto *dst_tensor = const_cast<phi::DenseTensor *>(
-          dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
-      VLOG(4) << "share " << name << " from scope";
-      *dst_tensor = src_tensor;
-    } else if (var->IsType<phi::SelectedRows>()) {
-      auto &src_tensor = var->Get<phi::SelectedRows>();
-      auto *dst_tensor = const_cast<phi::SelectedRows *>(
-          dynamic_cast<const phi::SelectedRows *>(tensors[i]->impl().get()));
-      *dst_tensor = src_tensor;
+    auto tensor_base = tensors[i].impl();
+    if (phi::DenseTensor::classof(tensor_base.get())) {
+      auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
+      auto t = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_base);
+      *dst_tensor = *t;
+    } else if (phi::SelectedRows::classof(tensor_base.get())) {
+      auto *dst_tensor = var->GetMutable<phi::SelectedRows>();
+      auto t = std::dynamic_pointer_cast<phi::SelectedRows>(tensor_base);
+      *dst_tensor = *t;
+    } else if (paddle::framework::VariableRefArray::classof(
+                   tensor_base.get())) {
+      auto *dst_tensor = var->GetMutable<paddle::framework::VariableRefArray>();
+      auto t = std::dynamic_pointer_cast<paddle::framework::VariableRefArray>(
+          tensor_base);
+      *dst_tensor = *t;
     }
   }
+}
+
+static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
+                                  paddle::framework::Scope *scope) {
+  const std::vector<std::string> names =
+      [&](const std::vector<Tensor> &tensors) {
+        std::vector<std::string> names;
+        for (auto &t : tensors) {
+          names.push_back(t.name());
+        }
+        return names;
+      }(tensors);
+
+  ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
 static void ShareTensorsIntoScopeByValue(
@@ -372,6 +332,17 @@ static void ShareTensorsFromScopeWithPartialBlock(
       auto *dst_tensor = const_cast<phi::SelectedRows *>(
           dynamic_cast<const phi::SelectedRows *>(tensors[i]->impl().get()));
       *dst_tensor = src_tensor;
+    } else if (var->IsType<paddle::framework::VariableRefArray>()) {
+      auto &src_tensor = var->Get<paddle::framework::VariableRefArray>();
+      auto *dst_tensor = const_cast<paddle::framework::VariableRefArray *>(
+          dynamic_cast<const paddle::framework::VariableRefArray *>(
+              tensors[i]->impl().get()));
+      *dst_tensor = src_tensor;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "The RunProgram(Grad)Op only support output "
+          "variable of type DenseTensor, SelectedRows or VariableRefArray",
+          name));
     }
   }
 }
@@ -1049,8 +1020,8 @@ inline void PirRunProgramGradAPI(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
     const std::vector<paddle::Tensor> &out_grad,
-    const std::vector<paddle::Tensor> &middles,
-    const std::vector<paddle::Tensor> &out,
+    std::vector<paddle::Tensor> &middles,                       // NOLINT
+    std::vector<paddle::Tensor> &out,                           // NOLINT
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
     std::vector<paddle::Tensor *> &x_grad,       // NOLINT
@@ -1108,6 +1079,10 @@ inline void PirRunProgramGradAPI(
       backward_global_block, out, forward_output_values, global_inner_scope);
   details::ShareTensorsIntoScopeByValue(
       backward_global_block, params, parameter_values, global_inner_scope);
+
+  // Clear out and middles to avoid hold memory until backward finish.
+  out.clear();
+  middles.clear();
 
   auto &interpretercore_info_cache =
       paddle::framework::InterpreterCoreInfoCache::Instance();
@@ -1541,12 +1516,19 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
             x_grad_values.size()));
 
     // TODO(dev): Need an elegant way to determine information of grad_tensor,
-    // such as: name, tensor type(DenseTensor or SelectedRows).
+    // such as: name, tensor type (DenseTensor, SelectedRows or
+    // VariableRefArray).
     for (size_t i = 0; i < x.size(); i++) {
       if (x[i].is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
       } else if (x[i].is_selected_rows()) {
         x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+      } else if (details::IsVariableRefArray(x[i])) {
+        x_grad->emplace_back(
+            std::make_shared<paddle::framework::VariableRefArray>());
+      } else {
+        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+            "The grad tensor type is not supported."));
       }
     }
   }

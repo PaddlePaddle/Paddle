@@ -218,7 +218,7 @@ inline void CheckAndUpdateSliceAttrs(
                                      "deal with -1 in infer_flags now"));
     }
 
-    // For both start and end can be negtive or positive, we need to handle the
+    // For both start and end can be negative or positive, we need to handle the
     // following different arrangements.
     ends[i] = IsMaxInt(ends[i]) ? in_dims[axis] : ends[i];
 
@@ -333,7 +333,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   };
 
   // When `pd.slice` is operating on a tensor which is produced by a `pd.shape`
-  // op, the reseult should be written into data.
+  // op, the result should be written into data.
   const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
     std::vector<symbol::DimExpr> out_data;
 
@@ -777,7 +777,7 @@ bool TransposeOpInferSymbolicShape(
                      return p.dyn_cast<pir::Int32Attribute>().data();
                    });
 
-    // format the negtive axis
+    // format the negative axis
     std::for_each(out.begin(), out.end(), [x_rank](int32_t &v) {
       if (v < 0) {
         v += x_rank;
@@ -1082,7 +1082,7 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-//  Not Impelmented Ops.
+//  Not Implemented Ops.
 
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
