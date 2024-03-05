@@ -28,6 +28,10 @@ namespace dialect {
 
 using VariantType = phi::Attribute;
 
+#define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \
+  bool name##OpInferSymbolicShape(            \
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis);
+
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
 static inline phi::DataType TransToPhiDataType(pir::Type dtype) {
