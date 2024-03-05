@@ -534,8 +534,8 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->device_extra_padding_size) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_extra_padding_size(device, &padding_size));
-      VLOG(10) << Type() << " extra padding size " << (padding_size >> 20)
-               << "M";
+      VLOG(10) << Type() << " extra padding size:" << padding_size;
+      return padding_size;
     } else {
       return DeviceInterface::GetExtraPaddingSize(dev_id);
     }
@@ -1106,7 +1106,7 @@ void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle) {
   }
   LoadCustomRuntimeLib(
       runtime_params, std::move(device_interface), dso_lib_path, dso_handle);
-  LOG(INFO) << "Successed in loading custom runtime in lib: " << dso_lib_path;
+  LOG(INFO) << "Succeed in loading custom runtime in lib: " << dso_lib_path;
 }
 
 #undef INTERFACE_UNIMPLEMENT

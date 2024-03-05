@@ -93,16 +93,11 @@ bool ConcatOpInferSymbolicShape(
 
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &attr_map = op->attributes();
-  PADDLE_ENFORCE(
-      attr_map.count("keep_dim"),
-      phi::errors::PreconditionNotMet(
-          "attr [keep_dim] MUST in attribute map for [%s] op", op->name()));
-  bool keepdim = attr_map.at("keep_dim").dyn_cast<pir::BoolAttribute>().data();
+  bool keep_dim = GetBoolAttr(op, "keep_dim");
   auto axis = paddle::dialect::details::GetVectorAttr(op, "dim");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::details::ReduceInferDim(
-      op, shape_analysis, axis, keepdim, reduce_all);
+      op, shape_analysis, axis, keep_dim, reduce_all);
 }
 
 bool ReduceMaxOpInferSymbolicShape(
