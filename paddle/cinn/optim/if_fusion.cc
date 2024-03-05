@@ -14,56 +14,137 @@
 
 #include "paddle/cinn/optim/if_fusion.h"
 
+#include <stack>
 #include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/optimize.h"
 
 namespace cinn {
 namespace optim {
 
 namespace {
-struct IfFusionMutator : public ir::IRMutator<Expr *> {
-  void operator()(Expr *expr) {
-    ir::IRMutator<>::Visit(expr, expr);
 
-    // simplify from the root of tree, for removing the blank node.
-    Simplify(expr);
+#define VisitImpl(_TYPE)                                 \
+  void Visit(const ir::_TYPE *op, Expr *expr) override { \
+    VLOG(-1) << op->node_type();                         \
+    last_op = Expr(const_cast<ir::_TYPE *>(op));         \
+    ir::IRMutator<>::Visit(op, expr);                    \
   }
+
+struct IfFusionMutator : public ir::IRMutator<Expr *> {
+  void operator()(Expr *expr) { Visit(expr, expr); }
 
  private:
   void Visit(const ir::IfThenElse *op, Expr *expr) override {
     // the implementation of ifFusion
     // compare the last condition with current condition
     // judge whether last_op is nullptr
-    if (!last_op.get()) return;
+    if (!last_op.get()) {
+      last_op = Expr(const_cast<ir::IfThenElse *>(op));
+      return;
+    }
 
     // judge whether last_op is IfThenElse
-    const ir::IfThenElse *lop = last_op.As<const ir::IfThenElse>();
-    if (!lop) return;
+    ir::IfThenElse *lop = last_op.As<ir::IfThenElse>();
+    if (!lop) {
+      last_op = Expr(const_cast<ir::IfThenElse *>(op));
+      return;
+    }
 
-    // ir::IfThenElse *cop = op->As<ir::IfThenElse>();
-    //  judge whether condition is same
+    // judge whether condition is same
     bool isNeedFuse = ir::ir_utils::IRCompare(op->condition, lop->condition);
     if (isNeedFuse) {
       // do fusion (cop.true_case <-> lop.true_case)
       Fuse(op->true_case, lop->true_case);
-      // do fusion (cop.false_case <-> lop.false_case)
-      Fuse(op->false_case, lop->false_case);
+
+      // support for recursive true case merge
+      Expr tmp = last_op;
+      Visit(&lop->true_case, &lop->true_case);
+      last_op = tmp;
+
+      if (op->false_case.defined() && lop->false_case.defined()) {
+        Fuse(op->false_case, lop->false_case);
+        // support for recusive false case merge
+        tmp = last_op;
+        Visit(&lop->false_case, &lop->false_case);
+        last_op = tmp;
+      }
+
+      // Remove the op which refers to current ir::IfThenElse block,
+      // because this block is merged with previous ir::IfThenElse block,
+      // so blank now.
+      // push the elements position which will be deleted after visit current
+      // block.
+      RecordIndexForErase(Expr(const_cast<ir::IfThenElse *>(op)), cur_block);
     }
-    // else {
-    //   last_op = op;
-    // }
 
     if (!isNeedFuse) {
       last_op = Expr(const_cast<ir::IfThenElse *>(op));
     }
   }
 
-  void Visit(const Expr *op, Expr *expr) override {
+  void Visit(const ir::Block *op, Expr *expr) override {
+    int element_num_before_visit = erase_elements_ind.size();
+    ir::Block *last_block = (cur_block);
+    cur_block = const_cast<ir::Block *>(op);
     ir::IRMutator<>::Visit(op, expr);
-    // last_op = static_cast<const Expr *>(op);
-    last_op = Expr(const_cast<ir::Expr *>(op));
+    cur_block = last_block;
+
+    EraseBlankElements(const_cast<ir::Block *>(op), element_num_before_visit);
   }
+
+  void RecordIndexForErase(Expr op, ir::Block *cur_block) {
+    for (int i = 0; i < cur_block->stmts.size(); i++) {
+      if (ir::ir_utils::IRCompare(cur_block->stmts[i], op)) {
+        erase_elements_ind.push(i);
+        return;
+      }
+    }
+  }
+
+  void EraseBlankElements(ir::Block *op, int stack_upper_bound) {
+    while (erase_elements_ind.size() > stack_upper_bound) {
+      int erase_pos = erase_elements_ind.top();
+      erase_elements_ind.pop();
+      op->stmts.erase(op->stmts.begin() + erase_pos);
+    }
+  }
+
+  ir::Block *cur_block;
+
+  VisitImpl(Expr);
+  VisitImpl(ScheduleBlock);
+  VisitImpl(For);
+  VisitImpl(IntImm);
+  VisitImpl(UIntImm);
+  VisitImpl(FloatImm);
+  VisitImpl(StringImm);
+  VisitImpl(Cast);
+  VisitImpl(PolyFor);
+  VisitImpl(Select);
+  VisitImpl(Call);
+  VisitImpl(_Module_);
+  VisitImpl(_Var_);
+  VisitImpl(Load);
+  VisitImpl(Store);
+  VisitImpl(Alloc);
+  VisitImpl(Free);
+  VisitImpl(_Buffer_);
+  VisitImpl(_Tensor_);
+  VisitImpl(_LoweredFunc_);
+  VisitImpl(Let);
+  VisitImpl(Reduce);
+  VisitImpl(Ramp);
+  VisitImpl(Broadcast);
+  VisitImpl(FracOp);
+  VisitImpl(Product);
+  VisitImpl(Sum);
+  VisitImpl(PrimitiveNode);
+  VisitImpl(IntrinsicOp);
+  VisitImpl(_BufferRange_);
+  VisitImpl(_Dim_);
 
   void Fuse(Expr ne, Expr oe) {
     // fuse old expr with new expr, merge the stmts in them.
@@ -81,6 +162,7 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
 
   // record the condition of it if last block is if-block, nullptr otherwise.
   Expr last_op = Expr(nullptr);
+  std::stack<int> erase_elements_ind;
 };  // IfFusionMutator
 }  // namespace
 
