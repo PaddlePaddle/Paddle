@@ -98,10 +98,10 @@ class DygraphShardingOptimizer:
         self.fuse_optimizer = strategy.hybrid_configs[
             'sharding_configs'
         ].fuse_optimizer
-        if (
-            strategy.hybrid_configs['sharding_configs'].use_reduce_avg
-            and paddle.base.core.nccl_version() < 21000
-        ):
+        self.use_reduce_avg = strategy.hybrid_configs[
+            'sharding_configs'
+        ].use_reduce_avg
+        if self.use_reduce_avg and paddle.base.core.nccl_version() < 21000:
             self.use_reduce_avg = False
             warnings.warn(
                 "nccl reduce_avg requires nccl>=2.10.0, but current version is %s"
