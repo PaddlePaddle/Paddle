@@ -188,12 +188,6 @@ bool ConcatOp::InferSymbolicShape(
   return ConcatOpInferSymbolicShape(this->operation(), shape_analysis);
 }
 
-bool ConcatOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  VLOG(4) << "Infer symbolic shape for cinn_op.concat";
-  return ConcatOpInferSymbolicShape(this->operation(), shape_analysis);
-}
-
 void ConcatOp::Build(pir::Builder& builder,             // NOLINT
                      pir::OperationArgument& argument,  // NOLINT
                      const std::vector<pir::Value>& inputs,
