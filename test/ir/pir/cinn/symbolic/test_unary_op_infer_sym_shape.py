@@ -102,7 +102,7 @@ class TestArgMaxMinOpInferSymbolicShape(TestBase):
                 np.testing.assert_equal(
                     sym_shape_str_list[j].find(self.expected[i][j]),
                     0,
-                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[0]}) is not expected {(self.expected[i][j])}',
+                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[j]}) is not expected {(self.expected[i][j])}',
                 )
 
         return True

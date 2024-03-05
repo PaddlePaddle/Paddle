@@ -1202,13 +1202,21 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
   // output
   const symbol::TensorListShapeOrDataDimExprs &output_shape_data_list = [&] {
     const auto &GetSum = [&](const auto &dim_exprs, const auto &Filter) {
-      symbol::DimExpr sum{1};
+      symbol::DimExpr sum{0};
       for (const auto &dim_expr : dim_exprs) {
         if (Filter(dim_expr)) {
           sum = sum + dim_expr;
         }
       }
       return sum;
+    };
+    const auto &All = [&](const auto &dim_exprs, const auto &Cond) {
+      for (const auto &dim_expr : dim_exprs) {
+        if (!Cond(dim_expr)) {
+          return false;
+        }
+      }
+      return true;
     };
     const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
       if (dim_expr.isa<int64_t>()) {
@@ -1218,20 +1226,30 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
     };
     const auto &sum_exclude_minus_one = GetSum(sections_sym, IsNotMinusOne);
 
+    const bool &all_sections_sym_not_minus_one =
+        All(sections_sym, IsNotMinusOne);
+    if (all_sections_sym_not_minus_one) {
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims_sym[axis],
+                                                    sum_exclude_minus_one);
+    }
+
     symbol::TensorListShapeOrDataDimExprs shape_data_list;
     std::vector<symbol::DimExpr> output_dims_sym = x_dims_sym;
+    if (!all_sections_sym_not_minus_one && sections_sym.size() == 1) {
+      VLOG(3) << "[SplitOp]-1 is the only split section. The output shape is "
+                 "identical to the input shape.";
+      shape_data_list.push_back(
+          symbol::TensorShapeOrDataDimExprs(output_dims_sym));
+      return shape_data_list;
+    }
     for (uint32_t idx = 0; idx < sections_sym.size(); idx++) {
       const auto section_sym = sections_sym[idx];
       output_dims_sym[axis] = IsNotMinusOne(section_sym)
                                   ? section_sym
                                   : x_dims_sym[axis] - sum_exclude_minus_one;
 
-      // VLOG(0) << "FTY DEBUG START";
-      // for (const auto &dim_expr : output_dims_sym) {
-      //   VLOG(0) << "FTY DEBUG " << dim_expr;
-      // }
-      // VLOG(0) << "FTY DEBUG END";
-      shape_data_list.push_back(symbol::TensorShapeOrDataDimExprs(x_dims_sym));
+      shape_data_list.push_back(
+          symbol::TensorShapeOrDataDimExprs(output_dims_sym));
     }
     return shape_data_list;
   }();
