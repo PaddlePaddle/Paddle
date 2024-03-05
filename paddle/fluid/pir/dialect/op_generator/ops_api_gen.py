@@ -113,6 +113,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'quantize_linear_',
     'dequantize_linear',
     'dequantize_linear_',
+    'coalesce_tensor_',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
