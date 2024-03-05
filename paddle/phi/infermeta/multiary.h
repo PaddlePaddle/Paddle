@@ -788,6 +788,14 @@ void WarprnntInferMeta(const MetaTensor& input,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad);
 
+void XFTRmsNormInferMeta(const MetaTensor& x,
+                         const MetaTensor& norm_weight,
+                         const float epsilon,
+                         const int begin_norm_axis,
+                         int istride,
+                         int ostride,
+                         MetaTensor* out);
+
 void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const MetaTensor& weight,
                                const MetaTensor& bias,
@@ -796,6 +804,14 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const int32_t arch,
                                const int32_t group_size,
                                MetaTensor* out);
+
+void XFTWeightOnlyLinearInferMeta(const MetaTensor& x,
+                                  const MetaTensor& weight,
+                                  const MetaTensor& bias,
+                                  const MetaTensor& weight_scale,
+                                  const MetaTensor& weight_zero_point,
+                                  const std::string& weight_dtype,
+                                  MetaTensor* out);
 
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
                                       const MetaTensor& col_ptr,

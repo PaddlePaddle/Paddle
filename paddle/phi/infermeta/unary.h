@@ -515,6 +515,12 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaTensor* scale);
 
+void XFTWeightQuantizeInferMeta(const MetaTensor& x,
+                             const std::string& algo,
+                             MetaTensor* out,
+                             MetaTensor* scale,
+                             MetaTensor* zero_point);
+
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ReduceInferMeta(const MetaTensor& x,

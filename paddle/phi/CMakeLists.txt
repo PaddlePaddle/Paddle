@@ -91,6 +91,26 @@ if(WITH_XPU)
   endif()
 endif()
 
+if(WITH_XFT)
+  # set_source_files_properties(
+  #   kernels/fusion/cpu/xft_weight_only_linear_kernel.cc
+  #   PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -fopenmp -mavx512f -mavx512bw -mavx512vl -fPIC -D_GLIBCXX_USE_CXX11_ABI=0 -Wno-sign-compare -Wno-maybe-uninitialized -Wno-uninitialized -Wno-free-nonheap-object -Wno-nonnull -Wno-reorder -mavx"
+  # )
+
+  # add_definitions(-DAVX512_FP32_WEIGHT_ONLY_FP16=true)
+  add_definitions(-DAVX512_FP16_WEIGHT_ONLY_FP16=true)
+  # add_definitions(-DAVX512_BF16_WEIGHT_ONLY_BF16=true)
+  add_definitions(-DAVX512_FP32_WEIGHT_ONLY_INT8=true)
+  add_definitions(-DAVX512_FP16_WEIGHT_ONLY_INT8=true)
+  add_definitions(-DAVX512_FP32_WEIGHT_ONLY_INT4=true)
+  add_definitions(-DAVX512_FP16_WEIGHT_ONLY_INT4=true)
+  add_definitions(-DAVX512_FP32_WEIGHT_ONLY_NF4=true)
+  # add_definitions(-DAVX512_FP16_WEIGHT_ONLY_NF4=true)
+
+  list(APPEND PHI_DEPS xdnn)
+
+endif()
+
 if(WITH_DGC)
   list(APPEND PHI_DEPS dgc)
 endif()
@@ -121,6 +141,13 @@ if(WITH_AVX
   set_source_files_properties(
     kernels/fusion/cpu/self_dp_attention_kernel.cc
     PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
+  set_source_files_properties(
+    kernels/cpu/log_softmax_kernel.cc
+    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
+  set_source_files_properties(
+    kernels/fusion/cpu/xft_rms_norm_kernel.cc
+    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
+
 endif()
 
 if(WITH_GPU)

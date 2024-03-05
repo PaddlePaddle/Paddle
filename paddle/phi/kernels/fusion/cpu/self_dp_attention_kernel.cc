@@ -227,12 +227,24 @@ void softmax_sum_max(float* AB,
                      float* pre_max,
                      float refac,
                      int m,
-                     int k) {
+                     int k,
+                     bool causal) {
   float max_val = std::numeric_limits<float>::lowest();
+  float min_val = std::numeric_limits<float>::lowest();
+  __m512 vmin = _mm512_set1_ps(min_val);
   __m512 vrefac = _mm512_set1_ps(refac);
   for (int i = 0; i < m; ++i) {
     float* buf = AB + i * k;
     // max val for avoiding inf and nan
+    if (causal) {
+      for (int off = i + 1; off < k; off += 16) {
+        int remain = k - off;
+        __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
+        __m512 vx = _mm512_maskz_loadu_ps(mask, buf + off);
+        __m512 vx_modified = _mm512_mask_add_ps(vx, mask, vx, vmin);
+        _mm512_mask_storeu_ps(buf + off, mask, vx_modified);
+      }
+    }
     __m512 vmax = _mm512_set1_ps(max_val);
     for (int off = 0; off < k; off += 16) {
       int remain = k - off;
@@ -326,9 +338,10 @@ void incremental_tile_attention(const float* A,
                                 float refac,
                                 float* AB,
                                 float* exp_ABC,
+                                bool causal,
                                 float* output) {
   sgemm(A, B, AB, m, k, n, false, true);
-  softmax_sum_max(AB, sum, max, pre_sum, pre_max, refac, m, k);
+  softmax_sum_max(AB, sum, max, pre_sum, pre_max, refac, m, k, causal);
   sgemm(AB, C, exp_ABC, m, n, k, false, false);
   update_out_blk(output, exp_ABC, pre_sum, sum, pre_max, max, m, n);
 }
@@ -343,6 +356,7 @@ void scaled_dp_attention(const float* query,
                          int otsize,
                          int num_head,
                          int head_size,
+                         bool causal,
                          float* output) {
   // output = trans(softmax(query * trans(key)) * value)
   int iblk = std::min(512, itsize / 1);
@@ -436,6 +450,7 @@ void scaled_dp_attention(const float* query,
                                      refac,
                                      qk_arr[tid],
                                      exp_qkv_arr[tid],
+                                     causal,
                                      out);
         }
       }
@@ -465,6 +480,7 @@ void SelfDPAttenKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const float alpha,
                        const int head_number,
+                       const bool causal,
                        DenseTensor* out) {
   auto* input_d = x.data<T>();
   auto* output_d = dev_ctx.template Alloc<T>(out);
@@ -498,6 +514,7 @@ void SelfDPAttenKernel(const Context& dev_ctx,
                       seq_len,
                       head_number,
                       head_size,
+                      causal,
                       trans_output);
   transpose_after_bmm2<float, T>(
       trans_output, output_d, batch_size, seq_len, head_number, head_size);

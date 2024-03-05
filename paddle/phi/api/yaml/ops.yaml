@@ -3101,6 +3101,34 @@
   backward : where_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : xft_rms_norm
+  args : (Tensor x, Tensor norm_weight, float epsilon, int begin_norm_axis, int istride = -1, int ostride = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : XFTRmsNormInferMeta
+  kernel :
+    func : xft_rms_norm
+    data_type: x
+
+- op : xft_weight_only_linear
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor weight_zero_point, str weight_dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : XFTWeightOnlyLinearInferMeta
+  kernel :
+    func : fused_weight_only_linear
+    data_type : x
+  optional: bias
+
+- op : xft_weight_quantize
+  args : (Tensor x, str algo = "weight_only_int8")
+  output : Tensor(out), Tensor(scale), Tensor(zero_point)
+  infer_meta :
+    func : XFTWeightQuantizeInferMeta
+  kernel :
+    func : xft_weight_quantize
+    data_type: x
+
 - op : yolo_box
   args : (Tensor x, Tensor img_size, int[] anchors={}, int class_num = 1, float conf_thresh = 0.01, int downsample_ratio = 32, bool clip_bbox = true, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
   output : Tensor(boxes), Tensor(scores)

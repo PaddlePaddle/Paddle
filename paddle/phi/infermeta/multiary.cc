@@ -4303,6 +4303,81 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void XFTRmsNormInferMeta(const MetaTensor& x,
+                         const MetaTensor& norm_weight,
+                         const float epsilon,
+                         const int begin_norm_axis,
+                         const int istride,
+                         const int ostride,
+                         MetaTensor* out) {
+  std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
+  auto x_dims_size = x_dims_vec.size();
+  size_t normalized_dims = 1;
+  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
+    normalized_dims *= x_dims_vec[i];
+  }
+  PADDLE_ENFORCE_EQ(normalized_dims,
+                    norm_weight.dims()[0],
+                    phi::errors::InvalidArgument(
+                        "The normalized size of Input(X) must equal to be"
+                        "the size of Weight, but received"
+                        "normalized size of Input(X) is [%d], received size"
+                        "of Weight is [%d]",
+                        normalized_dims,
+                        norm_weight.dims()[0]));
+  auto out_dims = x.dims();
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
+void XFTWeightOnlyLinearInferMeta(const MetaTensor& x,
+                                  const MetaTensor& weight,
+                                  const MetaTensor& bias,
+                                  const MetaTensor& weight_scale,
+                                  const MetaTensor& weight_zero_point,
+                                  const std::string& weight_dtype,
+                                  MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  auto n = weight_scale.dims()[0];
+  PADDLE_ENFORCE(
+      weight_dtype == "int8" || weight_dtype == "int4" || weight_dtype == "nf4",
+      errors::InvalidArgument(
+          "quant_method must be 'int8' or 'int4' or 'nf4'."));
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      weight_scale.dims().size(),
+      1UL,
+      errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      w_dims[0] % 16,
+      0,
+      phi::errors::InvalidArgument("The first dimension of input(weight) must "
+                                   "be divisible by 16, but got[%d]",
+                                   w_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument("The second dimension of input(weight) must "
+                                   "be divisible by 16, but got[%d]",
+                                   w_dims[1]));
+  // PADDLE_ENFORCE_EQ(
+  //     x_dims[x_dims.size() - 1],
+  //     w_dims[1],
+  //     errors::InvalidArgument(
+  //         "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+  //         "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
+  //         x_dims[x_dims.size() - 1],
+  //         w_dims[1]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = n;
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
