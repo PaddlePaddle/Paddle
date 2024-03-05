@@ -391,7 +391,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       stream = ctx.cuda_device_context().stream();
     }
     VLOG(10) << "all reduce buffer:" << sendbuff << ", numel:" << numel
-             << ", redtype:" << static_cast<int>(red_type)
+             << ", reduce type:" << static_cast<int>(red_type)
              << ", dtype:" << dtype << ", comm:" << comm
              << ", stream:" << stream;
 
