@@ -30,8 +30,10 @@ class TestSubstituteDimExprNet(paddle.nn.Layer):
         super().__init__()
 
     def forward(self, x, y, z):
-        out = paddle.concat([x, y], 1)
-        # out = paddle.concat([out, z], 1)
+        a = x + y
+        b = paddle.concat([x, y], 1)
+        c = paddle.concat([a, b], 1)
+        out = c + z
         return out
 
 
@@ -51,7 +53,7 @@ class TestSubstituteDimExprBasedOnConstraint(unittest.TestCase):
         self.shapey = [32, 2]
         self.y = paddle.randn(self.shapey, dtype="float32")
         self.y.stop_gradient = False
-        self.shapez = [32, 3]
+        self.shapez = [32, 5]
         self.z = paddle.randn(self.shapez, dtype="float32")
         self.z.stop_gradient = False
 
@@ -64,7 +66,7 @@ class TestSubstituteDimExprBasedOnConstraint(unittest.TestCase):
         input_spec = [
             InputSpec(shape=[None, 1], dtype="float32"),
             InputSpec(shape=[None, 2], dtype="float32"),
-            InputSpec(shape=[None, 3], dtype="float32"),
+            InputSpec(shape=[None, 5], dtype="float32"),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
