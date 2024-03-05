@@ -483,6 +483,7 @@ CINN_BUILD_STEP_KIND(Rfactor)
 CINN_BUILD_STEP_KIND(FactorizeReduction)
     .Inputs({"rf_loop"})
     .Attrs({"rf_axis"})
+    .Attrs({"with_write_back_block_init"})
     .SetApplyFn(APPLY_FUNC_UNIFORM(
         FREE_FUNCTION_CONVERTER(&IRSchedule::FactorizeReduction)));
 

@@ -150,12 +150,15 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   const std::vector<int64_t> decrease_axis_raw =
       paddle::dialect::details::GetVectorAttr(op, "decrease_axis");
 
+  const ExprVec starts = paddle::dialect::details::VecInt642Expr(starts_raw);
+  const ExprVec ends = paddle::dialect::details::VecInt642Expr(ends_raw);
+
   shape_analysis->SetShapeOrDataForValue(
       op->result(0),
       paddle::dialect::slice_uitls::SliceRawInferSymbolicShape(
           shape_analysis->GetShapeOrDataForValue(op->operand_source(0)),
-          starts_raw,
-          ends_raw,
+          starts,
+          ends,
           axes_raw,
           infer_flags_raw,
           decrease_axis_raw));

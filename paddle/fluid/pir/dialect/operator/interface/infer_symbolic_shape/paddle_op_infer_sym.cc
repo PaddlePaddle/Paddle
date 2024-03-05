@@ -205,12 +205,6 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   // // Currently, we DO NOT support any element in `starts` is a Symbol.
   ExprVec starts = starts_shape_data.data().value();
   ExprVec ends = ends_shape_data.data().value();
-  auto starts_int64 = details::VecExpr2Int64(starts);
-  IR_ENFORCE(starts_int64.has_value(),
-             "for slice op, all the elements in `starts` must be int64_t");
-  auto ends_int64 = details::VecExpr2Int64(ends);
-  IR_ENFORCE(ends_int64.has_value(),
-             "for slice op, all the elements in `ends` must be int64_t");
 
   std::vector<int64_t> infer_flags = details::GetVectorAttr(op, "infer_flags");
 
@@ -220,11 +214,12 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   shape_analysis->SetShapeOrDataForValue(
       res,
       slice_uitls::SliceRawInferSymbolicShape(operand_shape_or_data,
-                                              starts_int64.value(),
-                                              ends_int64.value(),
+                                              starts,
+                                              ends,
                                               axes_vec,
                                               infer_flags,
                                               decrease_axis));
+
   return true;
 }
 
@@ -630,7 +625,7 @@ bool TransposeOpInferSymbolicShape(
                      return p.dyn_cast<pir::Int32Attribute>().data();
                    });
 
-    // format the negtive axis
+    // format the negative axis
     std::for_each(out.begin(), out.end(), [x_rank](int32_t &v) {
       if (v < 0) {
         v += x_rank;
@@ -935,7 +930,7 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-//  Not Impelmented Ops.
+//  Not Implemented Ops.
 
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {

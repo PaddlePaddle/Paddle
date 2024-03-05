@@ -23,16 +23,6 @@ inline void CheckAndUpdateSliceAttrs(
     ExprVec *starts_p,
     ExprVec *ends_p,
     std::vector<int64_t> *infer_flags = nullptr) {
-  auto vec_int64 = details::VecExpr2Int64(*starts_p);
-  IR_ENFORCE(vec_int64.has_value(),
-             "for slice op, all the elements in `starts` must be int64_t");
-  std::vector<int64_t> starts_int = vec_int64.value();
-
-  vec_int64 = details::VecExpr2Int64(*ends_p);
-  IR_ENFORCE(vec_int64.has_value(),
-             "for slice op, all the elements in `ends` must be int64_t");
-  std::vector<int64_t> ends_int = vec_int64.value();
-
   ExprVec &starts = *starts_p;
   ExprVec &ends = *ends_p;
   auto IsMaxInt = [](const symbol::DimExpr &expr) {
@@ -43,15 +33,23 @@ inline void CheckAndUpdateSliceAttrs(
 
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes[i];
+    int64_t start_i = 0;
+    if (starts[i].isa<int64_t>()) {
+      start_i = starts[i].Get<int64_t>();
+    }
+    int64_t end_i = 0;
+    if (ends[i].isa<int64_t>()) {
+      end_i = ends[i].Get<int64_t>();
+    }
 
-    // For both start and end can be negtive or positive, we need to handle the
+    // For both start and end can be negative or positive, we need to handle the
     // following different arrangements.
     ends[i] = IsMaxInt(ends[i]) ? in_dims[axis] : ends[i];
 
-    bool both_negative_or_positive = (starts_int[i] >= 0 && ends_int[i] >= 0) ||
-                                     (starts_int[i] <= 0 && ends_int[i] <= 0);
-    bool start_negative_end_positive = starts_int[i] <= 0 && ends_int[i] >= 0;
-    bool start_positive_end_negative = starts_int[i] >= 0 && ends_int[i] <= 0;
+    bool both_negative_or_positive =
+        (start_i >= 0 && end_i >= 0) || (start_i <= 0 && end_i <= 0);
+    bool start_negative_end_positive = start_i <= 0 && end_i >= 0;
+    bool start_positive_end_negative = start_i >= 0 && end_i <= 0;
 
     if (both_negative_or_positive) {
       continue;
@@ -112,14 +110,13 @@ inline std::vector<int64_t> FormatSliceAxes(
 
 inline ShapeOrData SliceRawInferSymbolicShape(
     const ShapeOrData &in_shapeordata,
-    const std::vector<int64_t> &starts_raw,
-    const std::vector<int64_t> &ends_raw,
+    const ExprVec &starts_expr,
+    const ExprVec &ends_expr,
     const std::vector<int64_t> &axes_raw,
     const std::vector<int64_t> &infer_flags_raw,
     const std::vector<int64_t> &decrease_axis) {
-  ExprVec starts = details::VecInt642Expr(starts_raw);
-  ExprVec ends = details::VecInt642Expr(ends_raw);
-
+  ExprVec starts = starts_expr;
+  ExprVec ends = ends_expr;
   std::vector<int64_t> infer_flags = [&infer_flags_raw, &axes_raw] {
     return infer_flags_raw.empty() ? std::vector<int64_t>(axes_raw.size(), 1)
                                    : infer_flags_raw;
@@ -138,7 +135,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
   };
 
   // When `pd.slice` is operating on a tensor which is produced by a `pd.shape`
-  // op, the reseult should be written into data.
+  // op, the result should be written into data.
   const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
     std::vector<symbol::DimExpr> out_data;
 

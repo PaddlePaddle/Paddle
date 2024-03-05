@@ -287,10 +287,13 @@ std::vector<pir::Type> BuildOutType(
     auto new_op = op->Clone(*ir_mapping, clone_options);
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
     for (size_t i = 0; i < op->num_results(); ++i) {
-      shape_analysis.SetShapeOrDataForValue(
-          new_op->result(i),
-          shape_analysis.GetShapeOrDataForValue(op->result(i)));
+      if (shape_analysis.HasShapeOrDataForValue(op->result(i))) {
+        shape_analysis.SetShapeOrDataForValue(
+            new_op->result(i),
+            shape_analysis.GetShapeOrDataForValue(op->result(i)));
+      }
     }
 
     vec_new_op_list.push_back(new_op);
@@ -398,7 +401,13 @@ bool CanFuse(const GroupClusterNode& first,
 
     if (first.loop_ranges != second.loop_ranges) {
       sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
-      sch_node->axis_info = first.reduce_axis;
+      for (auto& d : first.reduce_axis) {
+        if (d < 0) {
+          sch_node->axis_info.push_back(d + first.loop_ranges.size());
+        } else {
+          sch_node->axis_info.push_back(d);
+        }
+      }
       sch_node->factor_info = first.loop_ranges;
     }
     return true;
@@ -531,6 +540,8 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
     sch_node->axis_info =
         cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
     sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
+  } else if (op->name() == "cinn_op.generate_shape") {
+    // do nothing for now
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "only support elementwise, broadcast, reduce type"));
