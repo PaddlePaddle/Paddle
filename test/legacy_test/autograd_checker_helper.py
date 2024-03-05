@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from collections.abc import Sequence
-from itertools import product
 from logging import warning
 
 import numpy as np
@@ -54,6 +53,17 @@ def make_jacobian(x, y_size, np_dtype):
         return jacobians
     else:
         pass
+
+
+def compute_numerical_jacobian(program, inputs, outputs, feeds, eps):
+    paddle.enable_static()
+    numerical = []
+    for input in inputs:
+        numerical.append(
+            _compute_numerical_jacobian(program, input, outputs, feeds, eps)
+        )
+    paddle.disable_static()
+    return numerical
 
 
 def _compute_numerical_jacobian(program, x, y, feeds, eps):
@@ -99,6 +109,36 @@ def _compute_numerical_jacobian(program, x, y, feeds, eps):
     return jacobian
 
 
+def compute_analytical_jacobian(
+    program, inputs, outputs, last_grads_in, feeds, fetch_list
+):
+    paddle.enable_static()
+    analytical = []
+    for i in range(len(outputs)):
+        name = last_grads_in[i].name
+        feeds.update(
+            {
+                name: np.zeros(
+                    outputs[i].shape, dtype=dtype_to_np_dtype(outputs[i].dtype)
+                )
+            }
+        )
+    for i in range(len(outputs)):
+        analytical.append(
+            _compute_analytical_jacobian(
+                program,
+                inputs,
+                i,
+                outputs,
+                fetch_list,
+                feeds,
+                last_grads_in[i].name,
+            )
+        )
+    paddle.disable_static()
+    return analytical
+
+
 def _compute_analytical_jacobian(program, x, i, y, grads, feeds, name):
     if not isinstance(x, (list, paddle.pir.Value)):
         raise TypeError('x is not Value or list of Value')
@@ -133,64 +173,6 @@ def _compute_analytical_jacobian(program, x, i, y, grads, feeds, name):
     return jacobian
 
 
-def grad_check(
-    inputs,
-    outputs,
-    last_grads_in,
-    feeds=None,
-    fetch_list=None,
-    program=None,
-    eps=1e-6,
-    atol=1e-5,
-    rtol=1e-3,
-    raise_exception=True,
-):
-    def fail_test(msg):
-        if raise_exception:
-            raise RuntimeError(msg)
-        return False
-
-    analytical = []
-    for i in range(len(outputs)):
-        name = last_grads_in[i].name
-        feeds.update(
-            {
-                name: np.zeros(
-                    outputs[i].shape, dtype=dtype_to_np_dtype(outputs[i].dtype)
-                )
-            }
-        )
-    for i in range(len(outputs)):
-        analytical.append(
-            _compute_analytical_jacobian(
-                program,
-                inputs,
-                i,
-                outputs,
-                fetch_list,
-                feeds,
-                last_grads_in[i].name,
-            )
-        )
-    numerical = [
-        _compute_numerical_jacobian(program, input, outputs, feeds, eps)
-        for input in inputs
-    ]
-    for i, (x_idx, y_idx) in enumerate(
-        product(*[range(len(inputs)), range(len(outputs))])
-    ):
-        a = analytical[y_idx][x_idx]
-        n = numerical[x_idx][y_idx]
-        if not np.allclose(a, n, rtol, atol):
-            msg = (
-                f'Jacobian mismatch for output {y_idx} in y'
-                f'with respect to input {x_idx} in x,\n'
-                f'numerical:{n}\nanalytical:{a}\n'
-            )
-            return fail_test(msg)
-    return True
-
-
 def dtype_to_np_dtype(dtype):
     if dtype == core.VarDesc.VarType.FP32 or dtype == core.DataType.FLOAT32:
         return np.float32
@@ -202,18 +184,11 @@ def dtype_to_np_dtype(dtype):
         raise ValueError("Not supported data type " + str(dtype))
 
 
-def get_eager_vjp(func, inputs, tangents=None, order=1):
+def get_eager_vjp(func, inputs, cotangents=None, order=1):
     for x in inputs:
         x.stop_gradient = False
     outputs = func(inputs)
-    if not tangents:
-        tangents = []
-        y = _as_list(outputs)
-        for yi in y:
-            v = paddle.randn(yi.shape, yi.dtype)
-            v.stop_gradient = False
-            tangents.append(v)
-    return _get_eager_vjp(inputs, outputs, tangents, order), tangents
+    return _get_eager_vjp(inputs, outputs, cotangents, order)
 
 
 def _get_eager_vjp(inputs, outputs, tangents, order):
@@ -242,9 +217,16 @@ def _get_eager_vjp(inputs, outputs, tangents, order):
     return d_inputs
 
 
-def get_static_vjp(func, inputs, tangents, order, atol, rtol, eps):
-    tangents = _as_list(tangents)
-    tangents = [tangent.numpy() for tangent in tangents]
+def get_static_vjp(program, feeds, fetch):
+    paddle.enable_static()
+    exe = paddle.static.Executor()
+    res = exe.run(program, feed=feeds, fetch_list=[fetch])
+    paddle.disable_static()
+    return res
+
+
+def get_static_vjp_program(func, inputs, order):
+    cotangents = []
     paddle.enable_static()
     input_vars = []
     feeds = {}
@@ -278,28 +260,16 @@ def get_static_vjp(func, inputs, tangents, order, atol, rtol, eps):
                 'grad_in_' + str(idx), output.shape, dtype=np_type
             )
             grads_in_init.append(grad_in_var)
-            feeds.update({'grad_in_' + str(idx): tangents[idx]})
+            grad_in_np = np.random.random(size=output.shape).astype(np_type)
+            feeds.update({'grad_in_' + str(idx): grad_in_np})
+            cotangents.append(grad_in_np)
         feeds, pre_outputs, d_inputs, last_grads_in = _get_static_vjp_program(
             pir_inputs, pir_outputs, feeds, grads_in_init, order
         )
-        exe = paddle.static.Executor()
-        res = exe.run(program, feed=feeds, fetch_list=[d_inputs])
     if not d_inputs:
         warning(f"{func.__name__} {order}s grad will return None")
-        return []
-    grad_check(
-        pir_inputs,
-        pre_outputs,
-        last_grads_in,
-        feeds,
-        d_inputs,
-        program,
-        eps,
-        atol,
-        rtol,
-    )
     paddle.disable_static()
-    return res
+    return program, pir_inputs, d_inputs, pre_outputs, feeds, cotangents
 
 
 def _get_static_vjp_program(inputs, outputs, feeds, grads_in, order):
@@ -334,23 +304,56 @@ def _get_static_vjp_program(inputs, outputs, feeds, grads_in, order):
     return feeds, outputs, d_inputs, grads_in
 
 
-def check_vjp(func, args, order=1, atol=None, rtol=None, eps=EPS):
+def check_vjp(func, args, order=2, atol=None, rtol=None, eps=EPS):
     args = _as_list(args)
     np_type = dtype_to_np_dtype(args[0].dtype)
     atol = atol if atol else default_gradient_tolerance[np_type]
     rtol = rtol if rtol else default_gradient_tolerance[np_type]
 
     # shape like args, [pd.tensor, pd.tensor]
-    eager_vjps, cotangents = get_eager_vjp(func, args, order=order)
-    # shape like args, [np.array, np.array]
+    (
+        program,
+        inputs,
+        fetch_list,
+        outputs,
+        feeds,
+        cotangents,
+    ) = get_static_vjp_program(func, args, order)
+    numeric_jacobian = compute_numerical_jacobian(
+        program, inputs, outputs, feeds, eps
+    )
+    cotangents = list(map(paddle.to_tensor, cotangents))
+    eager_vjps = get_eager_vjp(func, args, cotangents, order)
+    static_vjps_np = get_static_vjp(program, feeds, fetch_list)
     eager_vjps_np = []
     for eager_vjp in eager_vjps:
         eager_vjps_np.append(eager_vjp.numpy())
-    static_vjps_np = get_static_vjp(
-        func, args, cotangents, order, atol, rtol, eps=EPS
+    inputs_length = len(numeric_jacobian)
+    numeric_vjps = []
+    for x_idx in range(inputs_length):
+        jacobians = _as_list(numeric_jacobian[x_idx])
+        dx_idx = None
+        v = np.ones(static_vjps_np[0].shape).astype(np_type).flatten()
+        for y_idx in range(len(jacobians)):
+            if dx_idx is None:
+                dx_idx = np.dot(v, jacobians[y_idx])
+            else:
+                dx_idx += np.dot(v, jacobians[y_idx])
+        numeric_vjps.append(dx_idx)
+    eager_vjps_np = list(map(np.ndarray.flatten, eager_vjps_np))
+    static_vjps_np = list(map(np.ndarray.flatten, static_vjps_np))
+
+    np.testing.assert_allclose(
+        numeric_vjps,
+        eager_vjps_np,
+        atol=atol,
+        rtol=rtol,
+        err_msg="eager vjps is not close to numeric vjps",
     )
     np.testing.assert_allclose(
-        eager_vjps_np,
+        numeric_vjps,
         static_vjps_np,
-        err_msg="static vjp must be equal to eager",
+        atol=atol,
+        rtol=rtol,
+        err_msg="static vjps is not close to numeric vjps",
     )
