@@ -75,24 +75,25 @@ pir::Attribute CallStackRecorder::get_op_callstack_info() {
 }
 
 void CallStackRecorder::record() {
-  before_insertion_point =
+  auto before_insertion_point =
       paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-  before_insertion_point.second--;
+  before_insertion_iterator = (--before_insertion_point.second);
+  before_insertion_block = before_insertion_point.first;
 }
 
 void CallStackRecorder::attach_to_ops() {
-  before_insertion_point.second++;
+  before_insertion_iterator++;
   pir::Attribute callstack_info_attr = get_op_callstack_info();
   pir::InsertionPoint after_insertion_point =
       paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-  PADDLE_ENFORCE_EQ(before_insertion_point.first,
+  PADDLE_ENFORCE_EQ(before_insertion_block,
                     after_insertion_point.first,
                     paddle::platform::errors::PreconditionNotMet(
                         "The block obtained before and after calling the "
                         "static API %s is inconsistent.",
                         api_name));
   auto after_insertion_iterator = after_insertion_point.second;
-  for (auto block_iterator = before_insertion_point.second;
+  for (auto block_iterator = before_insertion_iterator;
        block_iterator != after_insertion_iterator;
        block_iterator++) {
     block_iterator->set_attribute(paddle::framework::OpProtoAndCheckerMaker::

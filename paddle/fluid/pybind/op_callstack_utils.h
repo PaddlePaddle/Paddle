@@ -13,18 +13,19 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 
 class CallStackRecorder {
  public:
   explicit CallStackRecorder(const std::string& api_name)
-      : api_name(api_name) {}
+      : api_name(api_name), before_insertion_block(nullptr) {}
   pir::Attribute get_op_callstack_info();
   void record();
   void attach_to_ops();
 
  private:
   const std::string api_name;
-  pir::InsertionPoint before_insertion_point;
+  pir::Block::Iterator before_insertion_iterator;
+  pir::Block* before_insertion_block;
 };
