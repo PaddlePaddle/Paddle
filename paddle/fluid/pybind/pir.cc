@@ -460,12 +460,7 @@ void BindBlock(py::module *m) {
 }
 
 void BindIrMapping(py::module *m) {
-  py::class_<IrMapping> ir_mapping(*m, "IrMapping", R"DOC(
-    OpResult class represents the value(output) defined by a result of operation.
-    Notes:
-        The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
-        when build network.
-  )DOC");
+  py::class_<IrMapping> ir_mapping(*m, "IrMapping");
   ir_mapping.def(py::init<>())
       .def("look_up",
            [](IrMapping &self, Value from) { return self.Lookup(from); })
@@ -475,12 +470,7 @@ void BindIrMapping(py::module *m) {
 }
 
 void BindCloneOptions(py::module *m) {
-  py::class_<CloneOptions> clone_options(*m, "CloneOptions", R"DOC(
-    OpResult class represents the value(output) defined by a result of operation.
-    Notes:
-        The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
-        when build network.
-  )DOC");
+  py::class_<CloneOptions> clone_options(*m, "CloneOptions");
   clone_options.def(
       "__init__",
       [](CloneOptions &self,
