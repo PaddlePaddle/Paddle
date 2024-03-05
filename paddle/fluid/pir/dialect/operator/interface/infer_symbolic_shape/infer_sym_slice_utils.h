@@ -42,7 +42,7 @@ inline void CheckAndUpdateSliceAttrs(
       end_i = ends[i].Get<int64_t>();
     }
 
-    // For both start and end can be negtive or positive, we need to handle the
+    // For both start and end can be negative or positive, we need to handle the
     // following different arrangements.
     ends[i] = IsMaxInt(ends[i]) ? in_dims[axis] : ends[i];
 
@@ -135,7 +135,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
   };
 
   // When `pd.slice` is operating on a tensor which is produced by a `pd.shape`
-  // op, the reseult should be written into data.
+  // op, the result should be written into data.
   const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
     std::vector<symbol::DimExpr> out_data;
 

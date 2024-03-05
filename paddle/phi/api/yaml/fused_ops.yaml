@@ -163,6 +163,7 @@
     data_type : x
   backward : fused_bias_dropout_residual_layer_norm_grad
   intermediate : bias_dropout_residual_out, dropout_mask_out, ln_mean, ln_variance
+  support_dygraph_mode : true
 
 - op : fused_bias_residual_layernorm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)

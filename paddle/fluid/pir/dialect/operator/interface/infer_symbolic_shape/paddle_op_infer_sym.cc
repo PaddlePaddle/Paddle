@@ -219,6 +219,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
                                               axes_vec,
                                               infer_flags,
                                               decrease_axis));
+
   return true;
 }
 
@@ -624,7 +625,7 @@ bool TransposeOpInferSymbolicShape(
                      return p.dyn_cast<pir::Int32Attribute>().data();
                    });
 
-    // format the negtive axis
+    // format the negative axis
     std::for_each(out.begin(), out.end(), [x_rank](int32_t &v) {
       if (v < 0) {
         v += x_rank;
@@ -929,7 +930,7 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-//  Not Impelmented Ops.
+//  Not Implemented Ops.
 
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
