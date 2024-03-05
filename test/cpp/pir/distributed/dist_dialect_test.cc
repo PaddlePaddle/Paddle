@@ -128,6 +128,40 @@ TEST(dist_dense_tensor_type_test, base) {
   EXPECT_EQ(dist_densor_type.local_ddim(), dims);
 }
 
+TEST(dist_dense_tensor_type_test, warp_type_interface) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<DistDialect>();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  phi::distributed::ProcessMesh process_mesh(
+      mesh_shape, process_ids, dim_names);
+  auto mesh_attr = ProcessMeshAttribute::get(ctx, process_mesh);
+
+  std::vector<int64_t> dims_mapping = {0, -1};
+  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status{
+      {1, phi::ReduceType::kRedSum}};
+  // construct a TensorDistAttribute.
+  auto tensor_dist_attr =
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  common::DDim dims = {2, 2};
+  common::DataLayout data_layout = common::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  pir::DenseTensorType dense_tensor_type = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+
+  pir::Type dist_densor_type =
+      DistDenseTensorType::get(ctx, dense_tensor_type, tensor_dist_attr, dims);
+
+  EXPECT_TRUE(dist_densor_type.isa<pir::DenseTensorType>());
+  EXPECT_EQ(dist_densor_type.dyn_cast<pir::DenseTensorType>(),
+            dense_tensor_type);
+}
+
 TEST(operation_dist_attr_test, base) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<DistDialect>();

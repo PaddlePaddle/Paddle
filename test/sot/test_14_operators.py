@@ -285,7 +285,7 @@ def operator_pos(y: int):
     return operator.pos(+y)
 
 
-class TestExecutor(TestCaseBase):
+class TestOperators(TestCaseBase):
     def test_simple(self):
         a = paddle.to_tensor(1)
         b = paddle.to_tensor(True)
