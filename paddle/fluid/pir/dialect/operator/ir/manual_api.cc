@@ -19,7 +19,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/parameter.h"
-
 namespace paddle {
 namespace dialect {
 
@@ -242,7 +241,6 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
       {"trans_x", pir::BoolAttribute::get(ctx, trans_x)},
       {"trans_y", pir::BoolAttribute::get(ctx, trans_y)},
       {"activation", pir::StrAttribute::get(ctx, activation)}};
-
   auto fused_gemm_epilogue_op =
       ApiBuilder::Instance()
           .GetBuilder()
