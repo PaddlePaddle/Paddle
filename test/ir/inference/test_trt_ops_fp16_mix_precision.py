@@ -106,7 +106,9 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             use_calib_mode=False,
         )
 
-        config.specify_tensorrt_subgraph_precision(["conv2d_1.w_0"], [" "])
+        config.exp_specify_tensorrt_subgraph_precision(
+            ["conv2d_1.w_0"], [""], ["conv2d_0.w_0"]
+        )
         config.enable_memory_optim()
         config.disable_glog_info()
         config.set_tensorrt_optimization_level(0)

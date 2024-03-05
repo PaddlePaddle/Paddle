@@ -259,6 +259,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(trt_parameter_run_int8,
                       TRTParameterRunInt8,
                       std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_bfp16,
+                      TRTParameterRunBfp16,
+                      std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode, int);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine,
                       TensorRtUseStaticEngine,

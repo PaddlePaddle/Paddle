@@ -934,8 +934,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
       .def("exp_disable_tensorrt_subgraph",
            &AnalysisConfig::Exp_DisableTensorRtSubgraph)
-      .def("specify_tensorrt_subgraph_precision",
-           &AnalysisConfig::Specify_TensorRT_Subgraph_Precision)
+      .def("exp_specify_tensorrt_subgraph_precision",
+           &AnalysisConfig::Exp_Specify_TensorRT_Subgraph_Precision)
       .def("enable_tensorrt_dla",
            &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)

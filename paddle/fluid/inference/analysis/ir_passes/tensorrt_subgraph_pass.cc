@@ -475,6 +475,9 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       Get<std::vector<std::string>>("trt_parameter_run_fp16");
   auto trt_params_run_int8 =
       Get<std::vector<std::string>>("trt_parameter_run_int8");
+  auto trt_params_run_bfp16 =
+      Get<std::vector<std::string>>("trt_parameter_run_bfp16");
+
   for (auto para : parameters) {
     if (std::find(trt_params_run_fp16.begin(),
                   trt_params_run_fp16.end(),
@@ -495,6 +498,16 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       precision_mode = phi::DataType::INT8;
     }
   }
+
+  for (auto para : parameters) {
+    if (std::find(trt_params_run_bfp16.begin(),
+                  trt_params_run_bfp16.end(),
+                  para) != trt_params_run_bfp16.end()) {
+      precision_mode = phi::DataType::BFLOAT16;
+    }
+  }
+  bool enable_bfp16 = false;
+  if (precision_mode == phi::DataType::BFLOAT16) enable_bfp16 = true;
 
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
@@ -741,6 +754,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("calibration_data", calibration_data);
   op_desc->SetAttr("enable_int8", enable_int8);
   op_desc->SetAttr("enable_fp16", enable_fp16);
+  op_desc->SetAttr("enbale_bfp16", enable_bfp16);
   op_desc->SetAttr("use_calib_mode", use_calib_mode);
   op_desc->SetAttr("engine_key", engine_key);
   op_desc->SetAttr("calibration_engine_key", calibration_engine_key);

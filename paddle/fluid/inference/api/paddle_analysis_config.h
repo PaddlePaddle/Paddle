@@ -813,9 +813,10 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableTensorRtSubgraph(
       const std::vector<std::string>& var_name_not_trt);
 
-  void Specify_TensorRT_Subgraph_Precision(
+  void Exp_Specify_TensorRT_Subgraph_Precision(
       const std::vector<std::string>& trt_parameters_fp16,
-      const std::vector<std::string>& trt_parameters_int8);
+      const std::vector<std::string>& trt_parameters_int8,
+      const std::vector<std::string>& trt_parameters_bfp16);
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
@@ -1279,6 +1280,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::vector<std::string> trt_exclude_var_names_{};
   std::vector<std::string> trt_parameters_run_fp16_{};
   std::vector<std::string> trt_parameters_run_int8_{};
+  std::vector<std::string> trt_parameters_run_bfp16_{};
 
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};

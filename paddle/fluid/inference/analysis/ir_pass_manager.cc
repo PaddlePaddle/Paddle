@@ -179,6 +179,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "trt_parameter_run_int8",
           new std::vector<std::string>(argument->trt_parameter_run_int8()));
+      pass->Set(
+          "trt_parameter_run_bfp16",
+          new std::vector<std::string>(argument->trt_parameter_run_bfp16()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
