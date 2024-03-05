@@ -928,7 +928,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
       CHECK(static_cast<bool>(strategy))
           << " cinn_op_name: " << cinn_op_name
-          << "has no CINNStrategySymbolic registered.";
+          << " has no CINNStrategySymbolic registered.";
       op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
                                                 op_func_arg_tensors,
                                                 out_types,
