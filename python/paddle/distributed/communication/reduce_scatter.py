@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.collective import _get_global_group, new_group
 from paddle.distributed.communication import stream
 from paddle.distributed.communication.reduce import ReduceOp
 from paddle.distributed.communication.stream.reduce_scatter import (
@@ -65,7 +64,13 @@ def reduce_scatter(
     """
     # AVG is only supported when nccl >= 2.10
     if op == ReduceOp.AVG and paddle.base.core.nccl_version() < 21000:
-        group = new_group(_get_global_group().ranks) if group is None else group
+        group = (
+            paddle.distributed.collective.new_group(
+                paddle.distributed.collective._get_global_group().ranks
+            )
+            if group is None
+            else group
+        )
         tensor.scale_(1.0 / group.nranks)
         return stream.reduce_scatter(
             tensor,
