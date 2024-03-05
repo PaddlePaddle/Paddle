@@ -86,4 +86,13 @@ elif [[ "$1" == "cudnn896" ]]; then
   cp -r lib /usr && cd ../ && \
   rm -f cudnn-linux-x86_64-8.9.6.50_cuda12-archive.tar.xz && \
   rm -rf cudnn-linux-x86_64-8.9.6.50_cuda12-archive
+elif [[ "$1" == "cudnn900" ]]; then
+  wget -q https://paddle-ci.gz.bcebos.com/cudnn/cudnn-linux-x86_64-9.0.0.312_cuda12-archive.tar.xz --no-check-certificate
+  tar xJvf cudnn-linux-x86_64-9.0.0.312_cuda12-archive.tar.xz && \
+  cd cudnn-linux-x86_64-9.0.0.312_cuda12-archive && \
+  cp -r include /usr && \
+  cp -r lib/libcudnn* /usr/lib/x86_64-linux-gnu && \
+  cp -r lib /usr && cd ../ && \
+  rm -f cudnn-linux-x86_64-9.0.0.312_cuda12-archive.tar.xz && \
+  rm -rf cudnn-linux-x86_64-9.0.0.312_cuda12-archive
 fi
