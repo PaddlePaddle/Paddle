@@ -34,8 +34,8 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-// 检查是否是动态shape,如果是动态shape,则返回false,否则返回true
-bool HasOnlyStaticShapes(const framework::OpDesc& desc) {
+// 检查是否是动态shape,如果是动态shape,则返回true,否则返回false
+bool IsDynamicShapeOp(const framework::OpDesc& desc) {
   VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
   auto* block = desc.Block();
   auto inputs = desc.Inputs();
@@ -46,7 +46,7 @@ bool HasOnlyStaticShapes(const framework::OpDesc& desc) {
         const auto shape = var_desc->GetShape();
         for (auto ele : shape) {
           if (ele < 0) {
-            return false;
+            return true;
           }
         }
       }
@@ -61,7 +61,7 @@ bool HasOnlyStaticShapes(const framework::OpDesc& desc) {
         const auto shape = var_desc->GetShape();
         for (auto ele : shape) {
           if (ele < 0) {
-            return false;
+            return true;
           }
         }
       }
@@ -139,7 +139,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
       return false;
     }
-    if (forbid_dynamic_op_enter_into_trt && !(HasOnlyStaticShapes(desc))) {
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
       return false;
     }
 
@@ -3252,7 +3252,7 @@ struct GenericPluginTeller : public Teller {
       return false;
     }
 
-    if (forbid_dynamic_op_enter_into_trt && !(HasOnlyStaticShapes(desc))) {
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
       return false;
     }
     // only consider dynamic_shape mode
@@ -3339,7 +3339,7 @@ struct CustomPluginTeller : public Teller {
       return false;
     }
 
-    if (forbid_dynamic_op_enter_into_trt && !(HasOnlyStaticShapes(desc))) {
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
       return false;
     }
 
@@ -3380,7 +3380,7 @@ struct CustomGenericPluginTeller : public Teller {
       return false;
     }
 
-    if (forbid_dynamic_op_enter_into_trt && !(HasOnlyStaticShapes(desc))) {
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
       return false;
     }
 
