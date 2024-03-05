@@ -728,6 +728,8 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(paddle::drr::Create<ProdOpPattern>(context));
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<PowOpPattern>(context);
+  ps.Add<ConcatOpPattern>(context);
+  ps.Add<SliceOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);

@@ -92,17 +92,12 @@ class OpTransInfo {
       "conv2d",
       "conv2d_grad",
       "dropout",
-      "slice",
-      "concat",
-      "gather_nd",
       "pool2d",
       "split",
       "matmul",
       "matmul_grad",
-      "transpose",
       "embedding_grad",
       "embedding",
-      "gather",
       "arange",
   };
 };
