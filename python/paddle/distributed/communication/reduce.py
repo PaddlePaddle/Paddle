@@ -125,9 +125,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
     # AVG is only supported when nccl >= 2.10
     if op == ReduceOp.AVG and paddle.base.core.nccl_version() < 21000:
         group = (
-            paddle.distributed.collective.new_group(
-                paddle.distributed.collective._get_global_group().ranks
-            )
+            paddle.distributed.collective._get_global_group()
             if group is None
             else group
         )

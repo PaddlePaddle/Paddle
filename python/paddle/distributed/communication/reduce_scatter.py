@@ -65,9 +65,7 @@ def reduce_scatter(
     # AVG is only supported when nccl >= 2.10
     if op == ReduceOp.AVG and paddle.base.core.nccl_version() < 21000:
         group = (
-            paddle.distributed.collective.new_group(
-                paddle.distributed.collective._get_global_group().ranks
-            )
+            paddle.distributed.collective._get_global_group()
             if group is None
             else group
         )
