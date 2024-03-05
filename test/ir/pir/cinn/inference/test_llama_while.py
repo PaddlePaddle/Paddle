@@ -36,6 +36,7 @@ class LlamaWhile(nn.Layer):
         unfinished_flag = paddle.full([batch_size, 1], True, dtype="bool")
         max_new_tokens = paddle.full([1], 4, dtype="int64")
         while cur_len < max_new_tokens and paddle.any(unfinished_flag):
+            last_token = input_ids[:, -1]
             # [batch_size, vocab_size]
             logits = logits[:, -1, :]
             probs = F.softmax(logits)
@@ -50,7 +51,7 @@ class LlamaWhile(nn.Layer):
             input_ids = paddle.concat([input_ids, next_tokens], axis=1)
             paddle.increment(cur_len)
 
-        return input_ids
+        return input_ids, last_token
 
 
 class TestLlamaPostProcess(unittest.TestCase):
@@ -75,8 +76,7 @@ class TestLlamaPostProcess(unittest.TestCase):
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        # paddle.jit.save(net, sys.path.join(dirname(__file__), "post_model"))
-        out = net(self.logits, self.input_ids)
+        out, _ = net(self.logits, self.input_ids)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out
