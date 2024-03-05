@@ -890,7 +890,10 @@ void BindValue(py::module *m) {
               PADDLE_THROW(phi::errors::InvalidArgument(
                   "process_mesh is only for distdense tensor."));
             }
-            return self.type().dyn_cast<DistDenseTensorType>().process_mesh();
+            return self.type()
+                .dyn_cast<DistDenseTensorType>()
+                .process_mesh_attr()
+                .process_mesh();
           },
           [](Value self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
