@@ -149,38 +149,36 @@ bool ReshapeOpInferSymbolicShape(
     return false;
   };
 
+  const auto &target_shape = [&] {
+    std::vector<symbol::DimExpr> target_shape;
+    for (int dim : shape) {
+      target_shape.emplace_back(static_cast<std::int64_t>(dim));
+    }
+    return target_shape;
+  }();
+
   const auto &original_shape =
-      [&] {
-        std::vector<symbol::DimExpr> original_shape;
-        for (int dim : shape) {
-          original_shape.emplace_back(static_cast<std::int64_t>(dim));
-        }
-        return original_shape;
-      }
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
 
-  const std::vector<symbol::DimExpr>
-      out_dims = [&] {
-        const auto &numel =
-            GetProduct(original_shape, [](const auto &) { return true; });
+  const auto &out_dims = [&] {
+    const auto &numel =
+        GetProduct(original_shape, [](const auto &) { return true; });
 
-        const auto &product_exclude_minus_one =
-            GetProduct(operand_shape_or_data.data().value(), IsNotMinusOne);
+    const auto &product_exclude_minus_one =
+        GetProduct(target_shape, IsNotMinusOne);
 
-        const auto &input_dims = operand_shape_or_data.data().value();
+    std::vector<symbol::DimExpr> out_dims;
+    out_dims.reserve(target_shape.size());
+    for (size_t i = 0; i < target_shape.size(); ++i) {
+      auto out_dim_expr = IsNotMinusOne(target_shape[i])
+                              ? target_shape[i]
+                              : (numel / product_exclude_minus_one);
+      out_dim_expr = IsZero(target_shape[i]) ? original_shape[i] : out_dim_expr;
+      out_dims.emplace_back(out_dim_expr);
+    }
 
-        std::vector<symbol::DimExpr> out_dims;
-        out_dims.reserve(input_dims.size());
-        for (size_t i = 0; i < input_dims.size(); ++i) {
-          auto out_dim_expr = IsNotMinusOne(input_dims[i])
-                                  ? input_dims[i]
-                                  : (numel / product_exclude_minus_one);
-          out_dim_expr =
-              IsZero(input_dims[i]) ? original_shape[i] : out_dim_expr;
-          out_dims.emplace_back(out_dim_expr);
-        }
-
-        return out_dims;
-      }();
+    return out_dims;
+  }();
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_dims)};
