@@ -936,10 +936,10 @@ def get_setup_requires():
 
 def get_paddle_extra_install_requirements():
     # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
-    paddle_cuda_install_requirements = os.getenv(
-        "PADDLE_CUDA_INSTALL_REQUIREMENTS", None
-    )
-    if paddle_cuda_install_requirements == "ON":
+    # paddle_cuda_install_requirements = os.getenv(
+    #     "PADDLE_CUDA_INSTALL_REQUIREMENTS", None
+    # )
+    if env_dict.get("WITH_NVIDIA_CUDA_LIBRARIES") == "ON":
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "V11": (
                 "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
