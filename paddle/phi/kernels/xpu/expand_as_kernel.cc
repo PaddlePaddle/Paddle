@@ -96,8 +96,8 @@ void ExpandAsKernel(const Context& ctx,
                     const IntArray& shape,
                     DenseTensor* out) {
   auto rank = x.dims().size();
-  auto target_rank = target_shape.size();
   std::vector<int64_t> target_shape = shape.GetData();
+  auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
                     rank,
                     phi::errors::InvalidArgument(

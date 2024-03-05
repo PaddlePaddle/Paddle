@@ -28,10 +28,10 @@ class TrtConvertExpandASV2Test(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        if len(attrs[0]['target_shape']) < self.dims:
+        if len(attrs[0]['shape']) < self.dims:
             return False
         if self.dims == 1:
-            if len(attrs[0]['target_shape']) == 4:
+            if len(attrs[0]['shape']) == 4:
                 return False
         return True
 
@@ -63,7 +63,7 @@ class TrtConvertExpandASV2Test(TrtLayerAutoScanTest):
             ]:
                 dics = [
                     {
-                        "target_shape": shape,
+                        "shape": shape,
                     },
                 ]
                 self.dims = dims
@@ -189,7 +189,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
             for shape in [[10]]:
                 dics = [
                     {
-                        "target_shape": shape,
+                        "shape": shape,
                     },
                 ]
                 self.dims = dims
