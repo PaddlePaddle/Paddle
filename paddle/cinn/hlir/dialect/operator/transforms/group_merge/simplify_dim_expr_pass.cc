@@ -108,6 +108,14 @@ void SimplifyDimExpr(pir::ModuleOp module_op) {
         shape_analysis.SetShapeOrDataForValue(value, simplified_shape_or_data);
       }
     });
+    VLOG(1) << "This is " << op.name() << " : " << op.num_results();
+    if (op.num_results() > 0) {
+      pir::shape::SetShapeAttrForOp(
+          &op, shape_analysis.GetShapeOrDataForValue(op.result(0)));
+    } else {
+      pir::shape::SetShapeAttrForOp(
+          &op, shape_analysis.GetShapeOrDataForValue(op.operand_source(0)));
+    }
     // TODO(JiaWenxuan): simplify the attribute "sym_shape_str" of the op
   });
   VLOG(4) << "SimplifyDimExpr end";

@@ -29,10 +29,11 @@ class TestSubstituteDimExprNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    def forward(self, x, y1, y2):
-        z1 = paddle.concat([y1, x], 0)
-        z2 = paddle.concat([y1, y2], 0)
-        out = z1 + z2
+    def forward(self, x, y, z):
+        a = x + y
+        b = paddle.concat([x, y], 1)
+        c = paddle.concat([a, b], 1)
+        out = c + z
         return out
 
 
@@ -46,14 +47,15 @@ class TestSubstituteDimExprBasedOnConstraint(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shapex = [32, 128]
+        self.shapex = [32, 1]
         self.x = paddle.randn(self.shapex, dtype="float32")
         self.x.stop_gradient = False
-        self.shapey = [32, 128]
-        self.y1 = paddle.randn(self.shapey, dtype="float32")
-        self.y1.stop_gradient = False
-        self.y2 = paddle.randn(self.shapey, dtype="float32")
-        self.y2.stop_gradient = False
+        self.shapey = [32, 2]
+        self.y = paddle.randn(self.shapey, dtype="float32")
+        self.y.stop_gradient = False
+        self.shapez = [32, 5]
+        self.z = paddle.randn(self.shapez, dtype="float32")
+        self.z.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
@@ -62,13 +64,13 @@ class TestSubstituteDimExprBasedOnConstraint(unittest.TestCase):
     def eval(self, use_cinn):
         net = TestSubstituteDimExprNet()
         input_spec = [
-            InputSpec(shape=[32, 128], dtype="float32"),
-            InputSpec(shape=[32, None], dtype="float32"),
-            InputSpec(shape=[32, None], dtype="float32"),
+            InputSpec(shape=[None, 1], dtype="float32"),
+            InputSpec(shape=[None, 2], dtype="float32"),
+            InputSpec(shape=[None, 5], dtype="float32"),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x, self.y1, self.y2)
+        out = net(self.x, self.y, self.z)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out
