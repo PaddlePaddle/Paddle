@@ -37,9 +37,10 @@ class FullOpPattern : public pir::OpRewritePattern<paddle::dialect::FullOp> {
 
   bool Match(paddle::dialect::FullOp op) const override {
     return op.attribute("shape")
-               .dyn_cast<paddle::dialect::IntArrayAttribute>()
-               .data()
-               .size() == 0;
+                   .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                   .data()
+                   .size() == 0 &&
+           op.out().type().dyn_cast<pir::DenseTensorType>().dims().size() == 0;
   }
 
   void Rewrite(paddle::dialect::FullOp op,

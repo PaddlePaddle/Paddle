@@ -27,6 +27,8 @@ from typing import Any, Callable
 
 import opcode
 
+from paddle.jit.utils import OrderedSet
+
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_BREAKGRAPH_CODES
 from ...utils import (
@@ -1748,7 +1750,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             end_idx: instruction index where simulation get break.
             stack: current stack
         """
-        store_vars = list(stack)
+        store_vars = list(OrderedSet(stack))
         store_var_info = {var.id: None for var in stack}
 
         for name in restore_names:
