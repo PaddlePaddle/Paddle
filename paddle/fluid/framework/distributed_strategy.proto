@@ -90,7 +90,8 @@ message DygraphShardingConfig {
   optional int32 accumulate_steps = 2 [ default = 1 ];
   optional bool comm_overlap = 3 [ default = false ];
   optional bool split_param = 4 [ default = false ];
-  optional bool fuse_optimizer = 5 [ default = true ];
+  optional bool delay_scale_loss = 5 [ default = false ];
+  optional bool fuse_optimizer = 6 [ default = true ];
 }
 
 message HybridConfig {

@@ -21,6 +21,7 @@ import tempfile
 import numpy as np
 
 import paddle
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
 )
@@ -180,6 +181,10 @@ def train_mlp(
 
 def test_dp_stage2():
     paddle.distributed.init_parallel_env()
+    strategy = fleet.DistributedStrategy()
+    strategy.hybrid_configs["sharding_configs"].accumulate_steps = 2
+    strategy.hybrid_configs["sharding_configs"].delay_scale_loss = True
+    fleet.init(is_collective=True, strategy=strategy)
     mlp = MLP()
     state_dict = mlp.state_dict()
     mlp1 = MLP()
