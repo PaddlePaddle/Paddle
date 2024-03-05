@@ -333,7 +333,7 @@ def check_vjp(func, args, order=2, atol=None, rtol=None, eps=EPS):
     for x_idx in range(inputs_length):
         jacobians = _as_list(numeric_jacobian[x_idx])
         dx_idx = None
-        v = np.ones(static_vjps_np[0].shape).astype(np_type).flatten()
+        v = np.ones(static_vjps_np[x_idx].shape).astype(np_type).flatten()
         for y_idx in range(len(jacobians)):
             if dx_idx is None:
                 dx_idx = np.dot(v, jacobians[y_idx])
