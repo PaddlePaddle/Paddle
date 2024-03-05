@@ -85,14 +85,14 @@ static PyObject *eager_api_flash_attn(PyObject *self,
 
     paddle::optional<paddle::Tensor> attn_mask_start_row_indices;
     int attn_mask_start_row = 0;
-    ssize_t index_offset = 0;
+    ssize_t index_offset = 1;
     if (PyTuple_Size(args) == 12) {
       attn_mask_start_row_indices = GetOptionalTensorFromArgs(
           "flash_attn", "attn_mask_start_row_indices", args, 5, true);
       PyObject *attn_mask_start_row_obj = PyTuple_GET_ITEM(args, 11);
       attn_mask_start_row =
           CastPyArg2Int(attn_mask_start_row_obj, "flash_attn", 11);
-      index_offset = 1;
+      index_offset = 0;
     }
 
     // Parse Attributes if needed
