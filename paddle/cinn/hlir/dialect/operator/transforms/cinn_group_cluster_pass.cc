@@ -540,11 +540,17 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
     sch_node->axis_info =
         cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
     sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
+  } else if (cluster_node->group_kind == cinn::hlir::framework::kInjective) {
+    cluster_node->loop_ranges =
+        phi::vectorize(op->result(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims());
   } else if (op->name() == "cinn_op.generate_shape") {
     // do nothing for now
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "only support elementwise, broadcast, reduce type"));
+        "only support elementwise, broadcast, injective, reduce type"));
   }
 }
 
@@ -573,38 +579,86 @@ bool CanOpMergeNode(
     return false;
   }
 
-  // TODO(phlrain): need update here
-  // different loop range can merge, like [128, 128, 1], with [128, 128]
-  if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
-       cinn::hlir::framework::kBroadcast) &&
-      (op_path_info.at(cur_op).loop_ranges !=
-       op_path_info.at(pre_op).loop_ranges)) {
-    return false;
-  }
-
-  return true;
-}
-
-bool ShouldOutputPreNode(
-    const std::unordered_map<::pir::Operation*, GroupClusterNode>& op_path_info,
-    ::pir::Operation* pre_op,
-    ::pir::Operation* cur_op) {
-  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
-      cinn::hlir::framework::kReduction) {
-    return false;
-  }
-
-  // TODO(phlrain): need update here
-  // different loop range can merge, like [128, 128, 1], with [128, 128]
-  if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
-       cinn::hlir::framework::kBroadcast) &&
-      (op_path_info.at(cur_op).loop_ranges !=
-       op_path_info.at(pre_op).loop_ranges)) {
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) <=
+      cinn::hlir::framework::kInjective) {
     return true;
   }
-
   return false;
 }
+
+namespace horizontal_merge_detail {
+template <typename ConditionFunc, typename ElementType>
+std::optional<std::pair<int, int>> FindMergePair(
+    const ConditionFunc& condition_fn,
+    const std::vector<ElementType>& elements) {
+  for (int i = 0; i < elements.size(); ++i) {
+    for (int j = i + 1; j < elements.size(); ++j) {
+      if (condition_fn(elements[i], elements[j])) {
+        return std::make_pair(i, j);
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+template <typename MergeFunc, typename ElementType>
+void MergeAndRemove(const MergeFunc& merge_fn,
+                    const std::pair<int, int>& range,
+                    std::vector<ElementType>* elements) {
+  const auto& merged =
+      merge_fn(elements->at(range.first), elements->at(range.second));
+  elements->erase(elements->begin() + range.second);
+  elements->erase(elements->begin() + range.first);
+  elements->push_back(merged);
+}
+
+template <typename ConditionFunc, typename MergeFunc, typename ElementType>
+void FindPatternAndMerge(const ConditionFunc& condition_fn,
+                         const MergeFunc& merge_fn,
+                         std::vector<ElementType>* elements) {
+  while (true) {
+    auto merge_pair = FindMergePair(condition_fn, *elements);
+    if (merge_pair.has_value()) {
+      VLOG(4) << "FindPatternAndMerge: find and merge!";
+      MergeAndRemove(merge_fn, merge_pair.value(), elements);
+    } else {
+      break;
+    }
+  }
+}
+
+bool SameOutputShape(const GroupClusterNode& a, const GroupClusterNode& b) {
+  return a.loop_ranges == b.loop_ranges;
+}
+
+bool CanHorizontalMerge(const GroupClusterNode& a, const GroupClusterNode& b) {
+  const auto& IsTrivialKind = [](OpPatternKind kind) {
+    return kind == OpPatternKind::kElementWise ||
+           kind == OpPatternKind::kBroadcast ||
+           kind == OpPatternKind::kInjective;
+  };
+  return IsTrivialKind(a.group_kind) && IsTrivialKind(b.group_kind) &&
+         SameOutputShape(a, b);
+}
+
+GroupClusterNode HorizontalMerge(const GroupClusterNode& a,
+                                 const GroupClusterNode& b) {
+  GroupClusterNode res = a;
+  res.MergeNode(b, ScheduleInfoNode());
+  return res;
+}
+
+std::vector<GroupClusterNode> HorizontalMergePass(
+    const std::vector<GroupClusterNode>& last_stage_output) {
+  VLOG(4) << "Before HorizontalMergePass, cluster size is = "
+          << last_stage_output.size();
+  std::vector<GroupClusterNode> third_stage_output = last_stage_output;
+  FindPatternAndMerge(CanHorizontalMerge, HorizontalMerge, &third_stage_output);
+  VLOG(4) << "After HorizontalMergePass, cluster size is = "
+          << third_stage_output.size();
+  return third_stage_output;
+}
+}  // namespace horizontal_merge_detail
 
 std::vector<GroupClusterNode> NodeMergeWithNode(
     const std::vector<GroupClusterNode>& first_stage_output) {
@@ -711,16 +765,6 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
       if (CanOpMergeNode(op_path, pre_op, op)) {
         cluster_node.MergePreNode(op_path.at(pre_op), sch_node);
       }
-
-      // TODO(phlrain): should remove this strategy
-      if (ShouldOutputPreNode(op_path, pre_op, op)) {
-        // Can not merge here, should output pre_op cluster Node
-        if (!first_output_ops.count(pre_op)) {
-          first_stage_output.push_back(op_path[pre_op]);
-          first_output_ops.insert(pre_op);
-        }
-        continue;
-      }
     }
 
     op_list.push_back(op);
@@ -728,8 +772,10 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
     if (yield_output_ops.count(op) ||
         cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
             cinn::hlir::framework::kReduction) {
-      // TODO(phlrain): yiled output no nedd to push into first stage output,
+      // TODO(phlrain): yield output no need to push into first stage output,
       // Update here
+      VLOG(4) << "Split Group by yield output ops: "
+              << yield_output_ops.count(op);
       if (!first_output_ops.count(op)) {
         first_stage_output.push_back(op_path[op]);
         first_output_ops.insert(op);
@@ -737,6 +783,7 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
     }
   }
 
+  VLOG(4) << "first stage output size " << first_stage_output.size();
   return first_stage_output;
 }
 
@@ -750,17 +797,20 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
 
   // stage 2
   auto second_stage_output = NodeMergeWithNode(first_stage_output);
-
   if (second_stage_output.size() == 1) {
     return second_stage_output;
   }
 
+  // stage 3
+  auto third_stage_output =
+      horizontal_merge_detail::HorizontalMergePass(second_stage_output);
+
   std::vector<std::vector<int>> pre_ids_info;
-  auto out_id_list = SortNodeList(&second_stage_output, &pre_ids_info);
+  auto out_id_list = SortNodeList(&third_stage_output, &pre_ids_info);
 
   std::vector<GroupClusterNode> sorted_out;
   for (auto id : out_id_list) {
-    sorted_out.push_back(second_stage_output[id]);
+    sorted_out.push_back(third_stage_output[id]);
   }
 
   return sorted_out;
