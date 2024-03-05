@@ -75,7 +75,7 @@ class TraceBackFrame(OriginInfo):
         self.source_code = source_code
         self.error_line = ''
 
-    def formated_message(self):
+    def formatted_message(self):
         # self.source_code may be empty in some functions.
         # For example, decorator generated function
         return (
@@ -141,7 +141,7 @@ class TraceBackFrameRange(OriginInfo):
                     + self.source_code[i]
                 )
 
-    def formated_message(self):
+    def formatted_message(self):
         msg = (
             ' ' * BLANK_COUNT_BEFORE_FILE_STR
             + 'File "{}", line {}, in {}\n'.format(
@@ -288,7 +288,7 @@ class ErrorData:
                     dygraph_func_info.source_code,
                 )
 
-            message_lines.append(traceback_frame.formated_message())
+            message_lines.append(traceback_frame.formatted_message())
             error_line = traceback_frame.error_line
         message_lines.append("")
 
@@ -304,7 +304,7 @@ class ErrorData:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code
             )
-            message_lines.append(traceback_frame.formated_message())
+            message_lines.append(traceback_frame.formatted_message())
         message_lines.append("")
 
         # Step3: Adds error message like "TypeError: dtype must be int32, but received float32".
@@ -413,7 +413,7 @@ class ErrorData:
                 traceback_frame = TraceBackFrame(
                     Location(filepath, lineno), funcname, code
                 )
-            error_frame.append(traceback_frame.formated_message())
+            error_frame.append(traceback_frame.formatted_message())
         error_frame.append("")
 
         # Add paddle traceback after user code traceback
@@ -428,7 +428,7 @@ class ErrorData:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code
             )
-            error_frame.append(traceback_frame.formated_message())
+            error_frame.append(traceback_frame.formatted_message())
         error_frame.append("")
 
         error_frame.extend(bottom_error_message)
