@@ -28,7 +28,7 @@ void ExpandAs(const Context& context,
               DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_dims = x.dims();
-  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
+  auto vec_in_dims = common::vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
