@@ -34,11 +34,11 @@ void quant_compute(const DeviceContext& dev_ctx,
                    const std::string& algo,
                    const int32_t arch,
                    const int32_t group_size) {
-  PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
-      true,
-      phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86."));
+  PADDLE_ENFORCE_EQ(((arch == 80) || (arch == 86) || (arch == 75) ||
+                     (arch == 70) || (arch == 0)),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Currently, arch only support 70, 75, 80, 86."));
 
   const auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
@@ -57,7 +57,7 @@ void quant_compute(const DeviceContext& dev_ctx,
   DenseTensor x_int(out->type());
 
   if ((arch == 80) || (arch == 75) || (arch == 86) || (arch == 89) ||
-      (arch == 90)) {
+      (arch == 90) || (arch == 0)) {
     x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
   } else {
     // phi::Copy may change tensor meta info, here we transpose the quanted
@@ -87,7 +87,6 @@ void quant_compute(const DeviceContext& dev_ctx,
                      n,
                      bits == 8 ? 127.0f : 7.0f,
                      static_cast<size_t>(group_size));
-
     group_wise_quant<T, bits>(x_int_data, x_data, scale_data, m, n, group_size);
   }
   if (algo == "llm.int8") {
@@ -112,6 +111,10 @@ void quant_compute(const DeviceContext& dev_ctx,
       interleave_column_major_tensor<bits>(
           out_data, int_processed_2_data, std::vector<size_t>{m, n});
       add_bias_and_interleave_inplace<bits>(out_data, num);
+    } else if (arch == 0) {
+      std::vector<int> axis = {1, 0};
+      funcs::Transpose<DeviceContext, int8_t, 2> trans;
+      trans(dev_ctx, x_int, out, axis);
     }
   }
 }

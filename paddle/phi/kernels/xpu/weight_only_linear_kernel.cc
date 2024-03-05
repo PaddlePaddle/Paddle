@@ -30,20 +30,51 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
   dev_ctx.template Alloc<T>(out);
   int r = 0;
-  DenseTensor wmaxptr;
-  wmaxptr.Resize({6});
-  dev_ctx.template Alloc<float>(&wmaxptr);
-  r = baidu::xpu::api::constant(xpu_ctx->x_context(), wmaxptr.data<float>(), 6, 1.f);
-  PD_CHECK(r == 0, "constant");
   switch (x.dtype()) {
     case phi::DataType::FLOAT16: {
       using XPUType = typename XPUTypeTrait<phi::dtype::float16>::Type;
       int n = weight.dims()[0];
       int k = weight.dims()[1];
       int m = x.numel() / k;
-      std::cout << "x: " << m << ", " << k << std::endl;
-      std::cout << "w: " << n << ", " << k << std::endl;
-      auto& output = *out;
+      DenseTensor max_value;
+      max_value.Resize(weight_scale.dims());
+      dev_ctx.template Alloc<float>(&max_value);
+      if (weight_scale.dtype() == phi::DataType::FLOAT16) {
+        DenseTensor max_value_fp16;
+        max_value_fp16.Resize(weight_scale.dims());
+        dev_ctx.template Alloc<phi::dtype::float16>(&max_value_fp16);
+        r = baidu::xpu::api::scale(
+            xpu_ctx->x_context(),
+            reinterpret_cast<const XPUType*>(
+                weight_scale.data<phi::dtype::float16>()),
+            reinterpret_cast<XPUType*>(
+                max_value_fp16.data<phi::dtype::float16>()),
+            weight_scale.numel(),
+            false,
+            weight_dtype == "int8" ? 127.f : 7.f,
+            0.f);
+        PD_CHECK(r == 0, "scale failed");
+        r = baidu::xpu::api::cast_v2<XPUType, float>(
+            xpu_ctx->x_context(),
+            reinterpret_cast<const XPUType*>(
+                max_value_fp16.data<phi::dtype::float16>()),
+            max_value.data<float>(),
+            max_value.numel());
+        PD_CHECK(r == 0, "cast_v2 failed");
+      } else if (weight_scale.dtype() == phi::DataType::FLOAT32) {
+        r = baidu::xpu::api::scale(xpu_ctx->x_context(),
+                                   weight_scale.data<float>(),
+                                   max_value.data<float>(),
+                                   weight_scale.numel(),
+                                   false,
+                                   weight_dtype == "int8" ? 127.f : 7.f,
+                                   0.f);
+        PD_CHECK(r == 0, "scale failed");
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Only support that weight scale as type float32 ot float16."));
+      }
+
       DenseTensor bias_fp32;
       if (bias.is_initialized() &&
           bias.get().dtype() == phi::DataType::FLOAT16) {
@@ -61,14 +92,14 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             xpu_ctx->x_context(),
             reinterpret_cast<const XPUType*>(x.data<phi::dtype::float16>()),
             weight.data<int8_t>(),
-            reinterpret_cast<XPUType*>(output.data<phi::dtype::float16>()),
+            reinterpret_cast<XPUType*>(out->data<phi::dtype::float16>()),
             m,
             n,
             k,
             false,
             true,
             nullptr,
-            wmaxptr.data<float>(),
+            nullptr,
             nullptr,
             k,
             k,
@@ -81,7 +112,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                        : bias.get().data<float>())
                 : nullptr,
             baidu::xpu::api::Activation_t::LINEAR,
-            weight_scale.data<float>());
+            max_value.data<float>());
         PD_CHECK(r == 0, "baidu::xpu::api::gpt_fc_fusion failed.");
       } else if (weight_dtype == "int4") {
         r = baidu::xpu::api::
@@ -90,14 +121,14 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                 reinterpret_cast<const XPUType*>(x.data<phi::dtype::float16>()),
                 reinterpret_cast<int4_t*>(
                     const_cast<int8_t*>(weight.data<int8_t>())),
-                reinterpret_cast<XPUType*>(output.data<phi::dtype::float16>()),
+                reinterpret_cast<XPUType*>(out->data<phi::dtype::float16>()),
                 m,
                 n,
                 k,
                 false,
                 true,
                 nullptr,
-                wmaxptr.data<float>(),
+                nullptr,
                 nullptr,
                 k,
                 k,
@@ -110,7 +141,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                            : bias.get().data<float>())
                     : nullptr,
                 baidu::xpu::api::Activation_t::LINEAR,
-                weight_scale.data<float>());
+                max_value.data<float>());
         PD_CHECK(r == 0, "baidu::xpu::api::gpt_fc_fusion failed.");
       }
       return;

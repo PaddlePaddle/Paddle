@@ -33,8 +33,6 @@ def _get_arch_info():
         major, minor = get_device_capability()
         arch = int(major * 10 + minor)
         return arch
-    elif core.is_compiled_with_xpu():
-        return 80
     else:
         raise ValueError(
             "Paddle is not compiled with CUDA, we cannot get SMVersion from device, please try to compile Paddle with CUDA"
@@ -70,12 +68,15 @@ def weight_quantize(x, algo="weight_only_int8", arch=None, group_size=-1):
             >>> print(scale.shape)
             [32]
     """
-    if arch is None:
-        arch = _get_arch_info()
+    if core.is_compiled_with_xpu():
+        arch = 0
+    if core.is_compiled_with_cuda():
+        if arch is None:
+            arch = _get_arch_info()
 
-    assert (
-        arch == 70 or arch == 80 or arch == 86 or arch == 75
-    ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
+        assert (
+            arch == 70 or arch == 80 or arch == 86 or arch == 75
+        ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
 
     assert (
         group_size == -1 or group_size == 64 or group_size == 128
@@ -195,12 +196,15 @@ def weight_only_linear(
             ...    print(out.shape)
             [1, 2, 32]
     """
-    if arch is None:
-        arch = _get_arch_info()
+    if core.is_compiled_with_xpu():
+        arch = 0
+    if core.is_compiled_with_cuda():
+        if arch is None:
+            arch = _get_arch_info()
 
-    assert (
-        arch == 70 or arch == 80 or arch == 86 or arch == 75
-    ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
+        assert (
+            arch == 70 or arch == 80 or arch == 86 or arch == 75
+        ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
     assert (
         group_size == -1 or group_size == 64 or group_size == 128
     ), f"Currently weight_quantize only support group size of -1, 64 or 128. but got {group_size} "
