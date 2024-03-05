@@ -14,11 +14,10 @@
 
 #pragma once
 
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
-bool EmptyOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool GaussianOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Empty)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Gaussian)
 }  // namespace paddle::dialect
