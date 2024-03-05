@@ -60,7 +60,7 @@ namespace cpu {
 size_t CpuTotalPhysicalMemory();
 
 //! Get the maximum allocation size for a machine.
-size_t CpuMaxAllocSize();
+TEST_API size_t CpuMaxAllocSize();
 
 //! Get the maximum allocation size for a machine.
 size_t CUDAPinnedMaxAllocSize();

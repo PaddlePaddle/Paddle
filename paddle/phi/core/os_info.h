@@ -45,30 +45,30 @@ struct ThreadId {
 };
 
 // Better performance than GetCurrentThreadId
-uint64_t GetCurrentThreadStdId();
+TEST_API uint64_t GetCurrentThreadStdId();
 
 // Better performance than GetCurrentThreadId
 uint64_t GetCurrentThreadSysId();
 
-ThreadId GetCurrentThreadId();
+TEST_API ThreadId GetCurrentThreadId();
 
 // Return the map from StdTid to ThreadId
 // Returns current snapshot of all threads. Make sure there is no thread
 // create/destory when using it.
-std::unordered_map<uint64_t, ThreadId> GetAllThreadIds();
+TEST_API std::unordered_map<uint64_t, ThreadId> GetAllThreadIds();
 
 static constexpr const char* kDefaultThreadName = "unnamed";
 // Returns kDefaultThreadName if SetCurrentThreadName is never called.
-std::string GetCurrentThreadName();
+TEST_API std::string GetCurrentThreadName();
 
 // Return the map from StdTid to ThreadName
 // Returns current snapshot of all threads. Make sure there is no thread
 // create/destory when using it.
-std::unordered_map<uint64_t, std::string> GetAllThreadNames();
+TEST_API std::unordered_map<uint64_t, std::string> GetAllThreadNames();
 
 // Thread name is immutable, only the first call will succeed.
 // Returns false on failure.
-bool SetCurrentThreadName(const std::string& name);
+TEST_API bool SetCurrentThreadName(const std::string& name);
 
 uint32_t GetProcessId();
 
