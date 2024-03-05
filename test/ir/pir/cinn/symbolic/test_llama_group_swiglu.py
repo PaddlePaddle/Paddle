@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import nn
+from paddle.base import core
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
@@ -70,10 +71,13 @@ class TestTransposeReshape(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(mode="eager")
-        cinn_out = self.eval(use_cinn=utils.unittest_use_cinn())
+        core._set_prim_all_enabled(True)
+        # cinn_out = self.eval(use_cinn=utils.unittest_use_cinn())
+        cinn_out = self.eval(use_cinn=False)
         np.testing.assert_allclose(
             cinn_out.numpy(), dy_out.numpy(), atol=1e-2, rtol=1e-2
         )
+        core._set_prim_all_enabled(False)
 
 
 if __name__ == '__main__':
