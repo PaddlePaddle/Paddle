@@ -1069,6 +1069,13 @@
   backward : pad_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : partial_recv
+  args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
+  output : Tensor(out)
+  infer_meta :
+    func: PartialRecvInferMeta
+    param: [ring_id, peer, dtype, out_shape, use_calc_stream, num, id]
+
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)

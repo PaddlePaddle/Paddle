@@ -2445,6 +2445,10 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : partial_recv
+  outputs :
+    out : Out
+
 - op : partial_sum
   backward : partial_sum_grad
   extra :

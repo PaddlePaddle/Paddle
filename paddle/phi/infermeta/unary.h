@@ -441,6 +441,15 @@ void PartialSendInferMeta(const MetaTensor& x,
                           int num,
                           int id);
 
+void PartialRecvInferMeta(int ring_id,
+                          int peer,
+                          DataType dtype,
+                          const std::vector<int>& out_shape,
+                          bool use_calc_stream,
+                          int num,
+                          int id,
+                          MetaTensor* out);
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
