@@ -1169,7 +1169,7 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   VLOG(0) << "InferSymbolicShape of pd_op.split!";
   // x
-  auto x_shape_or_data =
+  const auto& x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   IR_ENFORCE(!x_shape_or_data.data().has_value(),
              "Currently InferSymbolicShape of SplitOp only support "
