@@ -816,3 +816,60 @@ def prune_by_invalid_strategy(tuner_cfg, cur_cfg, history_cfgs=[]):
             return True
 
     return False
+
+
+@register_prune
+def prune_by_refined_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
+    if tuner_cfg.get("refined_recompute", None):
+        rr = tuner_cfg.get("refined_recompute")
+        pp_degree = cur_cfg["pp_degree"]
+        recompute = cur_cfg["use_recompute"]
+        recompute_granularity = cur_cfg["recompute_granularity"]
+        if not recompute or (
+            recompute
+            and recompute_granularity
+            and recompute_granularity != "full"
+        ):
+            return True
+        if pp_degree == 1:
+            return True
+        if tuner_cfg["model_cfg"]["num_layers"] % pp_degree != 0:
+            return True
+        max_value = tuner_cfg["model_cfg"]["num_layers"] / pp_degree
+        if cur_cfg[rr[0]] > max_value:
+            return True
+        i = 1
+        while i < len(rr):
+            if cur_cfg[rr[i]] > max_value or cur_cfg[rr[i - 1]] != max_value:
+                return True
+
+    return False
+
+
+@register_prune_history
+def prune_by_refined_recompute_history(
+    tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]
+):
+    if tuner_cfg.get("refined_recompute", None):
+        history_cfgs.extend(pruned_cfgs)
+        rr = tuner_cfg.get("refined_recompute")
+        for item in rr:
+            cfgs = same_cfgs_beside(item, cur_cfg, history_cfgs)
+            if cfgs:
+                for cfg in cfgs:
+                    if cfg[item] < cur_cfg[item] and cfg.get("time", -1) > 0:
+                        pruned_reason = f"{item} {cur_cfg[item]} may be slower because {cfg[item]} has been already runnable."
+                        log_pruned_info(cur_cfg, pruned_reason)
+                        cur_cfg["time"] = cfg["time"]
+                        return True
+                    # memory prune
+                    if (
+                        cfg[item] > cur_cfg[item]
+                        and cfg.get("max_mem_usage") == "OOM"
+                    ):
+                        pruned_reason = f"{item} {cur_cfg[item]} may cause oom because {cfg[item]} already oom."
+                        log_pruned_info(cur_cfg, pruned_reason)
+                        cur_cfg["max_mem_usage"] = "OOM"
+                        return True
+
+    return False
