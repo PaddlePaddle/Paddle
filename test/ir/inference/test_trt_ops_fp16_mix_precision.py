@@ -96,6 +96,7 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             self.model_prefix + '.pdmodel', self.model_prefix + '.pdiparams'
         )
         config.enable_use_gpu(256, 0, PrecisionType.Half)
+        config.exp_disable_tensorrt_ops(["relu_1.tmp_0"])
         config.enable_tensorrt_engine(
             workspace_size=1 << 30,
             max_batch_size=1,
@@ -104,6 +105,7 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             use_static=False,
             use_calib_mode=False,
         )
+        config.switch_ir_debug(True)
         config.enable_memory_optim()
         # config.disable_glog_info()
         config.set_tensorrt_optimization_level(0)
