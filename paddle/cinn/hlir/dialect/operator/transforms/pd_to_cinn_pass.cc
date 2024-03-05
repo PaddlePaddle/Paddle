@@ -203,10 +203,7 @@ class ReshapeOpPattern
     auto scale_factor_gen_op = op->operand_source(1).defining_op();
     auto full_op =
         scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    const bool used_by_combine_op =
-        op->result(0).use_count() == 1 &&
-        op->result(0).first_use().owner()->isa<pir::CombineOp>();
-    return flag && full_op && (!used_by_combine_op);
+    return !is_denied && full_op;
   }
 
   void Rewrite(paddle::dialect::ReshapeOp op,
