@@ -70,6 +70,26 @@ using GroupOpsVec = std::vector<::pir::Operation*>;
 // & FLAGS_deny_cinn_ops.
 constexpr char kDelim[] = ";";
 
+std::unordered_set<std::string> StringSplit(const std::string& str,
+                                            const std::string& delim) {
+  std::regex reg(delim);
+  std::unordered_set<std::string> elems{
+      std::sregex_token_iterator(str.begin(), str.end(), reg, -1),
+      std::sregex_token_iterator()};
+  elems.erase("");
+  return elems;
+}
+
+std::string GetDebugInfo(const std::unordered_set<std::string>& names) {
+  std::string debug_info = "[";
+  for (auto& name : names) {
+    debug_info.append(name);
+    debug_info.append(", ");
+  }
+  debug_info.append("]");
+  return debug_info;
+}
+
 // OpTransInfo contains informations used to detect subgraphs
 // supported by the CINN compiler.
 class OpTransInfo {
@@ -80,8 +100,24 @@ class OpTransInfo {
   OpTransInfo() {}
 
   const DeParamCondT& deny_param_cond() const { return deny_param_cond_; }
-  const std::unordered_set<std::string>& default_deny_ops() const {
-    return default_deny_ops_;
+  bool IsDeniedByDefault(const std::string& op_name) const {
+    return default_deny_ops_.count(op_name) || IsDeniedInFLAGS(op_name);
+  }
+
+  bool IsDeniedInFLAGS(const std::string& op_name) const {
+    auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
+    auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
+    if (VLOG_IS_ON(4)) {
+      LOG_FIRST_N(INFO, 1) << "The allowed Cinn Ops: "
+                           << GetDebugInfo(allow_ops);
+      LOG_FIRST_N(INFO, 1) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
+    }
+    if (!allow_ops.empty()) {
+      return allow_ops.count(op_name) == 0U;
+    } else if (!deny_ops.empty()) {
+      return deny_ops.count(op_name);
+    }
+    return false;
   }
 
  private:
@@ -108,26 +144,6 @@ class OpTransInfo {
       "arange",
   };
 };
-
-std::unordered_set<std::string> StringSplit(const std::string& str,
-                                            const std::string& delim) {
-  std::regex reg(delim);
-  std::unordered_set<std::string> elems{
-      std::sregex_token_iterator(str.begin(), str.end(), reg, -1),
-      std::sregex_token_iterator()};
-  elems.erase("");
-  return elems;
-}
-
-std::string GetDebugInfo(const std::unordered_set<std::string>& names) {
-  std::string debug_info = "[";
-  for (auto& name : names) {
-    debug_info.append(name);
-    debug_info.append(", ");
-  }
-  debug_info.append("]");
-  return debug_info;
-}
 
 std::string OpNameAfterStripDialect(const ::pir::Operation& op) {
   std::string name = op.name();
@@ -300,32 +316,20 @@ bool IsTempDenySpecialOp(const ::pir::Operation& op) {
 // Mainly used for pd_to_cinn_pass and reused in IsSupportInCinn function.
 bool IsDeniedInCinn(const ::pir::Operation& op) {
   if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
-    VLOG(6) << "Found " << op.name()
+    VLOG(5) << "Found " << op.name()
             << " UnimplementOps or NotAllInputDenseTensor. "
             << "So mark IsDeniedForCinn: " << true;
     return true;
   }
   if (IsTempDenySpecialOp(op)) {
-    VLOG(6) << "Found " << op.name() << " is in TempDenySpecialOp."
+    VLOG(5) << "Found " << op.name() << " is in TempDenySpecialOp."
             << "So mark IsDeniedForCinn: " << true;
     return true;
   }
-
-  auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
-  auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
-  LOG_FIRST_N(INFO, 1) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
-  LOG_FIRST_N(INFO, 1) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
-
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = OpNameAfterStripDialect(op);
-  bool is_denied = OpTransInfo().default_deny_ops().count(op_name);
-  if (!allow_ops.empty()) {
-    is_denied = (allow_ops.count(op_name) == 0U);
-  } else if (!deny_ops.empty()) {
-    is_denied = deny_ops.count(op_name);
-  }
-  VLOG(6) << "Found " << op_name << " is denied in FLAGS."
-          << "So mark IsDeniedForCinn: " << true;
+  const bool is_denied = OpTransInfo().IsDeniedByDefault(op_name);
+  VLOG(5) << op_name << " is denied in FLAGS or defaultly: " << is_denied;
   return is_denied;
 }
 
@@ -368,7 +372,7 @@ bool IsSupportInCinn(const ::pir::Operation& op) {
   const bool is_denied = IsDeniedInCinn(op);
   const bool is_registered = IsRegisteredInCINN(op);
   const bool is_handled = HasHandledInPass(op);
-  VLOG(6) << op.name() << ": IsDeniedInCinn = " << is_denied
+  VLOG(5) << op.name() << ": IsDeniedInCinn = " << is_denied
           << ", IsRegisteredInCINN = " << is_registered
           << ", HasHandledInPass = " << is_handled;
   return !is_denied && is_registered && is_handled;
