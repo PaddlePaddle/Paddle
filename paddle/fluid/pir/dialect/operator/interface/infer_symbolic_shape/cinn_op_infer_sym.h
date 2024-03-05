@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn::dialect {

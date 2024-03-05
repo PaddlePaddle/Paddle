@@ -17,6 +17,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
+#define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \
+  bool name##OpInferSymbolicShape(            \
+      pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
   const auto &attr_map = op->attributes();
   PADDLE_ENFORCE(
