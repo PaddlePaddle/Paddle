@@ -259,10 +259,6 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (tensor.place().GetType() == phi::AllocationType::CUSTOM) {
     auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(tensor.place()));
-    phi::DenseTensor dense_out;
-    phi::MetaTensor meta_input(tensor);
-    phi::MetaTensor meta_out(&dense_out);
-    UnchangedInferMeta(meta_input, &meta_out);
     auto kernel_result =
         phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "contiguous",
@@ -270,7 +266,14 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
                            phi::DataLayout::ALL_LAYOUT,
                            tensor.dtype()));
     const auto& kernel = kernel_result.kernel;
+    if (kernel_result.has_fallback_cpu) {
+      PADDLE_THROW(phi::errors::Unimplemented("Missing kernel: contiguous."));
+    }
     VLOG(6) << "contiguous kernel: " << kernel;
+    phi::DenseTensor dense_out;
+    phi::MetaTensor meta_input(tensor);
+    phi::MetaTensor meta_out(&dense_out);
+    UnchangedInferMeta(meta_input, &meta_out);
     using kernel_signature = void (*)(
         const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();

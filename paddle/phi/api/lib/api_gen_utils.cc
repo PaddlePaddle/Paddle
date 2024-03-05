@@ -429,6 +429,11 @@ void TransStride(phi::DeviceContext* dev_ctx,
                              phi::DataLayout::ALL_LAYOUT,
                              to->dtype()));
       const auto& kernel = kernel_result.kernel;
+      if (kernel_result.has_fallback_cpu) {
+        VLOG(6) << "missing kernel: strided_copy, skip TransStride";
+        return;
+      }
+      VLOG(6) << "strided_copy kernel: " << kernel;
       using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const std::vector<int64_t>&,
@@ -506,6 +511,11 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                              phi::DataLayout::ALL_LAYOUT,
                              to->dtype()));
       const auto& kernel = kernel_result.kernel;
+      if (kernel_result.has_fallback_cpu) {
+        VLOG(6) << "missing kernel: strided_copy, skip TransStrideLegacy";
+        return;
+      }
+      VLOG(6) << "strided_copy kernel: " << kernel;
       using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const std::vector<int64_t>&,
@@ -586,6 +596,11 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                phi::DataLayout::ALL_LAYOUT,
                                to[i]->dtype()));
         const auto& kernel = kernel_result.kernel;
+        if (kernel_result.has_fallback_cpu) {
+          VLOG(6) << "missing kernel: strided_copy, skip TransStride";
+          return;
+        }
+        VLOG(6) << "strided_copy kernel: " << kernel;
         using kernel_signature = void (*)(const phi::DeviceContext&,
                                           const phi::DenseTensor&,
                                           const std::vector<int64_t>&,
