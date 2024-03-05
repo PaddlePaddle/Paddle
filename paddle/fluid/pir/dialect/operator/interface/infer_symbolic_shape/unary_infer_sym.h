@@ -18,6 +18,7 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
+
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Argmax)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Argmin)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(AsComplex)
