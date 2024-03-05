@@ -813,7 +813,7 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableTensorRtSubgraph(
       const std::vector<std::string>& var_name_not_trt);
 
-  void Exp_DisableDynamicTensorRTOPs(bool trt_forbid_dynamic_op);
+  void Exp_DisableTensorRTDynamicShapeOPs(bool trt_forbid_dynamic_op);
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(

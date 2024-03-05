@@ -781,7 +781,8 @@ void AnalysisConfig::MarkTrtEngineOutputs(
   trt_output_tensor_names_ = output_tensor_names;
 }
 
-void AnalysisConfig::Exp_DisableDynamicTensorRTOPs(bool trt_forbid_dynamic_op) {
+void AnalysisConfig::Exp_DisableTensorRTDynamicShapeOPs(
+    bool trt_forbid_dynamic_op) {
   trt_forbid_dynamic_op_ = trt_forbid_dynamic_op;
 }
 

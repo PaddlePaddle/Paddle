@@ -34,7 +34,8 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-bool checkForDynamicShapes(const framework::OpDesc& desc) {
+// 检查是否是动态shape,如果是动态shape,则返回false,否则返回true
+bool HasOnlyStaticShapes(const framework::OpDesc& desc) {
   VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
   auto* block = desc.Block();
   auto inputs = desc.Inputs();
@@ -138,9 +139,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
       return false;
     }
-    if (forbid_dynamic_op_enter_into_trt) {
-      bool is_dynamic = checkForDynamicShapes(desc);
-      return is_dynamic;
+    if (forbid_dynamic_op_enter_into_trt && !(HasOnlyStaticShapes(desc))) {
+      return false;
     }
 
     // do not support the op which is labeled the `skip_quant`
@@ -3252,9 +3252,8 @@ struct GenericPluginTeller : public Teller {
       return false;
     }
 
-    if (forbid_dynamic_op_enter_into_trt) {
-      bool is_dynamic = checkForDynamicShapes(desc);
-      return is_dynamic;
+    if (forbid_dynamic_op_enter_into_trt && !(HasOnlyStaticShapes(desc))) {
+      return false;
     }
     // only consider dynamic_shape mode
     if (!with_dynamic_shape) {
@@ -3340,9 +3339,8 @@ struct CustomPluginTeller : public Teller {
       return false;
     }
 
-    if (forbid_dynamic_op_enter_into_trt) {
-      bool is_dynamic = checkForDynamicShapes(desc);
-      return is_dynamic;
+    if (forbid_dynamic_op_enter_into_trt && !(HasOnlyStaticShapes(desc))) {
+      return false;
     }
 
     if (with_dynamic_shape) {
@@ -3382,9 +3380,8 @@ struct CustomGenericPluginTeller : public Teller {
       return false;
     }
 
-    if (forbid_dynamic_op_enter_into_trt) {
-      bool is_dynamic = checkForDynamicShapes(desc);
-      return is_dynamic;
+    if (forbid_dynamic_op_enter_into_trt && !(HasOnlyStaticShapes(desc))) {
+      return false;
     }
 
     auto& op_meta_info_map = OpMetaInfoMap::Instance();

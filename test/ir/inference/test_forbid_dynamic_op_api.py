@@ -105,7 +105,7 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             use_calib_mode=False,
         )
         config.enable_memory_optim()
-        config.exp_disable_dynamic_tensorrt_ops(True)
+        config.exp_disable_tensorrt_dynamic_shape_ops(True)
         config.disable_glog_info()
         config.set_tensorrt_optimization_level(0)
         self.assertEqual(config.tensorrt_optimization_level(), 0)
