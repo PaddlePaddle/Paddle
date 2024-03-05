@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,15 @@
 
 #pragma once
 
-#include <string>
-#include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
+#include <memory>
+#include "paddle/pir/include/pass/pass.h"
 
 namespace cinn {
+namespace dialect {
 namespace ir {
 
-std::unique_ptr<ScheduleTactic> CreateTileTactic();
+std::unique_ptr<pir::Pass> CreateAddStoreInFusionOpPass();
 
 }  // namespace ir
+}  // namespace dialect
 }  // namespace cinn
