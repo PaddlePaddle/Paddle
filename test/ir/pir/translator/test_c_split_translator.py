@@ -27,7 +27,7 @@ class TestCSplitOpTranslator(test_op_translator.TestOpTranslator):
         y = paddle.ones(shape=(100, 2, 3), dtype='float32')
         attrs = {
             'rank': 0,
-            'nranks': 1,
+            'nranks': 2,
             'ring_id': 0,
             'use_calc_stream': False,
             'use_model_parallel': True,
