@@ -28,7 +28,7 @@ def find_spec(self, fullname, path, target=None):
     return method()
 
 
-class TestExecutor(TestCaseBase):
+class TestStrFormat(TestCaseBase):
     def test_simple(self):
         self.assert_results(find_spec, "self", "fullname", "path", None)
 
