@@ -194,6 +194,8 @@ void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
 
   // TODO(lyk): add API to get opresults directly
   PrintOpReturnType(op);
+
+  os << " # {op_id: " << op->id() << "}";
 }
 
 void IrPrinter::PrintGeneralOperation(Operation* op) {
