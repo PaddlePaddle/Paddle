@@ -3527,6 +3527,12 @@
   outputs :
     out: Out
 
+- op: c_allreduce_avg
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_allreduce_max
   inputs :
     x : X
@@ -3558,6 +3564,12 @@
     out : Out
 
 - op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_avg
   inputs :
     x : X
   outputs :
