@@ -69,6 +69,8 @@ OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
 NEED_GEN_STATIC_ONLY_APIS = [
+    'distributed_fused_lamb_init',
+    'distributed_fused_lamb_init_',
     'fetch',
     'fused_embedding_eltwise_layernorm',
     'fused_fc_elementwise_layernorm',
