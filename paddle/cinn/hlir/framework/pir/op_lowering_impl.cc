@@ -1337,12 +1337,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     std::vector<ir::LoweredFunc> funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
 
-    if (ops.size() > 1 && not_used_op.count(op) &&
-        (op->name() == "cinn_op.reshape")) {
-      erase_reshape.insert(op);
-      continue;
-    }
-
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body);
     }
