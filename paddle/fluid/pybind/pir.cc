@@ -95,6 +95,10 @@
 #include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 #endif
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/dist_static_op_function.h"
+#endif
+
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
@@ -1723,6 +1727,19 @@ void BindPassManager(pybind11::module *m) {
            [](PassManager &self) { self.EnableIRPrinting(); });
 }
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+void BindDistOpsAPI(pybind11::module *module) {
+  {
+    if (PyModule_AddFunctions(module->ptr(), DistOpsAPI) < 0) {
+      {
+        PADDLE_THROW(
+            phi::errors::Fatal("Add C++ DistOpsAPI to core.ops failed!"));
+      }
+    }
+  }
+}
+#endif
+
 void BindPir(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
@@ -1739,6 +1756,9 @@ void BindPir(pybind11::module *module) {
   BindControlFlowApi(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  BindDistOpsAPI(&ops_modules);
+#endif
   BindIrParser(&ir_module);
 }
 
