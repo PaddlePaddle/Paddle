@@ -981,6 +981,9 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   }
 
   std::cerr << "func body size " << func_bodies.size() << std::endl;
+  for (size_t i = 0; i < func_bodies.size(); ++i) {
+    std::cerr << "body i " << func_bodies[i] << std::endl;
+  }
 
   VLOG(4) << "group_func_arg_tensors.size(): "
           << group_func_arg_tensors->size();
