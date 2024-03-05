@@ -1167,14 +1167,13 @@ bool ExpandAsOpInferSymbolicShape(
 
 bool SplitOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  VLOG(0) << "InferSymbolicShape of pd_op.split!";
-  // x
-  const auto& x_shape_or_data =
+  // input
+  const auto &x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   IR_ENFORCE(!x_shape_or_data.data().has_value(),
              "Currently InferSymbolicShape of SplitOp only support "
              "input without value.");
-  std::vector<symbol::DimExpr> x_dims_sym = x_shape_or_data.shape();
+  const auto &x_dims_sym = x_shape_or_data.shape();
 
   // axis
   CHECK(op->operand_source(2).defining_op()->isa<paddle::dialect::FullOp>());
@@ -1188,47 +1187,58 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
                      .to<int64_t>();
 
   // sections
-  auto sections_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
-  std::vector<symbol::DimExpr> sections_sym;
-  if (sections_shape_or_data.data().has_value()) {
-    sections_sym = sections_shape_or_data.data().value();
-  } else {
-    sections_sym = sections_shape_or_data.shape();
-  }
+  const std::vector<symbol::DimExpr> &sections_sym = [&] {
+    auto sections_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+    std::vector<symbol::DimExpr> sections_sym;
+    if (sections_shape_or_data.data().has_value()) {
+      sections_sym = sections_shape_or_data.data().value();
+    } else {
+      sections_sym = sections_shape_or_data.shape();
+    }
+    return sections_sym;
+  }();
 
-  const auto &GetSum = [&](const auto &dim_exprs, const auto &Filter) {
-    symbol::DimExpr sum{1};
-    for (const auto &dim_expr : dim_exprs) {
-      if (Filter(dim_expr)) {
-        sum = sum + dim_expr;
+  // output
+  const symbol::TensorListShapeOrDataDimExprs &output_shape_data_list = [&] {
+    const auto &GetSum = [&](const auto &dim_exprs, const auto &Filter) {
+      symbol::DimExpr sum{1};
+      for (const auto &dim_expr : dim_exprs) {
+        if (Filter(dim_expr)) {
+          sum = sum + dim_expr;
+        }
       }
+      return sum;
+    };
+    const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
+      if (dim_expr.isa<int64_t>()) {
+        return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
+      }
+      return true;
+    };
+    const auto &sum_exclude_minus_one = GetSum(sections_sym, IsNotMinusOne);
+
+    symbol::TensorListShapeOrDataDimExprs shape_data_list;
+    std::vector<symbol::DimExpr> output_dims_sym = x_dims_sym;
+    for (uint32_t idx = 0; idx < sections_sym.size(); idx++) {
+      const auto section_sym = sections_sym[idx];
+      output_dims_sym[axis] = IsNotMinusOne(section_sym)
+                                  ? section_sym
+                                  : x_dims_sym[axis] - sum_exclude_minus_one;
+
+      // VLOG(0) << "FTY DEBUG START";
+      // for (const auto &dim_expr : output_dims_sym) {
+      //   VLOG(0) << "FTY DEBUG " << dim_expr;
+      // }
+      // VLOG(0) << "FTY DEBUG END";
+      shape_data_list.push_back(symbol::TensorShapeOrDataDimExprs(x_dims_sym));
     }
-    return sum;
-  };
+    return shape_data_list;
+  }();
 
-  const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
-    if (dim_expr.isa<int64_t>()) {
-      return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
-    }
-    return true;
-  };
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{output_shape_data_list});
 
-  const auto &sum_exclude_minus_one =
-      GetSum(sections_shape_or_data.data().value(), IsNotMinusOne);
-
-  symbol::DimExpr x_ori_dim_on_axis = x_dims_sym[axis];
-  for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
-    auto section_sym = sections_sym[rst_idx];
-    x_dims_sym[axis] = IsNotMinusOne(section_sym)
-                           ? section_sym
-                           : x_ori_dim_on_axis - sum_exclude_minus_one;
-
-    shape_analysis->SetShapeOrDataForValue(
-        op->result(rst_idx),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(x_dims_sym)});
-  }
   return true;
 }
 
@@ -1525,8 +1535,6 @@ bool RepeatInterleaveOpInferSymbolicShape(
 }
 bool SplitWithNumOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
 bool TrilIndicesOpInferSymbolicShape(
