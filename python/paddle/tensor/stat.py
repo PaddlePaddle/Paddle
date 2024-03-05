@@ -415,7 +415,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             >>> y5 = paddle.median(x, mode='min')
             >>> print(y5)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            5.5)
+            5.)
 
             >>> median_value, median_indices = paddle.median(x, axis=1, mode='min')
             >>> print(median_value)
