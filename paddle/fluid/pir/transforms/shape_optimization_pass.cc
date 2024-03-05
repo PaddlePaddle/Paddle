@@ -131,7 +131,8 @@ void InferSymExprForBlock(const Block& block,
     auto infer_symbolic_shape_interface =
         op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
-      VLOG(vlog_level) << op.name() << " has InferSymbolicShapeInterface.";
+      VLOG(vlog_level) << op.name() << "(op_id: op_" << op.id() << ")"
+                       << " has InferSymbolicShapeInterface.";
       PADDLE_ENFORCE_EQ(
           infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
           true,
