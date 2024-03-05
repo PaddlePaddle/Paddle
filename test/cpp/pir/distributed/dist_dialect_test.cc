@@ -16,9 +16,12 @@
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_op.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/program.h"
 
 using namespace paddle::dialect;  // NOLINT
 
@@ -227,4 +230,58 @@ TEST(operation_dist_attr_test, base) {
   EXPECT_EQ(op_attr.result_dist_attrs(), result_dist_attrs);
   EXPECT_EQ(op_attr.result_dist_attr(0), result_dist_attrs.at(0));
   EXPECT_EQ(op_attr.num_result_dist_attrs(), (uint32_t)1);
+}
+
+TEST(shard_tensor_op_test, base) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<DistDialect>();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
+
+  pir::Program program(ctx);
+  pir::Block* block = program.block();
+  pir::Builder builder(ctx, block);
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  phi::distributed::ProcessMesh process_mesh(
+      mesh_shape, process_ids, dim_names);
+  auto mesh_attr = ProcessMeshAttribute::get(ctx, process_mesh);
+
+  std::vector<int64_t> dims_mapping = {0, -1};
+  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status{
+      {1, phi::ReduceType::kRedSum}};
+  // construct a TensorDistAttribute.
+  auto tensor_dist_attr =
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  common::DDim dims = {2, 2};
+  common::DataLayout data_layout = common::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  pir::DenseTensorType dense_tensor_type = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  block->AddArg(dense_tensor_type);
+
+  auto dist_densor_type =
+      DistDenseTensorType::get(ctx, dense_tensor_type, tensor_dist_attr, dims);
+
+  // construct ShardTensor op
+  pir::Value input = block->arg(0);
+  pir::AttributeMap attr_map = {{"tensor_dist_attr", tensor_dist_attr}};
+
+  paddle::dialect::ShardTensorOp shard_op =
+      builder.Build<paddle::dialect::ShardTensorOp>(input, attr_map, dims);
+  auto in = shard_op.input();
+  EXPECT_TRUE(in.type().isa<pir::DenseTensorType>());
+  EXPECT_EQ(in.type().dyn_cast<pir::DenseTensorType>(), dense_tensor_type);
+
+  EXPECT_EQ(shard_op.attribute("tensor_dist_attr"), tensor_dist_attr);
+
+  auto out = shard_op.out();
+  EXPECT_TRUE(out.type().isa<DistDenseTensorType>());
+  auto out_dist_tensor_type = out.type().dyn_cast<DistDenseTensorType>();
+  EXPECT_EQ(out_dist_tensor_type, dist_densor_type);
+  EXPECT_EQ(out_dist_tensor_type.local_ddim(), dims);
 }
