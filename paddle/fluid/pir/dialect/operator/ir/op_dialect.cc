@@ -163,13 +163,15 @@ struct SplitOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    VLOG(0) << "InferSymbolicShape of SplitOp!";
+    VLOG(0) << "InferSymbolicShape of builtin.split!";
+    VLOG(0) << "num_operands: " << op->num_operands();
+    VLOG(0) << "op: " << op;
     // x
-    IR_ENFORCE(!op->operand_source(0).data().has_value(),
-               "Currently InferSymbolicShape of SplitOp only support "
-               "input without value.");
     auto x_shape_or_data =
         shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+    IR_ENFORCE(!x_shape_or_data.data().has_value(),
+               "Currently InferSymbolicShape of SplitOp only support "
+               "input without value.");
     std::vector<symbol::DimExpr> x_dims_sym = x_shape_or_data.shape();
 
     // axis
@@ -222,7 +224,7 @@ struct SplitOpInferSymbolicShapeInterfaceModel
             sum = sum + dim_expr;
           }
         }
-        return product;
+        return sum;
       };
 
       const auto& IsNotMinusOne = [&](const symbol::DimExpr& dim_expr) {
@@ -233,7 +235,7 @@ struct SplitOpInferSymbolicShapeInterfaceModel
       };
 
       const auto& sum_exclude_minus_one =
-          GetSum(operand_shape_or_data.data().value(), IsNotMinusOne);
+          GetSum(sections_shape_or_data.data().value(), IsNotMinusOne);
 
       symbol::DimExpr x_ori_dim_on_axis = x_dims_sym[axis];
 

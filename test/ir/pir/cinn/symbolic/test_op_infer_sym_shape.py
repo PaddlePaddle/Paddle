@@ -517,5 +517,73 @@ class TestSliceOpInferSymbolicShape(TestBase):
         return True
 
 
+class SplitNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        # out = x.split(1)
+        # out = x.split(1, axis=1)
+        # out = x
+        out = paddle.split(x, [-1], axis=1)
+        # out = paddle.split(x, [1, -1], axis=1)
+        # out = paddle.split(x, [1, 2, -1], axis=1)
+        # if x.shape[1] == 6:
+        #     out = paddle.split(x, [1, 2, x.shape[1]], axis=1)
+        # out = paddle.split(x, [1, 2, 3], axis=1)
+
+        # out = x.split([-1], axis=1)
+        # out = x.split([1, -1], axis=1)
+        # out = x.split([1, 2, -1], axis=1)
+        # if x.shape[1] == 6:
+        #     out = x.split([1, 2, x.shape[1]], axis=1)
+        # out = x.split([1, 2, 3], axis=1)
+
+        return out
+
+
+class TestSplitOpInferSymbolicShape(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+
+        # FIXME: not the expected yet, just a placeholder
+        self.expected = [
+            [
+                'shape[S0, S2], data[NULL]',
+                'shape[2, 2, 2], data[NULL]',
+                'shape[Add(3, -Add(-3, S0)), 2, 2]',
+            ]
+        ]
+
+    def test_eval_symbolic(self):
+        net = SplitNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            sym_shape_str_list = get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.slice'
+            )
+            np.testing.assert_equal(
+                len(sym_shape_str_list), len(self.expected[i])
+            )
+            for j in range(len(sym_shape_str_list)):
+                np.testing.assert_equal(
+                    sym_shape_str_list[j].find(self.expected[i][j]),
+                    0,
+                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[0]}) is not expected {(self.expected[i][j])}',
+                )
+
+        return True
+
+
 if __name__ == '__main__':
     unittest.main()
