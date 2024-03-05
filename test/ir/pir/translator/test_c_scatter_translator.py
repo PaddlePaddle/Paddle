@@ -25,7 +25,7 @@ class TestCScatterOpTranslator(test_op_translator.TestOpTranslator):
         self.op_type = "c_scatter"
         x = paddle.ones(shape=(100, 2, 3), dtype='float32')
         y = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        attrs = {'ring_id': 0, 'root': 0, 'nranks': 0, 'use_calc_stream': False}
+        attrs = {'ring_id': 0, 'root': 0, 'nranks': 2, 'use_calc_stream': False}
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
