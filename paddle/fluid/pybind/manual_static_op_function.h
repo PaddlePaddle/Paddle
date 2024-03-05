@@ -208,7 +208,7 @@ static PyObject *static_api_create_array_like(PyObject *self,
     float value = CastPyArg2Float(value_obj, "create_array_like", 1);
 
     // Call ir static api
-    CallStackRecorder callstack_recoder("create_array");
+    CallStackRecorder callstack_recoder("create_array_like");
     callstack_recoder.record();
     auto static_api_out = paddle::dialect::create_array_like(input, value);
     callstack_recoder.attach_to_ops();
