@@ -819,7 +819,7 @@ class TestComplexElementwiseSubOp(OpTest):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
-        self.dtype = np.float64
+        self.dtype = np.complex128
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
 
@@ -833,7 +833,7 @@ class TestComplexElementwiseSubOp(OpTest):
         self.if_enable_cinn()
 
     def init_base_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.complex128
 
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(

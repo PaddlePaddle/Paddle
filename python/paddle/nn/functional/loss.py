@@ -1959,7 +1959,7 @@ def ctc_loss(
     loss_out = paddle.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
-        loss_out = paddle.mean(loss_out / label_lengths)
+        loss_out = paddle.mean(loss_out / label_lengths.astype(loss_out.dtype))
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
     return loss_out

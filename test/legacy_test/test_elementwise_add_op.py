@@ -725,7 +725,7 @@ class TestComplexElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
-        self.dtype = np.float64
+        self.dtype = np.complex128
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
 
