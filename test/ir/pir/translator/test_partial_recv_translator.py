@@ -14,18 +14,24 @@
 
 import unittest
 
+import numpy as np
 import test_op_translator
 
+import paddle
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+)
 from paddle.base.layer_helper import LayerHelper
 
 
 class TestPartialRecvOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "partial_recv"
+        out = paddle.ones(shape=(1, 1), dtype='float32')
         attrs = {
             'ring_id': 0,
             'peer': 0,
-            'dtype': 'float32',
+            'dtype': convert_np_dtype_to_dtype_(np.float32),
             'out_shape': '{}',
             'use_calc_stream': False,
             'num': 1,
@@ -34,6 +40,7 @@ class TestPartialRecvOpTranslator(test_op_translator.TestOpTranslator):
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
+            outputs={"Outputs": [out]},
             attrs=attrs,
         )
 
