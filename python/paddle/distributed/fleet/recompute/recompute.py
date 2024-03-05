@@ -517,9 +517,12 @@ def recompute(function, *args, **kwargs):
             recompute as static_auto_recompute,
         )
 
-        # Remove it when static_auto_recompute supports use_reentrant.
+        # Remove it when static_auto_recompute supports use_reentrant and preserve_rng_state.
         if 'use_reentrant' in kwargs:
             kwargs.pop('use_reentrant')
+
+        if 'preserve_rng_state' in kwargs:
+            kwargs.pop('preserve_rng_state')
 
         return static_auto_recompute(function)(*args, **kwargs)
 
