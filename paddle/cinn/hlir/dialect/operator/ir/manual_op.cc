@@ -37,17 +37,6 @@ const char* FusionOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
 const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};
-
-void LoadOp::Build(pir::Builder& builder,
-		pir::OperationArgument& argument,
-		pir::Value, x,
-		pir::Type output_types) {
-	argument.inputs = {x};
-	argument.output_types = output_type;
-}
-
-void LoadOp::VerifySig() {}
-
 void GroupOp::Build(pir::Builder& builder,
                     pir::OperationArgument& argument,
                     const std::vector<pir::Type>& output_types) {

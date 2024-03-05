@@ -862,7 +862,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names);
-    optim::IfFusion(&(func_body));
+    VLOG(-1) << "into IfFusion";
 #ifdef CINN_WITH_CUDA
     optim::OptimizeExprGPU(&(func_body));
 #endif
@@ -877,6 +877,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
     // 4.Apply low level pass
     func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
+    optim::IfFusion(&(func->body));
     lowered_funcs.push_back(std::move(func));
   }
 
