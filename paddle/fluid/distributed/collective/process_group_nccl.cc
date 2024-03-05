@@ -672,6 +672,68 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
       use_calc_stream);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
+    const phi::StringTensor& string_tensor,
+    const Place& place,
+    int dst_rank,
+    bool sync_op,
+    bool use_calc_stream) {
+
+  auto& pool = phi::DeviceContextPool::Instance();
+  phi::GPUContext* dev_ctx = nullptr;
+  DenseTensor tensor_gpu_serialized = phi::Empty<uint8_t, GPUContext>(dev_ctx, {1});
+  if (tensor.place().GetType() == phi::AllocationType::CPU){
+    dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
+    // 1. serialize on cpu
+    DenseTensor tensor_cpu_serialized;
+    tensor_cpu_serialized.Resize({1});
+    dev_ctx.template HostAlloc<uint8_t>(&tensor_cpu_serialized);
+    phi::strings::SerializeOnCPU(dev_ctx, src, &tensor_cpu_serialized);
+
+    // 2. copy serialized tensor from cpu to gpu
+    phi::Copy(
+        dev_ctx, tensor_cpu_serialized, dev_ctx.GetPlace(), false, &tensor_gpu_serialized);
+  }
+  else if (tensor.place().GetType() == phi::AllocationType::GPU){
+    // gpu serialized
+    dev_ctx = static_cast<phi::GPUContext*>(tensor.place());
+    phi::strings::SerializeOnGPU(dev_ctx, string_tensor, &tensor_gpu_serialized);
+  }
+  else{
+    PADDLE_ENFORCE(false,
+                      phi::errors::PreconditionNotMet(
+                          "Support Send StringTensor only on GPU or CPU, but got %s", phi::AllocationTypeStr(tensor.place().GetType())));
+  }
+
+  return Point2Point(
+      [&](phi::distributed::NCCLCommContext* comm_context,
+          gpuStream_t stream,
+          int rank_in_group) {
+        VLOG(3) << "[ncclSendString] "
+                << "sendbuff: " << tensor_gpu_serialized.data()
+                << ", count: " << tensor_gpu_serialized.numel() << ", datatype: "
+                << NCCLDTypeToString(
+                       phi::ToNCCLDataType(tensor_gpu_serialized.dtype()))
+                << ", dst_in_group: " << dst_rank
+                << ", ncclcomm: " << comm_context->GetNcclComm()
+                << ", stream: " << stream
+                << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
+                << ", offset: " << offset << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream
+                << GetGroupMessage();
+
+        comm_context->Send(tensor_gpu_serialized,
+                           tensor_gpu_serialized.numel(),
+                           rank_in_group,
+                           stream);
+      },
+      dst_rank,
+      tensor_gpu_serialized,
+      CommType::SEND,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
     const Place& place,
     int rank,
