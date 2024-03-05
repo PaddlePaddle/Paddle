@@ -197,30 +197,47 @@ ir::Tensor Reshape(const ir::Tensor& A,
   const std::vector<Expr>& A_expr_shape = A->shape;
   int input_total_size = 1;
   int output_total_size = 1;
-  for (auto& i : A_expr_shape) {
-    CHECK(i.is_constant()) << "Input tensor's shape should be constant value.";
-    input_total_size *= static_cast<int>(i.get_constant());
+  std::vector<Expr> A_stride_info;
+  int stride_base = 1;
+  A_stride_info.push_back(Expr(stride_base));
+
+  for (int i = A_expr_shape.size() - 1; i > 0; i--) {
+    stride_base *= static_cast<int>(A_expr_shape[i].get_constant());
+    A_stride_info.insert(A_stride_info.begin(), Expr(stride_base));
   }
+
+  std::vector<Expr> new_stride_info;
+  stride_base = 1;
+  new_stride_info.push_back(Expr(stride_base));
+
+  for (int i = new_shape.size() - 1; i > 0; --i) {
+    stride_base *= new_shape[i];
+
+    new_stride_info.insert(new_stride_info.begin(), Expr(stride_base));
+  }
+
   for (auto& i : new_shape) {
     output_total_size *= i;
     new_expr_shape.push_back(Expr(i));
   }
-  CHECK_EQ(input_total_size, output_total_size)
-      << "In op reshape, the input tensor and output tensor's total size "
-         "should be equal, please check!";
+
   auto res = Compute(
       new_expr_shape,
       [=](const std::vector<Expr>& indice) {
-        Expr offset = Expr(0);
-        for (int i = 0; i < indice.size(); i++) {
-          offset = offset * new_expr_shape[i] + indice[i];
+        Expr offset = indice[0] * new_stride_info[0];
+        for (int i = 1; i < indice.size(); i++) {
+          offset = offset + indice[i] * new_stride_info[i];
         }
         std::vector<Expr> indice_a;
         for (int i = A_expr_shape.size() - 1; i >= 0; i--) {
-          auto temp = common::AutoSimplify(offset % A_expr_shape[i]);
+          auto inner_offset = offset;
+          if (i != (A_expr_shape.size() - 1)) {
+            inner_offset = inner_offset / A_stride_info[i];
+          }
+          auto temp = inner_offset % A_expr_shape[i];
           indice_a.insert(indice_a.begin(), temp);
-          offset = (offset - temp) / A_expr_shape[i];
         }
+        LOG(INFO) << "indice_a = " << indice_a[0];
         return A(indice_a);
       },
       name);
@@ -232,33 +249,47 @@ ir::Tensor Reshape(const ir::Tensor& A,
                    const std::string& name) {
   std::vector<Expr> new_expr_shape;
   const std::vector<Expr>& A_expr_shape = A->shape;
-  ir::Expr input_total_size(1);
-  for (auto& i : A_expr_shape) {
-    // CHECK(i.is_constant()) << "Input tensor's shape should be constant
-    // value.";
-    input_total_size = ir::Mul::Make(input_total_size, i);
+  Expr input_total_size(1);
+  Expr output_total_size(1);
+
+  std::vector<Expr> A_stride_info;
+  Expr stride_base(1);
+  A_stride_info.push_back(stride_base);
+  for (int i = A_expr_shape.size() - 1; i > 0; i--) {
+    stride_base = stride_base * A_expr_shape[i];
+    A_stride_info.insert(A_stride_info.begin(), Expr(stride_base));
   }
-  ir::Expr output_total_size(1);
+
+  std::vector<Expr> new_stride_info;
+  stride_base = Expr(1);
+  new_stride_info.push_back(Expr(stride_base));
+  for (int i = new_shape.size() - 1; i > 0; --i) {
+    stride_base = stride_base * new_shape[i]->dim_expr;
+    new_stride_info.insert(new_stride_info.begin(), Expr(stride_base));
+  }
+
   for (auto& i : new_shape) {
-    output_total_size = ir::Mul::Make(output_total_size, i->dim_expr);
+    output_total_size = output_total_size * i->dim_expr;
     new_expr_shape.push_back(i->dim_expr);
   }
-  // CHECK_EQ(input_total_size, output_total_size)
-  //     << "In op reshape, the input tensor and output tensor's total size "
-  //        "should be equal, please check!";
+
   auto res = Compute(
       new_expr_shape,
       [=](const std::vector<Expr>& indice) {
-        Expr offset = Expr(0);
-        for (int i = 0; i < indice.size(); i++) {
-          offset = offset * new_expr_shape[i] + indice[i];
+        Expr offset = indice[0] * new_stride_info[0];
+        for (int i = 1; i < indice.size(); i++) {
+          offset = offset + indice[i] * new_stride_info[i];
         }
         std::vector<Expr> indice_a;
         for (int i = A_expr_shape.size() - 1; i >= 0; i--) {
-          auto temp = offset % A_expr_shape[i];
+          auto inner_offset = offset;
+          if (i != (A_expr_shape.size() - 1)) {
+            inner_offset = inner_offset / A_stride_info[i];
+          }
+          auto temp = inner_offset % A_expr_shape[i];
           indice_a.insert(indice_a.begin(), temp);
-          offset = (offset - temp) / A_expr_shape[i];
         }
+        LOG(INFO) << "indice_a = " << indice_a[0];
         return A(indice_a);
       },
       name);
@@ -273,6 +304,14 @@ ir::Tensor Cast(const ir::Tensor& A,
       [=](const std::vector<Expr>& indices) {
         return ir::Cast::Make(dtype, A(indices));
       },
+      name);
+  return res;
+}
+
+ir::Tensor Store(const ir::Tensor& A, const std::string& name) {
+  auto res = Compute(
+      A->shape,
+      [=](const std::vector<Expr>& indices) { return A(indices); },
       name);
   return res;
 }
