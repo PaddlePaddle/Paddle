@@ -368,16 +368,16 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
         mode (str, optional): Whether to use mean or min operation to calculate
-            the median value when the input tensor has an even number of elements
+            the median values when the input tensor has an even number of elements
             in the dimension ``axis``. Support 'avg' and 'min'.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         ((Tensor, Tensor), optional), results of median along ``axis`` of ``x``. If ``mode`` is
-        'min' and axis is not None, the result will be a tuple containing a tensor of median value and a tensor
+        'min' and axis is not None, the result will be a tuple containing a tensor of median values and a tensor
         of its indices. The data type of the indices will be int64. Otherwise the result will be the tensor of
-        median value. If data type of ``x`` is float64, data type of median value will be float64, otherwise
+        median values. If data type of ``x`` is float64, data type of median values will be float64, otherwise
         data type will be float32.
 
     Examples:
@@ -514,14 +514,8 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             out_tensor = out_tensor.squeeze(axis)
 
     if mode == 'min' and inp_axis is not None:
-        if is_flatten:
-            if keepdim:
-                out_idx = out_idx.reshape([1] * dims)
-            else:
-                out_idx = out_idx.reshape([])
-        else:
-            if not keepdim:
-                out_idx = out_idx.squeeze(axis)
+        if not keepdim:
+            out_idx = out_idx.squeeze(axis)
         return out_tensor, out_idx
     return out_tensor
 
