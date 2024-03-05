@@ -55,6 +55,7 @@ TEST(process_mesh_test, base) {
   EXPECT_EQ(mesh_attr.hash(), process_mesh.hash());
   EXPECT_EQ(mesh_attr.to_string(), process_mesh.to_string());
 }
+
 TEST(tensor_dist_attr_test, base) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<DistDialect>();
@@ -82,8 +83,8 @@ TEST(tensor_dist_attr_test, base) {
   EXPECT_NE(tensor_dist_attr, tensor_dist_attr_2);
 
   // test member function.
-  EXPECT_EQ(tensor_dist_attr.mesh_attr(), mesh_attr);
-  EXPECT_EQ(tensor_dist_attr.process_mesh(), process_mesh);
+  EXPECT_EQ(tensor_dist_attr.process_mesh_attr(), mesh_attr);
+  EXPECT_EQ(tensor_dist_attr.process_mesh_attr().process_mesh(), process_mesh);
   EXPECT_EQ(tensor_dist_attr.dims_mapping(), dims_mapping);
   EXPECT_EQ(tensor_dist_attr.partial_status(), partial_status);
 }
@@ -117,11 +118,79 @@ TEST(dist_dense_tensor_type_test, base) {
   auto dist_densor_type =
       DistDenseTensorType::get(ctx, dense_tensor_type, tensor_dist_attr, dims);
 
-  EXPECT_EQ(dist_densor_type.process_mesh(), process_mesh);
+  EXPECT_EQ(dist_densor_type.process_mesh_attr(), mesh_attr);
+  EXPECT_EQ(dist_densor_type.process_mesh_attr().process_mesh(), process_mesh);
   EXPECT_EQ(dist_densor_type.dims_mapping(), dims_mapping);
   EXPECT_EQ(dist_densor_type.partial_status(), partial_status);
   EXPECT_EQ(dist_densor_type.dtype().isa<pir::Float32Type>(), true);
   EXPECT_EQ(dist_densor_type.global_ddim(), dims);
   EXPECT_EQ(dist_densor_type.data_layout(), data_layout);
   EXPECT_EQ(dist_densor_type.local_ddim(), dims);
+}
+
+TEST(operation_dist_attr_test, base) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<DistDialect>();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  phi::distributed::ProcessMesh process_mesh(
+      mesh_shape, process_ids, dim_names);
+  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
+
+  auto mesh_attr =
+      ProcessMeshAttribute::get(ctx, mesh_shape, process_ids, dim_names);
+  std::vector<int64_t> dims_mapping = {0, -1};
+
+  // construct a OperationDistAttribute.
+  auto x_tensor_dist_attr =
+      TensorDistAttribute::get(ctx, process_mesh, dims_mapping, partial_status);
+  auto y_tensor_dist_attr =
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+  auto out_tensor_dist_attr =
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+
+  auto operand_dist_attrs =
+      std::vector<TensorDistAttribute>{x_tensor_dist_attr, y_tensor_dist_attr};
+  auto result_dist_attrs =
+      std::vector<TensorDistAttribute>{out_tensor_dist_attr};
+  auto op_attr = OperationDistAttribute::get(
+      ctx, process_mesh, operand_dist_attrs, result_dist_attrs);
+  auto op_attr_1 = OperationDistAttribute::get(
+      ctx, mesh_attr, operand_dist_attrs, result_dist_attrs);
+
+  // construct another OperationDistAttribute.
+  std::vector<std::string> dim_names_2 = {"x", "s"};
+  auto mesh_attr_2 =
+      ProcessMeshAttribute::get(ctx, mesh_shape, process_ids, dim_names_2);
+
+  auto x_tensor_dist_attr_2 =
+      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
+  auto y_tensor_dist_attr_2 =
+      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
+  auto out_tensor_dist_attr_2 =
+      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
+
+  auto operand_dist_attrs_2 = std::vector<TensorDistAttribute>{
+      x_tensor_dist_attr_2, y_tensor_dist_attr_2};
+  auto result_dist_attrs_2 =
+      std::vector<TensorDistAttribute>{out_tensor_dist_attr_2};
+  auto op_attr_2 = OperationDistAttribute::get(
+      ctx, mesh_attr_2, operand_dist_attrs_2, result_dist_attrs_2);
+
+  // check
+  EXPECT_EQ(op_attr, op_attr_1);
+  EXPECT_NE(op_attr, op_attr_2);
+  EXPECT_EQ(op_attr.process_mesh_attr(), mesh_attr);
+  EXPECT_EQ(op_attr.process_mesh_attr().process_mesh(), process_mesh);
+  EXPECT_EQ(op_attr.operand_dist_attrs(), operand_dist_attrs);
+  EXPECT_EQ(op_attr.operand_dist_attr(0), operand_dist_attrs.at(0));
+  EXPECT_EQ(op_attr.operand_dist_attr(1), operand_dist_attrs.at(1));
+  EXPECT_EQ(op_attr.num_operand_dist_attrs(), (uint32_t)2);
+
+  EXPECT_EQ(op_attr.result_dist_attrs(), result_dist_attrs);
+  EXPECT_EQ(op_attr.result_dist_attr(0), result_dist_attrs.at(0));
+  EXPECT_EQ(op_attr.num_result_dist_attrs(), (uint32_t)1);
 }

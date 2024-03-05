@@ -32,8 +32,8 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_dep_skip_op,
     is_forward_op,
-    is_loss_grad_op,
     is_optimize_op,
+    naive_set_dist_op_attr_for_program_by_mesh,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
@@ -544,11 +544,17 @@ class ShardingPass(PassBase):
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
             if _is_param_grad_allreduce_op(op, main_block):
+                reduce_op_type = (
+                    "c_reduce_sum"
+                    if op.type in ["c_allreduce_sum", "c_reduce_sum"]
+                    else "c_reduce_avg"
+                )
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
                 reduce_op = _insert_reduce_op(
                     main_block,
+                    reduce_op_type,
                     idx,
                     input_name,
                     sharding_info.group.id,
@@ -933,7 +939,7 @@ class ShardingPass(PassBase):
                     sync=False,
                     op_namescope="sharding_stage2_broadcast_dep",
                 )
-                if self.enable_overlap:
+                if self.enable_overlap and depend_op is not None:
                     depend_op.dist_attr.execution_stream = comm_stream
                     depend_op.dist_attr.scheduling_priority = (
                         self.comm_op_scheduling_priority
@@ -979,8 +985,9 @@ class ShardingPass(PassBase):
 
         first_backward_op = None
         for op in ops:
-            if is_loss_grad_op(op):
+            if is_backward_op(op):
                 first_backward_op = op
+                break
         # not backward op, sharding for inference
         if first_backward_op is None:
             return
@@ -1000,9 +1007,10 @@ class ShardingPass(PassBase):
         while i < len(ops):
             op = ops[i]
             if is_data_parallel_reduce_op(op):
-                assert (
-                    op.type == "c_reduce_sum"
-                ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                assert op.type in [
+                    "c_reduce_avg",
+                    "c_reduce_sum",
+                ], "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
 
                 grad_name = op.output_arg_names[0]
                 param_name = _get_base_name_from_grad_name(grad_name)
@@ -1035,9 +1043,10 @@ class ShardingPass(PassBase):
                     param_name
                 ):
                     cur_group.is_in_local_shard = True
-                    assert (
-                        ops[i + 1].type == "c_allreduce_sum"
-                    ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                    assert ops[i + 1].type in [
+                        "c_allreduce_avg",
+                        "c_allreduce_sum",
+                    ], "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
                     assert (
                         ops[i + 1].output_arg_names[0] == grad_name
                     ), "Hybrid Sharding with Data-Parallel should sync same gradient var"
@@ -1077,6 +1086,18 @@ class ShardingPass(PassBase):
                     dtype=group.dtype,
                     persistable=False,
                     stop_gradient=True,
+                )
+                ref_dist_attr = (
+                    self._dist_context.get_tensor_dist_attr_for_program(
+                        group.vars[0]
+                    )
+                )
+                set_var_dist_attr(
+                    self._dist_context,
+                    group.coalesce_var,
+                    ref_dist_attr.dims_mapping,
+                    ref_dist_attr.process_mesh,
+                    chunk_id=ref_dist_attr.chunk_id,
                 )
                 coalesce_op_map[group.coalesce_op_idx] = group
                 last_reduce_op_idx = group.reduce_op_indices.pop()
@@ -1153,6 +1174,20 @@ class ShardingPass(PassBase):
                         OP_ROLE_KEY: OpRole.Backward,
                     },
                 )
+
+                ref_dist_attr = (
+                    self._dist_context.get_tensor_dist_attr_for_program(
+                        group.coalesce_var
+                    )
+                )
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    coalesce_op,
+                    ref_dist_attr.process_mesh,
+                    ref_dist_attr.dims_mapping,
+                    self._dist_context,
+                    chunk_id=ref_dist_attr.chunk_id,
+                )
+
                 depend_op = insert_dependencies_for_vars(
                     block,
                     idx,
@@ -1219,7 +1254,7 @@ class ShardingPass(PassBase):
         grad_comm_op_to_stream_idx = {}
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
-                if op.type == "c_allreduce_sum":
+                if op.type in ["c_allreduce_avg", "c_allreduce_sum"]:
                     continue
                 stream_idx = reduce_op_count % self.grad_comm_stream_num
                 grad_comm_op_to_stream_idx[op] = stream_idx
@@ -1245,6 +1280,8 @@ class ShardingPass(PassBase):
                             grad_group.vars[-1],
                             grad_group.coalesce_var,
                             comm_stream,
+                            "sharding_grad_comm_dep",
+                            op.dist_attr,
                         )
                     ]
                     # post dep
@@ -1257,6 +1294,8 @@ class ShardingPass(PassBase):
                             grad_group.coalesce_var,
                             grad_group.vars,
                             comm_stream,
+                            "sharding_grad_comm_dep",
+                            op.dist_attr,
                         )
                     )
 
@@ -1265,11 +1304,13 @@ class ShardingPass(PassBase):
                 op.dist_attr.scheduling_priority = (
                     self.comm_op_scheduling_priority
                 )
-
                 op._set_attr("ring_id", comm_group.id)
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
-                    assert next_op.type == "c_allreduce_sum"
+                    assert next_op.type in [
+                        "c_allreduce_avg",
+                        "c_allreduce_sum",
+                    ]
                     assert next_op.output("Out")[0] == reduce_varname
                     # FIXME hybrid sharding-dp support multi comm & stream in feature
                     # next_op._set_attr("ring_id", comm_group.id)
@@ -1279,6 +1320,34 @@ class ShardingPass(PassBase):
                     )
                     idx += 1
 
+                # NOTE(Ruibiao): Why add dependecy here?
+                # It is hack to delay GC for coalesce_var, which significantly reduce memory usage.
+                # With the pattern of reduce_sum + scale, the coalesce_var is used by the reduce_sum
+                # op on the comm-stream, and then released by the scale op on the comp-stream. Since
+                # the generated and released op are both in comp-stream, the allocation of the
+                # coalesce_var can be fast-GC and reused by subsequent comp-op. However in reduce_avg
+                # parrent, the coalesce_var is released on the reduce_avg op in comm-stream,
+                # triggering a cross-stream GC. In such case, an event is recorded on the underlying
+                # allocation, and the memory is unable to reused by other comp-ops, resulting in an
+                # increase in memory usage. For more details, see the code of StreamSafeCUDAAllocator.
+                # This issue should be fixed using CUDAMallocAsyncAllocator in the future.
+                if (
+                    op.type == "c_reduce_avg"
+                    and not grad_group.is_in_local_shard
+                ):
+                    if idx not in dep_map:
+                        dep_map[idx] = []
+                    dep_map[idx].append(
+                        (
+                            idx + 1,
+                            grad_group.coalesce_var,
+                            grad_group.coalesce_var,
+                            None,
+                            "sharding_reduce_avg_dep",
+                            op.dist_attr,
+                        )
+                    )
+
                 reduce_op_count += 1
 
             idx += 1
@@ -1286,7 +1355,18 @@ class ShardingPass(PassBase):
         # insert deps
         indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
-            for idx, prior_vars, post_vars, comm_stream in dep_map[i][::-1]:
+            for (
+                idx,
+                prior_vars,
+                post_vars,
+                comm_stream,
+                op_namescope,
+                dist_attr,
+            ) in dep_map[i][::-1]:
+                skip_insert_when_sequential_run = (
+                    False if op_namescope == "sharding_reduce_avg_dep" else True
+                )
+
                 depend_op = insert_dependencies_for_vars(
                     block,
                     idx,
@@ -1299,12 +1379,22 @@ class ShardingPass(PassBase):
                     ],  # hack to avoid initialize the dist attr for coalesce var
                     is_recompute=False,
                     sync=False,
-                    op_namescope="sharding_grad_comm_dep",
+                    op_namescope=op_namescope,
+                    skip_insert_when_sequential_run=skip_insert_when_sequential_run,
                 )
-                depend_op.dist_attr.execution_stream = comm_stream
-                depend_op.dist_attr.scheduling_priority = (
-                    self.comm_op_scheduling_priority
-                )
+
+                if depend_op is not None:
+                    naive_set_dist_op_attr_for_program_by_mesh(
+                        depend_op,
+                        process_mesh=dist_attr.process_mesh,
+                        ctx=self._dist_context,
+                        chunk_id=dist_attr.chunk_id,
+                    )
+                    if comm_stream is not None:
+                        depend_op.dist_attr.execution_stream = comm_stream
+                        depend_op.dist_attr.scheduling_priority = (
+                            self.comm_op_scheduling_priority
+                        )
 
         # hierarchical grad comm
         if self.enable_hierarchical_comm:
@@ -1467,6 +1557,7 @@ def _insert_init_and_broadcast_op(
 
 def _insert_reduce_op(
     block,
+    op_type,
     insert_idx,
     reduce_var,
     ring_id,
@@ -1480,7 +1571,7 @@ def _insert_reduce_op(
     ), f"root id should be a positive int, but now root id is {root_id}"
     new_op = block._insert_op_without_sync(
         insert_idx,
-        type='c_reduce_sum',
+        type=op_type,
         inputs={'X': [reduce_var]},
         outputs={'Out': [reduce_var]},
         attrs={
