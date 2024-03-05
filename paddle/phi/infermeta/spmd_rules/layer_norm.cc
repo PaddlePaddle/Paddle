@@ -352,7 +352,7 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
   dist_attrs.push_back(x.dist_attr());
   dist_attrs.push_back(mean.dist_attr());
   dist_attrs.push_back(variance.dist_attr());
-  dist_attrs.push_back(out_grad.dist_attr());
+  dist_attrs.push_back(GetReplicatedDistAttr(out_grad.dist_attr()));
   if (begin_norm_axis > 0) {
     std::vector<std::vector<int64_t>> shapes = {
         x_shape, mean_shape, variance_shape, x_shape};
