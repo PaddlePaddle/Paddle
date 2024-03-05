@@ -79,7 +79,7 @@ function main() {
       make_cuda120cudnn891trt8616
      ;;
     cuda123cudnn900trt8616)
-      make_cuda123cudnn891trt8616
+     make_cuda123cudnn900trt8616
      ;;
     *)
       echo "Make dockerfile error, Without this paramet."
