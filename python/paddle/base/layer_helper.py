@@ -23,6 +23,7 @@ from .framework import (
     Parameter,
     dtype_is_floating,
     in_dygraph_mode,
+    in_dynamic_or_pir_mode,
     in_pir_mode,
 )
 from .layer_helper_base import LayerHelperBase
@@ -37,7 +38,7 @@ class LayerHelper(LayerHelperBase):
         # can not use both `layer_type` and `name`. Deprecate LayerHelper
         # and write a Helper for dygraph mode.
         if name is None:
-            if in_dygraph_mode():
+            if in_dynamic_or_pir_mode():
                 self.kwargs['name'] = unique_name.generate(layer_type)
             else:
                 self.kwargs[

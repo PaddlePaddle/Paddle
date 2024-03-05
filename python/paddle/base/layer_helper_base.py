@@ -23,9 +23,8 @@ from .data_feeder import convert_dtype
 from .framework import (
     Variable,
     _current_expected_place,
-    default_main_program,
-    default_startup_program,
     in_dygraph_mode,
+    in_dynamic_or_pir_mode,
     in_pir_mode,
 )
 from .initializer import _global_bias_initializer, _global_weight_initializer
@@ -52,11 +51,11 @@ class LayerHelperBase:
 
     @property
     def main_program(self):
-        return default_main_program()
+        return paddle.static.default_main_program()
 
     @property
     def startup_program(self):
-        return default_startup_program()
+        return paddle.static.default_startup_program()
 
     @classmethod
     def set_default_dtype(cls, dtype):
@@ -377,7 +376,7 @@ class LayerHelperBase:
                 else default_initializer
             )
         if attr.name is None:
-            if in_dygraph_mode():
+            if in_dynamic_or_pir_mode():
                 attr.name = unique_name.generate(".".join([self.name, suffix]))
             else:
                 attr.name = self.main_program._name_generator.generate(

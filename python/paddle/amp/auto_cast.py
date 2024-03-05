@@ -24,6 +24,8 @@ from paddle.base.framework import (
     in_pir_mode,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.static.amp.decorator import OptimizerWithMixedPrecision
+from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
 
 from .amp_lists import black_list, white_list
 
@@ -936,6 +938,78 @@ def decorate(
             paddle.float16
 
     """
+    assert not isinstance(models, (list, tuple))
+    assert not isinstance(optimizers, (list, tuple))
+
+    if paddle.framework.in_pir_mode():
+        if level == 'O1':
+            if optimizers is None:
+                return models
+            else:
+                optimizers = OptimizerWithMixedPrecision(
+                    optimizer=optimizers,
+                    amp_lists=AutoMixedPrecisionLists(dtype=dtype),
+                    level=level,
+                    dtype=dtype,
+                    init_loss_scaling=2**15,
+                    use_dynamic_loss_scaling=False,
+                    incr_every_n_steps=1000,
+                    decr_every_n_nan_or_inf=2,
+                    incr_ratio=2.0,
+                    decr_ratio=0.8,
+                    use_master_grad=master_grad,
+                )
+                return models, optimizers
+        elif level == 'O2':
+            main = paddle.static.default_main_program()
+            startup = paddle.static.default_startup_program()
+            with paddle.static.program_guard(startup):
+                block = startup.global_block()
+                for op in block.ops:
+                    if op.name() != 'builtin.set_parameter':
+                        continue
+
+                    name = op.attrs()['parameter_name']
+                    param = op.operand(0).source()
+                    cast_param = paddle.cast(param, dtype)
+                    cast_param.persistable = True
+                    paddle._pir_ops.set_parameter(cast_param, name)
+                    block.remove_op(op)
+
+            main.set_parameters_from(startup)
+            with paddle.static.program_guard(main):
+                block = main.global_block()
+                for _, param in models._parameters.items():
+                    cast_param = paddle._pir_ops.parameter(param.name)
+                    cast_param.stop_gradient = param.stop_gradient
+                    cast_param.persistable = param.persistable
+                    op = param.get_defining_op()
+                    block.remove_op(op)
+                    param.share_impl_with(cast_param)
+
+            use_multi_precision = master_weight is not False
+            _set_multi_precision(optimizers, use_multi_precision)
+            if optimizers is None:
+                return models
+            else:
+                optimizers = OptimizerWithMixedPrecision(
+                    optimizer=optimizers,
+                    amp_lists=AutoMixedPrecisionLists(dtype=dtype),
+                    level=level,
+                    dtype=dtype,
+                    init_loss_scaling=2**15,
+                    use_dynamic_loss_scaling=False,
+                    incr_every_n_steps=1000,
+                    decr_every_n_nan_or_inf=2,
+                    incr_ratio=2.0,
+                    decr_ratio=0.8,
+                    use_master_grad=master_grad,
+                )
+                return models, optimizers
+
+        else:
+            raise ValueError(f'level should be O1 or O2, but level={level}')
+
     return amp_decorate(
         models,
         optimizers,
