@@ -868,10 +868,12 @@ void BindValue(py::module *m) {
            [](Value self,
               Value value,
               std::unordered_set<Operation *> &grad_ops) {
-             for (auto it = self.use_begin(); it != self.use_end(); it++) {
+             for (auto it = self.use_begin(); it != self.use_end();) {
                auto use_op = it.owner();
                if (grad_ops.find(use_op) != grad_ops.end()) {
-                 it->set_source(value);
+                 (it++)->set_source(value);
+               } else {
+                 it++;
                }
              }
            })
