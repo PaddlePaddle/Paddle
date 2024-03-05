@@ -19,13 +19,13 @@
 class CallStackRecorder {
  public:
   explicit CallStackRecorder(const std::string& api_name)
-      : api_name(api_name), before_insertion_block(nullptr) {}
-  pir::Attribute get_op_callstack_info();
-  void record();
-  void attach_to_ops();
+      : api_name_(api_name), before_insertion_block_(nullptr) {}
+  pir::Attribute GetOpCallstackInfo();
+  void Record();
+  void AttachToOps();
 
  private:
-  const std::string api_name;
-  pir::Block::Iterator before_insertion_iterator;
-  pir::Block* before_insertion_block;
+  const std::string& api_name_;
+  pir::Block::Iterator before_insertion_iterator_;
+  pir::Block* before_insertion_block_;
 };

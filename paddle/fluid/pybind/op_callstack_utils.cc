@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/op_callstack_utils.h"
 
-pir::Attribute CallStackRecorder::get_op_callstack_info() {
+pir::Attribute CallStackRecorder::GetOpCallstackInfo() {
   PyObject* traceback_str = PyUnicode_FromString("traceback");
   PyObject* traceback_module = PyImport_Import(traceback_str);
 
@@ -28,9 +28,9 @@ pir::Attribute CallStackRecorder::get_op_callstack_info() {
     Py_DECREF(traceback_str);
     Py_DECREF(traceback_module);
     PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-        "Failed to import traceback module when getting callstack information "
+        "Failed to import traceback module while getting callstack information "
         "for %s.",
-        api_name));
+        api_name_));
   }
   PyObject* tb = PyObject_GetAttrString(traceback_module, "extract_stack");
   PyObject* stack = PyObject_CallObject(tb, NULL);
@@ -39,9 +39,10 @@ pir::Attribute CallStackRecorder::get_op_callstack_info() {
     Py_DECREF(traceback_str);
     Py_DECREF(traceback_module);
     PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-        "Failed to get callstack object when getting callstack information for "
+        "Failed to get callstack object while getting callstack information "
+        "for "
         "%s.",
-        api_name));
+        api_name_));
   }
   Py_ssize_t stack_size = PyList_Size(stack);
   std::vector<pir::Attribute> op_callstack_infos;
@@ -74,26 +75,26 @@ pir::Attribute CallStackRecorder::get_op_callstack_info() {
                                   op_callstack_infos);
 }
 
-void CallStackRecorder::record() {
+void CallStackRecorder::Record() {
   auto before_insertion_point =
       paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-  before_insertion_iterator = (--before_insertion_point.second);
-  before_insertion_block = before_insertion_point.first;
+  before_insertion_iterator_ = (--before_insertion_point.second);
+  before_insertion_block_ = before_insertion_point.first;
 }
 
-void CallStackRecorder::attach_to_ops() {
-  before_insertion_iterator++;
-  pir::Attribute callstack_info_attr = get_op_callstack_info();
+void CallStackRecorder::AttachToOps() {
+  before_insertion_iterator_++;
+  pir::Attribute callstack_info_attr = GetOpCallstackInfo();
   pir::InsertionPoint after_insertion_point =
       paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
-  PADDLE_ENFORCE_EQ(before_insertion_block,
+  PADDLE_ENFORCE_EQ(before_insertion_block_,
                     after_insertion_point.first,
                     paddle::platform::errors::PreconditionNotMet(
                         "The block obtained before and after calling the "
                         "static API %s is inconsistent.",
-                        api_name));
+                        api_name_));
   auto after_insertion_iterator = after_insertion_point.second;
-  for (auto block_iterator = before_insertion_iterator;
+  for (auto block_iterator = before_insertion_iterator_;
        block_iterator != after_insertion_iterator;
        block_iterator++) {
     block_iterator->set_attribute(paddle::framework::OpProtoAndCheckerMaker::

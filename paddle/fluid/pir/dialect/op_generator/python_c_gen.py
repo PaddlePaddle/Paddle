@@ -73,9 +73,9 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
         // Call ir static api
         CallStackRecorder callstack_recoder("{api_name}");
-        callstack_recoder.record();
+        callstack_recoder.Record();
         auto static_api_out = paddle::dialect::{api_name}({args});
-        callstack_recoder.attach_to_ops();
+        callstack_recoder.AttachToOps();
         return ToPyObject(static_api_out);
     }} catch (...) {{
         ThrowExceptionToPython(std::current_exception());
@@ -98,9 +98,9 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
         // Call ir static api
         CallStackRecorder callstack_recoder("{api_name}");
-        callstack_recoder.record();
+        callstack_recoder.Record();
         paddle::dialect::{api_name}({args});
-        callstack_recoder.attach_to_ops();
+        callstack_recoder.AttachToOps();
         return nullptr;
     }} catch (...) {{
         ThrowExceptionToPython(std::current_exception());
@@ -135,9 +135,9 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
         // Call ir static api
         CallStackRecorder callstack_recoder("{api_name}");
-        callstack_recoder.record();
+        callstack_recoder.Record();
         auto static_api_out = paddle::dialect::{api_name}({args_with_mutable_attrs});
-        callstack_recoder.attach_to_ops();
+        callstack_recoder.AttachToOps();
         return ToPyObject(static_api_out);
 
 

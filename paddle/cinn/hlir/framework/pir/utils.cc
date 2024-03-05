@@ -314,17 +314,9 @@ static utils::Attribute ConvertArrayAttribute(
         CASE_ATTRIBUTE(float, FloatAttribute)
       } else if (attr_vec[0].isa<::pir::DoubleAttribute>()) {
         CASE_ATTRIBUTE(double, DoubleAttribute)
-      } else if (attr_vec[0].isa<::pir::StrAttribute>()) {
-        std::vector<std::string> dst_attr;
-        for (auto element : attr_vec) {
-          dst_attr.push_back(
-              element.dyn_cast<::pir::StrAttribute>().AsString());
-        }
-        dst_attr = dst_attr;
       } else {
-        LOG(FATAL)
-            << "only support bool/int32/int64/float/double/string attribute in "
-               "ArrayAttribute";
+        LOG(FATAL) << "only support bool/int32/int64/float/double attribute in "
+                      "ArrayAttribute";
       }
     }
   } else {
