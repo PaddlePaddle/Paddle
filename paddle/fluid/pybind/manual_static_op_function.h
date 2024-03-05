@@ -126,7 +126,10 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
         !PyObject_CheckIRValue(value_obj)) {
       std::vector<int64_t> shape = CastPyArg2Longs(shape_obj, "full", 0);
       float value = CastPyArg2Float(value_obj, "full", 1);
+      CallStackRecorder callstack_recoder("full");
+      callstack_recoder.record();
       auto static_api_out = paddle::dialect::full(shape, value, dtype, place);
+      callstack_recoder.attach_to_ops();
       return ToPyObject(static_api_out);
     } else {
       pir::Value shape, value;
