@@ -2166,7 +2166,6 @@
     param : [x, x]
   kernel :
     func : sin_double_grad
-  optional: grad_out
   backward : sin_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
   composite : sin_double_grad(x, grad_out, grad_x_grad, x_grad, grad_out_grad)

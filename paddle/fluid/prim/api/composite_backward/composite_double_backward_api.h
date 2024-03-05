@@ -55,19 +55,14 @@ void tanh_double_grad(const Tensor& out,
 
 template <typename T>
 void sin_double_grad(const Tensor& x,
-                     const paddle::optional<Tensor>& grad_out,
+                     const Tensor& grad_out,
                      const Tensor& grad_x_grad,
                      Tensor* x_grad,
                      Tensor* grad_out_grad) {
   // sin grad grad : ddout = cosx * ddx, dx = -dy * sinx * ddx
   if (x_grad) {
-    if (grad_out) {
-      auto x_grad_tmp = -(grad_out.get() * sin<T>(x) * grad_x_grad);
-      set_output<T>(x_grad_tmp, x_grad);
-    } else {
-      auto x_grad_tmp = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
-      set_output<T>(x_grad_tmp, x_grad);
-    }
+    auto x_grad_tmp = -(grad_out * sin<T>(x) * grad_x_grad);
+    set_output<T>(x_grad_tmp, x_grad);
   }
 
   if (grad_out_grad) {
