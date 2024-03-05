@@ -872,8 +872,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 #ifdef CINN_WITH_CUDA
     optim::OptimizeExprGPU(&(func_body));
 #endif
-    
-	// 2.Prepare temp buffers
+
+    // 2.Prepare temp buffers
     auto temp_buffers =
         lang::GetTempBuffers(*group_func_arg_tensors, func_body);
     // 3.Building LoweredFunc
