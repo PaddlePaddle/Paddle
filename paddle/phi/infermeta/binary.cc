@@ -1201,6 +1201,60 @@ void DistributeFpnProposalsInferMeta(
   }
 }
 
+void DistributedFusedLambInitInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    float beta1,
+    float beta2,
+    const std::vector<int>& apply_weight_decay,
+    int alignment,
+    int rank,
+    int nranks,
+    MetaTensor* fp32_fused_param,
+    MetaTensor* fp32_fused_grad,
+    MetaTensor* fp16_fused_param,
+    MetaTensor* fp16_fused_grad,
+    MetaTensor* moment1,
+    MetaTensor* moment2,
+    MetaTensor* beta1_pow,
+    MetaTensor* beta2_pow,
+    MetaTensor* fused_param_offsets,
+    MetaTensor* fp32_shard_fused_param_offsets,
+    MetaTensor* fp16_shard_fused_param_offsets,
+    MetaTensor* param_info,
+    MetaTensor* param_order,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> master_param_out,
+    std::vector<MetaTensor*> grad_out,
+    MetaTensor* global_scale,
+    MetaTensor* step) {
+  fp32_fused_param->set_dtype(DataType::FLOAT32);
+  fp32_fused_grad->set_dtype(DataType::FLOAT32);
+  fp16_fused_param->set_dtype(DataType::FLOAT16);
+  fp16_fused_grad->set_dtype(DataType::FLOAT16);
+  moment1->set_dtype(DataType::FLOAT32);
+  moment2->set_dtype(DataType::FLOAT32);
+  beta1_pow->set_dtype(DataType::FLOAT32);
+  beta2_pow->set_dtype(DataType::FLOAT32);
+  fused_param_offsets->set_dtype(DataType::INT32);
+  fp32_shard_fused_param_offsets->set_dtype(DataType::INT32);
+  fp16_shard_fused_param_offsets->set_dtype(DataType::INT32);
+  param_info->set_dtype(DataType::INT32);
+  param_order->set_dtype(DataType::INT32);
+
+  for (size_t i = 0; i < param.size(); ++i) {
+    param_out[i]->set_dtype(param[i]->dtype());
+    master_param_out[i]->set_dtype(DataType::FLOAT32);
+  }
+
+  for (size_t i = 0; i < grad.size(); ++i) {
+    grad_out[i]->set_dtype(grad[i]->dtype());
+  }
+
+  global_scale->set_dtype(DataType::FLOAT32);
+  step->set_dtype(DataType::INT64);
+}
+
 void DropoutInferMeta(const MetaTensor& x,
                       const MetaTensor& seed_tensor,
                       const Scalar& p,

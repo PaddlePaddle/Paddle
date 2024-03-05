@@ -36,8 +36,8 @@ class DistDenseTensorType
   Type dtype() const { return dense_tensor_type().dtype(); }
   DataLayout data_layout() const { return dense_tensor_type().data_layout(); }
 
-  const phi::distributed::ProcessMesh& process_mesh() const {
-    return tensor_dist_attr().process_mesh();
+  ProcessMeshAttribute process_mesh_attr() const {
+    return tensor_dist_attr().process_mesh_attr();
   }
   const std::vector<int64_t>& dims_mapping() const {
     return tensor_dist_attr().dims_mapping();

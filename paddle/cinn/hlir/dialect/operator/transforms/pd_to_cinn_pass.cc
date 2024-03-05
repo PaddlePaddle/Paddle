@@ -145,8 +145,8 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
   using pir::OpRewritePattern<paddle::dialect::ScaleOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::ScaleOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
-    return flag;
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    return !is_denied;
   }
 
   void Rewrite(paddle::dialect::ScaleOp op,
@@ -199,14 +199,11 @@ class ReshapeOpPattern
   using pir::OpRewritePattern<paddle::dialect::ReshapeOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::ReshapeOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto scale_factor_gen_op = op->operand_source(1).defining_op();
     auto full_op =
         scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    auto not_combine_input =
-        op->result(0).use_count() == 1 &&
-        op->result(0).first_use().owner()->name() == "builtin.combine";
-    return flag && full_op && (!not_combine_input);
+    return !is_denied && full_op;
   }
 
   void Rewrite(paddle::dialect::ReshapeOp op,
@@ -245,11 +242,11 @@ class Pool2dOpPattern
   using pir::OpRewritePattern<paddle::dialect::Pool2dOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::Pool2dOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto kernel_size_gen_op = op->operand_source(1).defining_op();
     auto full_op =
         kernel_size_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    return flag && full_op;
+    return !is_denied && full_op;
   }
 
   void Rewrite(paddle::dialect::Pool2dOp op,
@@ -291,14 +288,14 @@ class IsCloseOpPattern
   using pir::OpRewritePattern<paddle::dialect::IscloseOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::IscloseOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto rtol_op = op->operand_source(2)
                        .defining_op()
                        ->dyn_cast<paddle::dialect::FullOp>();
     auto atol_op = op->operand_source(3)
                        .defining_op()
                        ->dyn_cast<paddle::dialect::FullOp>();
-    return flag && rtol_op && atol_op;
+    return !is_denied && rtol_op && atol_op;
   }
 
   void Rewrite(paddle::dialect::IscloseOp op,
@@ -334,7 +331,7 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
   using pir::OpRewritePattern<paddle::dialect::SliceOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::SliceOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto start_gen_op = op->operand_source(1)
                             .defining_op()
                             ->dyn_cast<paddle::dialect::FullIntArrayOp>();
@@ -342,7 +339,7 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
     auto end_gen_op = op->operand_source(2)
                           .defining_op()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    return flag && start_gen_op && end_gen_op;
+    return !is_denied && start_gen_op && end_gen_op;
   }
 
   void Rewrite(paddle::dialect::SliceOp op,
@@ -383,9 +380,9 @@ class ConcatOpPattern
   using pir::OpRewritePattern<paddle::dialect::ConcatOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::ConcatOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto axis_gen_op = op->operand_source(1).defining_op();
-    return flag && axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
+    return !is_denied && axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
   }
 
   void Rewrite(paddle::dialect::ConcatOp op,
@@ -411,8 +408,8 @@ class PowOpPattern : public pir::OpRewritePattern<paddle::dialect::PowOp> {
   using pir::OpRewritePattern<paddle::dialect::PowOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::PowOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
-    return flag;
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    return !is_denied;
   }
 
   void Rewrite(paddle::dialect::PowOp op,
@@ -458,14 +455,14 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
   using pir::OpRewritePattern<paddle::dialect::SplitOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::SplitOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto sections_gen_op = op->operand_source(1)
                                .defining_op()
                                ->dyn_cast<paddle::dialect::FullIntArrayOp>();
     auto axis_gen_op = op->operand_source(2)
                            .defining_op()
                            ->dyn_cast<paddle::dialect::FullOp>();
-    return flag && sections_gen_op && axis_gen_op;
+    return !is_denied && sections_gen_op && axis_gen_op;
   }
 
   void Rewrite(paddle::dialect::SplitOp op,
@@ -530,10 +527,10 @@ class SplitWithNumOpPattern
       paddle::dialect::SplitWithNumOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::SplitWithNumOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto axis_gen_op = op->operand_source(1).defining_op();
     auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
-    return flag && full_op;
+    return !is_denied && full_op;
   }
 
   void Rewrite(paddle::dialect::SplitWithNumOp op,
@@ -620,11 +617,11 @@ class ExpandOpPattern
   using pir::OpRewritePattern<paddle::dialect::ExpandOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::ExpandOp op) const override {
-    bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto out_shape_gen_op = op->operand_source(1)
                                 .defining_op()
                                 ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    return flag && out_shape_gen_op;
+    return !is_denied && out_shape_gen_op;
   }
 
   void Rewrite(paddle::dialect::ExpandOp op,
