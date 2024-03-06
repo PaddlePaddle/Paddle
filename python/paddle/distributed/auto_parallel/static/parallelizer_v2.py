@@ -427,6 +427,9 @@ class Parallelizer:
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["global_rank"] = rank
+            config[
+                "gradient_sync_after_accumulate"
+            ] = gradient_sync_after_accumulate
             if self._strategy.amp.enable:
                 amp_config = copy.deepcopy(self._strategy.amp.to_dict())
                 config["amp_dtype"] = amp_config['dtype']
