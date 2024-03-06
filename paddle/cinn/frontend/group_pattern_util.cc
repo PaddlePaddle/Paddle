@@ -113,28 +113,66 @@ struct InternalFusionHelper {
     TODO();
   }
 
+  std::variant<IternalPattern, ErrorGroupPattern> MergePattern(
+      const IS& upstream,
+      const PS& downstream){
+    PS new_pattern = CopyPattern(downstream);
+    new_pattern.ops.insert(new_pattern.end(), upstream.begin(), upstream.end());
+    return new_pattern;
+  }
+
+  std::variant<IternalPattern, ErrorGroupPattern> MergePattern(
+      const PS& upstream,
+      const PS& downstream){
+    PS new_pattern = CopyPattern(downstream);
+    new_pattern.ops.insert(new_pattern.end(), upstream.begin(), upstream.end());
+    new_pattern.shardable_axes_signature.output_shardable_axes.insert(
+      new_pattern.shardable_axes_signature.output_shardable_axes.end(), 
+      upstream.shardable_axes_signature.output_shardable_axes.begin(), 
+      upstream.shardable_axes_signature.output_shardable_axes.end()
+    );
+    new_pattern.shardable_axes_signature.input_shardable_axes.insert(
+      upstream.shardable_axes_signature.input_shardable_axes.begin(), 
+      upstream.shardable_axes_signature.input_shardable_axes.end()
+    );
+    return new_pattern
+  }
+
+  std::variant<IternalPattern, ErrorGroupPattern> MergePattern(
+      const IS& upstream,
+      const R& downstream){
+    R new_pattern = CopyPattern(downstream);
+    new_pattern.opt_inputs = CopyPattern(upstream);
+    return new_pattern;
+  }
+
+  std::variant<IternalPattern, ErrorGroupPattern> MergePattern(
+      const PS& upstream,
+      const R& downstream){
+    R new_pattern = CopyPattern(downstream);
+    new_pattern.opt_inputs = CopyPattern(upstream);
+    return new_pattern;
+  }
+
   std::optional<std::pair<InternalPattern, InternalPattern>> FindConnetedPattenPairWithCondition(
       std::vector<InternalPattern>* internal_patterns,
-      std::function<bool(const IternalPattern&, const IternalPattern&)>& FuseTargetCondition /* first input is upstream, second is downstream */) const {
+      std::function<bool(const IternalPattern& upstream, const IternalPattern& downstream)>& FuseTargetCondition) const {
     for (int i=0; i<internal_patterns.size(); i++){
       for (int j=i+1; j<internal_patterns.size(); j++){
         bool i_used_j = FirstIsUpstreamOfSecond(internal_patterns[j], internal_patterns[i]);
         bool j_used_i = FirstIsUpstreamOfSecond(internal_patterns[i], internal_patterns[j]);
 
-        if((!i_used_j && !j_used_i) || LeadToLoop()){
-          continue;
-        }
-
         if (i_used_j && FuseTargetCondition(internal_patterns[j], internal_patterns[i])){
           return std::make_pair(internal_patterns[j], internal_patterns[i]);
         }else if(j_used_i && FuseTargetCondition(internal_patterns[i], internal_patterns[j])){
           return std::make_pair(internal_patterns[i], internal_patterns[j]);
+        }else{
+          continue;
         }
       }
     }
-    return {};
+    return std::nullopt;
   }
-
 
   std::optional<ErrorGroupPattern> FuseIternalPattenPrototype(
       std::vector<InternalPattern>* internal_patterns,
@@ -147,7 +185,9 @@ struct InternalFusionHelper {
       if (!pattern_pair.value()){
         break;
       }
-      const InternalPattern& new_pattern = MergePattern(pattern_pair.first, pattern_pair.second);
+      const std::variant<IternalPattern, ErrorGroupPattern>& new_pattern = 
+        MergePattern(pattern_pair.first, pattern_pair.second);
+
       if (IsErrorGroupPattern(new_pattern)){
         return new_pattern;
       }
@@ -202,8 +242,8 @@ std::variant<std::vector<InternalPattern>, ErrorGroupPattern> InternalFusion(con
   const auto& IsInjectiveSource = MakeGetterIsInjectiveSource(fusion_op, IsInThisFusionOp);
   InternalFusionHelper helper{IsInThisFusionOp, IsInjectiveSource};
   std::vector<InternalPattern> internal_patterns = helper.FuseISAndConvertRemainder(fusion_op);
-  if (const auto& opt_error = helper.Fuse_IS_x_PS_2_PS(&internal_patterns)) return opt_error.value();
   if (const auto& opt_error = helper.Fuse_PS_x_PS_2_PS(&internal_patterns)) return opt_error.value();
+  if (const auto& opt_error = helper.Fuse_IS_x_PS_2_PS(&internal_patterns)) return opt_error.value();
   if (const auto& opt_error = helper.Fuse_IS_x_R_2_R(&internal_patterns)) return opt_error.value();
   if (const auto& opt_error = helper.Fuse_PS_x_R_2_R(&internal_patterns)) return opt_error.value();
   return internal_patterns;

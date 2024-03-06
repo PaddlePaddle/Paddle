@@ -20,7 +20,7 @@ struct PartialShardablePattern {};
 template <typename T>
 struct ReductionPattern {
   using Nothing = std::monostate;
-  std::variant<Nothing, InjectiveSourcePattern<T>, PartialShardablePattern> opt_is_or_ps_input;
+  std::variant<Nothing, InjectiveSourcePattern<T>, PartialShardablePattern<T>> opt_inputs;
   SingleReductionOpPattern<T> reduction_op_pattern;
 };
 
@@ -30,8 +30,8 @@ template <typename T>
 using ShardableReductionsPattern = std::vector<std::variant<ReductionPattern<T>, PartialShardablePattern<T>>>;
 
 // fuse rules:
-//  1. IS * PS -> PS
-//  2. PS * PS -> PS
+//  1. PS * PS -> PS
+//  2. IS * PS -> PS
 //  3. IS * R -> R
 //  4. PS * R -> R
 
