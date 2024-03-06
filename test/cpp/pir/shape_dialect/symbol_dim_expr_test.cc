@@ -134,7 +134,7 @@ TEST(DimExpr, Equal) {
   ASSERT_EQ(builder.Min(sym0, constant1),
             builder.Min(DimExpr("S0"), constant1));
   ASSERT_EQ(builder.Broadcast(sym0, sym1), builder.Broadcast(sym0, sym1));
-  ASSERT_NE(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
+  ASSERT_EQ(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
   ASSERT_EQ(builder.Broadcast(sym0, constant1),
             builder.Broadcast(DimExpr("S0"), constant1));
 }
