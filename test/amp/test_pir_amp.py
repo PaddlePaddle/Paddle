@@ -80,11 +80,11 @@ class TestPirAMPProgram(unittest.TestCase):
                     models=linear,
                     optimizers=optimizer,
                     level='O2',
-                    master_weight=False,
+                    master_weight=True,
                     master_grad=True,
                 )
                 scaler = paddle.amp.GradScaler(
-                    init_loss_scaling=1.0, use_dynamic_loss_scaling=False
+                    init_loss_scaling=2.0**16, use_dynamic_loss_scaling=True
                 )
 
                 with paddle.amp.auto_cast(
