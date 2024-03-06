@@ -27,11 +27,28 @@ class TestSparseUnary(unittest.TestCase):
         elif format == 'csr':
             return x.detach().to_sparse_csr()
 
-    def check_result(self, dense_func, sparse_func, format, *args):
-        origin_x = paddle.rand([8, 16, 32], dtype='float32')
-        mask = paddle.randint(0, 2, [8, 16, 32]).astype('float32')
-        while paddle.sum(mask) == 0:
+    def check_result(
+        self, dense_func, sparse_func, format, dtype='float32', *args
+    ):
+        if dtype == 'float32' or dtype == 'float64':
+            origin_x = paddle.rand([8, 16, 32], dtype)
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+        if dtype == 'complex64':
+            origin_x_real = paddle.rand([8, 16, 32], 'float32')
+            origin_x_com = paddle.rand([8, 16, 32], 'float32')
+            origin_x = (origin_x_real + 1j * origin_x_com).astype('complex64')
             mask = paddle.randint(0, 2, [8, 16, 32]).astype("float32")
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype("float32")
+        if dtype == 'complex128':
+            origin_x_real = paddle.rand([8, 16, 32], 'float64')
+            origin_x_com = paddle.rand([8, 16, 32], 'float64')
+            origin_x = (origin_x_real + 1j * origin_x_com).astype('complex128')
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
 
         # --- check sparse coo with dense --- #
         dense_x = origin_x * mask
@@ -79,22 +96,29 @@ class TestSparseUnary(unittest.TestCase):
             sp_x.grad.to_dense().numpy(), expect_grad, rtol=1e-05
         )
 
-    def compare_with_dense(self, dense_func, sparse_func):
-        self.check_result(dense_func, sparse_func, 'coo')
-        self.check_result(dense_func, sparse_func, 'csr')
+    def compare_with_dense(self, dense_func, sparse_func, dtype='float32'):
+        self.check_result(dense_func, sparse_func, 'coo', dtype)
+        self.check_result(dense_func, sparse_func, 'csr', dtype)
 
     def compare_with_dense_one_attr(self, dense_func, sparse_func, attr1):
-        self.check_result(dense_func, sparse_func, 'coo', attr1)
-        self.check_result(dense_func, sparse_func, 'csr', attr1)
+        self.check_result(dense_func, sparse_func, 'coo', 'float32', attr1)
+        self.check_result(dense_func, sparse_func, 'csr', 'float32', attr1)
 
     def compare_with_dense_two_attr(
         self, dense_func, sparse_func, attr1, attr2
     ):
-        self.check_result(dense_func, sparse_func, 'coo', attr1, attr2)
-        self.check_result(dense_func, sparse_func, 'csr', attr1, attr2)
+        self.check_result(
+            dense_func, sparse_func, 'coo', 'float32', attr1, attr2
+        )
+        self.check_result(
+            dense_func, sparse_func, 'csr', 'float32', attr1, attr2
+        )
 
     def test_sparse_sin(self):
-        self.compare_with_dense(paddle.sin, paddle.sparse.sin)
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'float32')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'float64')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'complex64')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'complex128')
 
     def test_sparse_tan(self):
         self.compare_with_dense(paddle.tan, paddle.sparse.tan)

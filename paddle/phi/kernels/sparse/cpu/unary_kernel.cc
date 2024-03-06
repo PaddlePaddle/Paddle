@@ -89,12 +89,33 @@ PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(sqrt, Sqrt)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(square, Square)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(log1p, Log1p)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(relu, Relu)
-PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(abs, Abs)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(pow, Pow)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(scale, Scale)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(expm1, Expm1)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(leaky_relu, LeakyRelu)
+
+PD_REGISTER_KERNEL(abs_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::AbsCooKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(abs_csr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::AbsCsrKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
 
 PD_REGISTER_KERNEL(sin_coo,
                    CPU,
