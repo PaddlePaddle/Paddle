@@ -1,5 +1,6 @@
 #include "paddle/cinn/frontend/group_pattern_util.h"
 #include "paddle/cinn/common/topo_walker.h"
+#include "paddle/cinn/hlir/framework/op.h"
 #include <optional>
 
 namespace cinn::frontend {
@@ -10,7 +11,11 @@ using IS = api::InjectiveSourcePattern<FrontendPattern>;
 using R = api::ReductionPattern<FrontendPattern>;
 using PS = api::PartialShardablePattern<FrontendPattern>;
 using InternalPattern = std::variant<IS, R, PS>;
+using OpPatternKind = cinn::hlir::framework::OpPatternKind;
 
+hlir::framework::OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
+  return hlir::framework::pir::CompatibleInfo::OpKind(*node);
+}
 
 std::function<bool(const pir::Operation*)> MakeGetterIsInThisFusionOp(const cinn::dialect::FusionOp& fusion_op) {
   std::set<pir::Operation*> set;
@@ -108,20 +113,86 @@ struct InternalFusionHelper {
     TODO();
   }
 
+  std::optional<std::pair<InternalPattern, InternalPattern>> FindConnetedPattenPairWithCondition(
+      std::vector<InternalPattern>* internal_patterns,
+      std::function<bool(const IternalPattern&, const IternalPattern&)>& FuseTargetCondition /* first input is upstream, second is downstream */) const {
+    for (int i=0; i<internal_patterns.size(); i++){
+      for (int j=i+1; j<internal_patterns.size(); j++){
+        bool i_used_j = FirstIsUpstreamOfSecond(internal_patterns[j], internal_patterns[i]);
+        bool j_used_i = FirstIsUpstreamOfSecond(internal_patterns[i], internal_patterns[j]);
+
+        if((!i_used_j && !j_used_i) || LeadToLoop()){
+          continue;
+        }
+
+        if (i_used_j && FuseTargetCondition(internal_patterns[j], internal_patterns[i])){
+          return std::make_pair(internal_patterns[j], internal_patterns[i]);
+        }else if(j_used_i && FuseTargetCondition(internal_patterns[i], internal_patterns[j])){
+          return std::make_pair(internal_patterns[i], internal_patterns[j]);
+        }
+      }
+    }
+    return {};
+  }
+
+
+  std::optional<ErrorGroupPattern> FuseIternalPattenPrototype(
+      std::vector<InternalPattern>* internal_patterns,
+      std::function<bool(const IternalPattern&, const IternalPattern&)>& FuseTargetCondition) const{
+
+    while(true){
+      const auto& pattern_pair = FindConnetedPattenPairWithCondition(
+        internal_patterns, FuseTargetCondition
+      );
+      if (!pattern_pair.value()){
+        break;
+      }
+      const InternalPattern& new_pattern = MergePattern(pattern_pair.first, pattern_pair.second);
+      if (IsErrorGroupPattern(new_pattern)){
+        return new_pattern;
+      }
+
+      iternal_patterns.erase(pattern_pair.first);
+      iternal_patterns.erase(pattern_pair.second);
+      internal_patterns->emplace_back(new_pattern);
+    }
+    return {};
+  }
+
   std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::vector<InternalPattern>* internal_patterns) const {
-    TODO();
+    return FuseIternalPattenPrototype(
+      internal_patterns,
+      [](const InternalPattern& upstream, const IternalPattern& downstream){
+        return IsISPattern(upstream) && IsPSPattern(downstream);
+      }
+    );
   }
 
   std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::vector<InternalPattern>* internal_patterns) const {
-    TODO();
+    return FuseIternalPattenPrototype(
+      internal_patterns,
+      [](const InternalPattern& upstream, const IternalPattern& downstream){
+        return IsPSPattern(upstream) && IsPSPattern(downstream);
+      }
+    );
   }
 
   std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::vector<InternalPattern>* internal_patterns) const {
-    TODO();
+    return FuseIternalPattenPrototype(
+      internal_patterns,
+      [](const InternalPattern& upstream, const IternalPattern& downstream){
+        return IsISPattern(upstream) && IsRPattern(downstream);
+      }
+    );
   }
 
   std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(std::vector<InternalPattern>* internal_patterns) const {
-    TODO();
+    return FuseIternalPattenPrototype(
+      internal_patterns,
+      [](const InternalPattern& upstream, const IternalPattern& downstream){
+        return IsPSPattern(upstream) && IsRPattern(downstream);
+      }
+    );
   }
 
 };
