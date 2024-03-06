@@ -1,4 +1,4 @@
-- op : add_n_onednn
+- op : add_n
   args : (Tensor[] inputs)
   output : Tensor(out)
   infer_meta:
