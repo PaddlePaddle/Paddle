@@ -24,7 +24,7 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
 #ifdef PADDLE_WITH_DNNL
-#include "build/paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #endif
 
 namespace paddle {
