@@ -54,8 +54,6 @@ void Value::set_type(pir::Type type) {
   impl_->set_type(type);
 }
 
-void Value::set_impl(detail::ValueImpl *impl) { impl_ = impl; }
-
 std::string Value::PrintUdChain() {
   CHECK_VALUE_NULL_IMPL(PrintUdChain);
   return impl()->PrintUdChain();

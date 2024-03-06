@@ -233,29 +233,29 @@ def _pir_apply(self, func, dtype, include_sublayers=True):
 def _pir_transform(t, dtype):
     main = paddle.static.default_main_program()
     startup = paddle.static.default_startup_program()
-    name = t.name
     with paddle.static.program_guard(startup):
         block = startup.global_block()
         for op in block.ops:
             if (
                 op.name() == 'builtin.set_parameter'
-                and op.attrs()['parameter_name'] == name
+                and op.attrs()['parameter_name'] == t.name
             ):
                 param = op.operand(0).source()
                 cast_param = paddle.cast(param, dtype)
                 cast_param.persistable = True
-                paddle._pir_ops.set_parameter(cast_param, name)
+                paddle._pir_ops.set_parameter(cast_param, t.name)
                 block.remove_op(op)
                 break
     main.set_parameters_from(startup)
     with paddle.static.program_guard(main):
         block = main.global_block()
-        cast_param = paddle._pir_ops.parameter(name)
+        cast_param = paddle._pir_ops.parameter(t.name)
         cast_param.stop_gradient = t.stop_gradient
         cast_param.persistable = t.persistable
         op = t.get_defining_op()
+        t.replace_all_uses_with(cast_param)
         block.remove_op(op)
-        t.share_impl_with(cast_param)
+        t.assign_value(cast_param)
 
 
 def _pir_to_impl(self, dtype, include_sublayers, floating_only):
@@ -1003,26 +1003,28 @@ def decorate(
             paddle.float16
 
     """
-    assert not isinstance(models, (list, tuple))
-    assert not isinstance(optimizers, (list, tuple))
 
     if paddle.framework.in_pir_mode():
+        assert not isinstance(models, (list, tuple))
+        assert not isinstance(optimizers, (list, tuple))
         if level == 'O1':
             if optimizers is None:
                 return models
             else:
                 optimizers = OptimizerWithMixedPrecision(
                     optimizer=optimizers,
-                    amp_lists=AutoMixedPrecisionLists(dtype=dtype),
+                    amp_lists=None,
                     level=level,
                     dtype=dtype,
-                    init_loss_scaling=2**15,
-                    use_dynamic_loss_scaling=False,
-                    incr_every_n_steps=1000,
-                    decr_every_n_nan_or_inf=2,
+                    init_loss_scaling=2.0**16,
+                    incr_every_n_steps=2000,
+                    decr_every_n_nan_or_inf=1,
                     incr_ratio=2.0,
-                    decr_ratio=0.8,
+                    decr_ratio=0.5,
+                    use_dynamic_loss_scaling=False,
+                    use_amp_guard=None,
                     use_master_grad=master_grad,
+                    use_promote=True,
                 )
                 return models, optimizers
         elif level == 'O2':
