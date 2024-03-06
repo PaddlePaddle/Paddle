@@ -91,6 +91,7 @@ message DygraphShardingConfig {
   optional bool comm_overlap = 3 [ default = false ];
   optional bool split_param = 4 [ default = false ];
   optional bool fuse_optimizer = 5 [ default = true ];
+  optional bool use_reduce_avg = 6 [ default = true ];
 }
 
 message HybridConfig {
