@@ -3726,6 +3726,11 @@ class TestLog(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3751,6 +3756,26 @@ class TestLog(TestActivation):
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
+
+
+class TestLog_Complex64(TestLog):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+
+class TestLog_Complex128(TestLog_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class Test_Log_Op_Fp16(unittest.TestCase):
@@ -3806,6 +3831,11 @@ class TestLog2(TestActivation):
         self.init_shape()
 
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log2(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3851,6 +3881,26 @@ class TestLog2(TestActivation):
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
+class TestLog2_Complex64(TestLog2):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+
+class TestLog2_Complex128(TestLog2_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestLog2_ZeroDim(TestLog2):
     def init_shape(self):
         self.shape = []
@@ -3890,6 +3940,11 @@ class TestLog10(TestActivation):
         self.init_shape()
 
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log10(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3907,6 +3962,26 @@ class TestLog10(TestActivation):
         self.check_grad(
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
+
+
+class TestLog10_Complex64(TestLog10):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+
+class TestLog10_Complex128(TestLog10_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestLog10_ZeroDim(TestLog10):
@@ -3982,6 +4057,11 @@ class TestLog1p(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log1p(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3999,6 +4079,26 @@ class TestLog1p(TestActivation):
         self.check_grad(
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
+
+
+class TestLog1p_Complex64(TestLog1p):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+
+class TestLog1p_Complex128(TestLog1p_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
