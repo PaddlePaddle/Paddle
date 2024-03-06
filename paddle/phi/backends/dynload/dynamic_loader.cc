@@ -323,7 +323,11 @@ void* GetCublasLtDsoHandle() {
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublasLt.so");
 #endif
   } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+#ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublasLt.so.12");
+#else
+    return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublasLt.so");
+#endif
   } else {
     std::string warning_msg(
         "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
@@ -365,8 +369,13 @@ void* GetCUDNNDsoHandle() {
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
 #else
+#ifdef WITH_PIP_CUDA_LIBRARIES
   return GetDsoHandleFromSearchPath(
       FLAGS_cudnn_dir, "libcudnn.so.8", false, {cuda_lib_path});
+#else
+  return GetDsoHandleFromSearchPath(
+      FLAGS_cudnn_dir, "libcudnn.so", false, {cuda_lib_path});
+#endif
 #endif
 }
 
@@ -378,7 +387,7 @@ void* GetCUPTIDsoHandle() {
   if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(
-        FLAGS_cupti_dir, "libcupti.so.11.7", false, {cupti_lib_path});
+        FLAGS_cupti_dir, "libcupti.so.11.8", false, {cupti_lib_path});
 #else
     return GetDsoHandleFromSearchPath(
         FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
@@ -400,7 +409,7 @@ void* GetCUPTIDsoHandle() {
   }
 #else
   return GetDsoHandleFromSearchPath(
-      FLAGS_cupti_dir, "libcupti.so.11.7", false, {cupti_lib_path});
+      FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
 #endif
 }
 
@@ -452,7 +461,6 @@ void* GetCusolverDsoHandle() {
 #else
 #ifdef WITH_PIP_CUDA_LIBRARIES
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so.11");
-
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
 #endif
