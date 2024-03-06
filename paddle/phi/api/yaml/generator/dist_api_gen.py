@@ -1577,7 +1577,6 @@ class DistForwardAPI(ForwardAPI):
         if self.infer_meta['local_shape'] is not None:
             shape_type = self.infer_meta['local_shape'].split()[0]
             shape_name = self.infer_meta['local_shape'].split()[1]
-            print(f"shape_type: {shape_type}, shape_name: {shape_name}")
             infer_meta_code = CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
                 shape=f"{shape_name}.GetData()"
                 if shape_type == "IntArray"
@@ -1586,7 +1585,6 @@ class DistForwardAPI(ForwardAPI):
                 op_name=self.kernel['func'][0],
                 shape_name=shape_name,
             )
-            print(infer_meta_code)
         infer_meta_code = infer_meta_code + INFER_META_TEMPLATE.format(
             infer_meta_func_code, input_args_code, output_args_code
         )
