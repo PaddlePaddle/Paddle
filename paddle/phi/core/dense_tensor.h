@@ -284,9 +284,7 @@ class TEST_API DenseTensor : public TensorBase,
   std::shared_ptr<InplaceVersion> inplace_version_counter_ =
       std::make_shared<InplaceVersion>();
 
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"
-#endif
 };
 
 }  // namespace phi

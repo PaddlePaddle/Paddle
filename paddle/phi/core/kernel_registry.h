@@ -1372,4 +1372,8 @@ struct KernelRegistrar {
                       PHI_VARIADIC_KERNEL,             \
                       __VA_ARGS__)
 
+#define PD_REGISTER_PLUGIN_KERNEL_FOR_ALL_DTYPE( \
+    kernel_name, backend, layout, kernel_fn)     \
+  _PD_REGISTER_KERNEL_FOR_ALL_DTYPE(             \
+      ::phi::RegType::OUTER, kernel_name, backend, layout, kernel_fn)
 }  // namespace phi

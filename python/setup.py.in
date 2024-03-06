@@ -873,6 +873,7 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/include', recursive=True)) +  # phi include headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
+    list(find_files('*.inl', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
     # capi headers
