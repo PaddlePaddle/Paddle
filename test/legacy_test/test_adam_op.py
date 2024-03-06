@@ -1076,6 +1076,7 @@ class TestMultiTensorAdam(unittest.TestCase):
 )
 class TestAdamWWithBigShape(unittest.TestCase):
     def test_adam_op(self):
+        paddle.disable_static()
         a = paddle.rand([1, 5120], dtype="float32")
         linear = paddle.nn.Linear(5120, 254208)
         opt = paddle.optimizer.Adam(

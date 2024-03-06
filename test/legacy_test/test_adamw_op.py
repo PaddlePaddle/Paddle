@@ -1022,6 +1022,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 )
 class TestAdamWWithBigShape(unittest.TestCase):
     def test_adamw_op(self):
+        paddle.disable_static()
         a = paddle.rand([1, 5120], dtype="float32")
         linear = paddle.nn.Linear(5120, 254208)
         opt = paddle.optimizer.AdamW(
