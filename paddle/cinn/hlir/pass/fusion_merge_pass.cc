@@ -55,7 +55,7 @@ class FusionMergePassHelper : public FusionHelperBase {
   }
 
   GroupList operator()() {
-    // run fusion merge untill no update.
+    // run fusion merge until no update.
     DoFusionMerge();
     for (auto& group : fusion_groups_) {
       VLOG(3) << "Fusion Group -> " << group->group_id;
