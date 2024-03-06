@@ -431,7 +431,7 @@ template <typename FusePassCtxT>
 struct HorizontalFuseUtil {
   using KindKeyT = std::pair<OpPatternKind, OpPatternKind>;
 
-  static bool DetectFusabilityByKind(FusePassCtxT* ctx,
+  static bool DetectFusibilityByKind(FusePassCtxT* ctx,
                                      const OpGroupPtr& src,
                                      const OpGroupPtr& dst) {
     const KindKeyT kind_pair(src.kind(), dst.kind());
@@ -590,7 +590,7 @@ class DefaultInputFusePass final : public InputFusePass {
       bool fusionable = false;
       for (auto& groups : fusionable_consumers) {
         auto& last = groups.back();
-        if (!HorizontalFuseUtil<InputFusePassCtx>::DetectFusabilityByKind(
+        if (!HorizontalFuseUtil<InputFusePassCtx>::DetectFusibilityByKind(
                 ctx, candidate, last)) {
           continue;
         }
@@ -681,7 +681,7 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
       bool fusionable = false;
       for (auto& groups : fusionable_consumers) {
         auto& last = groups.back();
-        if (!HorizontalFuseUtil<LightwareFusePassCtx>::DetectFusabilityByKind(
+        if (!HorizontalFuseUtil<LightwareFusePassCtx>::DetectFusibilityByKind(
                 ctx, candidate, last)) {
           continue;
         }
@@ -752,7 +752,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
     std::vector<OpGroupPtr> candidates;
     for (size_t i = 0; i < consumers.size(); ++i) {
       const auto& consumer = consumers.at(i);
-      if (!DetectFusabilityByKind(ctx, producer, consumer)) {
+      if (!DetectFusibilityByKind(ctx, producer, consumer)) {
         break;
       }
       candidates.push_back(consumer);
@@ -764,7 +764,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
 
     for (size_t i = 0; i < consumers.size(); ++i) {
       const auto& consumer = consumers.at(i);
-      if (!DetectFusabilityByKind(ctx, producer, consumer)) {
+      if (!DetectFusibilityByKind(ctx, producer, consumer)) {
         continue;
       }
       if (ctx->fuse_helper().DetectCycleIfFuse(producer, consumer)) {
@@ -776,7 +776,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
   }
 
   using KindKeyT = std::pair<OpPatternKind, OpPatternKind>;
-  bool DetectFusabilityByKind(LightwareFusePassCtx* ctx,
+  bool DetectFusibilityByKind(LightwareFusePassCtx* ctx,
                               const OpGroupPtr& src,
                               const OpGroupPtr& dst) const {
     const KindKeyT kind_pair(src.kind(), dst.kind());
@@ -941,7 +941,7 @@ class DefaultRecomputeFusePass final : public RecomputeFusePass {
     std::vector<OpGroupPtr> candidates;
     for (size_t i = 0; i < consumers.size(); ++i) {
       const auto& consumer = consumers.at(i);
-      if (!DetectFusabilityByKind(ctx, producer, consumer)) {
+      if (!DetectFusibilityByKind(ctx, producer, consumer)) {
         continue;
       }
       unsafe_candidates.push_back(consumer);
@@ -960,7 +960,7 @@ class DefaultRecomputeFusePass final : public RecomputeFusePass {
   }
 
   using KindKeyT = std::pair<OpPatternKind, OpPatternKind>;
-  bool DetectFusabilityByKind(LightwareFusePassCtx* ctx,
+  bool DetectFusibilityByKind(LightwareFusePassCtx* ctx,
                               const OpGroupPtr& src,
                               const OpGroupPtr& dst) const {
     const KindKeyT kind_pair(src.kind(), dst.kind());
