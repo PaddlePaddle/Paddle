@@ -1071,9 +1071,6 @@ class TestMultiTensorAdam(unittest.TestCase):
                     self._check_with_place_amp(place, use_amp)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestAdamWWithBigShape(unittest.TestCase):
     def test_adam_op(self):
         a = paddle.rand([1, 5120], dtype="float32")

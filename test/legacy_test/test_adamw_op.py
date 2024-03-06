@@ -1017,9 +1017,6 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         paddle.disable_static()
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestAdamWWithBigShape(unittest.TestCase):
     def test_adamw_op(self):
         a = paddle.rand([1, 5120], dtype="float32")
