@@ -255,15 +255,6 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    paddle::dialect::AllocatedDenseTensorType allocated_x =
-        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-    x = paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
-                                              allocated_x.dtype(),
-                                              allocated_x.dims(),
-                                              allocated_x.data_layout(),
-                                              allocated_x.lod(),
-                                              allocated_x.offset());
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "

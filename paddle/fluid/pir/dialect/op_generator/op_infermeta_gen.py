@@ -44,15 +44,6 @@ GET_INPUT_TYPE_TEMPLATE = """
   {type} {name};
   if ({name}_.type().isa<{type}>()) {{
     {name} = {name}_.type().dyn_cast<{type}>(); (void){name};
-  }} else if ({name}_.type().isa<{allocated_type}>()) {{
-    {allocated_type} allocated_{name} = {name}_.type().dyn_cast<{allocated_type}>();
-    {name} = {type}::get(pir::IrContext::Instance(),
-                                            allocated_{name}.dtype(),
-                                            allocated_{name}.dims(),
-                                            allocated_{name}.data_layout(),
-                                            allocated_{name}.lod(),
-                                            allocated_{name}.offset());
-    (void){name};
   }} else {{
     PADDLE_THROW(phi::errors::Unimplemented("Only support {type} or {allocated_type}"));
   }}
@@ -158,20 +149,11 @@ def GenBuildOutputsPart2(
   paddle::dialect::IrMetaTensor meta_{name};
   paddle::dialect::IrTensor ir_tensor_{name};
 
-
   if ({name}_.impl() != nullptr) {{
     VLOG(4) << "Builder construction  dense_{name}";
     {type} {name};
     if ({name}_.type().isa<{type}>()) {{
       {name} = {name}_.type().dyn_cast<{type}>();
-    }} else if ({name}_.type().isa<{allocated_type}>()) {{
-      {allocated_type} allocated_{name} = {name}_.type().dyn_cast<{allocated_type}>();
-      {name} = {type}::get(pir::IrContext::Instance(),
-                            allocated_{name}.dtype(),
-                            allocated_{name}.dims(),
-                            allocated_{name}.data_layout(),
-                            allocated_{name}.lod(),
-                            allocated_{name}.offset());
     }} else {{
       PADDLE_THROW(phi::errors::Unimplemented("Only support {type} or {allocated_type}"));
     }}
@@ -190,13 +172,6 @@ def GenBuildOutputsPart2(
   for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
     if({name}[i].isa<paddle::dialect::DenseTensorType>()) {{
         auto {name}_type = {name}[i].dyn_cast<paddle::dialect::DenseTensorType>();
-        vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
-                                                                    {name}_type.dims(),
-                                                                    {name}_type.data_layout(),
-                                                                    {name}_type.lod(),
-                                                                    {name}_type.offset()));
-    }} else if({name}[i].isa<paddle::dialect::AllocatedDenseTensorType>()){{
-        auto {name}_type = {name}[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
         vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
                                                                     {name}_type.dims(),
                                                                     {name}_type.data_layout(),
@@ -223,13 +198,6 @@ def GenBuildOutputsPart2(
     for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
         if({name}[i].isa<paddle::dialect::DenseTensorType>()) {{
           auto {name}_type = {name}[i].dyn_cast<paddle::dialect::DenseTensorType>();
-          vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
-                                                                        {name}_type.dims(),
-                                                                        {name}_type.data_layout(),
-                                                                        {name}_type.lod(),
-                                                                        {name}_type.offset()));
-        }} else if({name}[i].isa<paddle::dialect::AllocatedDenseTensorType>()){{
-          auto {name}_type = {name}[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
           vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
                                                                         {name}_type.dims(),
                                                                         {name}_type.data_layout(),
@@ -268,13 +236,6 @@ def GenBuildOutputsPart2(
     {name} = std::vector<int64_t>({name}_size, -1);
   }} else if ({name}_.type().isa<paddle::dialect::DenseTensorType>()) {{
     common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    size_t {name}_size = common::product({name}_dim);
-    if (common::contain_unknown_dim({name}_dim)) {{
-      {name}_size = 1;
-    }}
-    {name} = std::vector<int64_t>({name}_size, -1);
-  }} else if ({name}_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {{
-    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>().dims();
     size_t {name}_size = common::product({name}_dim);
     if (common::contain_unknown_dim({name}_dim)) {{
       {name}_size = 1;
