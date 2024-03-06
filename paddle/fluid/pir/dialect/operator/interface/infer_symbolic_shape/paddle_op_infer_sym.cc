@@ -437,9 +437,7 @@ bool SqueezeOpInferSymbolicShape(
         if (in_dims_sym[current] == 1) {
           should_squeeze[current] = true;
         } else if (!in_dims_sym[current].Has<std::int64_t>()) {
-          PADDLE_THROW(
-              phi::errors::Unimplemented("SqueezeOpInferSymbolicShape CAN NOT "
-                                         "deal with symbol in axis now"));
+          should_squeeze[current] = true;
         }
       }
     }
