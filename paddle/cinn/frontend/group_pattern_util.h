@@ -10,6 +10,6 @@ struct ErrorGroupPattern {
   std::string error_string;
 };
 
-std::variant<GroupPattern, ErrorGroupPattern> GenerateGroupPatternFromFusionOp(const pir::FusionOp&);
+std::variant<GroupPattern, ErrorGroupPattern> GenerateGroupPatternFromFusionOp(const cinn::dialect::FusionOp&);
 
 }

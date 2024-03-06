@@ -1,12 +1,13 @@
 #include "paddle/cinn/frontend/group_pattern_util.h"
+#include <optional>
 
 namespace cinn::frontend {
 
 namespace {
 
-using IS = InjectiveSourcePattern<FrontendPattern>;
-using R = ReductionPattern<FrontendPattern>;
-using PS = PartialShardablePattern<FrontendPattern>;
+using IS = api::InjectiveSourcePattern<FrontendPattern>;
+using R = api::ReductionPattern<FrontendPattern>;
+using PS = api::PartialShardablePattern<FrontendPattern>;
 using InternalPattern = std::variant<IS, R, PS>;
 
 
