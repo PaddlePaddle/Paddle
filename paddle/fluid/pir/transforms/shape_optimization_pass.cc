@@ -34,10 +34,13 @@ using PassPipelineRunner =
 void PrintProgram(pir::ModuleOp m, std::string mgs) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(m.program());
-  VLOG(vlog_level) << "===================== " << mgs
-                   << " =====================\n"
-                   << pir::CustomPrintHelper(*m.program(),
-                                             shape_analysis.PrintHook());
+  if (VLOG_IS_ON(vlog_level)) {
+    std::cerr << "===================== [ShapeDialect]" << msg
+              << " =====================\n"
+              << pir::CustomPrintHelper(*m.program(),
+                                        shape_analysis.PrintHook())
+              << std::endl;
+  }
 }
 
 void DebugPrintOpInfo(
