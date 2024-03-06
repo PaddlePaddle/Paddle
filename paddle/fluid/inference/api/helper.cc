@@ -16,11 +16,15 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/custom_operator.h"
+#include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace paddle {
 namespace inference {
@@ -66,6 +70,13 @@ void RegisterAllCustomOperator(bool use_pir) {
         LOG(INFO) << "register pir custom op :" << pair.first;
         custom_dialect->RegisterCustomOp(meta_info);
       }
+      paddle::drr::OperationFactory::Instance().RegisterOperationCreator(
+          paddle::framework::kCustomDialectPrefix + pair.first,
+          [](const std::vector<pir::Value> &inputs,
+             const pir::AttributeMap &attrs,
+             pir::PatternRewriter &rewriter) -> pir::Operation * {
+            PADDLE_THROW("------liuyuanle------");
+          });
     }
     const auto &all_op_kernels{framework::OperatorWithKernel::AllOpKernels()};
     if (all_op_kernels.find(pair.first) == all_op_kernels.end()) {
