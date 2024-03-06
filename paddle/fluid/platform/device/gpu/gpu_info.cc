@@ -35,15 +35,18 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
+#include "paddle/phi/backends/gpu/gpu_graph.h"
 #else
 #include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/gpu_graph.h"
 #endif
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
 #endif
+#else  // PADDLE_WITH_HIP
+#include "paddle/fluid/platform/dynload/rocm_driver.h"
 #endif
 
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -263,19 +266,35 @@ class RecordedGpuMallocHelper {
     CUDADeviceGuard guard(dev_id_);
 
     std::call_once(set_cudamempoolattr_once_flag_, [&]() {
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaDeviceGetDefaultMemPool(&memPool_, dev_id_));
+#else  // PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipDeviceGetDefaultMemPool(&memPool_, dev_id_));
+#endif
       uint64_t thresholdVal = FLAGS_cuda_memory_async_pool_realease_threshold;
       VLOG(10) << "[cudaMallocAsync] set cudaMemPoolAttrReleaseThreshold to "
                << thresholdVal;
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemPoolSetAttribute(memPool_,
                                   cudaMemPoolAttrReleaseThreshold,
                                   reinterpret_cast<void *>(&thresholdVal)));
+#else  // PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipMemPoolSetAttribute(memPool_,
+                                  hipMemPoolAttrReleaseThreshold,
+                                  reinterpret_cast<void *>(&thresholdVal)));
+#endif
     });
 
     gpuError_t result;
+#ifdef PADDLE_WITH_CUDA
     result = cudaMallocAsync(ptr, size, stream);
+#else  // PADDLE_WITH_HIP
+    result = hipMallocAsync(ptr, size, stream);
+#endif
     VLOG(10) << "[cudaMallocAsync] ptr = " << (*ptr)
              << " size = " << static_cast<double>(size) / (1 << 20)
              << " MB result = " << result << " stream = " << stream;
@@ -344,11 +363,15 @@ class RecordedGpuMallocHelper {
     // process is terminating, in which case we don't care if
     // cudaFree succeeds.
     CUDADeviceGuard guard(dev_id_);
+#ifdef PADDLE_WITH_CUDA
     auto err = cudaFreeAsync(ptr, stream);
+#else  // PADDLE_WITH_HIP
+    auto err = hipFreeAsync(ptr, stream);
+#endif
     VLOG(10) << "[cudaFreeAsync] ptr = " << ptr
              << " size =" << static_cast<double>(size) / (1 << 20)
              << " MB result = " << err << " stream = " << stream;
-    if (err != cudaErrorCudartUnloading) {
+    if (err != gpuErrorCudartUnloading) {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
@@ -439,13 +462,34 @@ class RecordedGpuMallocHelper {
   }
 
 #endif
+#else  // PADDLE_WITH_HIP
+  hipError_t MemCreate(hipMemGenericAllocationHandle_t *handle,
+                       size_t size,
+                       const hipMemAllocationProp *prop,
+                       unsigned long long flags) {  // NOLINT
+    auto result =
+        paddle::platform::dynload::hipMemCreate(handle, size, prop, flags);
+    if (result == hipSuccess) {
+      cur_size_.fetch_add(size);
+    }
+    return result;
+  }
+
+  hipError_t MemRelease(hipMemGenericAllocationHandle_t handle, size_t size) {
+    auto result = paddle::platform::dynload::hipMemRelease(handle);
+    if (result == hipSuccess) {
+      cur_size_.fetch_sub(size);
+    }
+    return result;
+  }
+
 #endif
 
  private:
   const int dev_id_;
   const uint64_t limit_size_;
   std::atomic<uint64_t> cur_size_{0};
-  cudaMemPool_t memPool_;
+  gpuMemPool_t memPool_;
 
   mutable std::unique_ptr<std::mutex> mtx_;
 
@@ -502,6 +546,21 @@ CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,
   return RecordedGpuMallocHelper::Instance(dev_id)->MemRelease(handle, size);
 }
 #endif
+#else  // PADDLE_WITH_HIP
+hipError_t RecordedGpuMemCreate(hipMemGenericAllocationHandle_t *handle,
+                                size_t size,
+                                const hipMemAllocationProp *prop,
+                                unsigned long long flags,  // NOLINT
+                                int dev_id) {
+  return RecordedGpuMallocHelper::Instance(dev_id)->MemCreate(
+      handle, size, prop, flags);
+}
+
+hipError_t RecordedGpuMemRelease(hipMemGenericAllocationHandle_t handle,
+                                 size_t size,
+                                 int dev_id) {
+  return RecordedGpuMallocHelper::Instance(dev_id)->MemRelease(handle, size);
+}
 #endif
 
 bool RecordedGpuMemGetInfo(size_t *avail,
