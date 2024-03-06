@@ -16,6 +16,7 @@ struct ReductionPattern {};
 template <typename T>
 struct PartialShardablePattern {};
 
+// SR := [R | PS]
 template <typename T>
 using ShardableReductionsPattern = std::vector<std::variant<ReductionPattern<T>, PartialShardablePattern<T>>>;
 
