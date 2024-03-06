@@ -462,6 +462,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_mark_output_);
+  CP_MEMBER(trt_forbid_dynamic_op_)
   CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
@@ -779,6 +780,11 @@ void AnalysisConfig::MarkTrtEngineOutputs(
     const std::vector<std::string> &output_tensor_names) {
   trt_mark_output_ = true;
   trt_output_tensor_names_ = output_tensor_names;
+}
+
+void AnalysisConfig::Exp_DisableTensorRTDynamicShapeOPs(
+    bool trt_forbid_dynamic_op) {
+  trt_forbid_dynamic_op_ = trt_forbid_dynamic_op;
 }
 
 void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
@@ -1129,6 +1135,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
   ss << trt_mark_output_;
+  ss << trt_forbid_dynamic_op_;
 
   ss << use_dlnne_;
   ss << dlnne_min_subgraph_size_;
@@ -1418,6 +1425,8 @@ std::string AnalysisConfig::Summary() {
       os.InsertRow({"trt_engine_memory_sharing",
                     trt_engine_memory_sharing_ ? "true" : "false"});
       os.InsertRow({"trt_mark_output", trt_mark_output_ ? "true" : "false"});
+      os.InsertRow(
+          {"trt_forbid_dynamic_op", trt_forbid_dynamic_op_ ? "true" : "false"});
 #endif
     }
   }
