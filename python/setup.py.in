@@ -54,6 +54,11 @@ def get_major():
 def get_minor():
     return int(_get_version_detail(1))
 
+def get_nccl_version():
+    if '@WITH_NCCL@' == 'ON':
+        return @NCCL_VERSION@
+    return 0
+
 def get_patch():
     return str(_get_version_detail(2))
 
@@ -119,6 +124,7 @@ full_version     = '%(major)d.%(minor)d.%(patch)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
 patch            = '%(patch)s'
+nccl_version     = '%(nccl)d'
 rc               = '%(rc)d'
 cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
@@ -130,7 +136,7 @@ commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 
-__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -205,6 +211,7 @@ def show():
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('nccl:', nccl_version)
     print('xpu:', xpu_version)
     print('xpu_xccl:', xpu_xccl_version)
     print('xpu_xhpc:', xpu_xhpc_version)
@@ -212,6 +219,9 @@ def show():
 
 def mkl():
     return with_mkl
+
+def nccl():
+    return nccl_version    
 
 def cuda():
     """Get cuda version of paddle package.
@@ -336,6 +346,7 @@ def cinn():
             'major': get_major(),
             'minor': get_minor(),
             'patch': get_patch(),
+            'nccl': get_nccl_version(),
             'rc': RC,
             'version': '${PADDLE_VERSION}',
             'cuda': get_cuda_version(),
@@ -396,10 +407,7 @@ write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/i
 
 def get_paddle_extra_install_requirements():
     #(Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
-    paddle_cuda_install_requirements = os.getenv(
-        "PADDLE_CUDA_INSTALL_REQUIREMENTS", None
-    )
-    if paddle_cuda_install_requirements == "ON":
+    if '@WITH_PIP_CUDA_LIBRARIES@' == 'ON':
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "V11": (
                 "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -876,7 +884,7 @@ headers = (
     # init headers
     list(find_files('init_phi.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')) +  # phi init headers
     # init headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pir/include')) +  # pir init headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pir/include', recursive=True)) +  # pir init headers
     # init headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/drr/include')) +  # drr init headers
     # init headers

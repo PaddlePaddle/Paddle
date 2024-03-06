@@ -152,12 +152,14 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
+  auto forbid_dynamic_op = Get<bool>("forbid_dynamic_op");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     if (find(trt_disabled_ops.begin(),
              trt_disabled_ops.end(),
              node->Op()->Type()) != trt_disabled_ops.end()) {
       VLOG(3) << node->Op()->Type().c_str()
+
               << " is diabled by config in TensorRT";
       return false;
     }
@@ -171,8 +173,11 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
         }
       }
     }
-    bool is_ok = tensorrt::OpTeller::Global().Tell(
-        node, no_calib_int8, with_dynamic_shape, use_explicit_quantization);
+    bool is_ok = tensorrt::OpTeller::Global().Tell(node,
+                                                   no_calib_int8,
+                                                   with_dynamic_shape,
+                                                   forbid_dynamic_op,
+                                                   use_explicit_quantization);
     if (!is_ok)
       VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
     return is_ok;
@@ -792,7 +797,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   bool calibration_mode =
       (enable_int8 && calibration_data.empty() && use_calib_mode);
   if (calibration_mode) {
-    // calibraion mode means generate int8 calibration table data process.
+    // calibration mode means generate int8 calibration table data process.
     return calibration_engine_key;
   }
 

@@ -1243,7 +1243,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
-             if (self.IsType<String>()) {
+             if (self.IsType<String>()) {  // NOLINT
                return py::bytes(*(self.GetMutable<String>()));
              } else {
                return py::bytes(
@@ -2232,7 +2232,7 @@ All parameter, weight, gradient are variables in Paddle.
            const std::string &var_name,
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
-          if (data_is_lod_tensor(var)) {
+          if (data_is_lod_tensor(var)) {  // NOLINT
             return py::cast(PADDLE_GET(phi::DenseTensor, var));
           } else {
             return py::cast(PADDLE_GET(LoDTensorArray, var));

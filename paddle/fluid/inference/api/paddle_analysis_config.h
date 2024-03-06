@@ -253,7 +253,7 @@ struct PD_INFER_DECL AnalysisConfig {
   void SetModel(const std::string& model_dir) { model_dir_ = model_dir; }
 
   ///
-  /// \brief Set the combined model with two specific pathes for program and
+  /// \brief Set the combined model with two specific paths for program and
   /// parameters.
   ///
   /// \param prog_file_path model file path of the combined model.
@@ -596,12 +596,12 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Control whether to perform IR graph optimization.
   /// If turned off, the AnalysisConfig will act just like a NativeConfig.
   ///
-  /// \param x Whether the ir graph optimization is actived.
+  /// \param x Whether the ir graph optimization is activated.
   ///
   void SwitchIrOptim(int x = true) { enable_ir_optim_ = x; }
   ///
   /// \brief A boolean state telling whether the ir graph optimization is
-  /// actived.
+  /// activated.
   ///
   /// \return bool Whether to use ir graph optimization.
   ///
@@ -817,6 +817,7 @@ struct PD_INFER_DECL AnalysisConfig {
       const std::vector<std::string>& trt_parameters_fp16,
       const std::vector<std::string>& trt_parameters_int8,
       const std::vector<std::string>& trt_parameters_bfp16);
+  void Exp_DisableTensorRTDynamicShapeOPs(bool trt_forbid_dynamic_op);
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
@@ -884,9 +885,21 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   int tensorrt_optimization_level() { return trt_optimization_level_; }
 
+  /// \brief A boolean state telling whether to use new executor.
+  ///
+  /// \return bool whether to use new executor.
+  ///
   void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
 
   bool new_executor_enabled() const { return use_new_executor_; }
+
+  /// \brief A boolean state telling whether to use new IR.
+  ///
+  /// \return bool whether to use new IR.
+  ///
+  void EnableNewIR(bool x = true) { use_pir_ = x; }
+
+  bool new_ir_enabled() const { return use_pir_; }
 
   ///
   /// \brief Control whether to use optimized model to inference.
@@ -1218,7 +1231,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string SerializeInfoCache();
 
  protected:
-  // Model pathes.
+  // Model paths.
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
@@ -1276,6 +1289,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   bool trt_mark_output_{false};
+  bool trt_forbid_dynamic_op_{false};
+
   std::vector<std::string> trt_output_tensor_names_{};
   std::vector<std::string> trt_exclude_var_names_{};
   std::vector<std::string> trt_parameters_run_fp16_{};
@@ -1434,6 +1449,8 @@ struct PD_INFER_DECL AnalysisConfig {
   // PrepareProgram(). So we add this flag to control the process.
   bool apply_optim_{false};
   bool skip_load_params_{false};
+
+  bool use_pir_{false};
 };
 
 }  // namespace paddle

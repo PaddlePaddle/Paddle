@@ -459,6 +459,9 @@ class BuddyAllocatorList {
       phi::DeviceManager::SetDevice(device_type_, dev_id);
       platform::CustomPlace place(device_type_, dev_id);
 
+      VLOG(10) << "Init BuddyAllocator on " << place
+               << " with GetExtraPaddingSize "
+               << phi::DeviceManager::GetExtraPaddingSize(place);
       allocators_[dev_id] = std::make_unique<BuddyAllocator>(
           std::unique_ptr<detail::SystemAllocator>(
               new detail::CustomAllocator(device_type_, dev_id)),

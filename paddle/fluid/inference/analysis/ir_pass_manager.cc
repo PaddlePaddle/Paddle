@@ -182,6 +182,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "trt_parameter_run_bfp16",
           new std::vector<std::string>(argument->trt_parameter_run_bfp16()));
+      pass->Set("forbid_dynamic_op",
+                new bool(argument->trt_forbid_dynamic_op()));
+
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));

@@ -660,7 +660,7 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const NameVarMap<VarBase>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_phi_kernel_) {
+  if (run_phi_kernel_) {  // NOLINT
     PreparedOpRunPtImpl<VarBase>(op_,
                                  kernel_key_,
                                  arg_map_fn_,
@@ -692,7 +692,7 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const NameVarMap<VariableWrapper>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_phi_kernel_) {
+  if (run_phi_kernel_) {  // NOLINT
     PreparedOpRunPtImpl<VariableWrapper>(op_,
                                          kernel_key_,
                                          arg_map_fn_,
@@ -724,7 +724,7 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
                      const NameVarMap<egr::EagerVariable>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_phi_kernel_) {
+  if (run_phi_kernel_) {  // NOLINT
     PreparedOpRunPtImpl<egr::EagerVariable>(op_,
                                             kernel_key_,
                                             arg_map_fn_,

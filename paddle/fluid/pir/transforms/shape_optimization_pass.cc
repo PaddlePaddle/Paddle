@@ -23,7 +23,7 @@
 
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
-const int vlog_level = 3;
+constexpr int vlog_level = 3;
 
 namespace pir {
 namespace {
@@ -131,7 +131,8 @@ void InferSymExprForBlock(const Block& block,
     auto infer_symbolic_shape_interface =
         op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
-      VLOG(vlog_level) << op.name() << " has InferSymbolicShapeInterface.";
+      VLOG(vlog_level) << op.name() << "(op_id: op_" << op.id() << ")"
+                       << " has InferSymbolicShapeInterface.";
       PADDLE_ENFORCE_EQ(
           infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
           true,
@@ -144,8 +145,6 @@ void InferSymExprForBlock(const Block& block,
             &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
       }
     } else {
-      VLOG(vlog_level) << op.name() +
-                              " DOES NOT have InferSymbolicShapeInterface!";
       PADDLE_THROW(phi::errors::Unimplemented(
           op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
     }

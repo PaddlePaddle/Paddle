@@ -439,10 +439,12 @@ void PirInterpreter::UpdateNcclOpNum() {
   static std::set<std::string> nccl_op_set = {
       "pd_op.c_softmax_with_cross_entropy",
       "pd_op.c_allgather",
+      "pd_op.c_allreduce_avg",
       "pd_op.c_allreduce_max",
       "pd_op.c_allreduce_min",
       "pd_op.c_allreduce_sum",
       "pd_op.c_allreduce_prod",
+      "pd_op.c_reduce_avg",
       "pd_op.c_reduce_max",
       "pd_op.c_reduce_min",
       "pd_op.c_reduce_prod",
@@ -509,10 +511,12 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.reduce_grad",
       "pd_op.c_softmax_with_cross_entropy_",
       "pd_op.c_allgather_",
+      "pd_op.c_allreduce_avg_",
       "pd_op.c_allreduce_max_",
       "pd_op.c_allreduce_min_",
       "pd_op.c_allreduce_sum_",
       "pd_op.c_allreduce_prod_",
+      "pd_op.c_reduce_avg_",
       "pd_op.c_reduce_max_",
       "pd_op.c_reduce_min_",
       "pd_op.c_reduce_prod_",
@@ -702,7 +706,7 @@ void PirInterpreter::BuildInstruction() {
         continue;
       }
     } else if (op.dialect()->name() == "pd_op") {
-      if (op.isa<paddle::dialect::IfOp>()) {
+      if (op.isa<paddle::dialect::IfOp>()) {  // NOLINT
         vec_instruction_base_.emplace_back(std::make_unique<IfInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
         sub_blocks_.insert(
@@ -751,7 +755,7 @@ void PirInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op.isa<paddle::dialect::LegacyKernelOp>()) {
+      if (op.isa<paddle::dialect::LegacyKernelOp>()) {  // NOLINT
         CREATE_INSTR(LegacyKernelInstruction);
       } else {
         CREATE_INSTR(PhiKernelInstruction);

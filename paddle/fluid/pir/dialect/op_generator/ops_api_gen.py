@@ -69,8 +69,9 @@ OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
 NEED_GEN_STATIC_ONLY_APIS = [
+    'distributed_fused_lamb_init',
+    'distributed_fused_lamb_init_',
     'fetch',
-    'fused_bias_dropout_residual_layer_norm',
     'fused_embedding_eltwise_layernorm',
     'fused_fc_elementwise_layernorm',
     'fused_multi_transformer_xpu',
@@ -114,11 +115,14 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'quantize_linear_',
     'dequantize_linear',
     'dequantize_linear_',
+    'coalesce_tensor_',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'c_allgather',
+    'c_allreduce_avg',
+    'c_allreduce_avg_',
     'c_allreduce_max',
     'c_allreduce_min',
     'c_allreduce_min_',
@@ -158,11 +162,19 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'soft_relu',
     'uniform_random_batch_size_like',
     'match_matrix_tensor',
+    'c_reduce_avg',
+    'c_reduce_avg_',
+    'c_reduce_max',
+    'c_reduce_max_',
     'c_reduce_min',
     'c_reduce_min_',
+    'c_reduce_prod',
+    'c_reduce_prod_',
     'push_sparse_v2',
     'push_sparse_v2_',
     'partial_send',
+    'nop',
+    'nop_',
 ]
 
 
