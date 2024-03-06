@@ -2220,7 +2220,7 @@ class GeneralFusionMergePassHelper {
 
 GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
   if (group_list.size() <= 1) {
-    VLOG(3) << "Don't do Fusoin Merge Pass...!";
+    VLOG(3) << "Don't do Fusion Merge Pass...!";
     return group_list;
   }
 

@@ -833,7 +833,7 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
           sub_group->nodes.insert(sub_group->nodes.begin(),
                                   producer->CollectNodes()[0]);
           sub_group->nodes_set.insert(producer->CollectNodes()[0]);
-          // remove depency.
+          // remove dependency.
           consumer->input_nodes.erase(producer->CollectNodes()[0]);
           consumer->mut_producer_groups()->erase(producer);
           producer->mut_consumer_groups()->erase(consumer);
