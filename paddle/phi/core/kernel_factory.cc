@@ -30,7 +30,7 @@
 
 PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
                          true,
-                         "Whether to use strdie kernel if op support stride.");
+                         "Whether to use stride kernel if op support stride.");
 
 COMMON_DECLARE_int32(low_precision_op_list);
 COMMON_DECLARE_bool(enable_api_kernel_fallback);

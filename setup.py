@@ -344,6 +344,12 @@ def get_patch():
     return str(_get_version_detail(2))
 
 
+def get_nccl_version():
+    if env_dict.get("WITH_NCCL") == 'ON':
+        return int(env_dict.get("NCCL_VERSION"))
+    return 0
+
+
 def get_cuda_version():
     with_gpu = env_dict.get("WITH_GPU")
     if with_gpu == 'ON':
@@ -441,6 +447,7 @@ full_version     = '%(major)d.%(minor)d.%(patch)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
 patch            = '%(patch)s'
+nccl_version     = '%(nccl)d'
 rc               = '%(rc)d'
 cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
@@ -452,7 +459,7 @@ commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 
-__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -526,6 +533,7 @@ def show():
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('nccl:', nccl_version)
     print('xpu:', xpu_version)
     print('xpu_xccl:', xpu_xccl_version)
     print('xpu_xhpc:', xpu_xhpc_version)
@@ -533,6 +541,9 @@ def show():
 
 def mkl():
     return with_mkl
+
+def nccl():
+    return nccl_version
 
 def cuda():
     """Get cuda version of paddle package.
@@ -659,6 +670,7 @@ def cinn():
                 'major': get_major(),
                 'minor': get_minor(),
                 'patch': get_patch(),
+                'nccl': get_nccl_version(),
                 'rc': RC,
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),

@@ -138,6 +138,16 @@
   kernel :
     func : c_allgather
 
+- op : c_allreduce_avg
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_avg
+  inplace : (x -> out)
+
 - op : c_allreduce_max
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
   output : Tensor(out)
@@ -216,6 +226,16 @@
     func : CIdentityInferMeta
   kernel :
     func : c_identity
+  inplace : (x -> out)
+
+- op : c_reduce_avg
+  args : (Tensor x, int ring_id, int root_id, bool use_calc_stream)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_reduce_avg
   inplace : (x -> out)
 
 - op : c_reduce_max
@@ -311,6 +331,16 @@
     func : channel_shuffle
   backward : channel_shuffle_grad
 
+- op : coalesce_tensor_
+  args : (Tensor[] input, DataType dtype, bool copy_data = false, bool set_constant = false, bool persist_output = false, float constant = 0.0, bool use_align = true, int align_size = -1, int size_of_dtype = -1, int64_t[] concated_shapes = {}, int64_t[] concated_ranks = {})
+  output : Tensor[](output){input.size()}, Tensor(fused_output)
+  infer_meta :
+    func : CoalesceTensorInferMeta
+  kernel :
+    func : coalesce_tensor
+    data_type : dtype
+  inplace: (input -> output)
+
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -400,6 +430,16 @@
     func : distribute_fpn_proposals
     data_type : fpn_rois
   optional : rois_num, multi_level_rois_num
+
+- op : distributed_fused_lamb_init
+  args : (Tensor[] param, Tensor[] grad, float beta1, float beta2, int[] apply_weight_decay, int alignment, int rank, int nranks)
+  output : Tensor(fp32_fused_param), Tensor(fp32_fused_grad), Tensor(fp16_fused_param), Tensor(fp16_fused_grad), Tensor(moment1), Tensor(moment2), Tensor(beta1_pow), Tensor(beta2_pow), Tensor(fused_param_offsets), Tensor(fp32_shard_fused_param_offsets), Tensor(fp16_shard_fused_param_offsets), Tensor(param_info), Tensor(param_order), Tensor[](param_out){param.size()}, Tensor[](master_param_out){param.size()}, Tensor[](grad_out){grad.size()}, Tensor(global_scale), Tensor(step)
+  infer_meta :
+    func : DistributedFusedLambInitInferMeta
+  kernel :
+    func : distributed_fused_lamb_init
+  optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad
+  inplace: (param -> param_out), (grad -> grad_out)
 
 - op : distributed_lookup_table
   args : (Tensor[] ids, Tensor w, int table_id = 0, bool is_distributed = false, str lookup_table_version = "lookup_table", int64_t padding_idx = -1, DataType dtype = DataType::FLOAT32, bool is_test = false)
@@ -1018,6 +1058,16 @@
     support_trans_dtype : x, y
   backward : multiply_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : nop
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : nop
+  inplace: (x -> out)
+  interfaces : paddle::dialect::ParseKernelKeyInterface
 
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)

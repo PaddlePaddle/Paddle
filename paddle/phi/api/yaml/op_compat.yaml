@@ -617,6 +617,20 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
+- op : conv2d_transpose_bias
+  inputs :
+    {x : Input, filter : Filter, bias : Bias}
+  outputs :
+    out : Output
+  int_array :
+    output_size :
+      data_type : int
+      support_tensor : true
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = false, bool use_mkldnn = true, bool force_fp32_output = false,
+             str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f]
+
 - op : conv3d
   backward : conv3d_grad, conv3d_double_grad (conv3d_grad_grad)
   inputs :
@@ -3513,6 +3527,12 @@
   outputs :
     out: Out
 
+- op: c_allreduce_avg
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_allreduce_max
   inputs :
     x : X
@@ -3544,6 +3564,12 @@
     out : Out
 
 - op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_avg
   inputs :
     x : X
   outputs :
@@ -3610,6 +3636,12 @@
     multi_fpn_rois : MultiFpnRois
     multi_level_rois_num: MultiLevelRoIsNum
     restore_index: RestoreIndex
+
+- op: distributed_fused_lamb_init
+  inputs:
+    {param: Param, grad: Grad}
+  outputs:
+    {fp32_fused_param: FP32FusedParam, fp32_fused_grad: FP32FusedGrad, fp16_fused_param: FP16FusedParam, fp16_fused_grad: FP16FusedGrad, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, fused_param_offsets: FusedParamOffsets, fp32_shard_fused_param_offsets: FP32ShardFusedParamOffsets, fp16_shard_fused_param_offsets: FP16ShardFusedParamOffsets, param_info: ParamInfo, param_order: ParamOrder, param_out: ParamOut, master_param_out: MasterParamOut, grad_out: GradOut, global_scale: GlobalScale, step: Step}
 
 - op: distributed_lookup_table
   inputs:
@@ -3734,6 +3766,12 @@
     {input : Input, label : Label, weight : Weight, bias : Bias, sample_weight : SampleWeight, custom_dist_probs : CustomDistProbs, custom_dist_alias : CustomDistAlias, custom_dist_alias_probs : CustomDistAliasProbs}
   outputs:
     {cost : Cost, sample_logits : SampleLogits, sample_labels : SampleLabels}
+
+- op: nop
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: number_count
   inputs :
