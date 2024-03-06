@@ -336,9 +336,12 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=[]):
         if local_batch_size % micro_batch_size != 0:
             return True
         acc_steps = local_batch_size // micro_batch_size
+        pp_degree = cur_cfg.get("pp_degree", None)
+        if pp_degree is not None:
+            if acc_steps < pp_degree:
+                return True
         vpp_degree = cur_cfg.get("vpp_degree", None)
         if vpp_degree is not None and vpp_degree > 1:
-            pp_degree = cur_cfg.get("pp_degree", None)
             if pp_degree is not None:
                 if acc_steps % pp_degree != 0:
                     return True
