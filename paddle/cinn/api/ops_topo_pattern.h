@@ -20,7 +20,7 @@ struct PartialShardablePattern {};
 template <typename T>
 using ShardableReductionsPattern = std::vector<std::variant<ReductionPattern<T>, PartialShardablePattern<T>>>;
 
-// Compose rules:
+// fuse rules:
 //  1. IS * PS -> PS
 //  2. PS * PS -> PS
 //  3. R * PS -> RS
