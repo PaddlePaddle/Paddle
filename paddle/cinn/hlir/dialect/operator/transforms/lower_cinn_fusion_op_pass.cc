@@ -708,10 +708,14 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     }
 
     // Rebuild ops of the group
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
     for (auto op : fusion_op.GetOperators()) {
       if (!op->isa<::pir::YieldOp>()) {
         group->ops.push_back(op);
 
+        printer.PrintOperation(op);
+        ss << std::endl;
         group->ops_set.insert(op);
         group->op_pattern_kind =
             static_cast<int>(CompatibleInfo::OpKind(*op)) >
@@ -720,6 +724,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
                 : group->op_pattern_kind;
       }
     }
+
+    std::cerr << "after rebuild \n" << ss.str() << std::endl;
 
     // Rebuild output_ops and input_ops of the group
     auto yield_op = fusion_op.GetOperators().back();

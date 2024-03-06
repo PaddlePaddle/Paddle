@@ -115,8 +115,12 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   bool is_positive = true;
   int num_minus1 = 0;
   std::vector<Expr> process_factors;
-  Expr prod_size(-1);
-  for (auto factor : factors) prod_size = prod_size * Expr(factor);
+  Expr prod_size(1);
+  for (auto factor : factors) {
+    if (factor != -1) {
+      prod_size = prod_size * Expr(factor);
+    }
+  }
   std::for_each(factors.begin(), factors.end(), [&](int factor) {
     if (factor == -1) {
       process_factors.push_back(

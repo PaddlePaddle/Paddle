@@ -48,7 +48,7 @@ void GetBroadcastShape(const std::vector<Expr>& shape1,
   std::vector<Expr> shape2_new = shape2;
 
   if (axis.defined()) {
-    int axis_val = axis.as_int32();
+    int axis_val = axis.as_int64();
     CHECK_GE(axis_val, -1) << "wrong axis: " << axis_val << std::endl;
     if (shape1.size() >= shape2.size()) {
       CHECK_LE(axis_val, static_cast<int>(shape1.size() - shape2.size()))
@@ -127,8 +127,8 @@ void GetBroadcastShape(const std::vector<Expr>& shape1,
       broadcast_flag1->emplace_back(true);
       broadcast_flag2->emplace_back(true);
     } else {
-      int dim1 = shape1_new[size1 - i].as_int32();
-      int dim2 = shape2_new[size2 - i].as_int32();
+      int dim1 = shape1_new[size1 - i].as_int64();
+      int dim2 = shape2_new[size2 - i].as_int64();
       if (dim1 == dim2) {
         common_shape->insert(common_shape->begin(), shape1_new[size1 - i]);
         // broadcast flags are recorded in a reverse order

@@ -93,13 +93,33 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
               << sch->GetLoops(block_id).front() << std::endl;
   }
   MergeFlattenAxis(sch, block_id);
+  if (sch->HasBlock(block_id)) {
+    std::cerr << "process merge:  " << block_id << "\n"
+              << sch->GetLoops(block_id).front() << std::endl;
+  }
   MergeReduceAxis(sch, block_id);
+
   SplitFlattenInner(sch, block_id);
+
+  if (sch->HasBlock(block_id)) {
+    std::cerr << "process split inner:  " << block_id << "\n"
+              << sch->GetLoops(block_id).front() << std::endl;
+  }
+
   SplitReduceInner(sch, block_id);
+
   ReorderFlattenInnerWithReduceAxis(sch, block_id);
+
   SplitWarpNumber(sch, block_id);
+  if (sch->HasBlock(block_id)) {
+    std::cerr << "process warp num:  " << block_id << "\n"
+              << sch->GetLoops(block_id).front() << std::endl;
+  }
+
   BindCudaInfo(sch, block_id);
+
   VariableTypeAssignment(sch, block_id);
+
   Unroll(sch, block_id);
   SetReduceType(sch, block_id);
 
@@ -134,6 +154,8 @@ void TileFirstGeneralTactic::SplitFlattenInner(ir::IRSchedule* sch,
                                                const std::string& block_id) {
   if (IsInnerThreadSpatialLoopGT(context_->group_tile_info, 1)) {
     auto loops = sch->GetLoops(block_id);
+    std::cerr << "spatial inner num "
+              << context_->group_tile_info->spatial_inner_num << std::endl;
     auto split_loops = sch->Split(
         loops[0],
         std::vector<int>({-1, context_->group_tile_info->spatial_inner_num}));

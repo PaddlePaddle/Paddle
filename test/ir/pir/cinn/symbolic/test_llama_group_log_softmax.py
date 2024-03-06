@@ -89,6 +89,7 @@ class TestGroupOp(unittest.TestCase):
 
     def eval(self, use_cinn=False, mode="jit"):
         net = TestGroupOpNet()
+        net.eval()
         if mode == "eager":
             out = net(self.x, self.score, self.y, self.z)
         else:
@@ -99,7 +100,7 @@ class TestGroupOp(unittest.TestCase):
                 InputSpec(shape=[1], dtype="int64"),
             ]
             net = utils.apply_to_static(net, use_cinn, input_spec)
-            net.eval()
+
             out = net(self.x, self.score, self.y, self.z)
             if use_cinn:
                 self.check_jit_kernel_info(net.forward)

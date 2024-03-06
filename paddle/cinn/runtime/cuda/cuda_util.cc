@@ -117,6 +117,10 @@ void cinn_call_cuda_kernel(void *kernel_fn,
   }
 
   {
+    if (shared_memory_bytes < 0) {
+      std::cerr << "negative shared memory bytes !!!!!!!!!!!!!!!!!\n";
+      shared_memory_bytes = 0;
+    }
     cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                         cinn::utils::EventType::kInstruction);
     CUDA_DRIVER_CALL(cuLaunchKernel(static_cast<CUfunction>(kernel_fn),

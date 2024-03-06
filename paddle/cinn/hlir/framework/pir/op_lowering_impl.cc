@@ -99,13 +99,20 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   bool spatial_is_dynamic = false;
   bool reduce_is_dynamic = false;
+  std::cerr << "data rank " << group_tile_info->data_rank << std::endl;
   for (int64_t i = 0; i < group_tile_info->data_rank; ++i) {
     if (reduce_set.count(i)) {
+      std::cerr << "index i   " << i << std::endl;
       reduce_numel *= data_dim[i];
-      reduce_is_dynamic = true;
+      if (data_dim[i] < 0) {
+        reduce_is_dynamic = true;
+      }
     } else {
       spatial_numel *= data_dim[i];
-      spatial_is_dynamic = true;
+
+      if (data_dim[i] < 0) {
+        spatial_is_dynamic = true;
+      }
     }
   }
 
@@ -124,7 +131,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   std::cerr << "spatial " << spatial_numel << std::endl;
   if (reduce_numel == 1) {
     reduce_block = 1;
-    if (spatial_numel < 0 || spatial_is_dynamic) {
+    if (spatial_is_dynamic) {
       spatial_block = 1024;
 
       reduce_inner_num = 1;
@@ -986,7 +993,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
   std::cerr << "func body size " << func_bodies.size() << std::endl;
   for (size_t i = 0; i < func_bodies.size(); ++i) {
-    std::cerr << "body i " << func_bodies[i] << std::endl;
+    std::cerr << "body i " << i << "\n" << func_bodies[i] << std::endl;
   }
 
   VLOG(4) << "group_func_arg_tensors.size(): "

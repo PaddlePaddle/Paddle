@@ -36,9 +36,9 @@ class IfSubgraph(nn.Layer):
         return y
 
     def forward(self, x):
-        # if x.shape[-1] > 1:
-        x = self.exp_sub(x)
-        x = paddle.sin(x)
+        if x.shape[-1] > 1:
+            x = self.exp_sub(x)
+            x = paddle.sin(x)
         return x
 
 
