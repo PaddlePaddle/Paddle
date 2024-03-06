@@ -143,10 +143,7 @@ def _clone_var_in_block(block, var):
 
 
 def _safe_load_pickle(file, encoding="ASCII"):
-    try:
-        load_dict = pickle.Unpickler(file, encoding=encoding).load()
-    except pickle.UnpicklingError:
-        raise RuntimeError("Error occurred during unpickling")
+    load_dict = pickle.Unpickler(file, encoding=encoding).load()
     return load_dict
 
 
