@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/common/scalar.h"
 #include "test/cpp/auto_parallel/spmd_rule_test_util.h"
 
 namespace paddle {
@@ -1727,7 +1728,7 @@ TEST(GatherGradInferSpmd, Ctor) {
   std::vector<int64_t> x_shape = {64, 32, 48};
   std::vector<int64_t> index_shape = {16};
   std::vector<int64_t> out_grad_shape = {16, 32, 48};
-  Scalar axis(0);
+  phi::Scalar axis(0);
 
   std::vector<int64_t> mesh_shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
