@@ -304,5 +304,11 @@ void* DistTensor::AllocateFrom(Allocator* allocator,
   return nullptr;
 }
 
+void DistTensor::clear() {
+  if (value_) {
+    value_->clear();
+  }
+}
+
 }  // namespace distributed
 }  // namespace phi
