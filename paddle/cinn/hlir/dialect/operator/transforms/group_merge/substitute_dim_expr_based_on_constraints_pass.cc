@@ -143,10 +143,10 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
 
 void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
   VLOG(4) << "SubstituteDimExprBasedOnConstraints start";
-  pir::ShapeConstraintIRAnalysis shape_analysis =
-      pir::ShapeAnalysisManager::Instance().Get(module_op.program());
+  pir::ShapeConstraintIRAnalysis* shape_analysis =
+      &pir::ShapeAnalysisManager::Instance().Get(module_op.program());
   const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-      substitution_pattern = GetDimExprSubstitution(&shape_analysis);
+      substitution_pattern = GetDimExprSubstitution(shape_analysis);
 
   for (auto pattern : substitution_pattern) {
     VLOG(1) << "substitution_pattern:" << pattern.first << " : "
@@ -155,63 +155,32 @@ void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
 
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
-      if (!shape_analysis.HasShapeOrDataForValue(value)) {
+      if (!shape_analysis->HasShapeOrDataForValue(value)) {
         VLOG(4) << "Can not find ShapeOrData for value of op(" << op.name()
                 << ") in shape_analysis";
       } else {
         const symbol::ShapeOrDataDimExprs& origin_shape_or_data =
-            shape_analysis.GetShapeOrDataForValue(value);
+            shape_analysis->GetShapeOrDataForValue(value);
         VLOG(1) << op.name()
                 << "      origin_shape_or_data: " << origin_shape_or_data;
         const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
             SubstituteShapeOrData(origin_shape_or_data, substitution_pattern);
         VLOG(1) << op.name()
                 << " substituted_shape_or_data: " << substituted_shape_or_data;
-        shape_analysis.SetShapeOrDataForValue(value, substituted_shape_or_data);
+        shape_analysis->SetShapeOrDataForValue(value,
+                                               substituted_shape_or_data);
       }
     });
     if (op.num_results() > 0) {
       pir::shape::SetShapeAttrForOp(
-          &op, shape_analysis.GetShapeOrDataForValue(op.result(0)));
+          &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
     } else {
       pir::shape::SetShapeAttrForOp(
-          &op, shape_analysis.GetShapeOrDataForValue(op.operand_source(0)));
+          &op, shape_analysis->GetShapeOrDataForValue(op.operand_source(0)));
     }
     // TODO(JiaWenxuan): substitute the attribute "sym_shape_str" of the op
   });
   VLOG(4) << "SubstituteDimExprBasedOnConstraints end";
-
-  VisitEachOp(module_op, [&](pir::Operation& op) {
-    VisitEachValue(op, [&](pir::Value value) {
-      if (!shape_analysis.HasShapeOrDataForValue(value)) {
-        VLOG(4) << "Can not find ShapeOrData for value of op(" << op.name()
-                << ") in shape_analysis";
-      } else {
-        const symbol::ShapeOrDataDimExprs& shape_or_data =
-            shape_analysis.GetShapeOrDataForValue(value);
-        VLOG(1) << op.name() << " shape_or_data: " << shape_or_data;
-      }
-    });
-  });
-}
-
-void Test(pir::ModuleOp module_op) {
-  VLOG(4) << "#######################";
-  pir::ShapeConstraintIRAnalysis shape_analysis =
-      pir::ShapeAnalysisManager::Instance().Get(module_op.program());
-
-  VisitEachOp(module_op, [&](pir::Operation& op) {
-    VisitEachValue(op, [&](pir::Value value) {
-      if (!shape_analysis.HasShapeOrDataForValue(value)) {
-        VLOG(4) << "Can not find ShapeOrData for value of op(" << op.name()
-                << ") in shape_analysis";
-      } else {
-        const symbol::ShapeOrDataDimExprs& shape_or_data =
-            shape_analysis.GetShapeOrDataForValue(value);
-        VLOG(1) << op.name() << " shape_or_data: " << shape_or_data;
-      }
-    });
-  });
 }
 
 class SubstituteDimExprBasedOnConstraintsPass : public pir::Pass {
