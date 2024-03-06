@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import math
+from typing import List, Sequence, Tuple
 
 import paddle
 from paddle import pir
@@ -35,7 +36,7 @@ _PADDLE_DTYPE_2_NBYTES = {
 
 
 def analyze_mid_hold_values(program, saved_values, outputs, fwd_op_end_idx):
-    forward_ops = set(program.global_block().ops[0 : fwd_op_end_idx + 1])
+    forward_ops = set(program.global_block().ops[: fwd_op_end_idx + 1])
     backward_ops = set(program.global_block().ops[fwd_op_end_idx + 1 :])
     mid_hold_values = ValueSet()
     for op in forward_ops:
@@ -146,7 +147,7 @@ def replace_mid_values_with_forward_subgraph(
         }
         return recompute_subgraph
 
-    forward_ops = set(program.global_block().ops[0 : fwd_op_end_idx + 1])
+    forward_ops = set(program.global_block().ops[: fwd_op_end_idx + 1])
     backward_ops = set(program.global_block().ops[fwd_op_end_idx + 1 :])
     first_backward_op = program.global_block().ops[fwd_op_end_idx + 1]
 
@@ -187,15 +188,25 @@ def replace_mid_values_with_forward_subgraph(
     return program, fwd_op_end_idx
 
 
-def recompute(program, saved_values, outputs, fwd_op_end_idx):
+def recompute(
+    program: "paddle.static.Program",
+    saved_values: "List[pir.Value]",
+    outputs: "List[pir.Value]",
+    fwd_op_end_idx: int,
+) -> "Tuple[paddle.static.Program, int]":
     """
-    recompute intermediate values to save memory.
+    Recompute intermediate values to save memory.
     Args:
         program(Program): The program to be recomputed.
-        saved_values(list[valueiable]): A list of saved valueiables.
-        outputs(list[valueiable]): A list of forward outputs.
+        saved_values(list[valueiable]): The saved values
+            of forward graph which used by backward graph.
+        outputs(list[valueiable]): The out values
+            of the forward graph.
+        forward_op_end_idx(int): The index of the last forward op.
     Returns:
         recomputed_program(Program): The recomputed program.
+        fwd_op_end_idx(int): The index of the last forward op in
+            recomputed program.
     """
     saved_values = ValueSet(saved_values)
     outputs = ValueSet(outputs)
@@ -214,18 +225,48 @@ def recompute(program, saved_values, outputs, fwd_op_end_idx):
 
 
 def min_cut_auto_recompute(
-    program,
-    inputs,
-    outputs,
-    grad_outputs,
-    fwd_op_end_idx,
-    recomputable_ops=None,
-):
+    program: "paddle.static.Program",
+    inputs: "Sequence[pir.Value]",
+    outputs: "Sequence[pir.Value]",
+    grad_outputs: "Sequence[pir.Value]",
+    fwd_op_end_idx: "int",
+    recomputable_ops: "Sequence[str]" = None,
+) -> "Tuple[paddle.static.Program, int]":
+    '''
+    Considering the compiler fuse strategy, we model the pir graph.
+    Convert the pir calculation graph into a networkx calculation
+    graph. Find the cut point through the min-cut algorithm,
+    which is the value to be saved in pir forward calculation graph.
+
+    Recompute the forward computation graph to replace intermediate
+    variables in the forward graph held by the backward graph.
+
+    .. warning::
+        This API is experimental and likely to change.
+
+    Args:
+        program (Program): The program to be recomputed.
+        inputs:(list[Value]|tuple(Value)): The input Values
+            of the forward graph.
+        outputs:(list[Value]|tuple(Value)): The out Values
+            of the forward graph.
+        grad_outputs:(list[Value]|tuple(Value)): initial gradient values
+            of `outputs` .
+        forward_op_end_idx(int): The index of the last forward op.
+        recomputable_ops(list[str]|tuple(str)|None): The op names that can
+            be recomputed. If 'recompute_ops' is None, we will use the
+            default recomputable_ops. Default None.
+    Returns:
+        recomputed_program(Program): The recomputed program.
+        fwd_op_end_idx(int): The index of the last forward op in recomputed program.
+
+    '''
+
     # model value as graph's node, op as graph's edge
     def _classify_value_node(program, grad_outputs, fwd_op_end_idx):
         all_ops = program.global_block().ops
         required_fw_value_nodes = ValueSet()
-        required_fw_ops = set(all_ops[0 : fwd_op_end_idx + 1])
+        required_fw_ops = set(all_ops[: fwd_op_end_idx + 1])
         for required_fw_op in required_fw_ops:
             fw_op_outputs = required_fw_op.results()
             required_fw_value_nodes = required_fw_value_nodes | ValueSet(
