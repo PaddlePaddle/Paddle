@@ -386,7 +386,7 @@ std::vector<FusionNode> FuseSingleUpstreamNode(
   const auto& upstream_node =
       FindUpstreamNodeUsedByOthers(fusion_nodes).value();
   const auto& fused_node = FuseEachUpstreamUse(
-      RemoveUpstream(upstream_node, fusion_nodes), upstream_node);
+      RemoveUpstreamTrivial(upstream_node, fusion_nodes), upstream_node);
   return fused_node;
 }
 
