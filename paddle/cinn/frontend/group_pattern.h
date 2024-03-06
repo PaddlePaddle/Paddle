@@ -30,7 +30,7 @@ struct ShardableAxes {
 struct ShardableAxesSignature {
   using OpOperand = std::pair<const pir::Operation*, /*operand index*/int>;
 
-  ShardableAxes output_shardable_axes;
+  std::vector<ShardableAxes> output_shardable_axes;
   std::unordered_map<OpOperand, ShardableAxes> input_shardable_axes;
 };
 
