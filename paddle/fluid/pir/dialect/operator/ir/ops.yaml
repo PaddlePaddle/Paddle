@@ -276,7 +276,6 @@
     param : [x, nranks]
   kernel :
     func : c_scatter
-    param : [x, nranks]
 
 - op : c_sync_calc_stream
   args : (Tensor x)
