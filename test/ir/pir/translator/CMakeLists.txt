@@ -9,6 +9,7 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_allreduce_min_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_allreduce_prod_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_distributed_lookup_table_translate)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_distributed_fused_lamb_init)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_send_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_reduce_max_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_reduce_prod_translator)

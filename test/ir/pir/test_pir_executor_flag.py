@@ -15,14 +15,21 @@
 import os
 import unittest
 
-from paddle.base.framework import in_pir_executor_mode
+from paddle.base.framework import in_cinn_mode, in_pir_executor_mode
 
 
-class TestPrimFlags(unittest.TestCase):
-    def test_prim_flags(self):
+class TestPIRModeFlags(unittest.TestCase):
+    def test_pir_mode_flags(self):
         self.assertTrue(in_pir_executor_mode())
         os.environ["FLAGS_enable_pir_in_executor"] = "false"
         self.assertFalse(in_pir_executor_mode())
+
+
+class TestCinnModeFlags(unittest.TestCase):
+    def test_cinn_mode_flags(self):
+        self.assertFalse(in_cinn_mode())
+        os.environ["FLAGS_use_cinn"] = "true"
+        self.assertTrue(in_cinn_mode())
 
 
 if __name__ == '__main__':
