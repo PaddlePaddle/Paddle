@@ -274,10 +274,12 @@ bool IsLegacyOp(const std::string& kernel_name) {
   return false;
 }
 
-bool IsLegacyOp(pir::Operation* op) {
+bool IsLegacyOp(const pir::Operation* op) {
   if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
     auto [_0, _1, _2, runtime_info, _4] =
-        op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+        const_cast<pir::Operation*>(op)
+            ->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
+            .GetOpInfo();
     auto kernel_func = runtime_info.kernel_func;
     return IsLegacyOp(kernel_func);
   }

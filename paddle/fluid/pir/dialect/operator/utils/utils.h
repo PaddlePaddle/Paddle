@@ -140,7 +140,7 @@ paddle::any TransAttrToAny(const pir::Attribute& attr);
 
 bool IsLegacyOp(const std::string& kernel_name);
 
-bool IsLegacyOp(pir::Operation* op);
+bool IsLegacyOp(const pir::Operation* op);
 
 bool IsEmptyValue(const pir::Value& value);
 
