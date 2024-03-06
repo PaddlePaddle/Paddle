@@ -99,6 +99,10 @@ void ApplyCinnPreprocessPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
 
@@ -127,9 +131,9 @@ void ApplyGroupOpPass(::pir::Program* program,
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
+    // pass_manager->AddPass(
+    //     cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
+    // pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
   }
 
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());

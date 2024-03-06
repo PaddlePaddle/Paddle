@@ -162,7 +162,7 @@ void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
         const symbol::ShapeOrDataDimExprs& origin_shape_or_data =
             shape_analysis.GetShapeOrDataForValue(value);
         VLOG(1) << op.name()
-                << " origin_shape_or_data: " << origin_shape_or_data;
+                << "      origin_shape_or_data: " << origin_shape_or_data;
         const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
             SubstituteShapeOrData(origin_shape_or_data, substitution_pattern);
         VLOG(1) << op.name()
@@ -180,6 +180,38 @@ void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
     // TODO(JiaWenxuan): substitute the attribute "sym_shape_str" of the op
   });
   VLOG(4) << "SubstituteDimExprBasedOnConstraints end";
+
+  VisitEachOp(module_op, [&](pir::Operation& op) {
+    VisitEachValue(op, [&](pir::Value value) {
+      if (!shape_analysis.HasShapeOrDataForValue(value)) {
+        VLOG(4) << "Can not find ShapeOrData for value of op(" << op.name()
+                << ") in shape_analysis";
+      } else {
+        const symbol::ShapeOrDataDimExprs& shape_or_data =
+            shape_analysis.GetShapeOrDataForValue(value);
+        VLOG(1) << op.name() << " shape_or_data: " << shape_or_data;
+      }
+    });
+  });
+}
+
+void Test(pir::ModuleOp module_op) {
+  VLOG(4) << "#######################";
+  pir::ShapeConstraintIRAnalysis shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(module_op.program());
+
+  VisitEachOp(module_op, [&](pir::Operation& op) {
+    VisitEachValue(op, [&](pir::Value value) {
+      if (!shape_analysis.HasShapeOrDataForValue(value)) {
+        VLOG(4) << "Can not find ShapeOrData for value of op(" << op.name()
+                << ") in shape_analysis";
+      } else {
+        const symbol::ShapeOrDataDimExprs& shape_or_data =
+            shape_analysis.GetShapeOrDataForValue(value);
+        VLOG(1) << op.name() << " shape_or_data: " << shape_or_data;
+      }
+    });
+  });
 }
 
 class SubstituteDimExprBasedOnConstraintsPass : public pir::Pass {

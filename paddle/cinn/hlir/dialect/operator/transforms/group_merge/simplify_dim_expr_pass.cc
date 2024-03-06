@@ -94,6 +94,20 @@ void SimplifyDimExpr(pir::ModuleOp module_op) {
   VLOG(4) << "SimplifyDimExpr start";
   pir::ShapeConstraintIRAnalysis shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(module_op.program());
+
+  VisitEachOp(module_op, [&](pir::Operation& op) {
+    VisitEachValue(op, [&](pir::Value value) {
+      if (!shape_analysis.HasShapeOrDataForValue(value)) {
+        VLOG(4) << "Can not find ShapeOrData for value of op(" << op.name()
+                << ") in shape_analysis";
+      } else {
+        const symbol::ShapeOrDataDimExprs& shape_or_data =
+            shape_analysis.GetShapeOrDataForValue(value);
+        VLOG(1) << op.name() << " shape_or_data: " << shape_or_data;
+      }
+    });
+  });
+
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
       if (!shape_analysis.HasShapeOrDataForValue(value)) {
@@ -103,12 +117,14 @@ void SimplifyDimExpr(pir::ModuleOp module_op) {
       } else {
         const symbol::ShapeOrDataDimExprs& shape_or_data =
             shape_analysis.GetShapeOrDataForValue(value);
+        VLOG(1) << op.name() << "     origin_shape_or_data: " << shape_or_data;
         symbol::ShapeOrDataDimExprs simplified_shape_or_data =
             SimplifyShapeOrData(shape_or_data);
+        VLOG(1) << op.name()
+                << " simplified_shape_or_data: " << simplified_shape_or_data;
         shape_analysis.SetShapeOrDataForValue(value, simplified_shape_or_data);
       }
     });
-    VLOG(1) << "This is " << op.name() << " : " << op.num_results();
     if (op.num_results() > 0) {
       pir::shape::SetShapeAttrForOp(
           &op, shape_analysis.GetShapeOrDataForValue(op.result(0)));
@@ -119,6 +135,18 @@ void SimplifyDimExpr(pir::ModuleOp module_op) {
     // TODO(JiaWenxuan): simplify the attribute "sym_shape_str" of the op
   });
   VLOG(4) << "SimplifyDimExpr end";
+  VisitEachOp(module_op, [&](pir::Operation& op) {
+    VisitEachValue(op, [&](pir::Value value) {
+      if (!shape_analysis.HasShapeOrDataForValue(value)) {
+        VLOG(4) << "Can not find ShapeOrData for value of op(" << op.name()
+                << ") in shape_analysis";
+      } else {
+        const symbol::ShapeOrDataDimExprs& shape_or_data =
+            shape_analysis.GetShapeOrDataForValue(value);
+        VLOG(1) << op.name() << " shape_or_data: " << shape_or_data;
+      }
+    });
+  });
 }
 
 class SimplifyDimExprPass : public pir::Pass {
