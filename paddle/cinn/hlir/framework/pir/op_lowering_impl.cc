@@ -91,6 +91,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
 
     group_tile_info->reduce_axis_.push_back(dim);
+    std::cerr << "reduce dim    " << dim << std::endl;
     reduce_set.insert(dim);
   }
 
@@ -113,6 +114,8 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
       }
     }
   }
+
+  std::cerr << "reduce numel " << reduce_numel << std::endl;
 
   PADDLE_ENFORCE_EQ(
       reduce_is_dynamic,

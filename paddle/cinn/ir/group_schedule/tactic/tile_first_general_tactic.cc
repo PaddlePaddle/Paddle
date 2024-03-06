@@ -88,6 +88,10 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
+  if (sch->HasBlock(block_id)) {
+    std::cerr << "before process:  " << block_id << "\n"
+              << sch->GetLoops(block_id).front() << std::endl;
+  }
   MergeFlattenAxis(sch, block_id);
   MergeReduceAxis(sch, block_id);
   SplitFlattenInner(sch, block_id);
@@ -98,6 +102,11 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   VariableTypeAssignment(sch, block_id);
   Unroll(sch, block_id);
   SetReduceType(sch, block_id);
+
+  if (sch->HasBlock(block_id)) {
+    std::cerr << "process:  " << block_id << "\n"
+              << sch->GetLoops(block_id).front() << std::endl;
+  }
 }
 
 void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
