@@ -40,6 +40,8 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
       for (size_t i = 0; i < shape_info.size(); ++i) {
         if (shape_info[i].isa<int64_t>()) {
           shape[i] = shape_info[i].Get<int64_t>();
+        } else {
+          shape[i] = 1;
         }
       }
     }
