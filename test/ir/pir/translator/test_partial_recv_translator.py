@@ -40,7 +40,7 @@ class TestPartialRecvOpTranslator(test_op_translator.TestOpTranslator):
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
-            outputs={"Outputs": [out]},
+            outputs={"Out": out},
             attrs=attrs,
         )
 

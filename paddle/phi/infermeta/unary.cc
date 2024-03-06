@@ -2952,6 +2952,7 @@ void PartialRecvInferMeta(int ring_id,
                           int id,
                           MetaTensor* out) {
   out->set_dims(common::make_ddim(out_shape));
+  out->set_dtype(dtype);
 }
 
 void PixelShuffleInferMeta(const MetaTensor& x,

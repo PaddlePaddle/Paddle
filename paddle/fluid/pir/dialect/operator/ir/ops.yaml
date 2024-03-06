@@ -1125,6 +1125,10 @@
   infer_meta :
     func: PartialRecvInferMeta
     param: [ring_id, peer, dtype, out_shape, use_calc_stream, num, id]
+  kernel :
+    func : partial_recv
+    param: [ring_id, peer, dtype, out_shape, use_calc_stream, num, id]
+    data_type : dtype
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
