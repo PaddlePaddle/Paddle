@@ -32,7 +32,7 @@ class TestPartialRecvOpTranslator(test_op_translator.TestOpTranslator):
             'ring_id': 0,
             'peer': 0,
             'dtype': convert_np_dtype_to_dtype_(np.float32),
-            'out_shape': '[]',
+            'out_shape': out.shape,
             'use_calc_stream': False,
             'num': 1,
             'id': 0,
