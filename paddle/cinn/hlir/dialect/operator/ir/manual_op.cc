@@ -33,6 +33,8 @@
 namespace cinn {
 namespace dialect {
 
+using DenseTensorType = paddle::dialect::DenseTensorType;
+
 const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 const char* FusionOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
@@ -200,39 +202,31 @@ void ConcatOp::Build(pir::Builder& builder,             // NOLINT
                     phi::errors::InvalidArgument(
                         "input size [%d] is less than 0", inputs.size()));
 
-  auto first_ele =
-      inputs[0].type().dyn_cast<paddle::dialect::DenseTensorType>();
-  phi::DDim out_dims = first_ele.dims();
+  const pir::Type out_type = [&]() {
+    auto first_ele = inputs[0].type().dyn_cast<DenseTensorType>();
+    phi::DDim out_dims = first_ele.dims();
+    if (axis < 0) axis += out_dims.size();
 
-  if (axis < 0) {
-    axis += out_dims.size();
-  }
+    for (size_t idx = 1; idx < inputs.size(); ++idx) {
+      inputs_type[idx] = inputs[idx].type();
+      auto dim_i = inputs[idx].type().dyn_cast<DenseTensorType>().dims();
 
-  for (size_t idx = 0; idx < inputs.size(); ++idx) {
-    inputs_type[idx] = inputs[idx].type();
-
-    if (idx > 0) {
-      auto dim_i = inputs[idx]
-                       .type()
-                       .dyn_cast<paddle::dialect::DenseTensorType>()
-                       .dims();
-
-      out_dims[axis] += dim_i[axis];
+      if (out_dims[axis] > 0 && dim_i[axis] > 0) {
+        out_dims[axis] += dim_i[axis];
+      } else {
+        out_dims[axis] = -1;
+        break;
+      }
     }
-  }
-
-  auto out_type =
-      paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
-                                            first_ele.dtype(),
-                                            out_dims,
-                                            first_ele.data_layout(),
-                                            first_ele.lod(),
-                                            first_ele.offset());
-
+    return DenseTensorType::get(pir::IrContext::Instance(),
+                                first_ele.dtype(),
+                                out_dims,
+                                first_ele.data_layout(),
+                                first_ele.lod(),
+                                first_ele.offset());
+  }();
   argument.output_types.emplace_back(out_type);
-
   PassStopGradientsDefaultly(argument);
-
   argument.AddAttribute(
       "axis", pir::Int32Attribute::get(pir::IrContext::Instance(), axis));
 }
@@ -248,7 +242,7 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
 
   std::vector<pir::Type> output_type(sections.size());
 
-  auto input_ele = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto input_ele = input.type().dyn_cast<DenseTensorType>();
 
   if (axis < 0) {
     axis += input_ele.dims().size();
@@ -257,13 +251,12 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
   for (size_t idx = 0; idx < sections.size(); ++idx) {
     auto out_dims = input_ele.dims();
     out_dims[axis] = sections[idx];
-    auto out_type =
-        paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
-                                              input_ele.dtype(),
-                                              out_dims,
-                                              input_ele.data_layout(),
-                                              input_ele.lod(),
-                                              input_ele.offset());
+    auto out_type = DenseTensorType::get(pir::IrContext::Instance(),
+                                         input_ele.dtype(),
+                                         out_dims,
+                                         input_ele.data_layout(),
+                                         input_ele.lod(),
+                                         input_ele.offset());
 
     argument.output_types.emplace_back(out_type);
 
@@ -309,7 +302,7 @@ void GenerateShapeOp::Build(
     auto type = pir::Int64Type::get(ctx);
     auto dim =
         ::common::make_ddim({static_cast<int64_t>(output_dim_exprs.size())});
-    return paddle::dialect::DenseTensorType::get(ctx, type, dim);
+    return DenseTensorType::get(ctx, type, dim);
   }()});
   ::pir::PassStopGradientsDefaultly(argument);
 }
