@@ -343,9 +343,9 @@ if [ "${HAS_MODIFIED_FRAMEWORK_EXECUTOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; t
     check_approval 1 From00 zhangbo9674
 fi
 
-HAS_MODIFIED_ENFORCE_SYNTAX=git diff --name-only upstream/$BRANCH | grep -E "IR_ENFORCE|Check*|LOG(FATAL)" || true`
-if [ “${HAS_MODIFIED_ENFORCE_SYNTAX}” != “” ] && [ “${GIT_PR_ID}” != “” ]; then
-    echo_line=“You are suggested to use PADDLE_ENFORCE syntax for changes including IR_ENFORCE, COMMON_ENFORCE, Check*, log(fatal). You must have RD (risemeup1,winter-wang) approval.\n”
+HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --name-only upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG(FATAL)" || true`
+if [ "${HAS_MODIFIED_ENFORCE_SYNTAX}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You are recommended to use PADDLE_ENFORCE instead of IR_ENFORCE, COMMON_ENFORCE, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, CHECK LOG(FATAL). You must have RD (risemeup1,winter-wang) approval.\n”
     check_approval 1 risemeup1 winter-wang
 fi
 
