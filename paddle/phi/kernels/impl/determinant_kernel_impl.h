@@ -129,8 +129,6 @@ struct DeterminantFunctor<phi::dtype::complex<double>, Context> {
     std::vector<phi::dtype::complex<double>> input_vec;
     std::vector<phi::dtype::complex<double>> output_vec;
     phi::TensorToVector(input, dev_ctx, &input_vec);
-    using MPType =
-        typename phi::dtype::MPTypeTrait<phi::dtype::complex<double>>::Type;
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -162,8 +160,6 @@ struct DeterminantFunctor<phi::dtype::complex<float>, Context> {
     std::vector<phi::dtype::complex<float>> input_vec;
     std::vector<phi::dtype::complex<float>> output_vec;
     phi::TensorToVector(input, dev_ctx, &input_vec);
-    using MPType =
-        typename phi::dtype::MPTypeTrait<phi::dtype::complex<float>>::Type;
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
