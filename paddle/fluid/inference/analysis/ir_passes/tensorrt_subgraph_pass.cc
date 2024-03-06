@@ -482,7 +482,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto trt_params_run_bfp16 =
       Get<std::vector<std::string>>("trt_parameter_run_bfp16");
 
-  for (auto para : parameters) {
+  for (const auto &para : parameters) {
     if (std::find(trt_params_run_fp16.begin(),
                   trt_params_run_fp16.end(),
                   para) != trt_params_run_fp16.end()) {
@@ -495,7 +495,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   if (precision_mode == phi::DataType::FLOAT16) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
 
-  for (auto para : parameters) {
+  for (const auto &para : parameters) {
     if (std::find(trt_params_run_int8.begin(),
                   trt_params_run_int8.end(),
                   para) != trt_params_run_int8.end()) {
@@ -505,7 +505,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     }
   }
 
-  for (auto para : parameters) {
+  for (const auto &para : parameters) {
     if (std::find(trt_params_run_bfp16.begin(),
                   trt_params_run_bfp16.end(),
                   para) != trt_params_run_bfp16.end()) {

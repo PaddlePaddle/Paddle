@@ -883,7 +883,7 @@ void AnalysisConfig::Exp_DisableTensorRtSubgraph(
                                 var_name_not_trt.end());
 }
 
-void AnalysisConfig::Exp_Specify_TensorRT_Subgraph_Precision(
+void AnalysisConfig::Exp_SpecifyTensorRTSubgraphPrecision(
     const std::vector<std::string> &trt_parameters_run_fp16,
     const std::vector<std::string> &trt_parameters_run_int8,
     const std::vector<std::string> &trt_parameters_run_bfp16) {

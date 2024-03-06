@@ -813,7 +813,7 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableTensorRtSubgraph(
       const std::vector<std::string>& var_name_not_trt);
 
-  void Exp_Specify_TensorRT_Subgraph_Precision(
+  void Exp_SpecifyTensorRTSubgraphPrecision(
       const std::vector<std::string>& trt_parameters_fp16,
       const std::vector<std::string>& trt_parameters_int8,
       const std::vector<std::string>& trt_parameters_bfp16);
