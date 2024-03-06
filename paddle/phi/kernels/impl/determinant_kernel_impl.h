@@ -54,15 +54,19 @@ class EigenMatrix<double> {
 template <>
 class EigenMatrix<phi::dtype::complex<float>> {
  public:
-  using MatrixType =
-      Eigen::Matrix<phi::dtype::complex<float>, Eigen::Dynamic, Eigen::Dynamic>;
+  using MatrixType = Eigen::Matrix<std::complex<float>,
+                                   Eigen::Dynamic,
+                                   Eigen::Dynamic,
+                                   Eigen::RowMajor>;
 };
 
 template <>
 class EigenMatrix<phi::dtype::complex<double>> {
  public:
-  using MatrixType = Eigen::
-      Matrix<phi::dtype::complex<double>, Eigen::Dynamic, Eigen::Dynamic>;
+  using MatrixType = Eigen::Matrix<std::complex<double>,
+                                   Eigen::Dynamic,
+                                   Eigen::Dynamic,
+                                   Eigen::RowMajor>;
 };
 
 inline int64_t GetBatchCount(const DDim dims) {
@@ -105,11 +109,77 @@ struct DeterminantFunctor {
       typename detail::EigenMatrix<T>::MatrixType matrix(rank, rank);
       for (int64_t i = 0; i < rank; ++i) {
         for (int64_t j = 0; j < rank; ++j) {
-          matrix(i, j) = sub_vec[rank * i + j];
+          matrix(i, j) = sub_vec[i * rank + j];
         }
       }
       output_vec.push_back(
           static_cast<T>(matrix.template cast<MPType>().determinant()));
+    }
+    phi::TensorFromVector(output_vec, dev_ctx, output);
+  }
+};
+
+template <typename Context>
+struct DeterminantFunctor<phi::dtype::complex<double>, Context> {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& input,
+                  int64_t rank,
+                  int64_t batch_count,
+                  DenseTensor* output) {
+    std::vector<phi::dtype::complex<double>> input_vec;
+    std::vector<phi::dtype::complex<double>> output_vec;
+    phi::TensorToVector(input, dev_ctx, &input_vec);
+    using MPType =
+        typename phi::dtype::MPTypeTrait<phi::dtype::complex<double>>::Type;
+    for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
+      auto begin_iter = input_vec.begin() + i * rank * rank;
+      auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
+      std::vector<phi::dtype::complex<double>> sub_vec(
+          begin_iter,
+          end_iter);  // get every square matrix data
+      typename detail::EigenMatrix<phi::dtype::complex<double>>::MatrixType
+          matrix(rank, rank);
+      for (int64_t i = 0; i < rank; ++i) {
+        for (int64_t j = 0; j < rank; ++j) {
+          matrix(i, j) = std::complex<double>(sub_vec[i * rank + j].real,
+                                              sub_vec[i * rank + j].imag);
+        }
+      }
+      output_vec.push_back(
+          static_cast<phi::dtype::complex<double>>(matrix.determinant()));
+    }
+    phi::TensorFromVector(output_vec, dev_ctx, output);
+  }
+};
+
+template <typename Context>
+struct DeterminantFunctor<phi::dtype::complex<float>, Context> {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& input,
+                  int64_t rank,
+                  int64_t batch_count,
+                  DenseTensor* output) {
+    std::vector<phi::dtype::complex<float>> input_vec;
+    std::vector<phi::dtype::complex<float>> output_vec;
+    phi::TensorToVector(input, dev_ctx, &input_vec);
+    using MPType =
+        typename phi::dtype::MPTypeTrait<phi::dtype::complex<float>>::Type;
+    for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
+      auto begin_iter = input_vec.begin() + i * rank * rank;
+      auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
+      std::vector<phi::dtype::complex<float>> sub_vec(
+          begin_iter,
+          end_iter);  // get every square matrix data
+      typename detail::EigenMatrix<phi::dtype::complex<float>>::MatrixType
+          matrix(rank, rank);
+      for (int64_t i = 0; i < rank; ++i) {
+        for (int64_t j = 0; j < rank; ++j) {
+          matrix(i, j) = std::complex<float>(sub_vec[i * rank + j].real,
+                                             sub_vec[i * rank + j].imag);
+        }
+      }
+      output_vec.push_back(
+          static_cast<phi::dtype::complex<float>>(matrix.determinant()));
     }
     phi::TensorFromVector(output_vec, dev_ctx, output);
   }
