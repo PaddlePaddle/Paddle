@@ -17,7 +17,9 @@
 #include <absl/types/optional.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
