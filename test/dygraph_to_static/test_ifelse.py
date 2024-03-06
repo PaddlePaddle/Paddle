@@ -564,7 +564,6 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestDy2StIfElseBackward(Dy2StTestBase):
-    # TODO(zhangbo): open pir test (IfOp grad execution not yet supported)
     @test_ast_only
     @test_pir_only
     def test_run_backward(self):
