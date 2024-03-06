@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -19,6 +20,11 @@ import parameterized as param
 
 import paddle
 from paddle.base import core
+
+sys.path.append('../../../../legacy_test/')
+import gradient_checker
+
+from paddle import base
 
 
 @param.parameterized_class(
@@ -64,6 +70,40 @@ class TestPowGradComp(unittest.TestCase):
             atol=0,
         )
         core.set_prim_eager_enabled(False)
+
+
+class TestPowGradCheck(unittest.TestCase):
+    def pow_wrapper(self, x, e):
+        return paddle.pow(x, e)
+
+    def func(self, place):
+        core.set_prim_eager_enabled(True)
+        # the shape of input variable should be clearly specified, not include -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data1 = paddle.static.data('data1', [10, 10], dtype)
+        data1.persistable = True
+        data1.stop_gradient = False
+        e = 6.9
+        out = paddle.pow(data1, e)
+        data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
+        gradient_checker.double_grad_check(
+            [data1],
+            out,
+            x_init=[data1_arr],
+            place=place,
+            eps=eps,
+        )
+        core.set_prim_eager_enabled(False)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == '__main__':
