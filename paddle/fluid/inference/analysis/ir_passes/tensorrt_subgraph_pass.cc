@@ -478,7 +478,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       Get<std::vector<std::string>>("trt_parameter_run_bfp16");
 
   for (auto para : parameters) {
-    LOG(INFO) << "para: " << para;
     if (std::find(trt_params_run_fp16.begin(),
                   trt_params_run_fp16.end(),
                   para) != trt_params_run_fp16.end()) {
