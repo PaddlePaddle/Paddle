@@ -432,9 +432,9 @@ def nonzero(x, as_tuple=False):
             >>> out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
             >>> for out in out_z1_tuple:
             ...     print(out)
-            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 1, 2])
-            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 1, 2])
 
             >>> out_z2 = paddle.nonzero(x2)
@@ -446,7 +446,7 @@ def nonzero(x, as_tuple=False):
             >>> out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
             >>> for out in out_z2_tuple:
             ...     print(out)
-            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [1, 3])
 
     """
@@ -666,9 +666,8 @@ def where(condition, x=None, y=None, name=None):
 
             >>> out = paddle.where(x>1)
             >>> print(out)
-            (Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[2],
-             [3]]),)
+            (Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 3]),)
     """
     if np.isscalar(x):
         x = paddle.full([1], x, np.array([x]).dtype.name)
