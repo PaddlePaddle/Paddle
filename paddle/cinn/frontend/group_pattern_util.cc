@@ -121,7 +121,9 @@ struct InternalFusionHelper {
         bool i_used_j = FirstIsUpstreamOfSecond(internal_patterns[j], internal_patterns[i]);
         bool j_used_i = FirstIsUpstreamOfSecond(internal_patterns[i], internal_patterns[j]);
 
-        if((!i_used_j && !j_used_i) || LeadToLoop())
+        if((!i_used_j && !j_used_i) || LeadToLoop()){
+          continue;
+        }
 
         if (i_used_j && FuseTargetCondition(internal_patterns[j], internal_patterns[i])){
           return std::make_pair(internal_patterns[j], internal_patterns[i]);
