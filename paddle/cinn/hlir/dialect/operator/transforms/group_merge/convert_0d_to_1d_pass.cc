@@ -61,6 +61,33 @@ class FullOpPattern : public pir::OpRewritePattern<paddle::dialect::FullOp> {
   }
 };
 
+class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SliceOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::SliceOp op) const override {
+    const auto& tensor_type =
+        op.result(0).type().dyn_cast<pir::DenseTensorType>();
+
+    return tensor_type.dims().size() == 0;
+  }
+
+  void Rewrite(paddle::dialect::SliceOp op,
+               pir::PatternRewriter& rewriter) const override {
+    std::vector<pir::Attribute> vec_dims;
+    // for (size_t i = 0; i < static_cast<size_t>(dims.size()); i++) {
+    //     pir::Attribute attr_dims =
+    //     pir::Int64Attribute::get(pir::IrContext::Instance(), dims[i]);
+
+    //   vec_dims.push_back(attr_dims);
+    // }
+    pir::Attribute attr_dims =
+        pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_dims);
+
+    op->set_attribute("decrease_axis", attr_dims);
+  }
+};
+
 class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::SumOp>::OpRewritePattern;
@@ -188,6 +215,7 @@ class Convert0DTo1DPass : public pir::Pass {
     ps.Add<CombineOpPattern>(context);
     ps.Add<SumOpPattern>(context);
     ps.Add<WhileOpPattern>(context);
+    ps.Add<SliceOpPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
