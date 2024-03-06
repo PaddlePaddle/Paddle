@@ -176,6 +176,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_prod',
     'c_reduce_prod_',
     'c_scatter',
+    'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',
     'partial_send',

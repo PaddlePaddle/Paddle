@@ -18,6 +18,8 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_nop_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_send_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_recv_translator)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
+     test_prune_gate_by_capacity_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_random_routing_translator)
 
 if(NOT WITH_DISTRIBUTE)
