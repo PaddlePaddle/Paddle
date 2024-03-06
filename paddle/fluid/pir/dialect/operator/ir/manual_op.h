@@ -611,6 +611,7 @@ class Increment_Op
     : public pir::Op<Increment_Op,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
+                     paddle::dialect::InferSymbolicShapeInterface,
                      paddle::dialect::VjpInterface,
                      paddle::dialect::GetKernelTypeForVarInterface,
                      paddle::dialect::InplaceTrait> {
@@ -650,6 +651,7 @@ class Increment_Op
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 class AssignOut_Op

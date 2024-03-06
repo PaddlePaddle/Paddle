@@ -3886,6 +3886,14 @@ phi::DataType Increment_Op::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+bool Increment_Op::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(x());
+  shape_analysis->SetShapeOrDataForValue(out(), operand_shape_or_data);
+  return true;
+}
+
 OpInfoTuple AssignOut_Op::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
