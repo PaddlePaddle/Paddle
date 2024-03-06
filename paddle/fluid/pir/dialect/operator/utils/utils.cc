@@ -50,6 +50,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceProd_Op::name(),
     CAllreduceSumOp::name(),
     CAllreduceSum_Op::name(),
+    CAllreduceAvgOp::name(),
+    CAllreduceAvg_Op::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
     CAllreduceMax_Op::name(),
@@ -86,6 +88,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::MultiGruOp::name(),
     paddle::onednn::dialect::FusionLstmOp::name(),
 #endif
+    CReduceAvgOp::name(),
+    CReduceAvg_Op::name(),
     CReduceMaxOp::name(),
     CReduceMinOp::name(),
     CReduceProdOp::name(),

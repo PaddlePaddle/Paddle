@@ -199,7 +199,13 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   }
 
   for (auto& val : group->output_values) {
-    group_tile_info->direct_output_var_names.insert(ValueName(val));
+    if (val.defining_op()->name() == "cinn_op.reshape" &&
+        erase_reshape.count(val.defining_op())) {
+      group_tile_info->direct_output_var_names.insert(
+          ValueName(val.defining_op()->operand_source(0)));
+    } else {
+      group_tile_info->direct_output_var_names.insert(ValueName(val));
+    }
   }
 
   group_tile_info->shared_var_names = shared_var_names;
@@ -585,6 +591,7 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
   // TODO(phlrain): this is primary verion for loop aligment
   // will be update by a new method
   auto& align_info = group->alignment_schedule_info;
+
   auto& ops = group->ops;
   for (auto op1 : ops) {
     auto it = align_info.find(op1);
@@ -689,6 +696,12 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
       auto op_out = it->first->result(0);
       info.op_name = it->first->name();
+
+      if (op_out.use_count() == 1 &&
+          op_out.first_use().owner()->name() == "cf.yield") {
+        info.with_constrain = true;
+      }
+
       broadcast_info[ValueName(op_out)] = info;
 
       for (auto use_it = op_out.use_begin(); use_it != op_out.use_end();
@@ -783,6 +796,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       continue;
     }
     auto tensor = tensor_map.at(op_result);
+    if ((op_result.defining_op()->name() == "cinn_op.reshape") &&
+        erase_reshape.count(op_result.defining_op())) {
+      tensor = tensor_map.at(op_result.defining_op()->operand_source(0));
+    }
+
     if (arg_name_set.count(tensor->buffer->name) != 0) {
       continue;
     }
@@ -928,7 +946,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
       CHECK(static_cast<bool>(strategy))
           << " cinn_op_name: " << cinn_op_name
-          << "has no CINNStrategySymbolic registered.";
+          << " has no CINNStrategySymbolic registered.";
       op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
                                                 op_func_arg_tensors,
                                                 out_types,
@@ -959,7 +977,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body);
     }
-
     remain_ops.push_back(op);
   }
 
@@ -1119,6 +1136,7 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
       }
     }
   };
+
   if (FLAGS_cinn_bucket_compile) {
     std::vector<ir::Dim> sym_shape;
     ForEachDimExpr(

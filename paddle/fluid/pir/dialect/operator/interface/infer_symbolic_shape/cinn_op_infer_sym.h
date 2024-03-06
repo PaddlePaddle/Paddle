@@ -13,32 +13,16 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn::dialect {
-
-bool BroadcastOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ConcatOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ReduceMaxOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ReduceMinOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ReduceProdOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ReduceSumOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ReshapeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SliceOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Broadcast)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Concat)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(ReduceMax)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(ReduceMin)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(ReduceProd)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(ReduceSum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reshape)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Slice)
 }  // namespace cinn::dialect

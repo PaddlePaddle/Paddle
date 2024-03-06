@@ -27,6 +27,16 @@ std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec) {
   return int64vec;
 }
 
+ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec) {
+  ExprVec expr_vec(int_vec.size(), 0);
+  std::transform(
+      int_vec.begin(),
+      int_vec.end(),
+      expr_vec.begin(),
+      [](int64_t val) -> symbol::DimExpr { return symbol::DimExpr(val); });
+  return expr_vec;
+}
+
 bool ReduceInferDim(pir::Operation *op,
                     pir::ShapeConstraintIRAnalysis *shape_analysis,
                     const std::vector<int64_t> &axis,
