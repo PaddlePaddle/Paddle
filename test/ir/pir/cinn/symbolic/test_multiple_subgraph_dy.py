@@ -65,7 +65,7 @@ class TestMultipleSubgraph(unittest.TestCase):
         paddle.seed(2024)
         net = MultipleSubgraph()
         input_spec = [
-            InputSpec(shape=[2, None, 768], dtype='float32'),
+            InputSpec(shape=[1, None, 768], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
