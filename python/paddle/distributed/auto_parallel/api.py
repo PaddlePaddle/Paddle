@@ -278,9 +278,11 @@ def dtensor_from_local(local_tensor, mesh, placements):
         sharding_specs = get_shard_spec(mesh, placements, local_tensor.ndim)
         dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
         local_shape = local_tensor.shape
-        local_tensor.set_shape(global_dims)
+        global_tensor_type = paddle.pir.create_shaped_type(
+            local_tensor.type(), global_dims
+        )
         dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
-            local_tensor.type(), local_shape, mesh, dims_mapping
+            global_tensor_type, local_shape, mesh, dims_mapping
         )
         local_tensor.set_type(dist_dense_tensor_type)
         return local_tensor
