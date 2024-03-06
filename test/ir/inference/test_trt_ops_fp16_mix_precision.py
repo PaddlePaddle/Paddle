@@ -107,7 +107,6 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             use_calib_mode=False,
         )
 
-        # 让conv2d_0.w_0卷积使用BFP16推理
         config.exp_specify_tensorrt_subgraph_precision(
             ["conv2d_1.w_0"], [""], ["conv2d_2.w_0"]
         )
