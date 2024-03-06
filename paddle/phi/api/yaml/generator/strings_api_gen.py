@@ -19,6 +19,7 @@ from api_gen import ForwardAPI
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
+SUFFIX_STRING_TENSOR = '@StringTensor'
 
 
 class StringsAPI(ForwardAPI):
@@ -28,15 +29,18 @@ class StringsAPI(ForwardAPI):
     def get_api_func_name(self):
         return self.api
 
+    def is_string_tensor_type(self, name):
+        return name.endswith(SUFFIX_STRING_TENSOR)
+
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
 {super().gene_api_declaration()}
 """
 
-    def get_kernel_tensor_out_type(self, output_name):
+    def get_kernel_tensor_type(self, output_name):
         strings_type = 'TensorType::DENSE_TENSOR'
-        if output_name.endswith('@StringTensor'):
+        if output_name.endswith(SUFFIX_STRING_TENSOR):
             strings_type = 'TensorType::STRING_TENSOR'
         return strings_type
 
@@ -62,7 +66,7 @@ class StringsAPI(ForwardAPI):
         if len(out_dtype_list) == 1:
             kernel_output.append('kernel_out')
             output_names.append('kernel_out')
-            kernel_tensor_out_type = self.get_kernel_tensor_out_type(
+            kernel_tensor_out_type = self.get_kernel_tensor_type(
                 self.outputs['names'][0]
             )
             tensor_type = self.get_tensor_type(kernel_tensor_out_type)
@@ -73,9 +77,15 @@ class StringsAPI(ForwardAPI):
                 and self.outputs['names'][0] in self.inplace_map
                 else ""
             )
-            output_create = f"""
+            
+            if self.is_string_tensor_type(self.outputs['names'][0]):
+                output_create = f"""
   {return_type} api_output{inplace_assign};
   {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(&api_output, {kernel_tensor_out_type}));"""
+            else:
+                output_create = f"""
+  {return_type} api_output{inplace_assign};
+  {tensor_type}* kernel_out = SetKernelOutput(&api_output);"""
 
         elif len(out_dtype_list) > 1:
             output_create = f"""
@@ -84,7 +94,7 @@ class StringsAPI(ForwardAPI):
             for i in range(len(out_dtype_list)):
                 kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
-                kernel_tensor_out_type = self.get_kernel_tensor_out_type(
+                kernel_tensor_out_type = self.get_kernel_tensor_type(
                     self.outputs['names'][i]
                 )
                 tensor_type = self.get_tensor_type(kernel_tensor_out_type)
@@ -99,11 +109,19 @@ class StringsAPI(ForwardAPI):
   std::get<{i}>(api_output) = {self.inplace_map[self.outputs['names'][i]]};"""
                     )
 
-                output_create = (
-                    output_create
-                    + f"""
+                if self.is_string_tensor_type(self.outputs['names'][i]):
+                    output_create = (
+                        output_create
+                        + f"""
   {tensor_type}* kernel_out_{i} = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(&std::get<{i}>(api_output), {kernel_tensor_out_type}));"""
-                )
+                    )
+                else:
+                    output_create = (
+                        output_create
+                        + f"""
+  {tensor_type}* kernel_out_{i} = SetKernelOutput(&std::get<{i}>(api_output));"""
+                    )
+                    
 
         else:
             raise ValueError(
@@ -112,17 +130,35 @@ class StringsAPI(ForwardAPI):
 
         return kernel_output, output_names, output_create
 
-    def get_kernel_args(self, code_indent):
-        input_trans_map = {
+    def input_trans(self, input_name, inp_type):
+        input_trans_map_string_tensor = {
             'const Tensor&': 'const phi::StringTensor&',
             'const std::vector<Tensor>&': 'const std::vector<const phi::StringTensor*>&',
             'const paddle::optional<Tensor>&': 'paddle::optional<const phi::StringTensor&>',
             'const paddle::optional<std::vector<Tensor>>&': 'paddle::optional<const std::vector<phi::StringTensor>&>',
         }
-        out_trans_map = {
+        input_trans_map_dense_tensor = {
+            'const Tensor&': 'const phi::DenseTensor&',
+            'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
+            'const paddle::optional<Tensor>&': 'paddle::optional<const phi::DenseTensor&>',
+            'const paddle::optional<std::vector<Tensor>>&': 'paddle::optional<const std::vector<phi::DenseTensor>&>',
+        }
+        
+        return input_trans_map_string_tensor[inp_type] if self.is_string_tensor_type(input_name) else input_trans_map_dense_tensor[inp_type]
+    
+    def output_trans(self, output_name, out_type):
+        out_trans_map_string_tensor = {
             'Tensor': 'phi::StringTensor*',
             'std::vector<Tensor>': 'std::vector<phi::StringTensor*>&',
         }
+        out_trans_map_dense_tensor = {
+            'Tensor': 'phi::DenseTensor*',
+            'std::vector<Tensor>': 'std::vector<phi::DenseTensor*>&',
+        }
+        
+        return out_trans_map_string_tensor[out_type] if self.is_string_tensor_type(output_name) else out_trans_map_dense_tensor[out_type]
+
+    def get_kernel_args(self, code_indent):
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
         kernel_args_type_list = ['const phi::DeviceContext&']
@@ -134,11 +170,19 @@ class StringsAPI(ForwardAPI):
         input_tensor_code = ""
         # set input_tensor_code
         for i, input_name in enumerate(input_names):
-            input_tensor_code = (
-                input_tensor_code
-                + f"""
+            if self.is_string_tensor_type(input_name):
+                input_name = input_name.rstrip(SUFFIX_STRING_TENSOR)
+                input_tensor_code = (
+                    input_tensor_code
+                    + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToStringTensor({input_name});"""
-            )
+                )
+            else:
+                input_tensor_code = (
+                    input_tensor_code
+                    + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToDenseTensor({input_name});"""
+                )                
 
         # set kernel_args
         kernel_args = "*dev_ctx, "
@@ -167,7 +211,7 @@ class StringsAPI(ForwardAPI):
                     else:
                         # do nothing
                         pass
-                kernel_in_type = input_trans_map[input_infos[param]]
+                kernel_in_type = self.input_trans(param, input_infos[param])
                 kernel_args_type_list.append(kernel_in_type)
             elif param in attr_names:
                 # set attr for kernel_context
@@ -187,8 +231,9 @@ class StringsAPI(ForwardAPI):
             else:
                 kernel_args = kernel_args + str(param) + ", "
 
-        for out_type in self.outputs['types']:
-            kernel_args_type_list.append(out_trans_map[out_type])
+        for out_name, out_type in zip(self.outputs['names'], self.outputs['types']):
+            kernel_out_type = self.output_trans(out_name, out_type)
+            kernel_args_type_list.append(kernel_out_type)
 
         # set kernel_signature
         kernel_signature = "void(*)(" + ", ".join(kernel_args_type_list) + ")"
@@ -304,6 +349,7 @@ class StringsAPI(ForwardAPI):
 
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
+        print(self.get_define_args(inplace_flag))
         return f"""
 PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
 {self.gene_kernel_select()}

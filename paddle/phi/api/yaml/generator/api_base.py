@@ -101,15 +101,15 @@ class BaseAPI:
             "const paddle::optional<std::vector<Tensor>>&": "paddle::optional<std::vector<Tensor>>&",
         }
         for name in self.inputs['names']:
-            name = name.split('@')[0]
-            if inplace_flag and name in self.inplace_map.values():
+            name_without_suffix = name.split('@')[0]
+            if inplace_flag and name_without_suffix in self.inplace_map.values():
                 input_args.append(
-                    inplace_type_map[self.inputs['input_info'][name]]
+                    inplace_type_map[self.inputs['input_info'][name_without_suffix]]
                     + ' '
-                    + name
+                    + name_without_suffix
                 )
             else:
-                input_args.append(self.inputs['input_info'][name] + ' ' + name)
+                input_args.append(self.inputs['input_info'][name] + ' ' + name_without_suffix)
         return input_args
 
     def get_declare_args(self, inplace_flag=False):

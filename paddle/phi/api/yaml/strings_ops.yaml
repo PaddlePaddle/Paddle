@@ -10,7 +10,7 @@
     backend : place
 
 - op : empty_like
-  args : (Tensor x, Place place = {})
+  args : (Tensor x@StringTensor, Place place = {})
   output : Tensor(out@StringTensor)
   infer_meta :
     func : strings::CreateLikeInferMeta
@@ -21,7 +21,7 @@
     backend : place > x
 
 - op : lower
-  args : (Tensor x, bool use_utf8_encoding)
+  args : (Tensor x@StringTensor, bool use_utf8_encoding)
   output : Tensor(out@StringTensor)
   infer_meta :
     func : strings::CreateLikeInferMeta
@@ -30,7 +30,7 @@
     func : strings_lower
 
 - op : upper
-  args : (Tensor x, bool use_utf8_encoding)
+  args : (Tensor x@StringTensor, bool use_utf8_encoding)
   output : Tensor(out@StringTensor)
   infer_meta :
     func : strings::CreateLikeInferMeta
