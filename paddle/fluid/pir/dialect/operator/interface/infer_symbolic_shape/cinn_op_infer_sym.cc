@@ -93,16 +93,11 @@ bool ConcatOpInferSymbolicShape(
 
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &attr_map = op->attributes();
-  PADDLE_ENFORCE(
-      attr_map.count("keep_dim"),
-      phi::errors::PreconditionNotMet(
-          "attr [keep_dim] MUST in attribute map for [%s] op", op->name()));
-  bool keepdim = attr_map.at("keep_dim").dyn_cast<pir::BoolAttribute>().data();
+  bool keep_dim = GetBoolAttr(op, "keep_dim");
   auto axis = paddle::dialect::details::GetVectorAttr(op, "dim");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::details::ReduceInferDim(
-      op, shape_analysis, axis, keepdim, reduce_all);
+      op, shape_analysis, axis, keep_dim, reduce_all);
 }
 
 bool ReduceMaxOpInferSymbolicShape(
@@ -130,10 +125,61 @@ bool ReshapeOpInferSymbolicShape(
   std::vector<int> shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "shape");
 
-  std::vector<symbol::DimExpr> out_dims;
-  for (int dim : shape) {
-    out_dims.emplace_back(static_cast<std::int64_t>(dim));
-  }
+  const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
+    symbol::DimExpr product{1};
+    for (const auto &dim_expr : dim_exprs) {
+      if (Filter(dim_expr)) {
+        product = product * dim_expr;
+      }
+    }
+    return product;
+  };
+
+  const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
+    if (dim_expr.isa<int64_t>()) {
+      return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
+    }
+    return true;
+  };
+
+  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
+    if (dim_expr.isa<int64_t>()) {
+      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
+    }
+    return false;
+  };
+
+  const auto &target_shape = [&] {
+    std::vector<symbol::DimExpr> target_shape;
+    for (int dim : shape) {
+      target_shape.emplace_back(static_cast<std::int64_t>(dim));
+    }
+    return target_shape;
+  }();
+
+  const auto &original_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+
+  const auto &out_dims = [&] {
+    const auto &numel =
+        GetProduct(original_shape, [](const auto &) { return true; });
+
+    const auto &product_exclude_minus_one =
+        GetProduct(target_shape, IsNotMinusOne);
+
+    std::vector<symbol::DimExpr> out_dims;
+    out_dims.reserve(target_shape.size());
+    for (size_t i = 0; i < target_shape.size(); ++i) {
+      auto out_dim_expr = IsNotMinusOne(target_shape[i])
+                              ? target_shape[i]
+                              : (numel / product_exclude_minus_one);
+      out_dim_expr = IsZero(target_shape[i]) ? original_shape[i] : out_dim_expr;
+      out_dims.emplace_back(out_dim_expr);
+    }
+
+    return out_dims;
+  }();
+
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_dims)};
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);

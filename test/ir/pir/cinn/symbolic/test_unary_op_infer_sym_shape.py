@@ -108,5 +108,162 @@ class TestArgMaxMinOpInferSymbolicShape(TestBase):
         return True
 
 
+class AsComplexAsRealNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        real_res = paddle.as_complex(x)
+        complex_res = paddle.as_real(real_res)
+        return real_res, complex_res
+
+
+class TestAsComplexAsRealOPInferSymbolicShape(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            [
+                'shape[S0, S1], data[NULL]',
+                'shape[S0, S1, 2], data[NULL]',
+            ]
+        ]
+
+    def test_eval_symbolic(self):
+        net = AsComplexAsRealNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(shape=[None, None, 2], dtype='float32')
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            sym_shape_str_list = get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.as_complex'
+            )
+            sym_shape_str_list += get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.as_real'
+            )
+
+            np.testing.assert_equal(
+                len(sym_shape_str_list), len(self.expected[i])
+            )
+            for j in range(len(sym_shape_str_list)):
+                np.testing.assert_equal(
+                    sym_shape_str_list[j].find(self.expected[i][j]),
+                    0,
+                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[0]}) is not expected {(self.expected[i][j])}',
+                )
+
+        return True
+
+
+class CumSumProdNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        cumsum_out = paddle.cumsum(x)
+        cumprod_out = paddle.cumprod(x, dim=1)
+        return cumsum_out, cumprod_out
+
+
+class TestCumSumProdOpInferSymbolicShape(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            [
+                'shape[Mul(Mul(Mul(1, S0), S1), S2)], data[NULL]',
+                'shape[S0, S1, S2], data[NULL]',
+            ]
+        ]
+
+    def test_eval_symbolic(self):
+        net = CumSumProdNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            sym_shape_str_list = get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.cumsum'
+            )
+            sym_shape_str_list += get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.cumprod'
+            )
+
+            np.testing.assert_equal(
+                len(sym_shape_str_list), len(self.expected[i])
+            )
+            for j in range(len(sym_shape_str_list)):
+                np.testing.assert_equal(
+                    sym_shape_str_list[j].find(self.expected[i][j]),
+                    0,
+                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[0]}) is not expected {(self.expected[i][j])}',
+                )
+
+        return True
+
+
+class ReshapeNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out1 = paddle.reshape(x, [-1, 4, 5])
+        out2 = paddle.reshape(x, [0, 0, 12])
+        return out1, out2
+
+
+class TestReshapeOpInferSymbolicShape(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            [
+                'shape[Mul(Mul(Mul(Mul(1, S0), S1), S2), 1 / (20)), 4, 5], data[NULL]',
+                'shape[S0, S1, 12], data[NULL]',
+            ]
+        ]
+
+    def test_eval_symbolic(self):
+        net = ReshapeNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            sym_shape_str_list = get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.reshape'
+            )
+
+            np.testing.assert_equal(
+                len(sym_shape_str_list), len(self.expected[i])
+            )
+            for j in range(len(sym_shape_str_list)):
+                np.testing.assert_equal(
+                    sym_shape_str_list[j].find(self.expected[i][j]),
+                    0,
+                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[0]}) is not expected {(self.expected[i][j])}',
+                )
+
+        return True
+
+
 if __name__ == '__main__':
     unittest.main()
