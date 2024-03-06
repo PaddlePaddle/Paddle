@@ -947,6 +947,7 @@
   output : Tensor(out)
   infer_meta :
     func : ExpandAsInferMeta
+    local_shape: int[] target_shape
   kernel :
     func : expand_as
     data_type : x
