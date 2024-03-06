@@ -412,3 +412,12 @@ bool Trunc_OpInferSymbolicShape(
   return SameOperandsAndResultShape(op, shape_analysis);
 }
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+
+bool IdentityOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+}  // namespace cinn::dialect

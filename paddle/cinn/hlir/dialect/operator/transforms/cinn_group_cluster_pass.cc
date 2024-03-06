@@ -353,9 +353,19 @@ std::vector<pir::Type> BuildOutType(
 bool CanFuse(const GroupClusterNode& first,
              const GroupClusterNode& second,
              ScheduleInfoNode* sch_node) {
+  VLOG(0) << "## first.ops.front()->name(): " << first.ops.front()->name()
+          << "  first size: " << first.ops.size();
+  VLOG(0) << "## second.ops.front()->name(): " << second.ops.front()->name()
+          << "  second size: " << second.ops.size();
   if ((second.ops.size() == 1) &&
       (second.ops.front()->name() == "cinn_op.reshape") &&
       (IsLastReshape(second.ops.front()))) {
+    return true;
+  }
+
+  if (first.ops.size() == 1 &&
+      first.ops.front()->name() == "cinn_op.generate_shape") {
+    VLOG(0) << "####### generate_shape";
     return true;
   }
 
@@ -631,6 +641,8 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
 
       GroupClusterNode new_node = node;
 
+      VLOG(0) << "###### new_node: " << new_node.ops.front()->name();
+
       for (auto pre_id : pre_ids) {
         // get pre id
 
@@ -640,6 +652,8 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
 
         // can new_node merge with pre_id node
         const auto& pre_node = second_stage_output[pre_id];
+
+        VLOG(0) << "###### pre_node: " << pre_node.ops.front()->name();
 
         ScheduleInfoNode sch_node;
         auto can_fuse = CanFuse(pre_node, new_node, &sch_node);
@@ -830,7 +844,11 @@ class CinnGroupClusterPattern
 
     auto all_output_values = BuildValueOrderByYieldOp(split_res, group_op);
 
+    VLOG(0) << "###### BuildValueOrderByYieldOp";
+
     for (auto& node : split_res) {
+      VLOG(0) << "##### node.ops.size() " << node.ops.size()
+              << " front: " << node.ops.front()->name();
       auto output_values = GenerateOutputValue(node.ops, all_output_values);
       auto uniq_ops = SortByOriginalOrderAndUniq(group_op, node.ops);
 
@@ -852,6 +870,7 @@ class CinnGroupClusterPattern
         }
       }
     }
+    VLOG(0) << "###### EraseOp";
     rewriter.EraseOp(group_op);
 
     return true;

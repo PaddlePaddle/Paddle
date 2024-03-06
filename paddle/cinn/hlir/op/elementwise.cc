@@ -1321,6 +1321,16 @@ std::vector<Type> InferDtypeForLogicalNot(const std::vector<Type> &inputs_type,
   return {cinn::common::Bool()};
 }
 
+std::shared_ptr<OpStrategy> StrategyForGenetateShapeSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  return strategy;
+}
+
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

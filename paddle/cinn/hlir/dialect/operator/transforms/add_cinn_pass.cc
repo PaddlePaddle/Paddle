@@ -130,11 +130,6 @@ void ApplyGroupOpPass(::pir::Program* program,
         cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
   }
 
-  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
-  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-
   pass_manager->Run(program);
 }
 
@@ -149,6 +144,9 @@ void ApplyDivideGroupOpToFusionOpPass(
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
   }
+  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->Run(program);
 }
 

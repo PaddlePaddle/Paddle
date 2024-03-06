@@ -214,4 +214,8 @@ bool Trunc_OpInferSymbolicShape(pir::Operation *op,
 
 namespace cinn::dialect {
 using paddle::dialect::ScaleOpInferSymbolicShape;
-}
+
+bool IdentityOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+}  // namespace cinn::dialect

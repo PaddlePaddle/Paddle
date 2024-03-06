@@ -18,11 +18,58 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
+
+std::vector<pir::Value> ReplaceGenerateShapeOpToIdentity(
+    const cinn::dialect::GenerateShapeOp& op,
+    pir::ShapeConstraintIRAnalysis* shape_analysis,
+    pir::PatternRewriter& rewriter) {  // NOLINT
+  std::vector<pir::Value> outputs;
+  rewriter.SetInsertionPointToBlockEnd(op->GetParent());
+  for (const auto& arg : op->operands_source()) {
+    auto identity = rewriter.Build<cinn::dialect::IdentityOp>(arg);
+    shape_analysis->SetShapeOrDataForValue(
+        identity.result(0), shape_analysis->GetShapeOrDataForValue(arg));
+    outputs.push_back(identity.result(0));
+  }
+  return outputs;
+}
+
+void HoldShapeValue(pir::Operation* op,
+                    pir::ShapeConstraintIRAnalysis* shape_analysis,
+                    pir::PatternRewriter& rewriter) {  // NOLINT
+  pir::Value shape_value = op->operand_source(1);
+  if (shape_value.use_count() > 1) {
+    return;
+  }
+
+  auto* block = op->GetParent();
+  auto yield_op = block->back().dyn_cast<::pir::YieldOp>();
+  CHECK(yield_op);
+  const std::vector<pir::Value> new_outputs = [&] {
+    std::vector<pir::Value> inputs;
+    for (const auto& arg : yield_op->operands_source()) {
+      inputs.push_back(arg);
+    }
+    auto generate_shape_op =
+        shape_value.defining_op()->dyn_cast<cinn::dialect::GenerateShapeOp>();
+    CHECK(generate_shape_op);
+    auto new_identity_outputs = ReplaceGenerateShapeOpToIdentity(
+        generate_shape_op, shape_analysis, rewriter);
+    inputs.insert(
+        inputs.end(), new_identity_outputs.begin(), new_identity_outputs.end());
+    return inputs;
+  }();
+  VLOG(0) << "###### new_outputs size: " << new_outputs.size();
+  rewriter.SetInsertionPointToBlockEnd(block);
+  auto new_yield = rewriter.Build<::pir::YieldOp>(new_outputs);
+  rewriter.EraseOp(yield_op);
+}
 
 bool ReplaceOpWithReshapeOp(pir::Operation* op,
                             pir::ShapeConstraintIRAnalysis* shape_analysis,
@@ -40,6 +87,8 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
       for (size_t i = 0; i < shape_info.size(); ++i) {
         if (shape_info[i].isa<int64_t>()) {
           shape[i] = shape_info[i].Get<int64_t>();
+        } else {
+          shape[i] = 1;
         }
       }
     }
@@ -53,6 +102,7 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
       cinn_reshape.result(0), shape_analysis->GetShapeOrDataForValue(output));
 
   rewriter.ReplaceAllUsesWith(output, cinn_reshape.result(0));
+  HoldShapeValue(op, shape_analysis, rewriter);
   rewriter.EraseOp(op);
   return true;
 }
@@ -123,7 +173,7 @@ class DynamicReshapeOpPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
+    return op->isa<cinn::dialect::FusionOp>() && op->num_regions() > 0;
   }
 };
 
