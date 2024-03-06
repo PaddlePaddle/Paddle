@@ -641,5 +641,10 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdReverseBase));
 
+// unbind
+PD_REGISTER_SPMD_RULE(unbind,
+                      PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::UnbindInferSpmdReverse));
+
 }  // namespace distributed
 }  // namespace phi
