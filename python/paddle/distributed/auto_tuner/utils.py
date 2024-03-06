@@ -303,7 +303,7 @@ def default_candidates(tuner_cfg):
         assert isinstance(refined_recompute, list)
         for op_type in refined_recompute:
             assert isinstance(op_type, str)
-            if schedule_mode != "performance":
+            if schedule_mode == "performance":
                 candidates["refined_recompute"][op_type] = list(
                     range(tuner_cfg["model_cfg"]["num_layers"] + 1, -1, -1)
                 )
@@ -376,6 +376,14 @@ def search_all(tuner_cfg):
         )
     )
 
+    rr_dim_cfgs = None
+    if refine_recompute_candidates is not None:
+        rr = tuner_cfg["refined_recompute"]
+        rr_list = []
+        for op_type in rr:
+            rr_list.append(refine_recompute_candidates[op_type])
+        rr_dim_cfgs = list(itertools.product(*rr_list))
+
     all_cfgs = []
     for valid_degree in valid_degrees:
         for other_dim_cfg in other_dim_cfgs:
@@ -396,37 +404,48 @@ def search_all(tuner_cfg):
             if tuner_cfg["model_cfg"]["num_layers"] % (pp_degree * vpp) != 0:
                 continue
 
-            if refine_recompute_candidates is not None:
-                rr = tuner_cfg["refined_recompute"]
-                rr_dim_cfgs = list(
-                    itertools.product(
-                        refine_recompute_candidates[op_type] for op_type in rr
-                    )
-                )
+            if rr_dim_cfgs:
                 for rr_dim_cfg in rr_dim_cfgs:
-                    for item in rr_dim_cfg:
-                        if pp_degree == 1:
-                            continue
+                    skip = False
+                    if (
+                        (pp_degree == 1)
+                        or (not use_recompute)
+                        or (use_recompute and recompute_granularity != "full")
+                    ):
+                        if list(rr_dim_cfg).count(0) != len(rr_dim_cfg):
+                            skip = True
+
+                    max_value = tuner_cfg["model_cfg"]["num_layers"] / pp_degree
+                    if rr_dim_cfg[0] > max_value:
+                        skip = True
+                    i = 1
+                    while i < len(rr_dim_cfg):
                         if (
-                            item
-                            > tuner_cfg["model_cfg"]["num_layers"] / pp_degree
-                        ):
-                            continue
-                        if not use_recompute:
-                            continue
-                        if (
-                            recompute_granularity
-                            and recompute_granularity != "full"
-                        ):
-                            continue
-                    cfg = (
-                        list(valid_degree)
-                        + list(other_dim_cfg)
-                        + list(rr_dim_cfg)
-                    )
+                            rr_dim_cfg[i - 1] != max_value
+                            and rr_dim_cfg[i] != 0
+                        ) or rr_dim_cfg[i] > max_value:
+                            skip = True
+                            break
+                        i += 1
+                    if skip:
+                        cfg = (
+                            list(valid_degree)
+                            + list(other_dim_cfg)
+                            + [0 for i in range(len(rr_dim_cfg))]
+                        )
+                        if cfg not in all_cfgs:
+                            all_cfgs.append(cfg)
+                    else:
+                        cfg = (
+                            list(valid_degree)
+                            + list(other_dim_cfg)
+                            + list(rr_dim_cfg)
+                        )
+                        if cfg not in all_cfgs:
+                            all_cfgs.append(cfg)
             else:
                 cfg = list(valid_degree) + list(other_dim_cfg)
-            all_cfgs.append(cfg)
+                all_cfgs.append(cfg)
 
     mapping = {
         0: "mp_degree",
@@ -450,7 +469,6 @@ def search_all(tuner_cfg):
         for idx, val in enumerate(cfg):
             new_cfg[mapping[idx]] = val
         new_all_cfgs.append(new_cfg)
-
     search_space_size_before_prune = len(new_all_cfgs)
     pruned_all_cfgs = []
     tuner_cfg["num_gpus"] = num_gpus

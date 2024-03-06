@@ -843,8 +843,11 @@ def prune_by_refined_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
             return True
         i = 1
         while i < len(rr):
-            if cur_cfg[rr[i]] > max_value or cur_cfg[rr[i - 1]] != max_value:
+            if cur_cfg[rr[i]] > max_value or (
+                cur_cfg[rr[i - 1]] != max_value and cur_cfg[rr[i]] != 0
+            ):
                 return True
+            i += 1
 
     return False
 
@@ -860,14 +863,14 @@ def prune_by_refined_recompute_history(
             cfgs = same_cfgs_beside(item, cur_cfg, history_cfgs)
             if cfgs:
                 for cfg in cfgs:
-                    if cfg[item] < cur_cfg[item] and cfg.get("time", -1) > 0:
+                    if cfg[item] > cur_cfg[item] and cfg.get("time", -1) > 0:
                         pruned_reason = f"{item} {cur_cfg[item]} may be slower because {cfg[item]} has been already runnable."
                         log_pruned_info(cur_cfg, pruned_reason)
                         cur_cfg["time"] = cfg["time"]
                         return True
                     # memory prune
                     if (
-                        cfg[item] > cur_cfg[item]
+                        cfg[item] < cur_cfg[item]
                         and cfg.get("max_mem_usage") == "OOM"
                     ):
                         pruned_reason = f"{item} {cur_cfg[item]} may cause oom because {cfg[item]} already oom."

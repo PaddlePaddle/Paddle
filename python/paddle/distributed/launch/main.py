@@ -645,7 +645,7 @@ def launch():
                 log_dir = log_dir + f"_Overlap_{cur_cfg['sharding_overlap']}"
             if "refined_recompute" in tuner_cfg:
                 for key in tuner_cfg["refined_recompute"]:
-                    dir_name = "".join(key.split("_").capitalize())
+                    dir_name = "".join(i.capitalize() for i in key.split("_"))
                     dir_name += str(cur_cfg[key])
                     log_dir = log_dir + "_" + dir_name
 
