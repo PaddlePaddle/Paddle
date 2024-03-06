@@ -16,6 +16,7 @@
 #include <unordered_map>
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -168,8 +169,20 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       }
     }
     ir::Expr tmp = ir::Add::Make(copy, ir::Expr(1));
-    ir::Expr simplify = common::AutoSimplify(tmp);
-    return simplify;
+    ir::Expr simplified = common::AutoSimplify(tmp);
+    if (simplified.As<ir::Min>()) {
+      ir::Expr lhs = simplified.As<ir::Min>()->a();
+      ir::Expr rhs = simplified.As<ir::Min>()->b();
+      common::cas_intervals_t var_intervals =
+          common::CollectVarIntervalsOfExprs({lhs, rhs});
+      common::SymbolicExprAnalyzer analyzer(var_intervals);
+      if (analyzer.ProveLE(lhs, rhs)) {
+        return lhs;
+      } else if (analyzer.ProveGE(lhs, rhs)) {
+        return rhs;
+      }
+    }
+    return simplified;
   }
 
  public:
