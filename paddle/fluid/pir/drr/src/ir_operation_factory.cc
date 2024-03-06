@@ -61,6 +61,119 @@ void OperationFactory::RegisterManualOpCreator() {
             attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
             attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data());
       });
+
+#ifdef PADDLE_WITH_DNNL
+  RegisterOperationCreator(
+      "onednn_op.conv2d_transpose_bias",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        if (inputs.size() == 4) {
+          IR_ENFORCE(
+              attributes.find("strides") != attributes.end(),
+              "'strides' Attribute is expected for Conv2dTransposeBiasOp. ");
+          std::vector<int> strides;
+          for (size_t i = 0;
+               i <
+               attributes.at("strides").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            strides.push_back(attributes.at("strides")
+                                  .dyn_cast<pir::ArrayAttribute>()
+                                  .at(i)
+                                  .dyn_cast<pir::Int32Attribute>()
+                                  .data());
+          }
+
+          IR_ENFORCE(
+              attributes.find("paddings") != attributes.end(),
+              "'paddings' Attribute is expected for Conv2dTransposeBiasOp. ");
+          std::vector<int> paddings;
+          for (size_t i = 0;
+               i <
+               attributes.at("paddings").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            paddings.push_back(attributes.at("paddings")
+                                   .dyn_cast<pir::ArrayAttribute>()
+                                   .at(i)
+                                   .dyn_cast<pir::Int32Attribute>()
+                                   .data());
+          }
+
+          IR_ENFORCE(attributes.find("output_padding") != attributes.end(),
+                     "'output_padding' Attribute is expected for "
+                     "Conv2dTransposeBiasOp. ");
+          std::vector<int> output_padding;
+          for (size_t i = 0; i < attributes.at("output_padding")
+                                     .dyn_cast<pir::ArrayAttribute>()
+                                     .size();
+               i++) {
+            output_padding.push_back(attributes.at("output_padding")
+                                         .dyn_cast<pir::ArrayAttribute>()
+                                         .at(i)
+                                         .dyn_cast<pir::Int32Attribute>()
+                                         .data());
+          }
+
+          IR_ENFORCE(attributes.find("padding_algorithm") != attributes.end(),
+                     "'padding_algorithm' Attribute is expected for "
+                     "Conv2dTransposeBiasOp. ");
+          std::string padding_algorithm = attributes.at("padding_algorithm")
+                                              .dyn_cast<pir::StrAttribute>()
+                                              .AsString();
+
+          IR_ENFORCE(
+              attributes.find("groups") != attributes.end(),
+              "'groups' Attribute is expected for Conv2dTransposeBiasOp. ");
+          int groups =
+              attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+
+          IR_ENFORCE(
+              attributes.find("dilations") != attributes.end(),
+              "'dilations' Attribute is expected for Conv2dTransposeBiasOp. ");
+          std::vector<int> dilations;
+          for (size_t i = 0; i < attributes.at("dilations")
+                                     .dyn_cast<pir::ArrayAttribute>()
+                                     .size();
+               i++) {
+            dilations.push_back(attributes.at("dilations")
+                                    .dyn_cast<pir::ArrayAttribute>()
+                                    .at(i)
+                                    .dyn_cast<pir::Int32Attribute>()
+                                    .data());
+          }
+
+          IR_ENFORCE(attributes.find("data_format") != attributes.end(),
+                     "'data_format' Attribute is expected for "
+                     "Conv2dTransposeBiasOp. ");
+          std::string data_format = attributes.at("data_format")
+                                        .dyn_cast<pir::StrAttribute>()
+                                        .AsString();
+
+          IR_ENFORCE(
+              attributes.find("is_test") != attributes.end(),
+              "'is_test' Attribute is expected for Conv2dTransposeBiasOp. ");
+          bool is_test =
+              attributes.at("is_test").dyn_cast<pir::BoolAttribute>().data();
+
+          return rewriter.Build<paddle::onednn::dialect::Conv2dTransposeBiasOp>(
+              inputs[0],
+              inputs[1],
+              inputs[2],
+              inputs[3],
+              strides,
+              paddings,
+              output_padding,
+              padding_algorithm,
+              groups,
+              dilations,
+              data_format,
+              is_test);
+        }
+
+        return rewriter.Build<paddle::onednn::dialect::Conv2dTransposeBiasOp>(
+            inputs[0], inputs[1], inputs[2], attrs);
+      });
+#endif
 }
 
 pir::Attribute CreateIrAttribute(const std::any& obj) {
