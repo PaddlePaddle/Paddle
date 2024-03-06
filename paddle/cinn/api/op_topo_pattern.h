@@ -16,18 +16,22 @@ struct ReductionPattern {};
 template <typename T>
 struct PartialShardablePattern {};
 
-// SR := [R | PS]
 template <typename T>
-using ShardableReductionsPattern = std::vector<std::variant<ReductionPattern<T>, PartialShardablePattern<T>>>;
+using ShardableReductionPattern = std::vector<std::variant<ReductionPattern<T>, PartialShardablePattern<T>>>;
 
 // fuse rules:
 //  1. IS * PS -> PS
 //  2. PS * PS -> PS
-//  3. R * PS -> RS
-//  4. RS * (PS | R) -> RS
+//  3. PS * R -> R
+//  4. IS * R -> R
 
-// OpsTopoPattern := IS | SR
+// lifting rules:
+//  1. R -> SR
+//  2. PS -> SR
+//  3. SR * SR -> SR
+
+// OpTopoPattern := IS | SR
 template <typename T>
-using OpsTopoPattern = std::variant<InjectiveSourcePattern<T>, ShardableReductionsPattern<T>>;
+using OpTopoPattern = std::variant<InjectiveSourcePattern<T>, ShardableReductionPattern<T>>;
 
 }
