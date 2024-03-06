@@ -44,13 +44,13 @@ class TestBuildFakeProgram(unittest.TestCase):
 
                 # dense tensor could not access dist tensor attribute
                 with self.assertRaises(ValueError):
-                    print(input._local_shape)
+                    tmp = input._local_shape
                 with self.assertRaises(ValueError):
-                    print(input.dims_mapping)
+                    tmp = input.dims_mapping
                 with self.assertRaises(ValueError):
-                    print(w0.process_mesh)
+                    tmp = w0.process_mesh
                 with self.assertRaises(ValueError):
-                    print(w0.partial_dims)
+                    tmp = w0.partial_dims
 
                 dist_input = dtensor_from_local(input, mesh, [dist.Replicate()])
                 dist_w0 = dtensor_from_local(w0, mesh, [dist.Replicate()])
@@ -192,6 +192,53 @@ class TestBuildFakeProgram(unittest.TestCase):
         # self.assertTrue(dist_out.process_mesh.shape == [2])
         # self.assertTrue(dist_out.process_mesh.process_ids == [0, 1])
         # self.assertTrue(len(dist_out.partial_dims) == set(0))
+
+    def test_build_with_shard_tensor(self):
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program):
+                mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
+                input = paddle.static.data(
+                    name='input',
+                    shape=[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE],
+                )
+                w0 = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[HIDDEN_SIZE, HIDDEN_SIZE],
+                    name="w0",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+                w1 = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[HIDDEN_SIZE, HIDDEN_SIZE],
+                    name="w0",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+                self.assertTrue(input.is_dense_tensor_type())
+                self.assertTrue(w0.is_dense_tensor_type())
+
+                dist_input = dist.shard_tensor(input, mesh, [dist.Replicate()])
+                dist_w0 = dist.shard_tensor(w0, mesh, [dist.Shard(0)])
+                dist_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(1)])
+        self.assertTrue(dist_input.is_dist_dense_tensor_type())
+        self.assertTrue(dist_w0.is_dist_dense_tensor_type())
+
+        # check global shape
+        self.assertTrue(dist_input.shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
+        self.assertTrue(dist_w0.shape == [HIDDEN_SIZE, HIDDEN_SIZE])
+        self.assertTrue(dist_w1.shape == [HIDDEN_SIZE, HIDDEN_SIZE])
+        # check local shape
+        self.assertTrue(
+            dist_input._local_shape == dist_input.shape
+        )  # replicated, local = global
+        self.assertTrue(
+            dist_w0._local_shape == [HIDDEN_SIZE // MP_SIZE, HIDDEN_SIZE]
+        )  # sharded, local != global, sharded by mesh size
+        self.assertTrue(
+            dist_w1._local_shape == [HIDDEN_SIZE, HIDDEN_SIZE // MP_SIZE]
+        )  # sharded, local != global, sharded by mesh size
+        # TODO check Dtype, layout same as densetensor
+        # TODO check dims_mapping & mesh as user annotated
 
 
 if __name__ == "__main__":

@@ -1400,12 +1400,12 @@ pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
 }
 
 pir::Type CreateDistDenseTensorTypeByDenseTensor(
-    const pir::Type &dense_tensor_type,
-    const std::vector<int> &gshape,
+    const pir::Type &gdense_tensor_type,
+    const std::vector<int> &lshape,
     const phi::distributed::ProcessMesh &mesh,
     const std::vector<int64_t> &dims_mapping) {
-  if (dense_tensor_type.isa<DenseTensorType>()) {
-    DenseTensorType type = dense_tensor_type.dyn_cast<DenseTensorType>();
+  if (gdense_tensor_type.isa<DenseTensorType>()) {
+    DenseTensorType type = gdense_tensor_type.dyn_cast<DenseTensorType>();
     paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
     paddle::dialect::TensorDistAttribute tensor_dist_attr =
         paddle::dialect::TensorDistAttribute::get(
@@ -1413,7 +1413,7 @@ pir::Type CreateDistDenseTensorTypeByDenseTensor(
     return DistDenseTensorType::get(pir::IrContext::Instance(),
                                     type,
                                     tensor_dist_attr,
-                                    phi::make_ddim(gshape));
+                                    phi::make_ddim(lshape));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, input is not a dense tensor type are not supported."));
