@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/paddle_op_infer_sym.h"
 #include "paddle/common/ddim.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_slice_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 
@@ -185,102 +186,6 @@ bool FullIntArrayOpInferSymbolicShape(
   return true;
 }
 
-inline void CheckAndUpdateSliceAttrs(
-    const ExprVec &in_dims,
-    const std::vector<int64_t> &axes,
-    ExprVec *starts_p,
-    ExprVec *ends_p,
-    std::vector<int64_t> *infer_flags = nullptr) {
-  auto vec_int64 = details::VecExpr2Int64(*starts_p);
-  IR_ENFORCE(vec_int64.has_value(),
-             "for slice op, all the elements in `starts` must be int64_t");
-  std::vector<int64_t> starts_int = vec_int64.value();
-
-  vec_int64 = details::VecExpr2Int64(*ends_p);
-  IR_ENFORCE(vec_int64.has_value(),
-             "for slice op, all the elements in `ends` must be int64_t");
-  std::vector<int64_t> ends_int = vec_int64.value();
-
-  ExprVec &starts = *starts_p;
-  ExprVec &ends = *ends_p;
-  auto IsMaxInt = [](const symbol::DimExpr &expr) {
-    return expr.isa<int64_t>() &&
-           expr.Get<int64_t>() ==
-               static_cast<int64_t>(std::numeric_limits<int>::max());
-  };
-
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis = axes[i];
-
-    if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("SliceOpInferSymbolicShape CAN NOT "
-                                     "deal with -1 in infer_flags now"));
-    }
-
-    // For both start and end can be negative or positive, we need to handle the
-    // following different arrangements.
-    ends[i] = IsMaxInt(ends[i]) ? in_dims[axis] : ends[i];
-
-    bool both_negative_or_positive = (starts_int[i] >= 0 && ends_int[i] >= 0) ||
-                                     (starts_int[i] <= 0 && ends_int[i] <= 0);
-    bool start_negative_end_positive = starts_int[i] <= 0 && ends_int[i] >= 0;
-    bool start_positive_end_negative = starts_int[i] >= 0 && ends_int[i] <= 0;
-
-    if (both_negative_or_positive) {
-      continue;
-    } else if (start_negative_end_positive) {
-      starts[i] = starts[i] + in_dims[axis];
-    } else if (start_positive_end_negative) {
-      starts[i] = starts[i] - in_dims[axis];
-    } else {
-      LOG(FATAL) << "Dead code";
-    }
-  }
-}
-
-inline ExprVec GetSliceDims(const ExprVec &in_dims,
-                            const std::vector<int64_t> &axes,
-                            const ExprVec &starts,
-                            const ExprVec &ends,
-                            std::vector<int64_t> *infer_flags = nullptr) {
-  ExprVec slice_dims(in_dims);
-
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis = axes[i];
-
-    if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("SliceOpInferSymbolicShape CAN NOT "
-                                     "deal with -1 in infer_flags now"));
-    }
-
-    slice_dims[axis] = ends[i] - starts[i];
-  }
-
-  return slice_dims;
-}
-
-inline ExprVec GetDecreasedDims(const ExprVec &slice_dims,
-                                const std::vector<int64_t> &decrease_axes) {
-  ExprVec decreased_dims(slice_dims);
-  std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
-  if (decrease_axes.size() > 0) {
-    for (size_t i = 0; i < decrease_axes.size(); ++i) {
-      int64_t axis = decrease_axes[i];
-      decrease_flag[axis] = 1;
-    }
-    ExprVec new_shape;
-    for (size_t i = 0; i < slice_dims.size(); ++i) {
-      if (decrease_flag[i] == 0) {
-        new_shape.emplace_back(slice_dims[i]);
-      }
-    }
-    decreased_dims = new_shape;
-  }
-  return decreased_dims;
-}
-
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
@@ -295,83 +200,26 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   const symbol::ShapeOrDataDimExprs &ends_shape_data =
       shape_analysis->GetShapeOrDataForValue(operand_ends);
 
-  const std::vector<int64_t> axes = [&] {
-    std::vector<int64_t> axes_vec = details::GetVectorAttr(op, "axes");
-    int64_t rank = int64_t(operand_shape_or_data.shape().size());
-    for (size_t i = 0; i < axes_vec.size(); i++) {
-      int64_t axis = axes_vec[i];
-      axes_vec[i] = axis >= 0 ? axis : std::max(int64_t(0), axis + rank);
-    }
-    return axes_vec;
-  }();
+  std::vector<int64_t> axes_vec = details::GetVectorAttr(op, "axes");
 
-  // Currently, we DO NOT support any element in `starts` is a Symbol.
-  ExprVec starts = starts_shape_data.data().value();
-  ExprVec ends = ends_shape_data.data().value();
+  // // Currently, we DO NOT support any element in `starts` is a Symbol.
+  ExprVec starts = slice_uitls::GetExprVecFromData(starts_shape_data);
+  ExprVec ends = slice_uitls::GetExprVecFromData(ends_shape_data);
 
-  std::vector<int64_t> infer_flags = [op, &axes] {
-    std::vector<int64_t> infer_flags_t =
-        details::GetVectorAttr(op, "infer_flags");
-    if (infer_flags_t.empty()) {
-      infer_flags_t = std::vector<int64_t>(axes.size(), 1);
-    }
-    return infer_flags_t;
-  }();
+  std::vector<int64_t> infer_flags = details::GetVectorAttr(op, "infer_flags");
 
   const std::vector<int64_t> decrease_axis =
       details::GetVectorAttr(op, "decrease_axis");
 
-  const auto &GetShapeDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
-    const ExprVec &in_dims = operand_shape_or_data.shape();
-    CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &infer_flags);
-    ExprVec slice_dims =
-        GetSliceDims(in_dims, axes, starts, ends, &infer_flags);
-    ExprVec out_dims = GetDecreasedDims(slice_dims, decrease_axis);
+  shape_analysis->SetShapeOrDataForValue(
+      res,
+      slice_uitls::SliceRawInferSymbolicShape(operand_shape_or_data,
+                                              starts,
+                                              ends,
+                                              axes_vec,
+                                              infer_flags,
+                                              decrease_axis));
 
-    return symbol::ShapeOrDataDimExprs{
-        symbol::TensorShapeOrDataDimExprs(out_dims)};
-  };
-
-  // When `pd.slice` is operating on a tensor which is produced by a `pd.shape`
-  // op, the result should be written into data.
-  const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
-    std::vector<symbol::DimExpr> out_data;
-
-    // Currently, we DO NOT support the case that any element in `axes` `starts`
-    // or `ends` is a Symbol.
-    auto vec_int64 = details::VecExpr2Int64(starts);
-    IR_ENFORCE(vec_int64.has_value(),
-               "for slice op, all the elements in `starts` must be int64_t");
-    std::vector<int64_t> starts_int = vec_int64.value();
-
-    vec_int64 = details::VecExpr2Int64(ends);
-    IR_ENFORCE(vec_int64.has_value(),
-               "for slice op, all the elements in `ends` must be int64_t");
-    std::vector<int64_t> ends_int = vec_int64.value();
-
-    const int64_t start =
-        starts_int[0] < 0
-            ? starts_int[0] + operand_shape_or_data.data().value().size()
-            : starts_int[0];
-    const int64_t end =
-        static_cast<int64_t>(std::numeric_limits<int>::max()) == ends_int[0]
-            ? operand_shape_or_data.data().value().size()
-            : ends_int[0];
-
-    for (int64_t i = start; i < end; i++) {
-      out_data.push_back(operand_shape_or_data.data().value()[i]);
-    }
-
-    const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
-    return symbol::ShapeOrDataDimExprs{
-        symbol::TensorShapeOrDataDimExprs(shape, out_data)};
-  };
-
-  symbol::ShapeOrDataDimExprs shape_data =
-      operand_shape_or_data.data().has_value() ? GetDataDimExprs()
-                                               : GetShapeDimExprs();
-
-  shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
 
