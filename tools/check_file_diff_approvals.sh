@@ -394,7 +394,7 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
 fi
 
 
-HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --name-only upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
+HAS_MODIFIED_ENFORCE_SYNTAX=`git diff upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
 if [ "${HAS_MODIFIED_ENFORCE_SYNTAX}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, COMMON_ENFORCE, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, LOG(FATAL)', it is recommended to use paddle_ENFORCE as a replacement.\n"
     check_approval 1 risemeup1 winter-wang
