@@ -334,7 +334,7 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
                paddle::framework::proto::VarType::SELECTED_ROWS) {
       need_inputs_sig.emplace_back("selected_rows");
     } else {
-      IR_THROW("Op %d only support densetensor and selected_rows, but not %d",
+      IR_THROW("Op %d only support dense tensor and selected_rows, but not %d",
                op_desc.Type(),
                var->GetType());
     }

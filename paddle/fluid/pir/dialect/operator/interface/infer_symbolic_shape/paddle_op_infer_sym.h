@@ -14,169 +14,75 @@
 
 #pragma once
 
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
 
-bool DataOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ShapeOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ShapeSrOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool StackOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SumOpInferSymbolicShape(pir::Operation *op,
-                             pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool FullIntArrayOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SliceOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool FullOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ConcatOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool GatherNdOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SqueezeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Squeeze_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool UnsqueezeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Unsqueeze_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TileOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TransposeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Transpose_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ProdOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ArangeOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool EmbeddingOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SparseWeightEmbeddingOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool MatmulOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool MaxOpInferSymbolicShape(pir::Operation *op,
-                             pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TransposeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool WhereOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool Where_OpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool FeedOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TopPSamplingOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool ExpandAsOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SplitOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Data)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Shape)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(ShapeSr)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Stack)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Sum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(FullIntArray)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Slice)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Full)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Concat)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(GatherNd)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Squeeze)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Squeeze_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Tile)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Transpose)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Transpose_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Prod)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Arange)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Embedding)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(SparseWeightEmbedding)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Matmul)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Max)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Feed)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(TopPSampling)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(ExpandAs)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Split)
 
 //  Not Impelmented Ops.
 
-bool DiagEmbedOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool DiagonalOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool DirichletOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(DiagEmbed)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Diagonal)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Dirichlet)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Gather)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Kron)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Kthvalue)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logcumsumexp)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(MaskedSelect)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Poisson)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(PutAlongAxis)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(PutAlongAxis_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Searchsorted)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(TakeAlongAxis)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Topk)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unbind)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(UniqueConsecutive)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Einsum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Empty)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Exponential_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Gaussian)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Linspace)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logspace)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logsumexp)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Min)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Pad)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Randint)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(RepeatInterleave)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(SplitWithNum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(TrilIndices)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(TriuIndices)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Uniform)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unique)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(FullWithTensor)
 
-bool GatherOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool KronOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool KthvalueOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool LogcumsumexpOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool MaskedSelectOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool PoissonOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool PutAlongAxisOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool PutAlongAxis_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool SearchsortedOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TakeAlongAxisOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool TopkOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool UnbindOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool UniqueConsecutiveOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-
-bool EinsumOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool EmptyOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Exponential_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool GaussianOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool LinspaceOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool LogspaceOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool LogsumexpOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool MinOpInferSymbolicShape(pir::Operation *op,
-                             pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool PadOpInferSymbolicShape(pir::Operation *op,
-                             pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool RandintOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool RepeatInterleaveOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool SplitWithNumOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool TrilIndicesOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool TriuIndicesOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool UniformOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool UniqueOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool FullWithTensorOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 }  // namespace paddle::dialect
