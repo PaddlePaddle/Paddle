@@ -342,11 +342,6 @@ std::optional<FusionNode> FindUpstreamNodeUsedByOthers(
   return {};
 }
 
-bool CanFindUpstreamUsedByOthers(const std::vector<FusionNode>& fusion_nodes) {
-  const auto& result = FindUpstreamNodeUsedByOthers(fusion_nodes);
-  return result.has_value();
-}
-
 std::vector<FusionNode> FuseEachUpstreamUse(
     const std::vector<FusionNode>& origin_nodes,
     const FusionNode& upstream_node) {
@@ -382,11 +377,10 @@ std::vector<FusionNode> RemoveUpstreamTrivial(
 }
 
 std::vector<FusionNode> FuseSingleUpstreamNode(
+    const FusionNode& fusable_upstream,
     const std::vector<FusionNode>& fusion_nodes) {
-  const auto& upstream_node =
-      FindUpstreamNodeUsedByOthers(fusion_nodes).value();
   const auto& fused_node = FuseEachUpstreamUse(
-      RemoveUpstreamTrivial(upstream_node, fusion_nodes), upstream_node);
+      RemoveUpstreamTrivial(fusable_upstream, fusion_nodes), fusable_upstream);
   return fused_node;
 }
 
@@ -424,8 +418,10 @@ std::vector<ir::Expr> TrivialOpFusion(
       ConstructFusionNodeElementwisely(op_compute_bodies, op_patterns);
 
   auto fused_nodes_each_step = before_fused_nodes;
-  while (CanFindUpstreamUsedByOthers(fused_nodes_each_step)) {
-    fused_nodes_each_step = FuseSingleUpstreamNode(fused_nodes_each_step);
+  while (const auto& fusable_upstream =
+             FindUpstreamNodeUsedByOthers(fused_nodes_each_step)) {
+    fused_nodes_each_step =
+        FuseSingleUpstreamNode(fusable_upstream.value(), fused_nodes_each_step);
   }
 
   return ExtractBodiesFromFusionNodes(fused_nodes_each_step);
