@@ -14,3 +14,7 @@
 
 from . import rules  # noqa: F401
 from .decomp import decompose  # noqa: F401
+from .recompute import (
+    min_cut_auto_recompute,  # noqa: F401
+    recompute,  # noqa: F401
+)
