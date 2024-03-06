@@ -30,7 +30,6 @@ namespace fusion {
 template <typename T, typename Context>
 void FusedBiasDropoutResidualLnGradKernel(
     const Context& dev_ctx,
-    const DenseTensor& y_grad,
     const DenseTensor& x,
     const DenseTensor& residual,
     const paddle::optional<DenseTensor>& bias,
@@ -40,6 +39,7 @@ void FusedBiasDropoutResidualLnGradKernel(
     const DenseTensor& ln_variance,
     const DenseTensor& bias_dropout_residual_out,
     const DenseTensor& dropout_mask_out,
+    const DenseTensor& y_grad,
     const float dropout_rate,
     const bool is_test,
     const bool dropout_fix_seed,

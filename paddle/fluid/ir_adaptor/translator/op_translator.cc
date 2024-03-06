@@ -334,7 +334,7 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
                paddle::framework::proto::VarType::SELECTED_ROWS) {
       need_inputs_sig.emplace_back("selected_rows");
     } else {
-      IR_THROW("Op %d only support densetensor and selected_rows, but not %d",
+      IR_THROW("Op %d only support dense tensor and selected_rows, but not %d",
                op_desc.Type(),
                var->GetType());
     }
@@ -2746,7 +2746,7 @@ struct RandIntOpTranscriber : public OpTranscriber {
     paddle::dialect::DenseTensorTypeStorage::Dim dim =
         common::make_ddim(var->GetShape());
     paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
-        paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED;
+        paddle::dialect::DenseTensorTypeStorage::DataLayout::NCHW;
     paddle::dialect::DenseTensorTypeStorage::LoD lod = {};
     size_t offset = 0;
     pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(
