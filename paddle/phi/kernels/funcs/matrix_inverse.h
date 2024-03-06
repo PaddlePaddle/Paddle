@@ -26,34 +26,108 @@ namespace phi {
 namespace funcs {
 
 template <typename Context, typename T>
-void ComputeInverseEigen(const Context& dev_ctx,
-                         const DenseTensor& a,
-                         DenseTensor* a_inv) {
-  using Matrix =
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-  using EigenMatrixMap = Eigen::Map<Matrix>;
-  using ConstEigenMatrixMap = Eigen::Map<const Matrix>;
-  const auto& mat_dims = a.dims();
-  const int rank = mat_dims.size();
-  int n = mat_dims[rank - 1];
-  int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
+struct MatrixInverseTrait {
+  static void ComputeInverseEigen(const Context& dev_ctx,
+                                  const DenseTensor& a,
+                                  DenseTensor* a_inv) {
+    using Matrix =
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+    using EigenMatrixMap = Eigen::Map<Matrix>;
+    using ConstEigenMatrixMap = Eigen::Map<const Matrix>;
+    const auto& mat_dims = a.dims();
+    const int rank = mat_dims.size();
+    int n = mat_dims[rank - 1];
+    int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
 
-  const T* a_ptr = a.data<T>();
-  T* a_inv_ptr = dev_ctx.template Alloc<T>(a_inv);
+    const T* a_ptr = a.data<T>();
+    T* a_inv_ptr = dev_ctx.template Alloc<T>(a_inv);
 
-  for (int i = 0; i < batch_size; ++i) {
-    ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);
-    EigenMatrixMap mat_inv(a_inv_ptr + i * n * n, n, n);
-    Eigen::PartialPivLU<Matrix> lu;
-    lu.compute(mat);
+    for (int i = 0; i < batch_size; ++i) {
+      ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);
+      EigenMatrixMap mat_inv(a_inv_ptr + i * n * n, n, n);
+      Eigen::PartialPivLU<Matrix> lu;
+      lu.compute(mat);
 
-    PADDLE_ENFORCE_NE(mat.determinant(),
-                      static_cast<T>(0),
-                      errors::InvalidArgument("Input is not invertible."));
+      PADDLE_ENFORCE_NE(mat.determinant(),
+                        static_cast<T>(0),
+                        errors::InvalidArgument("Input is not invertible."));
 
-    mat_inv.noalias() = lu.inverse();
+      mat_inv.noalias() = lu.inverse();
+    }
   }
-}
+};
+
+template <typename Context>
+struct MatrixInverseTrait<Context, phi::dtype::complex<float>> {
+  static void ComputeInverseEigen(const Context& dev_ctx,
+                                  const DenseTensor& a,
+                                  DenseTensor* a_inv) {
+    using Matrix = Eigen::Matrix<std::complex<float>,
+                                 Eigen::Dynamic,
+                                 Eigen::Dynamic,
+                                 Eigen::RowMajor>;
+    using EigenMatrixMap = Eigen::Map<Matrix>;
+    using ConstEigenMatrixMap = Eigen::Map<const Matrix>;
+    const auto& mat_dims = a.dims();
+    const int rank = mat_dims.size();
+    int n = mat_dims[rank - 1];
+    int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
+
+    const auto* a_ptr = reinterpret_cast<const std::complex<float>*>(
+        a.data<phi::dtype::complex<float>>());
+    auto* a_inv_ptr = reinterpret_cast<std::complex<float>*>(
+        dev_ctx.template Alloc<phi::dtype::complex<float>>(a_inv));
+
+    for (int i = 0; i < batch_size; ++i) {
+      ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);
+      EigenMatrixMap mat_inv(a_inv_ptr + i * n * n, n, n);
+      Eigen::PartialPivLU<Matrix> lu;
+      lu.compute(mat);
+
+      PADDLE_ENFORCE_NE(mat.determinant(),
+                        static_cast<std::complex<float>>(0),
+                        errors::InvalidArgument("Input is not invertible."));
+
+      mat_inv.noalias() = lu.inverse();
+    }
+  }
+};
+
+template <typename Context>
+struct MatrixInverseTrait<Context, phi::dtype::complex<double>> {
+  static void ComputeInverseEigen(const Context& dev_ctx,
+                                  const DenseTensor& a,
+                                  DenseTensor* a_inv) {
+    using Matrix = Eigen::Matrix<std::complex<double>,
+                                 Eigen::Dynamic,
+                                 Eigen::Dynamic,
+                                 Eigen::RowMajor>;
+    using EigenMatrixMap = Eigen::Map<Matrix>;
+    using ConstEigenMatrixMap = Eigen::Map<const Matrix>;
+    const auto& mat_dims = a.dims();
+    const int rank = mat_dims.size();
+    int n = mat_dims[rank - 1];
+    int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
+
+    const auto* a_ptr = reinterpret_cast<const std::complex<double>*>(
+        a.data<phi::dtype::complex<double>>());
+    auto* a_inv_ptr = reinterpret_cast<std::complex<double>*>(
+        dev_ctx.template Alloc<phi::dtype::complex<double>>(a_inv));
+
+    for (int i = 0; i < batch_size; ++i) {
+      ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);
+      EigenMatrixMap mat_inv(a_inv_ptr + i * n * n, n, n);
+      Eigen::PartialPivLU<Matrix> lu;
+      lu.compute(mat);
+
+      PADDLE_ENFORCE_NE(mat.determinant(),
+                        static_cast<std::complex<double>>(0),
+                        errors::InvalidArgument("Input is not invertible."));
+
+      mat_inv.noalias() = lu.inverse();
+    }
+  }
+};
 
 template <typename Context, typename T>
 class MatrixInverseFunctor {

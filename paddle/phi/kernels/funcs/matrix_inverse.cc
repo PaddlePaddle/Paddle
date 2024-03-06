@@ -23,7 +23,7 @@ template <typename Context, typename T>
 void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
                                                   const DenseTensor& a,
                                                   DenseTensor* a_inv) {
-  ComputeInverseEigen<Context, T>(dev_ctx, a, a_inv);
+  MatrixInverseTrait<Context, T>::ComputeInverseEigen(dev_ctx, a, a_inv);
 }
 
 template class MatrixInverseFunctor<CPUContext, float>;

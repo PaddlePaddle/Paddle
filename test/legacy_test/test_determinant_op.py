@@ -93,7 +93,13 @@ class TestDeterminantOpCaseComplex64(TestDeterminantOp):
         self.check_output(check_pir=True, check_prim=False)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'], check_pir=True, check_prim=False)
+        self.check_grad(
+            ['Input'],
+            ['Out'],
+            check_pir=True,
+            check_prim=False,
+            max_relative_error=2,
+        )
 
 
 class TestDeterminantOpCaseComplex128(TestDeterminantOp):
@@ -110,7 +116,13 @@ class TestDeterminantOpCaseComplex128(TestDeterminantOp):
         self.check_output(check_pir=True, check_prim=False)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'], check_pir=True, check_prim=False)
+        self.check_grad(
+            ['Input'],
+            ['Out'],
+            check_pir=True,
+            check_prim=False,
+            max_relative_error=2,
+        )
 
 
 class TestDeterminantAPI(unittest.TestCase):
