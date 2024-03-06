@@ -23,8 +23,8 @@ from paddle.base.layer_helper import LayerHelper
 class TestCSplitOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "c_split"
-        x = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        y = paddle.ones(shape=(100, 2, 3), dtype='float32')
+        x = paddle.ones(shape=(100, 2, 2), dtype='float32')
+        y = paddle.ones(shape=(100, 2, 2), dtype='float32')
         attrs = {
             'rank': 0,
             'nranks': 2,
