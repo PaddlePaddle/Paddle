@@ -58,6 +58,7 @@ class TestSliceMultiConcat(unittest.TestCase):
     def eval(self, use_cinn):
         net = SliceMultiConcatNet()
         net.eval()
+
         input_spec = [
             InputSpec(shape=[None, None], dtype="int64"),
         ]
@@ -110,8 +111,6 @@ class TestSliceConcat(unittest.TestCase):
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x)
-        # if use_cinn:
-        #     self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

@@ -75,12 +75,6 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
   void Rewrite(paddle::dialect::SliceOp op,
                pir::PatternRewriter& rewriter) const override {
     std::vector<pir::Attribute> vec_dims;
-    // for (size_t i = 0; i < static_cast<size_t>(dims.size()); i++) {
-    //     pir::Attribute attr_dims =
-    //     pir::Int64Attribute::get(pir::IrContext::Instance(), dims[i]);
-
-    //   vec_dims.push_back(attr_dims);
-    // }
     pir::Attribute attr_dims =
         pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_dims);
 
