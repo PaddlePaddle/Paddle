@@ -14,6 +14,8 @@
 
 from ..base import framework
 from ..base.core import (
+    DataType,
+    VarDesc,
     finfo as core_finfo,
     iinfo as core_iinfo,
 )
@@ -21,8 +23,6 @@ from ..base.data_feeder import _NUMPY_DTYPE_2_PADDLE_DTYPE
 
 
 def bind_vartype():
-    from ..base.core import VarDesc
-
     global dtype
     global uint8
     global int8
@@ -59,8 +59,6 @@ def bind_vartype():
 
 
 def bind_datatype():
-    from ..base.core import DataType
-
     global dtype
     global uint8
     global int8
