@@ -27,11 +27,28 @@ namespace ir {
 namespace {
 
 template <typename DoEachT>
+void VisitEachSubOp(pir::Operation* op, const DoEachT& DoEach) {
+  for (uint32_t i = 0; i < op->num_regions(); i++) {
+    for (pir::Block& block : op->region(i)) {
+      for (pir::Operation& sub_op : block) {
+        DoEach(sub_op);
+        if (sub_op.num_regions() > 0) {
+          VisitEachSubOp(&sub_op, DoEach);
+        }
+      }
+    }
+  }
+}
+
+template <typename DoEachT>
 void VisitEachOp(pir::ModuleOp module_op, const DoEachT& DoEach) {
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (pir::Block& block : module_op->region(i)) {
-      for (pir::Operation& op : block) {
-        DoEach(op);
+      for (pir::Operation& sub_op : block) {
+        DoEach(sub_op);
+        if (sub_op.num_regions() > 0) {
+          VisitEachSubOp(&sub_op, DoEach);
+        }
       }
     }
   }
@@ -100,13 +117,6 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
       shape_analysis->CreateDimExprBuilder().constraints();
-  VLOG(1) << "constraints size:" << dim_expr_constraints.size();
-  VLOG(1) << "constraints :\n";
-  for (symbol::DimExprConstraint constraint : dim_expr_constraints) {
-    const auto& data =
-        std::get<symbol::Equal<symbol::DimExpr>>(constraint).data;
-    VLOG(1) << "          " << data->lhs << " : " << data->rhs;
-  }
   const cinn::common::UnionFindSet<symbol::DimExpr>& union_find_set = [&]() {
     cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
     for (const auto& constraint : dim_expr_constraints) {
@@ -148,11 +158,6 @@ void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
   const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
       substitution_pattern = GetDimExprSubstitution(shape_analysis);
 
-  for (auto pattern : substitution_pattern) {
-    VLOG(1) << "substitution_pattern:" << pattern.first << " : "
-            << pattern.second;
-  }
-
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
       if (!shape_analysis->HasShapeOrDataForValue(value)) {
@@ -161,11 +166,11 @@ void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
       } else {
         const symbol::ShapeOrDataDimExprs& origin_shape_or_data =
             shape_analysis->GetShapeOrDataForValue(value);
-        VLOG(1) << op.name()
+        VLOG(8) << op.name()
                 << "      origin_shape_or_data: " << origin_shape_or_data;
         const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
             SubstituteShapeOrData(origin_shape_or_data, substitution_pattern);
-        VLOG(1) << op.name()
+        VLOG(8) << op.name()
                 << " substituted_shape_or_data: " << substituted_shape_or_data;
         shape_analysis->SetShapeOrDataForValue(value,
                                                substituted_shape_or_data);

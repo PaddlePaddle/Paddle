@@ -28,11 +28,28 @@ namespace ir {
 namespace {
 
 template <typename DoEachT>
+void VisitEachSubOp(pir::Operation* op, const DoEachT& DoEach) {
+  for (uint32_t i = 0; i < op->num_regions(); i++) {
+    for (pir::Block& block : op->region(i)) {
+      for (pir::Operation& sub_op : block) {
+        DoEach(sub_op);
+        if (sub_op.num_regions() > 0) {
+          VisitEachSubOp(&sub_op, DoEach);
+        }
+      }
+    }
+  }
+}
+
+template <typename DoEachT>
 void VisitEachOp(pir::ModuleOp module_op, const DoEachT& DoEach) {
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (pir::Block& block : module_op->region(i)) {
-      for (pir::Operation& op : block) {
-        DoEach(op);
+      for (pir::Operation& sub_op : block) {
+        DoEach(sub_op);
+        if (sub_op.num_regions() > 0) {
+          VisitEachSubOp(&sub_op, DoEach);
+        }
       }
     }
   }
@@ -104,10 +121,10 @@ void SimplifyDimExpr(pir::ModuleOp module_op) {
       } else {
         const symbol::ShapeOrDataDimExprs& shape_or_data =
             shape_analysis->GetShapeOrDataForValue(value);
-        VLOG(1) << op.name() << "     origin_shape_or_data: " << shape_or_data;
+        VLOG(8) << op.name() << "     origin_shape_or_data: " << shape_or_data;
         symbol::ShapeOrDataDimExprs simplified_shape_or_data =
             SimplifyShapeOrData(shape_or_data);
-        VLOG(1) << op.name()
+        VLOG(8) << op.name()
                 << " simplified_shape_or_data: " << simplified_shape_or_data;
         shape_analysis->SetShapeOrDataForValue(value, simplified_shape_or_data);
       }
