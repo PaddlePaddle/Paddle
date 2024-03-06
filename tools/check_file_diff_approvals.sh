@@ -392,11 +392,13 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
     echo_line="You must have one RD (From00 or zhiqiu) approval for file changes in new_executor/interpreter/static_build.cc.\n"
     check_approval 1 From00 zhiqiu
 fi
-HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --name-only upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG(FATAL)" || true`
+
+HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --name-only upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
 if [ "${HAS_MODIFIED_ENFORCE_SYNTAX}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, COMMON_ENFORCE, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, CHECK LOG(FATAL)',it is recommended to use paddle_ENFORCE as a replacement.\n"
+    echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, COMMON_ENFORCE, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, LOG(FATAL)', it is recommended to use paddle_ENFORCE as a replacement.\n"
     check_approval 1 risemeup1 winter-wang
 fi
+
 
 HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI=`git diff --name-only upstream/$BRANCH | grep "tools/auto_parallel/target_path_lists.sh" || true`
 if [ "${HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
