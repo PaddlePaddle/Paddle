@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -65,31 +66,50 @@ void AddDoubleGradImpl(const Context& dev_ctx,
                        DenseTensor* ddout) {
   // ddOut = ddx + ddy
   if (ddout) {
-    auto ddx_ptr = ddx.get_ptr();
-    auto ddy_ptr = ddy.get_ptr();
+    auto* ddx_tensor = ddx.get_ptr();
+    auto* ddy_tensor = ddy.get_ptr();
+    auto out_shape = dout.dims();
     dev_ctx.template Alloc<T>(ddout);
-    if (ddx_ptr != nullptr && ddy_ptr == nullptr &&
-        ddx_ptr->dims() == dout.dims()) {
-      phi::Copy(dev_ctx, *ddx_ptr, dev_ctx.GetPlace(), false, ddout);
-    } else if (ddx_ptr == nullptr && ddy_ptr != nullptr &&
-               ddy_ptr->dims() == dout.dims()) {
-      phi::Copy(dev_ctx, *ddy_ptr, dev_ctx.GetPlace(), false, ddout);
+    if (ddx_tensor == nullptr && ddy_tensor == nullptr) {
+      ddout = nullptr;
+    } else if (ddx_tensor == nullptr && ddy_tensor != nullptr) {
+      if (ddy_tensor->dims() != out_shape) {
+        std::vector<const DenseTensor*> ins = {ddy_tensor};
+        std::vector<DenseTensor*> outs = {ddout};
+        ExpandKernel<T, Context>(dev_ctx,
+                                 *ddy_tensor,
+                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 ddout);
+      } else {
+        phi::Copy(dev_ctx, *ddy_tensor, dev_ctx.GetPlace(), false, ddout);
+      }
+    } else if (ddx_tensor != nullptr && ddy_tensor == nullptr) {
+      if (ddx_tensor->dims() != out_shape) {
+        std::vector<const DenseTensor*> ins = {ddx_tensor};
+        std::vector<DenseTensor*> outs = {ddout};
+        ExpandKernel<T, Context>(dev_ctx,
+                                 *ddx_tensor,
+                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 ddout);
+      } else {
+        phi::Copy(dev_ctx, *ddx_tensor, dev_ctx.GetPlace(), false, ddout);
+      }
     } else {
-      DenseTensor ddx_safe, ddy_safe;
-      funcs::GetDoubleGradSafeTensor<Context, T>(
-          dev_ctx, dout, ddx.get_ptr(), &ddx_safe);
-      funcs::GetDoubleGradSafeTensor<Context, T>(
-          dev_ctx, y, ddy.get_ptr(), &ddy_safe);
-      auto ddx_dims = ddx_safe.dims();
-      auto ddy_dims = ddy_safe.dims();
+      auto ddx_dims = ddx_tensor->dims();
+      auto ddy_dims = ddy_tensor->dims();
       if (ddx_dims.size() >= ddy_dims.size()) {
         funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
-            dev_ctx, ddx_safe, ddy_safe, funcs::AddFunctor<T>(), ddout, axis);
+            dev_ctx,
+            *ddx_tensor,
+            *ddy_tensor,
+            funcs::AddFunctor<T>(),
+            ddout,
+            axis);
       } else {
         funcs::ElementwiseCompute<funcs::InverseAddFunctor<T>, T>(
             dev_ctx,
-            ddx_safe,
-            ddy_safe,
+            *ddx_tensor,
+            *ddy_tensor,
             funcs::InverseAddFunctor<T>(),
             ddout,
             axis);
@@ -108,25 +128,15 @@ void SubtractDoubleGradImpl(const Context& dev_ctx,
                             DenseTensor* ddout) {
   // DDOut = ddx - ddy
   if (ddout) {
-    dev_ctx.template Alloc<T>(ddout);
-    if (ddx.get_ptr() != nullptr && ddy.get_ptr() == nullptr &&
-        (ddx.get_ptr())->dims() == dout.dims()) {
-      phi::Copy(dev_ctx, *(ddx.get_ptr()), dev_ctx.GetPlace(), false, ddout);
-    } else {
-      DenseTensor ddx_safe, ddy_safe;
-      funcs::GetDoubleGradSafeTensor<Context, T>(
-          dev_ctx, dout, ddx.get_ptr(), &ddx_safe);
-      funcs::GetDoubleGradSafeTensor<Context, T>(
-          dev_ctx, y, ddy.get_ptr(), &ddy_safe);
+    DenseTensor ddx_safe, ddy_safe;
+    funcs::GetDoubleGradSafeTensor<Context, T>(
+        dev_ctx, dout, ddx.get_ptr(), &ddx_safe);
+    funcs::GetDoubleGradSafeTensor<Context, T>(
+        dev_ctx, y, ddy.get_ptr(), &ddy_safe);
 
-      funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
-          dev_ctx,
-          ddx_safe,
-          ddy_safe,
-          funcs::SubtractFunctor<T>(),
-          ddout,
-          axis);
-    }
+    dev_ctx.template Alloc<T>(ddout);
+    funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
+        dev_ctx, ddx_safe, ddy_safe, funcs::SubtractFunctor<T>(), ddout, axis);
   }
 }
 
