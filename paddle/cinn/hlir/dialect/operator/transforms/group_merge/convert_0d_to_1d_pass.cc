@@ -61,36 +61,26 @@ class FullOpPattern : public pir::OpRewritePattern<paddle::dialect::FullOp> {
   }
 };
 
-// class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp>
-// {
-//  public:
-//   using pir::OpRewritePattern<paddle::dialect::SliceOp>::OpRewritePattern;
+class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SliceOp>::OpRewritePattern;
 
-//   bool Match(paddle::dialect::SumOp op) const override {
-//     const auto& tensor_type =
-//         op.result(0).type().dyn_cast<pir::DenseTensorType>();
+  bool Match(paddle::dialect::SliceOp op) const override {
+    const auto& tensor_type =
+        op.result(0).type().dyn_cast<pir::DenseTensorType>();
 
-//     return tensor_type.dims().size() == 0;
-//   }
+    return tensor_type.dims().size() == 0;
+  }
 
-//   void Rewrite(paddle::dialect::FullOp op,
-//                pir::PatternRewriter& rewriter) const override {
-//     auto decrease_axis = cinn::dialect::ir::GetVectorAttr(op,
-//     "broadcast_axes"); float factor =
-//         op->attribute("value").dyn_cast<::pir::FloatAttribute>().data();
-//     phi::DataType dtype = op->attribute("dtype")
-//                               .dyn_cast<paddle::dialect::DataTypeAttribute>()
-//                               .data();
-//     phi::Place place = op->attribute("place")
-//                            .dyn_cast<paddle::dialect::PlaceAttribute>()
-//                            .data();
+  void Rewrite(paddle::dialect::SliceOp op,
+               pir::PatternRewriter& rewriter) const override {
+    std::vector<pir::Attribute> vec_dims;
+    pir::Attribute attr_dims =
+        pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_dims);
 
-//     auto full_op = rewriter.Build<paddle::dialect::FullOp>(
-//         std::vector<int64_t>({1}), factor, dtype, place);
-//     rewriter.ReplaceAllUsesWith(op.result(0), full_op.result(0));
-//     rewriter.EraseOp(op);
-//   }
-// };
+    op->set_attribute("decrease_axis", attr_dims);
+  }
+};
 
 class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
  public:
@@ -220,6 +210,7 @@ class Convert0DTo1DPass : public pir::Pass {
     ps.Add<SumOpPattern>(context);
     // ps.Add<SliceOpPattern>(context);
     ps.Add<WhileOpPattern>(context);
+    ps.Add<SliceOpPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
