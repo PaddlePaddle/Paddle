@@ -102,10 +102,15 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   for (int64_t i = 0; i < group_tile_info->data_rank; ++i) {
     if (reduce_set.count(i)) {
       reduce_numel *= data_dim[i];
-      reduce_is_dynamic = true;
+      if (data_dim[i] < 0) {
+        reduce_is_dynamic = true;
+      }
     } else {
       spatial_numel *= data_dim[i];
-      spatial_is_dynamic = true;
+
+      if (data_dim[i] < 0) {
+        spatial_is_dynamic = true;
+      }
     }
   }
 
