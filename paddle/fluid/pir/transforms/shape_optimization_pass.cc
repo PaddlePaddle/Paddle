@@ -31,7 +31,7 @@ namespace {
 using PassPipelineRunner =
     std::function<bool(pir::PassManager&, pir::ModuleOp)>;
 
-void PrintProgram(pir::ModuleOp m, std::string mgs) {
+void PrintProgram(pir::ModuleOp m, std::string msg) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(m.program());
   if (VLOG_IS_ON(vlog_level)) {
