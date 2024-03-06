@@ -258,9 +258,9 @@ endif()
 file(GLOB_RECURSE dist_dialect_srcs
      "${CMAKE_CURRENT_SOURCE_DIR}/distributed/ir/*.cc")
 
-if(WITH_DISTRIBUTE)
-  set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
-endif()
+# if(WITH_DISTRIBUTE) FIXME in next PR
+set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
+# endif()
 set(op_dialect_deps phi common pir type_info string_helper)
 
 cc_library(
