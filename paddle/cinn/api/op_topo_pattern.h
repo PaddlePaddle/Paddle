@@ -17,7 +17,7 @@ template <typename T>
 struct PartialShardablePattern {};
 
 template <typename T>
-using ShardableReductionPattern = std::vector<std::variant<ReductionPattern<T>, PartialShardablePattern<T>>>;
+using ShardableReductionsPattern = std::vector<std::variant<ReductionPattern<T>, PartialShardablePattern<T>>>;
 
 // fuse rules:
 //  1. IS * PS -> PS
@@ -32,6 +32,6 @@ using ShardableReductionPattern = std::vector<std::variant<ReductionPattern<T>, 
 
 // OpTopoPattern := IS | SR
 template <typename T>
-using OpTopoPattern = std::variant<InjectiveSourcePattern<T>, ShardableReductionPattern<T>>;
+using OpTopoPattern = std::variant<InjectiveSourcePattern<T>, ShardableReductionsPattern<T>>;
 
 }
