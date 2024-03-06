@@ -1897,6 +1897,7 @@ StageMap CreateStages(const std::vector<ir::Tensor> &tensors) {
   }
 
   for (auto &t : all_tensors) {
+    VLOG(-1) << "xxx " << t;
     stages->Insert(t, ir::CreateStage(t).get());
   }
 

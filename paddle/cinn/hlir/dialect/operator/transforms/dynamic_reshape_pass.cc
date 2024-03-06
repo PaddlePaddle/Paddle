@@ -104,9 +104,9 @@ class DynamicReshapeOpPass : public pir::Pass {
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<DynamicReshapeOpPattern>(context);
-    ps.Add<DynamicSqueezeOpPattern>(context);
-    ps.Add<DynamicUnsqueezeOpPattern>(context);
+    // ps.Add<DynamicReshapeOpPattern>(context);
+    // ps.Add<DynamicSqueezeOpPattern>(context);
+    // ps.Add<DynamicUnsqueezeOpPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }

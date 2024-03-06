@@ -109,7 +109,8 @@ void ApplyCinnPreprocessPass(
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
+  // pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
+  VLOG(-1) << "remove CreateDynamicReshapeOpPass";
   pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
   if (FLAGS_group_schedule_tiling_first) {
     pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
