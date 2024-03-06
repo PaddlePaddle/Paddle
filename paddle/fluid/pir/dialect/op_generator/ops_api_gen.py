@@ -156,6 +156,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'seed',
     'send_v2',
     'shadow_feed',
+    'shadow_feed_tensors',
     'shuffle_batch',
     'sparse_momentum',
     'tdm_sampler',

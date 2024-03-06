@@ -1342,6 +1342,7 @@ void PrintValuesAndVariables(
         GetOriginOutputNames(op_name);
 
     // 1. output string
+    VLOG(10) << "Generate output string ...";
     std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
     if (!op.results().empty()) {
@@ -1355,7 +1356,7 @@ void PrintValuesAndVariables(
 
           // get origin name
           std::string origin_name;
-          if (!origin_output_names.empty())
+          if (!origin_output_names.empty() && i < origin_output_names.size())
             origin_name = origin_output_names[i];
           else
             origin_name = var_name;
@@ -1387,10 +1388,12 @@ void PrintValuesAndVariables(
     ret_variable_str += ") = ";
 
     // 2. op name
+    VLOG(10) << "Generate op name ...";
     ret_value_str += op_name;
     ret_variable_str += op_name;
 
     // 3. input string
+    VLOG(10) << "Generate input string ...";
     ret_value_str += "(";
     ret_variable_str += "(";
     if (!op.operands().empty()) {
@@ -1404,7 +1407,7 @@ void PrintValuesAndVariables(
 
           // get origin name
           std::string origin_name;
-          if (!origin_input_names.empty())
+          if (!origin_input_names.empty() && i < origin_input_names.size())
             origin_name = origin_input_names[i];
           else
             origin_name = var_name;

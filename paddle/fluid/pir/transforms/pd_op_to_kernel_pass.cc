@@ -1359,6 +1359,66 @@ phi::DataType ParsePhiDType(pir::Type type) {
   }
 }
 
+void AddShadowFeedOpForOp(
+    const phi::Place& place,
+    pir::Operation* op_item,
+    pir::Operation* op,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+  VLOG(4) << "Add ShadowFeedOp for op " << op_item->name();
+
+  bool add_shadow_feed = true;
+  if (op_item->attributes().count("place")) {
+    add_shadow_feed = (op_item->attributes()
+                           .at("place")
+                           .dyn_cast<PlaceAttribute>()
+                           .data()
+                           .GetType()) == phi::AllocationType::UNDEFINED;
+  }
+
+  // if value place not gpu, add shadow feed op
+  if (platform::is_gpu_place(place) && add_shadow_feed) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      PADDLE_ENFORCE_EQ(
+          op_item->result(i).type().isa<DenseTensorType>(),
+          true,
+          phi::errors::PreconditionNotMet(
+              "AddShadowFeedOpForOp only support DenseTensorType Now"));
+    }
+    phi::KernelKey shadow_key{
+        phi::Backend::GPU,
+        phi::DataLayout::ANY,
+        TransToPhiDataType(
+            op_item->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+
+    std::unordered_map<std::string, pir::Attribute> attr_map{
+        {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed_tensors")},
+        {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed_tensors")},
+        {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
+
+    std::vector<pir::Type> vec_output_types(op_item->num_results());
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      vec_output_types[i] = AllocatedDenseTensorType::get(
+          ctx,
+          phi::TransToPhiPlace(shadow_key.backend()),
+          op_item->result(i).type().dyn_cast<DenseTensorType>());
+    }
+
+    pir::OpInfo phi_kernel_op_info =
+        ctx->GetRegisteredOpInfo(PhiKernelOp::name());
+    pir::Operation* shadow_tensors_op = pir::Operation::Create(
+        op->results(), attr_map, vec_output_types, phi_kernel_op_info);
+
+    (*map_op_pair)[op_item] = shadow_tensors_op;
+    block->push_back(shadow_tensors_op);
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      (*map_value_pair)[op_item->result(i)] = shadow_tensors_op->result(i);
+    }
+  }
+}
+
 void HandleForSpecialOp(
     const phi::Place& place,
     pir::Operation* op_item,
@@ -1629,17 +1689,46 @@ void HandleForSpecialOp(
     }
 
     auto pop_back_op = op_item->dyn_cast<::pir::TuplePopOp>();
-    for (size_t i = 0; i < op_item->num_results(); ++i) {
-      auto cur_inlet_element = pop_back_op.inlet_element(i);
-      PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),
-                        true,
-                        phi::errors::PreconditionNotMet(
-                            "[%d]'s output of [%s] op MUST be in map pair",
-                            i,
-                            op_item->name()));
-      auto new_inlet_element = map_value_pair->at(cur_inlet_element);
 
-      op_output_types.push_back(new_inlet_element.type());
+    if (pop_back_op.has_container()) {
+      // if TuplePopOp and TuplePushOp are in the same sub_program
+      for (size_t i = 0; i < op_item->num_results(); ++i) {
+        auto cur_inlet_element = pop_back_op.inlet_element(i);
+        PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),
+                          true,
+                          phi::errors::PreconditionNotMet(
+                              "[%d]'s output of [%s] op MUST be in map pair",
+                              i,
+                              op_item->name()));
+        auto new_inlet_element = map_value_pair->at(cur_inlet_element);
+
+        op_output_types.push_back(new_inlet_element.type());
+      }
+    } else {
+      VLOG(4) << "TuplePopOp and TuplePushOp are in different sub_program.";
+      for (size_t i = 0; i < op_item->num_results(); ++i) {
+        auto cur_inlet_element = op_item->result(i);
+        auto out_place = phi::TransToPhiPlace(phi::Backend::UNDEFINED);
+        pir::Type new_inlet_element_type =
+            ConvertOpTypeToKernelType(ctx, cur_inlet_element.type(), out_place);
+        op_output_types.push_back(new_inlet_element_type);
+      }
+
+      pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
+      pir::Operation* op = pir::Operation::Create(
+          vec_inputs, op_item->attributes(), op_output_types, op_info);
+
+      block->push_back(op);
+      (*map_op_pair)[op_item] = op;
+      // only deal with single output
+      if (op_item->num_results() > 0) {
+        for (size_t i = 0; i < op_item->num_results(); ++i) {
+          (*map_value_pair)[op_item->result(i)] = op->result(i);
+        }
+      }
+      AddShadowFeedOpForOp(
+          place, op_item, op, block, ctx, map_op_pair, map_value_pair);
+      return;
     }
   }
 
