@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <numeric>
 #include <string>
 #include <tuple>
@@ -2302,11 +2303,20 @@ pir::Attribute TranslateReduceAll(pir::IrContext* ctx,
                x_name);
 
     int axis_size = var_desc->GetShape().size();
-    std::vector<pir::Attribute> axis;
-    for (int64_t i = 0; i < axis_size; i++) {
-      axis.push_back(pir::Int64Attribute::get(ctx, i));
+
+    if (attr_info.type_name == "paddle::dialect::IntArrayAttribute") {
+      std::vector<int64_t> axis;
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis.push_back(i);
+      }
+      return dialect::IntArrayAttribute::get(ctx, axis);
+    } else {
+      std::vector<pir::Attribute> axis;
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis.push_back(pir::Int64Attribute::get(ctx, i));
+      }
+      return pir::ArrayAttribute::get(ctx, axis);
     }
-    return pir::ArrayAttribute::get(ctx, axis);
   }
 
   auto& attribute_translator = AttributeTranslator::instance();
