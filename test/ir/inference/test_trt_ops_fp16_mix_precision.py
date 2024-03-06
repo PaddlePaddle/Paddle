@@ -96,6 +96,7 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             self.model_prefix + '.pdmodel', self.model_prefix + '.pdiparams'
         )
         config.enable_use_gpu(256, 0, PrecisionType.Float32)
+        config.switch_ir_debug(True)
         config.exp_disable_tensorrt_ops(["relu_1.tmp_0"])
         config.enable_tensorrt_engine(
             workspace_size=1 << 30,
@@ -106,9 +107,11 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             use_calib_mode=False,
         )
 
+        # 让conv2d_0.w_0卷积使用BFP16推理
         config.exp_specify_tensorrt_subgraph_precision(
-            ["conv2d_1.w_0"], [""], ["conv2d_0.w_0"]
+            ["conv2d_1.w_0"], [""], ["conv2d_2.w_0"]
         )
+
         config.enable_memory_optim()
         config.disable_glog_info()
         config.set_tensorrt_optimization_level(0)
@@ -122,6 +125,7 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             input_tensor = predictor.get_input_handle(name)
             input_tensor.reshape(img[i].shape)
             input_tensor.copy_from_cpu(img[i].copy())
+
         predictor.run()
         results = []
         output_names = predictor.get_output_names()

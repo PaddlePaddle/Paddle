@@ -14,7 +14,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
-
 #include <fcntl.h>
 #include <cstddef>
 #include <memory>
@@ -479,10 +478,12 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       Get<std::vector<std::string>>("trt_parameter_run_bfp16");
 
   for (auto para : parameters) {
+    LOG(INFO) << "para: " << para;
     if (std::find(trt_params_run_fp16.begin(),
                   trt_params_run_fp16.end(),
                   para) != trt_params_run_fp16.end()) {
       precision_mode = phi::DataType::FLOAT16;
+      break;
     }
   }
 
@@ -496,6 +497,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                   para) != trt_params_run_int8.end()) {
       enable_int8 = true;
       precision_mode = phi::DataType::INT8;
+      break;
     }
   }
 
@@ -504,6 +506,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                   trt_params_run_bfp16.end(),
                   para) != trt_params_run_bfp16.end()) {
       precision_mode = phi::DataType::BFLOAT16;
+      break;
     }
   }
   bool enable_bfp16 = false;
