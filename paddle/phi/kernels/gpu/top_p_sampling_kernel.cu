@@ -358,22 +358,16 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
 #ifdef PADDLE_WITH_HIP
   hiprandState_t state;
   if constexpr (INFER_SEEDS) {
-    hiprand_init(static_cast<uint64_t>(seed[bid]),
-                 bid * blockDim.x + tid,
-                 seed_offset,
-                 &state);
+    hiprand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    hiprand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    hiprand_init(seed_num, tid, seed_offset, &state);
   }
 #else
   curandState_t state;
   if constexpr (INFER_SEEDS) {
-    curand_init(static_cast<uint64_t>(seed[bid]),
-                bid * blockDim.x + tid,
-                seed_offset,
-                &state);
+    curand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    curand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    curand_init(seed_num, tid, seed_offset, &state);
   }
 #endif
   int top_num = TopPBeamTopK;
@@ -491,22 +485,16 @@ __global__ void KeMatrixTopPBeamTopKTruncated(const T* src,
 #ifdef PADDLE_WITH_HIP
   hiprandState_t state;
   if constexpr (INFER_SEEDS) {
-    hiprand_init(static_cast<uint64_t>(seed[bid]),
-                 bid * blockDim.x + tid,
-                 seed_offset,
-                 &state);
+    hiprand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    hiprand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    hiprand_init(seed_num, tid, seed_offset, &state);
   }
 #else
   curandState_t state;
   if constexpr (INFER_SEEDS) {
-    curand_init(static_cast<uint64_t>(seed[bid]),
-                bid * blockDim.x + tid,
-                seed_offset,
-                &state);
+    curand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    curand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    curand_init(seed_num, tid, seed_offset, &state);
   }
 #endif
   int top_num = TopPBeamTopK;
@@ -820,22 +808,16 @@ __global__ void topp_sampling(T* sorted_probs,
 #ifdef PADDLE_WITH_HIP
   hiprandState_t state;
   if constexpr (INFER_SEEDS) {
-    hiprand_init(static_cast<uint64_t>(seed[bid]),
-                 bid * blockDim.x + tid,
-                 seed_offset,
-                 &state);
+    hiprand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    hiprand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    hiprand_init(seed_num, tid, seed_offset, &state);
   }
 #else
   curandState_t state;
   if constexpr (INFER_SEEDS) {
-    curand_init(static_cast<uint64_t>(seed[bid]),
-                bid * blockDim.x + tid,
-                seed_offset,
-                &state);
+    curand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    curand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    curand_init(seed_num, tid, seed_offset, &state);
   }
 #endif
 #ifdef DEBUG_TOPP
