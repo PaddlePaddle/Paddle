@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
@@ -279,6 +280,11 @@ void IrPrinter::PrintAttributeMap(Operation* op) {
   AttributeMap attributes = op->attributes();
   std::map<std::string, Attribute, std::less<>> order_attributes(
       attributes.begin(), attributes.end());
+
+  // Filter out the callstack attribute
+  order_attributes.erase(
+      paddle::framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+
   os << " {";
 
   pir::detail::PrintInterleave(
