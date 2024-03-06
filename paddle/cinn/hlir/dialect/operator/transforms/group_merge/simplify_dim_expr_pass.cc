@@ -28,11 +28,28 @@ namespace ir {
 namespace {
 
 template <typename DoEachT>
+void VisitEachSubOp(pir::Operation* op, const DoEachT& DoEach) {
+  for (uint32_t i = 0; i < op->num_regions(); i++) {
+    for (pir::Block& block : op->region(i)) {
+      for (pir::Operation& sub_op : block) {
+        DoEach(sub_op);
+        if (sub_op.num_regions() > 0) {
+          VisitEachSubOp(&sub_op, DoEach);
+        }
+      }
+    }
+  }
+}
+
+template <typename DoEachT>
 void VisitEachOp(pir::ModuleOp module_op, const DoEachT& DoEach) {
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (pir::Block& block : module_op->region(i)) {
-      for (pir::Operation& op : block) {
-        DoEach(op);
+      for (pir::Operation& sub_op : block) {
+        DoEach(sub_op);
+        if (sub_op.num_regions() > 0) {
+          VisitEachSubOp(&sub_op, DoEach);
+        }
       }
     }
   }
@@ -92,22 +109,33 @@ symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
 
 void SimplifyDimExpr(pir::ModuleOp module_op) {
   VLOG(4) << "SimplifyDimExpr start";
-  pir::ShapeConstraintIRAnalysis shape_analysis =
-      pir::ShapeAnalysisManager::Instance().Get(module_op.program());
+  pir::ShapeConstraintIRAnalysis* shape_analysis =
+      &pir::ShapeAnalysisManager::Instance().Get(module_op.program());
+
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
-      if (!shape_analysis.HasShapeOrDataForValue(value)) {
+      if (!shape_analysis->HasShapeOrDataForValue(value)) {
         VLOG(4) << "SimplifyDimExpr: shape_analysis can't find ShapeOrData for "
                    "value of the op:"
                 << op.name();
       } else {
         const symbol::ShapeOrDataDimExprs& shape_or_data =
-            shape_analysis.GetShapeOrDataForValue(value);
+            shape_analysis->GetShapeOrDataForValue(value);
+        VLOG(8) << op.name() << "     origin_shape_or_data: " << shape_or_data;
         symbol::ShapeOrDataDimExprs simplified_shape_or_data =
             SimplifyShapeOrData(shape_or_data);
-        shape_analysis.SetShapeOrDataForValue(value, simplified_shape_or_data);
+        VLOG(8) << op.name()
+                << " simplified_shape_or_data: " << simplified_shape_or_data;
+        shape_analysis->SetShapeOrDataForValue(value, simplified_shape_or_data);
       }
     });
+    if (op.num_results() > 0) {
+      pir::shape::SetShapeAttrForOp(
+          &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
+    } else {
+      pir::shape::SetShapeAttrForOp(
+          &op, shape_analysis->GetShapeOrDataForValue(op.operand_source(0)));
+    }
     // TODO(JiaWenxuan): simplify the attribute "sym_shape_str" of the op
   });
   VLOG(4) << "SimplifyDimExpr end";
