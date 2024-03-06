@@ -34,8 +34,17 @@ static Tensor get_slice(const Tensor& x, int64_t idx) {
 template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
-
-  auto res = cast<T>(sum<T>(x, axis, org_dtype, keepdim), DataType::BOOL);
+  int64_t axis_size = axis.size();
+  Tensor res;
+  if (axis_size == 0) {
+    std::vector<int64_t> axis_;
+    for (int64_t i = 0; i < axis_size; i++) {
+      axis_.push_back(i);
+    }
+    res = cast<T>(sum<T>(x, axis_, org_dtype, keepdim), DataType::BOOL);
+  } else {
+    res = cast<T>(sum<T>(x, axis, org_dtype, keepdim), DataType::BOOL);
+  }
   if (org_dtype != DataType::BOOL) {
     return cast<T>(res, org_dtype);
   } else {
