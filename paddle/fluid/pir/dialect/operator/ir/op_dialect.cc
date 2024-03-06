@@ -205,15 +205,7 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
 void PrintTypeImpl(pir::Type type, std::ostream& os) {
   os << type.dialect().name();
   os << '.';
-  if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
-    os << "tensor<";
-    for (auto d : common::vectorize(tensor_type.dims())) {
-      os << d;
-      os << "x";
-    }
-    tensor_type.dtype().Print(os);
-    os << ">";
-  } else if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
+  if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
     os << "selectedrows<";
     for (auto d : common::vectorize(selected_rows_type.dims())) {
       os << d;
@@ -266,8 +258,7 @@ void PrintOperationImpl(pir::Operation* op,
 }
 
 void OperatorDialect::initialize() {
-  RegisterTypes<paddle::dialect::DenseTensorType,
-                paddle::dialect::SelectedRowsType,
+  RegisterTypes<paddle::dialect::SelectedRowsType,
                 paddle::dialect::DenseTensorArrayType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
