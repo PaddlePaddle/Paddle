@@ -483,7 +483,7 @@ class TestSliceOpInferSymbolicShape(TestBase):
             [
                 'shape[S0, S2], data[NULL]',
                 'shape[2, 2, 2], data[NULL]',
-                'shape[Add(3, -Add(-3, S0)), 2, 2]',
+                'shape[S0, S2], data[NULL]',
             ]
         ]
 

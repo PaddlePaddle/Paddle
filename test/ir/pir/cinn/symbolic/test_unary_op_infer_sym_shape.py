@@ -175,7 +175,7 @@ class TestCumSumProdOpInferSymbolicShape(TestBase):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
             [
-                'shape[Mul(Mul(Mul(1, S0), S1), S2)], data[NULL]',
+                'shape[Mul(S0, S1, S2)], data[NULL]',
                 'shape[S0, S1, S2], data[NULL]',
             ]
         ]
@@ -229,7 +229,7 @@ class TestReshapeOpInferSymbolicShape(TestBase):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
             [
-                'shape[Mul(Mul(Mul(Mul(1, S0), S1), S2), 1 / (20)), 4, 5], data[NULL]',
+                'shape[Mul(S0, S1, S2, 1 / (20)), 4, 5], data[NULL]',
                 'shape[S0, S1, 12], data[NULL]',
             ]
         ]
