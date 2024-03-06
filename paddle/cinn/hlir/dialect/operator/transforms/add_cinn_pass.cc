@@ -99,7 +99,6 @@ void ApplyCinnPreprocessPass(
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
 
@@ -114,6 +113,7 @@ void ApplyBuildGroupOpPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateBuildCinnPass());
   if (HasDynamicShape(*program)) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
   }
   pass_manager->EnableIRPrinting();
@@ -137,7 +137,6 @@ void ApplyGroupOpPass(::pir::Program* program,
 
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
-
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   pass_manager->EnableIRPrinting();
