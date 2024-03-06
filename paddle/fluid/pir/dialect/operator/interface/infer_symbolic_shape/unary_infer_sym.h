@@ -14,33 +14,22 @@
 
 #pragma once
 
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
 
-bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ArgminOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool AsComplexOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool AsRealOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool CummaxOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool CumminOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool CumprodOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Cumprod_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool CumsumOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Cumsum_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ReshapeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Reshape_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Argmax)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Argmin)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(AsComplex)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(AsReal)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cummax)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cummin)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumprod)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumprod_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumsum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumsum_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reshape)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reshape_)
 
 }  // namespace paddle::dialect

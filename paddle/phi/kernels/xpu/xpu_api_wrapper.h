@@ -54,8 +54,10 @@ XPUFCCalcType FCCalcType() {
     return XPUFCCalcType::FC_FLOAT;
   } else if (std::getenv("XPU_PADDLE_FC_INT32_WITH_LL") != nullptr) {
     return XPUFCCalcType::FC_INT32_WITH_LL;
-  } else if (std::is_same<phi::dtype::bfloat16, T>::value ||
-             std::is_same<XPUTypeBF16, T>::value) {
+  } else if ((std::is_same<phi::dtype::bfloat16, T>::value ||
+              std::is_same<XPUTypeBF16, T>::value) ||
+             (std::is_same<float, T>::value &&
+              std::getenv("XPU_PADDLE_FC_TF32") != nullptr)) {
     return XPUFCCalcType::FC_TF32;
   }
   return XPUFCCalcType::FC_INT16;

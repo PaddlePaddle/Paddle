@@ -123,11 +123,15 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     int rank,
     int size,
     int gid,
-    int64_t timeout)
+    int64_t timeout,
+    int nccl_comm_init_option)
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
-      pg_timeout_(timeout) {
+      pg_timeout_(timeout),
+      nccl_comm_init_option_(nccl_comm_init_option) {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
+  LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
+            << nccl_comm_init_option_;
 }
 ProcessGroupNCCL::~ProcessGroupNCCL() {
   LOG(INFO) << "ProcessGroupNCCL destruct ";
@@ -720,7 +724,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   phi::distributed::P2POption p2p_opts({is_p2p_op, p2p_rank, num_ranks, rank});
   phi::distributed::CommContextManager::CreateNCCLCommContext(
-      store_, store_key, rank_, size_, "", &p2p_opts);
+      store_, store_key, rank_, size_, "", &p2p_opts, nccl_comm_init_option_);
 
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
@@ -1011,9 +1015,10 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     int rank,
     int size,
     int gid,
-    int64_t timeout) {
-  auto process_group =
-      std::make_shared<ProcessGroupNCCL>(store, rank, size, gid, timeout);
+    int64_t timeout,
+    int nccl_comm_init_option) {
+  auto process_group = std::make_shared<ProcessGroupNCCL>(
+      store, rank, size, gid, timeout, nccl_comm_init_option);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
   return process_group;
 }

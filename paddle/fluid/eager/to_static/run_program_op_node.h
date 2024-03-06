@@ -1020,8 +1020,8 @@ inline void PirRunProgramGradAPI(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
     const std::vector<paddle::Tensor> &out_grad,
-    const std::vector<paddle::Tensor> &middles,
-    const std::vector<paddle::Tensor> &out,
+    std::vector<paddle::Tensor> &middles,                       // NOLINT
+    std::vector<paddle::Tensor> &out,                           // NOLINT
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
     std::vector<paddle::Tensor *> &x_grad,       // NOLINT
@@ -1079,6 +1079,10 @@ inline void PirRunProgramGradAPI(
       backward_global_block, out, forward_output_values, global_inner_scope);
   details::ShareTensorsIntoScopeByValue(
       backward_global_block, params, parameter_values, global_inner_scope);
+
+  // Clear out and middles to avoid hold memory until backward finish.
+  out.clear();
+  middles.clear();
 
   auto &interpretercore_info_cache =
       paddle::framework::InterpreterCoreInfoCache::Instance();

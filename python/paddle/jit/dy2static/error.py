@@ -44,7 +44,7 @@ BLANK_COUNT_BEFORE_FILE_STR = 4
 
 def attach_error_data(error, in_runtime=False):
     """
-    Attachs error data about original source code information and traceback to an error.
+    Attaches error data about original source code information and traceback to an error.
 
     Args:
         error(Exception): An native error.
@@ -157,7 +157,7 @@ class SuggestionDict:
         # {(keywords): (suggestions)}
         self.suggestion_dict = {
             ('is not initialized.', 'Hint:', 'IsInitialized'): (
-                "Please ensure all your sublayers are inheritted from nn.Layer.",
+                "Please ensure all your sublayers are inherited from nn.Layer.",
                 "Please ensure there is no tensor created explicitly depended on external data, "
                 + "we suggest to register it as buffer tensor. "
                 + "See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/jit/principle_cn.html#buffers for details",
