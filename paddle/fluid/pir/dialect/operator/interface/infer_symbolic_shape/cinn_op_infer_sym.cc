@@ -206,7 +206,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
   shape_analysis->SetShapeOrDataForValue(
       op->result(0),
-      paddle::dialect::slice_uitls::SliceRawInferSymbolicShape(
+      paddle::dialect::slice_utils::SliceRawInferSymbolicShape(
           shape_analysis->GetShapeOrDataForValue(op->operand_source(0)),
           starts,
           ends,

@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 
-namespace paddle::dialect::slice_uitls {
+namespace paddle::dialect::slice_utils {
 
 inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
   if (shapeordata.isa<TensorListExprs>()) {
@@ -188,4 +188,4 @@ inline ShapeOrData SliceRawInferSymbolicShape(
   return in_shapeordata.data().has_value() ? GetDataDimExprs()
                                            : GetShapeDimExprs();
 }
-}  // namespace paddle::dialect::slice_uitls
+}  // namespace paddle::dialect::slice_utils
