@@ -37,6 +37,29 @@
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR); \
   }
 
+#define PD_REGISTER_SPARSE_UNARY_COM_CPU_GRAD_KERNEL(name, prefix) \
+  PD_REGISTER_KERNEL(name##_coo_grad,                              \
+                     CPU,                                          \
+                     ALL_LAYOUT,                                   \
+                     phi::sparse::prefix##CooGradKernel,           \
+                     float,                                        \
+                     double,                                       \
+                     phi::dtype::complex<float>,                   \
+                     phi::dtype::complex<double>) {                \
+    kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO); \
+  }                                                                \
+                                                                   \
+  PD_REGISTER_KERNEL(name##_csr_grad,                              \
+                     CPU,                                          \
+                     ALL_LAYOUT,                                   \
+                     phi::sparse::prefix##CsrGradKernel,           \
+                     float,                                        \
+                     double,                                       \
+                     phi::dtype::complex<float>,                   \
+                     phi::dtype::complex<double>) {                \
+    kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR); \
+  }
+
 PD_REGISTER_SPARSE_UNARY_CPU_GRAD_KERNEL(tan, Tan)
 PD_REGISTER_SPARSE_UNARY_CPU_GRAD_KERNEL(asin, Asin)
 PD_REGISTER_SPARSE_UNARY_CPU_GRAD_KERNEL(atan, Atan)
@@ -53,49 +76,8 @@ PD_REGISTER_SPARSE_UNARY_CPU_GRAD_KERNEL(expm1, Expm1)
 PD_REGISTER_SPARSE_UNARY_CPU_GRAD_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_CPU_GRAD_KERNEL(leaky_relu, LeakyRelu)
 
-PD_REGISTER_KERNEL(abs_coo_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::AbsCooGradKernel,
-                   float,
-                   double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
-
-PD_REGISTER_KERNEL(abs_csr_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::AbsCsrGradKernel,
-                   float,
-                   double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-}
-
-PD_REGISTER_KERNEL(sin_coo_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::SinCooGradKernel,
-                   float,
-                   double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
-
-PD_REGISTER_KERNEL(sin_csr_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::SinCsrGradKernel,
-                   float,
-                   double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-}
+PD_REGISTER_SPARSE_UNARY_COM_CPU_GRAD_KERNEL(abs, Abs)
+PD_REGISTER_SPARSE_UNARY_COM_CPU_GRAD_KERNEL(sin, Sin)
 
 PD_REGISTER_KERNEL(cast_coo_grad,
                    CPU,
