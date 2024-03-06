@@ -167,99 +167,117 @@ bool Cumsum_OpInferSymbolicShape(
 }
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // auto x_dims = x.dims();
-  // int dim1_ = dim1 < 0 ? x_dims.size() + dim1 + 1 : dim1;
-  // int dim2_ = dim2 < 0 ? x_dims.size() + dim2 + 1 : dim2;
-  // int offset_ = std::abs(offset);
-  // int new_dim_len = static_cast<int>(offset_ + x_dims[x_dims.size() - 1]);
-  // auto sizes = common::vectorize(x_dims);
-  // sizes.pop_back();
-  // sizes.insert(sizes.begin() + std::min(dim1_, dim2_), new_dim_len);
-  // sizes.insert(sizes.begin() + std::max(dim1_, dim2_), new_dim_len);
-  // out->set_dims(common::make_ddim(sizes));
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  const auto &attributes = op->attributes();
+  int dim1 = attributes.at("dim1").dyn_cast<pir::Int32Attribute>().data();
+  int dim2 = attributes.at("dim2").dyn_cast<pir::Int32Attribute>().data();
+  int offset = attributes.at("offset").dyn_cast<pir::Int32Attribute>().data();
+
+  const auto &x_dims = operand_shape_or_data.shape();
+  int dim1_ = dim1 < 0 ? x_dims.size() + dim1 + 1 : dim1;
+  int dim2_ = dim2 < 0 ? x_dims.size() + dim2 + 1 : dim2;
+  int64_t offset_ = static_cast<int64_t>(std::abs(offset));
+  symbol::DimExpr new_dim_len =
+      symbol::DimExpr(offset_) + x_dims[x_dims.size() - 1];
+
+  const auto &out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims = x_dims;
+    out_dims.pop_back();
+    out_dims.insert(out_dims.begin() + std::min(dim1_, dim2_), new_dim_len);
+    out_dims.insert(out_dims.begin() + std::max(dim1_, dim2_), new_dim_len);
+    return out_dims;
+  }();
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
 bool DiagonalOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // auto x_dims = input.dims();
-  // int offset_ = offset;
-  // int axis1_ = axis1 < 0 ? x_dims.size() + axis1 : axis1;
-  // int axis2_ = axis2 < 0 ? x_dims.size() + axis2 : axis2;
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  const auto &attributes = op->attributes();
+  int axis1 = attributes.at("axis1").dyn_cast<pir::Int32Attribute>().data();
+  int axis2 = attributes.at("axis2").dyn_cast<pir::Int32Attribute>().data();
+  int offset = attributes.at("offset").dyn_cast<pir::Int32Attribute>().data();
 
-  // auto out_dims = common::vectorize(x_dims);
-  // // from out_dims get the dim size of axis1_.
-  // auto axis1_size = out_dims[axis1_];
-  // auto axis2_size = out_dims[axis2_];
-  // // delete two dims by attr axis1 and axis2 from out_dims.
-  // /* example:
-  //    out_dim = [2, 3, 4];
-  //    axis1 = 0;
-  //    axis2 = 1;
-  //    according to the attr of axis1 and axis2, we get:
-  //    out_dim = [4].
-  // */
-  // out_dims.erase(out_dims.begin() + std::max(axis1_, axis2_));
-  // out_dims.erase(out_dims.begin() + std::min(axis1_, axis2_));
+  const auto &x_dims = operand_shape_or_data.shape();
+  int axis1_ = axis1 < 0 ? x_dims.size() + axis1 : axis1;
+  int axis2_ = axis2 < 0 ? x_dims.size() + axis2 : axis2;
 
-  // if (offset_ == 0) {
-  //   out_dims.push_back(std::min(axis1_size, axis2_size));
-  // } else if (offset_ > 0) {
-  //   if ((axis2_size - offset_) > 0) {
-  //     out_dims.push_back(std::min(axis1_size, axis2_size - offset_));
-  //   } else {
-  //     out_dims.push_back(0);
-  //   }
-  // } else {
-  //   if ((axis1_size + offset_) > 0) {
-  //     out_dims.push_back(std::min(axis1_size + offset_, axis2_size));
-  //   } else {
-  //     out_dims.push_back(0);
-  //   }
-  // }
-  // out->set_dims(common::make_ddim(out_dims));
+  auto out_dims = x_dims;
+  auto axis1_size = out_dims[axis1_];
+  auto axis2_size = out_dims[axis2_];
+  out_dims.erase(out_dims.begin() + std::max(axis1_, axis2_));
+  out_dims.erase(out_dims.begin() + std::min(axis1_, axis2_));
+
+  symbol::DimExprBuilder builder{nullptr};
+  symbol::DimExpr zero{0};
+  symbol::DimExpr res_shape;
+  symbol::DimExpr offset_sym{offset};
+  if (offset == 0) {
+    res_shape = builder.Min(axis1_size, axis2_size);
+  } else if (offset > 0) {
+    if (axis2_size.isa<int64_t>()) {
+      res_shape = (axis2_size.dyn_cast<int64_t>() - offset) > 0
+                      ? builder.Min(axis1_size, axis2_size - offset_sym)
+                      : zero;
+    } else {
+      res_shape = shape_analysis->GetNextSymName();
+    }
+  } else {
+    if (axis1_size.isa<int64_t>()) {
+      res_shape = (axis1_size.dyn_cast<int64_t>() + offset) > 0
+                      ? builder.Min(axis1_size + offset_sym, axis2_size)
+                      : zero;
+    } else {
+      res_shape = shape_analysis->GetNextSymName();
+    }
+  }
+  out_dims.push_back(res_shape);
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
-bool DirichletOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // const auto alpha_dim = alpha.dims();
-  // out->set_dims(alpha_dim);
-  return true;
-}
+
 bool EinsumOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // need some xxx
-  // out->set_dims(common::make_ddim(output_dims));
-
-  // for (size_t i = 0; i < xshape.size(); ++i) {
-  //   if (xshape[i] != nullptr) {
-  //     xshape[i]->set_dims(inputs[i]->dims());
-  //   }
-  // }
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
 
 bool KthvalueOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // auto input_dims = x.dims();
-  // const int &dim_size = input_dims.size();
-  // if (axis < 0) axis += dim_size;
-  // std::vector<int64_t> dimvec;
-  // for (int i = 0; i < axis; i++) {
-  //   dimvec.emplace_back(input_dims[i]);
-  // }
-  // if (keepdim && dim_size > 0) {
-  //   dimvec.emplace_back(static_cast<int64_t>(1));
-  // }
-  // for (int i = axis + 1; i < dim_size; i++) {
-  //   dimvec.emplace_back(input_dims[i]);
-  // }
-  // DDim dims = common::make_ddim(dimvec);
-  // out->set_dims(dims);
-  // out->share_lod(x);
-  // out->set_dtype(x.dtype());
-  // indices->set_dims(dims);
-  // indices->share_lod(x);
-  // indices->set_dtype(x.dtype());
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  const auto &attributes = op->attributes();
+  int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
+  bool keepdim = GetBoolAttr(op, "keepdim");
+
+  const auto &input_dims = operand_shape_or_data.shape();
+  const int &dim_size = input_dims.size();
+  if (axis < 0) axis += dim_size;
+  std::vector<symbol::DimExpr> out_dims;
+  for (int i = 0; i < axis; i++) {
+    out_dims.emplace_back(input_dims[i]);
+  }
+  if (keepdim && dim_size > 0) {
+    out_dims.emplace_back(symbol::DimExpr(1));
+  }
+  for (int i = axis + 1; i < dim_size; i++) {
+    out_dims.emplace_back(input_dims[i]);
+  }
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  shape_analysis->SetShapeOrDataForValue(op->result(1), shape_data);
   return true;
 }
 bool ReshapeOpInferSymbolicShape(

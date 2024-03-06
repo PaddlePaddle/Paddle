@@ -1155,9 +1155,9 @@ bool KronOpInferSymbolicShape(pir::Operation *op,
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto &y_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1)).shape();
-  const auto rank_x = x_shape_or_data.size();
-  const auto rank_y = y_shape_or_data.size();
-  const auto rank = (rank_x > rank_y) ? rank_x : rank_y;
+  const int rank_x = x_shape_or_data.size();
+  const int rank_y = y_shape_or_data.size();
+  const int rank = (rank_x > rank_y) ? rank_x : rank_y;
 
   std::vector<symbol::DimExpr> dim_out;
   dim_out.reserve(rank);

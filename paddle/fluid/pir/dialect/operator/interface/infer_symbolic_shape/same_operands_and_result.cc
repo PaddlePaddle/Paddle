@@ -154,6 +154,10 @@ bool Digamma_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return SameOperandsAndResultShape(op, shape_analysis);
 }
+bool DirichletOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
 bool EqualOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return SameOperandsAndResultShape(op, shape_analysis);
