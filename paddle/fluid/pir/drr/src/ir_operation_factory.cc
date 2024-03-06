@@ -64,40 +64,47 @@ void OperationFactory::RegisterManualOpCreator() {
 }
 
 pir::Attribute CreateIrAttribute(const std::any& obj) {
-  if (obj.type() == typeid(bool)) {
-    return IrAttributeCreator<bool>()(std::any_cast<bool>(obj));
-  } else if (obj.type() == typeid(int32_t)) {
-    return IrAttributeCreator<int32_t>()(std::any_cast<int32_t>(obj));
-  } else if (obj.type() == typeid(int64_t)) {
-    return IrAttributeCreator<int64_t>()(std::any_cast<int64_t>(obj));
-  } else if (obj.type() == typeid(float)) {
-    return IrAttributeCreator<float>()(std::any_cast<float>(obj));
-  } else if (obj.type() == typeid(std::string)) {
-    return IrAttributeCreator<std::string>()(std::any_cast<std::string>(obj));
-  } else if (obj.type() == typeid(const char*)) {
-    return IrAttributeCreator<std::string>()(std::any_cast<const char*>(obj));
-  } else if (obj.type() == typeid(phi::DataType)) {
-    return IrAttributeCreator<phi::DataType>()(
-        std::any_cast<phi::DataType>(obj));
-  } else if (obj.type() == typeid(phi::Place)) {
-    return IrAttributeCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
-  } else if (obj.type() == typeid(std::vector<int32_t>)) {  // NOLINT
-    return IrAttributeCreator<std::vector<int32_t>>()(
-        std::any_cast<std::vector<int32_t>>(obj));
-  } else if (obj.type() == typeid(std::vector<int64_t>)) {
-    return IrAttributeCreator<std::vector<int64_t>>()(
-        std::any_cast<std::vector<int64_t>>(obj));
-  } else if (obj.type() == typeid(std::vector<float>)) {
-    return IrAttributeCreator<std::vector<float>>()(
-        std::any_cast<std::vector<float>>(obj));
-  } else if (obj.type() == typeid(phi::IntArray)) {
-    return IrAttributeCreator<phi::IntArray>()(
-        std::any_cast<phi::IntArray>(obj));
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Type error. CreateIrAttribute for type(%s) "
-                                   "is unimplemented CreateInCurrently.",
-                                   obj.type().name()));
+  try {
+    if (obj.type() == typeid(bool)) {
+      return IrAttributeCreator<bool>()(std::any_cast<bool>(obj));
+    } else if (obj.type() == typeid(int32_t)) {
+      return IrAttributeCreator<int32_t>()(std::any_cast<int32_t>(obj));
+    } else if (obj.type() == typeid(int64_t)) {
+      return IrAttributeCreator<int64_t>()(std::any_cast<int64_t>(obj));
+    } else if (obj.type() == typeid(float)) {
+      return IrAttributeCreator<float>()(std::any_cast<float>(obj));
+    } else if (obj.type() == typeid(std::string)) {
+      return IrAttributeCreator<std::string>()(std::any_cast<std::string>(obj));
+    } else if (obj.type() == typeid(const char*)) {
+      return IrAttributeCreator<std::string>()(std::any_cast<const char*>(obj));
+    } else if (obj.type() == typeid(phi::DataType)) {
+      return IrAttributeCreator<phi::DataType>()(
+          std::any_cast<phi::DataType>(obj));
+    } else if (obj.type() == typeid(phi::Place)) {
+      return IrAttributeCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
+    } else if (obj.type() == typeid(std::vector<int32_t>)) {  // NOLINT
+      return IrAttributeCreator<std::vector<int32_t>>()(
+          std::any_cast<std::vector<int32_t>>(obj));
+    } else if (obj.type() == typeid(std::vector<int64_t>)) {
+      return IrAttributeCreator<std::vector<int64_t>>()(
+          std::any_cast<std::vector<int64_t>>(obj));
+    } else if (obj.type() == typeid(std::vector<float>)) {
+      return IrAttributeCreator<std::vector<float>>()(
+          std::any_cast<std::vector<float>>(obj));
+    } else if (obj.type() == typeid(phi::IntArray)) {
+      return IrAttributeCreator<phi::IntArray>()(
+          std::any_cast<phi::IntArray>(obj));
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Type error. CreateIrAttribute for type(%s) "
+          "is unimplemented CreateInCurrently.",
+          obj.type().name()));
+    }
+  } catch (const std::bad_any_cast& e) {
+    PADDLE_THROW(phi::errors::Fatal(
+        "%s: CreateIrAttribute for type(%s) not successfully.",
+        e.what(),
+        obj.type().name()));
   }
 }
 

@@ -47,7 +47,7 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("add_out") = add(pat.Tensor("conv2d_out"), pat.Tensor("bias"));
     pat.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          if (!pir::ValueIsPersitable(match_ctx.Tensor("bias"))) {
+          if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
             return false;
           }
 
@@ -107,7 +107,6 @@ class Conv2dAddFusePass : public pir::PatternRewritePass {
 }  // namespace
 
 namespace pir {
-
 std::unique_ptr<Pass> CreateConv2dAddFusePass() {
   return std::make_unique<Conv2dAddFusePass>();
 }
