@@ -8,13 +8,22 @@ namespace cinn::api {
 template <typename T>
 struct InjectiveSourcePattern {};
 
-// Reduce ops
+// Reduce op
 template <typename T>
-struct ReductionPattern {};
+struct SingleReductionOpPattern {};
 
 // ElementWise/Broadcast ops which have shardable dimentions and reduction ancestors.
 template <typename T>
 struct PartialShardablePattern {};
+
+// Reduce base pattern
+template <typename T>
+struct ReductionPattern {
+  using Nothing = std::monostate;
+  std::variant<Nothing, InjectiveSourcePattern<T>, PartialShardablePattern> opt_is_or_ps_input;
+  SingleReductionOpPattern<T> reduction_op_pattern;
+};
+
 
 // SR := [R | PS]
 template <typename T>
@@ -23,8 +32,8 @@ using ShardableReductionsPattern = std::vector<std::variant<ReductionPattern<T>,
 // fuse rules:
 //  1. IS * PS -> PS
 //  2. PS * PS -> PS
-//  3. PS * R -> R
-//  4. IS * R -> R
+//  3. IS * R -> R
+//  4. PS * R -> R
 
 // lifting rules:
 //  1. R -> SR
