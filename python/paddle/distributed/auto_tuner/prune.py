@@ -828,12 +828,9 @@ def prune_by_refined_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
         pp_degree = cur_cfg["pp_degree"]
         recompute = cur_cfg["use_recompute"]
         recompute_granularity = cur_cfg["recompute_granularity"]
-        if not recompute or (
-            recompute
-            and recompute_granularity
-            and recompute_granularity != "full"
-        ):
-            return True
+        if recompute:
+            if recompute_granularity and recompute_granularity != "full":
+                return True
         if pp_degree == 1:
             return True
         if tuner_cfg["model_cfg"]["num_layers"] % pp_degree != 0:
