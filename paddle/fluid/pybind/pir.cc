@@ -1352,7 +1352,7 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
   paddle::dialect::OpYamlInfoParser yaml_parser(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
           ->get_op_info_(op_name),
-      paddle::dialect::IsLegacyOp(op_name));
+      paddle::dialect::IsLegacyOp(op));
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     std::string value_name = yaml_parser.OutputNames()[i];

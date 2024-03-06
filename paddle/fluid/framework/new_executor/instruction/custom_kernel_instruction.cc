@@ -378,7 +378,7 @@ CustomKernelInstruction::CustomKernelInstruction(
           "can not find OpYamlInfoInterface from [%s]", custom_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(custom_op_name_),
-      paddle::dialect::IsLegacyOp(custom_op_name_));
+      paddle::dialect::IsLegacyOp(op_));
   VLOG(6) << "finish process yaml_info_parser";
 
   const auto& op_meta =

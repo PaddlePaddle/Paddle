@@ -138,7 +138,9 @@ VariantType GetAttributeData(const pir::Attribute& attr);
 
 paddle::any TransAttrToAny(const pir::Attribute& attr);
 
-bool IsLegacyOp(const std::string& name);
+bool IsLegacyOp(const std::string& kernel_name);
+
+bool IsLegacyOp(pir::Operation* op);
 
 bool IsEmptyValue(const pir::Value& value);
 

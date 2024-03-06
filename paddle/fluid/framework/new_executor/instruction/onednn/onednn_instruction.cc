@@ -230,8 +230,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
       phi::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
-      yaml_interface->get_op_info_(op_name),
-      paddle::dialect::IsLegacyOp(op_name));
+      yaml_interface->get_op_info_(op_name), paddle::dialect::IsLegacyOp(op_));
   VLOG(6) << "finish process yaml_info_parser";
 
   if (infer_meta_interface_) {

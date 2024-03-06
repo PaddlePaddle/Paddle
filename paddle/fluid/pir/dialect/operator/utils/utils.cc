@@ -261,7 +261,28 @@ paddle::any TransAttrToAny(const pir::Attribute& attr) {
   return kAttrCastMap[attr_type](attr);
 }
 
-bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
+bool IsLegacyOp(const std::string& kernel_name) {
+  auto phi_kernels = phi::KernelFactory::Instance().kernels();
+  if (phi_kernels.find(kernel_name) != phi_kernels.end()) {
+    for (auto& info_pair : phi_kernels.at(kernel_name)) {
+      if (info_pair.second.GetKernelRegisteredType() ==
+          phi::KernelRegisteredType::STRUCTURE) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool IsLegacyOp(pir::Operation* op) {
+  if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
+    auto [_0, _1, _2, runtime_info, _4] =
+        op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+    auto kernel_func = runtime_info.kernel_func;
+    return IsLegacyOp(kernel_func);
+  }
+  return false;
+}
 
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();
