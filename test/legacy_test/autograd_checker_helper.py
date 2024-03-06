@@ -310,7 +310,6 @@ def check_vjp(func, args, order=2, atol=None, rtol=None, eps=EPS):
     atol = atol if atol else default_gradient_tolerance[np_type]
     rtol = rtol if rtol else default_gradient_tolerance[np_type]
 
-    # shape like args, [pd.tensor, pd.tensor]
     (
         program,
         inputs,
