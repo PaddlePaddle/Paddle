@@ -820,12 +820,9 @@
 
 - op : distributed_push_sparse
   inputs :
-    {Ids : ids, Shows : shows, Clicks: clicks}
+    {ids : Ids, shows : Shows, clicks: Clicks}
   outputs :
     out : Outputs
-  extra :
-    attrs : [int table_id = 0, int size = 8, bool is_distributed = false, str push_sparse_version = "push_sparse",
-             int64_t padding_idx = -1, str dtype = "float32", bool is_test = false, bool use_cvm_op = false]
 
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div_grad)

@@ -403,7 +403,7 @@
     func : DistributedPushSparseInferMeta
   kernel :
     func: distributed_push_sparse
-    data_type : ids
+    data_type : dtype
 
 - op : divide
   args : (Tensor x, Tensor y)
