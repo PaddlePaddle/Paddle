@@ -42,7 +42,7 @@ namespace pybind {
 
 extern PyTypeObject* p_tensor_type;
 
-PyDoc_STRVAR(tensor_name__doc__,  // NOLINT  // NOLINT
+PyDoc_STRVAR(tensor_name__doc__,  // NOLINT
              R"DOC(name
 
 Tensor's name.
