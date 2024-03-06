@@ -952,8 +952,16 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     VLOG(4) << "cinn op name " << cinn_op_name << std::endl;
 
     // 1.Select Op impl
+    VLOG(-1) << "before CollectInputTensor";
+    for (int i = 0; i < group_func_arg_tensors->size(); i++) {
+      VLOG(-1) << "arg tensor is: " << (*group_func_arg_tensors)[i];
+    }
     std::vector<ir::Tensor> op_func_arg_tensors =
         CollectInputTensor(group, op, group_func_arg_tensors, tensor_map);
+    VLOG(-1) << "after CollectInputTensor";
+    for (int i = 0; i < group_func_arg_tensors->size(); i++) {
+      VLOG(-1) << "arg tensor is: " << (*group_func_arg_tensors)[i];
+    }
     VLOG(4) << "input size:" << op_func_arg_tensors.size();
     // if (op->name() == "cinn_op.generate_shape") {
     //   VLOG(-1) << "cinn op";
@@ -1000,9 +1008,17 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
     std::vector<ir::LoweredFunc> funcs;
     // if (cinn_op_name != "generate_shape") {
+    VLOG(-1) << "before done OpLower";
+    for (int i = 0; i < group_func_arg_tensors->size(); i++) {
+      VLOG(-1) << "arg tensor is: " << (*group_func_arg_tensors)[i];
+    }
     funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
     // }
+    VLOG(-1) << "after done OpLower";
+    for (int i = 0; i < group_func_arg_tensors->size(); i++) {
+      VLOG(-1) << "arg tensor is: " << (*group_func_arg_tensors)[i];
+    }
 
     if (ops.size() > 1 && not_used_op.count(op) &&
         (op->name() == "cinn_op.reshape")) {
@@ -1204,11 +1220,15 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
-    VLOG(4) << "input tensor name: " << ValueName(in_value);
+    VLOG(4) << "input tensor name: " << ValueName(in_value) << " " << std::hash<::pir::Value>()(in_value);;
     ir::Tensor tensor = GetTensor(group, in_value);
     VLOG(4) << "shape: " << tensor->shape;
     VLOG(4) << "sym_shape: " << tensor->sym_shape;
 
+    VLOG(-1) << "before inner CollectInputTensor";
+    for (int i = 0; i < func_args->size(); i++) {
+      VLOG(-1) << "arg tensor is: " << (*func_args)[i];
+    }
     if (!tensor_map->count(in_value)) {
       VLOG(4) << "push_back input tensor name: " << ValueName(in_value);
       // record tensor.
@@ -1218,6 +1238,7 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
         func_args->push_back(tensor);
       }
     } else {
+      VLOG(4) << "change input tensor name: " << ValueName(in_value) << " " <<std::hash<::pir::Value>()(in_value);
       // TODO(6clc): After supporting symbolic calculation,
       // 1. Check that the shape of the tensor with the same name is the same
       // size
@@ -1227,6 +1248,10 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
       (*tensor_map)[in_value]->shape = tensor->shape;
       (*tensor_map)[in_value]->sym_domain = tensor->sym_domain;
       (*tensor_map)[in_value]->domain = tensor->domain;
+    }
+    VLOG(-1) << "after inner CollectInputTensor";
+    for (int i = 0; i < func_args->size(); i++) {
+      VLOG(-1) << "arg tensor is: " << (*func_args)[i];
     }
     tensors.push_back(tensor);
   }

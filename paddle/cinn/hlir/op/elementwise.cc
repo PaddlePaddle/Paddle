@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/utils/functional.h"
 
@@ -1269,7 +1270,14 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
         // ir::Tensor out = pe::Cast(tensor_A, tensor_A->type(), tensor_name);
-        ir::Tensor out = tensor_A;
+        ir::Tensor out(ir::_Tensor_::Make(tensor_name,
+                                          tensor_A->type(),
+                                          {
+                                              Expr(1),
+                                          },
+                                          {
+                                              Expr(1),
+                                          }));
         std::vector<CINNValue> res;
         stages->InsertLazily(out);
         res.push_back(CINNValue(out));
