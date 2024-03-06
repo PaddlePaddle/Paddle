@@ -13,12 +13,12 @@ struct FrontendPattern {};
 namespace cinn::api {
 
 template<>
-struct InjectiveSourcePattern<cinn::frontend::FrontendPattern> {
+struct InjectiveSourcePattern<frontend::FrontendPattern> {
   std::vector<const pir::Operation*> ops;
 };
 
 template<>
-struct SingleReductionOpPattern<cinn::frontend::FrontendPattern> {
+struct SingleReductionOpPattern<frontend::FrontendPattern> {
   const pir::Operation* reduce_op;
 };
 
@@ -35,7 +35,7 @@ struct ShardableAxesSignature {
 };
 
 template<>
-struct PartialShardablePattern<cinn::frontend::FrontendPattern> {
+struct PartialShardablePattern<frontend::FrontendPattern> {
   std::vector<const pir::Operation*> ops;
   ShardableAxesSignature shardable_axes_signature;
 };

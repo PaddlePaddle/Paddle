@@ -110,7 +110,47 @@ struct InternalFusionHelper {
   const std::function<bool(const pir::Operation*)> IsInjectiveSource;
 
   std::vector<InternalPattern> FuseISAndConvertRemainder(const cinn::dialect::FusionOp& fusion_op) const {
+    const auto& [injective_source_ops, remainder_ops] = SplitInjectiveSourceOps(fusion_op);
+    std::vector<InternalPattern> ret;
+    FuseInjectiveSourceThenAppend(injective_source_ops, &ret);
+    for (const auto& op : remainder_ops) {
+      ret.emplace_back(ConvertNonInjectiveSourceToInternalPattern(op));
+    }
+    return ret;
+  }
+
+  void FuseInjectiveSourceThenAppend(
+      const std::list<const pir::Operation*>& injective_source_ops,
+      std::vector<InternalPattern>* ret) {
+    using IterType = std::list<const pir::Operation*>::iterator;
     TODO();
+  }
+
+  InternalPattern ConvertNonInjectiveSourceToInternalPattern(const pir::Operation* op) {
+    const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
+    if (kind == hlir::framework::kReduction) {
+      return ConvertReductionOpToInternalPattern(op);
+    } else if (kind == hlir::framework::kElementWise) {
+      return ConvertElementwiseOpToInternalPattern(op);
+    } else if (kind == hlir::framework::kBroadcast) {
+      return ConvertBroadcastOpToInternalPattern(op);
+    } else {
+      LOG(FATAL) << "only kReduction, kElementWise, kBroadcast supported. op_name:" << op->op_name(); 
+    }
+    LOG(FATAL) << "Dead code";
+  }
+
+  InternalPattern ConvertReductionOpToInternalPattern(const pir::Operation* op) {
+    return R{{}, {op}};
+  }
+
+  InternalPattern ConvertElementwiseOpToInternalPattern(const pir::Operation* op) {
+    CHECK(!op->isa<cinn::dialect::ReshapeOp>()) << "reshape not supported.";
+    TODO();
+  }
+
+  InternalPattern ConvertBroadcastOpToInternalPattern(const pir::Operation* op) {
+    LOG(FATAL) << "TODO(wuzhanfei)";
   }
 
   std::variant<IternalPattern, ErrorGroupPattern> MergePattern(
@@ -152,6 +192,24 @@ struct InternalFusionHelper {
     R new_pattern = CopyPattern(downstream);
     new_pattern.opt_inputs = CopyPattern(upstream);
     return new_pattern;
+  }
+
+  SplitedOps SplitInjectiveSourceOps(const cinn::dialect::FusionOp& fusion_op) {
+    SplitedOps ret;
+    for (const auto& op : fusion_op.block().ops()) {
+      if (!IsInThisFusionOp(op)) continue;
+      if (IsInjectiveSource(op)) {
+        ret.injective_source_ops.push_back(op);
+      } else {
+        ret.remainder_ops.push_back(op);
+      }
+    }
+    return ret;
+  }
+
+  struct SplitedOps {
+    std::list<const pir::Operation*> injective_source_ops;
+    std::list<const pir::Operation*> remainder_ops;
   }
 
   std::optional<std::pair<InternalPattern, InternalPattern>> FindConnetedPattenPairWithCondition(
