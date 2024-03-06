@@ -340,13 +340,26 @@ def in_dynamic_or_pir_mode():
 def in_pir_executor_mode():
     """
 
-    This API checks whether paddle runs iin pir executor mode.
+    This API checks whether paddle runs in pir executor mode.
 
     Returns:
         bool: Whether paddle runs in pir executor mode.
 
     """
     flag = str(os.environ.get("FLAGS_enable_pir_in_executor")).lower()
+    return flag in ("true", "1")
+
+
+def in_cinn_mode():
+    """
+
+    This API checks whether paddle runs in cinn mode.
+
+    Returns:
+        bool: Whether paddle runs in cinn mode.
+
+    """
+    flag = str(os.environ.get("FLAGS_use_cinn")).lower()
     return flag in ("true", "1")
 
 

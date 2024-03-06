@@ -17,6 +17,23 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 
 namespace paddle::dialect::slice_uitls {
+
+inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
+  if (shapeordata.isa<TensorListExprs>()) {
+    ExprVec result;
+    TensorListExprs list =
+        shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    for (size_t i = 0; i < list.size(); i++) {
+      for (auto expr : list[i].data().value()) {
+        result.emplace_back(expr);
+      }
+    }
+    return result;
+  } else {
+    return shapeordata.data().value();
+  }
+}
+
 inline void CheckAndUpdateSliceAttrs(
     const ExprVec &in_dims,
     const std::vector<int64_t> &axes,

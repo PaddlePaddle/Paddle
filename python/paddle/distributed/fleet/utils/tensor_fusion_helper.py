@@ -352,6 +352,7 @@ class FusedCommBuffer:
         fuse_param=False,
         scale_after_comm=True,
         release_grads=False,
+        use_reduce_avg=False,
     ):
         self._id = id
         self._params = params
@@ -360,6 +361,7 @@ class FusedCommBuffer:
         self._scale_after_comm = scale_after_comm
         self._fuse_param = fuse_param
         self._release_grads = release_grads
+        self._use_reduce_avg = use_reduce_avg
 
         assert not (
             self._fuse_param and self._release_grads
@@ -573,19 +575,29 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def _comm_grads(self):
-        if not self._scale_after_comm:
+        reduce_op = (
+            paddle.distributed.ReduceOp.AVG
+            if self._use_reduce_avg
+            else paddle.distributed.ReduceOp.SUM
+        )
+        # scale will be skiped when reduce_avg comm operation is enabled.
+        if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
 
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(
-                self.grad_storage, group=self._comm_group, sync_op=False
+                self.grad_storage,
+                op=reduce_op,
+                group=self._comm_group,
+                sync_op=False,
             )
 
         elif self._act == HOOK_ACTION.REDUCE:
             task = paddle.distributed.reduce(
                 self.grad_storage,
                 dst=self._dst,
+                op=reduce_op,
                 group=self._comm_group,
                 sync_op=False,
             )
@@ -598,6 +610,7 @@ class FusedCommBuffer:
             task = paddle.distributed.reduce_scatter(
                 reduce_scattered,
                 self.grad_storage,
+                op=reduce_op,
                 group=self._comm_group,
                 sync_op=False,
             )
@@ -608,7 +621,8 @@ class FusedCommBuffer:
         assert self._task is not None, "Task is not initialized."
         self._task.wait()
 
-        if self._scale_after_comm:
+        # scale will be skiped when use reduce_avg comm operation
+        if self._scale_after_comm and not self.use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
 
@@ -636,6 +650,7 @@ def obtain_storage(
     dst=-1,
     acc_steps=1,
     scale_after_comm=False,
+    use_reduce_avg=False,
 ):
     if len(parameters) < 1:
         return [], []
@@ -654,6 +669,7 @@ def obtain_storage(
             use_main_grad=use_main_grad,
             fuse_param=fuse_param,
             scale_after_comm=scale_after_comm,
+            use_reduce_avg=use_reduce_avg,
         )
         if fuse_param:
             param_buffer = comm_buffer.param_storage
@@ -714,6 +730,7 @@ def _fused_parameters_impl(
     acc_step=1,
     scale_after_comm=False,
     apply_decay_param_fun=None,
+    use_reduce_avg=False,
 ):
     param_groups = []
     attrs = []
@@ -764,6 +781,7 @@ def _fused_parameters_impl(
             dst=dst,
             acc_steps=acc_step,
             scale_after_comm=scale_after_comm,
+            use_reduce_avg=use_reduce_avg,
         )
         other, other_buffers = obtain_storage(
             other_params,
@@ -777,6 +795,7 @@ def _fused_parameters_impl(
             dst=dst,
             acc_steps=acc_step,
             scale_after_comm=scale_after_comm,
+            use_reduce_avg=use_reduce_avg,
         )
         decay_fused += decay
         all_fused += decay
@@ -799,6 +818,7 @@ def fused_parameters(
     scale_after_comm=False,
     group_params=False,
     apply_decay_param_fun=None,
+    use_reduce_avg=False,
 ):
     """
     Fuse gradients. Fuse parameters if be enabled. Prepare for comm overlap if be enabled.
@@ -813,6 +833,7 @@ def fused_parameters(
     :param scale_after_comm: if enable comm overlap, specify the location of grad scale
     :param group_params: the format of the input parameters is param group
     :param apply_decay_param_fun: the function to filter decay param
+    :param use_reduce_avg: use reduce_avg comm operation instead of scale and reduce_sum
     :return: param storage if fused, comm buffers if comm overlap, param groups if use group params
     """
     if act is None:
@@ -859,6 +880,7 @@ def fused_parameters(
                 acc_step=acc_step,
                 scale_after_comm=scale_after_comm,
                 apply_decay_param_fun=apply_decay_param_fun,
+                use_reduce_avg=use_reduce_avg,
             )
             if comm_overlap:
                 comm_buffers.extend(group_all_buffers)
@@ -879,6 +901,7 @@ def fused_parameters(
             acc_step=acc_step,
             scale_after_comm=scale_after_comm,
             apply_decay_param_fun=apply_decay_param_fun,
+            use_reduce_avg=use_reduce_avg,
         )
 
         return decay_fused, all_fused, all_buffers
