@@ -462,13 +462,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_mark_output_);
-<<<<<<< HEAD
   CP_MEMBER(trt_parameters_run_fp16_);
   CP_MEMBER(trt_parameters_run_int8_);
   CP_MEMBER(trt_parameters_run_bfp16_);
-=======
   CP_MEMBER(trt_forbid_dynamic_op_)
->>>>>>> 2ca34a759a255660844914004f2b8b59057ce0fe
   CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
