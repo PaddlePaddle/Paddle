@@ -280,26 +280,27 @@ class NodeTrees {
       : thread_event_trees_map_(thread_event_trees_map) {}
 
   // destructor
-  ~NodeTrees();
+  TEST_API ~NodeTrees();
 
-  void LogMe(BaseLogger* logger);
-  void HandleTrees(std::function<void(HostTraceEventNode*)>,
-                   std::function<void(CudaRuntimeTraceEventNode*)>,
-                   std::function<void(DeviceTraceEventNode*)>,
-                   std::function<void(MemTraceEventNode*)>,
-                   std::function<void(OperatorSupplementEventNode*)>);
+  TEST_API void LogMe(BaseLogger* logger);
+  TEST_API void HandleTrees(std::function<void(HostTraceEventNode*)>,
+                            std::function<void(CudaRuntimeTraceEventNode*)>,
+                            std::function<void(DeviceTraceEventNode*)>,
+                            std::function<void(MemTraceEventNode*)>,
+                            std::function<void(OperatorSupplementEventNode*)>);
   const std::map<uint64_t, HostTraceEventNode*>& GetNodeTrees() const {
     return thread_event_trees_map_;
   }
-  std::map<uint64_t, std::vector<HostTraceEventNode*>> Traverse(bool bfs) const;
+  TEST_API std::map<uint64_t, std::vector<HostTraceEventNode*>> Traverse(
+      bool bfs) const;
 
  private:
   std::map<uint64_t, HostTraceEventNode*> thread_event_trees_map_;
-  void BuildTrees(const std::vector<HostTraceEventNode*>&,
-                  const std::vector<CudaRuntimeTraceEventNode*>&,
-                  const std::vector<DeviceTraceEventNode*>&,
-                  const std::vector<MemTraceEventNode*>&,
-                  const std::vector<OperatorSupplementEventNode*>&);
+  TEST_API void BuildTrees(const std::vector<HostTraceEventNode*>&,
+                           const std::vector<CudaRuntimeTraceEventNode*>&,
+                           const std::vector<DeviceTraceEventNode*>&,
+                           const std::vector<MemTraceEventNode*>&,
+                           const std::vector<OperatorSupplementEventNode*>&);
   HostTraceEventNode* BuildTreeRelationship(
       std::vector<HostTraceEventNode*> host_event_nodes,
       std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes,

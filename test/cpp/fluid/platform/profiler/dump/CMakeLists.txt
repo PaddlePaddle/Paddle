@@ -1,0 +1,1 @@
+paddle_test(test_serialization_logger SRCS test_serialization_logger.cc)
