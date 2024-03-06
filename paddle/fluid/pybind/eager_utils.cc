@@ -1077,6 +1077,12 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const phi::DataType& dtype) {
+  auto obj = ::pybind11::cast(dtype);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const pir::Value& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
