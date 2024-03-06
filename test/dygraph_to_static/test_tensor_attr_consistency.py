@@ -105,6 +105,7 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'set_shape',
         'set_type',
         'use_empty',
+        'share_impl_with',
     ]
 )
 
