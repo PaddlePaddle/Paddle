@@ -20,14 +20,16 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
 class RemoveUselessScalePattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "RemoveUselessScalePattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full_op = pat.Op(paddle::dialect::FullOp::name(),
@@ -49,12 +51,12 @@ class RemoveUselessScalePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
     res.Tensor("scale_out").Assign(res.Tensor("x"));
   }
-
-  std::string name() const override { return "RemoveUselessScalePattern"; }
 };
 
-class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
+class RemoveRedundantScalePattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "RemoveRedundantScalePattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full_op_1 = pat.Op(paddle::dialect::FullOp::name(),
@@ -81,8 +83,8 @@ class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &bais_res =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &bias_attr = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           float res_bias_1 = 0.f;
           float res_bias_2 = 0.f;
           if (match_ctx.Attr<bool>("bias_after_scale_1")) {
@@ -100,8 +102,8 @@ class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
           }
           return res_bias_2;
         });
-    const auto &res_scale_input =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &res_scale_input = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("value_1") *
                  match_ctx.Attr<float>("value_2");
         });
@@ -111,22 +113,18 @@ class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
                                       {"value", res_scale_input},
                                       {"dtype", pat.Attr("dtype_1")},
                                       {"place", pat.Attr("place_1")}});
-    const auto &scale_op_res = res.Op(
-        "pd_op.scale",
-        {{"bias", bais_res},
-         {"bias_after_scale",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-            return true;
-          })}});
+    const auto &scale_op_res =
+        res.Op("pd_op.scale",
+               {{"bias", bias_attr}, {"bias_after_scale", res.BoolAttr(true)}});
     scale_op_res({&res.Tensor("x"), &full_op_res()},
                  {&res.Tensor("scale_2_out")});
   }
-
-  std::string name() const override { return "RemoveRedundentScalePattern"; }
 };
 
 class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "RemoveUselessCastPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("ret") = pat.Op("pd_op.cast")(pat.Tensor("arg0"));
@@ -134,12 +132,12 @@ class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
     auto res = pat.ResultPattern();
     res.Tensor("ret").Assign(res.Tensor("arg0"));
   }
-
-  std::string name() const override { return "RemoveUselessCastPattern"; }
 };
 
 class RemoveUselessConcatPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "RemoveUselessConcatPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     const auto &combine = pat.Op(pir::CombineOp::name());
@@ -154,11 +152,12 @@ class RemoveUselessConcatPattern : public paddle::drr::DrrPatternBase {
     auto res = pat.ResultPattern();
     res.Tensor("out").Assign(res.Tensor("x"));
   }
-
-  std::string name() const override { return "RemoveUselessConcatPattern"; }
 };
 
-class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
+class RemoveRedundantCastPattern : public paddle::drr::DrrPatternBase {
+ public:
+  std::string name() const override { return "RemoveRedundantCastPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") = pat.Op(
@@ -175,11 +174,12 @@ class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
     res.Tensor("ret") = res.Op(
         "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
-
-  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 
 class DeleteDropoutOpPattern : public paddle::drr::DrrPatternBase {
+ public:
+  std::string name() const override { return "DeleteDropoutOpPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     const auto &dropout_op =
@@ -195,11 +195,12 @@ class DeleteDropoutOpPattern : public paddle::drr::DrrPatternBase {
     auto res = pat.ResultPattern();
     res.Tensor("dropout_out").Assign(res.Tensor("dropout_in"));
   }
-
-  std::string name() const override { return "DeleteDropoutOpPattern"; }
 };
 
 class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
+ public:
+  std::string name() const override { return "ReplaceDropoutWithScalePattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     const auto &dropout_op = pat.Op("pd_op.dropout",
@@ -216,42 +217,40 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
 
     auto res = pat.ResultPattern();
 
-    const auto &res_scale_input =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &res_scale_input = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return 1.f - match_ctx.Attr<float>("p");
         });
 
     const auto &full_op_res = res.Op(
         paddle::dialect::FullOp::name(),
         {{"shape",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                       -> phi::IntArray { return {1}; })},
+          res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx)
+                              -> phi::IntArray { return {1}; })},
          {"value", res_scale_input},
          {"dtype",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                       -> phi::DataType { return phi::DataType::FLOAT32; })},
+          res.ComputeAttr(
+              [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+                return phi::DataType::FLOAT32;
+              })},
          {"place",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                       -> phi::Place { return phi::CPUPlace{}; })}});
-    const auto &scale_op_res = res.Op(
-        "pd_op.scale",
-        {{"bias",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
-            return 0;
-          })},
-         {"bias_after_scale",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-            return true;
-          })}});
+          res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx)
+                              -> phi::Place { return phi::CPUPlace{}; })}});
+    const auto &scale_op_res =
+        res.Op("pd_op.scale",
+               {{"bias", res.Float32Attr(0)},
+                {"bias_after_scale", res.BoolAttr(true)}});
     scale_op_res({&res.Tensor("dropout_in"), &full_op_res()},
                  {&res.Tensor("dropout_out")});
   }
-
-  std::string name() const override { return "ReplaceDropoutWithScalePattern"; }
 };
 
-class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
+class RemoveRedundantTransposePattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "RemoveRedundantTransposePattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &transpose1 =
@@ -262,7 +261,7 @@ class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &new_perm_attr = res.Attr(
+    const auto &new_perm_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
           const auto &perm1 = match_ctx.Attr<std::vector<int>>("perm_1");
           const auto &perm2 = match_ctx.Attr<std::vector<int>>("perm_2");
@@ -272,14 +271,10 @@ class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
           }
           return new_perm;
         });
-    const auto &tranpose_continuous =
+    const auto &transpose_continuous =
         res.Op("pd_op.transpose", {{"perm", new_perm_attr}});
 
-    res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
-  }
-
-  std::string name() const override {
-    return "RemoveRedundentTransposePattern";
+    res.Tensor("ret") = transpose_continuous(res.Tensor("arg_transpose"));
   }
 };
 
@@ -290,14 +285,14 @@ class IdentityOpCleanPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(RemoveUselessScalePattern().Build(context));
-    ps.Add(RemoveRedundentScalePattern().Build(context));
-    ps.Add(RemoveUselessCastPattern().Build(context));
-    ps.Add(RemoveUselessConcatPattern().Build(context));
-    ps.Add(RemoveRedundentCastPattern().Build(context));
-    ps.Add(DeleteDropoutOpPattern().Build(context));
-    ps.Add(ReplaceDropoutWithScalePattern().Build(context));
-    ps.Add(RemoveRedundentTransposePattern().Build(context));
+    ps.Add(paddle::drr::Create<RemoveUselessScalePattern>(context));
+    ps.Add(paddle::drr::Create<RemoveRedundantScalePattern>(context));
+    ps.Add(paddle::drr::Create<RemoveUselessCastPattern>(context));
+    ps.Add(paddle::drr::Create<RemoveUselessConcatPattern>(context));
+    ps.Add(paddle::drr::Create<RemoveRedundantCastPattern>(context));
+    ps.Add(paddle::drr::Create<DeleteDropoutOpPattern>(context));
+    ps.Add(paddle::drr::Create<ReplaceDropoutWithScalePattern>(context));
+    ps.Add(paddle::drr::Create<RemoveRedundantTransposePattern>(context));
     return ps;
   }
 };

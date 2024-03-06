@@ -20,7 +20,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
@@ -29,12 +29,12 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
@@ -97,13 +97,18 @@ BuildGroupProgramForLowering() {
   symbol::DimExpr y_dim_0(1);
   symbol::DimExpr y_dim_1("S1");
   symbol::DimExpr y_dim_2(2);
-  value_to_shape_data[x] = symbol::ShapeOrDataDimExprs({x_dim_0, x_dim_1});
-  value_to_shape_data[y] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  value_to_shape_data[exp.result(0)] = value_to_shape_data[x];
-  value_to_shape_data[reshape.result(0)] = value_to_shape_data[y];
-  value_to_shape_data[sub.result(0)] = value_to_shape_data[y];
-  groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
+  value_to_shape_data.emplace(
+      x,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({x_dim_0, x_dim_1})));
+  value_to_shape_data.emplace(
+      y,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  value_to_shape_data.emplace(exp.result(0), value_to_shape_data.at(x));
+  value_to_shape_data.emplace(reshape.result(0), value_to_shape_data.at(y));
+  value_to_shape_data.emplace(sub.result(0), value_to_shape_data.at(y));
+  groups[0]->set_value_to_shape_or_data_exprs(value_to_shape_data);
 
   return {program, groups};
 }
@@ -185,15 +190,23 @@ BuildBroadcastGroupProgramForLowering() {
   symbol::DimExpr y_dim_0(1);
   symbol::DimExpr y_dim_1("S0");
   symbol::DimExpr y_dim_2(128);
-  value_to_shape_data[x] =
-      symbol::ShapeOrDataDimExprs({x_dim_0, x_dim_1, x_dim_2});
-  value_to_shape_data[y] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  value_to_shape_data[x_broadcast.result(0)] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  value_to_shape_data[sub.result(0)] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
+  value_to_shape_data.emplace(
+      x,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({x_dim_0, x_dim_1, x_dim_2})));
+  value_to_shape_data.emplace(
+      y,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  value_to_shape_data.emplace(
+      x_broadcast.result(0),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  value_to_shape_data.emplace(
+      sub.result(0),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  groups[0]->set_value_to_shape_or_data_exprs(value_to_shape_data);
 
   return {program, groups};
 }

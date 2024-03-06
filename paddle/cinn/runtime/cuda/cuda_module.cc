@@ -79,7 +79,7 @@ void CUDAModule::LaunchKernel(int device_id,
 
 CUfunction CUDAModule::GetFunction(int device_id,
                                    const std::string& func_name) {
-  VLOG(5) << "GetFuncion : " << func_name << " with device_id : " << device_id;
+  VLOG(5) << "GetFunction : " << func_name << " with device_id : " << device_id;
   cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                       cinn::utils::EventType::kOrdinary);
   if (!module_per_card_[device_id]) {

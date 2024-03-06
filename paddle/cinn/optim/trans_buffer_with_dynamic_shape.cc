@@ -14,9 +14,16 @@
 
 #include "paddle/cinn/optim/trans_buffer_with_dynamic_shape.h"
 
+#include <numeric>
+#include <unordered_set>
+
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/dev_info_manager.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -24,56 +31,74 @@ namespace cinn::optim {
 
 namespace {
 
-struct RemoveSymbolMutator : public ir::IRMutator<> {
-  explicit RemoveSymbolMutator(bool use_upper_bound) {
-    this->use_upper_bound = use_upper_bound;
-  }
-
-  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
-
-  using ir::IRMutator<>::Visit;
-
-  void Visit(const ir::_Var_* var, Expr* expr) override {
-    auto node = expr->As<ir::_Var_>();
-    CHECK(node->lower_bound.defined() && node->lower_bound.is_constant() &&
-          node->upper_bound.defined() && node->upper_bound.is_constant())
-        << "Temporary buffer with dynamic shape cannot be transformed into "
-           "buffer with static shape!\n";
-    if (use_upper_bound) {
-      *expr = Expr(node->upper_bound.as_int32());
-    } else {
-      *expr = Expr(node->lower_bound.as_int32());
-    }
-  }
-
-  bool use_upper_bound;
-};
-
-RemoveSymbolMutator max_mutator(true);
-RemoveSymbolMutator min_mutator(false);
+common::cas_intervals_t var_intervals = {};
+cinn::common::SymbolicExprAnalyzer analyzer(var_intervals);
 
 struct Mutator : public ir::IRMutator<> {
   using ir::IRMutator<>::Visit;
 
+  Mutator() : shared_mem_size_used_(0) {}
+
   void Visit(const ir::_Tensor_* tensor, Expr* expr) override {
-    bool need_trans = false;
-    if (cinn::utils::Endswith(tensor->name, "_temp_buffer")) need_trans = true;
-    for (auto& e : expr->as_tensor()->shape) {
-      if (!e.is_constant()) {
-        auto new_shape1 = ir::ir_utils::IRCopy(e);
-        auto new_shape2 = ir::ir_utils::IRCopy(e);
-        max_mutator(&new_shape1);
-        min_mutator(&new_shape2);
-        new_shape1 = common::AutoSimplify(new_shape1);
-        new_shape2 = common::AutoSimplify(new_shape2);
-        CHECK(new_shape1.is_constant());
-        CHECK(new_shape2.is_constant());
-        int res_shape = std::max(new_shape1.as_int32(), new_shape2.as_int32());
-        e = ir::Expr(res_shape);
+    if (!tensor->buffer.defined()) return;
+    auto buf = tensor->buffer.As<ir::_Buffer_>();
+    if (!visited_buf_.count(buf->name)) {
+      visited_buf_.insert(buf->name);
+      auto buf_size = ir::Expr(1);
+
+      size_t max_size = std::max(buf->shape.size(), tensor->shape.size());
+      size_t min_size = std::min(buf->shape.size(), tensor->shape.size());
+      size_t i = 0;
+      for (; i < min_size; ++i) {
+        auto e = expr->as_tensor()->shape[i];
+        auto buf_e = buf->shape[i];
+        if (buf->memory_type == ir::MemoryType::GPULocal) {
+          e = cinn::common::AutoSimplify(e);
+          buf_e = cinn::common::AutoSimplify(buf_e);
+          if (!e.is_constant()) {
+            auto new_shape = ir::ir_utils::IRCopy(e);
+            new_shape = analyzer.UpperBound(new_shape);
+            CHECK(new_shape.is_constant());
+            e = new_shape;
+          }
+          if (!buf_e.is_constant()) {
+            auto new_shape = ir::ir_utils::IRCopy(buf_e);
+            new_shape = analyzer.UpperBound(new_shape);
+            CHECK(new_shape.is_constant());
+            buf_e = new_shape;
+          }
+        }
+        buf_size = buf_size * buf_e;
       }
-      Visit(&e, &e);
+      for (; i < max_size; i++) {
+        auto e = buf->shape.size() > tensor->shape.size() ? buf->shape[i]
+                                                          : tensor->shape[i];
+        if (buf->memory_type == ir::MemoryType::GPULocal) {
+          e = cinn::common::AutoSimplify(e);
+          if (!e.is_constant()) {
+            auto new_shape = ir::ir_utils::IRCopy(e);
+            new_shape = analyzer.UpperBound(new_shape);
+            CHECK(new_shape.is_constant());
+            e = new_shape;
+          }
+        }
+        buf_size = buf_size *
+                   (buf->shape.size() > tensor->shape.size() ? e : ir::Expr(1));
+      }
+      if (buf->memory_type == ir::MemoryType::GPUShared) {
+        buf_size = analyzer.UpperBound(buf_size);
+        CHECK(buf_size.is_constant());
+        shared_mem_size_used_ += static_cast<size_t>(buf_size.get_constant()) *
+                                 static_cast<size_t>(buf->dtype.bits()) / 8;
+      }
+      for (auto& e : expr->as_tensor()->shape) {
+        Visit(&e, &e);
+      }
     }
   }
+
+  size_t shared_mem_size_used_;
+  std::unordered_set<std::string> visited_buf_;
 };
 
 }  // namespace
@@ -81,6 +106,15 @@ struct Mutator : public ir::IRMutator<> {
 void TransBufferWithDynamicShape(ir::Expr* e) {
   Mutator mutator;
   mutator.Visit(e, e);
+#ifdef CINN_WITH_CUDA
+  auto cur_dev_info =
+      common::DevInfoMgr<common::Target::Arch::NVGPU>::GetDevInfo(0);
+  if (cur_dev_info->IsValid()) {
+    size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
+    CHECK(mutator.shared_mem_size_used_ <= max_shm_per_block)
+        << "The shared memory size used by current kernel "
+        << "is greater than the max shared memory per block";
+  }
+#endif
 }
-
 }  // namespace cinn::optim

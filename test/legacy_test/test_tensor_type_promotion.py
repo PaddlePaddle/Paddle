@@ -119,6 +119,31 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     )
 
 
+class TestAPIAddInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.add(self.l_value, self.r_value)
+            out_reverse = paddle.add(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIAddInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIAddInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIAddInStatic, 'float32', 'float64', 'float64')
+
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIAddInStatic, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIAddInStatic, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIAddInStatic, 'bfloat16', 'float64', 'float64')
+
+
 class TestOperatorOverloadSubInStatic(TestOperatorOverloadAddInStatic):
     def run_api(self):
         prog = paddle.static.Program()
@@ -156,6 +181,31 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     )
 
 
+class TestAPISubInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.subtract(self.l_value, self.r_value)
+            out_reverse = paddle.subtract(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPISubInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPISubInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIAddInStatic, 'float32', 'float64', 'float64')
+
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPISubInStatic, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPISubInStatic, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPISubInStatic, 'bfloat16', 'float64', 'float64')
+
+
 class TestOperatorOverloadMulInStatic(TestOperatorOverloadAddInStatic):
     def run_api(self):
         prog = paddle.static.Program()
@@ -189,41 +239,6 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     )
     create_test_case(
         TestOperatorOverloadMulInStatic, 'bfloat16', 'float64', 'float64'
-    )
-
-
-class TestOperatorOverloadGTInStatic(TestOperatorOverloadAddInStatic):
-    def set_dtype(self):
-        self.ldtype = 'float32'
-        self.rdtype = 'float64'
-        self.expected_out_dtype = 'bool'
-
-    def run_api(self):
-        prog = paddle.static.Program()
-        with paddle.static.program_guard(prog):
-            self.generate_test_value()
-
-            out = self.l_value > self.r_value
-            out_reverse = self.r_value > self.l_value
-
-        res = self.exe.run(prog, fetch_list=[out, out_reverse])
-        return res
-
-
-create_test_case(TestOperatorOverloadGTInStatic, 'float16', 'float32', 'bool')
-create_test_case(TestOperatorOverloadGTInStatic, 'float16', 'float64', 'bool')
-
-create_test_case(TestOperatorOverloadGTInStatic, 'float32', 'float64', 'bool')
-
-if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
-    create_test_case(
-        TestOperatorOverloadGTInStatic, 'bfloat16', 'float16', 'bool'
-    )
-    create_test_case(
-        TestOperatorOverloadGTInStatic, 'bfloat16', 'float32', 'bool'
-    )
-    create_test_case(
-        TestOperatorOverloadGTInStatic, 'bfloat16', 'float64', 'bool'
     )
 
 

@@ -172,14 +172,14 @@ def set_rng_state(state_list, device=None):
     if isinstance(place, paddle.CUDAPlace):
         if not len(state_list) == core.get_cuda_device_count():
             raise ValueError(
-                "Length of gpu state list shoule be equal to the gpu device count"
+                "Length of gpu state list should be equal to the gpu device count"
             )
         for i in range(core.get_cuda_device_count()):
             core.default_cuda_generator(i).set_state(state_list[i])
     elif isinstance(place, paddle.XPUPlace):
         if not len(state_list) == core.get_xpu_device_count():
             raise ValueError(
-                "Length of xpu state list shoule be equal to the xpu device count"
+                "Length of xpu state list should be equal to the xpu device count"
             )
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).set_state(state_list[i])
@@ -192,7 +192,7 @@ def set_rng_state(state_list, device=None):
         )
         if not len(state_list) == dev_cnt:
             raise ValueError(
-                f"Length of custom device state list shoule be equal to the {place.get_dtype_type()} device count"
+                f"Length of custom device state list should be equal to the {place.get_dtype_type()} device count"
             )
         for i in range(dev_cnt):
             core.default_custom_device_generator(
@@ -200,7 +200,7 @@ def set_rng_state(state_list, device=None):
             ).set_state(state_list[i])
     elif isinstance(place, core.CPUPlace):
         if not len(state_list) == 1:
-            raise ValueError("Length of cpu state list shoule be equal to 1")
+            raise ValueError("Length of cpu state list should be equal to 1")
         core.default_cpu_generator().set_state(state_list[0])
     else:
         raise ValueError(
@@ -230,7 +230,7 @@ def set_cuda_rng_state(state_list):
     if paddle.is_compiled_with_cuda():
         if not len(state_list) == core.get_cuda_device_count():
             raise ValueError(
-                "Length of cuda state list shoule be equal to the cuda device count"
+                "Length of cuda state list should be equal to the cuda device count"
             )
         for i in range(core.get_cuda_device_count()):
             core.default_cuda_generator(i).set_state(state_list[i])
@@ -240,7 +240,7 @@ def _manual_program_seed(seed):
     """
     Sets global seed for generating random numbers.
 
-    NOTE(zhiqiu): This is the original implemention of seed. Keeps it temporally
+    NOTE(zhiqiu): This is the original implementation of seed. Keeps it temporally
     since CUDA generator is not developed, so we need it in the unittest.
 
     Args:

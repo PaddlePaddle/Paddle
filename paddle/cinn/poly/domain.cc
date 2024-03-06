@@ -61,8 +61,35 @@ std::string Domain::__str__() const {
 }
 
 isl::set Domain::to_isl() const {
+  // TODO(6clc): will be removed in future
   VLOG(3) << "isl::set " << __str__();
-  isl::set x(cinn::common::Context::isl_ctx(), __str__());
+  auto replace_substr = [](std::string& s,
+                           std::string const& toReplace,
+                           std::string const& replaceWith) {
+    std::string buf;
+    std::size_t pos = 0;
+    std::size_t prevPos = -1;
+
+    // Reserves rough estimate of final size of string.
+    buf.reserve(s.size());
+
+    while (true) {
+      prevPos = pos;
+      pos = s.find(toReplace, pos);
+      if (pos == std::string::npos) break;
+      buf.append(s, prevPos, pos - prevPos);
+      buf += replaceWith;
+      pos += toReplace.size();
+    }
+
+    buf.append(s, prevPos, s.size() - prevPos);
+    s.swap(buf);
+  };
+
+  std::string isl_string = __str__();
+  replace_substr(isl_string, "(ll)", "");
+  replace_substr(isl_string, "ll", "");
+  isl::set x(cinn::common::Context::isl_ctx(), isl_string);
   return x;
 }
 

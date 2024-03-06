@@ -76,13 +76,15 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       int rank,
       int size,
       int gid,
-      int64_t timeout);
+      int64_t timeout,
+      int nccl_comm_init_option);
 
   ProcessGroupNCCL(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
                    int size,
                    int gid,
-                   int64_t timeout = 30 * 60 * 1000);
+                   int64_t timeout = 30 * 60 * 1000,
+                   int nccl_comm_init_option = 0);
   ~ProcessGroupNCCL();
 
   std::string GetBackendName() const override { return "NCCL"; }
@@ -177,6 +179,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   ncclComm_t NCCLComm(const Place& place) const;
 
+  const bool GetNCCLCommInitOption() { return nccl_comm_init_option_; }
+
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
@@ -247,6 +251,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   static uint64_t s_group_call_counter;
   // default 30 minutes
   int64_t pg_timeout_;
+  int nccl_comm_init_option_;
 
   // optimize memory for process_group
   std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>

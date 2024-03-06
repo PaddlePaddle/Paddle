@@ -19,6 +19,18 @@
 namespace cinn {
 namespace ir {
 
+class OptimizeReductionTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "OptimizeReductionTactic"; }
+
+ private:
+  ScheduleContext* context_;
+};
+
 void OptimizeReductionTactic::Init(ScheduleContext* context) {
   context_ = context;
 }
@@ -66,10 +78,11 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
       if (body.As<ir::Block>()->stmts.size() == 1) {
         if (body.As<ir::Block>()->stmts[0].As<ir::For>() == nullptr &&
             body.As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>() ==
-                nullptr) {
+                nullptr &&
+            body.As<ir::Block>()->stmts[0].As<ir::IfThenElse>() == nullptr) {
           VLOG(6) << "the block: " << block_name
                   << " has a block stmt that is not any of "
-                     "schedule_block/for_loop, so can not apply "
+                     "schedule_block/for_loop/if, so can not apply "
                      "OptimizeReductionTactic";
           return false;
         }
@@ -82,10 +95,11 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
         }
         if (body.As<ir::Block>()->stmts[1].As<ir::For>() == nullptr &&
             body.As<ir::Block>()->stmts[1].As<ir::ScheduleBlockRealize>() ==
-                nullptr) {
+                nullptr &&
+            body.As<ir::Block>()->stmts[0].As<ir::IfThenElse>() == nullptr) {
           VLOG(6) << "the block: " << block_name
                   << " has a block stmt that is not any of "
-                     "schedule_block/for_loop, so can not apply "
+                     "schedule_block/for_loop/if, so can not apply "
                      "OptimizeReductionTactic";
           return false;
         }
@@ -95,12 +109,14 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
                    "OptimizeReductionTactic";
         return false;
       }
-    } else if (body.As<ir::For>() || body.As<ir::ScheduleBlockRealize>()) {
+    } else if (body.As<ir::For>() || body.As<ir::ScheduleBlockRealize>() ||
+               body.As<ir::IfThenElse>()) {
       continue;
     } else {
-      VLOG(6) << "the block: " << block_name
-              << " has a loop body that is not any of schedule_block/for_loop, "
-                 "so can not apply OptimizeReductionTactic";
+      VLOG(6)
+          << "the block: " << block_name
+          << " has a loop body that is not any of schedule_block/for_loop/if, "
+             "so can not apply OptimizeReductionTactic";
       return false;
     }
   }
@@ -115,7 +131,7 @@ void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
   int first_reduce_loop_idx = context_->iter_space_info.sp_space.size();
   CHECK_LT(first_reduce_loop_idx, loops.size())
-      << "first_reduce_loop_idx shoud be less than number of loop.";
+      << "first_reduce_loop_idx should be less than number of loop.";
   ir::Expr block = sch->GetBlock(block_id);
   ir::Tensor reduce_tensor = analyzer::GetStoreTensorOfSBlock(block);
   int non_reduce_memory_space_rank =
@@ -141,10 +157,14 @@ void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
     rb_loops = sch->GetLoops(block_id);
     rf_block = sch->GetBlock(rf_block_id);
     sch->Bind(rb_loops.back(), "threadIdx.x");
-    sch->SetBuffer(rf_block, "shared");
+    sch->SetBuffer(rf_block, "local");
   }
   VLOG(6) << "Loop fusion and cross thread reduction: "
           << sch->GetModule().GetExprs()[0];
+}
+
+std::unique_ptr<ScheduleTactic> CreateOptimizeReductionTactic() {
+  return std::make_unique<OptimizeReductionTactic>();
 }
 
 }  // namespace ir

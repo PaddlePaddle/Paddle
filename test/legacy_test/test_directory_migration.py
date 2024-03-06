@@ -137,7 +137,7 @@ class TestDirectory(unittest.TestCase):
             'paddle.imperative.load',
             'paddle.imperative.ParallelEnv',
             'paddle.imperative.prepare_context',
-            'paddle.imperative.DataParalell',
+            'paddle.imperative.DataParallel',
             'paddle.imperative.jit',
             'paddle.imperative.TracedLayer',
             'paddle.imperative.declarative',

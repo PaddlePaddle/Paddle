@@ -36,7 +36,7 @@ class VarWrapper:
 
     def shape(self):
         """
-        Get the shape of the varibale.
+        Get the shape of the variable.
         """
         return self._var.shape
 
@@ -55,7 +55,7 @@ class OpWrapper:
 
     def inputs(self, name):
         """
-        Get all the varibales by the input name.
+        Get all the variables by the input name.
         """
         if name in self._op.input_names:
             return [
@@ -66,7 +66,7 @@ class OpWrapper:
 
     def outputs(self, name):
         """
-        Get all the varibales by the output name.
+        Get all the variables by the output name.
         """
         return [self._graph.var(var_name) for var_name in self._op.output(name)]
 

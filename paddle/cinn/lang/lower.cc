@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/lang/lower_impl.h"
@@ -86,6 +87,14 @@ std::vector<ir::Argument> GetArgs(
   return res;
 }
 
+bool CanProveBufferNumelLT(const ir::Buffer& lhs, const ir::Buffer& rhs) {
+  common::cas_intervals_t var_intervals;
+  common::SymbolicExprAnalyzer analyzer(var_intervals);
+  std::optional<bool> prove_lt =
+      analyzer.ProveLT(lhs->SymbolicNumel(), rhs->SymbolicNumel());
+  return prove_lt.value_or(false);
+}
+
 // Collect the temporary tensors from a computational graph.
 std::vector<ir::Buffer> GetTempBuffers(
     const std::vector<cinn::ir::Tensor>& tensor_args, Expr body) {
@@ -105,7 +114,7 @@ std::vector<ir::Buffer> GetTempBuffers(
         return x->as_tensor() && x->as_tensor()->buffer.defined() &&
                ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
                  !tensor_arg_names.count(x->as_tensor()->name)) ||
-                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+                utils::EndsWith(x->as_tensor()->buffer->name, "temp_buffer"));
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
@@ -113,8 +122,8 @@ std::vector<ir::Buffer> GetTempBuffers(
       name_to_buffer[buffer_name] = e.as_tensor()->buffer;
     } else {
       // TODO(phlrain): why update
-      if (e.as_tensor()->buffer->numel() <
-          name_to_buffer[buffer_name]->numel()) {
+      if (CanProveBufferNumelLT(e.as_tensor()->buffer,
+                                name_to_buffer[buffer_name])) {
         name_to_buffer[buffer_name] = e.as_tensor()->buffer;
       }
     }
@@ -149,7 +158,7 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
                (!tensor_group.Contain(x->as_tensor()->name) ||
                 ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
                   !tensor_arg_names.count(x->as_tensor()->name)) ||
-                 utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer")));
+                 utils::EndsWith(x->as_tensor()->buffer->name, "temp_buffer")));
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
@@ -193,15 +202,15 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
                 !stage_map[x->as_tensor()]->inlined()) &&
                ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
                  !tensor_arg_names.count(x->as_tensor()->name)) ||
-                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+                utils::EndsWith(x->as_tensor()->buffer->name, "temp_buffer"));
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
     if (!name_to_buffer.count(buffer_name)) {
       name_to_buffer[buffer_name] = e.as_tensor()->buffer;
     } else {
-      if (e.as_tensor()->buffer->numel() <
-          name_to_buffer[buffer_name]->numel()) {
+      if (CanProveBufferNumelLT(e.as_tensor()->buffer,
+                                name_to_buffer[buffer_name])) {
         name_to_buffer[buffer_name] = e.as_tensor()->buffer;
       }
     }
@@ -212,8 +221,8 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
         if (x->as_tensor() && x->as_tensor()->buffer.defined()) {
           auto buffer_name = x->as_tensor()->buffer->name;
           if (name_to_buffer.count(buffer_name) &&
-              x->as_tensor()->buffer->numel() <
-                  name_to_buffer[buffer_name]->numel()) {
+              CanProveBufferNumelLT(x->as_tensor()->buffer,
+                                    name_to_buffer[buffer_name])) {
             name_to_buffer[buffer_name] = x->as_tensor()->buffer;
           }
         }
@@ -241,7 +250,7 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args,
       ir::ir_utils::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
         return x->as_tensor() && x->as_tensor()->buffer.defined() &&
                (!buffer_arg_names.count(x->as_tensor()->buffer->name) ||
-                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+                utils::EndsWith(x->as_tensor()->buffer->name, "temp_buffer"));
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
@@ -310,7 +319,7 @@ std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
     const std::vector<Tensor>& tensor_args) {
   std::set<ir::Tensor> res;
   for (const ir::Tensor& a : tensor_group->GetAllTensors()) {
-    for (const ir::Tensor& t : tensor_group->GetCrtlDepTensors(a->name)) {
+    for (const ir::Tensor& t : tensor_group->GetCtrlDepTensors(a->name)) {
       res.emplace(t);
     }
   }

@@ -48,7 +48,7 @@ class TestAddPPrim2Orig(unittest.TestCase):
 
         self.prim2orig_args = (X, Y)
         self.all_ops = ['add_p', 'elementwise_add']
-        # { prim_op_output_var: orign_op_out_index }
+        # { prim_op_output_var: origin_op_out_index }
         self.out_map = {self.output['Z']: 0}
 
     def test_op(self):

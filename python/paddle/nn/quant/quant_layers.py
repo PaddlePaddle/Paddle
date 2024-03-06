@@ -1147,13 +1147,13 @@ def _get_fake_quant_type(quant_type, **kwargs):
             "when you use channel_wise_abs_max strategy."
         )
     elif quant_type == 'lsq_weight':
-        call_args["all_postive"] = kwargs.get("all_postive", False)
+        call_args["all_positive"] = kwargs.get("all_positive", False)
         call_args["per_channel"] = False
         call_args["channel_num"] = 1
         call_args["quant_linear"] = kwargs.get("quant_linear", False)
     elif quant_type == 'channel_wise_lsq_weight':
         quant_type = 'lsq_weight'
-        call_args["all_postive"] = kwargs.get("all_postive", False)
+        call_args["all_positive"] = kwargs.get("all_positive", False)
         call_args["per_channel"] = True
         call_args["channel_num"] = kwargs.get("channel_num", None)
         call_args["quant_linear"] = kwargs.get("quant_linear", False)
@@ -1162,7 +1162,7 @@ def _get_fake_quant_type(quant_type, **kwargs):
             "when you use channel_wise_abs_max strategy."
         )
     elif quant_type == 'lsq_act':
-        call_args["all_postive"] = kwargs.get("all_postive", False)
+        call_args["all_positive"] = kwargs.get("all_positive", False)
         call_args["symmetric"] = kwargs.get("symmetric", True)
     fake_quant_map = {
         'abs_max': FakeQuantAbsMax,

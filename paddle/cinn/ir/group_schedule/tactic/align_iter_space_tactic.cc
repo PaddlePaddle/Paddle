@@ -23,6 +23,18 @@
 namespace cinn {
 namespace ir {
 
+class AlignIterSpaceTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "AlignIterSpaceTactic"; }
+
+ private:
+  ScheduleContext* context_;
+};
+
 void AlignIterSpaceTactic::Init(ScheduleContext* context) {
   context_ = context;
 }
@@ -30,14 +42,12 @@ void AlignIterSpaceTactic::Init(ScheduleContext* context) {
 void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
                                  const std::string& block_id) {
   ir::Expr block = sch->GetBlock(block_id);
-  if (analyzer::IsReductionSBlock(block)) {
-    return;
-  }
 
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
-  ir::Expr src_fused_loop = sch->Fuse(loops);
-  ir::Expr src_total_extent = src_fused_loop.As<ir::For>()->extent;
-
+  ir::Expr src_total_extent{1};
+  for (const auto& loop : loops) {
+    src_total_extent = src_total_extent * loop.As<ir::For>()->extent;
+  }
   ir::Expr target_sp_extent{1};
   for (const auto& iter : context_->iter_space_info.sp_space) {
     target_sp_extent = target_sp_extent * std::get<0>(iter);
@@ -60,27 +70,34 @@ void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
   }
 
   if (total_extent_eq.has_value() && total_extent_eq.value()) {
-    sch->Split(src_fused_loop,
-               context_->iter_space_info.memory_consistent_order_space);
-    loops = sch->GetLoops(block_id);
     if (need_reorder) {
       sch->Reorder(block_id, context_->iter_space_info.rb_last_order);
     }
     if (context_->iter_space_info.sp_space.size() < loops.size() - 1) {
       loops = sch->GetLoops(block_id);
+
+      // Align the loop in the current block that needs to be aligned with the
+      // reduce loop in iter_space_info
       std::vector<ir::Expr> rb_loops(
-          loops.begin() + context_->iter_space_info.sp_space.size(),
-          loops.end());
+          loops.end() - context_->iter_space_info.rb_space.size(), loops.end());
       sch->Fuse(rb_loops);
     }
     if (context_->iter_space_info.sp_space.size() > 1) {
+      // Align the loop in the current block that needs to be aligned with the
+      // spatial loop in iter_space_info
       loops = sch->GetLoops(block_id);
       std::vector<ir::Expr> sp_loops(
           loops.begin(),
-          loops.begin() + context_->iter_space_info.sp_space.size());
+          loops.end() - context_->iter_space_info.rb_space.size());
       sch->Fuse(sp_loops);
     }
+  } else {
+    sch->Fuse(loops);
   }
+}
+
+std::unique_ptr<ScheduleTactic> CreateAlignIterSpaceTactic() {
+  return std::make_unique<AlignIterSpaceTactic>();
 }
 
 }  // namespace ir

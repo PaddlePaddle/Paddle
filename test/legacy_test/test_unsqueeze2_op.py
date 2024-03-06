@@ -297,6 +297,7 @@ class TestUnsqueezeAPI(unittest.TestCase):
         np.testing.assert_array_equal(res_4, input.reshape([3, 2, 5, 1]))
         np.testing.assert_array_equal(res_5, input.reshape([3, 1, 1, 2, 5, 1]))
 
+    @test_with_pir_api
     def test_error(self):
         def test_axes_type():
             x2 = paddle.static.data(name="x2", shape=[2, 25], dtype="int32")

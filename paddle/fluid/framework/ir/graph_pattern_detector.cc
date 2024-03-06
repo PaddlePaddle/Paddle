@@ -2981,7 +2981,7 @@ PDNode *patterns::SelfAttention::operator()(PDNode *in) {
   return transpose2_2_out;
 }
 
-PDNode *patterns::ConvElementwiseadd2Act::operator()(
+PDNode *patterns::ConvElementwiseAdd2Act::operator()(
     PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_filter = pattern->NewNode(conv_filter_repr())
@@ -3519,22 +3519,22 @@ void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
 }
 
 void patterns::DeleteQuantDequantOpPattern::operator()(
-    PDNode *input_node, const std::string &quantdequant_types) {
+    PDNode *input_node, const std::string &quant_dequant_types) {
   auto quant_dequant_op_inscale =
       pattern->NewNode(quant_dequant_op_inscale_repr())
-          ->assert_is_op_input(quantdequant_types, "InScale")
+          ->assert_is_op_input(quant_dequant_types, "InScale")
           ->AsInput();
   auto quant_dequant_op = pattern->NewNode(quant_dequant_op_repr())
-                              ->assert_is_op(quantdequant_types);
+                              ->assert_is_op(quant_dequant_types);
 
   auto quant_dequant_op_out =
       pattern->NewNode(quant_dequant_op_out_repr())
-          ->assert_is_op_output(quantdequant_types, "Out")
+          ->assert_is_op_output(quant_dequant_types, "Out")
           ->AsOutput();
 
   auto quant_dequant_op_outscale =
       pattern->NewNode(quant_dequant_op_outscale_repr())
-          ->assert_is_op_output(quantdequant_types, "OutScale")
+          ->assert_is_op_output(quant_dequant_types, "OutScale")
           ->AsOutput();
 
   quant_dequant_op->LinksFrom({quant_dequant_op_inscale, input_node});
@@ -4384,7 +4384,7 @@ PDNode *patterns::ReverseRollPattern::operator()(PDNode *in) {
   }
   auto reshape2_50_op =
       pattern->NewNode(reshape2_50_op_repr())->assert_is_op("reshape2");
-  auto reshape2_50_out = pattern->NewNode(reshaep2_50_out_repr())
+  auto reshape2_50_out = pattern->NewNode(reshape2_50_out_repr())
                              ->assert_is_op_output("reshape2", "Out")
                              ->AsOutput();
   reshape2_00_op->LinksFrom({in});

@@ -9,7 +9,10 @@ DRR can reduce the development cost of PASS, allowing developers to focus on pro
 Taking PASS to eliminate redundant CastOp as an example, the code example developed using DRR is as follows:
 ~~~ c++
 // 1. Inherit class from DrPatternBase
-class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
+class RemoveRedundantCastPattern : public paddle::drr::DrrPatternBase {
+public:
+  std::string name() const override { return "RemoveRedundantCastPattern"; }
+
   // 2. Overload operator()
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // 3. Define a SourcePattern containing two consecutive CastOps using Op, Tensor, and Attribute
@@ -31,8 +34,6 @@ class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
         res.Op(paddle::dialect::CastOp::name(),
                {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
-
-  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 ~~~
 
@@ -127,8 +128,8 @@ Attribute Attr(const AttrComputeFunc& attr_compute_func) const</pre></td>
 		<td>attr_compute_func: Customized calculation logic</td>
 	</tr>
 	<tr>
-		<td> <pre>drr::Tensor& NoneTensor()</pre></td>
-		<td> When the input Tensor of an Op is optional and not needed, NoneTensor needs to be used to occupy the place.</td>
+		<td> <pre>drr::Tensor& InputNoneTensor()</pre></td>
+		<td> When the input Tensor of an Op is optional and not needed, InputNoneTensor needs to be used to occupy the place.</td>
 		<td> / </td>
 	</tr>
 	<tr>
@@ -168,6 +169,8 @@ Example 1: Matmul + Add -> FusedGemmEpilogue
 ~~~ c++
 class FusedLinearPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedLinearPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
 	// Define SourcePattern
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -182,20 +185,14 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase {
     // Define ResultPattern
     paddle::drr::ResultPattern res = pat.ResultPattern();
     // Define Constrain
-    const auto &act_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
-          return "none";
-        });
     const auto &fused_gemm_epilogue = res.Op(paddle::dialect::FusedGemmEpilogueOp::name(),
                                              {{{"trans_x", pat.Attr("trans_x")},
                                                {"trans_y", pat.Attr("trans_y")},
-                                               {"activation", act_attr}}});
+                                               {"activation", res.StrAttr("none")}}});
     fused_gemm_epilogue(
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out")});
   }
-
-  std::string name() const override { return "FusedLinearPattern"; }
 };
 ~~~
 
@@ -203,6 +200,8 @@ Example 2: Full + Expand -> Full
 ~~~ c++
 class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FoldExpandToConstantPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Define SourcePattern
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -228,7 +227,5 @@ class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
                                 {"place", pat.Attr("place_1")}});
     res.Tensor("ret") = full2();
   }
-
-  std::string name() const override { return "FoldExpandToConstantPattern"; }
 };
 ~~~

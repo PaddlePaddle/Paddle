@@ -17,10 +17,10 @@
 #include <type_traits>
 
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/pir/core/builtin_type_storage.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/type_base.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_type_storage.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/type_base.h"
+#include "paddle/pir/include/core/utils.h"
 
 namespace paddle {
 namespace dialect {
@@ -65,23 +65,23 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 317;
     // hash dtype
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<pir::Type>()(std::get<0>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
     // hash layout
-    hash_value = pir::hash_combine(
+    hash_value = pir::detail::hash_combine(
         hash_value,
         std::hash<std::underlying_type<phi::DataLayout>::type>()(
             static_cast<std::underlying_type<phi::DataLayout>::type>(
                 std::get<2>(key))));
     // hash lod
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<phi::LoD>()(std::get<3>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<phi::LoD>()(std::get<3>(key)));
     // hash offset
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<size_t>()(std::get<4>(key)));
     return hash_value;
   }
 
@@ -109,21 +109,24 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
 
 struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
   using DataLayout = phi::DataLayout;
+  using DDim = phi::DDim;
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using ParamKey = std::tuple<pir::Type, phi::DataLayout>;
+  using ParamKey = std::tuple<pir::Type, phi::DDim, phi::DataLayout>;
 
   DenseTensorArrayTypeStorage(const pir::Type& dtype,
+                              const phi::DDim& dims,
                               const phi::DataLayout& layout)
-      : dtype_(dtype), layout_(layout) {}
+      : dtype_(dtype), dims_(dims), layout_(layout) {}
 
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
   /// StorageManager uses to construct a derived TypeStorage.
   ///
   static DenseTensorArrayTypeStorage* Construct(const ParamKey& key) {
-    return new DenseTensorArrayTypeStorage(std::get<0>(key), std::get<1>(key));
+    return new DenseTensorArrayTypeStorage(
+        std::get<0>(key), std::get<1>(key), std::get<2>(key));
   }
 
   ///
@@ -132,14 +135,17 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 317;
     // hash dtype
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<pir::Type>()(std::get<0>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<pir::Type>()(std::get<0>(key)));
+    // hash dims
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
     // hash layout
-    hash_value = pir::hash_combine(
+    hash_value = pir::detail::hash_combine(
         hash_value,
         std::hash<std::underlying_type<phi::DataLayout>::type>()(
             static_cast<std::underlying_type<phi::DataLayout>::type>(
-                std::get<1>(key))));
+                std::get<2>(key))));
     return hash_value;
   }
 
@@ -147,15 +153,16 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
   bool operator==(const ParamKey& key) const {
-    return ParamKey(dtype_, layout_) == key;
+    return ParamKey(dtype_, dims_, layout_) == key;
   }
 
-  ParamKey GetAsKey() const { return ParamKey(dtype_, layout_); }
+  ParamKey GetAsKey() const { return ParamKey(dtype_, dims_, layout_); }
 
   ///
   /// \brief DenseTensorTypeStorage include five parameters: dtype, layout
   ///
   pir::Type dtype_;
+  phi::DDim dims_;
   phi::DataLayout layout_;
 };
 

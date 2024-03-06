@@ -377,7 +377,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       const std::vector<int> paddings =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() != 2) {
-        VLOG(3) << "The size of paddings shoule be 2, but got "
+        VLOG(3) << "The size of paddings should be 2, but got "
                 << paddings.size();
         return false;
       }
@@ -1460,7 +1460,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       if (desc.Output("Out").size() != 1) {
         VLOG(3) << "The input op's Output(\"Out\").size() "
-                   "should equal to 1, but reveceid Output(\"Out\").size() = "
+                   "should equal to 1, but received Output(\"Out\").size() = "
                 << desc.Output("Out").size() << ".";
         return false;
       }
@@ -1662,9 +1662,27 @@ struct SimpleOpTypeSetTeller : public Teller {
           fill_constant_inputs.end()) {
         if (!desc.Input("ValueTensor").empty()) return false;
       }
+
       if (desc.HasInput("ShapeTensor")) {
         if (desc.Input("ShapeTensor").size() > 1) return false;
+        if (desc.Input("ShapeTensor").size() == 1) {
+#if IS_TRT_VERSION_LT(8500)
+          VLOG(3) << "fill_constant ShapeTensor is not supported when TensorRT "
+                     "< 8.5.0";
+          return false;
+#endif
+        }
       }
+
+#if IS_TRT_VERSION_LT(8500)
+      if (desc.HasInput("ShapeTensorList")) {
+        if (desc.Input("ShapeTensorList").size() >= 1) {
+          VLOG(3) << "fill_constant ShapeTensorList is not supported when "
+                     "TensorRT < 8.5.0";
+          return false;
+        }
+      }
+#endif
 
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
@@ -2062,20 +2080,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto inputs = desc.Inputs();
       bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
       if (has_bias_qk) {
-        auto* biasqk_desc =
+        auto* bias_qk_desc =
             block->FindVarRecursive(desc.Input("BiasQK").front());
-        const auto biasqk_shape = biasqk_desc->GetShape();
+        const auto bias_qk_shape = bias_qk_desc->GetShape();
         // The BiasQK's shape requires to be
         // [batch, 1, 1, length] or [batch, head, length, length].
-        bool has_same_shape = head_number == biasqk_shape[1] &&
-                              input_shape[1] == biasqk_shape[2] &&
-                              input_shape[1] == biasqk_shape[3];
-        bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
-                                input_shape[1] == biasqk_shape[3];
-        is_broadcastable =
-            is_broadcastable || (biasqk_shape[0] == 1 && biasqk_shape[1] == 1 &&
-                                 input_shape[1] == biasqk_shape[2] &&
-                                 input_shape[1] == biasqk_shape[3]);
+        bool has_same_shape = head_number == bias_qk_shape[1] &&
+                              input_shape[1] == bias_qk_shape[2] &&
+                              input_shape[1] == bias_qk_shape[3];
+        bool is_broadcastable = bias_qk_shape[1] == 1 &&
+                                bias_qk_shape[2] == 1 &&
+                                input_shape[1] == bias_qk_shape[3];
+        is_broadcastable = is_broadcastable ||
+                           (bias_qk_shape[0] == 1 && bias_qk_shape[1] == 1 &&
+                            input_shape[1] == bias_qk_shape[2] &&
+                            input_shape[1] == bias_qk_shape[3]);
         if (!(has_same_shape || is_broadcastable)) {
           VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
                   << ", 1, 1, " << input_shape[1] << "] "
@@ -2083,8 +2102,9 @@ struct SimpleOpTypeSetTeller : public Teller {
                   << input_shape[1] << ", " << input_shape[1] << "] "
                   << "or [" << input_shape[0] << "/1, " << 1 << ", "
                   << input_shape[1] << ", " << input_shape[1] << "] "
-                  << "but got [" << biasqk_shape[0] << ", " << biasqk_shape[1]
-                  << ", " << biasqk_shape[2] << ", " << biasqk_shape[3] << "].";
+                  << "but got [" << bias_qk_shape[0] << ", " << bias_qk_shape[1]
+                  << ", " << bias_qk_shape[2] << ", " << bias_qk_shape[3]
+                  << "].";
           return false;
         }
       } else {
@@ -2122,23 +2142,24 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto inputs = desc.Inputs();
       bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
       if (has_bias_qk) {
-        auto* biasqk_desc =
+        auto* bias_qk_desc =
             block->FindVarRecursive(desc.Input("BiasQK").front());
-        const auto biasqk_shape = biasqk_desc->GetShape();
+        const auto bias_qk_shape = bias_qk_desc->GetShape();
         // The BiasQK's shape requires to be
         // [batch, 1, 1, length] or [batch, head, length, length].
-        bool has_same_shape = head_number == biasqk_shape[1] &&
-                              input_shape[1] == biasqk_shape[2] &&
-                              input_shape[1] == biasqk_shape[3];
-        bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
-                                input_shape[1] == biasqk_shape[3];
+        bool has_same_shape = head_number == bias_qk_shape[1] &&
+                              input_shape[1] == bias_qk_shape[2] &&
+                              input_shape[1] == bias_qk_shape[3];
+        bool is_broadcastable = bias_qk_shape[1] == 1 &&
+                                bias_qk_shape[2] == 1 &&
+                                input_shape[1] == bias_qk_shape[3];
         if (!(has_same_shape || is_broadcastable)) {
           VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
                   << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
                   << ", " << head_number << ", " << input_shape[1] << ", "
-                  << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
-                  << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
-                  << biasqk_shape[3] << "].";
+                  << input_shape[1] << "] but [" << bias_qk_shape[0] << ", "
+                  << bias_qk_shape[1] << ", " << bias_qk_shape[2] << ", "
+                  << bias_qk_shape[3] << "].";
           return false;
         }
       } else {

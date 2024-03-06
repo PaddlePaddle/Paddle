@@ -22,7 +22,7 @@ from filters import (
     assert_dense_or_sr,
     cartesian_prod_mapping,
     delete_last_underline,
-    find_optinal_inputs_name,
+    find_optional_inputs_name,
     get_infer_var_type_func,
     to_composite_grad_opmaker_name,
     to_input_name,
@@ -70,7 +70,7 @@ env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
 env.filters["get_infer_var_type_func"] = get_infer_var_type_func
 env.filters["assert_dense_or_sr"] = assert_dense_or_sr
-env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
+env.filters["find_optional_inputs_name"] = find_optional_inputs_name
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
 env.tests["only_composite_op"] = is_only_composite_op

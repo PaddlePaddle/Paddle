@@ -33,7 +33,12 @@ from paddle.base import (
     unique_name,
 )
 from paddle.base.executor import Executor, global_scope
-from paddle.base.framework import Parameter, dygraph_not_support, static_only
+from paddle.base.framework import (
+    Parameter,
+    dygraph_not_support,
+    process_type_promotion,
+    static_only,
+)
 from paddle.base.log_helper import get_logger
 from paddle.framework.io_utils import (
     _clone_var_in_block_,
@@ -587,6 +592,10 @@ def save_inference_model(
     _check_vars('fetch_vars', fetch_vars)
 
     program = _get_valid_program(kwargs.get('program', None))
+
+    # do type promotion
+    program = process_type_promotion(program)
+
     clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(
         program,
@@ -903,6 +912,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
         # deserialize bytes to program
         program = deserialize_program(program_bytes)
 
+        # do type promotion
+        program = process_type_promotion(program)
+
         vars = list(filter(is_persistable, program.list_vars()))
         if len(vars) > 0:
             load_vars(
@@ -957,6 +969,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = deserialize_program(program_bytes)
+
+        # do type promotion
+        program = process_type_promotion(program)
 
         vars = list(filter(is_persistable, program.list_vars()))
         if len(vars) > 0:

@@ -71,7 +71,7 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(len(matmul_op.get_input_names()), 2)
         self.assertEqual(len(matmul_op.get_attr_names()), 2)
         self.assertEqual(len(matmul_op.get_output_names()), 1)
-        # test oprand.index
+        # test operand.index
         self.assertEqual(matmul_op.operand(0).index(), 0)
         self.assertEqual(matmul_op.operand(1).index(), 1)
         self.assertEqual(add_op.operand(0).index(), 0)
@@ -144,8 +144,8 @@ class TestPybind(unittest.TestCase):
 
         self.assertEqual(add_op.result(0).initialized(), True)
 
-        uninit_op_result = paddle.pir.OpResult()
-        self.assertEqual(uninit_op_result.initialized(), False)
+        uninit_value = paddle.pir.Value()
+        self.assertEqual(uninit_value.initialized(), False)
 
     def test_type(self):
         pir_program = get_ir_program()

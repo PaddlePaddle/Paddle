@@ -16,22 +16,25 @@
 
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn {
 namespace dialect {
 
 const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
+const char* FusionOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
 const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};
@@ -45,10 +48,23 @@ void GroupOp::Build(pir::Builder& builder,
 
 void GroupOp::Build(pir::Builder& builder,             // NOLINT
                     pir::OperationArgument& argument,  // NOLINT
+                    const std::vector<pir::Type>& output_types,
+                    const cinn::dialect::GroupInfo& group_info) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+
+  argument.AddAttribute("group_info",
+                        cinn::dialect::GroupInfoAttribute::get(
+                            pir::IrContext::Instance(), group_info));
+}
+
+void GroupOp::Build(pir::Builder& builder,             // NOLINT
+                    pir::OperationArgument& argument,  // NOLINT
                     std::unique_ptr<pir::Block>&& block) {
   VLOG(4) << "Start build GroupOp";
   if (block && !block->empty()) {
-    IR_ENFORCE(block->back().isa<pir::YieldOp>());
+    // IR_ENFORCE(block->back().isa<pir::YieldOp>());
+    PADDLE_ENFORCE_EQ(block->back().isa<pir::YieldOp>(), true);
     auto& op = block->back();
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
@@ -63,7 +79,7 @@ pir::Block* GroupOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> GroupOp::ops() {
+std::vector<pir::Operation*> GroupOp::GetOperators() {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -82,11 +98,92 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto& sub_op : ops()) {
-    os << "\n";
+  for (auto& sub_op : GetOperators()) {
+    os << "\n  ";
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
+}
+
+bool GroupOp::InferSymbolicShape(
+    ::pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  ::pir::InferSymExprForBlock(*block(), shape_analysis);
+
+  for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+    auto inner_yield_value = block()->back().operand_source(rst_idx);
+    const auto& shape =
+        shape_analysis->GetShapeOrDataForValue(inner_yield_value);
+    shape_analysis->SetShapeOrDataForValue(result(rst_idx), shape);
+  }
+
+  return true;
+}
+
+void FusionOp::Build(pir::Builder& builder,
+                     pir::OperationArgument& argument,
+                     const std::vector<pir::Type>& output_types) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+}
+
+void FusionOp::Build(pir::Builder& builder,             // NOLINT
+                     pir::OperationArgument& argument,  // NOLINT
+                     const std::vector<pir::Type>& output_types,
+                     const cinn::dialect::GroupInfo& group_info) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+
+  argument.AddAttribute("group_info",
+                        cinn::dialect::GroupInfoAttribute::get(
+                            pir::IrContext::Instance(), group_info));
+}
+
+pir::Block* FusionOp::block() {
+  pir::Region& region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return &region.front();
+}
+
+std::vector<pir::Operation*> FusionOp::GetOperators() {
+  std::vector<pir::Operation*> rt_ops;
+  for (auto& op : *block()) {
+    rt_ops.push_back(&op);
+  }
+  return rt_ops;
+}
+
+void FusionOp::VerifySig() {}
+
+void FusionOp::Print(pir::IrPrinter& printer) {
+  auto& os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = " << name();
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  os << " {";
+  for (auto& sub_op : GetOperators()) {
+    os << "\n  ";
+    printer.PrintOperation(sub_op);
+  }
+  os << " \n }";
+}
+
+void YieldStoreOp::Build(pir::Builder& builder,
+                         pir::OperationArgument& argument,
+                         pir::Value x,
+                         pir::Type output_type) {
+  argument.inputs = {x};
+  argument.output_types = {output_type};
+}
+
+void YieldStoreOp::VerifySig() {}
+
+bool ConcatOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  VLOG(4) << "Infer symbolic shape for cinn_op.concat";
+  return ConcatOpInferSymbolicShape(this->operation(), shape_analysis);
 }
 
 void ConcatOp::Build(pir::Builder& builder,             // NOLINT
@@ -98,7 +195,10 @@ void ConcatOp::Build(pir::Builder& builder,             // NOLINT
   argument.inputs = inputs;
   std::vector<pir::Type> inputs_type(inputs.size());
 
-  IR_ENFORCE(inputs.size() > 0);
+  PADDLE_ENFORCE_GT(inputs.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "input size [%d] is less than 0", inputs.size()));
 
   auto first_ele =
       inputs[0].type().dyn_cast<paddle::dialect::DenseTensorType>();
@@ -192,13 +292,12 @@ void GenerateShapeOp::Build(
     const std::vector<pir::Value>& inputs,
     const std::vector<pir::Attribute>& output_dim_exprs,
     const GenerateShapeOp::SymbolBindings& symbol_bindings) {
-  CHECK(!inputs.empty()) << ". output_dim_exprs: " << [&] {
-    std::stringstream ss;
+  if (inputs.empty()) {
+    VLOG(3) << "GenerateShapeOp inputs is empty";
     for (const auto& attr : output_dim_exprs) {
-      ss << attr;
+      CHECK(attr.isa<pir::Int64Attribute>());
     }
-    return ss.str();
-  }();
+  }
   argument.AddInputs(inputs);
   argument.AddAttribute("output_dim_exprs",
                         builder.array_attr(output_dim_exprs));
@@ -388,17 +487,16 @@ bool GenerateShapeOp::InferSymbolicShape(
     for (const auto& attr_dim_expr : attr_dim_exprs) {
       const auto& substituted =
           SubstituteDimExpr(attr_dim_expr, DimExprs4SymbolName);
-      const auto& simplified = common::SimplifyDimExpr(substituted);
+      const auto& simplified = symbol::SimplifyDimExpr(substituted);
       dim_exprs.push_back(simplified);
     }
     return dim_exprs;
   }();
 
-  // TODO(HongyuJia): use op->result(0) to infer the shape
-  std::vector<symbol::DimExpr> shape(
-      std::int64_t(substituted_dim_exprs.size()));
-  symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{shape,
-                                                      substituted_dim_exprs};
+  std::vector<symbol::DimExpr> shape{
+      std::int64_t(substituted_dim_exprs.size())};
+  symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{
+      symbol::TensorShapeOrDataDimExprs(shape, substituted_dim_exprs)};
 
   shape_analysis->SetShapeOrDataForValue(this->out(), shape_or_data_dim_exprs);
 
@@ -409,6 +507,8 @@ bool GenerateShapeOp::InferSymbolicShape(
 }  // namespace cinn
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::YieldStoreOp);

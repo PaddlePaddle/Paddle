@@ -293,6 +293,11 @@ void FlashAttnInferMeta(const MetaTensor& q,
   out->set_dims(out_dims);
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
+  softmax->set_dtype(q.dtype());
+  softmax_lse->set_dtype(q.dtype());
+  if (seed_offset) {
+    seed_offset->set_dtype(phi::DataType::INT64);
+  }
 }
 
 void ArangeTensorInferMeta(const MetaTensor& start,
@@ -725,6 +730,79 @@ void LinspaceInferMeta(const MetaTensor& start,
   LinspaceRawInferMeta(start, stop, number, out);
 }
 
+void MatchMatrixTensorInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& w,
+                                int dim_t,
+                                MetaTensor* out,
+                                MetaTensor* tmp,
+                                MetaConfig config) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(X) should be equal to 2, "
+                        "but received %d.",
+                        x_dims.size()));
+
+  auto y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(y_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(Y) should be equal to 2, "
+                        "but received %d.",
+                        y_dims.size()));
+
+  auto w_dims = w.dims();
+  PADDLE_ENFORCE_EQ(w_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(W) should be equal to 3, "
+                        "but received %d.",
+                        w_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      w_dims[0],
+      x_dims[1],
+      phi::errors::InvalidArgument(
+          "The first dimension of Input(W) should be equal to the second "
+          "dimension of Input(X). But received the first dimension of Input(W) "
+          "is %d, the second dimension of Input(X) is %d.",
+          w_dims[0],
+          x_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1],
+      dim_t,
+      phi::errors::InvalidArgument(
+          "The second dimension of Input(W) should be equal to 'dim_t', but "
+          "received the second dimension of Input(W) is %d, 'dim_t' is %d.",
+          w_dims[1],
+          dim_t));
+  PADDLE_ENFORCE_EQ(
+      w_dims[2],
+      y_dims[1],
+      phi::errors::InvalidArgument(
+          "The last dimension of Input(W) should be equal to "
+          "the second dimension of Input(Y). But received the last dimension "
+          "of Input(W) is %d, the second dimension of Input(Y) is %d.",
+          w_dims[2],
+          y_dims[1]));
+
+  int64_t out_dim_0 = -1;
+  int64_t tmp_dim_0 = -1;
+  if (!config.is_runtime) {
+    out->share_lod(x);
+    std::vector<int64_t> out_dims_vec{out_dim_0};
+    out_dims_vec.push_back(1);
+    std::vector<int64_t> tmp_dims_vec{tmp_dim_0};
+    tmp_dims_vec.push_back(1);
+    out->set_dims(common::make_ddim(out_dims_vec));
+    out->set_dtype(x.dtype());
+    tmp->set_dims(common::make_ddim(tmp_dims_vec));
+    tmp->set_dtype(x.dtype());
+  }
+}
+
 void MultiClassNMSInferMeta(const MetaTensor& bboxes,
                             const MetaTensor& scores,
                             const MetaTensor& rois_num,
@@ -818,6 +896,26 @@ void MultiClassNMSInferMeta(const MetaTensor& bboxes,
   nms_rois_num->set_dtype(DataType::INT32);
 }
 
+void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
+                                       const MetaTensor& in_accum,
+                                       const MetaTensor& in_state,
+                                       MetaTensor* out,
+                                       MetaTensor* out_scale,
+                                       MetaTensor* out_state,
+                                       MetaTensor* out_accum) {
+  if (out) {
+    out->set_dims(x.dims());
+    out->share_lod(x);
+    out_scale->set_dims({1});
+  }
+  if (out_state) {
+    out_state->set_dims(in_state.dims());
+  }
+  if (out_accum) {
+    out_accum->set_dims(in_accum.dims());
+  }
+}
+
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,
                          const MetaTensor& weight,
@@ -873,7 +971,7 @@ void NllLossRawInferMeta(const MetaTensor& input,
     PADDLE_ENFORCE_EQ(label_dims.size(),
                       3,
                       phi::errors::InvalidArgument(
-                          "Expected Input(Lable) dimensions=3, received %d.",
+                          "Expected Input(Label) dimensions=3, received %d.",
                           label_dims.size()));
     auto input0 = x_dims[0];
     auto input2 = x_dims[2];
@@ -1515,7 +1613,8 @@ void QuantLinearInferMeta(const MetaTensor& x,
           in_mat_dims,
           w_dims0,
           common::make_ddim({w_dims0, w_dims1})));
-  output_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
+  output_dims.reserve(static_cast<size_t>(in_num_col_dims) +
+                      static_cast<size_t>(1));
   for (int i = 0; i < in_num_col_dims; ++i) {
     output_dims.push_back(in_dims[i]);
   }

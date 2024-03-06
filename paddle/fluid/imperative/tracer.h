@@ -33,7 +33,7 @@
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/utils/test_macros.h"
 
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_stride_kernel);
 namespace paddle {
 namespace imperative {
 
@@ -195,14 +195,12 @@ class Tracer {
   static thread_local bool enable_program_desc_tracing_;
   static thread_local bool use_layout_autotune_;
   static thread_local bool has_grad_;
-  static thread_local bool use_promote_;
-  static thread_local AmpLevel amp_level_;
-  static thread_local phi::DataType amp_dtype_;
 };
 
 // To access static variable current_tracer
 const std::shared_ptr<Tracer>& GetCurrentTracer();
 TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
+const std::shared_ptr<AmpAttrs>& GetCurrentAmpAttrs();
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
     const std::shared_ptr<imperative::VarBase>& var,
     const platform::Place& place);

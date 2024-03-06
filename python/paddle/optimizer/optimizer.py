@@ -284,7 +284,7 @@ class Optimizer:
 
         self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
-        self._already_create_accumulater = set()
+        self._already_create_accumulator = set()
 
         self._master_weights = {}
         # create master gradients' states
@@ -455,9 +455,9 @@ class Optimizer:
                         )
                         init_result.persistable = True
                         set_parameter(init_result, lr_name)
-                    main_program.move_parameters_from(startup_program)
+                    main_program.set_parameters_from(startup_program)
 
-                    if not isinstance(lr_var, paddle.pir.OpResult):
+                    if not isinstance(lr_var, paddle.pir.Value):
                         self._learning_rate._var_name = lr_name
                         with paddle.static.program_guard(main_program):
                             param = parameter(lr_name, _lr_dtype, [])
@@ -497,23 +497,29 @@ class Optimizer:
                 # only create global lr_var once
                 lr = self._global_learning_rate()
                 if in_pir_mode():
-                    if isinstance(lr, paddle.pir.OpResult):
+                    if isinstance(lr, paddle.pir.Value):
                         return
                     else:
                         place = _current_expected_place()
                         if not isinstance(_lr_dtype, paddle.base.core.DataType):
-                            lr_dtype = (
-                                paddle.pir.core.convert_np_dtype_to_dtype_(
+                            if isinstance(
+                                _lr_dtype, paddle.base.libpaddle.VarDesc.VarType
+                            ):
+                                _lr_dtype = paddle.pir.core.vartype_to_datatype[
                                     _lr_dtype
+                                ]
+                            else:
+                                _lr_dtype = (
+                                    paddle.pir.core.convert_np_dtype_to_dtype_(
+                                        _lr_dtype
+                                    )
                                 )
-                            )
                         self._learning_rate_map[
                             paddle.static.default_main_program()
-                        ] = paddle.pir.core.create_parameter(
+                        ] = paddle.pir.core.create_persistable_value(
                             dtype=_lr_dtype,
                             shape=[],
                             name=unique_name.generate("learning_rate"),
-                            trainable=False,
                             initializer=paddle.nn.initializer.ConstantInitializer(
                                 value=float(self._learning_rate)
                             ),
@@ -764,7 +770,7 @@ class Optimizer:
         param = param_and_grad[0]
         if hasattr(param, 'optimize_attr'):
             param_lr = param.optimize_attr['learning_rate']
-            if isinstance(param_lr, (Variable, paddle.pir.OpResult)):
+            if isinstance(param_lr, (Variable, paddle.pir.Value)):
                 return param_lr
             else:
                 if param_lr == 1.0:
@@ -897,7 +903,7 @@ class Optimizer:
             device = self._get_device_for_param(param.name)
 
         if in_pir_mode():
-            var = paddle.pir.core.create_parameter(
+            var = paddle.pir.core.create_persistable_value(
                 dtype or param.dtype,
                 shape,
                 var_name,
@@ -1735,7 +1741,7 @@ class Optimizer:
 
         """
         assert isinstance(
-            loss, (Variable, paddle.pir.OpResult)
+            loss, (Variable, paddle.pir.Value)
         ), "The loss should be an Tensor."
 
         parameter_list = parameters if parameters else self._parameter_list

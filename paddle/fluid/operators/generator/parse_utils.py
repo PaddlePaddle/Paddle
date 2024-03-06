@@ -627,11 +627,11 @@ def validate_backward_attrs(op, forward_attrs, backward_attrs):
 def validate_backward_inputs(
     op, forward_inputs, forward_outputs, backward_inputs
 ):
-    foward_input_names = [item["name"] for item in forward_inputs]
+    forward_input_names = [item["name"] for item in forward_inputs]
     forward_output_names = [item["name"] for item in forward_outputs]
     backward_input_names = [item["name"] for item in backward_inputs]
 
-    assert len(backward_input_names) <= len(foward_input_names) + 2 * len(
+    assert len(backward_input_names) <= len(forward_input_names) + 2 * len(
         forward_output_names
     ), f"{op } has too many inputs."
 

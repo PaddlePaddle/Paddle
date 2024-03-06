@@ -76,9 +76,7 @@ def convert_to_list(value, n, name, dtype=int):
                 + str(value)
             )
         for single_value in value_list:
-            assert not isinstance(
-                single_value, (Variable, paddle.pir.OpResult)
-            ), (
+            assert not isinstance(single_value, (Variable, paddle.pir.Value)), (
                 "Required numerical type with '%s', but received Tensor."
                 % dtype
             )
@@ -380,10 +378,10 @@ def _is_symmetric_padding(padding, data_dim):
 
 def _contain_var(list_or_tuple):
     """
-    Check whether list or tuple contains variable / OpResult / Value.
+    Check whether list or tuple contains variable / Value.
     """
     for item in list_or_tuple:
-        if isinstance(item, (Variable, paddle.pir.OpResult, paddle.pir.Value)):
+        if isinstance(item, (Variable, paddle.pir.Value)):
             return True
     return False
 
@@ -394,7 +392,7 @@ def get_int_tensor_list(ele_list, place=None, default_dtype='int64'):
 
     int_tensor_list = []
     for ele in ele_list:
-        if isinstance(ele, (paddle.pir.OpResult, paddle.pir.Value)):
+        if isinstance(ele, paddle.pir.Value):
             ele.stop_gradient = True
             if convert_dtype(ele.dtype) != default_dtype:
                 ele = paddle.cast(x=ele, dtype=default_dtype)
@@ -466,13 +464,13 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
 
 def _convert_to_tensor_list(old_list, dtype="int32"):
     """
-    Converts all elements of a list to Variable / OpResult / Value.
+    Converts all elements of a list to Variable / Value.
     """
     from paddle.tensor import fill_constant
 
     new_list_tensor = []
     for ele in old_list:
-        if isinstance(ele, (Variable, paddle.pir.OpResult, paddle.pir.Value)):
+        if isinstance(ele, (Variable, paddle.pir.Value)):
             ele.stop_gradient = True
             new_list_tensor.append(ele)
         else:

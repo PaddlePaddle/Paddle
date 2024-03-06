@@ -19,14 +19,18 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace dialect {
 
 using VariantType = phi::Attribute;
+
+#define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \
+  bool name##OpInferSymbolicShape(            \
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis);
 
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
@@ -136,6 +140,8 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
 
 VariantType GetAttributeData(const pir::Attribute& attr);
 
+paddle::any TransAttrToAny(const pir::Attribute& attr);
+
 bool IsLegacyOp(const std::string& name);
 
 bool IsEmptyValue(const pir::Value& value);
@@ -160,7 +166,10 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
                           const std::string& value_name,
                           const std::string& op_name);
 
-std::string GetValueDataType(const pir::Value& value);
+phi::DataType GetValueDataType(const pir::Value& value);
+
+std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
+                                     bool* is_from_tensor);
 
 }  // namespace dialect
 }  // namespace paddle

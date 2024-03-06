@@ -40,7 +40,7 @@ class PartialSumOp : public framework::OperatorWithKernel {
                       0,
                       platform::errors::InvalidArgument(
                           "ShapeError: Input tensors count should > 0. But "
-                          "recevied inputs' length is 0."));
+                          "received inputs' length is 0."));
     if (inputs_num == 1) {
       VLOG(3) << "Warning: partial_sum op have only one input, may be useless";
     }
@@ -48,7 +48,7 @@ class PartialSumOp : public framework::OperatorWithKernel {
     int start_index = ctx->Attrs().Get<int>("start_index");
     int length = ctx->Attrs().Get<int>("length");
 
-    // Only suppert two dimensions now, should be extended later
+    // Only support two dimensions now, should be extended later
     // when length is -1, need make sure all dimensions to be added are the same
     int64_t batch_size = -1;
     int64_t input_len = -1;
@@ -56,7 +56,7 @@ class PartialSumOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(inputs_dims[i].size(),
                         2,
                         platform::errors::InvalidArgument(
-                            "Only suppert two dimensions input now."));
+                            "Only support two dimensions input now."));
       if (i == 0) {
         batch_size = inputs_dims[0][0];
         input_len = inputs_dims[0][1];

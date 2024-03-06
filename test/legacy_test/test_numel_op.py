@@ -188,20 +188,11 @@ class TestNumelAPI(unittest.TestCase):
         np.testing.assert_array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_error(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-
-            def test_x_type():
-                shape = [1, 4, 5]
-                input_1 = np.random.random(shape).astype("int32")
-                out_1 = paddle.numel(input_1)
-
-            self.assertRaises(TypeError, test_x_type)
-
-    def test_pir_error(self):
-        with paddle.pir_utils.IrGuard():
 
             def test_x_type():
                 shape = [1, 4, 5]

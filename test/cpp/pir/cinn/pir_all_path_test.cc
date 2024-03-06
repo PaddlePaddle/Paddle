@@ -20,7 +20,11 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -29,14 +33,14 @@
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -60,12 +64,17 @@ static void RunAndCheckResult(::pir::Program* program,
 
   pir::PassManager pm(ctx);
   pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+      std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
 
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+  pm.EnableIRPrinting();
   CHECK_EQ(pm.Run(program), true);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
@@ -591,7 +600,7 @@ std::shared_ptr<::pir::Program> BuildSplitProgram() {
                .result(0);
 
   auto out_arr =
-      builder.Build<paddle::dialect::SplitWithNumOp>(x, 4, -1).result(0);
+      builder.Build<paddle::dialect::SplitWithNumOp>(x, 4, 1).result(0);
   auto out = builder.Build<pir::SliceOp>(out_arr, 0).result(0);
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
   return program;

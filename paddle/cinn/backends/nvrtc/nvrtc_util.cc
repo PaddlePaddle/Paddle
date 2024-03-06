@@ -149,7 +149,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     std::string log;
     log.resize(log_size);
     NVRTC_CALL(nvrtcGetProgramLog(prog, &log[0]));
-    CHECK_EQ(compile_res, NVRTC_SUCCESS) << log;
+    CHECK_EQ(compile_res, NVRTC_SUCCESS) << log << "\nThe code is:\n" << code;
   }
 
   size_t size;
@@ -175,7 +175,7 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
     CHECK(mkdir(dir.c_str(), 7) != -1) << "Fail to mkdir " << dir;
   }
 
-  // get unqiue prefix name
+  // get unique prefix name
   prefix_name_ = dir + "/" + cinn::common::UniqName("rtc_tmp");
 
   auto cuda_c_file = prefix_name_ + ".cu";

@@ -23,7 +23,7 @@ from paddle.base import core
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestFusedDropoutAdd(unittest.TestCase):
     def _test_fused_dropout_add(self):

@@ -51,6 +51,73 @@ class TestTensorHook(Dy2StTestBase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
+    def test_hook_in_sub_block(self):
+        def f(x):
+            def hook1(grad):
+                return 2 * grad
+
+            def hook2(grad):
+                return 3 * grad
+
+            if x > 1:
+                y = x + 4
+                z = y**2
+                y.register_hook(hook1)
+            else:
+                y = x - 4
+                z = y**3
+                y.register_hook(hook2)
+            return z
+
+        x = paddle.to_tensor([2.0])
+        x.stop_gradient = False
+        loss = f(x)
+        loss.backward()
+
+        x_jit = paddle.to_tensor([2.0])
+        x_jit.stop_gradient = False
+        jit_f = to_static(f)
+        loss = jit_f(x_jit)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
+
+    def test_hook_sub_attr(self):
+        IMAGE_SIZE = 784
+        CLASS_NUM = 10
+
+        def hook(grad):
+            return grad * 2
+
+        class Layer(nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+
+            def forward(self, x):
+                # breakpoint()
+                self._linear.weight.register_hook(hook)
+                y = self._linear(x)
+                return y
+
+        paddle.seed(0)
+        data = np.random.random([IMAGE_SIZE]).astype('float32')
+        x = paddle.to_tensor(data)
+        x.stop_gradient = False
+        layer = Layer()
+        loss = layer(x)
+        loss.backward()
+
+        paddle.seed(0)
+        x_jit = paddle.to_tensor(data)
+        x_jit.stop_gradient = False
+        jit_layer = to_static(Layer())
+        loss = jit_layer(x_jit)
+        loss.backward()
+        np.testing.assert_allclose(
+            layer._linear.weight.grad.numpy(),
+            jit_layer._linear.weight.grad.numpy(),
+        )
+
     def test_hook_for_reassignment_parameter(self):
         def f(x):
             def h(g):

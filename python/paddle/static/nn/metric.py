@@ -265,7 +265,7 @@ def auc(
     # historical batch-level values, and the last bucket stores the sum values of
     # previous slide_step buckets.
     # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
-    # and batch_id is store in the last posision of following variable
+    # and batch_id is store in the last position of following variable
     batch_stat_pos = helper.create_global_variable(
         persistable=True,
         dtype='int64',

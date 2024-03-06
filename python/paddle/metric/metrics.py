@@ -77,7 +77,7 @@ class Metric(metaclass=abc.ABCMeta):
         :code:`pred` and :code:`label` in :code:`compute`.
         For examples, prediction results contains 10 classes, while :code:`pred`
         shape is [N, 10], :code:`label` shape is [N, 1], N is mini-batch size,
-        and we only need to calculate accurary of top-1 and top-5, we could
+        and we only need to calculate accuracy of top-1 and top-5, we could
         calculate the correct prediction matrix of the top-5 scores of the
         prediction of each sample like follows, while the correct prediction
         matrix shape is [N, 5].
@@ -160,7 +160,7 @@ class Metric(metaclass=abc.ABCMeta):
 
     def compute(self, *args):
         """
-        This API is advanced usage to accelerate metric calculating, calulations
+        This API is advanced usage to accelerate metric calculating, calculations
         from outputs of model to the states which should be updated by Metric can
         be defined here, where Paddle OPs is also supported. Outputs of this API
         will be the inputs of "Metric.update".

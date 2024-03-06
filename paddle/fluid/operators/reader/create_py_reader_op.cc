@@ -56,7 +56,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
       queue = ordered_queue->GetQueue(dev_idx);
     }
 
-    /* Coverting shape_concat and ranks into DDim of each data.
+    /* Converting shape_concat and ranks into DDim of each data.
      shape_concat and ranks are shapes and shape ranks of each data.E.g.
      shape_concat = [2,3,4,5,6], ranks = [3,2] means two data whose shapes are
      [2,3,4] and [5,6] respectively. */

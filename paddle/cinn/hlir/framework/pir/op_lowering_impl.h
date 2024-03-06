@@ -27,11 +27,11 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/packed_func.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
 // Elementwise/Broadcast/Injective,Reduce,OutEWiseFusable,NonFusible.
-// Elementwise/Broadcast/Injective Ops is with same shcedule.
+// Elementwise/Broadcast/Injective Ops is with same schedule.
 // Reduce,OutEWiseFusable,NonFusible are using different schedule.
 
 namespace cinn {
@@ -242,6 +242,11 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
 
   ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value);
+  ir::Tensor GetTensorSymbolic(const GroupPtr& group,
+                               const ::pir::Value& value);
+
+  std::shared_ptr<cinn::ir::GroupTileInfo> GetGroupTileInfo(
+      const GroupPtr& group);
 
   void CollectOutputInfo(::pir::Operation* op,
                          std::vector<Type>* out_types,
@@ -265,9 +270,25 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
 
   common::Type GetTensorDtype(const ::pir::Value& value);
 
+  void BuildBroadcastInfo(const GroupPtr& group);
+
   Target target_;
 
   PrettyNamer* name_gene_;
+
+  std::vector<std::string> thread_sync_before_names;
+  std::set<std::string> shared_var_names;
+  std::set<std::string> direct_output_var_names;
+
+  std::vector<std::string> broadcast_output_names;
+
+  std::unordered_map<std::string, cinn::ir::BroadcastInfo> broadcast_info;
+  std::unordered_map<std::string, cinn::ir::BroadcastInfo>
+      broadcast_to_elementwise;
+
+  std::unordered_set<::pir::Operation*> erase_reshape;
+
+  std::vector<::pir::Operation*> remain_ops;
 };
 
 }  // namespace pir

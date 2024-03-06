@@ -301,12 +301,14 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
+  CHECK_EQ(output_shapes.size(), 1);
   std::vector<ir::Expr> out_shape(output_shapes[0].size());
   std::transform(output_shapes[0].begin(),
                  output_shapes[0].end(),
                  out_shape.begin(),
                  [](const ir::Dim &dim) { return dim->dim_expr; });
   std::vector<int> broadcast_axes;
+  CHECK_GT(attrs.attr_store.count("broadcast_axes"), 0);
   broadcast_axes =
       absl::get<std::vector<int>>(attrs.attr_store.at("broadcast_axes"));
   VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
@@ -572,6 +574,9 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .set_num_outputs(1)                                                  \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                  \
           "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)      \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(          \
+          "CINNStrategySymbolic",                                          \
+          cinn::hlir::op::StrategyFor##op_stragegy__##Symbolic)            \
       .set_attr("infershape",                                              \
                 MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))    \
       .set_attr("inferdtype",                                              \

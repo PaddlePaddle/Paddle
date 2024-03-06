@@ -45,7 +45,7 @@ void EraseLoadProcessPIDs(int64_t key) {
             << ")";
     load_process_pids.erase(it);
   } else {
-    VLOG(3) << "Dygraph Data Loader: The dygrph loader (id: " << key
+    VLOG(3) << "Dygraph Data Loader: The dygraph loader (id: " << key
             << ") you want erase does not exist.";
   }
 }
