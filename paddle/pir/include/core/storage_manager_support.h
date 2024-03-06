@@ -90,7 +90,7 @@ class StorageHelperBase : public BaseT {
   ///
   template <typename T>
   static bool classof(T val) {
-    return val.type_id() == type_id();
+    return val && val.type_id() == type_id();
   }
 
   ///
