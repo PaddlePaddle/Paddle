@@ -1158,6 +1158,11 @@ struct DataOpTranscriber : public FeedOpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     int allocate_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place"));
+    std::string dev_str = "";
+    if (op_desc.HasAttr("device_type")) {
+      dev_str = PADDLE_GET_CONST(int, op_desc.GetAttr("device_type"));
+    }
+
     int var_dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
     auto phi_dtype = phi::TransToPhiDataType(var_dtype);
 
@@ -1172,7 +1177,9 @@ struct DataOpTranscriber : public FeedOpTranscriber {
         {"dtype", paddle::dialect::DataTypeAttribute::get(ctx, phi_dtype)},
         {"place",
          paddle::dialect::PlaceAttribute::get(
-             ctx, phi::Place(static_cast<phi::AllocationType>(allocate_type)))},
+             ctx,
+             phi::Place(static_cast<phi::AllocationType>(allocate_type),
+                        dev_str))},
     };
 
     return attribute_map;

@@ -423,6 +423,7 @@ std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(p));
+    op_desc->SetAttr("device_type", in_t.place().GetDeviceType());
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
   }
@@ -440,6 +441,7 @@ std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(p));
+    op_desc->SetAttr("device_type", param.place().GetDeviceType());
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
 
@@ -507,8 +509,10 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     if (scope->FindVar(var_name)) {
       auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
       phi::AllocationType p = place.GetType();
+      std::string dev_str = "";
       if (tensor.initialized()) {
         p = tensor.place().GetType();
+        dev_str = tensor.place().GetDeviceType();
       }
 
       if (var_name == "@EMPTY@") {
@@ -520,6 +524,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
       // TODO(phlrain) : using tensor dtype
       op_desc->SetAttr("dtype", 0);
       op_desc->SetAttr("place", static_cast<int>(p));
+      op_desc->SetAttr("device_type", dev_str);
       op_desc->SetAttr("name", var_name);
       op_desc->SetOutput("out", {var_name});
     }
