@@ -31,6 +31,7 @@ function case_list_unit() {
         case_name=`awk -F, 'NR=='$i' {print $1}' testslist.csv`
         if [[ ${target_key} != "all" ]] && [[ ! ${case_name} =~ ${target_key} ]]; then
             echo "=========== skip $case_name run  ==========="
+            continue
         else
             echo "=========== $case_name run  begin ==========="
         fi
@@ -51,13 +52,13 @@ main() {
     export exec_case=$1
     echo -e "\033[31m ---- Start executing $exec_case case \033[0m"
 
-    if [[ $exec_case =~ "auto_unit_test" ]];then
+    if [[ $exec_case == "auto_unit_test" ]];then
         cd ${auto_case_path}
         case_list_unit
-    elif [[ $exec_case =~ "dygraph_unit_test" ]];then
+    elif [[ $exec_case == "dygraph_unit_test" ]];then
         cd ${dygraph_case_path}
         case_list_unit
-    elif [[ $exec_case =~ "llama_auto_unit_test" ]];then
+    elif [[ $exec_case == "llama_auto_unit_test" ]];then
         cd ${auto_case_path}
         case_list_unit llama
     else
