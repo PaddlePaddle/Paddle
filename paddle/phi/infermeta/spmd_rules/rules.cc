@@ -620,5 +620,11 @@ PD_REGISTER_SPMD_RULE(scatter,
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmdReverse));
 
+// argmax
+PD_REGISTER_SPMD_RULE(
+    argmax,
+    PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdReverseBase));
+
 }  // namespace distributed
 }  // namespace phi
