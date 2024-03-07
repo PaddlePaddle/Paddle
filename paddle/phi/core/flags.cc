@@ -32,3 +32,11 @@ PHI_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
                           phi::backends::gpu::kDefaultConvWorkspaceSizeLimitMB,
                           "cuDNN convolution workspace limit in MB unit.");
 #endif
+
+PHI_DEFINE_EXPORTED_int32(sparse_conv_run_mode,
+                          0,
+                          "0: origin, 1: cutlass, 2: ImplicitGEMM");
+
+PHI_DEFINE_EXPORTED_int32(sparse_conv_cutlass_enable_256,
+                          0,
+                          "0: disable, 1: enable");
