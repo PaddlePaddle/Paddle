@@ -823,6 +823,8 @@
     {ids : Ids, shows : Shows, clicks: Clicks}
   outputs :
     out : Outputs
+  extra :
+    attrs : ['int[] slots = {}']
 
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div_grad)
