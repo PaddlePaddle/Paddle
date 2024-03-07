@@ -178,14 +178,20 @@ class StmtFusionHelper {
     }, stmt);
   }
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(std::list<StmtPattern>* stmts) const {
+  template<typename IsDetailPatternT, typename ConstructPatternT>
+  std::optional<ErrorGroupPattern> MultiFuse(
+      const IsDetailPatternT& IsDetailPattern,
+      const ConstructPatternT& ConstructPattern,
+      std::list<StmtPattern>* stmts) const {
     const auto StmtIter4Op = MakeGetterStmt4Op(stmts);
     using NodeVisitor = std::function<void(StmtIter)>;
     const auto VisitInputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
       const pir::Operation* op = GetSoleOp(*stmt);
       VisitEachInputOp(op, [&](const pir::Operation* input) {
         if (const auto& input_stmt = StmtIter4Op(input)) {
-          DoEach(input_stmt);
+          if (IsDetailPattern(*input_stmt.value())) {
+            DoEach(input_stmt.value());
+          }
         }
       });
     };
@@ -193,15 +199,17 @@ class StmtFusionHelper {
       const pir::Operation* op = GetSoleOp(*stmt);
       VisitEachOutputOp(op, [&](const pir::Operation* output) {
         if (const auto& output_stmt = StmtIter4Op(output)) {
-          DoEach(output_stmt);
+          if (IsDetailPattern(*output_stmt.value())) {
+            DoEach(output_stmt.value());
+          }
         }
       });
     };
-    const auto IsSinkInjectiveSourceStmt = [&](StmtIter stmt) {
-      if (!std::holds_alternative<IS>(*stmt)) return false;
+    const auto IsSinkPattern = [&](StmtIter stmt) {
+      if (!IsDetailPattern(*stmt)) return false;
       std::size_t num_injective_src_outputs = 0;
       VisitOutputStmt(node, [&](const auto& consumer) {
-        num_injective_src_outputs += std::holds_alternative<IS>(*consumer);
+        num_injective_src_outputs += IsDetailPattern(*consumer);
       });
       return num_injective_src_outputs == 0;
     };
@@ -220,19 +228,19 @@ class StmtFusionHelper {
     common::BfsWalker<StmtIter> reverse_walker(VisitInputStmt);
     std::list<StmtPattern> fused_stmts;
     for (auto stmt_iter = stmts->begin(); stmt_iter != stmts->end(); ++stmt_iter) {
-      if (!IsSinkInjectiveSourceStmt(stmt_iter)) continue;
-      fused_stmts.push_back(IS{GetVisitedOps(stmt_iter)});
+      if (!IsSinkPattern(stmt_iter)) continue;
+      fused_stmts.emplace_back(ConstructPattern(GetVisitedOps(stmt_iter)));
     }
     for (auto stmt_iter = stmts->begin(); stmt_iter != start->end();) {
-      if (std::holds_alternative<IS>(*stmt_iter)) {
+      if (IsDetailPattern(*stmt_iter)) {
         stmt_iter = stmts->erase(stmt_iter);
       } else {
         ++stmt_iter;
       }
     }
     stmts->splice(stmts->begin(), std::move(fused_stmts));
+    return std::nullopt;
   }
-
   
   using OpVisitor = std::function<void(const pir::Operation*)>;
 
@@ -413,6 +421,11 @@ class StmtFusionHelper {
     return {};
   }
 
+  std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(std::list<StmtPattern>* stmts) const {
+    const auto ConstructISPattern = [&](const auto& ops) { return IS{ops}; };
+    return MultiFuse(IsISPattern, ConstructISPattern, stmts);
+  }
+
   std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
@@ -421,6 +434,22 @@ class StmtFusionHelper {
       }
     );
   }
+
+/*
+  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
+    const auto shardable_axes_signature = [&](const auto& ops) {
+
+    };
+    const auto ConstructPSPattern = [&](const auto& ops) {
+      const auto shardable_axes_signature = GetShardableAxesSignature(ops);
+      return PS{
+        .ops=ops,
+        .shardable_axes_signature=shardable_axes_signature,
+      };
+    };
+    return MultiFuse(IsPSPattern, ConstructISPattern, stmts);
+  }
+*/
 
   std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
