@@ -35,14 +35,16 @@ def parameter_accuracy(body):
     PR_dic = {}
     PR_Category = [
         'User Experience',
-        'Dygraph',
-        'PIR Infrastructure',
+        'Execute Infrastructure',
+        'Operator Mechanism',
+        'CINN',
+        'Custom Device',
+        'Performance Optimization',
+        'Distributed Strategy',
+        'Parameter Server',
+        'Communication Library',
         'Auto Parallel',
         'Inference',
-        'CINN',
-        'PHI',
-        'CUDA',
-        'Custom Device',
         'Environment Adaptation',
         'Others',
     ]
@@ -107,7 +109,7 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         res: True or False
     """
     res = False
-    note = r'<!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->\r\n|<!-- One of \[ User Experience \| Dygraph \| PIR Infrastructure \| Auto Parallel \| Inference \| CINN \| PHI \| CUDA \| Custom Device \| Environment Adaptation \| Others \] -->|<!-- One of \[ New features \| Bug fixes \| Improvements \| Performance \| BC Breaking \| Deprecations \| Docs \| Devs \| Not User Facing \| Security \| Deprecations \| Others \] -->|<!-- Describe what you’ve done -->'
+    note = r'<!-- TemplateReference: https://github.com/PaddlePaddle/Paddle/wiki/PULL-REQUEST-TEMPLATE--REFERENCE -->\r\n|<!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->\r\n|<!-- One of \[ User Experience \| Execute Infrastructure \| Operator Mechanism \| CINN \| Custom Device \| Performance Optimization \| Distributed Strategy \| Parameter Server \| Communication Library \| Auto Parallel \| Inference \| Environment Adaptation \| Others \] -->|<!-- One of \[ New features \| Bug fixes \| Improvements \| Performance \| BC Breaking \| Deprecations \| Docs \| Devs \| Not User Facing \| Security \| Deprecations \| Others \] -->|<!-- Describe what you’ve done -->'
     if body is None:
         body = ''
     body = re.sub(note, "", body)
