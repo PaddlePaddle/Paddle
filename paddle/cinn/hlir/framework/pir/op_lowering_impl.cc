@@ -124,6 +124,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   if (is_reduce_all) {
     reduce_is_dynamic = false;
   }
+
   PADDLE_ENFORCE_EQ(
       reduce_is_dynamic,
       false,

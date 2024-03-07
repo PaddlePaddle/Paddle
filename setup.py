@@ -458,6 +458,7 @@ is_tagged          = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
+with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
 
@@ -682,6 +683,9 @@ def cinn():
                 'is_tagged': is_tagged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
+                'with_pip_cuda_libraries': env_dict.get(
+                    "with_pip_cuda_libraries"
+                ),
             }
         )
 

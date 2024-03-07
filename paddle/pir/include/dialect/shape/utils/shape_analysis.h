@@ -100,4 +100,8 @@ class IR_API ShapeAnalysisManager {
   std::unordered_map<uint64_t, ShapeConstraintIRAnalysis> tables_;
 };
 
+#define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \
+  bool name##OpInferSymbolicShape(            \
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis);
+
 }  // namespace pir
