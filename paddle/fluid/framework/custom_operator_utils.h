@@ -278,6 +278,10 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
                       bwd_input_name) != bwd_inputs_name.end()) {
           int input_index = input_name2id_map.at(bwd_input_name);
           auto input_shape = input_shapes[input_index];
+          if (input_shape.size() == 0) {
+            // if optional tensor is None, we don't need to infer shape
+            continue;
+          }
           output_shapes.push_back(input_shape);
         } else {
           PADDLE_ENFORCE_EQ(
@@ -320,6 +324,10 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
       } else {
         int input_index = input_name2id_map.at(pair.first);
         auto input_shape = input_shapes[input_index];
+        if (input_shape.size() == 0) {
+          // if optional tensor is None, we don't need to infer shape
+          continue;
+        }
         output_shapes.push_back(input_shape);
       }
     }
@@ -357,6 +365,10 @@ static std::vector<DataType> RunDefaultInferDtype(
                       bwd_input_name) != bwd_inputs_name.end()) {
           int input_index = input_name2id_map.at(bwd_input_name);
           auto input_dtype = input_dtypes[input_index];
+          if (input_dtype == DataType::UNDEFINED) {
+            // if optional tensor is None, we don't need to infer dtype
+            continue;
+          }
           output_dtypes.push_back(input_dtype);
         } else {
           // If there is no corresponding input for the output, set float as
@@ -389,6 +401,10 @@ static std::vector<DataType> RunDefaultInferDtype(
       } else {
         int input_index = input_name2id_map.at(pair.first);
         auto input_dtype = input_dtypes[input_index];
+        if (input_dtype == DataType::UNDEFINED) {
+          // if optional tensor is None, we don't need to infer dtype
+          continue;
+        }
         output_dtypes.push_back(input_dtype);
       }
     }
@@ -405,7 +421,57 @@ static std::vector<std::vector<int64_t>> RunInferShape(
     const std::unordered_map<std::string, int>& vec_input_name2id_map,
     const std::vector<paddle::any>& custom_attrs) {
   if (infershape_func) {
-    return infershape_func(input_shapes, vec_input_shapes, custom_attrs);
+    std::vector<std::vector<int64_t>> infershape_result =
+        infershape_func(input_shapes, vec_input_shapes, custom_attrs);
+    std::vector<std::vector<int64_t>> complete_result;
+    const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(custom_op_meta);
+    const auto& inplace_reverse_map =
+        paddle::OpMetaInfoHelper::GetInplaceReverseMap(custom_op_meta);
+
+    // The real output shape result is ( infershape func result + inplace output
+    // result), because the infershape doesn't create output shape that belongs
+    // to inplace output.
+    size_t infershape_result_index = 0;
+    for (auto& out_name : outputs) {
+      if (paddle::framework::detail::IsDuplicableVar(out_name)) {
+        PADDLE_ENFORCE(
+            inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
+            phi::errors::InvalidArgument(
+                "Custom operator only supports `paddle::Vec(...)` inputs and "
+                "cannot support `paddle::Vec(...)` output without setting "
+                "InplaceMap. If you have to use `paddle::Vec(...)` output, "
+                "please indicate it by setting InplaceMap manually."));
+        auto in_name = inplace_reverse_map.at(out_name);
+        if (custom_op_meta.IsGradOp() || custom_op_meta.IsDoubleGradOp()) {
+          const auto& bwd_op_name =
+              paddle::OpMetaInfoHelper::GetOpName(custom_op_meta);
+          bool is_double_grad_op =
+              (bwd_op_name.find("_grad_grad") != bwd_op_name.npos) ? true
+                                                                   : false;
+          in_name =
+              paddle::framework::detail::NoGrad(out_name, is_double_grad_op);
+        }
+        auto index = vec_input_name2id_map.at(in_name);
+        const auto& vec_input_shape = vec_input_shapes[index];
+        complete_result.insert(complete_result.end(),
+                               vec_input_shape.begin(),
+                               vec_input_shape.end());
+      } else {
+        if (inplace_reverse_map.find(out_name) != inplace_reverse_map.end()) {
+          auto in_name = inplace_reverse_map.at(out_name);
+          auto index = input_name2id_map.at(in_name);
+          if (input_shapes[index].size() == 0) {
+            // if optional tensor is None, we don't need to infer shape，
+            continue;
+          }
+          complete_result.push_back(input_shapes[index]);
+        } else {
+          complete_result.push_back(infershape_result[infershape_result_index]);
+          infershape_result_index++;
+        }
+      }
+    }
+    return complete_result;
   } else {
     return RunDefaultInferShape(custom_op_meta,
                                 input_shapes,
@@ -424,7 +490,57 @@ static std::vector<DataType> RunInferDtype(
     const std::unordered_map<std::string, int>& vec_input_name2id_map,
     const std::vector<paddle::any>& custom_attrs) {
   if (inferdtype_func) {
-    return inferdtype_func(input_dtypes, vec_input_dtypes, custom_attrs);
+    std::vector<DataType> complete_result;
+    const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(custom_op_meta);
+    const auto& inplace_reverse_map =
+        paddle::OpMetaInfoHelper::GetInplaceReverseMap(custom_op_meta);
+    std::vector<DataType> inferdtype_result =
+        inferdtype_func(input_dtypes, vec_input_dtypes, custom_attrs);
+
+    // The real output dtype result is ( infershape func dtype + inplace output
+    // dtype), because the inferdtype doesn't create output dtype that belongs
+    // to inplace output.
+    size_t inferdtype_result_index = 0;
+    for (auto& out_name : outputs) {
+      if (paddle::framework::detail::IsDuplicableVar(out_name)) {
+        PADDLE_ENFORCE(
+            inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
+            phi::errors::InvalidArgument(
+                "Custom operator only supports `paddle::Vec(...)` inputs and "
+                "cannot support `paddle::Vec(...)` output without setting "
+                "InplaceMap. If you have to use `paddle::Vec(...)` output, "
+                "please indicate it by setting InplaceMap manually."));
+        auto in_name = inplace_reverse_map.at(out_name);
+        if (custom_op_meta.IsGradOp() || custom_op_meta.IsDoubleGradOp()) {
+          const auto& bwd_op_name =
+              paddle::OpMetaInfoHelper::GetOpName(custom_op_meta);
+          bool is_double_grad_op =
+              (bwd_op_name.find("_grad_grad") != bwd_op_name.npos) ? true
+                                                                   : false;
+          in_name =
+              paddle::framework::detail::NoGrad(out_name, is_double_grad_op);
+        }
+        auto index = vec_input_name2id_map.at(in_name);
+        const auto& vec_input_dtype = vec_input_dtypes[index];
+        complete_result.insert(complete_result.end(),
+                               vec_input_dtype.begin(),
+                               vec_input_dtype.end());
+      } else {
+        if (inplace_reverse_map.find(out_name) != inplace_reverse_map.end()) {
+          auto in_name = inplace_reverse_map.at(out_name);
+          auto index = input_name2id_map.at(in_name);
+          if (input_dtypes[index] == DataType::UNDEFINED) {
+            // if optional tensor is None, we don't need to infer dtype
+            continue;
+          }
+          complete_result.push_back(input_dtypes[index]);
+        } else {
+          complete_result.push_back(inferdtype_result[inferdtype_result_index]);
+          inferdtype_result_index++;
+        }
+      }
+    }
+    return complete_result;
   } else {
     return RunDefaultInferDtype(custom_op_meta,
                                 input_dtypes,

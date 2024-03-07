@@ -22,6 +22,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 MODULE_NAME = "custom_raw_op_kernel_op_lib"
 
@@ -71,6 +72,7 @@ class TestCustomRawReluOp(unittest.TestCase):
         self.assertIsNotNone(custom_raw_relu_op)
         return custom_raw_relu_op(x)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         shape = [2, 3]
