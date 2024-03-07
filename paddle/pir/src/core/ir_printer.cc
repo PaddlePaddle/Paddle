@@ -17,7 +17,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
