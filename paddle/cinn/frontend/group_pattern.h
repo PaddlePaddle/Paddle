@@ -1,6 +1,8 @@
 #pragma once
 
 #include <unordered_map>
+#include <atomic>
+#include <vector>
 #include "paddle/cinn/api/op_topo_pattern.h"
 #include "paddle/pir/include/core/operation.h"
 
@@ -28,15 +30,22 @@ struct SingleReductionOpPattern<frontend::FrontendPattern> {
   const pir::Operation* reduce_op;
 };
 
-struct ShardableAxes {
+struct ShardableAxis {
   int axis;
   std::string axis_name;
+
+  static int64_t UnqiueSeqNo() {
+    static std::atomic<int64_t> cnt(0);
+    return ++cnt;
+  }
 };
+
+using ShardableAxes = std::vector<ShardableAxis>;
 
 struct ShardableAxesSignature {
   using OpOperand = std::pair<const pir::Operation*, /*operand index*/int>;
 
-  std::vector<ShardableAxes> output_shardable_axes;
+  ShardableAxes output_shardable_axes;
   std::unordered_map<OpOperand, ShardableAxes> input_shardable_axes;
 };
 
