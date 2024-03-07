@@ -76,7 +76,7 @@ bool ConcatOpInferSymbolicShape(
       out_dims[axis] = out_dims[axis] + operand_shape_or_data.shape()[axis];
     }
 
-    for (size_t i = 1; i < rank; ++i) {
+    for (size_t i = 0; i < rank; ++i) {
       if (i == static_cast<size_t>(axis)) continue;
       paddle::dialect::details::BuildCstrEqForTensorListAlongAxis(
           shape_analysis, input_values, i);
@@ -84,6 +84,9 @@ bool ConcatOpInferSymbolicShape(
 
     return out_dims;
   };
+
+  VLOG(3) << "constraints size:"
+          << shape_analysis->CreateDimExprBuilder().constraints().size();
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};
@@ -206,7 +209,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
   shape_analysis->SetShapeOrDataForValue(
       op->result(0),
-      paddle::dialect::slice_uitls::SliceRawInferSymbolicShape(
+      paddle::dialect::slice_utils::SliceRawInferSymbolicShape(
           shape_analysis->GetShapeOrDataForValue(op->operand_source(0)),
           starts,
           ends,

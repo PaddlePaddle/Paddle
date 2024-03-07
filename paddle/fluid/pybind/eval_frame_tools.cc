@@ -38,8 +38,8 @@ class TreeNode {
 };
 
 void TreeNode::clear() {
-  for (int i = 0; i < 256; i++) {
-    if (children[i] != nullptr) delete children[i];
+  for (auto& i : children) {
+    if (i != nullptr) delete i;
   }
 }
 
@@ -200,8 +200,8 @@ void CodeStatus::add_with_graph_code(PyCodeObject* code) {
 }
 
 void CodeStatus::clear() {
-  for (auto iter = code_map.begin(); iter != code_map.end(); iter++) {
-    delete iter->second;
+  for (auto& iter : code_map) {
+    delete iter.second;
   }
   code_map.clear();
 }
