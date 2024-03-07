@@ -59,13 +59,9 @@ namespace details {
 NodeAttr CollectAttrs(const ::pir::Operation& op) {
   NodeAttr node_attrs;
   VLOG(4) << "op.attributes():" << op.attributes().size();
-  if (CompatibleInfo::OpName(op) == "generate_shape") {
-    node_attrs.node_name = CompatibleInfo::OpName(op);
-  } else {
-    auto attrs = CompatibleInfo::ConvertAttributes(op);
-    node_attrs.node_name = CompatibleInfo::OpName(op);
-    node_attrs.attr_store = std::move(attrs);
-  }
+  auto attrs = CompatibleInfo::ConvertAttributes(op);
+  node_attrs.node_name = CompatibleInfo::OpName(op);
+  node_attrs.attr_store = std::move(attrs);
 
   return node_attrs;
 }
