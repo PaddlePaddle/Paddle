@@ -195,7 +195,7 @@ struct CommonGlobalVarEliminator : public ir::IRMutator<Expr*> {
 }  // namespace
 
 void EliminateCommonGlobalVar(Expr* e) {
-  std::cerr << "Before EliminateCommonGlobalVar\n" << *e << std::endl;
+  VLOG(2) << "Before EliminateCommonGlobalVar\n" << *e;
 
   GlobalVarInfoCollector collector;
   collector(e);
@@ -205,7 +205,7 @@ void EliminateCommonGlobalVar(Expr* e) {
   CommonGlobalVarEliminator eliminator(eliminate_var_names);
   eliminator(e);
 
-  std::cerr << "After EliminateCommonGlobalVar\n" << *e << std::endl;
+  VLOG(2) << "After EliminateCommonGlobalVar\n" << *e;
 }
 
 }  // namespace optim
