@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include <iterator>
 #include <queue>
 #include <regex>
 #include <set>
@@ -542,8 +543,8 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
       continue;
     visited_ops->insert(defining_op);
     const bool is_before_position =
-        defining_op->operator Block::ConstIterator() <=
-        position_op->operator Block::ConstIterator();
+        std::distance(defining_op->operator Block::ConstIterator(),
+                      position_op->operator Block::ConstIterator()) > 0;
     if (is_before_position) continue;
     ops.insert(defining_op);
     auto recursive_ops = GetUpstreamOpsAfterPosition(
