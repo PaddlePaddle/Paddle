@@ -1789,13 +1789,13 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     framework::InsertCallStackInfo(op->name(), op_callstack_attr, &ex);
     LOG(WARNING) << " OP id:" << instr_node->Id() << " " << instr_node->Name()
                  << " raises an EnforceNotMet exception "
-                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+                 << platform::demangle(typeid(ex).name());
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
     LOG(WARNING) << instr_node->Name() << " raises an exception "
-                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+                 << platform::demangle(typeid(ex).name());
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
     LOG(WARNING) << instr_node->Name() << " raises an unknown exception";

@@ -134,6 +134,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_sum',
     'c_reducescatter',
     'c_softmax_with_cross_entropy',
+    'c_split',
     'decayed_adagrad',
     'distributed_lookup_table',
     'dpsgd',
