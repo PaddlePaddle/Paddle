@@ -10,7 +10,6 @@ namespace {
 using IS = api::InjectiveSourcePattern<FrontendPattern>;
 using R = api::ReductionPattern<FrontendPattern>;
 using PS = api::PartialShardablePattern<FrontendPattern>;
-using InternalPattern = std::variant<IS, R, PS>;
 using OpPatternKind = cinn::hlir::framework::OpPatternKind;
 
 hlir::framework::OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
@@ -99,57 +98,51 @@ std::function<bool(const pir::Operation*)> MakeGetterIsInjectiveSource(
   };
 }
 
-void InitInternalFusions(const std::optional<IS> injective_source, std::vector<InternalPattern>* ret) {
-  if (injective_source.has_value()) {
-    ret->emplace_back(InternalPattern{injective_source.value()});
-  }
-}
-
-struct InternalFusionHelper {
+struct StmtFusionHelper {
   const std::function<bool(const pir::Operation*)> IsInThisFusionOp;
   const std::function<bool(const pir::Operation*)> IsInjectiveSource;
 
-  std::vector<InternalPattern> FuseISAndConvertRemainder(const cinn::dialect::FusionOp& fusion_op) const {
+  std::vector<StmtPattern> FuseISAndConvertRemainder(const cinn::dialect::FusionOp& fusion_op) const {
     const auto& [injective_source_ops, remainder_ops] = SplitInjectiveSourceOps(fusion_op);
-    std::vector<InternalPattern> ret;
+    std::vector<StmtPattern> ret;
     FuseInjectiveSourceThenAppend(injective_source_ops, &ret);
     for (const auto& op : remainder_ops) {
-      ret.emplace_back(ConvertNonInjectiveSourceToInternalPattern(op));
+      ret.emplace_back(ConvertNonInjectiveSourceToStmtPattern(op));
     }
     return ret;
   }
 
   void FuseInjectiveSourceThenAppend(
       const std::list<const pir::Operation*>& injective_source_ops,
-      std::vector<InternalPattern>* ret) {
+      std::vector<StmtPattern>* ret) {
     using IterType = std::list<const pir::Operation*>::iterator;
     TODO();
   }
 
-  InternalPattern ConvertNonInjectiveSourceToInternalPattern(const pir::Operation* op) {
+  StmtPattern ConvertNonInjectiveSourceToStmtPattern(const pir::Operation* op) {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
     if (kind == hlir::framework::kReduction) {
-      return ConvertReductionOpToInternalPattern(op);
+      return ConvertReductionOpToStmtPattern(op);
     } else if (kind == hlir::framework::kElementWise) {
-      return ConvertElementwiseOpToInternalPattern(op);
+      return ConvertElementwiseOpToStmtPattern(op);
     } else if (kind == hlir::framework::kBroadcast) {
-      return ConvertBroadcastOpToInternalPattern(op);
+      return ConvertBroadcastOpToStmtPattern(op);
     } else {
       LOG(FATAL) << "only kReduction, kElementWise, kBroadcast supported. op_name:" << op->op_name(); 
     }
     LOG(FATAL) << "Dead code";
   }
 
-  InternalPattern ConvertReductionOpToInternalPattern(const pir::Operation* op) {
+  StmtPattern ConvertReductionOpToStmtPattern(const pir::Operation* op) {
     return R{{}, {op}};
   }
 
-  InternalPattern ConvertElementwiseOpToInternalPattern(const pir::Operation* op) {
+  StmtPattern ConvertElementwiseOpToStmtPattern(const pir::Operation* op) {
     CHECK(!op->isa<cinn::dialect::ReshapeOp>()) << "reshape not supported.";
     TODO();
   }
 
-  InternalPattern ConvertBroadcastOpToInternalPattern(const pir::Operation* op) {
+  StmtPattern ConvertBroadcastOpToStmtPattern(const pir::Operation* op) {
     LOG(FATAL) << "TODO(wuzhanfei)";
   }
 
@@ -212,18 +205,18 @@ struct InternalFusionHelper {
     std::list<const pir::Operation*> remainder_ops;
   }
 
-  std::optional<std::pair<InternalPattern, InternalPattern>> FindConnetedPattenPairWithCondition(
-      std::vector<InternalPattern>* internal_patterns,
+  std::optional<std::pair<StmtPattern, StmtPattern>> FindConnetedPattenPairWithCondition(
+      std::vector<StmtPattern>* stmt_patterns,
       std::function<bool(const IternalPattern& upstream, const IternalPattern& downstream)>& FuseTargetCondition) const {
-    for (int i=0; i<internal_patterns.size(); i++){
-      for (int j=i+1; j<internal_patterns.size(); j++){
-        bool i_used_j = FirstIsUpstreamOfSecond(internal_patterns[j], internal_patterns[i]);
-        bool j_used_i = FirstIsUpstreamOfSecond(internal_patterns[i], internal_patterns[j]);
+    for (int i=0; i<stmt_patterns.size(); i++){
+      for (int j=i+1; j<stmt_patterns.size(); j++){
+        bool i_used_j = FirstIsUpstreamOfSecond(stmt_patterns[j], stmt_patterns[i]);
+        bool j_used_i = FirstIsUpstreamOfSecond(stmt_patterns[i], stmt_patterns[j]);
 
-        if (i_used_j && FuseTargetCondition(internal_patterns[j], internal_patterns[i])){
-          return std::make_pair(internal_patterns[j], internal_patterns[i]);
-        }else if(j_used_i && FuseTargetCondition(internal_patterns[i], internal_patterns[j])){
-          return std::make_pair(internal_patterns[i], internal_patterns[j]);
+        if (i_used_j && FuseTargetCondition(stmt_patterns[j], stmt_patterns[i])){
+          return std::make_pair(stmt_patterns[j], stmt_patterns[i]);
+        }else if(j_used_i && FuseTargetCondition(stmt_patterns[i], stmt_patterns[j])){
+          return std::make_pair(stmt_patterns[i], stmt_patterns[j]);
         }else{
           continue;
         }
@@ -233,12 +226,12 @@ struct InternalFusionHelper {
   }
 
   std::optional<ErrorGroupPattern> FuseIternalPattenPrototype(
-      std::vector<InternalPattern>* internal_patterns,
+      std::vector<StmtPattern>* stmt_patterns,
       std::function<bool(const IternalPattern&, const IternalPattern&)>& FuseTargetCondition) const{
 
     while(true){
       const auto& pattern_pair = FindConnetedPattenPairWithCondition(
-        internal_patterns, FuseTargetCondition
+        stmt_patterns, FuseTargetCondition
       );
       if (!pattern_pair.value()){
         break;
@@ -252,42 +245,42 @@ struct InternalFusionHelper {
 
       iternal_patterns.erase(pattern_pair.first);
       iternal_patterns.erase(pattern_pair.second);
-      internal_patterns->emplace_back(new_pattern);
+      stmt_patterns->emplace_back(new_pattern);
     }
     return {};
   }
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::vector<InternalPattern>* internal_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::vector<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
-      internal_patterns,
-      [](const InternalPattern& upstream, const IternalPattern& downstream){
+      stmt_patterns,
+      [](const StmtPattern& upstream, const IternalPattern& downstream){
         return IsISPattern(upstream) && IsPSPattern(downstream);
       }
     );
   }
 
-  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::vector<InternalPattern>* internal_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::vector<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
-      internal_patterns,
-      [](const InternalPattern& upstream, const IternalPattern& downstream){
+      stmt_patterns,
+      [](const StmtPattern& upstream, const IternalPattern& downstream){
         return IsPSPattern(upstream) && IsPSPattern(downstream);
       }
     );
   }
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::vector<InternalPattern>* internal_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::vector<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
-      internal_patterns,
-      [](const InternalPattern& upstream, const IternalPattern& downstream){
+      stmt_patterns,
+      [](const StmtPattern& upstream, const IternalPattern& downstream){
         return IsISPattern(upstream) && IsRPattern(downstream);
       }
     );
   }
 
-  std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(std::vector<InternalPattern>* internal_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(std::vector<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
-      internal_patterns,
-      [](const InternalPattern& upstream, const IternalPattern& downstream){
+      stmt_patterns,
+      [](const StmtPattern& upstream, const IternalPattern& downstream){
         return IsPSPattern(upstream) && IsRPattern(downstream);
       }
     );
@@ -295,72 +288,22 @@ struct InternalFusionHelper {
 
 };
 
-std::variant<std::vector<InternalPattern>, ErrorGroupPattern> InternalFusion(const cinn::dialect::FusionOp& fusion_op) {
+GroupPattern FuseToGroupPattern(const cinn::dialect::FusionOp& fusion_op) {
   const auto& IsInThisFusionOp = MakeGetterIsInThisFusionOp(fusion_op);
   const auto& IsInjectiveSource = MakeGetterIsInjectiveSource(fusion_op, IsInThisFusionOp);
-  InternalFusionHelper helper{IsInThisFusionOp, IsInjectiveSource};
-  std::vector<InternalPattern> internal_patterns = helper.FuseISAndConvertRemainder(fusion_op);
-  if (const auto& opt_error = helper.Fuse_PS_x_PS_2_PS(&internal_patterns)) return opt_error.value();
-  if (const auto& opt_error = helper.Fuse_IS_x_PS_2_PS(&internal_patterns)) return opt_error.value();
-  if (const auto& opt_error = helper.Fuse_IS_x_R_2_R(&internal_patterns)) return opt_error.value();
-  if (const auto& opt_error = helper.Fuse_PS_x_R_2_R(&internal_patterns)) return opt_error.value();
-  return internal_patterns;
+  StmtFusionHelper helper{IsInThisFusionOp, IsInjectiveSource};
+  std::vector<StmtPattern> stmt_patterns = helper.FuseISAndConvertRemainder(fusion_op);
+  if (const auto& error = helper.Fuse_PS_x_PS_2_PS(&stmt_patterns)) return error.value();
+  if (const auto& error = helper.Fuse_IS_x_PS_2_PS(&stmt_patterns)) return error.value();
+  if (const auto& error = helper.Fuse_IS_x_R_2_R(&stmt_patterns)) return error.value();
+  if (const auto& error = helper.Fuse_PS_x_R_2_R(&stmt_patterns)) return error.value();
+  return stmt_patterns;
 }
-
-std::optional<IS> ConvertToSoleIS(const std::vector<InternalPattern>& internal_patterns) {
-  std::optional<IS> injective_source;
-  for (const auto& pattern : internal_patterns) {
-    if (std::holds_alternative<IS>(pattern)) {
-      if (injective_source.has_value()) {
-        LOG(FATAL) << "zero or one InjectiveSource allowed.";
-      }
-      injective_source = std::get<IS>(pattern);
-    }
-  }
-  return injective_source;
-}
-
-struct ConvertInternalPatternToPSOrR {
-  std::variant<PS, R> operator()(const IS& pattern) {
-    LOG(FATAL) << "dead code";
-  }
-  std::variant<PS, R> operator()(const PS& pattern) {
-    return pattern;
-  }
-  std::variant<PS, R> operator()(const R& pattern) {
-    return pattern;
-  }
-}
-
-api::ShardableReductionsPattern<FrontendPattern> LiftToShardableReductionsPattern(
-    const std::vector<InternalPattern>& internal_patterns) {
-  api::ShardableReductionsPattern<FrontendPattern> ret;
-  for (const auto& pattern : internal_patterns) {
-    ret.emplace_back(std::visit(ConvertInternalPatternToPSOrR{}, pattern));
-  }
-  return ret;
-}
-
-
-GroupPattern LiftToGroupPattern(const std::vector<InternalPattern>& internal_patterns) {
-  if (const auto& opt_injective_src = ConvertToSoleIS(internal_patterns)) return opt_injective_src.value();
-  return LiftToShardableReductionsPattern(internal_patterns);
-}
-
-struct SafeLiftToGroupPattern {
-  std::variant<GroupPattern, ErrorGroupPattern> operator()(const ErrorGroupPattern& error) const {
-    return error;
-  }
-
-  std::variant<GroupPattern, ErrorGroupPattern> operator()(const std::vector<InternalPattern>& patterns) const {
-    return LiftToGroupPattern(patterns);
-  }
-};
 
 }
 
-std::variant<GroupPattern, ErrorGroupPattern> GenerateGroupPatternFromFusionOp(const cinn::dialect::FusionOp& fusion_op) {
-  return std::visit(SafeLiftToGroupPattern{}, InternalFusion(fusion_op));
+GroupPattern GenerateGroupPatternFromFusionOp(const cinn::dialect::FusionOp& fusion_op) {
+  return FuseToGroupPattern(fusion_op);
 }
 
 }

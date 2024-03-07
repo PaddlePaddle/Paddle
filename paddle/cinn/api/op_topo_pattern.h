@@ -4,6 +4,9 @@
 
 namespace cinn::api {
 
+template <typename T>
+struct ErrorPattern {};
+
 // ElementWise/Broadcast/Injective Ops without reduction ancestors.
 template <typename T>
 struct InjectiveSourcePattern {};
@@ -24,10 +27,14 @@ struct ReductionPattern {
   SingleReductionOpPattern<T> reduction_op_pattern;
 };
 
-
-// SR := [R | PS]
+// Stmt := IS | R | PS
+// ops in StmtPattern will be lowered into a inlined cuda code.
 template <typename T>
-using ShardableReductionsPattern = std::vector<std::variant<ReductionPattern<T>, PartialShardablePattern<T>>>;
+using StmtPattern = std::variant<InjectiveSourcePattern<T>, ReductionPattern<T>, PartialShardablePattern<T>>;
+
+// Stmts := [Stmt]
+template <typename T>
+using StmtsPattern = std::vector<StmtPattern>;
 
 // fuse rules:
 //  1. PS * PS -> PS
@@ -36,12 +43,12 @@ using ShardableReductionsPattern = std::vector<std::variant<ReductionPattern<T>,
 //  4. PS * R -> R
 
 // lifting rules:
-//  1. R -> SR
-//  2. PS -> SR
-//  3. SR * SR -> SR
+//  1. R -> Stmts
+//  2. PS -> Stmts
+//  3. Stmts * Stmts -> Stmts
 
-// OpTopoPattern := IS | SR
+// OpTopoPattern := Error | Stmts
 template <typename T>
-using OpTopoPattern = std::variant<InjectiveSourcePattern<T>, ShardableReductionsPattern<T>>;
+using OpTopoPattern = std::variant<ErrorPattern<T>, StmtsPattern<T>>;
 
 }

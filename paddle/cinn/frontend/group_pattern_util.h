@@ -5,11 +5,6 @@
 
 namespace cinn::frontend {
 
-struct ErrorGroupPattern {
-  const pir::Operation* op;
-  std::string error_string;
-};
-
-std::variant<GroupPattern, ErrorGroupPattern> GenerateGroupPatternFromFusionOp(const cinn::dialect::FusionOp&);
+GroupPattern GenerateGroupPatternFromFusionOp(const cinn::dialect::FusionOp&);
 
 }

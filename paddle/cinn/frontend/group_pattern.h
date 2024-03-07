@@ -13,6 +13,12 @@ struct FrontendPattern {};
 namespace cinn::api {
 
 template<>
+struct ErrorPattern<frontend::FrontendPattern> {
+  const pir::Operation* op;
+  std::string error_string;
+};
+
+template<>
 struct InjectiveSourcePattern<frontend::FrontendPattern> {
   std::vector<const pir::Operation*> ops;
 };
@@ -45,5 +51,6 @@ struct PartialShardablePattern<frontend::FrontendPattern> {
 namespace cinn::frontend {
 
 using GroupPattern = api::OpTopoPattern<FrontendPattern>;
+using ErrorGroupPattern = api::ErrorPattern<FrontendPattern>;
 
 }
