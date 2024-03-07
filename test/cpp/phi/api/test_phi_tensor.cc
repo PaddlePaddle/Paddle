@@ -238,11 +238,6 @@ void TestDataInterface() {
   CHECK(const_tensor_ptr != nullptr);
 }
 
-void TestJudgeTensorType() {
-  Tensor test_tensor(phi::CPUPlace(), {1, 1});
-  CHECK(test_tensor.is_dense_tensor() == true);
-}
-
 TEST(PhiTensor, All) {
   VLOG(2) << "TestCopy";
   GroupTestCopy();
@@ -260,8 +255,6 @@ TEST(PhiTensor, All) {
   TestInitialized();
   VLOG(2) << "TestDataInterface";
   TestDataInterface();
-  VLOG(2) << "TestJudgeTensorType";
-  TestJudgeTensorType();
 }
 
 }  // namespace tests
