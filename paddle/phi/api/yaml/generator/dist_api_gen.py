@@ -483,7 +483,9 @@ NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE = """
     // API `{}` does not need to set DistAttr for output."""
 
 # TODO(GhostScreaming): Support aliquant condition.
-# Specialized Code, for example, reshape needs to calculate local_shape
+# Operators like `reshape`, `expand_as` need to calculate local_shape
+# for their local `DenseTensor`, as the given shape in their attribute
+# is global_shape for `DistTensor`.
 CALCULATE_LOCAL_SHAPE_TEMPLATE = """
 
       // The dist_input_x is a dist tensor, the dims() func return the global dims.
@@ -591,6 +593,9 @@ class DistForwardAPI(ForwardAPI):
             infer_meta['param'] = None
         if 'spmd_rule' not in infer_meta_config:
             infer_meta['spmd_rule'] = None
+        # Operators like `reshape`, `expand_as` need to calculate local_shape
+        # for their local `DenseTensor`, as the given shape in their attribute
+        # is global_shape for `DistTensor`.
         if 'local_shape' not in infer_meta_config:
             infer_meta['local_shape'] = None
         return infer_meta
@@ -1575,8 +1580,14 @@ class DistForwardAPI(ForwardAPI):
         infer_meta_code = ""
         # TODO(GhostScreaming): kernel like reshape need calculate local_shape
         if self.infer_meta['local_shape'] is not None:
-            shape_type = self.infer_meta['local_shape'].split()[0]
-            shape_name = self.infer_meta['local_shape'].split()[1]
+            shape_name = self.infer_meta['local_shape']
+            assert (
+                shape_name in self.attrs['names']
+            ), f"Auto Parallel will calculate local_shape {shape_name} for"
+            "operator {self.kernel['func'][0]}, but {shape_name} is not"
+            "found in its attributes."
+            shape_type = self.attrs['attr_info'][shape_name][0]
+
             infer_meta_code = CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
                 shape=f"{shape_name}.GetData()"
                 if shape_type == "IntArray"
