@@ -643,8 +643,7 @@ static phi::DataType GetKernelDtypeByYaml(
   auto& data_type_info = op_info_parser->OpRuntimeInfo().kernel_key_dtype;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
 
-  for (size_t i = 0; i < data_type_info.size(); ++i) {
-    auto slot_name = data_type_info[i];
+  for (auto slot_name : data_type_info) {
     auto& input_map = op_info_parser->InputName2Id();
 
     bool is_complex_tag = false;
@@ -729,8 +728,7 @@ static phi::Backend GetKernelBackendByYaml(
   auto& backend_info = op_info_parser->OpRuntimeInfo().kernel_key_backend;
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
 
-  for (size_t i = 0; i < backend_info.size(); ++i) {
-    auto slot_name = backend_info[i];
+  for (auto slot_name : backend_info) {
     auto& input_map = op_info_parser->InputName2Id();
 
     if (input_map.count(slot_name)) {

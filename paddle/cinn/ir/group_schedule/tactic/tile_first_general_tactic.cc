@@ -89,14 +89,36 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
   MergeFlattenAxis(sch, block_id);
+  VLOG(6) << "After MergeFlattenAxis on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   MergeReduceAxis(sch, block_id);
+  VLOG(6) << "After MergeReduceAxis on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   SplitFlattenInner(sch, block_id);
+  VLOG(6) << "After SplitFlattenInner on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   SplitReduceInner(sch, block_id);
+  VLOG(6) << "After SplitReduceInner on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   ReorderFlattenInnerWithReduceAxis(sch, block_id);
+  VLOG(6) << "After ReorderFlattenInnerWithReduceAxis on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   SplitWarpNumber(sch, block_id);
+  VLOG(6) << "After SplitWarpNumber on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   BindCudaInfo(sch, block_id);
+  VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   VariableTypeAssignment(sch, block_id);
   Unroll(sch, block_id);
+  VLOG(6) << "After Unroll on block: [" << block_id << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   SetReduceType(sch, block_id);
 }
 
