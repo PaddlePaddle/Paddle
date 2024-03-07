@@ -513,6 +513,65 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
   }
   return insert_point_op;
 }
+
+struct CompareOperation {
+  bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
+    return lhs->operator Block::ConstIterator() <
+           rhs->operator Block::ConstIterator();
+  }
+};
+
+std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
+    const pir::Operation* position_op,
+    const pir::Block* block,
+    const pir::Operation* op,
+    std::unordered_set<pir::Operation*>* visited_ops) {
+  std::unordered_set<pir::Operation*> ops;
+  const auto& IsInBlock = [](const pir::Operation* src_op,
+                             const pir::Block* block) {
+    for (auto& op : *block) {
+      if (src_op == &op) return true;
+    }
+    return false;
+  };
+
+  for (auto value : op->operands_source()) {
+    if (!value || !value.defining_op()) continue;
+    pir::Operation* defining_op = value.defining_op();
+    if (visited_ops->count(defining_op) || !IsInBlock(defining_op, block))
+      continue;
+    visited_ops->insert(defining_op);
+    const bool is_before_position =
+        defining_op->operator Block::ConstIterator() <=
+        position_op->operator Block::ConstIterator();
+    if (is_before_position) continue;
+    ops.insert(defining_op);
+    auto recursive_ops = GetUpstreamOpsAfterPosition(
+        position_op, block, defining_op, visited_ops);
+    ops.insert(recursive_ops.begin(), recursive_ops.end());
+  }
+  return ops;
+}
+
+void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
+                               pir::Block* block,
+                               pir::Operation* insert_point_op) {
+  const auto moved_ops = [&]() {
+    std::set<pir::Operation*, CompareOperation> ops_set;
+    std::unordered_set<pir::Operation*> visited_ops;
+    for (auto& op : group_ops) {
+      auto upstream_ops =
+          GetUpstreamOpsAfterPosition(insert_point_op, block, op, &visited_ops);
+      ops_set.insert(upstream_ops.begin(), upstream_ops.end());
+    }
+    return ops_set;
+  }();
+
+  for (auto& op : moved_ops) {
+    VLOG(5) << "Move " << op->name() << " before " << insert_point_op->name();
+    op->MoveTo(block, insert_point_op->operator Block::Iterator());
+  }
+}
 }  // namespace
 
 void ReplaceWithGroupOp(pir::Block* block,
@@ -527,6 +586,7 @@ void ReplaceWithGroupOp(pir::Block* block,
 
   // step 1: Analysis and insert group op before insert_point.
   auto* insert_point = FindInsertPoint(group_ops, outputs);
+  MoveUpstreamOpBeforeGroup(group_ops, block, insert_point);
   builder.set_insertion_point(insert_point);
   VLOG(6) << "Insert GroupOp after " << insert_point->name();
 
