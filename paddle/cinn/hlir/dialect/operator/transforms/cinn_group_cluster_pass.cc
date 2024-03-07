@@ -522,6 +522,11 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .type()
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
+    if (cluster_node->reduce_axis.size() == 0) {
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        cluster_node->reduce_axis.push_back(i);
+      }
+    }
   } else if (cluster_node->group_kind == cinn::hlir::framework::kElementWise) {
     cluster_node->loop_ranges =
         phi::vectorize(op->result(0)
@@ -872,7 +877,7 @@ class CinnGroupClusterPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 

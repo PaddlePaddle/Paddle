@@ -91,6 +91,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
 
     group_tile_info->reduce_axis_.push_back(dim);
+    std::cerr << "reduce axis    " << dim << std::endl;
     reduce_set.insert(dim);
   }
 
@@ -114,6 +115,15 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
   }
 
+  std::cerr << "group_tile_info->reduce_axis_.size() "
+            << group_tile_info->reduce_axis_.size() << "\t"
+            << group_tile_info->data_rank << std::endl;
+  bool is_reduce_all =
+      (group_tile_info->reduce_axis_.size() == group_tile_info->data_rank);
+
+  if (is_reduce_all) {
+    reduce_is_dynamic = false;
+  }
   PADDLE_ENFORCE_EQ(
       reduce_is_dynamic,
       false,
@@ -125,8 +135,18 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   int64_t reduce_inner_num = 1;
   int64_t spatial_inner_num = 1;
   int warp_num = 1;
+  group_tile_info->is_reduce_all = is_reduce_all;
 
-  if (reduce_numel == 1) {
+  std::cerr << "reduce all " << group_tile_info->is_reduce_all << std::endl;
+  if (is_reduce_all) {
+    // warp reduce
+    reduce_block = 1024;
+    spatial_block = 1;
+    spatial_inner_num = 1;
+    reduce_inner_num = 4;
+    warp_num = 8;
+
+  } else if (reduce_numel == 1) {
     reduce_block = 1;
     if (spatial_is_dynamic) {
       spatial_block = 1024;
