@@ -436,11 +436,6 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
-void RandomRoutingInferMeta(const MetaTensor& prob,
-                            const MetaTensor& topk_value,
-                            const MetaTensor& topk_idx,
-                            MetaTensor* out);
-
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
