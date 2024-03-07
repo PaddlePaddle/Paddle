@@ -23,7 +23,7 @@ _PRUNE_HISTORY_FUNC = []
 
 
 def log_pruned_info(cur_cfg, pruned_reason, tuner_cfg):
-    pruned_strategy = "DP{}_MP{}_PP{}_VPP_{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}".format(
+    pruned_strategy = "DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}".format(
         cur_cfg["dp_degree"],
         cur_cfg["mp_degree"],
         cur_cfg["pp_degree"],
@@ -834,10 +834,12 @@ def prune_by_refined_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
         pp_degree = cur_cfg["pp_degree"]
         recompute = cur_cfg["use_recompute"]
         recompute_granularity = cur_cfg["recompute_granularity"]
+        compare = [cur_cfg[item] for item in rr]
         if recompute:
             if recompute_granularity and recompute_granularity != "full":
-                return True
-        if pp_degree == 1:
+                if compare.count(0) != len(compare):
+                    return True
+        if pp_degree == 1 and compare.count(0) != len(compare):
             return True
         if tuner_cfg["model_cfg"]["num_layers"] % pp_degree != 0:
             return True
@@ -873,7 +875,12 @@ def prune_by_refined_recompute_history(
                         log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
                         cur_cfg["time"] = cfg["time"]
                         return True
-                    if cfg[item] > cur_cfg[item] and cfg.get("time", -1) > 0:
+                    if (
+                        cfg[item] > cur_cfg[item]
+                        and cfg.get("time", -1) > 0
+                        and cfg["use_recompute"]
+                        and cur_cfg["use_recompute"]
+                    ):
                         pruned_reason = f"{item} {cur_cfg[item]} may be slower because {cfg[item]} has been already runnable."
                         log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
                         cur_cfg["time"] = cfg["time"]
@@ -882,6 +889,8 @@ def prune_by_refined_recompute_history(
                     if (
                         cfg[item] < cur_cfg[item]
                         and cfg.get("max_mem_usage") == "OOM"
+                        and cfg["use_recompute"]
+                        and cur_cfg["use_recompute"]
                     ):
                         pruned_reason = f"{item} {cur_cfg[item]} may cause oom because {cfg[item]} already oom."
                         log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
