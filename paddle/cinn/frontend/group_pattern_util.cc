@@ -151,31 +151,35 @@ class StmtFusionHelper {
     auto Cmp = [&](const auto* lhs, const auto& rhs) {
       return GetOrder(lhs) < GetOrder(rhs);
     };
-    VisitConnectedInjectiveSource([&](std::vector<const pir::Operation*>&& ops){
+    VisitInjectiveSourceTree([&](std::vector<const pir::Operation*>&& ops){
       std::sort(ops.begin(), ops.end(), Cmp);
       ret->emplace_back(IS{ops});
     });
   }
 
   template <typename DoEachT>
-  void VisitConnectedInjectiveSource(
+  void VisitInjectiveSourceTree(
       const DoEachT& DoEach) const {
-    const auto VisitNext = [&](const pir::Operation* node, const OpVisitor& DoEach) {
-      VisitInputInjectiveSource(node, DoEach);
-      VisitOutputInjectiveSource(node, DoEach);
-    };
-    common::BfsWalker<const pir::Operation*> bfs_walker(VisitNext);
-    std::unordered_set<const pir::Operation*> visisted_ops;
-    for (const auto* start : fusion_op_.block()->ops()) {
-      if (!IsInThisFusionOp(start)) continue;
-      if (!IsInjectiveSource(start)) continue;
-      if (visisted_ops.count(start) > 0) continue;
-      std::vector<const pir::Operation*> current_visited_ops;
-      bfs_walker(start, [&](const pir::Operation* op){
-        CHECK(visisted_ops.emplace(op).second);
-        current_visited_ops.push_back(op);
+    const auto IsSinkInjectiveSource = [&](const pir::Operation* node) {
+      if (!IsInjectiveSource(node)) return false;
+      std::size_t num_injective_src_outputs = 0;
+      VisitOutputInjectiveSource(node, [&](const auto& consumer) {
+        num_injective_src_outputs += IsInjectiveSource(consumer);
       });
-      DoEach(std::move(current_visited_ops));
+      return num_injective_src_outputs == 0;
+    };
+    const auto VisitInput = [&](const pir::Operation* node, const OpVisitor& DoEach) {
+      VisitInputInjectiveSource(node, DoEach);
+    };
+    common::BfsWalker<const pir::Operation*> reverse_walker(VisitInput);
+    for (const auto* sink : fusion_op_.block()->ops()) {
+      if (!IsInThisFusionOp(sink)) continue;
+      if (!IsSinkInjectiveSource(sink)) continue;
+      std::vector<const pir::Operation*> visited_ops;
+      reverse_walker(sink, [&](const pir::Operation* op){
+        visited_ops.push_back(op);
+      });
+      DoEach(std::move(visited_ops));
     }
   }
   
