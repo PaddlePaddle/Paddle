@@ -33,10 +33,22 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                             DenseTensor* input_grad) {
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
-  PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
-                       phi::FillKernel<data_t, Context>(
-                           dev_ctx, *input_grad, 0, input_grad);
-                     }));
+  const phi::KernelKey& kernel_key = {phi::TransToPhiBackend(input.place()),
+                                      phi::DataLayout::ALL_LAYOUT,
+                                      input.dtype()};
+  using kernel_signature_fill = void (*)(
+      const DeviceContext&, const DenseTensor&, const Scalar&, DenseTensor*);
+  PD_VISIT_KERNEL("fill",
+                  kernel_key,
+                  kernel_signature_fill,
+                  dev_ctx,
+                  *input_grad,
+                  0,
+                  input_grad);
+  //   PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
+  //                        phi::FillKernel<data_t, Context>(
+  //                            dev_ctx, *input_grad, 0, input_grad);
+  //                      }));
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   SliceStridedKernel<Context>(dev_ctx,
@@ -47,17 +59,33 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                               infer_flags,
                               decrease_axis,
                               &tmp);
-  PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx,
-                           out_grad,
-                           common::vectorize<int64_t>(tmp.dims()),
-                           common::vectorize<int64_t>(tmp.strides()),
-                           tmp.offset(),
-                           &tmp);
-                     }));
+  using kernel_signature_strided_copy = void (*)(const DeviceContext&,
+                                                 const DenseTensor&,
+                                                 const std::vector<int64_t>&,
+                                                 const std::vector<int64_t>&,
+                                                 int64_t,
+                                                 DenseTensor*);
+  PD_VISIT_KERNEL("strided_copy",
+                  kernel_key,
+                  kernel_signature_strided_copy,
+                  dev_ctx,
+                  out_grad,
+                  common::vectorize<int64_t>(tmp.dims()),
+                  common::vectorize<int64_t>(tmp.strides()),
+                  tmp.offset(),
+                  &tmp);
+  //   PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
+  //                        phi::StridedCopyKernel<data_t, Context>(
+  //                            dev_ctx,
+  //                            out_grad,
+  //                            common::vectorize<int64_t>(tmp.dims()),
+  //                            common::vectorize<int64_t>(tmp.strides()),
+  //                            tmp.offset(),
+  //                            &tmp);
+  //                      }));
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    slice_grad, STRIDED, phi::SliceGradStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(slice_grad,
+                                         STRIDED,
+                                         phi::SliceGradStridedKernel) {}
