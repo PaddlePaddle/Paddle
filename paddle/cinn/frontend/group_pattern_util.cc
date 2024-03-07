@@ -147,11 +147,35 @@ class StmtFusionHelper {
 
   static std::function<std::optional<StmtIter>(const pir::Operation*)>
   MakeGetterStmt4Op(std::list<StmtPattern>* stmts) const {
-    TODO();
+    std::unordered_map<const pir::Operation*, StmtIter> op2stmt_iter;
+    for (auto iter = stmts->begin(); iter != stmts->end(); ++iter) {
+      op2stmt_iter[GetSoleOp(*iter)] = iter;
+    }
+    return [map=std::move(op2stmt_iter)](const pir::Operation* op) -> std::optional<StmtIter> {
+      const auto iter = map.find(op);
+      if (iter == map.end()) return std::nullopt;
+      return iter->second;
+    };
+  }
+
+  const pir::Operation* GetSoleOpImpl(const IS& injective_source) const {
+    CHECK_EQ(injective_source.ops.size(), 1);
+    return injective_source.ops.at(0);
+  }
+
+  const pir::Operation* GetSoleOpImpl(const R& reduce) const {
+    return reduce.reduce_op;
+  }
+
+  const pir::Operation* GetSoleOpImpl(const PS& partial_shardable) const {
+    CHECK_EQ(partial_shardable.ops.size(), 1);
+    return partial_shardable.ops.at(0);
   }
 
   const pir::Operation* GetSoleOp(const StmtPattern& stmt) const {
-    TODO();
+    return std::visit([&](const auto& impl) {
+      return GetSoleOpImpl(impl);
+    }, stmt);
   }
 
   std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(std::list<StmtPattern>* stmts) const {
