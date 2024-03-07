@@ -12,6 +12,28 @@ struct FrontendPattern {};
 
 }
 
+namespace cinn::api{
+  struct ShardableAxis {
+    int axis;
+    std::string axis_name;
+
+    static int64_t UnqiueSeqNo() {
+      static std::atomic<int64_t> cnt(0);
+      return ++cnt;
+    }
+  };
+
+  using ShardableAxes = std::vector<ShardableAxis>;
+
+  struct ShardableAxesSignature {
+    using OpOperand = std::pair<const pir::Operation*, /*operand index*/int>;
+
+    ShardableAxes output_shardable_axes;
+    std::unordered_map<OpOperand, ShardableAxes> input_shardable_axes;
+  };
+
+}
+
 namespace cinn::api {
 
 template<>
@@ -34,23 +56,9 @@ struct SingleReductionOpPattern<frontend::FrontendPattern> {
   const pir::Operation* reduce_op;
 };
 
-struct ShardableAxis {
-  int axis;
-  std::string axis_name;
-
-  static int64_t UnqiueSeqNo() {
-    static std::atomic<int64_t> cnt(0);
-    return ++cnt;
-  }
-};
-
-using ShardableAxes = std::vector<ShardableAxis>;
-
-struct ShardableAxesSignature {
-  using OpOperand = std::pair<const pir::Operation*, /*operand index*/int>;
-
-  ShardableAxes output_shardable_axes;
-  std::unordered_map<OpOperand, ShardableAxes> input_shardable_axes;
+template<>
+struct ReductionPattern<frontend::FrontendPattern> {
+  explicit ReductionPattern(const ReductionPattern<frontend::FrontendPatterns>& other) = default;
 };
 
 template<>
@@ -64,7 +72,10 @@ struct PartialShardablePattern<frontend::FrontendPattern> {
 
 namespace cinn::frontend {
 
-using GroupPattern = api::OpTopoPattern<FrontendPattern>;
+using StmtPattern = api::StmtPattern<FrontendPattern>;
 using ErrorGroupPattern = api::ErrorPattern<FrontendPattern>;
+
+using GroupPattern = api::OpTopoPattern<FrontendPattern>;
+
 
 }
