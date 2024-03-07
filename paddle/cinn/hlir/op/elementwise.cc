@@ -1325,16 +1325,16 @@ std::vector<Type> InferDtypeForLogicalNot(const std::vector<Type> &inputs_type,
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(elementwise_ops) {
-#define CINN_REGISTER_UNARY(op__, op_stragegy__)                           \
+#define CINN_REGISTER_UNARY(op__, op_strategy__)                           \
   CINN_REGISTER_OP(op__)                                                   \
       .describe(#op__ " function")                                         \
       .set_num_inputs(1)                                                   \
       .set_num_outputs(1)                                                  \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                  \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)      \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)      \
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(          \
           "CINNStrategySymbolic",                                          \
-          cinn::hlir::op::StrategyFor##op_stragegy__##Symbolic)            \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)            \
       .set_attr("infershape",                                              \
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))  \
       .set_attr("inferdtype",                                              \
@@ -1384,13 +1384,13 @@ CINN_REGISTER_HELPER(elementwise_ops) {
 
 #undef CINN_REGISTER_UNARY
 
-#define CINN_REGISTER_COMPARE(op__, op_stragegy__)                            \
+#define CINN_REGISTER_COMPARE(op__, op_strategy__)                            \
   CINN_REGISTER_OP(op__)                                                      \
       .describe(#op__ " function")                                            \
       .set_num_inputs(1)                                                      \
       .set_num_outputs(1)                                                     \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                     \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)         \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)         \
       .set_attr("infershape",                                                 \
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))     \
       .set_attr("inferdtype",                                                 \

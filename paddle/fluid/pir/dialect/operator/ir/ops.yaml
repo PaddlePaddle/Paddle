@@ -28,12 +28,16 @@
     support_trans_dtype : x, y
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-# this add_n is only for ops_api_gen.py
+# this add_n is only for ops_api_gen.py and onednn
 - op : add_n
   args : (Tensor[] inputs)
-  output : Tensor
-  invoke : add_n_impl(inputs)
-  backward : add_n_grad
+  output : Tensor(out)
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: add_n
+    param: [inputs]
 
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -350,6 +354,16 @@
     func : conv2d_transpose
     data_type : x
   backward : conv2d_transpose_grad
+
+- op : conv2d_transpose_bias
+  args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Conv2dTransposeInferMeta
+    param: [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+  kernel :
+    func : conv2d_transpose_bias
+    data_type : x
 
 - op : copy_to
   args : (Tensor x, Place place, bool blocking)
