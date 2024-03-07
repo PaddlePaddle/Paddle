@@ -156,6 +156,7 @@ if(NOT WIN32)
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
+      -Wno-defaulted-function-deleted # Warning in GLOO
       ${fsanitize})
 
   if(WITH_IPU)
