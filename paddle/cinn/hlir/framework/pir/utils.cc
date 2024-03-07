@@ -347,7 +347,6 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(ProdOp),
     PD_OP_NAME(PowOp),
     PD_OP_NAME(ScaleOp),
-    PD_OP_NAME(ReshapeOp),
     PD_OP_NAME(Pool2dOp),
     PD_OP_NAME(IscloseOp),
     PD_OP_NAME(SliceOp),
@@ -355,7 +354,6 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(SplitOp),
     PD_OP_NAME(SplitWithNumOp),
     PD_OP_NAME(AddNOp),
-    PD_OP_NAME(ExpandOp),
     PD_OP_NAME(UniformOp),
 };
 #undef PD_OP_NAME
