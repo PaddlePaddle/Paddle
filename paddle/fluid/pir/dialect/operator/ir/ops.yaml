@@ -1126,7 +1126,6 @@
     func: PartialRecvInferMeta
   kernel :
     func : partial_recv
-    param: [ring_id, peer, dtype, out_shape, use_calc_stream, num, id]
     data_type : dtype
 
 - op : pool2d
