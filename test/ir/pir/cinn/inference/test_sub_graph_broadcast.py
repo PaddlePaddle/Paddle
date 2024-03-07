@@ -43,9 +43,7 @@ class LayerCase(paddle.nn.Layer):
 
 class TestLayer(unittest.TestCase):
     def setUp(self):
-        self.inputs = (
-            paddle.rand(shape=[22, 64, 56, 56], dtype=paddle.float32),
-        )
+        self.inputs = (paddle.rand(shape=[22, 64, 56], dtype=paddle.float32),)
         self.net = LayerCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
@@ -55,7 +53,7 @@ class TestLayer(unittest.TestCase):
                 build_strategy = paddle.static.BuildStrategy()
                 build_strategy.build_cinn_pass = True
                 input_spec = [
-                    InputSpec(shape=[None, None, 56, 56], dtype='float32')
+                    InputSpec(shape=[None, 64, None], dtype='float32')
                 ]
                 net = utils.apply_to_static(net, True, input_spec)
                 # net = paddle.jit.to_static(

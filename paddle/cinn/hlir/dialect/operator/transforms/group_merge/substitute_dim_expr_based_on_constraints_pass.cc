@@ -27,27 +27,14 @@ namespace ir {
 namespace {
 
 template <typename DoEachT>
-void VisitEachSubOp(pir::Operation* op, const DoEachT& DoEach) {
+
+void VisitEachOp(pir::Operation* op, const DoEachT& DoEach) {
   for (uint32_t i = 0; i < op->num_regions(); i++) {
     for (pir::Block& block : op->region(i)) {
       for (pir::Operation& sub_op : block) {
         DoEach(sub_op);
         if (sub_op.num_regions() > 0) {
-          VisitEachSubOp(&sub_op, DoEach);
-        }
-      }
-    }
-  }
-}
-
-template <typename DoEachT>
-void VisitEachOp(pir::ModuleOp module_op, const DoEachT& DoEach) {
-  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (pir::Block& block : module_op->region(i)) {
-      for (pir::Operation& sub_op : block) {
-        DoEach(sub_op);
-        if (sub_op.num_regions() > 0) {
-          VisitEachSubOp(&sub_op, DoEach);
+          VisitEachOp(&sub_op, DoEach);
         }
       }
     }
@@ -151,10 +138,11 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
   return substitution_pattern;
 }
 
-void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
+void SubstituteDimExprBasedOnConstraints(pir::Operation* module_op) {
   VLOG(4) << "SubstituteDimExprBasedOnConstraints start";
   pir::ShapeConstraintIRAnalysis* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(module_op.program());
+      &pir::ShapeAnalysisManager::Instance().Get(
+          module_op->dyn_cast<pir::ModuleOp>().program());
   const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
       substitution_pattern = GetDimExprSubstitution(shape_analysis);
 
@@ -194,8 +182,7 @@ class SubstituteDimExprBasedOnConstraintsPass : public pir::Pass {
       : pir::Pass("substitute_dim_expr_based_on_constraints_pass", 1) {}
 
   void Run(pir::Operation* op) override {
-    pir::ModuleOp module_op = op->dyn_cast<pir::ModuleOp>();
-    SubstituteDimExprBasedOnConstraints(module_op);
+    SubstituteDimExprBasedOnConstraints(op);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

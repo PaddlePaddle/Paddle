@@ -622,7 +622,7 @@ class FusedCommBuffer:
         self._task.wait()
 
         # scale will be skiped when use reduce_avg comm operation
-        if self._scale_after_comm and not self.use_reduce_avg:
+        if self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
 

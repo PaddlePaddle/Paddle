@@ -75,6 +75,22 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
   return vec_res;
 }
 
+inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
+  if (shapeordata.isa<TensorListExprs>()) {
+    ExprVec result;
+    TensorListExprs list =
+        shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    for (size_t i = 0; i < list.size(); i++) {
+      for (auto expr : list[i].data().value()) {
+        result.emplace_back(expr);
+      }
+    }
+    return result;
+  } else {
+    return shapeordata.data().value();
+  }
+}
+
 std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
 
 ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec);

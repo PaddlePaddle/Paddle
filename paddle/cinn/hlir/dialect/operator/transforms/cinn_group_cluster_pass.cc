@@ -523,12 +523,36 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .type()
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
+
+    pir::ShapeConstraintIRAnalysis& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    if (shape_analysis.HasShapeOrDataForValue(op->operand_source(0))) {
+      auto sym_shape =
+          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
+          cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
+        }
+      }
+    }
+
   } else if (cluster_node->group_kind == cinn::hlir::framework::kElementWise) {
     cluster_node->loop_ranges =
         phi::vectorize(op->result(0)
                            .type()
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
+    pir::ShapeConstraintIRAnalysis& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+      auto sym_shape =
+          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
+          cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
+        }
+      }
+    }
 
   } else if (cluster_node->group_kind == cinn::hlir::framework::kBroadcast) {
     cluster_node->loop_ranges =
@@ -541,6 +565,18 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
     sch_node->axis_info =
         cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
     sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
+
+    pir::ShapeConstraintIRAnalysis& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+      auto sym_shape =
+          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
+          cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
+        }
+      }
+    }
   } else if (op->name() == "cinn_op.generate_shape") {
     // do nothing for now
   } else {

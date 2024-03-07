@@ -652,14 +652,13 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
           info.output_shape.push_back(output_shape[i]);
-          if (output_shape[i] < 0) {
-            ::pir::ShapeConstraintIRAnalysis& shape_analysis =
-                ::pir::ShapeAnalysisManager::Instance().Get(
-                    it->first->GetParentProgram());
-            const auto& x_shape =
-                shape_analysis.GetShapeOrDataForValue(it->first->result(0));
-            info.output_dim_expr.push_back(x_shape.shape()[i]);
-          }
+
+          ::pir::ShapeConstraintIRAnalysis& shape_analysis =
+              ::pir::ShapeAnalysisManager::Instance().Get(
+                  it->first->GetParentProgram());
+          const auto& x_shape =
+              shape_analysis.GetShapeOrDataForValue(it->first->result(0));
+          info.output_dim_expr.push_back(x_shape.shape()[i]);
         }
       } else if (in_dim.size() == broadcast_axes.size()) {
         if (in_dim.size() != output_shape.size()) {

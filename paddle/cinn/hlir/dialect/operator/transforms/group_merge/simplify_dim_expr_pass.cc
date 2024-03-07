@@ -28,27 +28,13 @@ namespace ir {
 namespace {
 
 template <typename DoEachT>
-void VisitEachSubOp(pir::Operation* op, const DoEachT& DoEach) {
+void VisitEachOp(pir::Operation* op, const DoEachT& DoEach) {
   for (uint32_t i = 0; i < op->num_regions(); i++) {
     for (pir::Block& block : op->region(i)) {
       for (pir::Operation& sub_op : block) {
         DoEach(sub_op);
         if (sub_op.num_regions() > 0) {
-          VisitEachSubOp(&sub_op, DoEach);
-        }
-      }
-    }
-  }
-}
-
-template <typename DoEachT>
-void VisitEachOp(pir::ModuleOp module_op, const DoEachT& DoEach) {
-  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (pir::Block& block : module_op->region(i)) {
-      for (pir::Operation& sub_op : block) {
-        DoEach(sub_op);
-        if (sub_op.num_regions() > 0) {
-          VisitEachSubOp(&sub_op, DoEach);
+          VisitEachOp(&sub_op, DoEach);
         }
       }
     }
@@ -107,10 +93,11 @@ symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
   return std::visit(lambdas, shape_or_data.variant());
 }
 
-void SimplifyDimExpr(pir::ModuleOp module_op) {
+void SimplifyDimExpr(pir::Operation* module_op) {
   VLOG(4) << "SimplifyDimExpr start";
   pir::ShapeConstraintIRAnalysis* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(module_op.program());
+      &pir::ShapeAnalysisManager::Instance().Get(
+          module_op->dyn_cast<pir::ModuleOp>().program());
 
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
@@ -145,10 +132,7 @@ class SimplifyDimExprPass : public pir::Pass {
  public:
   SimplifyDimExprPass() : pir::Pass("simplify_dim_expr_pass", 1) {}
 
-  void Run(pir::Operation* op) override {
-    pir::ModuleOp module_op = op->dyn_cast<pir::ModuleOp>();
-    SimplifyDimExpr(module_op);
-  }
+  void Run(pir::Operation* op) override { SimplifyDimExpr(op); }
 
   bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;

@@ -471,6 +471,12 @@
   outputs :
     {softmax : Softmax, loss : Loss}
 
+- op : c_split
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X

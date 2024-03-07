@@ -292,6 +292,15 @@
     func : reduce_scatter
     param: [x, nranks]
 
+- op : c_split
+  args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true)
+  output : Tensor(out)
+  infer_meta :
+    func : CSplitInferMeta
+    param : [x, nranks]
+  kernel :
+    func : c_split
+
 - op : c_sync_calc_stream
   args : (Tensor x)
   output : Tensor(out)

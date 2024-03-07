@@ -48,7 +48,7 @@ def tmp(logits, scores, next_tokens, length):
 
     next_scores = paddle.index_sample(
         origin_probs, next_tokens
-    )  # (pd_op.tensor<-1x32000xf16>, pd_op.tensor<-1x1xi64>) -> pd_op.tensor<-1x1xf16>
+    )  # (builtin.tensor<-1x32000xf16>, builtin.tensor<-1x1xi64>) -> builtin.tensor<-1x1xf16>
     scores = update_scores_for_generation(scores, next_scores, length)
     return scores
 
