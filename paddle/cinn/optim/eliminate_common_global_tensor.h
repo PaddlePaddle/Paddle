@@ -20,9 +20,9 @@ namespace cinn {
 namespace optim {
 
 /**
- * Remove common global variable and substitue them with local variable.
+ * Remove common global tensor and substitue them with local tensor.
  */
-void EliminateCommonGlobalVar(Expr* e);
+void EliminateCommonGlobalTensor(Expr* e);
 
 }  // namespace optim
 }  // namespace cinn
