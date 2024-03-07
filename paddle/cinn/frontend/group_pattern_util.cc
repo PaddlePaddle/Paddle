@@ -124,6 +124,7 @@ class StmtFusionHelper {
     std::vector<StmtPattern> ret;
     FuseInjectiveSourceThenAppend(fusion_op_, &ret);
     for (const auto* op : fusion_op_.block()->ops()) {
+      if (!IsInThisFusionOp(op)) continue;
       if (IsInjectiveSource(op)) continue;
       ret.emplace_back(ConvertNonInjectiveSourceToStmtPattern(op));
     }
@@ -152,6 +153,7 @@ class StmtFusionHelper {
     common::BfsWalker<const pir::Operation*> bfs_walker(VisitNext);
     std::unordered_set<const pir::Operation*> visisted_ops;
     for (const auto* start : fusion_op_.block()->ops()) {
+      if (!IsInThisFusionOp(start)) continue;
       if (!IsInjectiveSource(start)) continue;
       if (visisted_ops.count(start) > 0) continue;
       std::vector<const pir::Operation*> current_visited_ops;
