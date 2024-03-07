@@ -56,14 +56,6 @@ def create_paddle_inputs():
     return inputs
 
 
-def create_numpy_inputs():
-    inputs = (
-        np.random.random(size=[1, 640, 1, 1]).astype('float32'),
-        np.random.randint(low=0, high=10, size=[2], dtype='int32'),
-    )
-    return inputs
-
-
 class TestLayer(unittest.TestCase):
     def setUp(self):
         self.inputs = create_paddle_inputs()
