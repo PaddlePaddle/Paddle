@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/cinn/common/union_find.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 namespace cinn {
 namespace dialect {
@@ -26,11 +27,14 @@ namespace ir {
 namespace {
 
 template <typename DoEachT>
-void VisitEachOp(pir::ModuleOp module_op, const DoEachT& DoEach) {
-  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (pir::Block& block : module_op->region(i)) {
-      for (pir::Operation& op : block) {
-        DoEach(op);
+void VisitEachOp(pir::Operation* op, const DoEachT& DoEach) {
+  for (uint32_t i = 0; i < op->num_regions(); i++) {
+    for (pir::Block& block : op->region(i)) {
+      for (pir::Operation& sub_op : block) {
+        DoEach(sub_op);
+        if (sub_op.num_regions() > 0) {
+          VisitEachOp(&sub_op, DoEach);
+        }
       }
     }
   }
@@ -133,25 +137,39 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
   return substitution_pattern;
 }
 
-void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
+void SubstituteDimExprBasedOnConstraints(pir::Operation* module_op) {
   VLOG(4) << "SubstituteDimExprBasedOnConstraints start";
-  pir::ShapeConstraintIRAnalysis shape_analysis =
-      pir::ShapeAnalysisManager::Instance().Get(module_op.program());
+  pir::ShapeConstraintIRAnalysis* shape_analysis =
+      &pir::ShapeAnalysisManager::Instance().Get(
+          module_op->dyn_cast<pir::ModuleOp>().program());
   const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-      substitution_pattern = GetDimExprSubstitution(&shape_analysis);
+      substitution_pattern = GetDimExprSubstitution(shape_analysis);
+
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
-      if (!shape_analysis.HasShapeOrDataForValue(value)) {
+      if (!shape_analysis->HasShapeOrDataForValue(value)) {
         VLOG(4) << "Can not find ShapeOrData for value of op(" << op.name()
                 << ") in shape_analysis";
       } else {
         const symbol::ShapeOrDataDimExprs& origin_shape_or_data =
-            shape_analysis.GetShapeOrDataForValue(value);
+            shape_analysis->GetShapeOrDataForValue(value);
+        VLOG(8) << op.name()
+                << "      origin_shape_or_data: " << origin_shape_or_data;
         const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
             SubstituteShapeOrData(origin_shape_or_data, substitution_pattern);
-        shape_analysis.SetShapeOrDataForValue(value, substituted_shape_or_data);
+        VLOG(8) << op.name()
+                << " substituted_shape_or_data: " << substituted_shape_or_data;
+        shape_analysis->SetShapeOrDataForValue(value,
+                                               substituted_shape_or_data);
       }
     });
+    if (op.num_results() > 0) {
+      pir::shape::SetShapeAttrForOp(
+          &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
+    } else {
+      pir::shape::SetShapeAttrForOp(
+          &op, shape_analysis->GetShapeOrDataForValue(op.operand_source(0)));
+    }
     // TODO(JiaWenxuan): substitute the attribute "sym_shape_str" of the op
   });
   VLOG(4) << "SubstituteDimExprBasedOnConstraints end";
@@ -163,8 +181,7 @@ class SubstituteDimExprBasedOnConstraintsPass : public pir::Pass {
       : pir::Pass("substitute_dim_expr_based_on_constraints_pass", 1) {}
 
   void Run(pir::Operation* op) override {
-    pir::ModuleOp module_op = op->dyn_cast<pir::ModuleOp>();
-    SubstituteDimExprBasedOnConstraints(module_op);
+    SubstituteDimExprBasedOnConstraints(op);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
