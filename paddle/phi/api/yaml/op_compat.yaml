@@ -2580,6 +2580,10 @@
   outputs :
     out : Out
 
+- op : push_dense
+  inputs :
+    ids : Ids
+
 - op : push_sparse_v2
   inputs :
     { x : Ids, W : w}

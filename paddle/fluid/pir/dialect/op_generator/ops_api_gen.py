@@ -175,6 +175,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_send',
     'nop',
     'nop_',
+    'push_dense',
 ]
 
 

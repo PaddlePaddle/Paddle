@@ -3332,6 +3332,11 @@ void PoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void PushDenseInferMeta(const MetaTensor& ids,
+                        int table_id,
+                        float scale_data_norm,
+                        const std::vector<std::string>& input_names) {}
+
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype::ToReal(x.dtype()));

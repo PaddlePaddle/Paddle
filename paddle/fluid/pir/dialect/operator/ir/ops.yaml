@@ -1162,6 +1162,15 @@
   backward : prod_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : push_dense
+  args : (Tensor ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})
+  output :
+  infer_meta :
+    func : PushDenseInferMeta
+    param : [ids, table_id, scale_data_norm, input_names]
+  kernel :
+    func : push_dense
+
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
   output : Tensor[](out_grad_out){out_grad_in.size()}
