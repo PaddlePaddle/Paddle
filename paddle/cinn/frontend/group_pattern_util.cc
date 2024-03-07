@@ -134,81 +134,110 @@ class StmtFusionHelper {
     this->IsInjectiveSource = MakePredicatorIsInjectiveSource(fusion_op_, this->IsInThisFusionOp);
   }
 
-  std::vector<StmtPattern> FuseISAndConvertRemainder() const {
-    std::vector<StmtPattern> ret;
-    FuseInjectiveSourceThenAppend(fusion_op_, &ret);
+  std::list<StmtPattern> ConvertToStmtsPattern() const {
+    std::list<StmtPattern> ret;
     for (const auto* op : fusion_op_.block()->ops()) {
       if (!IsInThisFusionOp(op)) continue;
-      if (IsInjectiveSource(op)) continue;
-      ret.emplace_back(ConvertNonInjectiveSourceToStmtPattern(op));
+      ret.emplace_back(ConvertToStmtPattern(op));
     }
     return ret;
   }
 
-  void FuseInjectiveSourceThenAppend(
-      std::vector<StmtPattern>* ret) const {
-    auto GetOrder = MakeGetterOrderValue4Op(fusion_op_);
-    auto Cmp = [&](const auto* lhs, const auto& rhs) {
-      return GetOrder(lhs) < GetOrder(rhs);
-    };
-    VisitInjectiveSourceTree([&](std::vector<const pir::Operation*>&& ops){
-      std::sort(ops.begin(), ops.end(), Cmp);
-      ret->emplace_back(IS{ops});
-    });
+  using StmtIter = std::list<StmtPattern>::iterator;
+
+  static std::function<std::optional<StmtIter>(const pir::Operation*)>
+  MakeGetterStmt4Op(std::list<StmtPattern>* stmts) const {
+    TODO();
   }
 
-  template <typename DoEachT>
-  void VisitInjectiveSourceTree(
-      const DoEachT& DoEach) const {
-    const auto IsSinkInjectiveSource = [&](const pir::Operation* node) {
-      if (!IsInjectiveSource(node)) return false;
+  const pir::Operation* GetSoleOp(const StmtPattern& stmt) const {
+    TODO();
+  }
+
+  std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(std::list<StmtPattern>* stmts) const {
+    const auto StmtIter4Op = MakeGetterStmt4Op(stmts);
+    using NodeVisitor = std::function<void(StmtIter)>;
+    const auto VisitInputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
+      const pir::Operation* op = GetSoleOp(*stmt);
+      VisitEachInputOp(op, [&](const pir::Operation* input) {
+        if (const auto& input_stmt = StmtIter4Op(input)) {
+          DoEach(input_stmt);
+        }
+      });
+    };
+    const auto VisitOutputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
+      const pir::Operation* op = GetSoleOp(*stmt);
+      VisitEachOutputOp(op, [&](const pir::Operation* output) {
+        if (const auto& output_stmt = StmtIter4Op(output)) {
+          DoEach(output_stmt);
+        }
+      });
+    };
+    const auto IsSinkInjectiveSourceStmt = [&](StmtIter stmt) {
+      if (!std::holds_alternative<IS>(*stmt)) return false;
       std::size_t num_injective_src_outputs = 0;
-      VisitOutputInjectiveSource(node, [&](const auto& consumer) {
-        num_injective_src_outputs += IsInjectiveSource(consumer);
+      VisitOutputStmt(node, [&](const auto& consumer) {
+        num_injective_src_outputs += std::holds_alternative<IS>(*consumer);
       });
       return num_injective_src_outputs == 0;
     };
-    const auto VisitInput = [&](const pir::Operation* node, const OpVisitor& DoEach) {
-      VisitInputInjectiveSource(node, DoEach);
+    const auto GetOrder = MakeGetterOrderValue4Op(fusion_op_);
+    const auto Cmp = [&](const auto* lhs, const auto& rhs) {
+      return GetOrder(lhs) < GetOrder(rhs);
     };
-    common::BfsWalker<const pir::Operation*> reverse_walker(VisitInput);
-    for (const auto* sink : fusion_op_.block()->ops()) {
-      if (!IsInThisFusionOp(sink)) continue;
-      if (!IsSinkInjectiveSource(sink)) continue;
+    const auto& GetVisitedOps = [&](const auto stmt_iter) {
       std::vector<const pir::Operation*> visited_ops;
-      reverse_walker(sink, [&](const pir::Operation* op){
-        visited_ops.push_back(op);
+      reverse_walker(start, [&](const auto node){
+        visited_ops.push_back(GetSoleOp(node));
       });
-      DoEach(std::move(visited_ops));
+      std::sort(visited_ops.begin(), visited_ops.end(), Cmp);
+      return visited_ops;
+    };
+    common::BfsWalker<StmtIter> reverse_walker(VisitInputStmt);
+    std::list<StmtPattern> fused_stmts;
+    for (auto stmt_iter = stmts->begin(); stmt_iter != stmts->end(); ++stmt_iter) {
+      if (!IsSinkInjectiveSourceStmt(stmt_iter)) continue;
+      fused_stmts.push_back(IS{GetVisitedOps(stmt_iter)});
     }
+    for (auto stmt_iter = stmts->begin(); stmt_iter != start->end();) {
+      if (std::holds_alternative<IS>(*stmt_iter)) {
+        stmt_iter = stmts->erase(stmt_iter);
+      } else {
+        ++stmt_iter;
+      }
+    }
+    stmts->splice(stmts->begin(), std::move(fused_stmts));
   }
+
   
   using OpVisitor = std::function<void(const pir::Operation*)>;
 
-  void VisitInputInjectiveSource(const pir::Operation* op, const OpVisitor& DoEach) const {
+  void VisitInputOp(const pir::Operation* op, const OpVisitor& DoEach) const {
     for (int i = 0; i < op->num_operands(); ++i) {
       const auto* input_op = op->operand_source(i).defining_op();
-      if (IsInThisFusionOp(input_op) && IsInjectiveSource(input_op)) {
+      if (IsInThisFusionOp(input_op)) {
         DoEach(input_op);
       }
     }
   }
 
-  void VisitOutputInjectiveSource(const pir::Operation* op, const OpVisitor& DoEach) const {
+  void VisitOutputOp(const pir::Operation* op, const OpVisitor& DoEach) const {
     for (int i = 0; i < op->num_results(); ++i) {
       pir::Value output = op->result(i);
       for (auto consumer_it = output.use_begin(); consumer_it != output.use_end(); ++consumer_it) {
         const auto* consumer_op = consumer_it->owner();
-        if (IsInThisFusionOp(consumer_op) && IsInjectiveSource(input_op)) {
+        if (IsInThisFusionOp(consumer_op)) {
           DoEach(consumer_op);
         }
       }
     }
   }
 
-  StmtPattern ConvertNonInjectiveSourceToStmtPattern(const pir::Operation* op) const {
+  StmtPattern ConvertToStmtPattern(const pir::Operation* op) const {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
-    if (kind == hlir::framework::kReduction) {
+    if (IsInjectiveSource(op)) {
+      return ConvertToIS(op);
+    } else if (kind == hlir::framework::kReduction) {
       return ConvertReductionOpToReductionPattern(op);
     } else if (kind == hlir::framework::kElementWise) {
       return ConvertElementwiseOpToPS(op);
@@ -218,6 +247,10 @@ class StmtFusionHelper {
       LOG(FATAL) << "only kReduction, kElementWise, kBroadcast supported. op_name:" << op->op_name(); 
     }
     LOG(FATAL) << "Dead code";
+  }
+
+  IS ConvertToIS(const pir::Operation* op) const {
+    return IS{{op}};
   }
 
   R ConvertReductionOpToReductionPattern(const pir::Operation* op) const {
@@ -312,7 +345,7 @@ class StmtFusionHelper {
   }
 
   std::optional<std::pair<StmtPattern, StmtPattern>> FindConnetedPattenPairWithCondition(
-      std::vector<StmtPattern>* stmt_patterns,
+      std::list<StmtPattern>* stmt_patterns,
       std::function<bool(const StmtPattern& upstream, const StmtPattern& downstream)>& FuseTargetCondition) const {
     for (int i=0; i<stmt_patterns.size(); i++){
       for (int j=i+1; j<stmt_patterns.size(); j++){
@@ -332,7 +365,7 @@ class StmtFusionHelper {
   }
 
   std::optional<ErrorGroupPattern> FuseIternalPattenPrototype(
-      std::vector<StmtPattern>* stmt_patterns,
+      std::list<StmtPattern>* stmt_patterns,
       std::function<bool(const StmtPattern&, const StmtPattern&)>& FuseTargetCondition) const{
 
     while(true){
@@ -356,7 +389,7 @@ class StmtFusionHelper {
     return {};
   }
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::vector<StmtPattern>* stmt_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
       [](const StmtPattern& upstream, const StmtPattern& downstream){
@@ -365,7 +398,7 @@ class StmtFusionHelper {
     );
   }
 
-  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::vector<StmtPattern>* stmt_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
       [](const StmtPattern& upstream, const StmtPattern& downstream){
@@ -374,7 +407,7 @@ class StmtFusionHelper {
     );
   }
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::vector<StmtPattern>* stmt_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::list<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
       [](const StmtPattern& upstream, const StmtPattern& downstream){
@@ -383,7 +416,7 @@ class StmtFusionHelper {
     );
   }
 
-  std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(std::vector<StmtPattern>* stmt_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(std::list<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
       [](const StmtPattern& upstream, const StmtPattern& downstream){
@@ -400,7 +433,8 @@ class StmtFusionHelper {
 
 GroupPattern FuseToGroupPattern(const cinn::dialect::FusionOp& fusion_op) {
   StmtFusionHelper helper(fusion_op);
-  std::vector<StmtPattern> stmt_patterns = helper.FuseISAndConvertRemainder();
+  std::list<StmtPattern> stmt_patterns = helper.ConvertToStmtsPattern();
+  if (const auto& error = helper.Fuse_IS_x_IS_2_IS(&stmt_patterns)) return error.value();
   if (const auto& error = helper.Fuse_PS_x_PS_2_PS(&stmt_patterns)) return error.value();
   if (const auto& error = helper.Fuse_IS_x_PS_2_PS(&stmt_patterns)) return error.value();
   if (const auto& error = helper.Fuse_IS_x_R_2_R(&stmt_patterns)) return error.value();

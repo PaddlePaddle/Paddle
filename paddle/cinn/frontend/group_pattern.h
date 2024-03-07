@@ -60,11 +60,6 @@ struct PartialShardablePattern<frontend::FrontendPattern> {
   ShardableAxesSignature shardable_axes_signature;
 };
 
-template<>
-struct ReductionPattern<frontend::FrontendPattern> {
-  explicit ReductionPattern(const ReductionPattern<frontend::FrontendPatterns>& other) = default;
-};
-
 }
 
 namespace cinn::frontend {
