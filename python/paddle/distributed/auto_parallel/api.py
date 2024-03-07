@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import _C_ops, nn
+from paddle import _C_ops, nn, pir
 from paddle.amp.grad_scaler import OptimizerState
 from paddle.base import unique_name
 from paddle.base.dygraph.base import switch_to_static_graph
@@ -255,16 +255,41 @@ def dtensor_from_local(local_tensor, mesh, placements):
             local_dim_size = global_dims[shard_dim]
             global_dims[shard_dim] = local_dim_size * mesh.shape[idx]
 
-    place = paddle.framework._current_expected_place()
-    place = paddle.framework._get_paddle_place(place)
+    if paddle.in_dynamic_mode():
+        place = paddle.framework._current_expected_place()
+        place = paddle.framework._get_paddle_place(place)
 
-    return paddle.Tensor(
-        local_tensor,
-        dims=global_dims,
-        process_mesh=mesh,
-        placements=placements,
-        place=place,
-    )
+        return paddle.Tensor(
+            local_tensor,
+            dims=global_dims,
+            process_mesh=mesh,
+            placements=placements,
+            place=place,
+        )
+
+    # TODO Adopt Mix2Dist Pass to allow the program could be executed actually.
+    elif paddle.framework.in_pir_mode():
+        assert isinstance(
+            local_tensor, (type(None), pir.Value)
+        ), "input tensor is not pir value."
+        assert (
+            local_tensor.is_dense_tensor_type()
+        ), "dtensor_from_local() are only supported dense tensor type right."
+        sharding_specs = get_shard_spec(mesh, placements, local_tensor.ndim)
+        dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
+        local_shape = local_tensor.shape
+        global_tensor_type = paddle.pir.create_shaped_type(
+            local_tensor.type(), global_dims
+        )
+        dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
+            global_tensor_type, local_shape, mesh, dims_mapping
+        )
+        local_tensor.set_type(dist_dense_tensor_type)
+        return local_tensor
+    else:
+        raise RuntimeError(
+            "dtensor_from_local() are only supported in dynamic or pir mode."
+        )
 
 
 def dtensor_from_fn(fn, mesh, placements, *args, **kwargs):

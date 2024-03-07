@@ -105,6 +105,7 @@ class ShardingPass(PassBase):
         self.set_attr("params_grads", [])
         self.set_attr("global_rank", -1)
         self.set_attr("amp_dtype", "float16")
+        self.set_attr("gradient_sync_after_accumulate", False)
         self.dp_groups = set()
         self.sharding_infos = []
         self.varname_to_sharding_info = {}
@@ -1334,6 +1335,7 @@ class ShardingPass(PassBase):
                 if (
                     op.type == "c_reduce_avg"
                     and not grad_group.is_in_local_shard
+                    and not self.get_attr("gradient_sync_after_accumulate")
                 ):
                     if idx not in dep_map:
                         dep_map[idx] = []

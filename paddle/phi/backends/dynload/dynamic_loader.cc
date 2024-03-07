@@ -587,7 +587,7 @@ void* GetNCCLDsoHandle() {
 #else
 #ifdef WITH_PIP_CUDA_LIBRARIES
   return GetDsoHandleFromSearchPath(
-      FLAGS_nccl_dir, "libnccl.so.2", true, {}, warning_msg);
+      FLAGS_nccl_dir, "libnccl.so;libnccl.so.2", true, {}, warning_msg);
 #else
   return GetDsoHandleFromSearchPath(
       FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);

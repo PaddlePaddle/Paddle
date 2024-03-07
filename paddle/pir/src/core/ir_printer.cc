@@ -282,8 +282,7 @@ void IrPrinter::PrintAttributeMap(Operation* op) {
       attributes.begin(), attributes.end());
 
   // Filter out the callstack attribute
-  order_attributes.erase(
-      paddle::framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  order_attributes.erase("op_callstack");
 
   os << " {";
 

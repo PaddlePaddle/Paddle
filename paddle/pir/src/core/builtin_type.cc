@@ -30,6 +30,7 @@ const DenseTensorType::LoD& DenseTensorType::lod() const {
 }
 
 size_t DenseTensorType::offset() const { return storage()->offset_; }
+
 bool DenseTensorType::classof(Type type) {
   if (type) {
     if (type.type_id() == type_id()) return true;
@@ -39,6 +40,7 @@ bool DenseTensorType::classof(Type type) {
   }
   return false;
 }
+
 DenseTensorType DenseTensorType::dyn_cast_impl(Type type) {
   if (type) {
     if (type.type_id() == type_id()) return DenseTensorType(type.storage());
