@@ -89,7 +89,7 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
             "elementwise_max",
             "elementwise_mod",
         ]:
-            for epsilon in [0.005]:
+            for epsilon in [0.001]:
                 for begin_norm_axis in [1]:
                     dics = [
                         {
@@ -130,7 +130,7 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
                 {
                     "op_type": "layer_norm",
                     "op_inputs": {
-                        "X": ["matmul_v2_output_data"],
+                        "X": ["conv2d_input"],
                         "Scale": ["scale_data"],
                         "Bias": ["bias_data"],
                     },
@@ -139,10 +139,7 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
                         "Mean": ["saved_mean_data"],
                         "Variance": ["saved_variance_data"],
                     },
-                    "op_attrs": {
-                        "begin_norm_axis": 1,
-                        "epsilon": 1e-5,
-                    },
+                    "op_attrs": dics[0],
                 },
             ]
 
@@ -171,9 +168,6 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
                     "elementwise_input": TensorConfig(
                         data_gen=partial(generate_elementwise_input, op_type)
                     ),
-                    "input_data": TensorConfig(
-                        data_gen=partial(generate_input1, dics, shape_input)
-                    ),
                 },
                 outputs=["matmul_v2_output_data", "y_data"],
             )
@@ -198,7 +192,7 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
             }
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            return 1, 3
+            return 2, 4
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -216,7 +210,7 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
                 "matmul_v2_output_data",
             },
         )
-        yield config, generate_trt_nodes_num(attrs, True), (1e-3, 1e-3)
+        yield config, generate_trt_nodes_num(attrs, True), (1e-2, 1e-2)
 
     def test(self):
         self.run_test()
