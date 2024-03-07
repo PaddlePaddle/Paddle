@@ -45,10 +45,6 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                   *input_grad,
                   0,
                   input_grad);
-  //   PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
-  //                        phi::FillKernel<data_t, Context>(
-  //                            dev_ctx, *input_grad, 0, input_grad);
-  //                      }));
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   SliceStridedKernel<Context>(dev_ctx,
@@ -74,17 +70,7 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                   common::vectorize<int64_t>(tmp.strides()),
                   tmp.offset(),
                   &tmp);
-  //   PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
-  //                        phi::StridedCopyKernel<data_t, Context>(
-  //                            dev_ctx,
-  //                            out_grad,
-  //                            common::vectorize<int64_t>(tmp.dims()),
-  //                            common::vectorize<int64_t>(tmp.strides()),
-  //                            tmp.offset(),
-  //                            &tmp);
-  //                      }));
 }
-
 }  // namespace phi
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(slice_grad,
                                          STRIDED,

@@ -480,7 +480,7 @@ namespace phi {
                                                                 kernel_key); \
     const auto& kernel = kernel_result.kernel;                               \
     if (kernel_result.has_fallback_cpu) {                                    \
-      VLOG(6) << "missing kernel:" << kernel_name;                           \
+      VLOG(6) << "missing kernel: " << kernel_name;                          \
     }                                                                        \
     VLOG(6) << kernel_name << "kernel: " << kernel;                          \
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();        \
