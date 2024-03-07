@@ -173,15 +173,15 @@ std::optional<bool> SymbolicExprAnalyzer::ProveGT(const ir::Expr& lhs,
   if (diff.is_constant() && diff.get_constant() <= 0) {
     return false;
   }
-  ir::Expr diff_lower_bound = LowerBound(diff);
-  VLOG(6) << "lower bound of " << diff << " = " << diff_lower_bound;
-  if (diff_lower_bound.is_constant() && diff_lower_bound.get_constant() > 0) {
-    return true;
-  }
   ir::Expr diff_upper_bound = UpperBound(diff);
   VLOG(6) << "upper bound of " << diff << " = " << diff_upper_bound;
   if (diff_upper_bound.is_constant() && diff_upper_bound.get_constant() <= 0) {
     return false;
+  }
+  ir::Expr diff_lower_bound = LowerBound(diff);
+  VLOG(6) << "lower bound of " << diff << " = " << diff_lower_bound;
+  if (diff_lower_bound.is_constant() && diff_lower_bound.get_constant() > 0) {
+    return true;
   }
   return std::nullopt;
 }

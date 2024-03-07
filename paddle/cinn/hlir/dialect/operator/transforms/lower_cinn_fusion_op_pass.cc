@@ -440,9 +440,9 @@ void SimplyConditionBlock(
     };
     EraseUnnecessaryExpandsInBlock(block, rewriter, GetShapeOrDataForValue);
   });
-  ForEachMutBlockGroup([&](auto* block, const auto& group) {
-    ReplaceExpandWithBroadcast(rewriter.ir_context(), block, group);
-  });
+  // ForEachMutBlockGroup([&](auto* block, const auto& group) {
+  //   ReplaceExpandWithBroadcast(rewriter.ir_context(), block, group);
+  // });
 }
 
 void CompileGroupToJitKernelOp(

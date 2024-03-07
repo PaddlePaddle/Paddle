@@ -224,4 +224,13 @@ bool Remainder_OpInferSymbolicShape(
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
+bool SubtractOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool Subtract_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+
 }  // namespace paddle::dialect

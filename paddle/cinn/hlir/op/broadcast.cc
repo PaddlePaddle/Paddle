@@ -316,9 +316,10 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
     CINNValuePack pack_args = args[0];
     CHECK(!pack_args.empty())
         << "The input tensors of broadcast_to compute is empty! Please check.";
+    VLOG(0) << "###### pack_args.size(): " << pack_args.size();
     CHECK_GE(pack_args.size(), 2U);
-    CHECK(pack_args[1].is_string());
-    std::string tensor_name = pack_args[1].operator std::string();
+    CHECK(pack_args[2].is_string());
+    std::string tensor_name = pack_args[2].operator std::string();
 
     Expr A_expr = pack_args[0];
     CHECK(A_expr.as_tensor());
@@ -632,6 +633,19 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcastTo))
 #endif
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)
+      .set_support_level(4);
+
+  CINN_REGISTER_OP(expand)
+      .describe("broadcast one tensor to the target shape")
+      .set_num_inputs(2)
+      .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic",
+          cinn::hlir::op::StrategyForBroadcastToSymbolic)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForBroadcastTo))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)
       .set_support_level(4);

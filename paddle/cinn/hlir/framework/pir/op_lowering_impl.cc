@@ -59,9 +59,13 @@ namespace details {
 NodeAttr CollectAttrs(const ::pir::Operation& op) {
   NodeAttr node_attrs;
   VLOG(4) << "op.attributes():" << op.attributes().size();
-  auto attrs = CompatibleInfo::ConvertAttributes(op);
-  node_attrs.node_name = CompatibleInfo::OpName(op);
-  node_attrs.attr_store = std::move(attrs);
+  if (CompatibleInfo::OpName(op) == "generate_shape") {
+    node_attrs.node_name = CompatibleInfo::OpName(op);
+  } else {
+    auto attrs = CompatibleInfo::ConvertAttributes(op);
+    node_attrs.node_name = CompatibleInfo::OpName(op);
+    node_attrs.attr_store = std::move(attrs);
+  }
 
   return node_attrs;
 }
@@ -97,18 +101,27 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   int64_t spatial_numel = 1;
   int64_t reduce_numel = 1;
 
+  bool spatial_is_dynamic = false;
+  bool reduce_is_dynamic = false;
   for (int64_t i = 0; i < group_tile_info->data_rank; ++i) {
     if (reduce_set.count(i)) {
       reduce_numel *= data_dim[i];
+      if (data_dim[i] < 0) {
+        reduce_is_dynamic = true;
+      }
     } else {
       spatial_numel *= data_dim[i];
+
+      if (data_dim[i] < 0) {
+        spatial_is_dynamic = true;
+      }
     }
   }
 
-  PADDLE_ENFORCE_GT(
-      reduce_numel,
-      0,
-      phi::errors::Unimplemented("negative reduce numel or flaten numel"));
+  PADDLE_ENFORCE_EQ(
+      reduce_is_dynamic,
+      false,
+      phi::errors::Unimplemented("not support dynamic reduce yet"));
 
   int64_t reduce_block = 1;
   int64_t spatial_block = 1;
@@ -119,16 +132,13 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   if (reduce_numel == 1) {
     reduce_block = 1;
-    if (spatial_numel < 0) {
+    if (spatial_is_dynamic) {
       spatial_block = 1024;
 
       reduce_inner_num = 1;
-      warp_num = spatial_block / 128;
+      warp_num = 8;
 
-      spatial_inner_num = spatial_block / (warp_num * 32);
-      if (spatial_inner_num == 0) {
-        spatial_inner_num = 1;
-      }
+      spatial_inner_num = 4;
 
       group_tile_info->block_num = -1;
     } else {
@@ -598,6 +608,9 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
     if (it == align_info.end()) {
       continue;
     }
+    if (op1->name() == "cinn_op.generate_shape") {
+      continue;
+    }
 
     PADDLE_ENFORCE_EQ(
         it->second.size(),
@@ -859,7 +872,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
-        VLOG(4) << "device kernel func's " << non_tensor_arg_idx << " is from "
+        VLOG(4) << "device kernel func's " << symbol_name << " is from "
                 << tensor_arg_idx << ".shape(" << tensor_arg_dim_idx << ")";
       }
     }
@@ -1163,7 +1176,8 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
-    VLOG(4) << "input tensor name: " << ValueName(in_value);
+    VLOG(4) << "input tensor name: " << ValueName(in_value) << " "
+            << std::hash<::pir::Value>()(in_value);
     ir::Tensor tensor = GetTensor(group, in_value);
     VLOG(4) << "shape: " << tensor->shape;
     VLOG(4) << "sym_shape: " << tensor->sym_shape;
