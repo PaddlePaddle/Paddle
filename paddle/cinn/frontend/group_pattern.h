@@ -25,7 +25,7 @@ struct ErrorPattern<frontend::FrontendPattern> {
 template<>
 struct InjectiveSourcePattern<frontend::FrontendPattern> {
   explicit InjectiveSourcePattern(const InjectiveSourcePattern<frontend::FrontendPatterns>& other) = default;
-  std::vector<const pir::Operation*> ops;
+  std::list<const pir::Operation*> ops;
 };
 
 template<>
@@ -56,7 +56,8 @@ struct ShardableAxesSignature {
 template<>
 struct PartialShardablePattern<frontend::FrontendPattern> {
   explicit PartialShardablePattern(const PartialShardablePattern<frontend::FrontendPatterns>& other) = default;
-  std::vector<const pir::Operation*> ops;
+
+  std::list<const pir::Operation*> ops;
   ShardableAxesSignature shardable_axes_signature;
 };
 
