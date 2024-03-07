@@ -177,29 +177,28 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
 
   auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
-  info.AttachInterface(std::move(
-      pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>()));
+  info.AttachInterface(
+      pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::CombineOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               CombineOpInferSymbolicShapeInterfaceModel>()));
+                               CombineOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               ParameterOpInferSymbolicShapeInterfaceModel>()));
+                               ParameterOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
-  info.AttachInterface(
-      std::move(pir::InterfaceValue::Get<
-                InferSymbolicShapeInterface,
-                ShadowOutputOpInferSymbolicShapeInterfaceModel>()));
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       InferSymbolicShapeInterface,
+                       ShadowOutputOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               YieldOpInferSymbolicShapeInterfaceModel>()));
+                               YieldOpInferSymbolicShapeInterfaceModel>());
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {

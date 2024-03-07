@@ -283,7 +283,7 @@ std::vector<phi::DenseTensor> CheckAndTrans2NewContiguousTensor(
     const std::vector<phi::DenseTensor>& tensor) {
   std::vector<phi::DenseTensor> out;
   for (auto& t : tensor) {
-    out.emplace_back(std::move(CheckAndTrans2NewContiguousTensor(t)));
+    out.emplace_back(CheckAndTrans2NewContiguousTensor(t));
   }
   return out;
 }
@@ -578,8 +578,7 @@ std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
 
-    return std::make_shared<phi::DenseTensor>(
-        std::move(Trans2Contiguous(dense_tensor)));
+    return std::make_shared<phi::DenseTensor>(Trans2Contiguous(dense_tensor));
   }
   PADDLE_THROW(phi::errors::InvalidArgument(
       "The impl() of input tensor is nullptr, it doesn't support for "

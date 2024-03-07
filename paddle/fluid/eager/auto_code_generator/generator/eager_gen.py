@@ -1147,7 +1147,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             for name, (ttype, pos) in forward_inputs_position_map.items():
                 if name in need_pre_contiguous_set:
                     pre_contiguous_list.append(
-                        f"{indent}const auto& {name}_tmp = (require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl()))))), {name}.mutable_autograd_meta()) : {name};"
+                        f"{indent}const auto& {name}_tmp = (require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())))), {name}.mutable_autograd_meta()) : {name};"
                     )
                     self.inputs_call_list_tmp[pos] = (
                         self.inputs_call_list_tmp[pos] + '_tmp'

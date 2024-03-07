@@ -894,8 +894,8 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
     if (config_.new_ir_enabled()) {
-      pir_program_ = std::move(
-          paddle::TranslateLegacyProgramToProgram(*inference_program_));
+      pir_program_ =
+          paddle::TranslateLegacyProgramToProgram(*inference_program_);
 
 #ifdef PADDLE_WITH_CINN
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
@@ -1020,8 +1020,8 @@ bool AnalysisPredictor::PrepareExecutor() {
         cpu_pm.Run(pir_program_.get());
       }
 
-      pir_program_ = std::move(
-          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
+      pir_program_ =
+          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
       if (FLAGS_pir_apply_inplace_pass) {

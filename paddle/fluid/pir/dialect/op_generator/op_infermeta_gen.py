@@ -222,7 +222,7 @@ def GenBuildOutputsPart2(
 """
 
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  is_from_tensor = false;
-  phi::IntArray {name} = std::move(phi::IntArray(paddle::dialect::ParseValueShape({name}_, &is_from_tensor)));
+  phi::IntArray {name} = phi::IntArray(paddle::dialect::ParseValueShape({name}_, &is_from_tensor));
   if (is_from_tensor) {name}.SetFromTensor(true);\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
@@ -247,15 +247,15 @@ def GenBuildOutputsPart2(
 
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
-    {name} = std::move(phi::Scalar({name}_.defining_op()
+    {name} = phi::Scalar({name}_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
                                   .data()
-                                  .to<int>()));
+                                  .to<int>());
   }}
   else {{
-    {name} = std::move(phi::Scalar(-1));
+    {name} = phi::Scalar(-1);
     {name}.SetFromTensor(true);
   }}\n"""
 

@@ -3168,7 +3168,7 @@ void Pool2DInferMeta(const MetaTensor& x,
                             (data_format == "NHWC" || data_format == "NDHWC");
   if (!config.is_runtime && kernel_size.FromTensor()) {
     auto x_dims = x.dims();
-    std::vector<int64_t> output_shape = std::move(common::vectorize(x_dims));
+    std::vector<int64_t> output_shape = common::vectorize(x_dims);
     // set dims of HW -1
     output_shape[x_dims.size() - 2] = -1;
     if (channel_last) {  // for NHWC, NDHWC

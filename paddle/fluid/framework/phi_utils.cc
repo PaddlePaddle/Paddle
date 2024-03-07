@@ -243,7 +243,7 @@ void InitDefaultKernelSignatureMap() {
         paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register `" << op_type << "` kernel signature:";
         phi::DefaultKernelSignatureMap::Instance().Insert(
-            op_type, std::move(maker.GetKernelSignature()));
+            op_type, maker.GetKernelSignature());
       }
     }
   });

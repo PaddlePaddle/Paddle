@@ -1499,7 +1499,7 @@ void BindUtils(pybind11::module *m) {
       "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
         std::shared_ptr<Program> ret =
-            std::move(paddle::TranslateLegacyProgramToProgram(legacy_program));
+            paddle::TranslateLegacyProgramToProgram(legacy_program);
         return ret;
       },
       R"DOC(
@@ -1705,8 +1705,7 @@ void BindPassManager(pybind11::module *m) {
            py::arg("opt_level") = 2)
       .def("add_pass",
            [](PassManager &self, const std::string &pass_name) {
-             self.AddPass(
-                 std::move(pir::PassRegistry::Instance().Get(pass_name)));
+             self.AddPass(pir::PassRegistry::Instance().Get(pass_name));
            })
       .def("passes",
            [](PassManager &self) {
