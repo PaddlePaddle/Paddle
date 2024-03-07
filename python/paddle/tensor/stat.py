@@ -369,16 +369,19 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             the output Tensor is squeezed in ``axis`` . Default is False.
         mode (str, optional): Whether to use mean or min operation to calculate
             the median values when the input tensor has an even number of elements
-            in the dimension ``axis``. Support 'avg' and 'min'.
+            in the dimension ``axis``. Support 'avg' and 'min'. Default is 'avg'.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        ((Tensor, Tensor), optional), results of median along ``axis`` of ``x``. If ``mode`` is
-        'min' and axis is not None, the result will be a tuple containing a tensor of median values and a tensor
-        of its indices. The data type of the indices will be int64. Otherwise the result will be the tensor of
-        median values. If data type of ``x`` is float64, data type of median values will be float64, otherwise
-        data type will be float32.
+        ((Tensor, Tensor), optional)
+        If ``mode`` == 'avg', the result will be the tensor of median values;
+        If ``mode`` == 'min' and ``axis`` is None, the result will be the tensor of median values;
+        If ``mode`` == 'min' and ``axis`` is not None, the result will be a tuple of two tensors
+        containing median values and their indices.
+
+        If data type of ``x`` is float64, data type of median values will be float64, otherwise
+        data type of median values will be float32. The data type of indices will be int64.
 
     Examples:
         .. code-block:: python
@@ -444,7 +447,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
 
     if mode not in ('avg', 'min'):
         raise ValueError(f"Mode {mode} is not supported. Must be avg or min.")
-    inp_axis = axis
+    need_idx = axis is not None
     if axis is None:
         is_flatten = True
 
@@ -482,12 +485,9 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
                 ),
                 dtype=dtype,
             )
-            if inp_axis is not None:
-                out_idx = paddle.cast(
-                    paddle.slice(
-                        idx, axes=[axis], starts=[kth - 1], ends=[kth]
-                    ),
-                    dtype="int64",
+            if need_idx:
+                out_idx = paddle.slice(
+                    idx, axes=[axis], starts=[kth - 1], ends=[kth]
                 )
     else:
         out_tensor = paddle.cast(
@@ -496,11 +496,11 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             ),
             dtype=dtype,
         )
-        if inp_axis is not None:
-            out_idx = paddle.cast(
-                paddle.slice(idx, axes=[axis], starts=[kth], ends=[kth + 1]),
-                dtype="int64",
+        if need_idx:
+            out_idx = paddle.slice(
+                idx, axes=[axis], starts=[kth], ends=[kth + 1]
             )
+
     out_tensor = out_tensor + paddle.sum(
         paddle.cast(paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True
     )
@@ -513,7 +513,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
         if not keepdim:
             out_tensor = out_tensor.squeeze(axis)
 
-    if mode == 'min' and inp_axis is not None:
+    if mode == 'min' and need_idx:
         if not keepdim:
             out_idx = out_idx.squeeze(axis)
         return out_tensor, out_idx
