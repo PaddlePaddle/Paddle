@@ -41,11 +41,6 @@ def create_paddle_inputs():
     return inputs
 
 
-def create_numpy_inputs():
-    inputs = ()
-    return inputs
-
-
 class TestLayer(unittest.TestCase):
     def setUp(self):
         self.inputs = create_paddle_inputs()
