@@ -58,10 +58,8 @@ namespace details {
 
 NodeAttr CollectAttrs(const ::pir::Operation& op) {
   NodeAttr node_attrs;
-  VLOG(4) << CompatibleInfo::OpName(op);
   VLOG(4) << "op.attributes():" << op.attributes().size();
   if (CompatibleInfo::OpName(op) == "generate_shape") {
-    // auto attrs = CompatibleInfo::ConvertAttributes(op);
     node_attrs.node_name = CompatibleInfo::OpName(op);
   } else {
     auto attrs = CompatibleInfo::ConvertAttributes(op);
@@ -794,7 +792,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   for (auto& arg_tensor : *group_func_arg_tensors) {
     // input data name.
     group->input_names.push_back(arg_tensor->name);
-    VLOG(-1) << "input tensor name: " << arg_tensor->name;
     // input args
     (*group_func_args)
         .emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
@@ -822,7 +819,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     group_func_arg_tensors->push_back(tensor);
     // output args
     group->output_names.push_back(tensor->name);
-    VLOG(-1) << "output tensor name: " << tensor->name;
     (*group_func_args).emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
     arg_name_set.insert(tensor->buffer->name);
   }
@@ -860,9 +856,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
        tensor_arg_idx++) {
     auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
     int tensor_dim_size = tensor_dim.size();
-    VLOG(-1) << "parse tensor args: "
-             << (*group_func_arg_tensors)[tensor_arg_idx]->name
-             << " tensor dim is " << tensor_dim;
     for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
          tensor_arg_dim_idx++) {
       if (tensor_dim[tensor_arg_dim_idx]->IsUniSymbolic()) {
@@ -917,10 +910,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   std::vector<Expr> func_bodies;
   std::unordered_set<::pir::Value> inner_used_value;
   for (auto* op : ops) {
-    // if (op->name() == "cinn_op.generate_shape") {
-    //   VLOG(-1) << "continue";
-    //   continue;
-    // }
     for (size_t i = 0; i < op->num_operands(); ++i) {
       inner_used_value.insert(op->operand_source(i));
     }
@@ -928,10 +917,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
   std::unordered_set<::pir::Operation*> not_used_op;
   for (auto* op : ops) {
-    // if (op->name() == "cinn_op.generate_shape") {
-    //   VLOG(-1) << "continue";
-    //   continue;
-    // }
     bool used = false;
     for (size_t i = 0; i < op->num_results(); ++i) {
       if (inner_used_value.count(op->result(i))) {
@@ -952,22 +937,11 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     VLOG(4) << "cinn op name " << cinn_op_name << std::endl;
 
     // 1.Select Op impl
-    VLOG(-1) << "before CollectInputTensor";
-    for (int i = 0; i < group_func_arg_tensors->size(); i++) {
-      VLOG(-1) << "arg tensor is: " << (*group_func_arg_tensors)[i];
-    }
     std::vector<ir::Tensor> op_func_arg_tensors =
         CollectInputTensor(group, op, group_func_arg_tensors, tensor_map);
-    VLOG(-1) << "after CollectInputTensor";
-    for (int i = 0; i < group_func_arg_tensors->size(); i++) {
-      VLOG(-1) << "arg tensor is: " << (*group_func_arg_tensors)[i];
-    }
     VLOG(4) << "input size:" << op_func_arg_tensors.size();
-    // if (op->name() == "cinn_op.generate_shape") {
-    //   VLOG(-1) << "cinn op";
-    //   continue;
-    // }
 
+    const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
     std::shared_ptr<OpImpl> op_impl = nullptr;
     if (FLAGS_cinn_bucket_compile) {
       std::vector<Type> out_types;
@@ -976,11 +950,9 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
       CHECK_EQ(out_types.size(), out_shapes.size());
       VLOG(4) << "out_types.size(): " << out_types.size();
-      // if (cinn_op_name != "generate_shape") {
       NodeAttr node_attrs = details::CollectAttrs(*op);
       auto& strategy_map =
           Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
-      const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
       StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
       CHECK(static_cast<bool>(strategy))
           << " cinn_op_name: " << cinn_op_name
@@ -990,14 +962,12 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
                                                 out_types,
                                                 out_shapes,
                                                 this->target_));
-      // }
     } else {
       std::vector<Type> out_types;
       std::vector<std::vector<int>> out_shapes;
       CollectOutputInfo(op, &out_types, &out_shapes, group);
       VLOG(4) << "out_types.size(): " << out_types.size();
       NodeAttr node_attrs = details::CollectAttrs(*op);
-      const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
       op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
                                                          op_func_arg_tensors,
                                                          out_types,
@@ -1005,20 +975,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
                                                          this->target_));
     }
     // 2.Perform the lower process of Op
-
-    std::vector<ir::LoweredFunc> funcs;
-    // if (cinn_op_name != "generate_shape") {
-    VLOG(-1) << "before done OpLower";
-    for (int i = 0; i < group_func_arg_tensors->size(); i++) {
-      VLOG(-1) << "arg tensor is: " << (*group_func_arg_tensors)[i];
-    }
-    funcs = DoOpLower(
+    std::vector<ir::LoweredFunc> funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
-    // }
-    VLOG(-1) << "after done OpLower";
-    for (int i = 0; i < group_func_arg_tensors->size(); i++) {
-      VLOG(-1) << "arg tensor is: " << (*group_func_arg_tensors)[i];
-    }
 
     if (ops.size() > 1 && not_used_op.count(op) &&
         (op->name() == "cinn_op.reshape")) {
@@ -1047,7 +1005,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   VLOG(4) << "Do lower with Compute, op: " << op->name();
   std::vector<cinn::common::CINNValue> cinn_inputs;
   for (const ir::Tensor& tensor : *op_func_arg_tensors) {
-    VLOG(-1) << "input tensor name: " << tensor->name;
     cinn_inputs.push_back(cinn::common::CINNValue(ir::Expr(tensor)));
   }
 
@@ -1055,10 +1012,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   auto op_results = op->results();
   for (const auto& result : op_results) {
     std::string output_id = ValueName(result);
-    VLOG(-1) << "output id : " << output_id;
     cinn_inputs.push_back(cinn::common::CINNValue(output_id));
   }
-  VLOG(-1) << "cinn inputs size:= " << cinn_inputs.size();
 
   // 1.Do compute
   cinn::common::CINNValuePack pack =
@@ -1074,7 +1029,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       // definition, but only one output  in the graph, and we use id +
       // "_0"/"_1" as key.
       if (idx < op_results.size()) {
-        VLOG(3) << "output value bind to: " << ValueName(op_results[idx]);
         (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
       }
       std::string tensor_name = ValueName(op_results[0]) + post;
@@ -1085,7 +1039,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       // If the number of output tensors defined by Compute is less equal than
       // the output node_data on the graph, then there is a one-to-one
       // correspondence, and the redundant output node_data contact empty.
-      VLOG(3) << "output value bind to: " << ValueName(op_results[idx]);
       (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
     }
 
@@ -1220,17 +1173,13 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
-    VLOG(4) << "input tensor name: " << ValueName(in_value) << " " << std::hash<::pir::Value>()(in_value);;
+    VLOG(4) << "input tensor name: " << ValueName(in_value) << " "
+            << std::hash<::pir::Value>()(in_value);
     ir::Tensor tensor = GetTensor(group, in_value);
     VLOG(4) << "shape: " << tensor->shape;
     VLOG(4) << "sym_shape: " << tensor->sym_shape;
 
-    VLOG(-1) << "before inner CollectInputTensor";
-    for (int i = 0; i < func_args->size(); i++) {
-      VLOG(-1) << "arg tensor is: " << (*func_args)[i];
-    }
     if (!tensor_map->count(in_value)) {
-      VLOG(4) << "push_back input tensor name: " << ValueName(in_value);
       // record tensor.
       (*tensor_map)[in_value] = tensor;
       // record func input args
@@ -1238,7 +1187,6 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
         func_args->push_back(tensor);
       }
     } else {
-      VLOG(4) << "change input tensor name: " << ValueName(in_value) << " " <<std::hash<::pir::Value>()(in_value);
       // TODO(6clc): After supporting symbolic calculation,
       // 1. Check that the shape of the tensor with the same name is the same
       // size
@@ -1248,10 +1196,6 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
       (*tensor_map)[in_value]->shape = tensor->shape;
       (*tensor_map)[in_value]->sym_domain = tensor->sym_domain;
       (*tensor_map)[in_value]->domain = tensor->domain;
-    }
-    VLOG(-1) << "after inner CollectInputTensor";
-    for (int i = 0; i < func_args->size(); i++) {
-      VLOG(-1) << "arg tensor is: " << (*func_args)[i];
     }
     tensors.push_back(tensor);
   }
@@ -1286,7 +1230,6 @@ void OpLowererImpl::CollectOutputInfo(
   auto op_results = op->results();
   for (auto& out_value : op_results) {
     std::string output_id = ValueName(out_value);
-    VLOG(4) << "output tensor name: " << output_id;
 
     auto type_info =
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();

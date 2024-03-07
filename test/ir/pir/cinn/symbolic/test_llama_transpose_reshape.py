@@ -23,6 +23,7 @@ from paddle import nn
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
+
 import utils
 
 
@@ -71,9 +72,6 @@ class TestTransposeReshape(unittest.TestCase):
         dy_out = self.eval(use_cinn=False)
         if utils.unittest_use_cinn():
             cinn_out = self.eval(use_cinn=True)
-            print("=======xxxxxyyyy")
-            print(dy_out)
-            print(cinn_out)
             np.testing.assert_allclose(
                 cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
             )
