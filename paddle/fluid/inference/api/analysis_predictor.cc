@@ -1045,7 +1045,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     }
   }
 
-  if (config_.enable_memory_optim_) {
+  if (config_.enable_memory_optim_ && !config_.use_optimized_model_) {
     auto *pass_res_info =
         inference::analysis::PassResultInfoForRuntime::Instance();
     auto reuse_table =
