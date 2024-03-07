@@ -1188,7 +1188,7 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
 
   // sections
   const std::vector<symbol::DimExpr> &sections_sym = [&] {
-    auto sections_shape_or_data =
+    const auto &sections_shape_or_data =
         shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
     std::vector<symbol::DimExpr> sections_sym;
     if (sections_shape_or_data.data().has_value()) {
@@ -1243,7 +1243,7 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
       return shape_data_list;
     }
     for (uint32_t idx = 0; idx < sections_sym.size(); idx++) {
-      const auto section_sym = sections_sym[idx];
+      const auto &section_sym = sections_sym[idx];
       output_dims_sym[axis] = IsNotMinusOne(section_sym)
                                   ? section_sym
                                   : x_dims_sym[axis] - sum_exclude_minus_one;
