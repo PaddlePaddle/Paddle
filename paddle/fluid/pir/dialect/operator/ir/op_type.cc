@@ -28,6 +28,26 @@ const phi::LoD& SelectedRowsType::lod() const { return storage()->lod_; }
 
 const size_t& SelectedRowsType::offset() const { return storage()->offset_; }
 
+bool SelectedRowsType::classof(Type type) {
+  if (type) {
+    if (type.type_id() == type_id()) return true;
+    if (auto wrap_type = type.dyn_cast<pir::WrapTypeInterface>()) {
+      return classof(wrap_type.prim_type());
+    }
+  }
+  return false;
+}
+
+SelectedRowsType SelectedRowsType::dyn_cast_impl(Type type) {
+  if (type) {
+    if (type.type_id() == type_id()) return SelectedRowsType(type.storage());
+    if (auto wrap_type = type.dyn_cast<pir::WrapTypeInterface>()) {
+      return dyn_cast_impl(wrap_type.prim_type());
+    }
+  }
+  return nullptr;
+}
+
 const pir::Type& DenseTensorArrayType::dtype() const {
   return storage()->dtype_;
 }
@@ -35,6 +55,27 @@ const phi::DDim& DenseTensorArrayType::dims() const { return storage()->dims_; }
 
 const phi::DataLayout& DenseTensorArrayType::data_layout() const {
   return storage()->layout_;
+}
+
+bool DenseTensorArrayType::classof(Type type) {
+  if (type) {
+    if (type.type_id() == type_id()) return true;
+    if (auto wrap_type = type.dyn_cast<pir::WrapTypeInterface>()) {
+      return classof(wrap_type.prim_type());
+    }
+  }
+  return false;
+}
+
+DenseTensorArrayType DenseTensorArrayType::dyn_cast_impl(Type type) {
+  if (type) {
+    if (type.type_id() == type_id())
+      return DenseTensorArrayType(type.storage());
+    if (auto wrap_type = type.dyn_cast<pir::WrapTypeInterface>()) {
+      return dyn_cast_impl(wrap_type.prim_type());
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace dialect

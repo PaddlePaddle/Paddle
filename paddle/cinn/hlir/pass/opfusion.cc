@@ -83,7 +83,7 @@ class DomTree {
       const std::vector<GraphNode*>& nodes) {
     int size = nodes.size();
     dom_nodes_.resize(nodes.size());
-    // construct postdom tree, reverse topological_order
+    // construct post dom tree, reverse topological_order
     for (int i = size - 1; i >= 0; i--) {
       auto* dom_node = CreateDomNode(nodes[i]);
       CHECK(dom_node);
@@ -160,7 +160,7 @@ class DomTree {
           parent = dom_node;
           CHECK(parent);
         } else {
-          // if the out_var links to more than one opnode, then we need to find
+          // if the out_var links to more than one op_node, then we need to find
           // the LCA
           parent = LCA(parent, dom_node, pattern);
         }
@@ -170,7 +170,7 @@ class DomTree {
         VLOG(2) << sink->id() << "'s op pattern is " << op_pattern;
         if (op_node->attrs.attr_store.count("pre_run") &&
             absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
-          // not fuse pre_run opnode
+          // not fuse pre_run op_node
           op_pattern = framework::kNonFusible;
           VLOG(3) << op_node->op()->name << " do pre_run and not fuse";
         }
@@ -264,7 +264,7 @@ class GraphPartition {
         auto pattern = op_pattern_dict[op_node->op()];
         if (op_node->attrs.attr_store.count("pre_run") &&
             absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
-          // not fuse pre_run opnode
+          // not fuse pre_run op_node
           pattern = framework::kNonFusible;
           VLOG(3) << op_node->op()->name << " do pre_run and not fuse";
         }
@@ -549,7 +549,7 @@ class GraphPartition {
 void OpFusionPass(Graph* graph) {
   auto store_nodes = std::get<0>(graph->topological_order());
   int node_size = store_nodes.size();
-  // construct postdom tree, reverse topological_order
+  // construct post dom tree, reverse topological_order
   DomTree tree;
   auto& dom_nodes = tree.CreatePostDomTree(store_nodes);
   // graph partition

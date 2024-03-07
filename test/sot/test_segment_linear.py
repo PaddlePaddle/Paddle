@@ -56,7 +56,7 @@ class SimpleNet(nn.Layer):
         return logits
 
 
-class TestExecutor(TestCaseBase):
+class TestSegmentLinear(TestCaseBase):
     @strict_mode_guard(False)
     def test_simple(self):
         x = paddle.randn((1, 8, 8))

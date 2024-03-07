@@ -45,9 +45,12 @@ class BuildCinnPass : public pir::Pass {
  private:
   void ProcessBlock(pir::Block* block) {
     std::vector<GroupOpsVec> groups =
-        ::pir::SubgraphDetector(block, CompatibleInfo::IsSupportCinn)();
+        ::pir::SubgraphDetector(block, CompatibleInfo::IsSupportForCinn)();
     AddStatistics(groups.size());
     for (auto& group_ops : groups) {
+      if (group_ops.size() == 1 && group_ops[0]->name() == "pd_op.full") {
+        continue;
+      }
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
       ::pir::ReplaceWithGroupOp(block, group_ops);
     }
