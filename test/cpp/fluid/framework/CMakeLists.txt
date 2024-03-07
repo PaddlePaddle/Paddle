@@ -98,20 +98,12 @@ paddle_test(program_desc_test SRCS program_desc_test.cc)
 
 paddle_test(op_desc_test SRCS op_desc_test.cc)
 
-cc_test(
-  op_version_registry_test
-  SRCS op_version_registry_test.cc
-  DEPS op_version_registry)
+paddle_test(op_version_registry_test SRCS op_version_registry_test.cc)
 
-cc_test(
-  op_proto_maker_test
-  SRCS op_proto_maker_test.cc
-  DEPS op_proto_maker)
+paddle_test(op_proto_maker_test SRCS op_proto_maker_test.cc)
 
-cc_test(
-  no_need_buffer_vars_inference_test
-  SRCS no_need_buffer_vars_inference_test.cc
-  DEPS no_need_buffer_vars_inference layer)
+paddle_test(no_need_buffer_vars_inference_test SRCS
+            no_need_buffer_vars_inference_test.cc)
 
 cc_test(
   operator_test
@@ -122,20 +114,11 @@ cc_test(
   SRCS operator_exception_test.cc
   DEPS operator op_registry device_context)
 
-cc_test(
-  version_test
-  SRCS version_test.cc
-  DEPS version)
+paddle_test(version_test SRCS version_test.cc)
 
-cc_test(
-  op_call_stack_test
-  SRCS op_call_stack_test.cc
-  DEPS op_call_stack)
+paddle_test(op_call_stack_test SRCS op_call_stack_test.cc)
 
-cc_test(
-  program_utils_test
-  SRCS program_utils_test.cc
-  DEPS proto_desc program_utils)
+paddle_test(program_utils_test SRCS program_utils_test.cc)
 
 if(WITH_GPU)
   nv_test(
@@ -224,48 +207,27 @@ cc_test(
   SRCS dlpack_tensor_test.cc
   DEPS dlpack_tensor glog)
 
-cc_test(
-  op_compatible_info_test
-  SRCS op_compatible_info_test.cc
-  DEPS op_compatible_info proto_desc string_helper glog)
+paddle_test(op_compatible_info_test SRCS op_compatible_info_test.cc)
 
-cc_test(
-  infershape_utils_test
-  SRCS infershape_utils_test.cc
-  DEPS infershape_utils phi common)
+paddle_test(infershape_utils_test SRCS infershape_utils_test.cc)
 
 if(WITH_TESTING AND TEST selected_rows_utils_test)
   set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)
 endif()
 
-cc_test(scope_guard_test SRCS scope_guard_test.cc)
-cc_test(
-  phi_utils_test
-  SRCS phi_utils_test.cc
-  DEPS phi_utils)
+paddle_test(scope_guard_test SRCS scope_guard_test.cc)
+paddle_test(phi_utils_test SRCS phi_utils_test.cc)
 
-cc_test(convert_utils_test SRCS convert_utils_test.cc)
+paddle_test(convert_utils_test SRCS convert_utils_test.cc)
 
-cc_test(
-  test_fs
-  SRCS io/test_fs.cc
-  DEPS framework_io string_helper)
+paddle_test(test_fs SRCS io/test_fs.cc)
 
 if(WITH_CRYPTO)
-  cc_test(
-    aes_cipher_test
-    SRCS io/aes_cipher_test.cc
-    DEPS framework_io)
-  cc_test(
-    cipher_utils_test
-    SRCS io/cipher_utils_test.cc
-    DEPS framework_io)
+  paddle_test(aes_cipher_test SRCS io/aes_cipher_test.cc)
+  paddle_test(cipher_utils_test SRCS io/cipher_utils_test.cc)
 endif()
 
-cc_test(
-  test_fleet_cc
-  SRCS fleet/test_fleet.cc
-  DEPS fleet_wrapper gloo_wrapper framework_io string_helper)
+paddle_test(test_fleet_cc SRCS fleet/test_fleet.cc)
 
 if(WITH_CINN)
   paddle_test(
@@ -303,9 +265,6 @@ if(WITH_CINN)
   set_tests_properties(transform_type_test PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
 
-cc_test(
-  workqueue_test
-  SRCS new_executor/workqueue_test.cc
-  DEPS standalone_executor)
+paddle_test(workqueue_test SRCS new_executor/workqueue_test.cc)
 
 add_subdirectory(ir)
