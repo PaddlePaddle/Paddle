@@ -1169,8 +1169,7 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
-    VLOG(4) << "input tensor name: " << ValueName(in_value) << " "
-            << std::hash<::pir::Value>()(in_value);
+    VLOG(4) << "input tensor name: " << ValueName(in_value);
     ir::Tensor tensor = GetTensor(group, in_value);
     VLOG(4) << "shape: " << tensor->shape;
     VLOG(4) << "sym_shape: " << tensor->sym_shape;

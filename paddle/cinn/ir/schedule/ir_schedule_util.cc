@@ -107,11 +107,11 @@ void SetCudaAxisInfo(Expr* lowered_func) {
           info.set_block_dim(bind_info.offset, range);
         }
       } else if (bind_info.for_type == ForType::GPUBlock) {
-        // if (CannotProveLT(range, info.grid_dim(bind_info.offset))) {
+        if (CannotProveLT(range, info.grid_dim(bind_info.offset))) {
           VLOG(3) << "Set grid dim[" << bind_info.offset << "] with range "
                   << range;
           info.set_grid_dim(bind_info.offset, range);
-        // }
+        }
       } else {
         LOG(FATAL) << "The for loop's bind info should be gpu block or thread!";
       }

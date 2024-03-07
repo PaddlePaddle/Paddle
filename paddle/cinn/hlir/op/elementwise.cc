@@ -1013,24 +1013,19 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
     CINNValuePack pack_args = args[0];
     CHECK_GE(pack_args.size(), 1U)
         << "at least 1 input tensors for Reshape compute\n";
-    VLOG(-1) << "pack args size: " << pack_args.size();
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
-    // auto attr_store = attrs.attr_store;
-    // CHECK(attr_store.count("shape")) << "find no attr of shape";
     auto tensor_A = A.as_tensor_ref();
     auto stages = CreateStages({});
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    // CHECK_EQ(pack_args.size(), 2);
-    VLOG(-1) << "hahahaha";
+    CHECK_EQ(pack_args.size(), 4);
     CHECK(pack_args[2].is_string());
     std::string tensor_name = pack_args[2].operator std::string();
 
     ir::Tensor out = pe::Reshape(tensor_A, output_shapes[0], tensor_name);
-    VLOG(-1) << "reshape output tensor names is: " << tensor_name;
     std::vector<CINNValue> res;
     stages->InsertLazily(out);
     res.push_back(CINNValue(out));
@@ -1269,12 +1264,13 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
-        // ir::Tensor out = pe::Cast(tensor_A, tensor_A->type(), tensor_name);
-        ir::Tensor out(ir::_Tensor_::Make(tensor_name,
-                                          tensor_A->type(),
+        ir::Tensor out(ir::_Tensor_::Make(/*name=*/tensor_name,
+                                          /*dtype=*/tensor_A->type(),
+                                          /*shape=*/
                                           {
                                               Expr(1),
                                           },
+                                          /*domain=*/
                                           {
                                               Expr(1),
                                           }));
@@ -1314,7 +1310,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShape(
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
-        // ir::Tensor out = pe::Cast(tensor_A, tensor_A->type(), tensor_name);
         ir::Tensor out(ir::_Tensor_::Make(tensor_name,
                                           tensor_A->type(),
                                           {
