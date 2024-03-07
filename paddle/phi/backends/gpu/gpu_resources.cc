@@ -51,7 +51,7 @@ void InitGpuProperties(Place place,
                        int* multi_process,
                        int* max_threads_per_mp,
                        int* max_threads_per_block,
-                       std::array<int, 3>* max_grid_dim_size) {
+                       std::array<unsigned int, 3>* max_grid_dim_size) {
   backends::gpu::GPUDeviceGuard guard(place.GetDeviceId());
   *compute_capability =
       backends::gpu::GetGPUComputeCapability(place.GetDeviceId());
