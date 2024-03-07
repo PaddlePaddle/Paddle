@@ -738,6 +738,15 @@ void CropInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  phi::DDim dim = x.dims();
+  dim[dim.size() - 1] = dim[dim.size() - 1] / nranks;
+  if (dim[0] < 0) dim[0] = -1;
+  out->set_dims(dim);
+  out->set_layout(x.layout());
+  out->set_dtype(x.dtype());
+}
+
 void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
                          MetaTensor* out) {
