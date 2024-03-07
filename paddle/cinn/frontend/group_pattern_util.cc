@@ -11,9 +11,10 @@ namespace {
 using IS = api::InjectiveSourcePattern<FrontendPattern>;
 using R = api::ReductionPattern<FrontendPattern>;
 using PS = api::PartialShardablePattern<FrontendPattern>;
+using StmtPattern = api::StmtPattern<FrontendPattern>;
 using OpPatternKind = cinn::hlir::framework::OpPatternKind;
 
-hlir::framework::OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
+OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
   return hlir::framework::pir::CompatibleInfo::OpKind(*node);
 }
 
@@ -28,6 +29,19 @@ std::function<size_t(const pir::Operation*)> MakeGetterOrderValue4Op(const cinn:
     CHECK(iter != map.end());
     return iter->second;
   };
+}
+
+
+bool IsISPattern(const StmtPattern& pattern){
+  return std::holds_alternative<IS>(pattern);
+}
+
+bool IsPSPattern(const StmtPattern& pattern){
+  return std::holds_alternative<PS>(pattern);
+}
+
+bool IsRPattern(const StmtPattern& pattern){
+  return std::holds_alternative<R>(pattern);
 }
 
 std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(const cinn::dialect::FusionOp& fusion_op) {
@@ -80,7 +94,7 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
       return num_inputs == 0;
     };
     std::list<const pir::Operation*> starts;
-    for (const auto* op : fusion_op.block().ops()) {
+    for (const auto* op : fusion_op.GetOperators()) {
       if (!IsInThisFusionOp(op)) continue;
       if (IsSource(op)) {
         starts.push_back(op);
@@ -261,50 +275,41 @@ class StmtFusionHelper {
     LOG(FATAL) << "TODO(wuzhanfei).";
   }
 
-  std::variant<IternalPattern, ErrorGroupPattern> MergePattern(
+  std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
       const IS& upstream,
       const PS& downstream){
-    PS new_pattern = CopyPattern(downstream);
+    PS new_pattern = PS(downstream);
     new_pattern.ops.insert(new_pattern.end(), upstream.begin(), upstream.end());
     return new_pattern;
   }
 
-  std::variant<IternalPattern, ErrorGroupPattern> MergePattern(
+  std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
       const PS& upstream,
       const PS& downstream){
-    PS new_pattern = CopyPattern(downstream);
+    PS new_pattern = PS(downstream);
     new_pattern.ops.insert(new_pattern.end(), upstream.begin(), upstream.end());
-    new_pattern.shardable_axes_signature.output_shardable_axes.insert(
-      new_pattern.shardable_axes_signature.output_shardable_axes.end(), 
-      upstream.shardable_axes_signature.output_shardable_axes.begin(), 
-      upstream.shardable_axes_signature.output_shardable_axes.end()
-    );
-    new_pattern.shardable_axes_signature.input_shardable_axes.insert(
-      upstream.shardable_axes_signature.input_shardable_axes.begin(), 
-      upstream.shardable_axes_signature.input_shardable_axes.end()
-    );
     return new_pattern
   }
 
-  std::variant<IternalPattern, ErrorGroupPattern> MergePattern(
+  std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
       const IS& upstream,
       const R& downstream){
-    R new_pattern = CopyPattern(downstream);
-    new_pattern.opt_inputs = CopyPattern(upstream);
+    R new_pattern = R(downstream);
+    new_pattern.opt_inputs = IS(upstream);
     return new_pattern;
   }
 
-  std::variant<IternalPattern, ErrorGroupPattern> MergePattern(
+  std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
       const PS& upstream,
       const R& downstream){
-    R new_pattern = CopyPattern(downstream);
-    new_pattern.opt_inputs = CopyPattern(upstream);
+    R new_pattern = R(downstream);
+    new_pattern.opt_inputs = PS(upstream);
     return new_pattern;
   }
 
   std::optional<std::pair<StmtPattern, StmtPattern>> FindConnetedPattenPairWithCondition(
       std::vector<StmtPattern>* stmt_patterns,
-      std::function<bool(const IternalPattern& upstream, const IternalPattern& downstream)>& FuseTargetCondition) const {
+      std::function<bool(const StmtPattern& upstream, const StmtPattern& downstream)>& FuseTargetCondition) const {
     for (int i=0; i<stmt_patterns.size(); i++){
       for (int j=i+1; j<stmt_patterns.size(); j++){
         bool i_used_j = FirstIsUpstreamOfSecond(stmt_patterns[j], stmt_patterns[i]);
@@ -324,7 +329,7 @@ class StmtFusionHelper {
 
   std::optional<ErrorGroupPattern> FuseIternalPattenPrototype(
       std::vector<StmtPattern>* stmt_patterns,
-      std::function<bool(const IternalPattern&, const IternalPattern&)>& FuseTargetCondition) const{
+      std::function<bool(const StmtPattern&, const StmtPattern&)>& FuseTargetCondition) const{
 
     while(true){
       const auto& pattern_pair = FindConnetedPattenPairWithCondition(
@@ -333,7 +338,7 @@ class StmtFusionHelper {
       if (!pattern_pair.value()){
         break;
       }
-      const std::variant<IternalPattern, ErrorGroupPattern>& new_pattern = 
+      const std::variant<StmtPattern, ErrorGroupPattern>& new_pattern = 
         MergePattern(pattern_pair.first, pattern_pair.second);
 
       if (IsErrorGroupPattern(new_pattern)){
@@ -350,7 +355,7 @@ class StmtFusionHelper {
   std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::vector<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
-      [](const StmtPattern& upstream, const IternalPattern& downstream){
+      [](const StmtPattern& upstream, const StmtPattern& downstream){
         return IsISPattern(upstream) && IsPSPattern(downstream);
       }
     );
@@ -359,7 +364,7 @@ class StmtFusionHelper {
   std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::vector<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
-      [](const StmtPattern& upstream, const IternalPattern& downstream){
+      [](const StmtPattern& upstream, const StmtPattern& downstream){
         return IsPSPattern(upstream) && IsPSPattern(downstream);
       }
     );
@@ -368,7 +373,7 @@ class StmtFusionHelper {
   std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::vector<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
-      [](const StmtPattern& upstream, const IternalPattern& downstream){
+      [](const StmtPattern& upstream, const StmtPattern& downstream){
         return IsISPattern(upstream) && IsRPattern(downstream);
       }
     );
@@ -377,7 +382,7 @@ class StmtFusionHelper {
   std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(std::vector<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
-      [](const StmtPattern& upstream, const IternalPattern& downstream){
+      [](const StmtPattern& upstream, const StmtPattern& downstream){
         return IsPSPattern(upstream) && IsRPattern(downstream);
       }
     );
