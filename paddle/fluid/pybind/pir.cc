@@ -595,13 +595,29 @@ void BindOperation(py::module *m) {
            })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
-      .def("__repr__", [](Operation &self) {
-        std::ostringstream print_stream;
-        print_stream << "Operation(";
-        self.Print(print_stream);
-        print_stream << ")";
-        return print_stream.str();
-      });
+      .def("__repr__",
+           [](Operation &self) {
+             std::ostringstream print_stream;
+             print_stream << "Operation(";
+             self.Print(print_stream);
+             print_stream << ")";
+             return print_stream.str();
+           })
+      .def("set_opcallstack",
+           [](Operation &self,
+              const std::vector<std::string> &callstack) -> void {
+             std::vector<pir::Attribute> op_callstack_infos;
+             for (auto str : callstack) {
+               op_callstack_infos.push_back(
+                   pir::StrAttribute::get(pir::IrContext::Instance(), str));
+             }
+
+             self.set_attribute(
+                 paddle::framework::OpProtoAndCheckerMaker::
+                     OpCreationCallstackAttrName(),
+                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                          op_callstack_infos));
+           });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
