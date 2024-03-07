@@ -179,7 +179,7 @@
   output : Tensor(y_grad), Tensor(out_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
-    param : [y, grad_x, grad_x]
+    param : [y, out, out]
   kernel :
     func : divide_double_grad
     data_type : out
