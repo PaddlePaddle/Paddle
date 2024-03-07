@@ -2943,18 +2943,6 @@ void PartialSendInferMeta(const MetaTensor& x,
           "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
 }
 
-void PartialRecvInferMeta(int ring_id,
-                          int peer,
-                          DataType dtype,
-                          const std::vector<int>& out_shape,
-                          bool use_calc_stream,
-                          int num,
-                          int id,
-                          MetaTensor* out) {
-  out->set_dims(common::make_ddim(out_shape));
-  out->set_dtype(dtype);
-}
-
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,

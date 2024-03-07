@@ -1124,7 +1124,6 @@
   output : Tensor(out)
   infer_meta :
     func: PartialRecvInferMeta
-    param: [ring_id, peer, dtype, out_shape, use_calc_stream, num, id]
   kernel :
     func : partial_recv
     param: [ring_id, peer, dtype, out_shape, use_calc_stream, num, id]
