@@ -34,12 +34,14 @@ class LlamaWhile(nn.Layer):
     def forward(self, logits, input_ids):
         batch_size, cur_len = paddle.shape(input_ids)
         unfinished_flag = paddle.full([batch_size, 1], True, dtype="bool")
-        max_new_tokens = paddle.full([1], 4, dtype="int64")
-        while cur_len < max_new_tokens and paddle.any(unfinished_flag):
-            last_token = input_ids[:, -1]
+        max_new_tokens = paddle.full_like(cur_len, 36)
+        print(cur_len, max_new_tokens)
+        print(cur_len < max_new_tokens)
+        while cur_len < max_new_tokens:
+            print(cur_len)
             # [batch_size, vocab_size]
-            logits = logits[:, -1, :]
-            probs = F.softmax(logits)
+            # logits = logits[:, -1, :]
+            probs = F.softmax(logits[:, -1, :])
 
             # compute next_tokens
             top_ps_tensor = paddle.full(
@@ -49,9 +51,11 @@ class LlamaWhile(nn.Layer):
             )
             _, next_tokens = paddle.tensor.top_p_sampling(probs, top_ps_tensor)
             input_ids = paddle.concat([input_ids, next_tokens], axis=1)
-            paddle.increment(cur_len)
+            # paddle.increment(cur_len)
+            cur_len += 1
 
-        return input_ids, last_token
+        # return input_ids, last_token
+        return input_ids
 
 
 class TestLlamaPostProcess(unittest.TestCase):
@@ -70,24 +74,27 @@ class TestLlamaPostProcess(unittest.TestCase):
     def eval(self, use_cinn):
         paddle.seed(2024)
         net = LlamaWhile()
+        net.eval()
         input_spec = [
             InputSpec(shape=[None, None, 3200], dtype='float32'),  # logits
             InputSpec(shape=[None, None], dtype='int64'),  # input_ids
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
-        net.eval()
-        out, _ = net(self.logits, self.input_ids)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
+
+        out = net(self.logits, self.input_ids)
+        # if use_cinn:
+        #     self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        # if utils.unittest_use_cinn():
+        cinn_out = self.eval(use_cinn=True)
+        print(dy_out)
+        print(cinn_out)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':

@@ -37,6 +37,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
@@ -647,9 +648,18 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       if (in_dim.size() == 1u && in_dim[0] == 1u) {
         info.full_broadcast = true;
         std::cerr << "full broadcast !!!!!!!!!!!!\n";
+
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
           info.output_shape.push_back(output_shape[i]);
+          if (output_shape[i] < 0) {
+            ::pir::ShapeConstraintIRAnalysis& shape_analysis =
+                ::pir::ShapeAnalysisManager::Instance().Get(
+                    it->first->GetParentProgram());
+            const auto& x_shape =
+                shape_analysis.GetShapeOrDataForValue(it->first->result(0));
+            info.output_dim_expr.push_back(x_shape.shape()[i]);
+          }
         }
       } else if (in_dim.size() == broadcast_axes.size()) {
         if (in_dim.size() != output_shape.size()) {

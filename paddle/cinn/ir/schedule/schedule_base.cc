@@ -127,6 +127,10 @@ void ScheduleBase::Broadcast(const std::string& block_name,
       auto loop_temp = all_loops[axis].As<ir::For>();
       int extent = factors[i];
       loop_temp->extent = Expr(extent);
+      if (extent < 0) {
+        ir::Dim dim("var_00", info.output_dim_expr[i]);
+        loop_temp->extent = Expr(dim->dim_expr);
+      }
 
       if (info.with_constrain) {
         auto check = ir::EQ::Make(loop_temp->loop_var, Expr(0));
@@ -183,6 +187,10 @@ void ScheduleBase::Broadcast(const std::string& block_name,
     auto loop_temp = all_loops[axis].As<ir::For>();
     int extent = factors[i];
     loop_temp->extent = Expr(extent);
+    if (extent < 0) {
+      ir::Dim dim("var_00", info.output_dim_expr[i]);
+      loop_temp->extent = Expr(dim->dim_expr);
+    }
 
     if (!full_broadcast && (!(info.with_constrain))) {
       schedule_realize->iter_values[axis] = loop_temp->loop_var;
