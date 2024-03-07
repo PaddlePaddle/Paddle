@@ -33,9 +33,10 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                             DenseTensor* input_grad) {
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
-  const phi::KernelKey& kernel_key = {phi::TransToPhiBackend(input.place()),
-                                      phi::DataLayout::ALL_LAYOUT,
-                                      input.dtype()};
+  const phi::KernelKey& kernel_key = {
+      phi::TransToPhiBackend(input_grad->place()),
+      phi::DataLayout::ALL_LAYOUT,
+      input.dtype()};
   using kernel_signature_fill = void (*)(
       const DeviceContext&, const DenseTensor&, const Scalar&, DenseTensor*);
   PD_VISIT_KERNEL("fill",
