@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <list>
 
 namespace cinn::api {
 
@@ -22,6 +23,7 @@ struct PartialShardablePattern {};
 // Reduce base pattern
 template <typename T>
 struct ReductionPattern {
+  explicit ReductionPattern(const ReductionPattern& other) = default;
   using Nothing = std::monostate;
   std::variant<Nothing, InjectiveSourcePattern<T>, PartialShardablePattern<T>> opt_inputs;
   SingleReductionOpPattern<T> reduction_op_pattern;
@@ -34,13 +36,14 @@ using StmtPattern = std::variant<InjectiveSourcePattern<T>, ReductionPattern<T>,
 
 // Stmts := [Stmt]
 template <typename T>
-using StmtsPattern = std::vector<StmtPattern>;
+using StmtsPattern = std::list<StmtPattern>;
 
 // fuse rules:
-//  1. PS * PS -> PS
-//  2. IS * PS -> PS
-//  3. IS * R -> R
-//  4. PS * R -> R
+//  1. IS * IS -> IS
+//  2. PS * PS -> PS
+//  3. IS * PS -> PS
+//  4. IS * R -> R
+//  5. PS * R -> R
 
 // lifting rules:
 //  1. R -> Stmts
