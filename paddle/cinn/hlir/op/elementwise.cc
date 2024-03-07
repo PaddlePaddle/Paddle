@@ -1021,9 +1021,14 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    CHECK_EQ(pack_args.size(), 4);
-    CHECK(pack_args[2].is_string());
-    std::string tensor_name = pack_args[2].operator std::string();
+    std::string tensor_name;
+    if (pack_args.size() == 4) {
+      CHECK(pack_args[2].is_string());
+      tensor_name = pack_args[2].operator std::string();
+    } else {
+      CHECK(pack_args[1].is_string());
+      tensor_name = pack_args[1].operator std::string();
+    }
 
     ir::Tensor out = pe::Reshape(tensor_A, output_shapes[0], tensor_name);
     std::vector<CINNValue> res;
