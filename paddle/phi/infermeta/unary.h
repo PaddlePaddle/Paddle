@@ -139,6 +139,8 @@ void CropInferMeta(const MetaTensor& x,
 
 void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
+void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
+
 void CumInferMeta(const MetaTensor& x,
                   int axis,
                   bool flatten,

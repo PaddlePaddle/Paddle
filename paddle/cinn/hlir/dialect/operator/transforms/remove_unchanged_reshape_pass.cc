@@ -45,10 +45,13 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
             .IsDynamicShape()) {
       pir::ShapeConstraintIRAnalysis& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-
-      return shape_analysis.GetShapeOrDataForValue(op->operand_source(0))
-                 .shape() ==
-             shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+      if (shape_analysis.HasShapeOrDataForValue(op->operand_source(0)) &&
+          shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+        return shape_analysis.GetShapeOrDataForValue(op->operand_source(0))
+                   .shape() ==
+               shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+      }
+      return false;
     }
 
     return (op->operand_source(0)
