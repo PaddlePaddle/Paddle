@@ -153,50 +153,48 @@ static std::function<T(const pir::Attribute& attr)> GetAttrCast(
       kAttrCastMap = {
           {AttrType::BOOL,
            [](const pir::Attribute& attr) {
-             return VariantType{attr.dyn_cast<pir::BoolAttribute>().data()};
+             return T{attr.dyn_cast<pir::BoolAttribute>().data()};
            }},
           {AttrType::FLOAT,
            [](const pir::Attribute& attr) {
-             return VariantType{attr.dyn_cast<pir::FloatAttribute>().data()};
+             return T{attr.dyn_cast<pir::FloatAttribute>().data()};
            }},
           {AttrType::DOUBLE,
            [](const pir::Attribute& attr) {
-             return VariantType{attr.dyn_cast<pir::DoubleAttribute>().data()};
+             return T{attr.dyn_cast<pir::DoubleAttribute>().data()};
            }},
           {AttrType::INT32,
            [](const pir::Attribute& attr) {
-             return VariantType{attr.dyn_cast<pir::Int32Attribute>().data()};
+             return T{attr.dyn_cast<pir::Int32Attribute>().data()};
            }},
           {AttrType::INT64,
            [](const pir::Attribute& attr) {
-             return VariantType{attr.dyn_cast<pir::Int64Attribute>().data()};
+             return T{attr.dyn_cast<pir::Int64Attribute>().data()};
            }},
           {AttrType::INT_ARRAY,
            [](const pir::Attribute& attr) {
-             return VariantType{
-                 attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
-                     .data()
-                     .GetData()};
+             return T{attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
+                          .data()
+                          .GetData()};
            }},
           {AttrType::STRING,
            [](const pir::Attribute& attr) {
-             return VariantType{attr.dyn_cast<pir::StrAttribute>().AsString()};
+             return T{attr.dyn_cast<pir::StrAttribute>().AsString()};
            }},
           {AttrType::DATA_TYPE,
            [](const pir::Attribute& attr) {
-             return VariantType{
+             return T{
                  attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data()};
            }},
           {AttrType::PLACE,
            [](const pir::Attribute& attr) {
-             return VariantType{
-                 attr.dyn_cast<paddle::dialect::PlaceAttribute>().data()};
+             return T{attr.dyn_cast<paddle::dialect::PlaceAttribute>().data()};
            }},
           {AttrType::ARRAY,
            [](const pir::Attribute& attr) {
              auto attr_vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
              if (attr_vec.empty()) {
-               return VariantType{std::vector<int>()};
+               return T{std::vector<int>()};
              }
              AttrType element_type = GetAttributeType(attr_vec[0]);
 
@@ -207,61 +205,51 @@ static std::function<T(const pir::Attribute& attr)> GetAttrCast(
                  vec_bools.push_back(
                      vec_element.dyn_cast<pir::BoolAttribute>().data());
                }
-               AttrType element_type = GetAttributeType(attr_vec[0]);
-
-               if (element_type == AttrType::BOOL) {
-                 std::vector<bool> vec_bools;
-                 vec_bools.reserve(attr_vec.size());
-                 for (auto vec_element : attr_vec) {
-                   vec_bools.push_back(
-                       vec_element.dyn_cast<pir::BoolAttribute>().data());
-                 }
-                 return T{vec_bools};
-               } else if (element_type == AttrType::INT32) {
-                 std::vector<int> vec_int32;
-                 vec_int32.reserve(attr_vec.size());
-                 for (auto vec_element : attr_vec) {
-                   vec_int32.push_back(
-                       vec_element.dyn_cast<pir::Int32Attribute>().data());
-                 }
-                 return T{vec_int32};
-               } else if (element_type == AttrType::INT64) {
-                 std::vector<int64_t> vec_int64;
-                 vec_int64.reserve(attr_vec.size());
-                 for (auto vec_element : attr_vec) {
-                   vec_int64.push_back(
-                       vec_element.dyn_cast<pir::Int64Attribute>().data());
-                 }
-                 return T{vec_int64};
-               } else if (element_type == AttrType::FLOAT) {
-                 std::vector<float> vec_float;
-                 vec_float.reserve(attr_vec.size());
-                 for (auto vec_element : attr_vec) {
-                   vec_float.push_back(
-                       vec_element.dyn_cast<pir::FloatAttribute>().data());
-                 }
-                 return T{vec_float};
-               } else if (element_type == AttrType::DOUBLE) {
-                 std::vector<double> vec_double;
-                 vec_double.reserve(attr_vec.size());
-                 for (auto vec_element : attr_vec) {
-                   vec_double.push_back(
-                       vec_element.dyn_cast<pir::DoubleAttribute>().data());
-                 }
-                 return T{vec_double};
-               } else if (element_type == AttrType::STRING) {
-                 std::vector<std::string> vec_string;
-                 vec_string.reserve(attr_vec.size());
-                 for (auto vec_element : attr_vec) {
-                   vec_string.push_back(
-                       vec_element.dyn_cast<pir::StrAttribute>().AsString());
-                 }
-                 return T{vec_string};
-               } else {
-                 PADDLE_THROW(phi::errors::Unimplemented(
-                     "Unsupported ir Attribute type when casting it into "
-                     "vector."));
+               return T{vec_bools};
+             } else if (element_type == AttrType::INT32) {
+               std::vector<int> vec_int32;
+               vec_int32.reserve(attr_vec.size());
+               for (auto vec_element : attr_vec) {
+                 vec_int32.push_back(
+                     vec_element.dyn_cast<pir::Int32Attribute>().data());
                }
+               return T{vec_int32};
+             } else if (element_type == AttrType::INT64) {
+               std::vector<int64_t> vec_int64;
+               vec_int64.reserve(attr_vec.size());
+               for (auto vec_element : attr_vec) {
+                 vec_int64.push_back(
+                     vec_element.dyn_cast<pir::Int64Attribute>().data());
+               }
+               return T{vec_int64};
+             } else if (element_type == AttrType::FLOAT) {
+               std::vector<float> vec_float;
+               vec_float.reserve(attr_vec.size());
+               for (auto vec_element : attr_vec) {
+                 vec_float.push_back(
+                     vec_element.dyn_cast<pir::FloatAttribute>().data());
+               }
+               return T{vec_float};
+             } else if (element_type == AttrType::DOUBLE) {
+               std::vector<double> vec_double;
+               vec_double.reserve(attr_vec.size());
+               for (auto vec_element : attr_vec) {
+                 vec_double.push_back(
+                     vec_element.dyn_cast<pir::DoubleAttribute>().data());
+               }
+               return T{vec_double};
+             } else if (element_type == AttrType::STRING) {
+               std::vector<std::string> vec_string;
+               vec_string.reserve(attr_vec.size());
+               for (auto vec_element : attr_vec) {
+                 vec_string.push_back(
+                     vec_element.dyn_cast<pir::StrAttribute>().AsString());
+               }
+               return T{vec_string};
+             } else {
+               PADDLE_THROW(phi::errors::Unimplemented(
+                   "Unsupported ir Attribute type when casting it into "
+                   "vector."));
              }
            }},
       };
