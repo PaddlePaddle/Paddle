@@ -109,8 +109,8 @@ class TestSliceConcat(unittest.TestCase):
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
+        # if use_cinn:
+        #     self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

@@ -610,10 +610,16 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       continue;
     }
 
+    if (it->second.size() > 1) {
+      for (size_t i = 0; i < it->second.size(); ++i) {
+        std::cerr << "align info" << it->second[i].DebugStr() << std::endl;
+      }
+    }
     PADDLE_ENFORCE_EQ(
         it->second.size(),
         1,
-        phi::errors::Unimplemented("only suppopt one transform yet"));
+        phi::errors::Unimplemented("%s, only suppopt one transform yet",
+                                   it->first->name()));
 
     if (it->second[0].type == ScheduleAlignType::kBroadcast) {
       // get broadcast op

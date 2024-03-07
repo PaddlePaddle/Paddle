@@ -273,6 +273,7 @@ void SetLeafBlockByGroupView(
   }
 
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
+
   CHECK_EQ(origin_group->ops.size(), new_group->ops.size());
   UpdateGroupShapeExprs(new_group,
                         origin_group,
@@ -546,6 +547,8 @@ pir::Operation* ProcessDyShapeGroup(
   cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
   for (auto value : value_view) {
+    std::cerr << "get impr " << value.impl() << "\t"
+              << value.defining_op()->name() << std::endl;
     const auto& shape_dim_expr = group->GetShapeOrDataExprs(value);
     const auto& data_shape = shape_dim_expr.data();
     if (data_shape) {

@@ -399,6 +399,22 @@ bool CanFuse(const GroupClusterNode& first,
         }
       }
     }
+    // bool have_dy_shape = false;
+    // for( auto& d: first.loop_ranges )
+    // {
+    //   if ( d < 0)
+    //   {
+    //     have_dy_shape = true;
+    //   }
+    // }
+
+    // for( auto& d: second.loop_ranges )
+    // {
+    //   if ( d < 0)
+    //   {
+    //     have_dy_shape = true;
+    //   }
+    // }
 
     if (first.loop_ranges != second.loop_ranges) {
       sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
@@ -528,7 +544,7 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     if (shape_analysis.HasShapeOrDataForValue(op->operand_source(0))) {
       auto sym_shape =
-          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+          shape_analysis.GetShapeOrDataForValue(op->operand_source(0)).shape();
       for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
         if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
           cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
@@ -574,6 +590,8 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
       for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
         if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
           cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
+
+          sch_node->factor_info[i] = sym_shape[i].Get<int64_t>();
         }
       }
     }

@@ -39,6 +39,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraints_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
@@ -150,6 +151,8 @@ void ApplyDivideGroupOpToFusionOpPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (FLAGS_group_schedule_tiling_first) {
+    pass_manager->AddPass(
+        std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
     pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   } else {

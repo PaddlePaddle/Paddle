@@ -28,6 +28,7 @@ std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
   // Mapper from original to new ops.
   std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
   auto clone_options = ::pir::CloneOptions(false, true, false);
+
   for (auto* op : ops) {
     VLOG(4) << "clone op :" << op->name();
     auto* new_op = op->Clone(ir_mapping, clone_options);
@@ -40,6 +41,28 @@ std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
 
   // Construct Base information for new Group
   auto new_group = std::make_shared<Group>(new_ops);
+
+  // clone data map expr
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> temp_map;
+  for (size_t i = 0; i < ops.size(); ++i) {
+    for (size_t j = 0; j < ops[i]->num_operands(); ++j) {
+      if (value_to_shape_or_data_exprs_.count(ops[i]->operand_source(j))) {
+        temp_map.emplace(
+            new_ops[i]->operand_source(j),
+            value_to_shape_or_data_exprs_.at(ops[i]->operand_source(j)));
+      }
+    }
+
+    for (size_t j = 0; j < ops[i]->num_regions(); ++j) {
+      if (value_to_shape_or_data_exprs_.count(ops[i]->result(j))) {
+        temp_map.emplace(new_ops[i]->result(j),
+                         value_to_shape_or_data_exprs_.at(ops[i]->result(j)));
+      }
+    }
+  }
+
+  new_group->set_value_to_shape_or_data_exprs(temp_map);
+
   for (auto& iter : this->input_ops) {
     new_group->input_ops[ops_mapper.at(iter.first)] = iter.second;
   }

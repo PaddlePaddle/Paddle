@@ -33,8 +33,8 @@ class PowSumDivideNet(nn.Layer):
 
     def forward(self, x, y, z, w):
         # S0, 4096 | S1, S2 | S3, 4096 | 4096
-        s0 = paddle.shape(y)
-        s1 = paddle.shape(x)[1].reshape([1])
+        s0 = paddle.shape(y)  # [2]
+        s1 = paddle.shape(x)[1].reshape([1])  #
 
         shape = paddle.concat([s0, s1])
         out0 = paddle.reshape(z, shape).cast("float32")
