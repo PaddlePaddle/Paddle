@@ -1050,19 +1050,6 @@ bool PoissonOpInferSymbolicShape(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
-bool PutAlongAxisOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  pir::Value operand_source = op->operand_source(0);
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(operand_source);
-
-  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
-  return true;
-}
-bool PutAlongAxis_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return PutAlongAxisOpInferSymbolicShape(op, shape_analysis);
-}
 
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
