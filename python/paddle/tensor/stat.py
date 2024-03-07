@@ -380,8 +380,10 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
         If ``mode`` == 'min' and ``axis`` is not None, the result will be a tuple of two tensors
         containing median values and their indices.
 
-        If data type of ``x`` is float64, data type of median values will be float64, otherwise
-        data type of median values will be float32. The data type of indices will be int64.
+        When ``mode`` == 'avg', if data type of ``x`` is float64, data type of median values will be float64,
+        otherwise data type of median values will be float32.
+        When ``mode`` == 'min', the data type of median values will be the same as ``x``. The data type of
+        indices will be int64.
 
     Examples:
         .. code-block:: python
@@ -417,13 +419,13 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
 
             >>> y5 = paddle.median(x, mode='min')
             >>> print(y5)
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            5.)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            5)
 
             >>> median_value, median_indices = paddle.median(x, axis=1, mode='min')
             >>> print(median_value)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1., 5., 9.])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 5, 9])
             >>> print(median_indices)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [1, 1, 1])
@@ -470,36 +472,38 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
         in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
         else 'float32'
     )
-    if sz & 1 == 0:
-        if mode == 'avg':
+    if mode == 'avg':
+        if sz & 1 == 0:
             out_tensor = paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
             ) + paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
             )
             out_tensor = paddle.cast(out_tensor, dtype=dtype) / 2
-        else:  # mode == 'min'
+        else:
             out_tensor = paddle.cast(
                 paddle.slice(
-                    tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
+                    tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
                 ),
                 dtype=dtype,
+            )
+    else:  # mode == 'min'
+        if sz & 1 == 0:
+            out_tensor = paddle.slice(
+                tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
             )
             if need_idx:
                 out_idx = paddle.slice(
                     idx, axes=[axis], starts=[kth - 1], ends=[kth]
                 )
-    else:
-        out_tensor = paddle.cast(
-            paddle.slice(
+        else:
+            out_tensor = paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-            ),
-            dtype=dtype,
-        )
-        if need_idx:
-            out_idx = paddle.slice(
-                idx, axes=[axis], starts=[kth], ends=[kth + 1]
             )
+            if need_idx:
+                out_idx = paddle.slice(
+                    idx, axes=[axis], starts=[kth], ends=[kth + 1]
+                )
 
     out_tensor = out_tensor + paddle.sum(
         paddle.cast(paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True
