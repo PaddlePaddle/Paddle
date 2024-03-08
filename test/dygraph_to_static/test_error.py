@@ -92,7 +92,7 @@ class LayerErrorInCompiletime2(paddle.nn.Layer):
     def test_func(self):
         """
         NOTE: The next line has a tab. And this test to check the IndentationError when spaces and tabs are mixed.
-    A tab here.
+	A tab here.
         """  # fmt: skip
         return
 

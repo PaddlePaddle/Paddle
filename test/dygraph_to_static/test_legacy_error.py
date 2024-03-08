@@ -81,22 +81,6 @@ class LayerErrorInCompiletime(paddle.nn.Layer):
         return out
 
 
-class LayerErrorInCompiletime2(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-    @paddle.jit.to_static(full_graph=True)
-    def forward(self):
-        self.test_func()
-
-    def test_func(self):
-        """
-        NOTE: The next line has a tab. And this test to check the IndentationError when spaces and tabs are mixed.
-	A tab here.
-        """  # fmt: skip
-        return
-
-
 @paddle.jit.to_static(full_graph=True)
 def func_error_in_runtime_with_empty_line(x):
     x = paddle.to_tensor(x)
@@ -287,35 +271,6 @@ class TestErrorStaticLayerCallInCompiletime_2(
             '<--- HERE',
             'return x',
         ]
-
-
-class TestErrorStaticLayerCallInCompiletime_3(
-    TestErrorStaticLayerCallInCompiletime
-):
-    def setUp(self):
-        self.reset_flags_to_default()
-        self.set_func_call()
-        self.filepath = inspect.getfile(inspect.unwrap(self.func_call))
-        self.set_exception_type()
-        self.set_message()
-
-    def set_exception_type(self):
-        self.exception_type = IndentationError
-
-    def set_message(self):
-        self.expected_message = [
-            '@paddle.jit.to_static',
-            'def forward(self):',
-            'self.test_func()',
-            '<--- HERE',
-        ]
-
-    def set_func_call(self):
-        layer = LayerErrorInCompiletime2()
-        self.func_call = lambda: layer()
-
-    def test_error(self):
-        self._test_raise_new_exception()
 
 
 class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
