@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/paddle_op_infer_sym.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_slice_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
@@ -202,8 +203,32 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   std::vector<int64_t> axes_vec = details::GetVectorAttr(op, "axes");
 
   // // Currently, we DO NOT support any element in `starts` is a Symbol.
-  ExprVec starts = slice_utils::GetExprVecFromData(starts_shape_data);
-  ExprVec ends = slice_utils::GetExprVecFromData(ends_shape_data);
+  ExprVec starts;
+  ExprVec ends;
+  if (operand_starts.defining_op()->name() == "pd_op.full_int_array" &&
+      operand_ends.defining_op()->name() == "pd_op.full_int_array") {
+    auto start_full = operand_starts.defining_op()
+                          ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    starts = paddle::dialect::details::VecInt642Expr(
+        cinn::dialect::ir::GetVectorAttr(start_full, "value"));
+
+    auto end_full =
+        operand_ends.defining_op()->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    ends = paddle::dialect::details::VecInt642Expr(
+        cinn::dialect::ir::GetVectorAttr(end_full, "value"));
+
+    std::cerr << "build context value\n";
+    for (auto d : starts) {
+      std::cerr << "d " << d << std::endl;
+    }
+
+    for (auto d : ends) {
+      std::cerr << "d " << d << std::endl;
+    }
+  } else {
+    starts = slice_utils::GetExprVecFromData(starts_shape_data);
+    ends = slice_utils::GetExprVecFromData(ends_shape_data);
+  }
 
   std::vector<int64_t> infer_flags = details::GetVectorAttr(op, "infer_flags");
 

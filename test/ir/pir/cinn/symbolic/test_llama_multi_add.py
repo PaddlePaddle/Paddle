@@ -43,11 +43,11 @@ class MultiAddNet(nn.Layer):
         y = mask.cast("float64")
         z = x.cast("float64")
 
-        s0 = x3 + x4  # without broadcast
-        s1 = s0 + y  # with broadcast, 1 to S0, 1, S1, S2
-        s2 = x1 + s1  # with broadcast, 1 to S0, 1, S1, S2
-        s3 = x2 + s1  # with broadcast, 1 to S0, 1, S1, S2
-        s4 = (z + s1).cast("bool")  # without broadcast
+        s0 = x3 + x4
+        s1 = s0 + y
+        s2 = x1 + s1
+        s3 = x2 + s1
+        s4 = (z + s1).cast("bool")
 
         return s2, s3, s4
 
@@ -79,12 +79,12 @@ class TestMultiAdd(unittest.TestCase):
 
     def test_eval(self):
         dy_outs = self.eval(use_cinn=False)
-        # if utils.unittest_use_cinn():
-        cinn_outs = self.eval(use_cinn=True)
-        for dy_out, cinn_out in zip(dy_outs, cinn_outs):
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        if utils.unittest_use_cinn():
+            cinn_outs = self.eval(use_cinn=True)
+            for dy_out, cinn_out in zip(dy_outs, cinn_outs):
+                np.testing.assert_allclose(
+                    cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+                )
 
 
 if __name__ == '__main__':

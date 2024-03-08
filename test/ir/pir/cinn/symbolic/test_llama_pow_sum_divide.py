@@ -32,9 +32,8 @@ class PowSumDivideNet(nn.Layer):
         super().__init__()
 
     def forward(self, x, y, z, w):
-        # S0, 4096 | S1, S2 | S3, 4096 | 4096
-        s0 = paddle.shape(y)  # [2]
-        s1 = paddle.shape(x)[1].reshape([1])  #
+        s0 = paddle.shape(y)
+        s1 = paddle.shape(x)[1].reshape([1])
 
         shape = paddle.concat([s0, s1])
         out0 = paddle.reshape(z, shape).cast("float32")
@@ -83,11 +82,11 @@ class TestPowSumDivide(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        # if utils.unittest_use_cinn():
-        cinn_out = self.eval(use_cinn=True)
-        np.testing.assert_allclose(
-            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-        )
+        if utils.unittest_use_cinn():
+            cinn_out = self.eval(use_cinn=True)
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+            )
 
 
 if __name__ == '__main__':
