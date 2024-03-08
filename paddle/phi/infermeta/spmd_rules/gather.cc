@@ -174,5 +174,46 @@ SpmdInfo GatherInferSpmdReverseDynamic(const DistMetaTensor& x,
   return GatherInferSpmdReverseBase(x, index, out, axis.to<int32_t>());
 }
 
+SpmdInfo GatherGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& index,
+                             const DistMetaTensor& out_grad,
+                             const Scalar& axis) {
+  EXTRACT_SHAPE_AND_DIST_ATTR(x);
+  EXTRACT_SHAPE_AND_DIST_ATTR(out_grad);
+  auto index_shape = common::vectorize(index.dims());
+  int index_ndim = index_shape.size();
+  TensorDistAttr index_dist_attr_src = index.dist_attr();
+  std::vector<int64_t> index_dims_mapping_src =
+      index_dist_attr_src.dims_mapping();
+  int axis_ = axis.to<int32_t>();
+
+  // TODO(zhangyichen): support shard on index and out_grad[axis]
+  std::vector<int64_t> out_grad_dims_mapping_dst(out_grad_dims_mapping_src);
+  TensorDistAttr out_grad_dist_attr_dst(out_grad_dist_attr_src);
+  if (index_ndim == 0) {
+    out_grad_dims_mapping_dst.insert(out_grad_dims_mapping_dst.begin() + axis_,
+                                     -1);
+  } else {
+    out_grad_dims_mapping_dst[axis_] = -1;
+    out_grad_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping_dst);
+  }
+
+  std::vector<int64_t> index_dims_mapping_dst(index_dims_mapping_src);
+  TensorDistAttr index_dist_attr_dst(index_dims_mapping_src);
+  index_dims_mapping_dst[axis_] = -1;
+  index_dist_attr_dst.set_dims_mapping(index_dims_mapping_dst);
+
+  std::vector<int64_t> x_grad_dims_mapping(x_dims_mapping_src);
+  for (int i = 0; i < x_ndim; ++i) {
+    x_grad_dims_mapping[i] = out_grad_dims_mapping_dst[i];
+  }
+
+  TensorDistAttr x_grad_dist_attr(x_dist_attr_src);
+  x_grad_dist_attr.set_dims_mapping(x_grad_dims_mapping);
+
+  return {{x_dist_attr_src, index_dist_attr_dst, out_grad_dist_attr_dst},
+          {x_grad_dist_attr}};
+}
+
 }  // namespace distributed
 }  // namespace phi

@@ -285,8 +285,8 @@ class TestDiagEmbedOpInferSymbolicShape(TestBase):
             [
                 'shape[6, 6], data[NULL]',
                 'shape[7, 7], data[NULL]',
-                'shape[S0, S1, Add(0, S2), Add(0, S2)], data[NULL]',
-                'shape[Add(1, S2), Add(1, S2), S0, S1], data[NULL]',
+                'shape[S0, S1, S2, S2], data[NULL]',
+                'shape[Add(S2, 1), Add(S2, 1), S0, S1], data[NULL]',
             ]
         ]
 

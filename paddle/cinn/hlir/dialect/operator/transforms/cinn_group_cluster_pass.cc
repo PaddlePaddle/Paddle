@@ -728,7 +728,7 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
     if (yield_output_ops.count(op) ||
         cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
             cinn::hlir::framework::kReduction) {
-      // TODO(phlrain): yiled output no nedd to push into first stage output,
+      // TODO(phlrain): yield output no nedd to push into first stage output,
       // Update here
       if (!first_output_ops.count(op)) {
         first_stage_output.push_back(op_path[op]);
@@ -846,7 +846,7 @@ class CinnGroupClusterPattern
         auto find_it = all_output_values.find(output_values[i]);
         if ((find_it != all_output_values.end()) &&
             (find_it->second < group_op->num_results())) {
-          // id < num_results means yiled input
+          // id < num_results means yield input
           rewriter.ReplaceAllUsesWith(group_op.result(find_it->second),
                                       new_group_op->result(i));
         }
@@ -872,7 +872,7 @@ class CinnGroupClusterPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 

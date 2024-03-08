@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/infermeta/spmd_rules/gather.h"
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
@@ -164,6 +165,42 @@ SpmdInfo ScatterInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << std::endl;
   return {{x_dist_attr_dst, index_dist_attr_dst, updates_dist_attr_dst},
           {out_dist_attr_dst}};
+}
+
+SpmdInfo ScatterGradInferSpmd(const DistMetaTensor& index,
+                              const DistMetaTensor& updates,
+                              const DistMetaTensor& out_grad,
+                              bool overwrite) {
+  EXTRACT_SHAPE_AND_DIST_ATTR(index);
+  EXTRACT_SHAPE_AND_DIST_ATTR(updates);
+  EXTRACT_SHAPE_AND_DIST_ATTR(out_grad);
+
+  // the batch axis of index, updates, out_grad must be replicated
+  std::vector<int64_t> index_dims_mapping(index_dims_mapping_src);
+  index_dims_mapping[0] = -1;
+  std::vector<int64_t> out_grad_dims_mapping(out_grad_dims_mapping_src);
+  out_grad_dims_mapping[0] = -1;
+
+  TensorDistAttr index_dist_attr_dst =
+      CopyTensorDistAttrForOutput(index_dist_attr_src);
+  index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
+  TensorDistAttr out_grad_dist_attr_dst =
+      CopyTensorDistAttrForOutput(out_grad_dist_attr_src);
+  out_grad_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping);
+
+  TensorDistAttr x_grad_dist_attr(out_grad_dist_attr_src);
+  std::vector<int64_t> x_dims_mapping(out_grad_dims_mapping);
+  x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
+
+  DistMetaTensor out_grad_dst(out_grad.dims(), out_grad_dist_attr_dst);
+  DistMetaTensor index_dst(index.dims(), index_dist_attr_dst);
+
+  SpmdInfo spmd_info = GatherInferSpmdBase(out_grad_dst, index_dst, 0);
+  TensorDistAttr updates_grad_dist_attr =
+      PADDLE_GET_CONST(TensorDistAttr, spmd_info.second[0]);
+
+  return {{index_dist_attr_dst, updates_dist_attr_src, out_grad_dist_attr_dst},
+          {x_grad_dist_attr, updates_grad_dist_attr}};
 }
 
 }  // namespace distributed
