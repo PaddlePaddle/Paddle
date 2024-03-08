@@ -357,6 +357,70 @@ class TestMaxOpInferSymbolicShape(TestBase):
         return True
 
 
+class TakeAlongAxisNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, indices):
+        out = paddle.take_along_axis(x, indices, axis=0)
+        out = paddle.take_along_axis(x, indices, axis=1)
+        out = paddle.take_along_axis(x, indices, axis=-1)
+        out = paddle.take_along_axis(x, indices, axis=-2)
+
+        return out
+
+
+class TestTakeAlongAxisOpInferSymbolicShape(TestBase):
+    def prepare_data(self):
+        self.cases = [
+            [
+                np.random.rand(2, 3, 4),
+                np.ones([6, 3, 4], dtype='int32'),
+            ],
+        ]
+
+        self.expected = [
+            [
+                'shape[S3, S1, S2], data[NULL]',
+                'shape[S0, S4, S2], data[NULL]',
+                'shape[S0, S1, S5], data[NULL]',
+                'shape[S0, S4, S2], data[NULL]',
+            ],
+        ]
+
+    def test_eval_symbolic(self):
+        net = TakeAlongAxisNet()
+
+        for i in range(len(self.cases)):
+            x, index = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for _ in range(len(x.shape))], dtype='float32'
+            )
+            index_spec = InputSpec(
+                shape=[None for _ in range(len(index.shape))], dtype='int32'
+            )
+
+            input_spec = [x_spec, index_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            sym_shape_str_list = get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.take_along_axis'
+            )
+            np.testing.assert_equal(
+                len(sym_shape_str_list), len(self.expected[i])
+            )
+            for j in range(len(sym_shape_str_list)):
+                np.testing.assert_equal(
+                    sym_shape_str_list[j].find(self.expected[i][j]),
+                    0,
+                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[j]}) is not expected {(self.expected[i][j])}',
+                )
+
+        return True
+
+
 class TransposeNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()

@@ -1083,9 +1083,7 @@ bool TakeAlongAxisOpInferSymbolicShape(
     for (int i = 0; i < axis; ++i) {
       out_sym_shape.push_back(arr_sym_shape[i]);
     }
-    for (size_t i = 0; i < indices_sym_shape.size(); ++i) {
-      out_sym_shape.push_back(indices_sym_shape[i]);
-    }
+    out_sym_shape.push_back(indices_sym_shape[axis]);
     for (size_t i = axis + 1; i < arr_sym_shape.size(); ++i) {
       out_sym_shape.push_back(arr_sym_shape[i]);
     }
