@@ -135,13 +135,17 @@ void RegisterAllCustomOperator(bool use_pir) {
                 VLOG(6) << "Add un-initialized tensor "
                            "because the optional input is None";
                 if (paddle::framework::detail::IsDuplicableVar(meta_input)) {
-                  vec_input_shapes.emplace_back();
-                  vec_input_dtypes.emplace_back();
+                  std::vector<std::vector<int64_t>> vec_input_shape;
+                  std::vector<DataType> vec_input_dtype;
+                  vec_input_shapes.emplace_back(vec_input_shape);
+                  vec_input_dtypes.emplace_back(vec_input_dtype);
                   vec_input_name2id_map[meta_inputs[i]] = vec_input_index;
                   vec_input_index++;
                 } else {
-                  input_shapes.emplace_back();
-                  input_dtypes.emplace_back();
+                  std::vector<int64_t> input_shape;
+                  DataType input_dtype = DataType::UNDEFINED;
+                  input_shapes.emplace_back(input_shape);
+                  input_dtypes.emplace_back(input_dtype);
                   input_name2id_map[meta_inputs[i]] = input_index;
                   input_index++;
                 }
@@ -303,13 +307,23 @@ void RegisterAllCustomOperator(bool use_pir) {
                                       "registry custom operator."));
                 const auto &input = inplace_reverse_map.at(output);
                 auto index = vec_input_name2id_map[input];
-                auto &input_shapes = vec_input_shapes[index];
-                output_name2value_num[output] = input_shapes.size();
-                all_values_num += input_shapes.size();
+                auto &vec_input_shape = vec_input_shapes[index];
+                output_name2value_num[output] = vec_input_shape.size();
               } else {
-                output_name2value_num[output] = 1;
-                all_values_num++;
+                if (inplace_reverse_map.find(output) !=
+                    inplace_reverse_map.end()) {
+                  const auto &input = inplace_reverse_map.at(output);
+                  auto index = input_name2id_map[input];
+                  // input_shapes[index] is dim of tensor, if the dim doesn't
+                  // have element, it must be a optional tensor that is None in
+                  // custom operator
+                  output_name2value_num[output] =
+                      input_shapes[index].empty() ? 0 : 1;
+                } else {
+                  output_name2value_num[output]++;
+                }
               }
+              all_values_num += output_name2value_num[output];
             }
 
             PADDLE_ENFORCE_EQ(
@@ -338,6 +352,13 @@ void RegisterAllCustomOperator(bool use_pir) {
 
             size_t value_index = 0;
             for (const auto &output : meta_outputs) {
+              auto value_num = output_name2value_num[output];
+              if (value_num == 0) {
+                // Optional value condition
+                pir::Type out_type;
+                argument_outputs.push_back(out_type);
+                continue;
+              }
               if (paddle::framework::detail::IsDuplicableVar(output)) {
                 auto value_num = output_name2value_num[output];
                 std::vector<pir::Type> out_types;
