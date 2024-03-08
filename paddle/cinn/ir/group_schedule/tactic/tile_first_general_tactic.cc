@@ -91,10 +91,6 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
-  if (sch->HasBlock(block_id)) {
-    std::cerr << "before process:  " << block_id << "\n"
-              << sch->GetLoops(block_id).front() << std::endl;
-  }
   MergeFlattenAxis(sch, block_id);
   VLOG(6) << "After MergeFlattenAxis on block: [" << block_id
           << "], loop nest:\n"
@@ -127,11 +123,6 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   VLOG(6) << "After Unroll on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
   SetReduceType(sch, block_id);
-
-  if (sch->HasBlock(block_id)) {
-    std::cerr << "after process:  " << block_id << "\n"
-              << sch->GetLoops(block_id).front() << std::endl;
-  }
 }
 
 void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
@@ -153,9 +144,6 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
     }
   }
 
-  for (auto& d : fuse_axis) {
-    std::cerr << "fuse axis " << d << std::endl;
-  }
   if (vec_reduce_axis_.size() >= 2 && !ir::IsReduceInitTensorName(block_id)) {
     sch->Fuse(block_id, fuse_axis);
   }
@@ -173,7 +161,6 @@ void TileFirstGeneralTactic::SplitFlattenInner(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
-  std::cerr << "11" << reduce_current_axis_ << std::endl;
   if (!IsInnerThreadReduceLoopGT(context_->group_tile_info, 1)) return;
 
   auto loops = sch->GetLoops(block_id);
@@ -189,7 +176,6 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
   };
   std::vector<int> split_factors;
   if (context_->group_tile_info->is_reduce_all) {
-    std::cerr << "is reudce all !!!!!!!!!\n";
     split_factors.push_back(256);
     split_factors.push_back(-1);
   } else if (IsReduceBlockGE(2048)) {
@@ -321,7 +307,6 @@ void TileFirstGeneralTactic::SetReduceType(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
                                           const std::string& block_id) {
   auto loops = sch->GetLoops(block_id);
-  std::cerr << "bind block " << loops.front() << std::endl;
   if (loops.size() == 1 || context_->group_tile_info->is_reduce_all) {
     sch->Split(loops[0], std::vector<int>({1, -1}));
   }
@@ -333,7 +318,6 @@ void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
   if (IsReduceBlock(context_->group_tile_info, block_id)) {
     auto loops = sch->GetLoops(block_id + "_rf");
     if (context_->group_tile_info->is_reduce_all) {
-      std::cerr << "split reduce all\n";
       sch->Split(loops[0], std::vector<int>({1, -1}));
     }
 
