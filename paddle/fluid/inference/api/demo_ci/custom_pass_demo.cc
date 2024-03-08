@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
                   FLAGS_modeldir + "/inference.pdiparams");
   config.EnableNewExecutor(true);
   config.EnableNewIR(true);
-  config.SwitchIrDebug(true);
+  // config.SwitchIrDebug(true);
+  config.EnableCustomPasses({"relu_replace_pass"});
   auto predictor = CreatePredictor(config);
 
   auto input_names = predictor->GetInputNames();
@@ -54,6 +55,19 @@ int main(int argc, char **argv) {
     inputs.emplace_back(std::move(input_tensor));
   }
   CHECK(predictor->Run(inputs, &outputs));
+
+  for (auto &output : outputs) {
+    CHECK(output.place() == paddle::GPUPlace{});
+    output = output.copy_to(paddle::CPUPlace{}, true);
+    LOG(INFO) << output.name() << "'s data :";
+    for (int64_t i = 0; i < output.numel(); i += 100) {
+      if (output.dtype() == paddle::DataType::FLOAT32) {
+        LOG(INFO) << output.data<float>()[i];
+      } else if (output.dtype() == paddle::DataType::INT32) {
+        LOG(INFO) << output.data<int>()[i];
+      }
+    }
+  }
 
   return 0;
 }

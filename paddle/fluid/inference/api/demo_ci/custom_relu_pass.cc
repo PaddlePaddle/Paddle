@@ -17,7 +17,7 @@ limitations under the License. */
 namespace {
 
 class ReluReplacePattern : public paddle::drr::DrrPatternBase {
-public:
+ public:
   std::string name() const override { return "ReluReplacePattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
@@ -32,7 +32,7 @@ public:
 };
 
 class ReluReplacePass : public pir::PatternRewritePass {
-public:
+ public:
   ReluReplacePass() : pir::PatternRewritePass("relu_replace_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
@@ -42,6 +42,6 @@ public:
   }
 };
 
-} // namespace
+}  // namespace
 
 REGISTER_IR_PASS(relu_replace_pass, ReluReplacePass);
