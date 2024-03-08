@@ -138,6 +138,48 @@ void InferSymExprForBlock(const Block& block,
           true,
           "InferSymbolicShape for %s failed.",
           op.name());
+
+      for (auto& res : op.results()) {
+        if (res.type().isa<paddle::dialect::DenseTensorType>()) {
+          const std::vector<int64_t>& infer_meta_shape = common::vectorize(
+              res.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+          const std::vector<symbol::DimExpr>& infer_sym_shape =
+              shape_analysis->GetShapeOrDataForValue(res).shape();
+
+          PADDLE_ENFORCE_EQ(
+              infer_meta_shape.size(),
+              infer_sym_shape.size(),
+              "InferSymbolicShape for %s failed! rank of infer_meta_shape is "
+              "[%d] but rank of infer_sym_shape is [%d]",
+              op.name(),
+              infer_meta_shape.size(),
+              infer_sym_shape.size());
+
+          for (size_t i = 0; i < infer_meta_shape.size(); ++i) {
+            if (infer_meta_shape[i] != -1) {
+              PADDLE_ENFORCE_EQ(
+                  infer_sym_shape[i].isa<int64_t>(),
+                  true,
+                  "InferSymbolicShape for %s failed! shape[%d] of "
+                  "infer_sym_shape shoule be int64_t NOT a symbol!",
+                  op.name(),
+                  i);
+
+              PADDLE_ENFORCE_EQ(
+                  infer_meta_shape[i],
+                  infer_sym_shape[i].dyn_cast<int64_t>(),
+                  "InferSymbolicShape for %s failed! shape[%d] of "
+                  "infer_sym_shape is [%d], but infer_meta_shape is [%d]",
+                  op.name(),
+                  i,
+                  infer_meta_shape[i],
+                  infer_sym_shape[i].dyn_cast<int64_t>(),
+                  infer_sym_shape.size());
+            }
+          }
+        }
+      }
+
       if (op.num_results() > 0) {
         // TODO(lanxianghit): deal with the ops which have more than 1
         // ACTUAL results
