@@ -44,8 +44,7 @@ setup(
     name="triton_ops",
     ext_modules=CUDAExtension(
         sources=[
-            "./matmul.cu",
-            "./fmha_triton.cu",
+            "./triton_wint8.cu",
         ] + generated_cu,
         extra_compile_args={
             "cc": ["-lcuda"],
