@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/forwards.h"

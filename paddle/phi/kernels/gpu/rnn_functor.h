@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "glog/logging.h"
-
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
