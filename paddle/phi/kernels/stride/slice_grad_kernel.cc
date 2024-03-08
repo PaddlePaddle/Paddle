@@ -34,19 +34,13 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                             DenseTensor* input_grad) {
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
-  const phi::KernelKey& kernel_key = {
-      phi::TransToPhiBackend(input_grad->place()),
-      phi::DataLayout::ALL_LAYOUT,
-      input.dtype()};
-  using kernel_signature_fill = void (*)(
+  const phi::KernelKey& fill_key = {phi::TransToPhiBackend(input_grad->place()),
+                                    phi::DataLayout::ALL_LAYOUT,
+                                    input.dtype()};
+  using fill_signature = void (*)(
       const DeviceContext&, const DenseTensor&, const Scalar&, DenseTensor*);
-  PD_VISIT_KERNEL("fill",
-                  kernel_key,
-                  kernel_signature_fill,
-                  dev_ctx,
-                  *input_grad,
-                  0,
-                  input_grad);
+  PD_VISIT_KERNEL(
+      "fill", fill_key, fill_signature, dev_ctx, *input_grad, 0, input_grad);
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   SliceStridedKernel<Context>(dev_ctx,
@@ -57,15 +51,19 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                               infer_flags,
                               decrease_axis,
                               &tmp);
-  using kernel_signature_strided_copy = void (*)(const DeviceContext&,
-                                                 const DenseTensor&,
-                                                 const std::vector<int64_t>&,
-                                                 const std::vector<int64_t>&,
-                                                 int64_t,
-                                                 DenseTensor*);
+  const phi::KernelKey& strided_copy_key = {
+      phi::TransToPhiBackend(out_grad->place()),
+      phi::DataLayout::ALL_LAYOUT,
+      input.dtype()};
+  using strided_copy_signature = void (*)(const DeviceContext&,
+                                          const DenseTensor&,
+                                          const std::vector<int64_t>&,
+                                          const std::vector<int64_t>&,
+                                          int64_t,
+                                          DenseTensor*);
   PD_VISIT_KERNEL("strided_copy",
-                  kernel_key,
-                  kernel_signature_strided_copy,
+                  strided_copy_key,
+                  strided_copy_signature,
                   dev_ctx,
                   out_grad,
                   common::vectorize<int64_t>(tmp.dims()),
