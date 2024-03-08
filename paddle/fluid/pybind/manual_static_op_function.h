@@ -767,15 +767,8 @@ static PyObject *static_api_run_custom_op(PyObject *self,
     auto value_num = output_name2value_num[output];
     if (value_num == 0) {
       // Optional value condition
-      if (paddle::framework::detail::IsDuplicableVar(output)) {
-        std::vector<pir::Type> out_types;
-        pir::Type out_vector_type =
-            pir::VectorType::get(pir::IrContext::Instance(), out_types);
-        argument_outputs.push_back(out_vector_type);
-      } else {
-        pir::Type out_type;
-        argument_outputs.push_back(out_type);
-      }
+      pir::Type out_type;
+      argument_outputs.push_back(out_type);
       continue;
     }
     if (paddle::framework::detail::IsDuplicableVar(output)) {
@@ -825,12 +818,14 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto &output = outputs.at(i);
     if (paddle::framework::detail::IsDuplicableVar(output)) {
-      auto split_op = paddle::dialect::ApiBuilder::Instance()
-                          .GetBuilder()
-                          ->Build<pir::SplitOp>(op->result(i));
-      auto split_outputs = split_op.outputs();
-      op_results.insert(
-          op_results.end(), split_outputs.begin(), split_outputs.end());
+      if (op->result(i).type().dyn_cast<pir::VectorType>()) {
+        auto split_op = paddle::dialect::ApiBuilder::Instance()
+                            .GetBuilder()
+                            ->Build<pir::SplitOp>(op->result(i));
+        auto split_outputs = split_op.outputs();
+        op_results.insert(
+            op_results.end(), split_outputs.begin(), split_outputs.end());
+      }
     } else {
       op_results.push_back(op->result(i));
     }

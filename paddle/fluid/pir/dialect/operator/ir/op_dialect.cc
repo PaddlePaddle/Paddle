@@ -473,8 +473,10 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
         auto& grad_op_output_names =
             OpMetaInfoHelper::GetOutputs(*grad_op_meta_ptr);
         bool is_double_grad_op =
-            (grad_op_name.find("_grad_grad") != grad_op_name.npos) ? true
-                                                                   : false;
+            (grad_op_name.find(paddle::framework::kDoubleGradSuffix) !=
+             grad_op_name.npos)
+                ? true
+                : false;
         for (auto& grad_op_output_name : grad_op_output_names) {
           auto fwd_input_name = paddle::framework::detail::NoGrad(
               grad_op_output_name, is_double_grad_op);
@@ -556,7 +558,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
 struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
   static std::vector<std::vector<pir::Value>> CustomOpVjp(
       pir::Operation* op,
-      const std::vector<std::vector<pir::Value>>& inputs_,
+      const std::vector<std::vector<pir::Value>>& inputs,
       const std::vector<std::vector<pir::Value>>& outputs,
       const std::vector<std::vector<pir::Value>>& out_grads,
       const std::vector<std::vector<bool>>& stop_gradients) {
@@ -593,13 +595,13 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     auto infershape_func = OpMetaInfoHelper::GetInferShapeFn(bwd_op_meta_info);
     auto inferdtype_func = OpMetaInfoHelper::GetInferDtypeFn(bwd_op_meta_info);
     PADDLE_ENFORCE_EQ(
-        inputs_.size(),
+        inputs.size(),
         fwd_inputs_name.size(),
         paddle::platform::errors::InvalidArgument(
             "Custom op: %s inputs size should be %d, but now is %d.",
             pir_op_name,
             fwd_inputs_name.size(),
-            inputs_.size()));
+            inputs.size()));
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         fwd_outputs_name.size(),
@@ -618,8 +620,10 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
             fwd_outputs_name.size(),
             out_grads.size()));
     bool is_double_grad_op =
-        (bwd_pir_op_name.find("_grad_grad") != bwd_pir_op_name.npos) ? true
-                                                                     : false;
+        (bwd_pir_op_name.find(paddle::framework::kDoubleGradSuffix) !=
+         bwd_pir_op_name.npos)
+            ? true
+            : false;
     pir::IrContext* ctx = pir::IrContext::Instance();
     pir::OpInfo pir_info = ctx->GetRegisteredOpInfo(bwd_pir_op_name);
     pir::OperationArgument argument(pir_info);
@@ -679,8 +683,8 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       const auto input_location = GetInputLocation(bwd_input_name);
       std::vector<pir::Value> input_values;
       if (input_location.first == 0) {
-        // grad op input is in inputs_
-        input_values = inputs_[input_location.second];
+        // grad op input is in inputs
+        input_values = inputs[input_location.second];
       } else if (input_location.first == 1) {
         // grad op input is in outputs
         input_values = outputs[input_location.second];
@@ -806,15 +810,8 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       auto value_num = output_name2value_num[bwd_output_name];
       if (value_num == 0) {
         // Optional value condition
-        if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
-          std::vector<pir::Type> out_types;
-          pir::Type out_vector_type =
-              pir::VectorType::get(pir::IrContext::Instance(), out_types);
-          argument_outputs.push_back(out_vector_type);
-        } else {
-          pir::Type out_type;
-          argument_outputs.push_back(out_type);
-        }
+        pir::Type out_type;
+        argument_outputs.push_back(out_type);
         continue;
       }
       if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
@@ -919,7 +916,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
                 pir_op_name,
                 bwd_output_name));
         int index = GetInputGradientIndex(bwd_output_name, is_double_grad_op);
-        if (bwd_op->result(i).type().dyn_cast<pir::VectorType>().size() != 0) {
+        if (bwd_op->result(i).type().dyn_cast<pir::VectorType>()) {
           auto split_op =
               ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>(
                   bwd_op->result(i));
