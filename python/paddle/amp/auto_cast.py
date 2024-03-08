@@ -255,7 +255,7 @@ def _pir_transform(t, dtype):
         op = t.get_defining_op()
         t.replace_all_uses_with(cast_param)
         block.remove_op(op)
-        t.assign_value(cast_param)
+        t.value_assign(cast_param)
 
 
 def _pir_to_impl(self, dtype, include_sublayers, floating_only):

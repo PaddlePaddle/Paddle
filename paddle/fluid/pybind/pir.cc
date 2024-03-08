@@ -833,7 +833,7 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<DenseTensorArrayType>(); })
       .def("is_dist_dense_tensor_type",
            [](Value self) { return self.type().isa<DistDenseTensorType>(); })
-      .def("assign_value", [](Value &self, Value value) { self = value; })
+      .def("value_assign", [](Value &self, Value value) { self = value; })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
       .def("set_type", [](Value self, Type type) { self.set_type(type); })

@@ -171,14 +171,6 @@ class OptimizerWithMixedPrecision:
 
     def _init_amp_var(self):
         if in_pir_mode():
-            # self._loss_scaling = paddle.pir.core.create_persistable_value(
-            #     dtype='float32',
-            #     shape=[1],
-            #     name=unique_name.generate("loss_scaling"),
-            #     initializer=paddle.nn.initializer.ConstantInitializer(
-            #         value=self._init_loss_scaling
-            #     ),
-            # )
             if self._use_dynamic_loss_scaling:
                 self._num_good_steps = paddle.pir.core.create_persistable_value(
                     dtype='int32',
@@ -281,19 +273,6 @@ class OptimizerWithMixedPrecision:
                 self._train_program, startup_program
             ):
                 self._init_amp_var()
-
-                # if loss.dtype != core.DataType.FLOAT32:
-                #     loss = loss.astype('float32')
-                # # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,
-                # # the model can be optimized.
-                # if (
-                #     self._use_dynamic_loss_scaling
-                #     or self._init_loss_scaling != 1.0
-                # ):
-                #     self._scaled_loss = loss * self._loss_scaling
-                # else:
-                #     self._scaled_loss = loss
-
                 params_grads = self._optimizer.backward(
                     self._scaled_loss,
                     startup_program,
@@ -301,8 +280,6 @@ class OptimizerWithMixedPrecision:
                     no_grad_set,
                     callbacks,
                 )
-                # if self._supports_check_nan_inf():
-                #     self._add_cast_ops_to_startup_program(startup_program)
                 return params_grads
 
         with program_guard(self._train_program, startup_program):
