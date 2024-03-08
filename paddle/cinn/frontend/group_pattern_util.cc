@@ -149,7 +149,7 @@ class StmtFusionHelper {
   MakeGetterStmt4Op(std::list<StmtPattern>* stmts) const {
     std::unordered_map<const pir::Operation*, StmtIter> op2stmt_iter;
     for (auto iter = stmts->begin(); iter != stmts->end(); ++iter) {
-      op2stmt_iter[GetSoleOp(*iter)] = iter;
+      VisitStmtOp(*iter, [&](const auto* op) { op2stmt_iter[op] = iter; });
     }
     return [map=std::move(op2stmt_iter)](const pir::Operation* op) -> std::optional<StmtIter> {
       const auto iter = map.find(op);
@@ -158,50 +158,64 @@ class StmtFusionHelper {
     };
   }
 
-  const pir::Operation* GetSoleOpImpl(const IS& injective_source) const {
-    CHECK_EQ(injective_source.ops.size(), 1);
-    return injective_source.ops.at(0);
+  template <typename DoEachT>
+  void VisitStmtOpImpl(const IS& injective_source, const DoEachT& DoEach) const {
+    for (const auto* op : injective_source.ops) {
+      DoEach(op);
+    }
   }
 
-  const pir::Operation* GetSoleOpImpl(const R& reduce) const {
-    return reduce.reduce_op;
+  template <typename DoEachT>
+  void VisitStmtOpImpl(const R& reduce, const DoEachT& DoEach) const {
+    DoEach(reduce.reduce_op);
   }
 
-  const pir::Operation* GetSoleOpImpl(const PS& partial_shardable) const {
-    CHECK_EQ(partial_shardable.ops.size(), 1);
-    return partial_shardable.ops.at(0);
+  template <typename DoEachT>
+  void VisitStmtOpImpl(const PS& partial_shardable, const DoEachT& DoEach) const {
+    for (const auto* op : partial_shardable.ops) {
+      DoEach(op);
+    }
   }
 
-  const pir::Operation* GetSoleOp(const StmtPattern& stmt) const {
-    return std::visit([&](const auto& impl) {
-      return GetSoleOpImpl(impl);
-    }, stmt);
+  template <typename DoEachT>
+  void VisitStmtOp(const StmtPattern& stmt, const DoEachT& DoEach) const {
+    std::visit([&](const auto& impl) { VisitStmtOpImpl(impl, DoEach); }, stmt);
   }
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(std::list<StmtPattern>* stmts) const {
+  template<typename IsDetailPatternT, typename ConstructPatternT>
+  std::optional<ErrorGroupPattern> MultiFuse(
+      const IsDetailPatternT& IsDetailPattern,
+      const ConstructPatternT& ConstructPattern,
+      std::list<StmtPattern>* stmts) const {
     const auto StmtIter4Op = MakeGetterStmt4Op(stmts);
     using NodeVisitor = std::function<void(StmtIter)>;
     const auto VisitInputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
-      const pir::Operation* op = GetSoleOp(*stmt);
-      VisitEachInputOp(op, [&](const pir::Operation* input) {
-        if (const auto& input_stmt = StmtIter4Op(input)) {
-          DoEach(input_stmt);
-        }
+      VisitStmtOp(*stmt, [&](const auto* op){
+        VisitInputOp(op, [&](const pir::Operation* input) {
+          if (const auto& input_stmt = StmtIter4Op(input)) {
+            if (IsDetailPattern(*input_stmt.value())) {
+              DoEach(input_stmt.value());
+            }
+          }
+        });
       });
     };
     const auto VisitOutputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
-      const pir::Operation* op = GetSoleOp(*stmt);
-      VisitEachOutputOp(op, [&](const pir::Operation* output) {
-        if (const auto& output_stmt = StmtIter4Op(output)) {
-          DoEach(output_stmt);
-        }
-      });
+      VisitStmtOp(*stmt, [&](const auto* op){
+        VisitOutputOp(op, [&](const pir::Operation* output) {
+          if (const auto& output_stmt = StmtIter4Op(output)) {
+            if (IsDetailPattern(*output_stmt.value())) {
+              DoEach(output_stmt.value());
+            }
+          }
+        });
+      });      
     };
-    const auto IsSinkInjectiveSourceStmt = [&](StmtIter stmt) {
-      if (!std::holds_alternative<IS>(*stmt)) return false;
+    const auto IsSinkPattern = [&](StmtIter stmt) {
+      if (!IsDetailPattern(*stmt)) return false;
       std::size_t num_injective_src_outputs = 0;
       VisitOutputStmt(node, [&](const auto& consumer) {
-        num_injective_src_outputs += std::holds_alternative<IS>(*consumer);
+        num_injective_src_outputs += IsDetailPattern(*consumer);
       });
       return num_injective_src_outputs == 0;
     };
@@ -212,7 +226,7 @@ class StmtFusionHelper {
     const auto& GetVisitedOps = [&](const auto stmt_iter) {
       std::vector<const pir::Operation*> visited_ops;
       reverse_walker(start, [&](const auto node){
-        visited_ops.push_back(GetSoleOp(node));
+        VisitStmtOp(node, [&](const auto* op) { visited_ops.push_back(op); });
       });
       std::sort(visited_ops.begin(), visited_ops.end(), Cmp);
       return visited_ops;
@@ -220,19 +234,19 @@ class StmtFusionHelper {
     common::BfsWalker<StmtIter> reverse_walker(VisitInputStmt);
     std::list<StmtPattern> fused_stmts;
     for (auto stmt_iter = stmts->begin(); stmt_iter != stmts->end(); ++stmt_iter) {
-      if (!IsSinkInjectiveSourceStmt(stmt_iter)) continue;
-      fused_stmts.push_back(IS{GetVisitedOps(stmt_iter)});
+      if (!IsSinkPattern(stmt_iter)) continue;
+      fused_stmts.emplace_back(ConstructPattern(GetVisitedOps(stmt_iter)));
     }
     for (auto stmt_iter = stmts->begin(); stmt_iter != start->end();) {
-      if (std::holds_alternative<IS>(*stmt_iter)) {
+      if (IsDetailPattern(*stmt_iter)) {
         stmt_iter = stmts->erase(stmt_iter);
       } else {
         ++stmt_iter;
       }
     }
     stmts->splice(stmts->begin(), std::move(fused_stmts));
+    return std::nullopt;
   }
-
   
   using OpVisitor = std::function<void(const pir::Operation*)>;
 
@@ -264,9 +278,9 @@ class StmtFusionHelper {
     } else if (kind == hlir::framework::kReduction) {
       return ConvertReductionOpToReductionPattern(op);
     } else if (kind == hlir::framework::kElementWise) {
-      return ConvertElementwiseOpToPS(op);
+      return ConvertOpToPS(op);
     } else if (kind == hlir::framework::kBroadcast) {
-      return ConvertBroadcastOpToPS(op);
+      return ConvertOpToPS(op);
     } else {
       LOG(FATAL) << "only kReduction, kElementWise, kBroadcast supported. op_name:" << op->op_name(); 
     }
@@ -281,11 +295,32 @@ class StmtFusionHelper {
     return R{{}, {op}};
   }
 
-  PS ConvertElementwiseOpToPS(const pir::Operation* op) const {
-    CHECK(!op->isa<cinn::dialect::ReshapeOp>()) << "reshape not supported. TODO(wuzhanfei).";
-    const auto& GetRank = [](pir::Value value) -> size_t {
-      return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
+  size_t GetRank(pir::Value value) const {
+    return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
+  };
+
+  PS ConvertOpToPS(const pir::Operation* op) const {
+    const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
+    return PS{
+      .ops={op},
+      .shardable_axes_signature=MakeShardableAxesSignature4Op(op),
     };
+  }
+
+  ShardableAxesSignature MakeShardableAxesSignature4Op(const pir::Operation* op) const {
+    const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
+    if (kind == hlir::framework::kElementWise) {
+      return MakeShardableAxesSignature4ElementWiseOp(op);
+    } else if (kind == hlir::framework::kBroadcast) {
+      return MakeShardableAxesSignature4BroadcastOp(op);
+    } else {
+      LOG(FATAL) << "only kReduction, kElementWise, kBroadcast supported. op_name:" << op->op_name(); 
+    }
+    LOG(FATAL) << "Dead code";
+  }
+
+  ShardableAxesSignature MakeShardableAxesSignature4ElementWiseOp(const pir::Operation* op) const {
+    CHECK(!op->isa<cinn::dialect::ReshapeOp>()) << "reshape not supported. TODO(wuzhanfei).";
     const size_t rank = [&]{
       std::optional<size_t> rank;
       for (int i = 0; i < op->num_operands(); ++i) {
@@ -304,35 +339,18 @@ class StmtFusionHelper {
       CHECK(rank.has_value());
       return rank.value();
     }();
-    const auto& shardable_axes_signature = [&]{
-      const ShardableAxes shardable_axes = GetElementwiseOpShardableAxes(rank);
-      std::unordered_map<OpOperand, ShardableAxes> input_shardable_axes;
-      for (int i = 0; i < op->num_operands(); ++i) {
-        input_shardable_axes[std::pair(op, i)] = shardable_axes;
-      }
-      return ShardableAxesSignature{
-        .output_shardable_axes,
-        .input_shardable_axes=input_shardable_axes,
-      };
-    }();
-    return PS{
-      .ops={op},
-      .shardable_axes_signature=shardable_axes_signature,
+    const ShardableAxes shardable_axes = ShardableAxesUtil::GetFullyShardableAxes(rank);
+    std::unordered_map<OpOperand, ShardableAxes> input_shardable_axes;
+    for (int i = 0; i < op->num_operands(); ++i) {
+      input_shardable_axes[std::pair(op, i)] = shardable_axes;
+    }
+    return ShardableAxesSignature{
+      .output_shardable_axes,
+      .input_shardable_axes=input_shardable_axes,
     };
   }
 
-  ShardableAxes GetElementwiseOpShardableAxes(size_t rank) const {
-    ShardableAxes ret;
-    for (int i = 0; i < rank; ++i) {
-      ret.emplace_back(ShardableAxis{
-        .axis=i,
-        .axis_name=std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo())
-      });
-    }
-    return ret;
-  }
-
-  PS ConvertBroadcastOpToPS(const pir::Operation* op) const {
+  ShardableAxesSignature MakeShardableAxesSignature4BroadcastOp(const pir::Operation* op) const {
     LOG(FATAL) << "TODO(wuzhanfei).";
   }
 
@@ -413,6 +431,11 @@ class StmtFusionHelper {
     return {};
   }
 
+  std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(std::list<StmtPattern>* stmts) const {
+    const auto ConstructISPattern = [&](const auto& ops) { return IS{ops}; };
+    return MultiFuse(IsISPattern, ConstructISPattern, stmts);
+  }
+
   std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
     return FuseIternalPattenPrototype(
       stmt_patterns,
@@ -422,13 +445,109 @@ class StmtFusionHelper {
     );
   }
 
-  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
-    return FuseIternalPattenPrototype(
-      stmt_patterns,
-      [](const StmtPattern& upstream, const StmtPattern& downstream){
-        return IsPSPattern(upstream) && IsPSPattern(downstream);
+  ShardableAxesSignature GetShardableAxesSignature(const std::vector<const pir::Operation*>& ops) const {
+    std::unordered_set<const pir::Operation*> ops_set(ops.begin(), ops.end());
+    const auto VisitUpStreamInOps = [&](const pir::Operation* op, const OpVisitor& DoEach) {
+      VisitInputOp(op, [&](const auto* input){
+        if (ops_set.count(input) == 0) return;
+        DoEach(input);
+      });
+    };
+    const auto VisitDownStreamInOps = [&](const pir::Operation* op, const OpVisitor& DoEach) {
+      VisitOutputOp(op, [&](const auto* output){
+        if (ops_set.count(output) == 0) return;
+        DoEach(output);
+      });
+    };
+    const auto IsSinkOp = [&](const pir::Operation* op) {
+      size_t num_donwstreams = 0;
+      VisitDownStreamInOps(op, [&](const auto*){  ++num_donwstreams; });
+      return num_donwstreams == 0;
+    };
+    const pir::Operation* sink = [&]{
+      std::optional<const pir::Operation*> sink;
+      for (const auto* op : ops) {
+        if (IsSinkOp(op)) {
+          CHECK(!sink.has_value()) << "only one sink node.";
+        }
+        sink = op;
       }
-    );
+      CHECK(sink.has_value());
+      return sink.value();
+    }();
+    const auto& value2shardable_axes = [&]{
+      common::TopoWalker<const pir::Operation*> reversed_walker(VisitDownStreamInOps, VisitUpStreamInOps);
+      size_t rank = GetRank(sink->result(0));
+      const auto& init_sa = ShardableAxesUtil::GetFullyShardableAxes(rank);
+      return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
+    }();
+    const auto& IsInputOpOperand = [&](const auto* op, int input_idx) {
+      const auto& defining_op = op->operand_source(input_idx)->defining_op();
+      return IsInThisFusionOp(defining_op) && ops_set.count(defining_op) == 0;
+    };
+    using OpOperandT = std::pair<const std::Operation*, /*input index*/int>;
+    const auto& input_op_operands = [&]{
+      std::vector<OpOperandT> op_operands;
+      for (const auto* op : ops) {
+        for (int i = 0; i < op->num_operands(); ++i) {
+          if (!IsInputOpOperand(op, i)) continue;
+          op_operands.emplace_back({op, i});
+        }
+      }
+      return op_operands;
+    }();
+    const auto& shardable_axes_sig = [&]{
+      ShardableAxesSignature signature;
+      ShardableAxesSignature.output_shardable_axes = value2shardable_axes.at(sink->result(0));
+      for (const auto& pair : input_op_operands) {
+        const auto& [op, idx] = pair;
+        pir::Value input = op->operand_source(idx);
+        ShardableAxesSignature.input_shardable_axes[pair] = value2shardable_axes.at(input);
+      }
+    }();
+    return shardable_axes_sig;
+  }
+
+  std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
+      common::TopoWalker<const pir::Operation*>& reversed_walker,
+      const pir::Operation* sink,
+      const ShardableAxes& init_sa) const {
+    std::unordered_map<pir::Value, ShardableAxes> value2shardable_axes{
+      {sink->result(0), init_sa}
+    };
+    const auto& UpdateValue2ShardableAxes = [&](pir::Value value, const ShardableAxes& sa) {
+      auto iter = value2shardable_axes.find(value);
+      if (iter != value2shardable_axes.end()) {
+        iter->second = ShardableAxesUtil::GetCommonShardableAxes(iter->second, sa);
+      } else {
+        iter->second = sa;
+      }
+    };
+    reversed_walker(sink, [&](const auto* op){
+      auto shardable_axes_sig = MakeShardableAxesSignature4Op(op);
+      const auto& old2new = ShardableAxesUtil::GetOldName2NewName(shardable_axes_sig.output_shardable_axes,
+                                                value2shardable_axes.at(op->result(0)));
+      for (auto& pair : shardable_axes_sig.input_shardable_axes) {
+        const auto& [my_op, input_idx] = pair.first;
+        CHECK_EQ(my_op, op);
+        auto* input_shardable_axes = &pair.second;
+        ShardableAxesUtil::UpdateShardableAxes(old2new, input_shardable_axes);
+        pir::Value input_value = op->operand_source(input_idx);
+        UpdateValue2ShardableAxes(input_value, *input_shardable_axes);
+      }
+    });
+    return value2shardable_axes;
+  }
+
+  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
+    const auto ConstructPSPattern = [&](const auto& ops) {
+      const auto shardable_axes_signature = GetShardableAxesSignature(ops);
+      return PS{
+        .ops=ops,
+        .shardable_axes_signature=shardable_axes_signature,
+      };
+    };
+    return MultiFuse(IsPSPattern, ConstructISPattern, stmts);
   }
 
   std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::list<StmtPattern>* stmt_patterns) const {
