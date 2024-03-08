@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_op.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -28,7 +29,7 @@
 namespace paddle {
 namespace dialect {
 
-const char* ShardTensorOp::attributes_name[1] = {"tensor_dist_attr"};
+const char* ShardTensorOp::attributes_name[1] = {"op_dist_attr"};
 
 void ShardTensorOp::VerifySig() {
   VLOG(4)
@@ -51,9 +52,9 @@ void ShardTensorOp::VerifySig() {
   VLOG(4) << "Verifying attributes:";
   {
     auto& attributes = this->attributes();
-    PADDLE_ENFORCE(attributes.count("tensor_dist_attr") > 0 &&
-                       attributes.at("tensor_dist_attr")
-                           .isa<paddle::dialect::TensorDistAttribute>(),
+    PADDLE_ENFORCE(attributes.count("op_dist_attr") > 0 &&
+                       attributes.at("op_dist_attr")
+                           .isa<paddle::dialect::OperationDistAttribute>(),
                    phi::errors::PreconditionNotMet(
                        "Type of attribute: tensor_dist_attr is not right."));
   }
@@ -78,6 +79,11 @@ void ShardTensorOp::Build(pir::Builder& builder,
                           pir::Value input,
                           pir::AttributeMap attributes) {
   VLOG(4) << "Start build ShardOp";
+  PADDLE_ENFORCE_EQ(
+      input.use_empty(),
+      true,
+      phi::errors::PreconditionNotMet("'input' use_empty is not true"));
+
   paddle::dialect::DenseTensorType input_tensor_type;
   if (input.type().isa<paddle::dialect::DenseTensorType>()) {
     input_tensor_type =
@@ -98,45 +104,60 @@ void ShardTensorOp::Build(pir::Builder& builder,
   argument.AddInput(input);
 
   VLOG(4) << "Builder construction attributes";
-  pir::Attribute operand_dist_attr =
+  auto process_mesh_attr = tensor_dist_attr.process_mesh_attr();
+  auto dims_mapping = tensor_dist_attr.dims_mapping();
+  TensorDistAttribute operand_dist_attr =
       TensorDistAttribute::get(pir::IrContext::Instance(),
-                               tensor_dist_attr.process_mesh_attr(),
-                               tensor_dist_attr.dims_mapping(),
+                               process_mesh_attr,
+                               dims_mapping,
                                tensor_dist_attr.partial_status());
-  std::vector<pir::Attribute> operand_dist_attrs =
-      std::vector<Attribute>{operand_dist_attr};
+  std::vector<TensorDistAttribute> operand_dist_attrs =
+      std::vector<TensorDistAttribute>{operand_dist_attr};
 
-  pir::Attribute result_dist_attr =
+  TensorDistAttribute result_dist_attr =
       TensorDistAttribute::get(pir::IrContext::Instance(),
-                               tensor_dist_attr.process_mesh_attr(),
-                               tensor_dist_attr.dims_mapping(),
+                               process_mesh_attr,
+                               dims_mapping,
                                tensor_dist_attr.partial_status());
-  std::vector<pir::Attribute> result_dist_attrs =
+  std::vector<TensorDistAttribute> result_dist_attrs =
       std::vector<TensorDistAttribute>{result_dist_attr};
-  pir::Attribnute op_dist_attr = OperationDistAttribute::Get(
-      process_mesh, operand_dist_attrs, result_dist_attrs);
+  pir::Attribute op_dist_attr =
+      OperationDistAttribute::get(pir::IrContext::Instance(),
+                                  process_mesh_attr,
+                                  operand_dist_attrs,
+                                  result_dist_attrs);
   argument.AddAttribute("op_dist_attr", op_dist_attr);
 
   VLOG(4) << "Builder construction outputs";
-  auto dims_mapping = tensor_dist_attr.dims_mapping();
   auto global_dims = input_tensor_type.dims();
-  PADDLE_ENFORCE_EQ(dims_mapping.size() == global_dims.size(),
-                    phi::errors::PreconditionNotMet(
-                        "dims_mapping size %d does not match input size %d",
-                        dims_mapping,
-                        global_dims));
+  auto process_mesh_shape = process_mesh_attr.shape();
+  PADDLE_ENFORCE(static_cast<int>(dims_mapping.size()) == global_dims.size(),
+                 phi::errors::PreconditionNotMet(
+                     "dims_mapping size %d does not match input size %d",
+                     dims_mapping.size(),
+                     global_dims.size()));
   std::vector<int> local_shape(global_dims.size());
   for (int i = 0; i < global_dims.size(); ++i) {
+    VLOG(4) << "debug global_dim: " << global_dims[i]
+            << ", dims_mapping: " << dims_mapping[i];
     if (dims_mapping[i] == -1) {
-      continue;
+      local_shape[i] = global_dims[i];
+    } else {
+      auto shard_size = process_mesh_shape[dims_mapping[i]];
+      VLOG(4) << "debug global_dim: " << global_dims[i]
+              << ", dims_mapping: " << dims_mapping[i]
+              << ", shard_size: " << shard_size;
+      PADDLE_ENFORCE(
+          global_dims[i] % shard_size == 0,
+          phi::errors::PreconditionNotMet(
+              "global_dims size %d can't be evenly devided by shard_size %d",
+              global_dims[i],
+              shard_size));
+      local_shape[i] = global_dims[i] / shard_size;
+      VLOG(4) << "debug global_dim: " << global_dims[i]
+              << ", shard_size: " << shard_size
+              << ", local_shape: " << local_shape[i];
     }
-    PADDLE_ENFORCE_EQ(
-        global_dims[i] % dims_mapping[i] != 0,
-        phi::errors::PreconditionNotMet(
-            "global_dims size %d can't be evenly devided by dims_mapping %d",
-            global_dims[i],
-            dims_mapping[i]));
-    local_shape = global_dims[i] / dims_mapping[i];
   }
 
   pir::Type out_dist_tensor_type =
