@@ -60,12 +60,7 @@ class OpResultImpl : public ValueImpl {
 ///
 class OpInlineResultImpl : public OpResultImpl {
  public:
-  OpInlineResultImpl(Type type, uint32_t result_index)
-      : OpResultImpl(type, result_index) {
-    if (result_index > MAX_INLINE_RESULT_IDX) {
-      throw("Inline result index should not exceed MaxInlineResultIndex(5)");
-    }
-  }
+  OpInlineResultImpl(Type type, uint32_t result_index);
 
   static bool classof(const ValueImpl &value) {
     return value.kind() < OUTLINE_RESULT_IDX;

@@ -107,6 +107,7 @@ struct BinaryCompareMessageConverter<false> {
 #define __THROW_ERROR_INTERNAL__(__ERROR_SUMMARY) \
   do {                                            \
     HANDLE_THE_ERROR                              \
+    ::common::enforce::SkipPaddleFatal();         \
     throw ::common::enforce::EnforceNotMet(       \
         __ERROR_SUMMARY, __FILE__, __LINE__);     \
     END_HANDLE_THE_ERROR                          \
@@ -114,6 +115,8 @@ struct BinaryCompareMessageConverter<false> {
 
 }  // namespace details
 
+TEST_API void SkipPaddleFatal(bool skip = true);
+TEST_API bool IsPaddleFatalSkip();
 TEST_API int GetCallStackLevel();
 TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
 TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
@@ -266,6 +269,14 @@ using CommonType2 = typename std::add_lvalue_reference<
     END_HANDLE_THE_ERROR                                                \
   } while (0)
 
+#define PADDLE_FATAL(...)                                          \
+  if (!::common::enforce::IsPaddleFatalSkip()) {                   \
+    auto info = ::common::enforce::EnforceNotMet(                  \
+        paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+    std::cerr << info.what() << std::endl;                         \
+    std::abort();                                                  \
+  }
+
 #define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
   do {                                                                         \
     auto __val1 = (__VAL1);                                                    \
@@ -378,6 +389,7 @@ class IrNotMetException : public std::exception {
     bool __cond__(COND);                                                    \
     if (UNLIKELY(is_error(__cond__))) {                                     \
       try {                                                                 \
+        ::common::enforce::SkipPaddleFatal();                               \
         throw pir::IrNotMetException(                                       \
             paddle::string::Sprintf("Error occurred at: %s:%d :\n%s",       \
                                     __FILE__,                               \

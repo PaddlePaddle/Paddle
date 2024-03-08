@@ -134,6 +134,7 @@ void ThrowWarnInternal(const std::string& message);
 #define PADDLE_THROW(...)                                         \
   do {                                                            \
     HANDLE_THE_ERROR                                              \
+    ::common::enforce::SkipPaddleFatal();                         \
     throw ::common::enforce::EnforceNotMet(                       \
         ::common::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
     END_HANDLE_THE_ERROR                                          \
