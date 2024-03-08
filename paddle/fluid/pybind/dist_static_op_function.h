@@ -62,11 +62,6 @@ static PyMethodDef DistOpsAPI[] = {
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for shard_tensor."},
 
-    {"shard_tensor",
-     (PyCFunction)(void (*)(void))static_api_shard_tensor,
-     METH_VARARGS | METH_KEYWORDS,
-     "C++ interface function for shard_tensor."},
-
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind
