@@ -545,16 +545,16 @@ StrategyForBinary(logical_right_shift, LogicalRightShift);
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(broadcast_ops) {
-#define CINN_REGISTER_BINARY(op__, op_stragegy__)                              \
+#define CINN_REGISTER_BINARY(op__, op_strategy__)                              \
   CINN_REGISTER_OP(op__)                                                       \
       .describe(#op__ " function")                                             \
       .set_num_inputs(1)                                                       \
       .set_num_outputs(1)                                                      \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                      \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)          \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)          \
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(              \
           "CINNStrategySymbolic",                                              \
-          cinn::hlir::op::StrategyFor##op_stragegy__##Symbolic)                \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)                \
       .set_attr("infershape",                                                  \
                 MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))        \
       .set_attr("inferdtype",                                                  \
@@ -567,16 +567,16 @@ CINN_REGISTER_HELPER(broadcast_ops) {
           "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)       \
       .set_support_level(4);
 
-#define CINN_REGISTER_BINARY_CMP(op__, op_stragegy__)                      \
+#define CINN_REGISTER_BINARY_CMP(op__, op_strategy__)                      \
   CINN_REGISTER_OP(op__)                                                   \
       .describe(#op__ " function")                                         \
       .set_num_inputs(1)                                                   \
       .set_num_outputs(1)                                                  \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                  \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)      \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)      \
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(          \
           "CINNStrategySymbolic",                                          \
-          cinn::hlir::op::StrategyFor##op_stragegy__##Symbolic)            \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)            \
       .set_attr("infershape",                                              \
                 MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))    \
       .set_attr("inferdtype",                                              \

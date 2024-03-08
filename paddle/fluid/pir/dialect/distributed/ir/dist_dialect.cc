@@ -28,7 +28,9 @@ DistDialect::DistDialect(pir::IrContext *context)
 }
 
 void DistDialect::initialize() {
-  RegisterAttributes<ProcessMeshAttribute, TensorDistAttribute>();
+  RegisterAttributes<ProcessMeshAttribute,
+                     TensorDistAttribute,
+                     OperationDistAttribute>();
   RegisterTypes<DistDenseTensorType>();
 }
 
@@ -46,7 +48,7 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
     os << process_mesh_attr.process_mesh();
   } else if (auto tensor_dist_attr = attr.dyn_cast<TensorDistAttribute>()) {
     // Todo: Design the tensor dist attr print format.
-    os << tensor_dist_attr.process_mesh();
+    os << tensor_dist_attr.process_mesh_attr().process_mesh();
   } else {
     os << "error_attribute_type";
   }

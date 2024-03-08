@@ -22,6 +22,38 @@ namespace phi {
 // Common InferMeta Functions for fusion operators.
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
+void FusedMultiTransformerInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& ln_scales,
+    const std::vector<const MetaTensor*>& ln_biases,
+    const std::vector<const MetaTensor*>& qkv_weights,
+    const paddle::optional<std::vector<const MetaTensor*>>& qkv_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& cache_kvs,
+    const paddle::optional<std::vector<const MetaTensor*>>& pre_caches,
+    const MetaTensor& rotary_tensor,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
+    const std::vector<const MetaTensor*>& out_linear_weights,
+    const paddle::optional<std::vector<const MetaTensor*>>& out_linear_biases,
+    const std::vector<const MetaTensor*>& ffn_ln_scales,
+    const std::vector<const MetaTensor*>& ffn_ln_biases,
+    const std::vector<const MetaTensor*>& ffn1_weights,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn1_biases,
+    const std::vector<const MetaTensor*>& ffn2_weights,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn2_biases,
+    bool pre_layer_norm,
+    float epsilon,
+    float dropout_rate,
+    int rotary_emb_dims,
+    bool is_test,
+    const std::string& dropout_implementation,
+    const std::string& act_method,
+    bool trans_qkvw,
+    int ring_id,
+    std::vector<MetaTensor*> cache_kv_outs,
+    MetaTensor* out);
+
 void AddActXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& y,
@@ -755,7 +787,6 @@ void FusedBiasDropoutResidualLnInferMeta(
     MetaTensor* ln_variance);
 
 void FusedBiasDropoutResidualLnGradInferMeta(
-    const MetaTensor& y_grad,
     const MetaTensor& x,
     const MetaTensor& residual,
     const MetaTensor& bias,
@@ -765,6 +796,7 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     const MetaTensor& ln_variance,
     const MetaTensor& bias_dropout_residual_out,
     const MetaTensor& dropout_mask_out,
+    const MetaTensor& y_grad,
     const float dropout_rate,
     const bool is_test,
     const bool dropout_fix_seed,

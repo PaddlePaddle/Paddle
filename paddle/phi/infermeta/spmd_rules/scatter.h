@@ -33,5 +33,9 @@ SpmdInfo ScatterInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  bool overwrite);
 
+SpmdInfo ScatterGradInferSpmd(const DistMetaTensor& index,
+                              const DistMetaTensor& updates,
+                              const DistMetaTensor& out_grad,
+                              bool overwrite);
 }  // namespace distributed
 }  // namespace phi

@@ -18,6 +18,7 @@
 
 #include "absl/types/optional.h"
 #include "paddle/cinn/adt/op_equation_context.h"
+#include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -25,6 +26,7 @@
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/utils/functional.h"
 
@@ -73,6 +75,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
         CHECK(!args.empty()) << "The input argument of " << op_name
                              << " compute is empty! Please check.";
         CINNValuePack pack_args = args[0];
+
         CHECK_GE(pack_args.size(), 1U)
             << "1 input tensor for " << op_name << " compute";
         CHECK_EQ(pack_args.size(), 2U);
@@ -1014,16 +1017,19 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
-    auto attr_store = attrs.attr_store;
-    CHECK(attr_store.count("shape")) << "find no attr of shape";
     auto tensor_A = A.as_tensor_ref();
-    auto stages = CreateStages({tensor_A});
+    auto stages = CreateStages({});
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    CHECK_EQ(pack_args.size(), 2);
-    CHECK(pack_args[1].is_string());
-    std::string tensor_name = pack_args[1].operator std::string();
+    std::string tensor_name;
+    if (pack_args.size() == 4) {
+      CHECK(pack_args[2].is_string());
+      tensor_name = pack_args[2].operator std::string();
+    } else {
+      CHECK(pack_args[1].is_string());
+      tensor_name = pack_args[1].operator std::string();
+    }
 
     ir::Tensor out = pe::Reshape(tensor_A, output_shapes[0], tensor_name);
     std::vector<CINNValue> res;
@@ -1128,6 +1134,166 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
   return strategy;
 }
 
+std::shared_ptr<framework::OpStrategy> StrategyForCastSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute cast_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input arguments of Cast compute is empty! Please check.\n";
+        CINNValuePack pack_args = args[0];
+        CHECK_GE(pack_args.size(), 1U)
+            << "at least 1 input tensors for Cast compute\n";
+        Expr A = pack_args[0];
+        CHECK(A.as_tensor());
+        CHECK(!output_shapes.empty());
+        auto tensor_A = A.as_tensor_ref();
+        auto stages = CreateStages({tensor_A});
+        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+        CHECK_EQ(pack_args.size(), 2U);
+        std::string tensor_name = pack_args[1].operator std::string();
+        ir::Tensor out = pe::Cast(tensor_A, out_type[0], tensor_name);
+        std::vector<CINNValue> res;
+        stages->InsertLazily(out);
+        res.push_back(CINNValue(out));
+        CHECK(!out_type.empty())
+            << "Output type of Cast is empty! Please check.\n";
+        res.push_back(CINNValue(stages));
+        *ret = CINNValuePack{res};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(cast_compute, lang::PackedFunc(), "strategy.cast.x86", 1);
+  return strategy;
+}
+
+std::shared_ptr<framework::OpStrategy> StrategyForYieldStore(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<int>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute cast_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input arguments of Cast compute is empty! Please check.\n";
+        CINNValuePack pack_args = args[0];
+        CHECK_GE(pack_args.size(), 1U)
+            << "at least 1 input tensors for Cast compute\n";
+        Expr A = pack_args[0];
+        CHECK(A.as_tensor());
+        CHECK(!output_shapes.empty());
+        auto tensor_A = A.as_tensor_ref();
+        auto stages = CreateStages({tensor_A});
+        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+        CHECK_EQ(pack_args.size(), 2U);
+        std::string tensor_name = pack_args[1].operator std::string();
+        ir::Tensor out = pe::Store(tensor_A, tensor_name);
+        std::vector<CINNValue> res;
+        stages->InsertLazily(out);
+        res.push_back(CINNValue(out));
+        CHECK(!out_type.empty())
+            << "Output type of Cast is empty! Please check.\n";
+        res.push_back(CINNValue(stages));
+        *ret = CINNValuePack{res};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(cast_compute,
+                    GetElementwiseScheduleFunc(output_shapes, target),
+                    "strategy.reshape.x86",
+                    1);
+  return strategy;
+}
+
+std::shared_ptr<framework::OpStrategy> StrategyForYieldStoreSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute cast_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input arguments of Cast compute is empty! Please check.\n";
+        CINNValuePack pack_args = args[0];
+        CHECK_GE(pack_args.size(), 1U)
+            << "at least 1 input tensors for Cast compute\n";
+        Expr A = pack_args[0];
+        CHECK(A.as_tensor());
+        CHECK(!output_shapes.empty());
+        auto tensor_A = A.as_tensor_ref();
+        auto stages = CreateStages({tensor_A});
+        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+        CHECK_EQ(pack_args.size(), 2U);
+        std::string tensor_name = pack_args[1].operator std::string();
+        ir::Tensor out = pe::Store(tensor_A, tensor_name);
+        std::vector<CINNValue> res;
+        stages->InsertLazily(out);
+        res.push_back(CINNValue(out));
+        CHECK(!out_type.empty())
+            << "Output type of Cast is empty! Please check.\n";
+        res.push_back(CINNValue(stages));
+        *ret = CINNValuePack{res};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(cast_compute, lang::PackedFunc(), "strategy.store.x86", 1);
+  return strategy;
+}
+
+std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute cast_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input arguments of Cast compute is empty! Please check.\n";
+        CINNValuePack pack_args = args[0];
+        CHECK_GE(pack_args.size(), 1U)
+            << "at least 1 input tensors for Cast compute\n";
+        Expr A = pack_args[0];
+        CHECK(A.as_tensor());
+        CHECK(!output_shapes.empty());
+        auto tensor_A = A.as_tensor_ref();
+        auto stages = CreateStages({tensor_A});
+        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+        CHECK_EQ(pack_args.size(), 2U);
+        std::string tensor_name = pack_args[1].operator std::string();
+        ir::Tensor out(ir::_Tensor_::Make(/*name=*/tensor_name,
+                                          /*dtype=*/tensor_A->type(),
+                                          /*shape=*/
+                                          {
+                                              Expr(1),
+                                          },
+                                          /*domain=*/
+                                          {
+                                              Expr(1),
+                                          }));
+        std::vector<CINNValue> res;
+        stages->InsertLazily(out);
+        res.push_back(CINNValue(out));
+        CHECK(!out_type.empty())
+            << "Output type of Cast is empty! Please check.\n";
+        res.push_back(CINNValue(stages));
+        *ret = CINNValuePack{res};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(cast_compute, lang::PackedFunc(), "strategy.store.x86", 1);
+  return strategy;
+}
+
 std::vector<Type> InferDtypeForCast(const std::vector<Type> &inputs_type,
                                     const framework::AttrMapType &attrs) {
   CHECK(attrs.count("dtype"));
@@ -1211,16 +1377,16 @@ std::vector<Type> InferDtypeForLogicalNot(const std::vector<Type> &inputs_type,
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(elementwise_ops) {
-#define CINN_REGISTER_UNARY(op__, op_stragegy__)                           \
+#define CINN_REGISTER_UNARY(op__, op_strategy__)                           \
   CINN_REGISTER_OP(op__)                                                   \
       .describe(#op__ " function")                                         \
       .set_num_inputs(1)                                                   \
       .set_num_outputs(1)                                                  \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                  \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)      \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)      \
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(          \
           "CINNStrategySymbolic",                                          \
-          cinn::hlir::op::StrategyFor##op_stragegy__##Symbolic)            \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)            \
       .set_attr("infershape",                                              \
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))  \
       .set_attr("inferdtype",                                              \
@@ -1270,13 +1436,13 @@ CINN_REGISTER_HELPER(elementwise_ops) {
 
 #undef CINN_REGISTER_UNARY
 
-#define CINN_REGISTER_COMPARE(op__, op_stragegy__)                            \
+#define CINN_REGISTER_COMPARE(op__, op_strategy__)                            \
   CINN_REGISTER_OP(op__)                                                      \
       .describe(#op__ " function")                                            \
       .set_num_inputs(1)                                                      \
       .set_num_outputs(1)                                                     \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                     \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)         \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)         \
       .set_attr("infershape",                                                 \
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))     \
       .set_attr("inferdtype",                                                 \
@@ -1441,6 +1607,8 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForCast)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForCastSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForCast))
@@ -1448,6 +1616,39 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
+      .set_support_level(4);
+
+  CINN_REGISTER_OP(yield_store)
+      .describe("This operator is used to cast input tensor's type to target.")
+      .set_num_inputs(1)
+      .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::StrategyFunction>(
+          "CINNStrategy", cinn::hlir::op::StrategyForYieldStore)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForYieldStoreSymbolic)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
+      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForCast))
+      .set_attr("inferlayout",
+                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
+      .set_support_level(4);
+
+  CINN_REGISTER_OP(generate_shape)
+      .describe("This operator is used to cast input tensor's type to target.")
+      .set_num_inputs(1)
+      .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic",
+          cinn::hlir::op::StrategyForGenerateShapeSymbolic)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
+      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForCast))
+      .set_attr("inferlayout",
+                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
 
   CINN_REGISTER_OP(arange)
