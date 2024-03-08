@@ -23,7 +23,7 @@ from paddle.jit.dy2static import error
 
 
 def inner_func():
-    paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="error_type")
+    paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="invalid_type")
     return  # noqa: PLR1711
 
 
@@ -256,7 +256,7 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
         self.expected_message = [
             'inner_func()',
             'def inner_func():',
-            'paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="error_type")',
+            'paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="invalid_type")',
             '<--- HERE',
             'return',
         ]
