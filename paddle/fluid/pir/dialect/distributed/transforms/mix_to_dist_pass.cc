@@ -79,20 +79,20 @@ void ProcessBlock(pir::Block* block) {
       VLOG(0) << "here4";
       shard_result_value.ReplaceAllUsesWith(shard_operand_value);
       VLOG(0) << "here5";
-      OperationDistAttribute op_dist_attr =
-          op_item->attribute(kAttrOpDistAttrs)
-              .dyn_cast<OperationDistAttribute>();
-      VLOG(0) << "here6";
-      VLOG(0) << "here6.1";
-      VLOG(0) << "here6.2";
-      OperationDistAttribute new_op_dist_attr =
-          OperationDistAttribute::get(pir::IrContext::Instance(),
-                                      op_dist_attr.process_mesh_attr(),
-                                      op_dist_attr.operand_dist_attrs(),
-                                      op_dist_attr.result_dist_attrs());
+      // OperationDistAttribute op_dist_attr =
+      //     op_item->attribute(kAttrOpDistAttrs)
+      //         .dyn_cast<OperationDistAttribute>();
+      // VLOG(0) << "here6";
+      // VLOG(0) << "here6.1";
+      // VLOG(0) << "here6.2";
+      // OperationDistAttribute new_op_dist_attr =
+      //     OperationDistAttribute::get(pir::IrContext::Instance(),
+      //                                 op_dist_attr.process_mesh_attr(),
+      //                                 op_dist_attr.operand_dist_attrs(),
+      //                                 op_dist_attr.result_dist_attrs());
       VLOG(0) << "here7";
-      shard_operand_define_op->set_attribute(kAttrOpDistAttrs,
-                                             new_op_dist_attr);
+      shard_operand_define_op->set_attribute(
+          kAttrOpDistAttrs, op_item->attribute(kAttrOpDistAttrs));
       VLOG(0) << "here8";
       deleted_ops.push_back(op_item);
     }
