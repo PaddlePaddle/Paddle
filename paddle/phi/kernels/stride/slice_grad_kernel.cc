@@ -34,13 +34,14 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                             DenseTensor* input_grad) {
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
-  const phi::KernelKey& fill_key = {phi::TransToPhiBackend(input_grad->place()),
-                                    phi::DataLayout::ALL_LAYOUT,
-                                    input.dtype()};
+  const phi::KernelKey& kernel_key = {
+      phi::TransToPhiBackend(dev_ctx.GetPlace()),
+      phi::DataLayout::ALL_LAYOUT,
+      input.dtype()};
   using fill_signature = void (*)(
       const DeviceContext&, const DenseTensor&, const Scalar&, DenseTensor*);
   PD_VISIT_KERNEL(
-      "fill", fill_key, fill_signature, dev_ctx, *input_grad, 0, input_grad);
+      "fill", kernel_key, fill_signature, dev_ctx, *input_grad, 0, input_grad);
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   SliceStridedKernel<Context>(dev_ctx,
@@ -51,10 +52,6 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                               infer_flags,
                               decrease_axis,
                               &tmp);
-  const phi::KernelKey& strided_copy_key = {
-      phi::TransToPhiBackend(out_grad.place()),
-      phi::DataLayout::ALL_LAYOUT,
-      input.dtype()};
   using strided_copy_signature = void (*)(const DeviceContext&,
                                           const DenseTensor&,
                                           const std::vector<int64_t>&,
@@ -62,7 +59,7 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                                           int64_t,
                                           DenseTensor*);
   PD_VISIT_KERNEL("strided_copy",
-                  strided_copy_key,
+                  kernel_key,
                   strided_copy_signature,
                   dev_ctx,
                   out_grad,
