@@ -311,7 +311,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
   }
 }
 
-#define DECLEAR_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUType, FCT)          \
+#define DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUType, FCT)          \
   template <>                                                       \
   void xblas_fc_wrapper<XPUType, FCT>(xpu::Context * ctx,           \
                                       const XPUType* x,             \
@@ -340,12 +340,12 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_wrapper");             \
   }
 
-DECLEAR_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, int_with_ll_t)
-DECLEAR_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, int16_t)
-DECLEAR_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, int32_t)
-DECLEAR_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, XPUTypeFP16)
-DECLEAR_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, int32_t)
-DECLEAR_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, tfloat32)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, int_with_ll_t)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, int16_t)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, int32_t)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, XPUTypeFP16)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, int32_t)
+DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, tfloat32)
 
 template <typename XPUType, typename FCT, typename TGEMM_OUT>
 static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
@@ -386,7 +386,7 @@ static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_batch_wrapper");
 }
 
-#define DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUType, FCT, TGEMM_OUT) \
+#define DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUType, FCT, TGEMM_OUT) \
   template <>                                                               \
   void xblas_fc_batch_wrapper<XPUType, FCT, TGEMM_OUT>(                     \
       xpu::Context * xpu_ctx,                                               \
@@ -410,23 +410,23 @@ static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_batched");                     \
   }
 
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16,
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16,
                                            int_with_ll_t,
                                            XPUTypeFP16)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, tfloat32, XPUTypeFP16)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, float, XPUTypeFP16)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16,
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, tfloat32, XPUTypeFP16)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, float, XPUTypeFP16)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16,
                                            XPUTypeFP16,
                                            XPUTypeFP16)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int32_t, XPUTypeFP16)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int16_t, XPUTypeFP16)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, int32_t, XPUTypeFP16)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int_with_ll_t, float)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, XPUTypeFP16, float)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, tfloat32, float)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int32_t, float)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int16_t, float)
-DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, int32_t, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int32_t, XPUTypeFP16)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int16_t, XPUTypeFP16)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, int32_t, XPUTypeFP16)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int_with_ll_t, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, XPUTypeFP16, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, tfloat32, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int32_t, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int16_t, float)
+DECLARE_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, int32_t, float)
 
 template <typename T>
 static void MatMulXPUFunction(
@@ -439,7 +439,7 @@ static void MatMulXPUFunction(
     bool is_grad = false,
     xpu::Activation_t act = xpu::Activation_t::LINEAR) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int fccal_type = FCCalcType<XPUType>();
+  int fc_calc_type = FCCalcType<XPUType>();
 
   decltype(&xblas_fc_wrapper<XPUType, int16_t>) xblas_fc_api_list[6] = {
       &xblas_fc_wrapper<XPUType, int16_t>,
@@ -460,16 +460,16 @@ static void MatMulXPUFunction(
           &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, float>,
       };
 
-  auto xblas_fc_api = xblas_fc_api_list[fccal_type];
+  auto xblas_fc_api = xblas_fc_api_list[fc_calc_type];
 
   if (std::getenv("XPU_PADDLE_FC_GRAD_LOCAL") != nullptr) {
     if (is_grad) {
       xblas_fc_api = xblas_fc_api_list[2];
     }
   }
-  auto xblas_fc_batch_api = xblas_fc_batch_api_list[fccal_type];
+  auto xblas_fc_batch_api = xblas_fc_batch_api_list[fc_calc_type];
 
-  if (fccal_type == XPUFCCalcType::FC_FLOAT16 &&
+  if (fc_calc_type == XPUFCCalcType::FC_FLOAT16 &&
       std::getenv("XPU_PADDLE_FC_FLOAT16") != nullptr) {
     xblas_fc_batch_api =
         &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, XPUTypeFP16>;

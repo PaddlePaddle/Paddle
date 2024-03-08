@@ -354,6 +354,10 @@ std::vector<pir::Type> BuildOutType(
 bool CanFuse(const GroupClusterNode& first,
              const GroupClusterNode& second,
              ScheduleInfoNode* sch_node) {
+  if (!first.ops.empty() &&
+      (first.ops.front()->name() == "cinn_op.generate_shape")) {
+    return true;
+  }
   if ((second.ops.size() == 1) &&
       (second.ops.front()->name() == "cinn_op.reshape") &&
       (IsLastReshape(second.ops.front()))) {

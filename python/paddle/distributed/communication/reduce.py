@@ -123,7 +123,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
             >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
     # AVG is only supported when nccl >= 2.10
-    if op == ReduceOp.AVG and paddle.base.core.nccl_version() < 21000:
+    if op == ReduceOp.AVG and (not is_avg_reduce_op_supported()):
         group = (
             paddle.distributed.collective._get_global_group()
             if group is None
@@ -201,3 +201,10 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
         )
     else:
         raise ValueError(f"Unknown parameter: {op}.")
+
+
+def is_avg_reduce_op_supported():
+    if paddle.is_compiled_with_cuda():
+        return paddle.base.core.nccl_version() >= 21000
+    else:
+        return False

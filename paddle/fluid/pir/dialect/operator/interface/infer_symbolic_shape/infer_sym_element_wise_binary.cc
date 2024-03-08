@@ -26,10 +26,11 @@ bool InferSymbolicShapeElementWiseBinary(
       op->operand_source(0).defining_op()
           ? op->operand_source(0).defining_op()->isa<paddle::dialect::FullOp>()
           : false;
-  // if (!x_from_fullop && x_shapeordata.data().has_value()) {
-  //   shape_0 = x_shapeordata.data().value();
-  // } else
-  { shape_0 = x_shapeordata.shape(); }
+  if (!x_from_fullop && x_shapeordata.data().has_value()) {
+    shape_0 = x_shapeordata.data().value();
+  } else {
+    shape_0 = x_shapeordata.shape();
+  }
 
   const auto &y_shapeordata =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
@@ -38,11 +39,11 @@ bool InferSymbolicShapeElementWiseBinary(
       op->operand_source(1).defining_op()
           ? op->operand_source(1).defining_op()->isa<paddle::dialect::FullOp>()
           : false;
-  // if (!y_from_fullop && y_shapeordata.data().has_value()) {
-  //   shape_1 = y_shapeordata.data().value();
-  // }
-  // else
-  { shape_1 = y_shapeordata.shape(); }
+  if (!y_from_fullop && y_shapeordata.data().has_value()) {
+    shape_1 = y_shapeordata.data().value();
+  } else {
+    shape_1 = y_shapeordata.shape();
+  }
 
   int diff = shape_0.size() - shape_1.size();
   if (diff > 0) {
