@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+
 #include <memory>
 
 #include "paddle/phi/backends/c_comm_lib.h"
@@ -78,3 +80,5 @@ class CustomContext : public DeviceContext,
 };
 
 }  // namespace phi
+
+#endif
