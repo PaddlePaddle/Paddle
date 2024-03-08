@@ -45,9 +45,8 @@ INPUT_TYPE_CHECK_TEMPLATE = """
 INPUT_VECTORTYPE_CHECK_TEMPLATE = """
   if (auto vec_type = (*this)->operand_source({index}).type().dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); ++i) {{
-        IR_ENFORCE((vec_type[i].isa<{standard}>()
-                        || vec_type[i].isa<{allocated_standard}>()),
-                        "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());
+        PADDLE_ENFORCE_EQ((vec_type[i].isa<{standard}>() || vec_type[i].isa<{allocated_standard}>()), true,
+                       paddle::platform::errors::InvalidArgument("Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type()));
       }}
   }}
   else {{
@@ -63,9 +62,8 @@ INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
   if (auto val =  (*this)->operand({index})) {{
     if (auto vec_type = val.type().dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); i++) {{
-        IR_ENFORCE((vec_type[i].isa<{standard}>()
-                        || vec_type[i].isa<{allocated_standard}>()),
-                        "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());
+        PADDLE_ENFORCE_EQ((vec_type[i].isa<{standard}>() || vec_type[i].isa<{allocated_standard}>()), true,
+                          paddle::platform::errors::InvalidArgument("Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type()));
       }}
     }}
     else {{
@@ -95,9 +93,8 @@ OUTPUT_VECTORTYPE_CHECK_TEMPLATE = """
   auto output_{index}_type = (*this)->result({index}).type();
   if (auto vec_type = output_{index}_type.dyn_cast<pir::VectorType>()) {{
     for (size_t i = 0; i < vec_type.size(); i++) {{
-      IR_ENFORCE((vec_type[i].isa<{standard}>()
-                    || vec_type[i].isa<{allocated_standard}>()),
-                    "Type validation failed for the {index}th output.");
+      PADDLE_ENFORCE_EQ((vec_type[i].isa<{standard}>() || vec_type[i].isa<{allocated_standard}>()), true,
+                     paddle::platform::errors::InvalidArgument("Type validation failed for the {index}th output."));
     }}
   }}
   else {{
@@ -113,9 +110,8 @@ OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
   if (auto output_{index}_type = (*this)->result({index}).type()) {{
     if (auto vec_type = output_{index}_type.dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); ++i) {{
-        IR_ENFORCE((vec_type[i].isa<{standard}>()
-                        || vec_type[i].isa<{allocated_standard}>()),
-                        "Type validation failed for the {index}th output.");
+        PADDLE_ENFORCE_EQ((vec_type[i].isa<{standard}>() || vec_type[i].isa<{allocated_standard}>()), true,
+                       paddle::platform::errors::InvalidArgument("Type validation failed for the {index}th output."));
       }}
     }}
     else {{
