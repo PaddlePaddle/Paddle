@@ -271,6 +271,7 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
     PD_VISIT_KERNEL("contiguous",
                     kernel_key,
                     kernel_signature,
+                    false,
                     *dev_ctx,
                     tensor,
                     &dense_out);

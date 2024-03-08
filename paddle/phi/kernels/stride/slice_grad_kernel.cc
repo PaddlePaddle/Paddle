@@ -40,8 +40,14 @@ void SliceGradStridedKernel(const Context& dev_ctx,
       input.dtype()};
   using fill_signature = void (*)(
       const DeviceContext&, const DenseTensor&, const Scalar&, DenseTensor*);
-  PD_VISIT_KERNEL(
-      "fill", kernel_key, fill_signature, dev_ctx, *input_grad, 0, input_grad);
+  PD_VISIT_KERNEL("fill",
+                  kernel_key,
+                  fill_signature,
+                  false,
+                  dev_ctx,
+                  *input_grad,
+                  0,
+                  input_grad);
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   SliceStridedKernel<Context>(dev_ctx,
@@ -61,6 +67,7 @@ void SliceGradStridedKernel(const Context& dev_ctx,
   PD_VISIT_KERNEL("strided_copy",
                   kernel_key,
                   strided_copy_signature,
+                  false,
                   dev_ctx,
                   out_grad,
                   common::vectorize<int64_t>(tmp.dims()),
