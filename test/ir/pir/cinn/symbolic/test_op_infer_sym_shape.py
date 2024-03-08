@@ -541,7 +541,6 @@ class TestSplitOpInferSymbolicShape(TestBase):
     def prepare_data(self):
         self.cases = [np.random.rand(4, 6, 5)]
 
-        # FIXME: not the expected yet, just a placeholder
         self.expected = [
             [
                 'shape[S0, S1, S2], data[NULL]',
