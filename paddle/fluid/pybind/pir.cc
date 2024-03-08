@@ -605,13 +605,13 @@ void BindOperation(py::module *m) {
            })
       .def_property(
           "callstack",
-
           [](Operation &self) -> py::list {
             py::list callstack_list;
             pir::Attribute op_callstack = self.attribute<pir::Attribute>(
                 paddle::framework::OpProtoAndCheckerMaker::
                     OpCreationCallstackAttrName());
-            auto op_callstack_infos = paddle::get<std::vector<std::string>>(
+            auto op_callstack_infos = PADDLE_GET_CONST(
+                std::vector<std::string>,
                 paddle::dialect::GetAttributeData(op_callstack));
             for (auto &op_callstack_info : op_callstack_infos) {
               callstack_list.append(op_callstack_info);
