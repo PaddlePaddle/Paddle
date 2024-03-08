@@ -99,6 +99,10 @@ void ScheduleBase::BroadcastToElementwise(const std::string& block_name,
 void ScheduleBase::Broadcast(const std::string& block_name,
                              const BroadcastInfo& info) {
   auto axes = info.broadcast_axes;
+
+  if (axes.size() == 0) {
+    return;
+  }
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   if (axes[0] >= all_loops.size()) {
     throw std::runtime_error("axes execeed loop size");

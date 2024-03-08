@@ -601,7 +601,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
   // TODO(phlrain): this is primary verion for loop aligment
   // will be update by a new method
-  auto& align_info = group->alignment_schedule_info;
+  auto align_info = group->alignment_schedule_info;
 
   auto& ops = group->ops;
   for (auto op1 : ops) {
@@ -614,7 +614,12 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       for (size_t i = 0; i < it->second.size(); ++i) {
         std::cerr << "align info" << it->second[i].DebugStr() << std::endl;
       }
+      // try to merge them
+
+      it->second.front().factor_info = it->second.back().factor_info;
+      it->second.resize(1);
     }
+
     PADDLE_ENFORCE_EQ(
         it->second.size(),
         1,
@@ -708,10 +713,10 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           info.output_shape.push_back(output_shape[broadcast_axes[i]]);
         }
       }
-      PADDLE_ENFORCE_NE(
-          info.broadcast_axes.size(),
-          0,
-          phi::errors::PreconditionNotMet("broadcast axes can not be zero"));
+      // PADDLE_ENFORCE_NE(
+      //     info.broadcast_axes.size(),
+      //     0,
+      //     phi::errors::PreconditionNotMet("broadcast axes can not be zero"));
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {
         if (!align_info.count(it->first->operand_source(i).defining_op())) {
