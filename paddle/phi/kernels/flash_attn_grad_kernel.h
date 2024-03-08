@@ -41,22 +41,19 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dv);
 
 template <typename T, typename Context>
-void FlashAttnGradKernel(
-    const Context& ctx,
-    const DenseTensor& q,
-    const DenseTensor& k,
-    const DenseTensor& v,
-    const DenseTensor& out,
-    const DenseTensor& softmax_lse,
-    const DenseTensor& seed_offset,
-    const paddle::optional<DenseTensor>& attn_mask,
-    const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
-    const DenseTensor& dout,
-    float dropout,
-    bool causal,
-    int attn_mask_start_row,
-    DenseTensor* dq,
-    DenseTensor* dk,
-    DenseTensor* dv);
+void FlashAttnGradKernel(const Context& ctx,
+                         const DenseTensor& q,
+                         const DenseTensor& k,
+                         const DenseTensor& v,
+                         const DenseTensor& out,
+                         const DenseTensor& softmax_lse,
+                         const DenseTensor& seed_offset,
+                         const paddle::optional<DenseTensor>& attn_mask,
+                         const DenseTensor& dout,
+                         float dropout,
+                         bool causal,
+                         DenseTensor* dq,
+                         DenseTensor* dk,
+                         DenseTensor* dv);
 
 }  // namespace phi

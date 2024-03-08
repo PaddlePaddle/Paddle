@@ -108,14 +108,12 @@ def flash_attention(
                 key,
                 value,
                 fixed_seed_offset,
-                None,  # attn_mask
-                None,  # attn_mask_start_row_indices
+                None,
                 dropout,
                 causal,
                 return_softmax,
                 not training,
                 rng_name,
-                0,
             )
         return result_attention, result_softmax if return_softmax else None
 
@@ -312,8 +310,6 @@ def flash_attention_with_mask(
     dropout=0.0,
     causal=False,
     training=True,
-    attn_mask_start_row_indices=None,
-    attn_mask_start_row=0,
     name=None,
 ):
     r"""
@@ -348,14 +344,6 @@ def flash_attention_with_mask(
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
         training(bool): Whether it is in the training phase.
-        attn_mask_start_row_indices(Tensor,optional): A sparse attention mask
-                        indices tensor, the shape is [batch_size, num_head, seq_len],
-                        The value of each element indicates the row index where the
-                        mask starts in score matrix. The dtype can be int32 or int64.
-        attn_mask_start_row(int,optional): When `attn_mask_start_row_indices` is passed
-                        in and the minimum row number is known to be greater than 0,
-                        it can set `attn_mask_start_row` for performance improvement.
-                        The default value is 0.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -371,80 +359,26 @@ def flash_attention_with_mask(
             >>> # doctest: +SKIP()
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
-            >>> output = paddle.nn.functional.flash_attention.flash_attention_with_mask(q, q, q, None, 0.9, False)
-            >>> print(output)
-            >>> # doctest: -SKIP
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +SKIP('bfloat need V100 compile')
-            >>> import paddle
-            >>> import numpy as np
-            >>> def generate_start_rows(bz, num_head, rows, cols, start_row):
-            >>>     assert rows == cols, f"rows {rows} must be equal to cols {cols}."
-            >>>     start_rows_list = []
-            >>>     for bz_idx in range(bz):
-            >>>         for head_idx in range(num_head):
-            >>>             start_rows = np.array([rows+1] * cols)
-            >>>             mask_pos = np.random.choice(cols-1, cols - start_row, replace=False)
-            >>>             index = np.arange(start_row, rows)
-            >>>             mask_pos = np.concatenate([mask_pos[mask_pos < index - 1], mask_pos[mask_pos >= index - 1]])
-            >>>             start_rows[mask_pos] = index
-            >>>             start_rows_list.append(start_rows)
-            >>>     start_rows_arr = np.array(start_rows_list).reshape([bz, num_head, rows])
-            >>>     return start_rows_arr
-            >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
-            >>> attn_mask_start_row = 48
-            >>> start_row_indices = generate_start_rows(1, 2, 128, 128, attn_mask_start_row)
-            >>> attn_mask_start_row_indices = paddle.to_tensor(start_row_indices, dtype=paddle.int32)
-            >>> out = paddle.nn.functional.flash_attention.flash_attention_with_mask(
-            >>>     q, q, q,
-            >>>     attn_mask_start_row_indices=attn_mask_start_row_indices,
-            >>>     attn_mask_start_row=attn_mask_start_row,
-            >>>     dropout_p=0.9,
-            >>>     is_causal=True,
-            >>> )
+            >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
             >>> print(output)
             >>> # doctest: -SKIP
     """
-    if attn_mask is None and attn_mask_start_row_indices is None:
+    if attn_mask is None:
         out, _ = flash_attention(query, key, value, dropout, causal)
     else:
-        assert not (
-            attn_mask is not None and attn_mask_start_row_indices is not None
-        ), (
-            f"attn_mask and attn_mask_start_row_indices cannot be the same at the same time. "
-            f"attn_mask is not None ({attn_mask is not None}), attn_mask_start_row_indices is not None ({attn_mask_start_row_indices is not None})"
-        )
         fixed_seed_offset = None
         return_softmax = False
         rng_name = ""
-        if attn_mask_start_row_indices is not None:
-            assert (
-                causal is True
-            ), f"causal must be True when attn_mask_start_row_indices is not None, but got {causal}"
-            assert (
-                attn_mask_start_row_indices.dtype == paddle.int32
-            ), f"attn_mask_start_row_indices.dtype must be paddle.int32, but got {attn_mask_start_row_indices.dtype}"
-            assert isinstance(
-                attn_mask_start_row, int
-            ), f"attn_mask_start_row must be int, but got {type(attn_mask_start_row)}"
-            assert (
-                attn_mask_start_row >= 0
-            ), f"Should set attn_mask_start_row >=0 when attn_mask_start_row_indices is not None, but got {attn_mask_start_row}"
         out, _, _, _ = _C_ops.flash_attn(
             query,
             key,
             value,
             fixed_seed_offset,
             attn_mask,
-            attn_mask_start_row_indices,
             dropout,
             causal,
             return_softmax,
             not training,
             rng_name,
-            attn_mask_start_row,
         )
     return out
