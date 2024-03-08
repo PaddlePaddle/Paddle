@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
-from os.path import dirname
-
-sys.path.append(dirname(dirname(__file__)))
-
 import unittest
+from os.path import dirname
 
 import numpy as np
 import utils
 
 import paddle
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
 
 
 def get_sym_shape_str_for_op(net, input_spec, op_name):
