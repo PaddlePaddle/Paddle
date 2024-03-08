@@ -194,7 +194,6 @@ void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
 void FusedRopeGradInferMeta(const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
-                            const float rotary_emb_base,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv);
