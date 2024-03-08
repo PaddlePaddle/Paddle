@@ -156,15 +156,21 @@ if(NOT WIN32)
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-      -Wno-defaulted-function-deleted # Warning in GLOO
-      -Wno-bitwise-instead-of-logical # Warning in "unsupported/Eigen/CXX11/Tensor"
       -Wno-overloaded-virtual # For some inconsistent virtual function signature, clang
-      -Wno-inconsistent-missing-override # For lots of warnings when not using override for virtual functions, clang
-      -Wno-deprecated-copy-with-user-provided-copy # For three/five/zeros rule, clang
       -Wno-deprecated-copy # Same above
-      -Wno-unused-private-field
       -Wno-unused-const-variable
       ${fsanitize})
+
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(COMMON_FLAGS
+        ${COMMON_FLAGS}
+        -Wno-unused-private-field
+        -Wno-deprecated-copy-with-user-provided-copy # For three/five/zeros rule, clang
+        -Wno-inconsistent-missing-override # For lots of warnings when not using override for virtual functions, clang
+        -Wno-bitwise-instead-of-logical # Warning in "unsupported/Eigen/CXX11/Tensor"
+        -Wno-defaulted-function-deleted # Warning in GLOO
+    )
+  endif()
 
   if(WITH_IPU)
     set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare # Warnings in Popart
