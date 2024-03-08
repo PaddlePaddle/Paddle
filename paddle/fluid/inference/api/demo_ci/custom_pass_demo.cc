@@ -16,6 +16,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <numeric>
 
+#include "paddle/extension.h"
 #include "paddle_inference_api.h"  //NOLINT
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");
@@ -24,42 +25,35 @@ using paddle_infer::Config;
 using paddle_infer::CreatePredictor;
 using paddle_infer::Predictor;
 
-void run(Predictor *predictor,
-         const std::vector<float> &input,
-         const std::vector<int> &input_shape,
-         std::vector<float> *out_data) {
-  auto input_names = predictor->GetInputNames();
-  auto input_t = predictor->GetInputHandle(input_names[0]);
-  input_t->Reshape(input_shape);
-  input_t->CopyFromCpu(input.data());
-
-  CHECK(predictor->Run());
-
-  auto output_names = predictor->GetOutputNames();
-  auto output_t = predictor->GetOutputHandle(output_names[0]);
-  std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(
-      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
-
-  out_data->resize(out_num);
-  output_t->CopyToCpu(out_data->data());
-}
-
 int main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   Config config;
   config.EnableUseGpu(100, 0);
-  config.SetModel(FLAGS_modeldir + "/custom_relu.pdmodel",
-                  FLAGS_modeldir + "/custom_relu.pdiparams");
+  config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
+                  FLAGS_modeldir + "/inference.pdiparams");
   config.EnableNewExecutor(true);
   config.EnableNewIR(true);
+  config.SwitchIrDebug(true);
   auto predictor = CreatePredictor(config);
-  std::vector<int> input_shape = {1, 1, 28, 28};
-  std::vector<float> input_data(1 * 1 * 28 * 28, 1);
-  std::vector<float> out_data;
-  run(predictor.get(), input_data, input_shape, &out_data);
-  for (auto e : out_data) {
-    LOG(INFO) << e << '\n';
+
+  auto input_names = predictor->GetInputNames();
+  auto input_shapes = predictor->GetInputTensorShape();
+
+  for (const auto &input_name : input_names) {
+    // update input shape's batch size
+    input_shapes[input_name][0] = 1;
   }
+
+  std::vector<paddle::Tensor> inputs, outputs;
+  for (const auto &input_name : input_names) {
+    auto input_tensor = paddle::full(input_shapes[input_name],
+                                     0.5,
+                                     paddle::DataType::FLOAT32,
+                                     paddle::GPUPlace{});
+    input_tensor.set_name(input_name);
+    inputs.emplace_back(std::move(input_tensor));
+  }
+  CHECK(predictor->Run(inputs, &outputs));
+
   return 0;
 }

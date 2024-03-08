@@ -35,8 +35,8 @@ class OperationFactory {
                                     const pir::AttributeMap&,
                                     pir::PatternRewriter&)>;
 
-  void RegisterOperationCreator(const std::string& op_name,
-                                const operation_create_fn& create_fn) {
+  TEST_API void RegisterOperationCreator(const std::string& op_name,
+                                         const operation_create_fn& create_fn) {
     op_creator_map.emplace(op_name, create_fn);
   }
 
