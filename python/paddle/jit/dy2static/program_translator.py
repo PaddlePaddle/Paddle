@@ -1395,7 +1395,9 @@ class ParametersRecorder:
         if params is None:
             return []
         del self.params_dict[_program_hash(program)]
-        return list(params)
+        params = list(params)
+        params.sort(key=lambda x: x.name)
+        return params
 
 
 class InplaceMap:

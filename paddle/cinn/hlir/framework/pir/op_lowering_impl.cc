@@ -115,8 +115,6 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
   }
 
-  std::cerr << "reduce numel " << reduce_numel << std::endl;
-
   PADDLE_ENFORCE_EQ(
       reduce_is_dynamic,
       false,
@@ -868,7 +866,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
-        VLOG(4) << "device kernel func's " << non_tensor_arg_idx << " is from "
+        VLOG(4) << "device kernel func's " << symbol_name << " is from "
                 << tensor_arg_idx << ".shape(" << tensor_arg_dim_idx << ")";
       }
     }

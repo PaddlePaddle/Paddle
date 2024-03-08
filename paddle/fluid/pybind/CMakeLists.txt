@@ -151,7 +151,8 @@ set(PYBIND_SRCS
     auto_parallel_py.cc
     eval_frame_tools.cc
     cpython_internals.c
-    eval_frame.c)
+    eval_frame.c
+    op_callstack_utils.cc)
 
 if(NOT WITH_SHARED_IR)
   # Note: We want to compile pir source into paddle.so directly, because

@@ -445,7 +445,7 @@ def parse_program(
     k_steps,
     avg,
     dist_context,
-    dp_gradient_sync_after_accumulate,
+    gradient_sync_after_accumulate,
 ):
     # 1 remove optimizer_op from main_program
     optimize_ops_block = _remove_and_get_optimizer_op(
@@ -460,7 +460,7 @@ def parse_program(
         main_program, startup_program, params_grads, dist_context
     )
 
-    if dp_gradient_sync_after_accumulate:
+    if gradient_sync_after_accumulate:
         # 3 move reduce op to optimizer_ops_block
         optimize_ops_block = _move_reduce_to_optimizer_ops_block(
             main_program, optimize_ops_block, params_grads
@@ -505,8 +505,8 @@ class GradientMergePass(PassBase):
         avg = self.get_attr("avg", False)
         dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
-        dp_gradient_sync_after_accumulate = self.get_attr(
-            "dp_gradient_sync_after_accumulate", False
+        gradient_sync_after_accumulate = self.get_attr(
+            "gradient_sync_after_accumulate", False
         )
         with paddle.static.program_guard(main_program, startup_program):
             parse_program(
@@ -516,7 +516,7 @@ class GradientMergePass(PassBase):
                 k_steps,
                 avg,
                 dist_context,
-                dp_gradient_sync_after_accumulate,
+                gradient_sync_after_accumulate,
             )
 
         main_program._sync_with_cpp()

@@ -105,9 +105,6 @@ GRADIENT_MERGE = "gradient_merge"
 set_field_default_config(GRADIENT_MERGE, "enable", False)
 set_field_default_config(GRADIENT_MERGE, "k_steps", 1)
 set_field_default_config(GRADIENT_MERGE, "avg", True)
-set_field_default_config(
-    GRADIENT_MERGE, "dp_gradient_sync_after_accumulate", False
-)
 
 #########################################
 # pipeline configuration
@@ -174,6 +171,9 @@ set_field_default_config(DP_OPTIMIZATION, "enable", False)
 set_field_default_config(DP_OPTIMIZATION, "fuse_all_reduce_ops", True)
 set_field_default_config(DP_OPTIMIZATION, "fuse_grad_size_in_MB", 32)
 set_field_default_config(DP_OPTIMIZATION, "overlap_comm_cacl", True)
+set_field_default_config(
+    DP_OPTIMIZATION, "gradient_sync_after_accumulate", False
+)
 
 #########################################
 # model parallel configuration
