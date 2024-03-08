@@ -339,6 +339,13 @@ void ParallelCompiler::Task::CodegenAndJit() {
     engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(), std::move(symbols));
     engine->Link<backends::CodeGenCUDA_Host>(host_module);
 #endif
+  } else if (context->target.language == Target::Language::hip){
+#ifdef CINN_WITH_ROCM
+    auto splited_module = backends::SplitDeviceAndHostModule(ir_module, context->target);
+    auto host_module        = std::get<0>(splited_module);
+    auto device_module      = std::get<1>(splited_module);
+    LOG(FATAL) << "hip codegen and jit not implementation!";
+#endif
   } else {
     engine = backends::ExecutionEngine::Create(backends::ExecutionOptions());
     engine->Link<backends::CodeGenX86>(ir_module);

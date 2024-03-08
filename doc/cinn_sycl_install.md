@@ -135,6 +135,7 @@ def build_run(target:common.Target):
 
 SYCL_target = common.SYCLTarget()
 #SYCL_target = common.SYCLTarget(arch=common.Target.Arch.AMDGPU)
+#HIP_target = common.DefaultROCMTarget()
 build_run(SYCL_target)
 ```
 

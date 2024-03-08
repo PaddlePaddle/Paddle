@@ -110,7 +110,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     }else if(target.language == common::Target::Language::sycl){
       call_kernel = runtime::intrinsic::call_sycl_kernel;
     }else if(target.language == common::Target::Language::hip){
-      //const char* call_kernel = runtime::intrinsic::call_hip_kernel;
+      call_kernel = runtime::intrinsic::call_hip_kernel;
     }
     auto call_extern_api =
         ir::Call::Make(Void(),

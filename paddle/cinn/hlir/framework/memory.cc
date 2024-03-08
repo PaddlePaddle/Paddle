@@ -14,13 +14,6 @@
 
 #include "paddle/cinn/hlir/framework/memory.h"
 
-#ifdef CINN_WITH_CUDA
-#include <cuda.h>
-#include <cuda_runtime.h>
-
-#include "paddle/cinn/backends/cuda_util.h"
-#endif
-
 #include "paddle/cinn/runtime/backend_api.h"
 using cinn::runtime::BackendAPI;
 
@@ -66,6 +59,16 @@ class SYCLMemoryMng : public MemoryInterface {
     }
 };
 
+class HIPMemoryMng : public MemoryInterface {
+  public:
+    void* malloc(size_t nbytes) override {
+      return BackendAPI::get_backend(Target::Language::hip)->malloc(nbytes);
+    }
+    void free(void* data) override {
+      BackendAPI::get_backend(Target::Language::hip)->free(data);
+    }
+};
+
 }  // namespace
 
 MemoryManager::MemoryManager() {
@@ -73,6 +76,7 @@ MemoryManager::MemoryManager() {
   Register(Target::Language::llvm, new X86MemoryMng);
   Register(Target::Language::cuda, new CudaMemoryMng);
   Register(Target::Language::sycl, new SYCLMemoryMng);
+  Register(Target::Language::hip, new HIPMemoryMng);
 }
 
 }  // namespace framework

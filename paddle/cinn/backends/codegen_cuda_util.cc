@@ -94,7 +94,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   } else if (target_.language == common::Target::Language::sycl) {
     call_kernel = runtime::intrinsic::call_sycl_kernel;
   } else if (target_.language == common::Target::Language::hip) {
-    // const char* call_kernel = runtime::intrinsic::call_hip_kernel;
+    call_kernel = runtime::intrinsic::call_hip_kernel;
   }
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
