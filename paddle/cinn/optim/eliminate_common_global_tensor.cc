@@ -20,6 +20,7 @@
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace optim {
@@ -36,6 +37,26 @@ struct IndicesAndExtent {
   std::vector<ForVarExtent> for_var_extents;
 };
 
+std::unordered_map<ir::Var, ir::Var> ConstructForVarReplaceMap(
+    const std::vector<ForVarExtent>& lhs_extents,
+    const std::vector<ForVarExtent>& rhs_extents) {
+  std::unordered_map<ir::Var, ir::Var> ret;
+  std::unordered_set<std::size_t> visited_rhs_index;
+  for (const auto& [lhs_var, lhs_extent] : lhs_extents) {
+    for (std::size_t i = 0; i < rhs_extents.size(); ++i) {
+      const auto& [rhs_var, rhs_extent] = rhs_extents[i];
+      if (cinn::common::AutoSimplify(ir::Sub::Make(lhs_extent, rhs_extent)) ==
+              ir::Expr(0) &&
+          visited_rhs_index.count(i) == 0) {
+        ret[lhs_var] = rhs_var;
+        visited_rhs_index.insert(i);
+        break;
+      }
+    }
+  }
+  return ret;
+}
+
 struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
@@ -43,11 +64,11 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
   std::unordered_set<std::string> GetEliminateTensorNames() const {
     auto IndiceToExprWithForVar =
         [&](ir::Expr indice,
-            const std::unordered_map<ir::Var, ir::Var>& upper_for_to_lower_for)
+            const std::unordered_map<ir::Var, ir::Var>& for_var_map)
         -> ir::Expr {
       ir::Expr ret = ir::ir_utils::IRCopy(indice);
-      for (const auto& [upper_for, lower_for] : upper_for_to_lower_for) {
-        ReplaceVarWithExpr(&ret, upper_for, ir::ir_utils::IRCopy(lower_for));
+      for (const auto& [lhs_var, rhs_var] : for_var_map) {
+        ReplaceVarWithExpr(&ret, lhs_var, ir::ir_utils::IRCopy(rhs_var));
       }
       return ret;
     };
@@ -59,31 +80,13 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       const auto& indice2 = indice_and_extent2.indices;
       if (indice1.size() != indice2.size()) return false;
 
-      std::unordered_map<ir::Var, ir::Var> upper_for_to_lower_for = [&]() {
-        std::unordered_map<ir::Var, ir::Var> ret;
-        const auto& for_var_extents1 = indice_and_extent1.for_var_extents;
-        const auto& for_var_extents2 = indice_and_extent2.for_var_extents;
-        std::unordered_set<std::size_t> visited_lower_extend;
-        for (const auto& [upper_var, upper_extend] : for_var_extents1) {
-          for (std::size_t i = 0; i < for_var_extents2.size(); ++i) {
-            const auto& [lower_var, lower_extend] = for_var_extents2[i];
-            if (cinn::common::AutoSimplify(
-                    ir::Sub::Make(upper_extend, lower_extend)) == ir::Expr(0) &&
-                visited_lower_extend.count(i) == 0) {
-              ret[upper_var] = lower_var;
-              visited_lower_extend.insert(i);
-              break;
-            }
-          }
-        }
-        return ret;
-      }();
+      std::unordered_map<ir::Var, ir::Var> for_var_map =
+          ConstructForVarReplaceMap(indice_and_extent1.for_var_extents,
+                                    indice_and_extent2.for_var_extents);
 
       for (size_t i = 0; i < indice1.size(); ++i) {
-        ir::Expr lhs =
-            IndiceToExprWithForVar(indice1.at(i), upper_for_to_lower_for);
-        ir::Expr rhs =
-            IndiceToExprWithForVar(indice2.at(i), upper_for_to_lower_for);
+        ir::Expr lhs = IndiceToExprWithForVar(indice1.at(i), for_var_map);
+        ir::Expr rhs = IndiceToExprWithForVar(indice2.at(i), for_var_map);
         if (cinn::common::AutoSimplify(ir::Sub::Make(lhs, rhs)) !=
             ir::Expr(0)) {
           return false;
@@ -94,7 +97,11 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
     auto AllIndiceAndExtentEqual =
         [&](const std::vector<IndicesAndExtent>& indice_and_extent) -> bool {
-      CHECK_GE(indice_and_extent.size(), 2);
+      PADDLE_ENFORCE_GE(
+          indice_and_extent.size(),
+          2,
+          ::common::errors::InvalidArgument(
+              "The size of indice_and_extent should greater_equal to 2"));
       for (size_t i = 1; i < indice_and_extent.size(); ++i) {
         if (!IndiceAndExtentEqual(indice_and_extent[0], indice_and_extent[i]))
           return false;
@@ -120,14 +127,20 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
  private:
   void Visit(const ir::ScheduleBlockRealize* op, ir::Expr* expr) override {
-    auto* sbr_node = expr->As<ir::ScheduleBlockRealize>();
+    const auto* sbr_node = expr->As<ir::ScheduleBlockRealize>();
     CHECK(sbr_node);
     const auto& iter_values = sbr_node->iter_values;
-    auto* sb_node = sbr_node->schedule_block.As<ir::ScheduleBlock>();
+    const auto* sb_node = sbr_node->schedule_block.As<ir::ScheduleBlock>();
     const auto& iter_vars = sb_node->iter_vars;
-    CHECK_EQ(iter_values.size(), iter_vars.size());
+    PADDLE_ENFORCE_EQ(
+        iter_values.size(),
+        iter_vars.size(),
+        ::common::errors::InvalidArgument(
+            "The size of iter_values should equal to the size of iter_vars, as "
+            "they comes from the same ScheduleBlockRealize"));
+
     for (std::size_t i = 0; i < iter_values.size(); ++i) {
-      var_to_value_expr_[iter_vars[i]] = iter_values[i];
+      var_to_sb_expr_[iter_vars[i]] = iter_values[i];
     }
     ir::IRMutator<>::Visit(op, expr);
   }
@@ -135,7 +148,8 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
   void Visit(const ir::For* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::For>();
     CHECK(node);
-    for_var_extents_.push_back({node->loop_var, node->extent});
+    for_var_extents_.push_back(
+        {node->loop_var, ir::ir_utils::IRCopy(node->extent)});
     ir::IRMutator<>::Visit(op, expr);
     for_var_extents_.pop_back();
   }
@@ -145,23 +159,23 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     CHECK(node);
     const auto& load_buffer = node->tensor.as_tensor_ref()->buffer;
     if (load_buffer->memory_type == ir::MemoryType::Heap) {
-      std::vector<ir::Expr> indices;
+      std::vector<ir::Expr> tensor_indices;
       for (const auto& indice : node->indices) {
         ir::Expr new_indice = ir::ir_utils::IRCopy(indice);
-        for (const auto& [var, value_expr] : var_to_value_expr_) {
-          ReplaceVarWithExpr(
-              &new_indice, var, ir::ir_utils::IRCopy(value_expr));
+        for (const auto& [var, sb_expr] : var_to_sb_expr_) {
+          ReplaceVarWithExpr(&new_indice, var, ir::ir_utils::IRCopy(sb_expr));
         }
-        indices.push_back(new_indice);
+        tensor_indices.push_back(new_indice);
       }
-
+      for (const auto& [var, extent] : for_var_extents_) {
+      }
       tensor_to_indice_and_extent_[load_buffer->name].push_back(
-          {indices, for_var_extents_});
+          {tensor_indices, for_var_extents_});
     }
   }
 
   std::vector<ForVarExtent> for_var_extents_;
-  std::unordered_map<ir::Var, ir::Expr> var_to_value_expr_;
+  std::unordered_map<ir::Var, ir::Expr> var_to_sb_expr_;
   std::unordered_map<std::string, std::vector<IndicesAndExtent>>
       tensor_to_indice_and_extent_;
 };
@@ -226,18 +240,27 @@ struct CommonGlobalTensorEliminator : public ir::IRMutator<Expr*> {
 
     ir::Expr new_sbr = ir::ScheduleBlockRealize::Make(
         ir::ir_utils::IRCopy(current_sbr_->iter_values), new_sb);
-    CHECK_EQ(global_tensor_to_local_tensor_.count(buffer_name), 0);
+    PADDLE_ENFORCE_EQ(
+        global_tensor_to_local_tensor_.count(buffer_name),
+        0,
+        ::common::errors::InvalidArgument(
+            "buffer_name %s should not be in global_tensor_to_local_tensor_",
+            buffer_name));
     global_tensor_to_local_tensor_[buffer_name] = new_tensor;
     current_block_->stmts.insert(current_block_->stmts.begin(), new_sbr);
   }
 
   void SubstituteGlobalTensor(ir::Load* load_node,
                               const std::string& buffer_name) {
-    CHECK_GT(global_tensor_to_local_tensor_.count(buffer_name), 0);
+    PADDLE_ENFORCE_GT(
+        global_tensor_to_local_tensor_.count(buffer_name),
+        0,
+        ::common::errors::InvalidArgument(
+            "global_tensor_to_local_tensor_ should contain buffer_name %s",
+            buffer_name));
     load_node->tensor = global_tensor_to_local_tensor_[buffer_name];
   }
 
- private:
   std::unordered_set<std::string> eliminate_tensor_names_;
   std::unordered_map<std::string, ir::Expr> global_tensor_to_local_tensor_;
 
@@ -248,6 +271,7 @@ struct CommonGlobalTensorEliminator : public ir::IRMutator<Expr*> {
 }  // namespace
 
 void EliminateCommonGlobalTensor(Expr* e) {
+  VLOG(4) << "Before EliminateCommonGlobalTensor: \n" << *e;
   GlobalTensorInfoCollector collector;
   collector(e);
 
@@ -255,6 +279,7 @@ void EliminateCommonGlobalTensor(Expr* e) {
 
   CommonGlobalTensorEliminator eliminator(eliminate_tensor_names);
   eliminator(e);
+  VLOG(4) << "After EliminateCommonGlobalTensor: \n" << *e;
 }
 
 }  // namespace optim
