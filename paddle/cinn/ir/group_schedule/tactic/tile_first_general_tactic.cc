@@ -89,9 +89,9 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
   MergeFlattenAxis(sch, block_id);
-  VLOG(6) << "After MergeFlattenAxis on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
+  std::cerr << "After MergeFlattenAxis on block: [" << block_id
+            << "], loop nest:\n"
+            << sch->GetLoops(block_id)[0] << std::endl;
   MergeReduceAxis(sch, block_id);
   VLOG(6) << "After MergeReduceAxis on block: [" << block_id
           << "], loop nest:\n"
@@ -113,8 +113,8 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
           << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
   BindCudaInfo(sch, block_id);
-  VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
+  std::cerr << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
+            << sch->GetLoops(block_id)[0] << std::endl;
   VariableTypeAssignment(sch, block_id);
   Unroll(sch, block_id);
   VLOG(6) << "After Unroll on block: [" << block_id << "], loop nest:\n"
@@ -174,23 +174,17 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                   context_->group_tile_info->reduce_inner_num));
     split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
   } else {
-    split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
     split_factors.emplace_back(
         std::ceil(context_->group_tile_info->reduce_block * 1.0 /
                   context_->group_tile_info->reduce_inner_num));
+    split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
   }
 
   auto split_loops = sch->Split(loops[reduce_current_axis_], split_factors);
-  loops = sch->GetLoops(block_id);
-
-  sch->Reorder({loops[reduce_current_axis_ + 1], loops[reduce_current_axis_]});
-
-  loops = sch->GetLoops(block_id);
 
   if (IsReduceBlock(context_->group_tile_info, block_id)) {
-    sch->FactorizeReduction(loops[reduce_current_axis_],
-                            0,
-                            /* with_write_back_block_init = */ false);
+    sch->FactorizeReduction(
+        split_loops[0], 0, /* with_write_back_block_init = */ false);
   }
 }
 

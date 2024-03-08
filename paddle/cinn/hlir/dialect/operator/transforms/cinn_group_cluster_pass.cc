@@ -828,6 +828,10 @@ class CinnGroupClusterPattern
 
     auto split_res = GroupSplit(group_op);
 
+    for (auto& node : split_res) {
+      std::cerr << "node info " << node.DebugStr() << std::endl;
+    }
+
     auto all_output_values = BuildValueOrderByYieldOp(split_res, group_op);
 
     for (auto& node : split_res) {

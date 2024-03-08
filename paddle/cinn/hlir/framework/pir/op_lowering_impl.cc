@@ -86,12 +86,16 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   std::set<int64_t> reduce_set;
   for (auto dim : reduce_axis) {
+    std::cerr << "reduce di m " << dim << std::endl;
     if (dim < 0) {
       dim += group_tile_info->data_rank;
     }
 
     group_tile_info->reduce_axis_.push_back(dim);
     reduce_set.insert(dim);
+  }
+  for (auto& d : data_dim) {
+    std::cerr << "d  " << d << std::endl;
   }
 
   int64_t spatial_numel = 1;
@@ -997,6 +1001,9 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       func_bodies.push_back(func->body);
     }
     remain_ops.push_back(op);
+  }
+  for (size_t i = 0; i < func_bodies.size(); ++i) {
+    std::cerr << "body i " << i << "\n" << func_bodies[i] << std::endl;
   }
 
   VLOG(4) << "group_func_arg_tensors.size(): "
