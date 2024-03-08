@@ -89,8 +89,8 @@ void ConvKernel(const Context& dev_ctx,
     filter_data_ptr = reinterpret_cast<const XPUType*>(filter_data_tmp);
   }
 
-  int fccal_type = FCCalcType<XPUType>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     int r = xpu::conv2d<XPUType, XPUType, XPUType, int>(dev_ctx.x_context(),
                                                         input_data,
                                                         filter_data_ptr,
@@ -110,7 +110,7 @@ void ConvKernel(const Context& dev_ctx,
                                                         nullptr,
                                                         is_nchw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     int r = xpu::conv2d<XPUType, XPUType, XPUType, float>(dev_ctx.x_context(),
                                                           input_data,
                                                           filter_data_ptr,
@@ -130,7 +130,7 @@ void ConvKernel(const Context& dev_ctx,
                                                           nullptr,
                                                           is_nchw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     int r = xpu::conv2d<XPUType, XPUType, XPUType, int_with_ll_t>(
         dev_ctx.x_context(),
         input_data,
@@ -261,8 +261,8 @@ void Conv3DKernel(const Context& dev_ctx,
     filter_data_ptr = reinterpret_cast<const XPUType*>(filter_data_tmp);
   }
 
-  int fccal_type = FCCalcType<XPUType>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     int r = xpu::conv3d<XPUType, XPUType, XPUType, int>(dev_ctx.x_context(),
                                                         input_data,
                                                         filter_data_ptr,
@@ -283,7 +283,7 @@ void Conv3DKernel(const Context& dev_ctx,
                                                         nullptr,
                                                         is_ncdhw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     int r = xpu::conv3d<XPUType, XPUType, XPUType, float>(dev_ctx.x_context(),
                                                           input_data,
                                                           filter_data_ptr,
@@ -305,7 +305,7 @@ void Conv3DKernel(const Context& dev_ctx,
                                                           is_ncdhw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
 
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     int r = xpu::conv3d<XPUType, XPUType, XPUType, int_with_ll_t>(
         dev_ctx.x_context(),
         input_data,
