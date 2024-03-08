@@ -262,6 +262,10 @@ class AmpScaler:
         """
 
         if in_pir_mode():
+            assert isinstance(
+                optimizer,
+                paddle.static.amp.decorator.OptimizerWithMixedPrecision,
+            )
             optimizer._use_dynamic_loss_scaling = self._use_dynamic_loss_scaling
             optimizer._init_loss_scaling = self._init_loss_scaling
             optimizer._loss_scaling = self._scale
