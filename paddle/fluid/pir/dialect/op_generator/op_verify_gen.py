@@ -45,7 +45,7 @@ INPUT_TYPE_CHECK_TEMPLATE = """
 INPUT_VECTORTYPE_CHECK_TEMPLATE = """
   if (auto vec_type = (*this)->operand_source({index}).type().dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); ++i) {{
-        IR_ENFORCE(vec_type[i].isa<{standard}>() || vec_type[i].isa<Allocated{standard}>(),
+        IR_ENFORCE(vec_type[i].isa<{standard}>() || vec_type[i].isa<{allocated_standard}>(),
                        "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());
       }}
   }}
@@ -62,7 +62,7 @@ INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
   if (auto val =  (*this)->operand({index})) {{
     if (auto vec_type = val.type().dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); i++) {{
-        IR_ENFORCE(vec_type[i].isa<{standard}>() || vec_type[i].isa<Allocated{standard}>(),
+        IR_ENFORCE(vec_type[i].isa<{standard}>() || vec_type[i].isa<{allocated_standard}>(),
                           "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());
       }}
     }}
@@ -93,7 +93,7 @@ OUTPUT_VECTORTYPE_CHECK_TEMPLATE = """
   auto output_{index}_type = (*this)->result({index}).type();
   if (auto vec_type = output_{index}_type.dyn_cast<pir::VectorType>()) {{
     for (size_t i = 0; i < vec_type.size(); i++) {{
-      IR_ENFORCE(vec_type[i].isa<{standard}>() || vec_type[i].isa<Allocated{standard}>(),
+      IR_ENFORCE(vec_type[i].isa<{standard}>() || vec_type[i].isa<{allocated_standard}>(),
                      "Type validation failed for the {index}th output.");
     }}
   }}
@@ -110,7 +110,7 @@ OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
   if (auto output_{index}_type = (*this)->result({index}).type()) {{
     if (auto vec_type = output_{index}_type.dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); ++i) {{
-        IR_ENFORCE(vec_type[i].isa<{standard}>() || vec_type[i].isa<Allocated{standard}>(),
+        IR_ENFORCE(vec_type[i].isa<{standard}>() || vec_type[i].isa<{allocated_standard}>(),
                        "Type validation failed for the {index}th output.");
       }}
     }}
@@ -145,7 +145,11 @@ def gen_inputs_type_check_str(
         if is_optional == "true":
             if is_vector:
                 check_str = INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE.format(
-                    index=idx, standard=input_type
+                    index=idx,
+                    standard=input_type,
+                    allocated_standard=input_type.replace(
+                        "DenseTensorType", "AllocatedDenseTensorType"
+                    ),
                 )
             else:
                 check_str = INPUT_OPTIONAL_TYPE_CHECK_TEMPLATE.format(
@@ -154,7 +158,11 @@ def gen_inputs_type_check_str(
         else:
             if is_vector:
                 check_str = INPUT_VECTORTYPE_CHECK_TEMPLATE.format(
-                    index=idx, standard=input_type
+                    index=idx,
+                    standard=input_type,
+                    allocated_standard=input_type.replace(
+                        "DenseTensorType", "AllocatedDenseTensorType"
+                    ),
                 )
             else:
                 check_str = INPUT_TYPE_CHECK_TEMPLATE.format(
@@ -225,7 +233,11 @@ def gen_outputs_type_check_str(op_output_type_list, op_output_optional_list):
         if is_optional == "true":
             if is_vector:
                 check_str = OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE.format(
-                    index=idx, standard=output_type
+                    index=idx,
+                    standard=output_type,
+                    allocated_standard=output_type.replace(
+                        "DenseTensorType", "AllocatedDenseTensorType"
+                    ),
                 )
             else:
                 check_str = OUTPUT_OPTIONAL_TYPE_CHECK_TEMPLATE.format(
@@ -234,7 +246,11 @@ def gen_outputs_type_check_str(op_output_type_list, op_output_optional_list):
         else:
             if is_vector:
                 check_str = OUTPUT_VECTORTYPE_CHECK_TEMPLATE.format(
-                    index=idx, standard=output_type
+                    index=idx,
+                    standard=output_type,
+                    allocated_standard=output_type.replace(
+                        "DenseTensorType", "AllocatedDenseTensorType"
+                    ),
                 )
             else:
                 check_str = OUTPUT_TYPE_CHECK_TEMPLATE.format(
