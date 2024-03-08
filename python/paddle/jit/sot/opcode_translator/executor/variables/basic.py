@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 import paddle
+from paddle.base.framework import paddle_type_to_proto_type
 from paddle.framework import use_pir_api
 from paddle.pir.core import vartype_to_datatype
 
@@ -410,9 +411,14 @@ class TensorVariable(VariableBase):
 
     @property
     def main_info(self) -> dict[str, Any]:
+        from paddle.framework import core
+
+        dtype = self.meta.dtype
+        if isinstance(dtype, core.DataType):
+            dtype = paddle_type_to_proto_type[dtype]
         return {
             "shape": self.meta.shape,
-            "dtype": DTYPE_ABBRS[self.meta.dtype],
+            "dtype": DTYPE_ABBRS[dtype],
             "stop_gradient": self.meta.stop_gradient,
             "var_name": self.var_name,
         }
