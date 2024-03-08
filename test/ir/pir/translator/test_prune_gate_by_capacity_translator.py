@@ -23,7 +23,7 @@ from paddle.base.layer_helper import LayerHelper
 class TestPruneGateByCapacityOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "prune_gate_by_capacity"
-        gate_idx = paddle.ones(shape=(200), dtype='int64')
+        gate_idx = paddle.ones(shape=(200,), dtype='int64')
         expert_count = paddle.ones(shape=(10, 200), dtype='int64')
         attrs = {'n_expert': 24, 'n_worker': 2}
         helper = LayerHelper(self.op_type)
