@@ -56,14 +56,15 @@ void ProcessBlock(pir::Block* block) {
           shard_operand_value.defining_op();
       std::string define_op_name = shard_operand_define_op->name();
 
+      VLOG(0) << "here1";
       // TODO(2024-Q2) Support more paddle op
-      if (define_op_name != "builtin.parameter" ||
+      if (define_op_name != "builtin.parameter" &&
           define_op_name != "pd_op.data") {
         PADDLE_THROW(platform::errors::Unimplemented(
             "op [%s] is not Supported by shard_tensor op in pir mode.",
             define_op_name));
       }
-
+      VLOG(0) << "here2";
       // TODO(2024-Q2) Support shard_tensor is called after tensor has been
       // used.
       if (shard_operand_value.use_count() != 1) {
@@ -73,31 +74,37 @@ void ProcessBlock(pir::Block* block) {
             "not Supported in right now.",
             shard_operand_value.use_count()));
       }
-
+      VLOG(0) << "here3";
       shard_operand_value.set_type(shard_result_value.type());
+      VLOG(0) << "here4";
       shard_result_value.ReplaceAllUsesWith(shard_operand_value);
-
+      VLOG(0) << "here5";
       OperationDistAttribute op_dist_attr =
           op_item->attribute(kAttrOpDistAttrs)
               .dyn_cast<OperationDistAttribute>();
-      pir::Attribute new_op_dist_attr =
+      VLOG(0) << "here6";
+      VLOG(0) << "here6.1";
+      VLOG(0) << "here6.2";
+      OperationDistAttribute new_op_dist_attr =
           OperationDistAttribute::get(pir::IrContext::Instance(),
                                       op_dist_attr.process_mesh_attr(),
-                                      {},
+                                      op_dist_attr.operand_dist_attrs(),
                                       op_dist_attr.result_dist_attrs());
+      VLOG(0) << "here7";
       shard_operand_define_op->set_attribute(kAttrOpDistAttrs,
                                              new_op_dist_attr);
-
+      VLOG(0) << "here8";
       deleted_ops.push_back(op_item);
-    }
-
-    for (auto* op : deleted_ops) {
-      // TODO(2024-Q2) Support control flow / region
-      op->Erase();
     }
 
     // TODO(2024-Q2) Handle other shard annotation op in future.
   }
+  VLOG(0) << "here8";
+  for (auto* op : deleted_ops) {
+    // TODO(2024-Q2) Support control flow / region
+    op->Erase();
+  }
+  VLOG(0) << "here9";
 }
 
 /* Verification:
@@ -148,7 +155,7 @@ std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog) {
   VerifyBlock(new_prog->block());
 
   // if (FLAGS_print_ir) {
-  std::cout << "IR before MixToDist Pass = " << *new_prog << std::endl;
+  std::cout << "IR after MixToDist Pass = " << *new_prog << std::endl;
   // }
 
   return new_prog;
