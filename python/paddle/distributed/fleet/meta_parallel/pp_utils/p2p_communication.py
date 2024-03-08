@@ -53,7 +53,7 @@ def initialize_p2p_groups(
 class SendRecvPackType:
     TENSOR = 0
     TENSOR_LIST_OR_TENSOR_TUPLE = 1
-    DICT_OF_STR_TENSOR_PAIR = 2
+    DICT_WITH_STR_TENSOR_PAIR = 2
 
 
 class SendRecvMeta:
@@ -708,6 +708,102 @@ def _p2p_ops(
     return reqs
 
 
+def _p2p_ops_wrapper(_p2p_ops):
+    '''
+    tensor_send_prev : dict -> dict
+    tensor_recv_prev : dict -> dict
+    tensor_send_next : dict -> dict
+    tensor_recv_next : dict -> dict
+    '''
+
+    def wrapper(
+        send_recv_meta,
+        tensor_send_prev,
+        tensor_recv_prev,
+        tensor_send_next,
+        tensor_recv_next,
+        _hcg,
+    ):
+        # Adapt Dict[str, Tensor] -> tuple[Tensor] before `Send` and `Recv`
+        if (
+            send_recv_meta.recv_pack_type
+            == SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR
+        ):
+            if tensor_send_prev is not None:
+                # NOTE: what if `list(tensor_send_prev.keys()) != send_recv_meta.recv_keys_names`?
+                assert isinstance(
+                    tensor_send_prev, (dict, collections.OrderedDict)
+                )
+                assert set(send_recv_meta.recv_keys_names) == set(
+                    tensor_send_prev.keys()
+                ), "`tensor_send_prev.keys()` should be equal to `send_recv_meta.recv_keys_names`"
+                tensor_send_prev = tuple(
+                    [
+                        tensor_send_prev[key]
+                        for key in send_recv_meta.recv_keys_names
+                    ]
+                )
+
+            if tensor_recv_prev is not None:
+                assert isinstance(
+                    tensor_recv_prev, (dict, collections.OrderedDict)
+                )
+                assert set(send_recv_meta.recv_keys_names) == set(
+                    tensor_recv_prev.keys()
+                ), "`tensor_recv_prev.keys()` should be equal to `send_recv_meta.recv_keys_names`"
+                # NOTE: `recv` operation is a in-place operation, so recv data will write into original tensor_recv_prev
+                tensor_recv_prev = tuple(
+                    [
+                        tensor_recv_prev[key]
+                        for key in send_recv_meta.recv_keys_names
+                    ]
+                )
+
+        if (
+            send_recv_meta.send_pack_type
+            == SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR
+        ):
+            if tensor_send_next is not None:
+                assert isinstance(
+                    tensor_send_next, (dict, collections.OrderedDict)
+                )
+                assert set(send_recv_meta.send_keys_names) == set(
+                    tensor_send_next.keys()
+                ), "`tensor_send_next.keys()` should be equal to `send_recv_meta.send_keys_names`"
+                tensor_send_next = tuple(
+                    [
+                        tensor_send_next[key]
+                        for key in send_recv_meta.send_keys_names
+                    ]
+                )
+
+            if tensor_recv_next is not None:
+                assert isinstance(
+                    tensor_recv_next, (dict, collections.OrderedDict)
+                )
+                assert set(send_recv_meta.send_keys_names) == set(
+                    tensor_recv_next.keys()
+                ), "`tensor_recv_next.keys()` should be equal to `send_recv_meta.send_keys_names`"
+                # NOTE: `recv` operation is a in-place operation, so recv data will write into original tensor_recv_prev
+                tensor_recv_next = tuple(
+                    [
+                        tensor_recv_next[key]
+                        for key in send_recv_meta.send_keys_names
+                    ]
+                )
+
+        # call actual p2p ops
+        return _p2p_ops(
+            tensor_send_prev,
+            tensor_recv_prev,
+            tensor_send_next,
+            tensor_recv_next,
+            _hcg,
+        )
+
+    return wrapper
+
+
 def _p2p_helper(
     tensor_send_next,
     tensor_send_prev,
@@ -725,12 +821,16 @@ def _p2p_helper(
 
     # send / recv message
     assert send_recv_meta is not None, "send_recv_meta should not be None"
+    recv_pack_type = send_recv_meta.recv_pack_type
     recv_shape_msg = send_recv_meta.recv_shape_message
     recv_dtype_msg = send_recv_meta.recv_dtype_message
     recv_stop_gradient = send_recv_meta.recv_stop_gradient
+    recv_keys_names = send_recv_meta.recv_keys_names
 
+    send_pack_type = send_recv_meta.send_pack_type
     send_shape_msg = send_recv_meta.send_shape_message
     send_dtype_msg = send_recv_meta.send_dtype_message
+    send_keys_names = send_recv_meta.send_keys_names
 
     # model parallel message
     mp_group = _hcg.get_model_parallel_group()
@@ -738,7 +838,7 @@ def _p2p_helper(
     mp_rank = _hcg.get_model_parallel_rank()
 
     if recv_prev:
-        if isinstance(recv_shape_msg, tuple):
+        if recv_pack_type == SendRecvPackType.TENSOR_LIST_OR_TENSOR_TUPLE:
             tensor_recv_prev = []
             for idx, shape in enumerate(recv_shape_msg):
                 tmp = paddle.empty(
@@ -747,6 +847,15 @@ def _p2p_helper(
                 tmp.stop_gradient = recv_stop_gradient[idx]
                 tensor_recv_prev.append(tmp)
             tensor_recv_prev = tuple(tensor_recv_prev)
+        elif recv_pack_type == SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR:
+            tensor_recv_prev = {}
+            for idx, key in enumerate(recv_keys_names):
+                tmp = paddle.empty(
+                    shape=recv_shape_msg[idx],
+                    dtype=number_2_dtype(recv_dtype_msg[idx]),
+                )
+                tmp.stop_gradient = recv_stop_gradient[idx]
+                tensor_recv_prev[key] = tmp
         else:
             tensor_recv_prev = paddle.empty(
                 shape=recv_shape_msg, dtype=number_2_dtype(recv_dtype_msg)
@@ -754,7 +863,7 @@ def _p2p_helper(
             tensor_recv_prev.stop_gradient = recv_stop_gradient
 
     if recv_next:
-        if isinstance(send_shape_msg, tuple):
+        if send_pack_type == SendRecvPackType.TENSOR_LIST_OR_TENSOR_TUPLE:
             tensor_recv_next = []
             for idx, shape in enumerate(send_shape_msg):
                 tensor_recv_next.append(
@@ -763,13 +872,25 @@ def _p2p_helper(
                     )
                 )
             tensor_recv_next = tuple(tensor_recv_next)
+        elif send_pack_type == SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR:
+            tensor_recv_next = {}
+            for idx, key in enumerate(send_keys_names):
+                tensor_recv_next[key] = paddle.empty(
+                    shape=send_shape_msg[idx],
+                    dtype=number_2_dtype(send_dtype_msg[idx]),
+                )
         else:
             tensor_recv_next = paddle.empty(
                 shape=send_shape_msg, dtype=number_2_dtype(send_dtype_msg)
             )
 
-    p2p_func = _batched_p2p_ops if batch_p2p_comm else _p2p_ops
+    p2p_func = (
+        _p2p_ops_wrapper(_batched_p2p_ops)
+        if batch_p2p_comm
+        else _p2p_ops_wrapper(_p2p_ops)
+    )
     reqs = p2p_func(
+        send_recv_meta,
         tensor_send_prev,
         tensor_recv_prev,
         tensor_send_next,
