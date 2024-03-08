@@ -13,14 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_op.h"
-#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
-#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -138,15 +135,10 @@ void ShardTensorOp::Build(pir::Builder& builder,
                      global_dims.size()));
   std::vector<int> local_shape(global_dims.size());
   for (int i = 0; i < global_dims.size(); ++i) {
-    VLOG(4) << "debug global_dim: " << global_dims[i]
-            << ", dims_mapping: " << dims_mapping[i];
     if (dims_mapping[i] == -1) {
       local_shape[i] = global_dims[i];
     } else {
       auto shard_size = process_mesh_shape[dims_mapping[i]];
-      VLOG(4) << "debug global_dim: " << global_dims[i]
-              << ", dims_mapping: " << dims_mapping[i]
-              << ", shard_size: " << shard_size;
       PADDLE_ENFORCE(
           global_dims[i] % shard_size == 0,
           phi::errors::PreconditionNotMet(
@@ -154,9 +146,6 @@ void ShardTensorOp::Build(pir::Builder& builder,
               global_dims[i],
               shard_size));
       local_shape[i] = global_dims[i] / shard_size;
-      VLOG(4) << "debug global_dim: " << global_dims[i]
-              << ", shard_size: " << shard_size
-              << ", local_shape: " << local_shape[i];
     }
   }
 
