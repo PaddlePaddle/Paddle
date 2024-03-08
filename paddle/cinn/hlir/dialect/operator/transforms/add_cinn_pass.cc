@@ -41,6 +41,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/reorder_block_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
@@ -110,6 +111,7 @@ void ApplyBuildGroupOpPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateBuildCinnPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateReorderBlockPass());
   if (HasDynamicShape(*program)) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
