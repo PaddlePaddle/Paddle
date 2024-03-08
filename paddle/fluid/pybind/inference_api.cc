@@ -928,6 +928,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::EnableTunedTensorRtDynamicShape,
            py::arg("shape_range_info_path") = "",
+
            py::arg("allow_build_at_runtime") = true)
       .def("tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::tuned_tensorrt_dynamic_shape)
@@ -936,6 +937,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
       .def("exp_disable_tensorrt_subgraph",
            &AnalysisConfig::Exp_DisableTensorRtSubgraph)
+      .def("exp_disable_tensorrt_dynamic_shape_ops",
+           &AnalysisConfig::Exp_DisableTensorRTDynamicShapeOPs)
       .def("enable_tensorrt_dla",
            &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)

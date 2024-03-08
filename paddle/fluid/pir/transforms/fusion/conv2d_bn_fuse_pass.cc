@@ -57,6 +57,13 @@ class Conv2dBnFusePattern
       return false;
     }
     if (!conv2d_op.out().HasOneUse()) return false;
+    // (bukejiyu): The bn
+    // outputs(mean_out\variance_out\saved_mean\saved_variance)
+    //  cannot be used in conv bn fusion
+    if (!op.mean_out().use_empty()) return false;
+    if (!op.variance_out().use_empty()) return false;
+    if (!op.saved_mean().use_empty()) return false;
+    if (!op.saved_variance().use_empty()) return false;
 
     pir::Value conv2d_filter = conv2d_op.filter();
     pir::Value bn_mean = op.mean();
