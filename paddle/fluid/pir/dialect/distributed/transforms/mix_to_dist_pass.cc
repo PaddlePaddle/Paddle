@@ -16,39 +16,47 @@
 
 #include <iostream>
 #include <unordered_set>
+#include <vector>
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/core/attribute.h"
+
+using paddle::dialect::DistDenseTensorType;
 
 namespace paddle {
 namespace dialect {
 
 inline bool IsShardTensorOp(pir::Operation* op) {
   std::string op_name = op->name();
-  return op_name.find("shard_tensor_op") != op_name.npos;
+  return op_name.find("shard_tensor") != op_name.npos;
 }
 
-void ProcessBlock(pir::Block* block,
-                  pir::Block* new_block,
-                  pir::IrContext* ctx) {
+void ProcessBlock(pir::Block* block) {
+  std::vector<pir::Operation*> deleted_ops;
+
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
     VLOG(0) << "main loop over op name " << op_item->name();
 
     if (paddle::dialect::IsShardTensorOp(op_item)) {
       pir::Value shard_operand_value = op_item->operand_source(0);
-      pir::Operation* shard_result_define_op =
+      pir::Value shard_result_value = op_item->result(0);
+      pir::Operation* shard_operand_define_op =
           shard_operand_value.defining_op();
-      std::string define_op_name = shard_result_define_op->name();
+      std::string define_op_name = shard_operand_define_op->name();
 
-      // TODO(ljz) Support more paddle op
+      // TODO(2024-Q2) Support more paddle op
       if (define_op_name != "builtin.parameter" ||
           define_op_name != "pd_op.data") {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -56,7 +64,8 @@ void ProcessBlock(pir::Block* block,
             define_op_name));
       }
 
-      // TODO(ljz) Support shard_tensor is called after tensor has been used.
+      // TODO(2024-Q2) Support shard_tensor is called after tensor has been
+      // used.
       if (shard_operand_value.use_count() != 1) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "shard_tensor is supposed to be called right after tensor is "
@@ -64,46 +73,85 @@ void ProcessBlock(pir::Block* block,
             "not Supported in right now.",
             shard_operand_value.use_count()));
       }
+
+      shard_operand_value.set_type(shard_result_value.type());
+      shard_result_value.ReplaceAllUsesWith(shard_operand_value);
+
+      OperationDistAttribute op_dist_attr =
+          op_item->attribute(kAttrOpDistAttrs)
+              .dyn_cast<OperationDistAttribute>();
+      pir::Attribute new_op_dist_attr =
+          OperationDistAttribute::get(pir::IrContext::Instance(),
+                                      op_dist_attr.process_mesh_attr(),
+                                      {},
+                                      op_dist_attr.result_dist_attrs());
+      shard_operand_define_op->set_attribute(kAttrOpDistAttrs,
+                                             new_op_dist_attr);
+
+      deleted_ops.push_back(op_item);
     }
 
-    // TODO(ljz) Handle other shard annotation op in future.
+    for (auto* op : deleted_ops) {
+      // TODO(2024-Q2) Support control flow / region
+      op->Erase();
+    }
+
+    // TODO(2024-Q2) Handle other shard annotation op in future.
   }
 }
 
 /* Verification:
     1. all operators have OperatorDistAttr.
-    2. all Values are DistDenseTensorType.
+    2. all Values (Results) are DistDenseTensorType.
     3. no shard_tensor in block.
 */
 void VerifyBlock(pir::Block* block) {
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
+    PADDLE_ENFORCE_EQ(paddle::dialect::IsShardTensorOp(op_item),
+                      false,
+                      phi::errors::PreconditionNotMet(
+                          "Block still contain shard_tensor_op."));
+
+    if (op_item && !op_item->HasAttribute(kAttrOpDistAttrs)) {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "The op [%s] does not hase OperatorDistAttr after Mix2Dist Pass.",
+          op_item->name()));
+    }
+
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      PADDLE_ENFORCE_EQ(op_item->result(i).type().isa<DistDenseTensorType>(),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "[%d]'s input of [%s] is NOT DistDenseTensorType",
+                            i,
+                            op_item->name()));
+    }
+
     VLOG(0) << "verifying op name " << op_item->name();
   }
 }
 
-std::unique_ptr<pir::Program> MixToDistPass(pir::Program* prog) {
+std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog) {
   // if (FLAGS_print_ir) {
   std::cout << "IR before MixToDist Pass = " << *prog << std::endl;
   // }
 
-  auto program = std::make_unique<pir::Program>(pir::IrContext::Instance());
-
-  auto block = prog->block();
+  pir::IrMapping mapper;
+  auto new_prog = prog->Clone(mapper);
 
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<DistDialect>();
 
-  ProcessBlock(block, program->block(), ctx);
-
-  VerifyBlock(program->block());
+  ProcessBlock(new_prog->block());
+  VerifyBlock(new_prog->block());
 
   // if (FLAGS_print_ir) {
-  std::cout << "IR before MixToDist Pass = " << *program << std::endl;
+  std::cout << "IR before MixToDist Pass = " << *new_prog << std::endl;
   // }
 
-  return program;
+  return new_prog;
 }
 
 }  // namespace dialect
