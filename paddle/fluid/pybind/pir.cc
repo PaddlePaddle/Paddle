@@ -23,11 +23,15 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -62,6 +66,7 @@
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/block.h"
@@ -78,8 +83,6 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
-
-#include "paddle/common/flags.h"
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
@@ -96,6 +99,7 @@ namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
+using paddle::dialect::DistDenseTensorType;
 using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
@@ -631,10 +635,13 @@ phi::DataType GetValueDtype(Value value) {
   } else if (value.type().isa<DenseTensorArrayType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<DenseTensorArrayType>().dtype());
+  } else if (value.type().isa<DistDenseTensorType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DistDenseTensorType>().dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
-        "SelectedRowsType."));
+        "SelectedRowsType, DistDenseTensorType."));
   }
 }
 
@@ -646,9 +653,11 @@ const phi::DDim &GetValueDims(Value value) {
     return value.type().dyn_cast<DenseTensorType>().dims();
   } else if (value.type().isa<SelectedRowsType>()) {
     return value.type().dyn_cast<SelectedRowsType>().dims();
+  } else if (value.type().isa<DistDenseTensorType>()) {
+    return value.type().dyn_cast<DistDenseTensorType>().global_ddim();
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get shape for dense "
+        "Currently, we can only get shape for dense and distdense"
         "tensor."));
   }
 }
@@ -750,6 +759,20 @@ void BindValue(py::module *m) {
                 "can't set shape when building static graph"));
           })
       .def_property(
+          "_local_shape",
+          [](Value self) {
+            if (!self.type().isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "_local_shape is only for distdense tensor."));
+            }
+            return phi::vectorize(
+                self.type().dyn_cast<DistDenseTensorType>().local_ddim());
+          },
+          [](Value self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set _local_shape when building static graph"));
+          })
+      .def_property(
           "dtype",
           [](Value self) { return GetValueDtype(self); },
           [](Value self, phi::DataType dtype) {
@@ -808,6 +831,8 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<SelectedRowsType>(); })
       .def("is_dense_tensor_array_type",
            [](Value self) { return self.type().isa<DenseTensorArrayType>(); })
+      .def("is_dist_dense_tensor_type",
+           [](Value self) { return self.type().isa<DistDenseTensorType>(); })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
       .def("set_type", [](Value self, Type type) { self.set_type(type); })
@@ -829,7 +854,52 @@ void BindValue(py::module *m) {
                  BoolAttribute::get(pir::IrContext::Instance(), true));
              return out;
            })
-      .def("__repr__", &Value2String);
+      .def("__repr__", &Value2String)
+      .def_property(
+          "dims_mapping",
+          [](Value self) {
+            if (!self.type().isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "dims_mapping is only for distdense tensor."));
+            }
+            return self.type().dyn_cast<DistDenseTensorType>().dims_mapping();
+          },
+          [](Value self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "set dims_mapping when building static graph is un-supported "
+                "now."));
+          })
+      .def_property(
+          "partial_dims",
+          [](Value self) {
+            if (!self.type().isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "partial_dims is only for distdense tensor."));
+            }
+            return self.type().dyn_cast<DistDenseTensorType>().partial_dims();
+          },
+          [](Value self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "set partial_dims when building static graph is un-supported "
+                "now."));
+          })
+      .def_property(
+          "process_mesh",
+          [](Value self) {
+            if (!self.type().isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "process_mesh is only for distdense tensor."));
+            }
+            return self.type()
+                .dyn_cast<DistDenseTensorType>()
+                .process_mesh_attr()
+                .process_mesh();
+          },
+          [](Value self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "set process_mesh when building static graph is un-supported "
+                "now."));
+          });
 }
 
 void BindOpOperand(py::module *m) {
@@ -1329,6 +1399,27 @@ pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
   }
 }
 
+pir::Type CreateDistDenseTensorTypeByDenseTensor(
+    const pir::Type &gdense_tensor_type,
+    const std::vector<int> &lshape,
+    const phi::distributed::ProcessMesh &mesh,
+    const std::vector<int64_t> &dims_mapping) {
+  if (gdense_tensor_type.isa<DenseTensorType>()) {
+    DenseTensorType type = gdense_tensor_type.dyn_cast<DenseTensorType>();
+    paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
+    paddle::dialect::TensorDistAttribute tensor_dist_attr =
+        paddle::dialect::TensorDistAttribute::get(
+            pir::IrContext::Instance(), mesh, dims_mapping, partial_status);
+    return DistDenseTensorType::get(pir::IrContext::Instance(),
+                                    type,
+                                    tensor_dist_attr,
+                                    phi::make_ddim(lshape));
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, input is not a dense tensor type are not supported."));
+  }
+}
+
 void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   if (op->isa<pir::ShadowOutputOp>()) {
@@ -1360,7 +1451,12 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
       const std::string &inplace_name = yaml_parser.InplaceName(value_name);
       inplace_info[i] = yaml_parser.InputName2Id().at(inplace_name);
     }
+    if (yaml_parser.HasView(value_name)) {
+      const std::string &view_name = yaml_parser.ViewName(value_name);
+      inplace_info[i] = yaml_parser.InputName2Id().at(view_name);
+    }
   }
+
   return inplace_info;
 }
 
@@ -1391,8 +1487,14 @@ void BindUtils(pybind11::module *m) {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   });
+  m->def("register_dist_dialect", []() {
+    pir::IrContext::Instance()
+        ->GetOrRegisterDialect<paddle::dialect::DistDialect>();
+  });
   m->def("create_selected_rows_type_by_dense_tensor",
          CreateSelectedRowsTypeByDenseTensor);
+  m->def("create_dist_dense_tensor_type_by_dense_tensor",
+         CreateDistDenseTensorTypeByDenseTensor);
   m->def(
       "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
@@ -1441,10 +1543,10 @@ void BindUtils(pybind11::module *m) {
 
                 >>> print(pir_program)
                 {
-                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persistable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
-                 (%1) = "pd_op.matmul" (%0, %0) {is_persistable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%2) = "pd_op.add" (%1, %1) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%3) = "pd_op.tanh" (%2) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persistable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> builtin.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persistable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (builtin.tensor<4x4xf32>, builtin.tensor<4x4xf32>) -> builtin.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persistable:[false],stop_gradient:[false]} : (builtin.tensor<4x4xf32>, builtin.tensor<4x4xf32>) -> builtin.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persistable:[false],stop_gradient:[false]} : (builtin.tensor<4x4xf32>) -> builtin.tensor<4x4xf32>
                 }
 
 
@@ -1516,14 +1618,14 @@ void BindUtils(pybind11::module *m) {
 
                 >>> print(pir_program)
                 {
-                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persistable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
-                 (%1) = "pd_op.matmul" (%0, %0) {is_persistable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%2) = "pd_op.add" (%1, %1) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%3) = "pd_op.tanh" (%2) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persistable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> builtin.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persistable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (builtin.tensor<4x4xf32>, builtin.tensor<4x4xf32>) -> builtin.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persistable:[false],stop_gradient:[false]} : (builtin.tensor<4x4xf32>, builtin.tensor<4x4xf32>) -> builtin.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persistable:[false],stop_gradient:[false]} : (builtin.tensor<4x4xf32>) -> builtin.tensor<4x4xf32>
                 }
 
                 >>> print(mappings)
-                {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=pd_op.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=pd_op.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=pd_op.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=pd_op.tensor<4x4xf32>)]}
+                {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=builtin.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=builtin.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=builtin.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=builtin.tensor<4x4xf32>)]}
     )DOC");
 
   m->def("clear_pir_compiler_manager", []() {
@@ -1536,24 +1638,6 @@ void BindUtils(pybind11::module *m) {
 }
 
 namespace {
-
-bool HasDynamicShape(const pir::Program &program) {
-  for (const auto &op : *program.block()) {
-    if (op.isa<pir::CombineOp>()) {
-      continue;
-    }
-    for (uint32_t i = 0; i < op.num_results(); ++i) {
-      if (op.result(i) && op.result(i).type()) {
-        auto shape_type =
-            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
-        if (shape_type && shape_type.IsDynamicShape()) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
 
 void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
@@ -1582,7 +1666,8 @@ void InferSymbolicShapePass(
     pir::Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+  if (pir::shape::HasDynamicShape(program) &&
+      FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }

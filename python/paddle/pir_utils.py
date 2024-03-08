@@ -64,6 +64,8 @@ class IrGuard:
         ]:
             paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
             paddle.pir.register_paddle_dialect()
+            # TODO find a better place to init the registion of dist dialect.
+            paddle.pir.register_dist_dialect()
 
             paddle.base.Program = paddle.pir.Program
             paddle.base.program_guard = paddle.pir.core.program_guard

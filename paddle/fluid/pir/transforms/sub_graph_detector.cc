@@ -83,7 +83,8 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       }
       auto* defined_op = operand.source().defining_op();
       --pending_count[defined_op];
-      if (defined_op && pending_count[defined_op] == 0) {
+      if (defined_op && pending_count[defined_op] == 0 &&
+          defined_op->GetParent() == block) {
         queue.push(defined_op);
       }
     }
@@ -109,7 +110,8 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
       continue;
     }
     auto* source_op = operand.source().defining_op();
-    if (source_op && !producers.count(source_op)) {
+    if (source_op && !producers.count(source_op) &&
+        source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
       PADDLE_ENFORCE(
           op2id.count(source_op),
@@ -134,7 +136,8 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     if (!operand || !(operand.source())) {
       continue;
     }
-    if (auto* source_op = operand.source().defining_op()) {
+    auto* source_op = operand.source().defining_op();
+    if (source_op && source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
     }
   }
@@ -316,11 +319,11 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
     if (!consumer->substitute) {
       continue;
     }
-    // fast depency check.
+    // fast dependency check.
     if (IsDependencySimplify(producer, consumer, consumers)) {
       continue;
     }
-    // global depency check.
+    // global dependency check.
     if (IsDependency(producer, consumer, consumers)) {
       continue;
     }
@@ -341,7 +344,7 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
         producer->ops.end(), candidate->ops.begin(), candidate->ops.end());
     producer->op_set.insert(candidate->op_set.begin(), candidate->op_set.end());
 
-    // update bound for check depency
+    // update bound for check dependency
     producer->max_depth = std::max(producer->max_depth, candidate->max_depth);
     producer->min_depth = std::min(producer->min_depth, candidate->min_depth);
 
@@ -364,7 +367,7 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
       tmp->producers.erase(candidate);
     }
 
-    // remove candicate in producer/consumer
+    // remove candidate in producer/consumer
     producer->producers.erase(candidate);
     producer->consumers.erase(candidate);
 
@@ -387,7 +390,7 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
 
   return true;
 }
-// check exist depency.
+// check exist dependency.
 bool SubgraphDetector::IsDependency(
     const SubGraphPtr& producer_g,
     const SubGraphPtr& consumer,

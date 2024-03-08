@@ -956,7 +956,7 @@ class PyCodeGen:
         direction: JumpDirection = JumpDirection.FORWARD,
         suffix: PopJumpCond = PopJumpCond.NONE,
     ) -> Instruction:
-        if sys.version_info >= (3, 11):
+        if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
             return self.add_instr(
                 f"POP_JUMP_{direction.value}_IF_{suffix.value}", jump_to=jump_to
             )

@@ -639,15 +639,15 @@ void InitP2P(const std::vector<platform::Place> &places) {
     for (int i = 0; i < count; ++i) {
       for (int j = 0; j < count; ++j) {
         if (devices[i] == devices[j]) continue;
-        int can_acess = -1;
+        int can_access = -1;
 #ifdef PADDLE_WITH_HIP
         hipError_t ret =
-            hipDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
-        if (ret != hipSuccess || can_acess != 1) {
+            hipDeviceCanAccessPeer(&can_access, devices[i], devices[j]);
+        if (ret != hipSuccess || can_access != 1) {
 #else
         cudaError_t ret =
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
-        if (ret != cudaSuccess || can_acess != 1) {
+            cudaDeviceCanAccessPeer(&can_access, devices[i], devices[j]);
+        if (ret != cudaSuccess || can_access != 1) {
 #endif
           LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
                        << " to " << devices[j];

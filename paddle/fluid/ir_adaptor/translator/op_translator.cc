@@ -334,7 +334,7 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
                paddle::framework::proto::VarType::SELECTED_ROWS) {
       need_inputs_sig.emplace_back("selected_rows");
     } else {
-      IR_THROW("Op %d only support densetensor and selected_rows, but not %d",
+      IR_THROW("Op %d only support dense tensor and selected_rows, but not %d",
                op_desc.Type(),
                var->GetType());
     }
@@ -1255,6 +1255,16 @@ struct SplitOpTranscriber : public OpTranscriber {
 
       return attribute_map;
     }
+#ifdef PADDLE_WITH_DNNL
+    else if (op_desc.HasAttr("mkldnn_data_type")) {  // NOLINT
+      pir::AttributeMap attribute_map = {
+          {"mkldnn_data_type",
+           pir::StrAttribute::get(
+               ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"))},
+      };
+      return attribute_map;
+    }
+#endif
 
     return {};
   }
@@ -1262,17 +1272,19 @@ struct SplitOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     int num = paddle::get<int>(op_desc.GetAttr("num"));
+    auto prefix = GetPrefix(ctx, op_desc);
     std::string target_op_name;
     if (num > 0) {
-      target_op_name = "pd_op.split_with_num";
+      target_op_name = prefix + "split_with_num";
 
     } else {
-      target_op_name = "pd_op.split";
+      target_op_name = prefix + "split";
     }
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      IR_THROW("Op assign_value should have corresponding OpInfo pd_op.split");
+      IR_THROW("Op assign_value should have corresponding OpInfo %s.",
+               target_op_name);
     }
 
     return op_info;
@@ -1355,19 +1367,10 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
 struct AddNOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
-    auto prefix = GetPrefix(ctx, op_desc);
-    std::string target_op_name;
-#ifdef PADDLE_WITH_DNNL
-    if (prefix == kOneDNNTargetDialectPrefix) {
-      target_op_name = std::string(kOneDNNTargetDialectPrefix) + "add_n_onednn";
-    } else  // NOLINT
-#endif
-    {
-      target_op_name =
-          GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
-      if (IsInplace(op_desc)) {
-        target_op_name += "_";
-      }
+    std::string target_op_name =
+        GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
+    if (IsInplace(op_desc)) {
+      target_op_name += "_";
     }
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
@@ -1891,7 +1894,7 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
       }
     }
     switch (place_type) {
-      case -1:
+      case -1:  // NOLINT
         attribute_map["place"] = paddle::dialect::PlaceAttribute::get(
             ctx, phi::Place(phi::AllocationType::UNDEFINED));
         break;
@@ -2710,7 +2713,7 @@ struct RandIntOpTranscriber : public OpTranscriber {
   std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
       pir::IrContext* ctx,
       const OpDesc& op_desc,
-      const OpOutputInfoList& output_infos) {
+      const OpOutputInfoList& output_infos) override {
     OpOutputMapping arg_to_idx;
     OpOutputTypeList op_output_types = {};
 
@@ -2734,7 +2737,7 @@ struct RandIntOpTranscriber : public OpTranscriber {
     paddle::dialect::DenseTensorTypeStorage::Dim dim =
         common::make_ddim(var->GetShape());
     paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
-        paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED;
+        paddle::dialect::DenseTensorTypeStorage::DataLayout::NCHW;
     paddle::dialect::DenseTensorTypeStorage::LoD lod = {};
     size_t offset = 0;
     pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(

@@ -24,6 +24,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/op_callstack_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
@@ -43,8 +44,10 @@ static PyObject *static_api_parameter(PyObject *self,
     PyObject *name_obj = PyTuple_GET_ITEM(args, 0);
     std::string name = CastPyArg2String(name_obj, "name", 0);
     // Call ir static api
+    CallStackRecorder callstack_recoder("parameter");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::parameter(name);
-
+    callstack_recoder.AttachToOps();
     return ToPyObject(static_api_out);
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
@@ -67,8 +70,10 @@ static PyObject *static_api_set_parameter(PyObject *self,
     PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
     std::string name = CastPyArg2String(name_obj, "name", 1);
     // Call ir static api
+    CallStackRecorder callstack_recoder("set_parameter");
+    callstack_recoder.Record();
     paddle::dialect::set_parameter(parameter, name);
-
+    callstack_recoder.AttachToOps();
     Py_RETURN_NONE;
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
@@ -91,8 +96,10 @@ static PyObject *static_api_set_persistable_value(PyObject *self,
     PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
     std::string name = CastPyArg2String(name_obj, "name", 1);
     // Call ir static api
+    CallStackRecorder callstack_recoder("shadow_output");
+    callstack_recoder.Record();
     paddle::dialect::shadow_output(persist_value, name);
-
+    callstack_recoder.AttachToOps();
     Py_RETURN_NONE;
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
@@ -119,7 +126,10 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
         !PyObject_CheckIRValue(value_obj)) {
       std::vector<int64_t> shape = CastPyArg2Longs(shape_obj, "full", 0);
       float value = CastPyArg2Float(value_obj, "full", 1);
+      CallStackRecorder callstack_recoder("full");
+      callstack_recoder.Record();
       auto static_api_out = paddle::dialect::full(shape, value, dtype, place);
+      callstack_recoder.AttachToOps();
       return ToPyObject(static_api_out);
     } else {
       pir::Value shape, value;
@@ -146,8 +156,12 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
                                       phi::CPUPlace());
       }
 
+      CallStackRecorder callstack_recoder("full_with_tensor");
+      callstack_recoder.Record();
       auto static_api_out =
           paddle::dialect::full_with_tensor(shape, value, dtype);
+      callstack_recoder.AttachToOps();
+
       return ToPyObject(static_api_out);
     }
   } catch (...) {
@@ -169,7 +183,10 @@ static PyObject *static_api_create_array(PyObject *self,
         CastPyArg2DataTypeDirectly(dtype_obj, "create_array", 0);
 
     // Call ir static api
+    CallStackRecorder callstack_recoder("create_array");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::create_array(dtype);
+    callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -194,8 +211,10 @@ static PyObject *static_api_create_array_like(PyObject *self,
     float value = CastPyArg2Float(value_obj, "create_array_like", 1);
 
     // Call ir static api
+    CallStackRecorder callstack_recoder("create_array_like");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::create_array_like(input, value);
-
+    callstack_recoder.AttachToOps();
     return ToPyObject(static_api_out);
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
@@ -215,7 +234,10 @@ static PyObject *static_api_array_length(PyObject *self,
     auto x = CastPyArg2Value(x_obj, "array_length", 0);
 
     // Call ir static api
+    CallStackRecorder callstack_recoder("array_length");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::array_length(x);
+    callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -248,7 +270,10 @@ static PyObject *static_api_array_read(PyObject *self,
     }
 
     // Call ir static api
+    CallStackRecorder callstack_recoder("array_read");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::array_read(array, i);
+    callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -282,7 +307,10 @@ static PyObject *static_api_array_write_(PyObject *self,
     }
 
     // Call ir static api
+    CallStackRecorder callstack_recoder("array_write_");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::array_write_(array, x, i);
+    callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -321,7 +349,10 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
     auto use_stack = CastPyArg2Boolean(use_stack_obj, "array_to_tensor", 2);
 
     // Call ir static api
+    CallStackRecorder callstack_recoder("array_to_tensor");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::array_to_tensor(x, axis, use_stack);
+    callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -341,10 +372,10 @@ PyObject *static_api_add_n_array(PyObject *self,
     PyObject *inputs_obj = PyTuple_GET_ITEM(args, 0);
     auto inputs = CastPyArg2VectorOfValue(inputs_obj, "add_n", 0);
 
-    // Parse Attributes
-
-    // Call ir static api
+    CallStackRecorder callstack_recoder("add_n_array");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::add_n_array(inputs);
+    callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -395,7 +426,10 @@ static PyObject *static_api_slice_array(PyObject *self,
     }
 
     // Call ir static api
+    CallStackRecorder callstack_recoder("slice_array");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::slice_array(input, starts, ends);
+    callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -430,9 +464,11 @@ static PyObject *static_api_slice_array_dense(PyObject *self,
       starts = paddle::dialect::full_int_array(
           starts_tmp, phi::DataType::INT64, phi::CPUPlace());
     }
-
     // Call ir static api
+    CallStackRecorder callstack_recoder("slice_array_dense");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::slice_array_dense(input, starts);
+    callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -754,7 +790,8 @@ static PyObject *static_api_run_custom_op(PyObject *self,
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
-
+  CallStackRecorder callstack_recoder("run_custom_op");
+  callstack_recoder.Record();
   std::vector<pir::Value> op_results;
   pir::Operation *op =
       paddle::dialect::ApiBuilder::Instance().GetBuilder()->Build(
@@ -772,7 +809,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       op_results.push_back(op->result(i));
     }
   }
-
+  callstack_recoder.AttachToOps();
   return ToPyObject(op_results);
 }
 
@@ -811,10 +848,13 @@ static PyObject *static_api_fused_gemm_epilogue(PyObject *self,
     PyObject *activation_obj = PyTuple_GET_ITEM(args, 5);
     std::string activation =
         CastPyArg2String(activation_obj, "fused_gemm_epilogue", 5);
-
     // Call ir static api
+    CallStackRecorder callstack_recoder("fused_gemm_epilogue");
+    callstack_recoder.Record();
     auto out = paddle::dialect::fused_gemm_epilogue(
         x, y, bias, trans_x, trans_y, activation);
+    callstack_recoder.AttachToOps();
+
     return ToPyObject(out);
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
@@ -836,8 +876,10 @@ static PyObject *static_api_array_pop(PyObject *self,
     auto index = CastPyArg2Int(index_obj, "array_pop", 1);
 
     // Call ir static api
+    CallStackRecorder callstack_recoder("array_pop");
+    callstack_recoder.Record();
     auto static_api_out = paddle::dialect::array_pop(input, index);
-
+    callstack_recoder.AttachToOps();
     return ToPyObject(static_api_out);
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
