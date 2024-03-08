@@ -48,15 +48,15 @@ struct CompatibleInfo {
 class OpCompatibleMap {
  public:
   OpCompatibleMap() : default_required_version_("1.5.0") {}
-  void InitOpCompatibleMap();
+  TEST_API void InitOpCompatibleMap();
 
-  CompatibleInfo GetOpCompatibleInfo(std::string op_name) const;
+  TEST_API CompatibleInfo GetOpCompatibleInfo(std::string op_name) const;
 
   /* IsRequireMiniVersion
    *  return type OpCompatibleType */
 
-  OpCompatibleType IsRequireMiniVersion(std::string op_name,
-                                        std::string current_version) const;
+  TEST_API OpCompatibleType
+  IsRequireMiniVersion(std::string op_name, std::string current_version) const;
 
   const std::string& GetDefaultRequiredVersion() const {
     return default_required_version_;

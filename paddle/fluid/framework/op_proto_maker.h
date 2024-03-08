@@ -52,7 +52,7 @@ class OpProtoAndCheckerMaker {
   static const char *OpDeviceAttrName() { return "op_device"; }
   static const char *OpWithQuantAttrName() { return "with_quant_attr"; }
 
-  void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
+  TEST_API void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 
   virtual void Make() = 0;
 

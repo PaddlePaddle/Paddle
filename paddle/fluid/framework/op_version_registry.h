@@ -147,7 +147,7 @@ OpAttrVariantT op_attr_wrapper(const char (&val)[N]) {
   return OpAttrVariantT{std::string{val}};
 }
 
-class OpVersionDesc {
+class TEST_API OpVersionDesc {
  public:
   /* Compatibility upgrade */
   template <typename T>
@@ -233,18 +233,18 @@ class OpVersion {
   std::vector<OpCheckpoint> checkpoints_;
 };
 
-class OpVersionRegistrar {
+class TEST_API OpVersionRegistrar {
  public:
   static OpVersionRegistrar& GetInstance();
 
-  OpVersion& Register(const std::string& op_type);
+  TEST_API OpVersion& Register(const std::string& op_type);
   const std::unordered_map<std::string, OpVersion>& GetVersionMap() {
     return op_version_map_;
   }
   bool Has(const std::string& op_type) const {
     return op_version_map_.count(op_type);
   }
-  uint32_t version_id(const std::string& op_type) const;
+  TEST_API uint32_t version_id(const std::string& op_type) const;
 
  private:
   std::unordered_map<std::string, OpVersion> op_version_map_;
@@ -375,7 +375,7 @@ class PassVersionCheckers {
 
 class PassVersionCheckerRegistrar {
  public:
-  static PassVersionCheckerRegistrar& GetInstance();
+  TEST_API static PassVersionCheckerRegistrar& GetInstance();
 
   PassVersionCheckers& Register(const std::string& pass_name) {
     PADDLE_ENFORCE_EQ(
