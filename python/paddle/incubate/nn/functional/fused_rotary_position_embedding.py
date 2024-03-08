@@ -17,7 +17,7 @@ from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
 
 
-def fused_rotary_position_embedding(q, k=None, v=None, rotary_emb_base=10000.0):
+def fused_rotary_position_embedding(q, k=None, v=None):
     r"""
     Fused rotary position embedding.
 
@@ -46,10 +46,7 @@ def fused_rotary_position_embedding(q, k=None, v=None, rotary_emb_base=10000.0):
             out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v)
     """
     if in_dynamic_mode():
-        assert isinstance(
-            rotary_emb_base, float
-        ), f"type of rotary_emb_base must be float, but got {type(rotary_emb_base)}"
-        return _C_ops.fused_rotary_position_embedding(q, k, v, rotary_emb_base)
+        return _C_ops.fused_rotary_position_embedding(q, k, v)
 
     raise RuntimeError(
         "This feature is currently supported only in dynamic mode and with CUDAPlace."

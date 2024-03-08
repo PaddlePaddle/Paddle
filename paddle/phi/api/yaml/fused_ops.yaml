@@ -66,7 +66,7 @@
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask
 
 - op : fused_rotary_position_embedding
-  args : (Tensor q, Tensor k, Tensor v, float rotary_emb_base = 10000.0)
+  args : (Tensor q, Tensor k, Tensor v)
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
   infer_meta :
     func : FusedRopeInferMeta

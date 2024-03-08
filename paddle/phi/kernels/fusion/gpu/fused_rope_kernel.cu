@@ -27,7 +27,6 @@ __global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
                                           int64_t seq_len,
                                           int64_t num_heads,
                                           int64_t head_dim,
-                                          const float rotary_emb_base,
                                           phi::Array<T*, 3> outs_data,
                                           int num_inputs,
                                           MPType div_c) {
@@ -53,8 +52,8 @@ __global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
       int64_t pos_seq = index_wc / (num_heads * head_dim);
       MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
       MPType indicses =
-          static_cast<MPType>(1) / pow(static_cast<MPType>(rotary_emb_base),
-                                       idx * static_cast<MPType>(div_c));
+          static_cast<MPType>(1) /
+          pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
       MPType value = pos_seq * indicses;
       sin_value[nx] = sin(value);
       cos_value[nx] = cos(value);
@@ -93,7 +92,6 @@ void FusedRopeKernel(const Context& dev_ctx,
                      const DenseTensor& q,
                      const paddle::optional<DenseTensor>& k,
                      const paddle::optional<DenseTensor>& v,
-                     const float rotary_emb_base,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
@@ -149,7 +147,6 @@ void FusedRopeKernel(const Context& dev_ctx,
                                    seq_len,
                                    num_heads,
                                    head_dim,
-                                   rotary_emb_base,
                                    outs_data,
                                    num_inputs,
                                    div_c);
