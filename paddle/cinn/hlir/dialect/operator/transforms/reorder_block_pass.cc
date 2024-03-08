@@ -25,7 +25,13 @@ namespace {
 std::vector<::pir::Value> GetInputValues(const pir::Block* block) {
   std::vector<::pir::Value> inputs;
   std::unordered_set<::pir::Value> visited_values;
-  std::unordered_set<::pir::Operation*> ops_set;
+  std::unordered_set<const ::pir::Operation*> ops_set = [&] {
+    std::unordered_set<const ::pir::Operation*> ops_set;
+    for (const auto& op : *block) {
+      ops_set.insert(&op);
+    }
+    return ops_set;
+  }();
   // count all op's input Value
   for (const auto& op : *block) {
     for (auto& value : op.operands_source()) {
@@ -59,11 +65,10 @@ std::vector<::pir::Value> GetInputValues(const pir::Operation* operation) {
         }
       }
     }
-  } else {
-    for (auto& value : operation->operands_source()) {
-      if (value && value.type()) {
-        inputs.push_back(value);
-      }
+  }
+  for (auto& value : operation->operands_source()) {
+    if (value && value.type()) {
+      inputs.push_back(value);
     }
   }
   return inputs;
@@ -90,11 +95,17 @@ class ReorderBlockOpsPass : public pir::Pass {
             auto result = op->result(i);
             visited_values.insert(result);
             for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-              if (reorder_op_dep_cnt.count(it->owner())) {
-                reorder_op_dep_cnt[it->owner()]--;
-                if (reorder_op_dep_cnt[it->owner()] == 0) {
-                  op_que.push(it->owner());
+              pir::Operation* user = it->owner();
+              if (!reorder_op_dep_cnt.count(user)) {
+                user = user->GetParentOp();
+              }
+              if (reorder_op_dep_cnt.count(user)) {
+                reorder_op_dep_cnt[user]--;
+                if (reorder_op_dep_cnt[user] == 0) {
+                  op_que.push(user);
                 }
+              } else {
+                LOG(ERROR) << "Can't find user: " << user->name();
               }
             }
           }
@@ -103,6 +114,8 @@ class ReorderBlockOpsPass : public pir::Pass {
         for (auto& op : block) {
           bool has_dependency = false;
           const auto& op_inputs = GetInputValues(&op);
+          VLOG(5) << "  op: " << op.name()
+                  << ", input size: " << op_inputs.size();
           if (!op_inputs.empty()) {
             for (const auto& operand : op_inputs) {
               if (operand && visited_values.count(operand) == 0) {
