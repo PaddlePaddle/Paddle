@@ -22,6 +22,8 @@
 
 namespace {
 
+std::vector<::pir::Value> GetInputValues(const pir::Operation* operation);
+
 std::vector<::pir::Value> GetInputValues(const pir::Block* block) {
   std::vector<::pir::Value> inputs;
   std::unordered_set<::pir::Value> visited_values;
@@ -42,6 +44,14 @@ std::vector<::pir::Value> GetInputValues(const pir::Block* block) {
         // if the input value owner op is not in ops_set, it's the block's input
         visited_values.insert(value);
         inputs.push_back(value);
+      }
+    }
+    if (op.num_regions() > 0) {
+      for (auto value : GetInputValues(&op)) {
+        if (!visited_values.count(value)) {
+          visited_values.insert(value);
+          inputs.push_back(value);
+        }
       }
     }
   }
@@ -88,6 +98,22 @@ class ReorderBlockOpsPass : public pir::Pass {
         std::unordered_map<pir::Operation*, int>
             reorder_op_dep_cnt;  // op -> dependent input count
         std::unordered_set<pir::Value> visited_values;
+        if (op->isa<paddle::dialect::WhileOp>()) {
+          for (const auto& args :
+               op->dyn_cast<paddle::dialect::WhileOp>().block_args()) {
+            visited_values.insert(args);
+            VLOG(0) << "#### while args visited_values: " << args.impl();
+          }
+          for (const auto& in_args : GetInputValues(
+                   &op->dyn_cast<paddle::dialect::WhileOp>().body())) {
+            visited_values.insert(in_args);
+          }
+        } else {
+          for (const auto& in_args : GetInputValues(op)) {
+            visited_values.insert(in_args);
+          }
+        }
+
         std::queue<pir::Operation*> op_que;
 
         auto update_op_que = [&](pir::Operation* op) {
@@ -114,18 +140,21 @@ class ReorderBlockOpsPass : public pir::Pass {
         for (auto& op : block) {
           bool has_dependency = false;
           const auto& op_inputs = GetInputValues(&op);
-          VLOG(5) << "  op: " << op.name()
+          VLOG(0) << "  op: " << op.name()
                   << ", input size: " << op_inputs.size();
           if (!op_inputs.empty()) {
             for (const auto& operand : op_inputs) {
               if (operand && visited_values.count(operand) == 0) {
                 reorder_op_dep_cnt[&op]++;
                 has_dependency = true;
+                VLOG(0) << " ### " << op.name()
+                        << " has_dependency: " << operand.impl();
               }
             }
           }
           if (!has_dependency) {
             res_op_list.push_back(&op);
+            VLOG(0) << "  ###  res_op_list op: " << op.name();
             update_op_que(&op);
           }
         }
@@ -137,10 +166,13 @@ class ReorderBlockOpsPass : public pir::Pass {
         while (!op_que.empty()) {
           auto* op = op_que.front();
           op_que.pop();
+          VLOG(0) << " ### res_op_list op: " << op->name();
           res_op_list.push_back(op);
           update_op_que(op);
         }
         VLOG(4) << "ReorderBlockOpsPass is applied.";
+        VLOG(0) << "  block size : " << block.size();
+        VLOG(0) << "  res_op_list size : " << res_op_list.size();
         block.ResetOpListOrder(res_op_list);
       }
     }
