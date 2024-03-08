@@ -157,6 +157,13 @@ if(NOT WIN32)
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
       -Wno-defaulted-function-deleted # Warning in GLOO
+      -Wno-bitwise-instead-of-logical # Warning in "unsupported/Eigen/CXX11/Tensor"
+      -Wno-overloaded-virtual # For some inconsistent virtual function signature, clang
+      -Wno-inconsistent-missing-override # For lots of warnings when not using override for virtual functions, clang
+      -Wno-deprecated-copy-with-user-provided-copy # For three/five/zeros rule, clang
+      -Wno-deprecated-copy # Same above
+      -Wno-unused-private-field
+      -Wno-unused-const-variable
       ${fsanitize})
 
   if(WITH_IPU)
