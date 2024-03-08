@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <cmath>
+#include <memory>
 #include <numeric>
 
 #include "paddle/extension.h"
@@ -25,8 +27,7 @@ using paddle_infer::Config;
 using paddle_infer::CreatePredictor;
 using paddle_infer::Predictor;
 
-int main(int argc, char **argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+std::shared_ptr<Predictor> InitPredictor(bool use_custom_pass) {
   Config config;
   config.EnableUseGpu(100, 0);
   config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
@@ -34,9 +35,14 @@ int main(int argc, char **argv) {
   config.EnableNewExecutor(true);
   config.EnableNewIR(true);
   // config.SwitchIrDebug(true);
-  config.EnableCustomPasses({"relu_replace_pass"});
-  auto predictor = CreatePredictor(config);
+  if (use_custom_pass) {
+    config.EnableCustomPasses({"relu_replace_pass"});
+  }
 
+  return CreatePredictor(config);
+}
+
+std::vector<float> GetOutputData(const std::shared_ptr<Predictor> &predictor) {
   auto input_names = predictor->GetInputNames();
   auto input_shapes = predictor->GetInputTensorShape();
 
@@ -56,18 +62,37 @@ int main(int argc, char **argv) {
   }
   CHECK(predictor->Run(inputs, &outputs));
 
-  for (auto &output : outputs) {
-    CHECK(output.place() == paddle::GPUPlace{});
-    output = output.copy_to(paddle::CPUPlace{}, true);
-    LOG(INFO) << output.name() << "'s data :";
-    for (int64_t i = 0; i < output.numel(); i += 100) {
-      if (output.dtype() == paddle::DataType::FLOAT32) {
-        LOG(INFO) << output.data<float>()[i];
-      } else if (output.dtype() == paddle::DataType::INT32) {
-        LOG(INFO) << output.data<int>()[i];
-      }
+  CHECK(outputs[0].place() == paddle::GPUPlace{});
+  CHECK(outputs[0].dtype() == paddle::DataType::FLOAT32);
+  auto output = outputs[0].copy_to(paddle::CPUPlace{}, true);
+
+  std::vector<float> output_data;
+  for (int64_t i = 0; i < output.numel(); i++) {
+    output_data.push_back(output.data<float>()[i]);
+  }
+  return output_data;
+}
+
+bool AreEqual(const std::vector<float> &vec1,
+              const std::vector<float> &vec2,
+              float epsilon) {
+  if (vec1.size() != vec2.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < vec1.size(); ++i) {
+    if (std::fabs(vec1[i] - vec2[i]) > epsilon) {
+      return false;
     }
   }
+  return true;
+}
+
+int main(int argc, char **argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  auto base_data = GetOutputData(InitPredictor(false));
+  auto custom_data = GetOutputData(InitPredictor(true));
+
+  CHECK(AreEqual(base_data, custom_data, 1e-3));
 
   return 0;
 }

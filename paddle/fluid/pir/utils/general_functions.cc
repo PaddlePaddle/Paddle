@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 
 #include <unordered_set>
 

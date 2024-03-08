@@ -35,7 +35,7 @@ limitations under the License. */
 #if CPP_STANDARD >= 201703L && !defined(__clang__)
 // pir&pass headers
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/value.h"
