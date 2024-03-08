@@ -676,7 +676,7 @@ class Engine:
 
             self._inputs = self.program_helper.input_vars
             self._labels = self.program_helper.label_vars
-            self._process_dist_input_specs()
+            # self._process_dist_input_specs()
             outputs = self.program_helper.output_vars
             self._losses = self.program_helper.loss_vars
             metrics = self.program_helper.metric_vars
@@ -728,7 +728,8 @@ class Engine:
                     self._loss, Variable
                 ), "the type of `loss` of the Engine arguments should be Variable."
                 self._losses = auto_utils.to_list(self._loss)
-
+        print('serial_main_prog', serial_main_prog, flush=1)
+        print('serial_startup_prog', serial_startup_prog, flush=1)
         default_ctx = get_default_distributed_context()
         if not default_ctx.has_annotation:
             # We build the world process group because the data parallel
