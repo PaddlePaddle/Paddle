@@ -229,10 +229,13 @@ class HybridParallelClipGrad:
             paddle.framework._current_expected_place(), paddle.CustomPlace
         ):
             clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
+
+        params_and_grads = []
         for p, g in params_grads:
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
+                params_and_grads.append((p, g))
                 continue
             if g.dtype == paddle.float16:
                 g.multiply_(clip_var_fp16)
@@ -241,8 +244,9 @@ class HybridParallelClipGrad:
             else:
                 g.multiply_(clip_var)
             p._reset_grad_inplace_version(True)
+            params_and_grads.append((p, g))
 
-        return params_grads
+        return params_and_grads
 
     def __getattr__(self, item):
         return getattr(self._clip, item)
