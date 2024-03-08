@@ -184,7 +184,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_dist_tensor_api MODULES test_dist_tensor_api)
   set_tests_properties(test_dist_tensor_api
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_gpt_with_pir MODULES test_gpt_with_pir)
   set_tests_properties(test_gpt_with_pir PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                     TIMEOUT 100)

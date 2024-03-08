@@ -207,7 +207,6 @@
     func : as_strided
   backward : as_strided_grad
   no_need_buffer : input
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : asgd_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor d, Tensor y, Tensor n, Tensor master_param, bool multi_precision=false)
@@ -941,13 +940,13 @@
     func : expand
     data_type : x
   backward : expand_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : expand_as
   args : (Tensor x, Tensor y, int[] target_shape = {})
   output : Tensor(out)
   infer_meta :
     func : ExpandAsInferMeta
+    local_shape: target_shape
   kernel :
     func : expand_as
     data_type : x

@@ -813,6 +813,8 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableTensorRtSubgraph(
       const std::vector<std::string>& var_name_not_trt);
 
+  void Exp_DisableTensorRTDynamicShapeOPs(bool trt_forbid_dynamic_op);
+
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
   /// https://github.com/NVIDIA/TensorRT), with which some models's inference
@@ -879,9 +881,21 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   int tensorrt_optimization_level() { return trt_optimization_level_; }
 
+  /// \brief A boolean state telling whether to use new executor.
+  ///
+  /// \return bool whether to use new executor.
+  ///
   void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
 
   bool new_executor_enabled() const { return use_new_executor_; }
+
+  /// \brief A boolean state telling whether to use new IR.
+  ///
+  /// \return bool whether to use new IR.
+  ///
+  void EnableNewIR(bool x = true) { use_pir_ = x; }
+
+  bool new_ir_enabled() const { return use_pir_; }
 
   ///
   /// \brief Control whether to use optimized model to inference.
@@ -1271,6 +1285,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   bool trt_mark_output_{false};
+  bool trt_forbid_dynamic_op_{false};
+
   std::vector<std::string> trt_output_tensor_names_{};
   std::vector<std::string> trt_exclude_var_names_{};
   std::string tensorrt_transformer_posid_{""};
@@ -1425,6 +1441,8 @@ struct PD_INFER_DECL AnalysisConfig {
   // PrepareProgram(). So we add this flag to control the process.
   bool apply_optim_{false};
   bool skip_load_params_{false};
+
+  bool use_pir_{false};
 };
 
 }  // namespace paddle

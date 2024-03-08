@@ -23,7 +23,9 @@ bool InferSymbolicShapeElementWiseBinary(
   // For ElementWiseBinary ops, if the input tensor is from full op, the value
   // of fullop is useless, only the shape need doing broadcast
   bool x_from_fullop =
-      op->operand_source(0).defining_op()->isa<paddle::dialect::FullOp>();
+      op->operand_source(0).defining_op()
+          ? op->operand_source(0).defining_op()->isa<paddle::dialect::FullOp>()
+          : false;
   if (!x_from_fullop && x_shapeordata.data().has_value()) {
     shape_0 = x_shapeordata.data().value();
   } else {
@@ -34,7 +36,9 @@ bool InferSymbolicShapeElementWiseBinary(
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
   std::vector<symbol::DimExpr> shape_1;
   bool y_from_fullop =
-      op->operand_source(1).defining_op()->isa<paddle::dialect::FullOp>();
+      op->operand_source(1).defining_op()
+          ? op->operand_source(1).defining_op()->isa<paddle::dialect::FullOp>()
+          : false;
   if (!y_from_fullop && y_shapeordata.data().has_value()) {
     shape_1 = y_shapeordata.data().value();
   } else {
@@ -224,4 +228,12 @@ bool Remainder_OpInferSymbolicShape(
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
+bool SubtractOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool Subtract_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
 }  // namespace paddle::dialect
