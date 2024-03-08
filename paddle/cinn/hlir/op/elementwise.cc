@@ -1267,7 +1267,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
         pack_args->size(), 1U, "at least 1 input tensors for Cast compute\n");
     auto stages = CreateStages({});
 
-    std::string tensor_name = pack_args[1].operator std::string();
+    std::string tensor_name = pack_args.back().operator std::string();
     ir::Tensor out(ir::_Tensor_::Make(/*name=*/tensor_name,
                                       /*dtype=*/common::type_of<int64_t>(),
                                       /*shape=*/
