@@ -23,8 +23,8 @@ from paddle.base.layer_helper import LayerHelper
 class TestNopTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "nop"
-        x = paddle.ones(shape=(1), dtype='float32')
-        out = paddle.ones(shape=(1), dtype='float32')
+        x = paddle.ones(shape=(1,), dtype='float32')
+        out = paddle.ones(shape=(1,), dtype='float32')
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,

@@ -2389,12 +2389,6 @@
   outputs :
     out : Out
 
-- op : nop
-  inputs :
-    {x: X}
-  outputs :
-    out : Out
-
 - op : norm
   backward : norm_grad
   inputs :
