@@ -392,21 +392,87 @@ class TestTakeAlongAxisOpInferSymbolicShape(TestBase):
         net = TakeAlongAxisNet()
 
         for i in range(len(self.cases)):
-            x, index = self.cases[i]
+            x, indices = self.cases[i]
             x_spec = InputSpec(
                 shape=[None for _ in range(len(x.shape))], dtype='float32'
             )
-            index_spec = InputSpec(
-                shape=[None for _ in range(len(index.shape))], dtype='int32'
+            indices_spec = InputSpec(
+                shape=[None for _ in range(len(indices.shape))], dtype='int32'
             )
 
-            input_spec = [x_spec, index_spec]
+            input_spec = [x_spec, indices_spec]
             net = apply_to_static(net, False, input_spec)
             net.eval()
 
             # check the infer result
             sym_shape_str_list = get_sym_shape_str_for_op(
                 net, input_spec, 'pd_op.take_along_axis'
+            )
+            np.testing.assert_equal(
+                len(sym_shape_str_list), len(self.expected[i])
+            )
+            for j in range(len(sym_shape_str_list)):
+                np.testing.assert_equal(
+                    sym_shape_str_list[j].find(self.expected[i][j]),
+                    0,
+                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[j]}) is not expected {(self.expected[i][j])}',
+                )
+
+        return True
+
+
+class PutAlongAxisNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, indices, value):
+        out = paddle.put_along_axis(x, indices, value, axis=0)
+        out = paddle.put_along_axis(x, indices, value, axis=1)
+        out = paddle.put_along_axis(x, indices, value, axis=-1)
+
+        return out
+
+
+class TestPutAlongAxisOpInferSymbolicShape(TestBase):
+    def prepare_data(self):
+        self.cases = [
+            [
+                np.random.rand(2, 3, 4),
+                np.ones([2, 3, 4], dtype='int32'),
+                np.ones([2, 3, 4], dtype='float32'),
+            ],
+        ]
+
+        self.expected = [
+            [
+                'shape[S0, S1, S2], data[NULL]',
+                'shape[S0, S1, S2], data[NULL]',
+                'shape[S0, S1, S2], data[NULL]',
+            ],
+        ]
+
+    def test_eval_symbolic(self):
+        net = PutAlongAxisNet()
+
+        for i in range(len(self.cases)):
+            x, indices, value = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for _ in range(len(x.shape))], dtype='float32'
+            )
+            indices_spec = InputSpec(
+                shape=[None for _ in range(len(indices.shape))], dtype='int32'
+            )
+            value_spec = InputSpec(
+                shape=[None for _ in range(len(value.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec, indices_spec, value_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            sym_shape_str_list = get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.put_along_axis'
             )
             np.testing.assert_equal(
                 len(sym_shape_str_list), len(self.expected[i])
