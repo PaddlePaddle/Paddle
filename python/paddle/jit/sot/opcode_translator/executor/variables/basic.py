@@ -23,8 +23,7 @@ import numpy as np
 
 import paddle
 from paddle.base.framework import paddle_type_to_proto_type
-from paddle.framework import use_pir_api
-from paddle.pir.core import vartype_to_datatype
+from paddle.framework import core
 
 from ....infer_meta import MetaInfo
 from ....symbolic.statement_ir import Symbol
@@ -62,30 +61,30 @@ if TYPE_CHECKING:
 
 
 FP_DTYPE_ABBRS = {
-    paddle.bfloat16: 'bfloat16',
-    paddle.float64: 'float64',
-    paddle.float32: 'float32',
-    paddle.float16: 'float16',
+    paddle.bfloat16: "bfloat16",
+    paddle.float64: "float64",
+    paddle.float32: "float32",
+    paddle.float16: "float16",
 }
 
 CP_DTYPE_ABBRS = {
-    paddle.complex64: 'complex64',
-    paddle.complex128: 'complex128',
+    paddle.complex64: "complex64",
+    paddle.complex128: "complex128",
 }
 
 INT_DTYPE_ABBRS = {
-    paddle.int8: 'int8',
-    paddle.int16: 'int16',
-    paddle.int32: 'int32',
-    paddle.int64: 'int64',
-    paddle.uint8: 'uint8',
+    paddle.int8: "int8",
+    paddle.int16: "int16",
+    paddle.int32: "int32",
+    paddle.int64: "int64",
+    paddle.uint8: "uint8",
 }
 
 DTYPE_ABBRS = {
     **FP_DTYPE_ABBRS,
     **CP_DTYPE_ABBRS,
     **INT_DTYPE_ABBRS,
-    paddle.bool: 'bool',
+    paddle.bool: "bool",
 }
 
 
@@ -272,32 +271,14 @@ class TensorDtypeVariable(DataVariable):
             return object_equal_stringify_guard(self)
 
     def get_py_value(self, allow_tensor=False):
-        if use_pir_api() and isinstance(
-            self.value, paddle.base.core.VarDesc.VarType
-        ):
-            return vartype_to_datatype[self.value]
         return super().get_py_value(allow_tensor)
 
     def get_py_type(self):
-        if use_pir_api() and isinstance(
-            self.value, paddle.base.core.VarDesc.VarType
-        ):
-            return paddle.pir.core.DataType
         return super().get_py_type()
 
     def _reconstruct(self, codegen: PyCodeGen):
         # dtype of paddle.Tensor is hashable, we can just load it as const var
-        if use_pir_api() and isinstance(
-            self.value, paddle.base.core.VarDesc.VarType
-        ):
-            assert (
-                self.value in paddle.pir.core.vartype_to_datatype
-            ), f"Unknow dtype {self.value}"
-            codegen.gen_load_const(
-                paddle.pir.core.vartype_to_datatype[self.value]
-            )
-        else:
-            codegen.gen_load_const(self.value)
+        codegen.gen_load_const(self.value)
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -411,8 +392,6 @@ class TensorVariable(VariableBase):
 
     @property
     def main_info(self) -> dict[str, Any]:
-        from paddle.framework import core
-
         dtype = self.meta.dtype
         if isinstance(dtype, core.DataType):
             dtype = paddle_type_to_proto_type[dtype]
@@ -424,7 +403,7 @@ class TensorVariable(VariableBase):
         }
 
     def getitem(self, key):
-        return self.graph.call_tensor_method('__getitem__', self, key)
+        return self.graph.call_tensor_method("__getitem__", self, key)
 
     def setitem(self, key, value):
         self.graph.add_global_guarded_variable(value)
