@@ -34,12 +34,11 @@ class LlamaWhile(nn.Layer):
     def forward(self, logits, input_ids):
         batch_size, cur_len = paddle.shape(input_ids)
         unfinished_flag = paddle.full([batch_size, 1], True, dtype="bool")
-        max_new_tokens = paddle.full([1], 4, dtype="int64")
+        max_new_tokens = paddle.full([1], 16, dtype="int64")
         while cur_len < max_new_tokens and paddle.any(unfinished_flag):
             last_token = input_ids[:, -1]
             # [batch_size, vocab_size]
-            logits = logits[:, -1, :]
-            probs = F.softmax(logits)
+            probs = F.softmax(logits[:, -1, :])
 
             # compute next_tokens
             top_ps_tensor = paddle.full(
@@ -61,7 +60,7 @@ class TestLlamaPostProcess(unittest.TestCase):
 
     def prepare_data(self):
         self.logits = paddle.randn([1, 256, 3200], dtype="float32")
-        self.input_ids = paddle.randint(0, 512, [1, 32], dtype="int64")
+        self.input_ids = paddle.randint(0, 512, [1, 8], dtype="int64")
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)

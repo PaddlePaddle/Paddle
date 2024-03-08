@@ -279,7 +279,8 @@ TEST(shard_tensor_op_replicate_test, base) {
 
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_operand_dist_attrs(),
-            (uint32_t)1);
+            (uint32_t)0);
+
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_result_dist_attrs(),
             (uint32_t)1);
@@ -332,7 +333,7 @@ TEST(shard_tensor_op_shard_row_test, base) {
 
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_operand_dist_attrs(),
-            (uint32_t)1);
+            (uint32_t)0);
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_result_dist_attrs(),
             (uint32_t)1);
@@ -385,7 +386,7 @@ TEST(shard_tensor_op_shard_col_test, base) {
 
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_operand_dist_attrs(),
-            (uint32_t)1);
+            (uint32_t)0);
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_result_dist_attrs(),
             (uint32_t)1);
