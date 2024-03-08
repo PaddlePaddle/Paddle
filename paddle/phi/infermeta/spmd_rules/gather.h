@@ -40,5 +40,10 @@ SpmdInfo GatherInferSpmdReverseDynamic(const DistMetaTensor& x,
                                        const DistMetaTensor& out,
                                        const Scalar& axis);
 
+SpmdInfo GatherGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& index,
+                             const DistMetaTensor& out_grad,
+                             const Scalar& axis);
+
 }  // namespace distributed
 }  // namespace phi

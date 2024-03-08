@@ -21,6 +21,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -107,8 +108,12 @@ bool MakeGenerateShapeOpAttribute(
     std::vector<pir::Attribute>* output_dim_expr_attrs,
     GenerateShapeOp::SymbolBindings* symbol_bindings) {
   const auto& shape_or_data_dim_exprs = ShapeOrDataDimExprs4Value(output_shape);
-  CHECK(shape_or_data_dim_exprs.data().has_value());
-  const auto& out_dim_exprs = shape_or_data_dim_exprs.data().value();
+  ExprVec data_vec =
+      paddle::dialect::details::GetExprVecFromData(shape_or_data_dim_exprs);
+  // CHECK(shape_or_data_dim_exprs.data().has_value());
+  CHECK(data_vec.size());
+  // const auto& out_dim_exprs = shape_or_data_dim_exprs.data().value();
+  const auto& out_dim_exprs = data_vec;
   return MakeGenerateShapeOpAttribute(ir_context,
                                       ShapeOrDataDimExprs4Value,
                                       out_dim_exprs,
