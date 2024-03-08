@@ -2416,9 +2416,11 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
   if (obj == Py_None) {
     return phi::DataType::UNDEFINED;
   }
-
-  framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
-  return framework::TransToPhiDataType(type);
+  if (PyObject_TypeCheck(obj, g_vartype_pytype)) {
+    framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
+    return framework::TransToPhiDataType(type);
+  }
+  return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
 }
 
 paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
