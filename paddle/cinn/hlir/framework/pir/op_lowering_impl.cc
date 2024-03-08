@@ -668,6 +668,8 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           for (size_t i = 0; i < broadcast_axes.size(); ++i) {
             if (in_dim[i] != output_shape[broadcast_axes[i]]) {
               if (in_dim[i] != 1) {
+                std::cerr << "in_dim [ " << in_dim[i] << std::endl;
+                std::cerr << it->first->name() << std::endl;
                 throw std::runtime_error("Only support 1 - D broadcast ");
               }
               info.broadcast_axes.push_back(i);
@@ -681,6 +683,8 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         for (size_t i = 0; i < broadcast_axes.size(); ++i) {
           axes_set.insert(broadcast_axes[i]);
           if (in_dim[broadcast_axes[i]] != 1) {
+            std::cerr << "in_dim [ " << in_dim[i] << std::endl;
+            std::cerr << it->first->name() << std::endl;
             throw std::runtime_error("Only support 1 - D broadcast ");
           }
 
