@@ -68,6 +68,7 @@ class LlamaPostProcess(nn.Layer):
         input_ids = paddle.concat([input_ids, next_tokens], axis=1)
 
         return input_ids, scores
+        # return probs
 
     def forward(self, logits, input_ids):
         batch_size, cur_len = paddle.shape(input_ids)
@@ -99,7 +100,7 @@ class TestLlamaPostProcess(unittest.TestCase):
         paddle.seed(2024)
         net = LlamaPostProcess()
         input_spec = [
-            InputSpec(shape=[None, None, None], dtype='float32'),  # logits
+            InputSpec(shape=[None, None, 3200], dtype='float32'),  # logits
             InputSpec(shape=[None, None], dtype='int64'),  # input_ids
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
@@ -112,11 +113,11 @@ class TestLlamaPostProcess(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        # if utils.unittest_use_cinn():
+        cinn_out = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':

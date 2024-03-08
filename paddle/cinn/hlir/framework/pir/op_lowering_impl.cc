@@ -91,6 +91,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
 
     group_tile_info->reduce_axis_.push_back(dim);
+    std::cerr << "reduce dim    " << dim << std::endl;
     reduce_set.insert(dim);
   }
 
