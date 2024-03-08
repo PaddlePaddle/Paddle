@@ -151,9 +151,6 @@ std::map<std::string, ir::Tensor> InitialAssignBuffer(
       if (tensor != root_tensor) {
         auto keep_shape = root_tensor->buffer->shape;
         Reference(&tensor)->Bind(root_tensor->buffer);
-        for (size_t i = 0; i < keep_shape.size(); ++i) {
-          std::cerr << "keep shape  " << keep_shape[i] << std::endl;
-        }
         root_tensor->buffer->shape = keep_shape;
         Reference(&tensor)->buffer->shape = keep_shape;
         VLOG(3) << "keep_shape is : " << utils::GetStreamCnt(keep_shape[0]);

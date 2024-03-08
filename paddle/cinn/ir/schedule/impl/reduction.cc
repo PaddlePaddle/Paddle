@@ -58,9 +58,6 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   std::ostringstream os;
   // Get child block of the rf_loop and check.
   std::vector<Expr> blocks = GetChildBlocks(rf_loop);
-  for (auto& expr : blocks) {
-    std::cerr << "expr in factori\n" << expr << std::endl;
-  }
   if (blocks.size() != 1) {
     os << "The rf_loop is required to have only one child block, but got "
        << blocks.size() << "!\n";
@@ -101,7 +98,6 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
       original_update_stmt.As<Store>()->tensor.as_tensor_ref();
 
   // Create new blocks and loops.
-  std::cerr << "original tensor " << original_tensor->buffer->name << std::endl;
   Tensor rf_tensor = CreateRFTensor(original_tensor, rf_loop, rf_axis);
   RFBlockCreater rf_block_creater(original_block,
                                   original_loops,

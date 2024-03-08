@@ -36,7 +36,6 @@ using namespace ir;  // NOLINT
 Expr AutoSimplify(
     Expr u,
     const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
-  // return u;
   VLOG(7) << "Begin AutoSimplify: " << u;
   u = detail::ConvertCinnToCAS(u);
   absl::flat_hash_map<std::string, CasInterval> s_var_intervals;

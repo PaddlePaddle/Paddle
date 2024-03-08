@@ -43,7 +43,6 @@ TEST(CrossThreadReductionReplacer, basic) {
   ast_gen_ius::TensorGroup tensor_group({A, B});
   auto func = lang::LowerToAst("reduce_sum", {A, B}, &tensor_group);
   VLOG(6) << "original func\n" << func;
-  std::cerr << func << std::endl;
 
   ir::ModuleExpr mod_expr({func->body});
   ir::IRSchedule ir_sch(mod_expr);

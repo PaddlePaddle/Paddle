@@ -208,7 +208,6 @@ class Convert0DTo1DPass : public pir::Pass {
     ps.Add<FullOpPattern>(context);
     ps.Add<CombineOpPattern>(context);
     ps.Add<SumOpPattern>(context);
-    // ps.Add<SliceOpPattern>(context);
     ps.Add<WhileOpPattern>(context);
     ps.Add<SliceOpPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));

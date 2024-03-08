@@ -27,7 +27,6 @@ namespace ir {
 namespace {
 
 template <typename DoEachT>
-
 void VisitEachOp(pir::Operation* op, const DoEachT& DoEach) {
   for (uint32_t i = 0; i < op->num_regions(); i++) {
     for (pir::Block& block : op->region(i)) {
