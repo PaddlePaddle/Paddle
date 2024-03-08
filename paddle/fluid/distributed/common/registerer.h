@@ -78,15 +78,17 @@ typedef std::map<std::string, FactoryMap> PsCoreClassMap;
 extern "C" {
 #endif
 
-inline PsCoreClassMap &global_factory_map() {
+inline PsCoreClassMap *global_factory_map() {
   static PsCoreClassMap *base_class = new PsCoreClassMap();
-  return *base_class;
+  return base_class;
 }
 #ifdef __cplusplus
 }
 #endif
 
-inline PsCoreClassMap &global_factory_map_cpp() { return global_factory_map(); }
+inline PsCoreClassMap &global_factory_map_cpp() {
+  return *global_factory_map();
+}
 
 // typedef pa::Any Any;
 // typedef ::FactoryMap FactoryMap;
