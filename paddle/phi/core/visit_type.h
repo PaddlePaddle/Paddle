@@ -478,6 +478,10 @@ namespace phi {
                                                                 kernel_key); \
     const auto& kernel = kernel_result.kernel;                               \
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();        \
+    if (kernel_result.has_fallback_cpu) {                                    \
+      PADDLE_THROW(                                                          \
+          phi::errors::Unimplemented("Missing kernel: %s", kernel_name));    \
+    }                                                                        \
     (*kernel_fn)(__VA_ARGS__);                                               \
   }()
 }  // namespace phi
