@@ -19,6 +19,7 @@
 #include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/cinn/common/union_find.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn {
 namespace dialect {
@@ -53,8 +54,9 @@ symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
              substitution_pattern) -> std::vector<symbol::DimExpr> {
     std::vector<symbol::DimExpr> substituted_dim_expr{};
     for (const symbol::DimExpr& dim_expr : original_dim_expr) {
-      substituted_dim_expr.push_back(
-          cinn::common::SubstituteDimExpr(dim_expr, substitution_pattern));
+      const auto& tmp_dim_expr =
+          cinn::common::SubstituteDimExpr(dim_expr, substitution_pattern);
+      substituted_dim_expr.push_back(symbol::SimplifyDimExpr(tmp_dim_expr));
     }
     return substituted_dim_expr;
   };
