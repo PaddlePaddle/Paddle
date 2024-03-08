@@ -97,10 +97,6 @@
 #include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/pybind/dist_static_op_function.h"
-#endif
-
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
@@ -110,6 +106,9 @@ using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
+
+using paddle::dialect::OperationDistAttribute;
+using paddle::dialect::TensorDistAttribute;
 
 using pir::Attribute;
 using pir::Block;
@@ -535,8 +534,12 @@ void BindOperation(py::module *m) {
              for (auto &pair : self.attributes()) {
                // SymbolAttribute is only used in PIR, no need to pass to Python
                if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
-               attrs_dict[pair.first.c_str()] =
-                   paddle::dialect::GetAttributeData(pair.second);
+               if (pair.first == kAttrOpDistAttr) {
+                 attrs_dict[pair.first.c_str()] = pair.second;
+               } else {
+                 attrs_dict[pair.first.c_str()] =
+                     paddle::dialect::GetAttributeData(pair.second);
+               }
              }
              return attrs_dict;
            })
@@ -694,6 +697,16 @@ void BindOperation(py::module *m) {
                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                          op_callstack_infos));
           });
+#ifdef PADDLE_WITH_DISTRIBUTE
+  op.def("dist_attr", [](Operation &self) {
+    if (self.HasAttribute(kAttrOpDistAttr)) {
+      return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+    } else {
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("dist_attr is only for dist op."));
+    }
+  });
+#endif
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -960,52 +973,16 @@ void BindValue(py::module *m) {
                  BoolAttribute::get(pir::IrContext::Instance(), true));
              return out;
            })
-      .def("__repr__", &Value2String)
-      .def_property(
-          "dims_mapping",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "dims_mapping is only for distdense tensor."));
-            }
-            return self.type().dyn_cast<DistDenseTensorType>().dims_mapping();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set dims_mapping when building static graph is un-supported "
-                "now."));
-          })
-      .def_property(
-          "partial_dims",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "partial_dims is only for distdense tensor."));
-            }
-            return self.type().dyn_cast<DistDenseTensorType>().partial_dims();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set partial_dims when building static graph is un-supported "
-                "now."));
-          })
-      .def_property(
-          "process_mesh",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "process_mesh is only for distdense tensor."));
-            }
-            return self.type()
-                .dyn_cast<DistDenseTensorType>()
-                .process_mesh_attr()
-                .process_mesh();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set process_mesh when building static graph is un-supported "
-                "now."));
-          });
+      .def("__repr__", &Value2String);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  value.def("dist_attr", [](Value &self) {
+    if (!self.type().isa<DistDenseTensorType>()) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "_local_shape is only for distdense tensor."));
+    }
+    return self.type().dyn_cast<DistDenseTensorType>().tensor_dist_attr();
+  });
+#endif
 }
 
 void BindOpOperand(py::module *m) {
@@ -1077,6 +1054,31 @@ void BindAttribute(py::module *m) {
     print_stream << self;
     return print_stream.str();
   });
+#ifdef PADDLE_WITH_DISTRIBUTE
+  ir_attr
+      .def_property_readonly(
+          "process_mesh",
+          [](Attribute &self) {
+            if (self.isa<TensorDistAttribute>()) {
+              return self.dyn_cast<TensorDistAttribute>()
+                  .process_mesh_attr()
+                  .process_mesh();
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "process_mesh is only for OperationDistAttribute and "
+                  "TensorDistAttribute."));
+            }
+          })
+      .def_property_readonly("dims_mapping", [](Attribute &self) {
+        if (self.isa<TensorDistAttribute>()) {
+          return self.dyn_cast<TensorDistAttribute>().dims_mapping();
+        } else {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "process_mesh is only for OperationDistAttribute and "
+              "TensorDistAttribute."));
+        }
+      });
+#endif
 }
 
 struct PyInsertionPoint {
@@ -1832,19 +1834,6 @@ void BindPassManager(pybind11::module *m) {
            [](PassManager &self) { self.EnableIRPrinting(); });
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-void BindDistOpsAPI(pybind11::module *module) {
-  {
-    if (PyModule_AddFunctions(module->ptr(), DistOpsAPI) < 0) {
-      {
-        PADDLE_THROW(
-            phi::errors::Fatal("Add C++ DistOpsAPI to core.ops failed!"));
-      }
-    }
-  }
-}
-#endif
-
 void BindPir(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
@@ -1863,9 +1852,6 @@ void BindPir(pybind11::module *module) {
   BindControlFlowApi(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
-#ifdef PADDLE_WITH_DISTRIBUTE
-  BindDistOpsAPI(&ops_modules);
-#endif
   BindIrParser(&ir_module);
 }
 

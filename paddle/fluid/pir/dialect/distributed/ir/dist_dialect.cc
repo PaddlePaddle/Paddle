@@ -80,6 +80,10 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
       os << ", "
          << phi::distributed::auto_parallel::str_join(partial_status_strs);
     }
+  } else if (auto op_dist_attr = attr.dyn_cast<OperationDistAttribute>()) {
+    os << "mesh: " << op_dist_attr.process_mesh_attr().process_mesh();
+    os << ", num_operand_dist_attrs: " << op_dist_attr.num_operand_dist_attrs();
+    os << ", num_result_dist_attrs: " << op_dist_attr.num_result_dist_attrs();
   } else {
     os << "error_attribute_type";
   }
