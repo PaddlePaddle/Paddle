@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 
-#include <clocale>
-
 #include "paddle/fluid/pir/dialect/distributed/ir/attribute_storage.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
@@ -72,10 +70,9 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
     if (tensor_dist_attr.partial_status().size() > 0) {
       std::vector<std::string> partial_status_strs;
       for (auto &itr : tensor_dist_attr.partial_status()) {
-        std::string s =
-            "partial(" + std::to_string(itr.first) + "," +
-            std::tolower(phi::ReduceTypeStrings[static_cast<int>(itr.second)]) +
-            ")";
+        std::string s = "partial(" + std::to_string(itr.first) + "," +
+                        phi::ReduceTypeStrings[static_cast<int>(itr.second)] +
+                        ")";
         partial_status_strs.emplace_back(s);
       }
       os << ", "

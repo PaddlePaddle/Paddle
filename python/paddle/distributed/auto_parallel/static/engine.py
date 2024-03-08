@@ -239,6 +239,9 @@ class Engine:
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
         self._acc_steps = 1
+        self._in_pir_mode = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
         if self._strategy.gradient_merge.enable:
             self._acc_steps = self._strategy.gradient_merge.k_steps
         elif self._strategy.pipeline.enable:
@@ -618,6 +621,9 @@ class Engine:
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
         self._build(mode)
+        # TODO(zhiqiu): fit the processes below for pir
+        if self._in_pir_mode:
+            return
         # Do the planning process
         self._plan(mode)
         # Do the parallel process
@@ -728,8 +734,18 @@ class Engine:
                     self._loss, Variable
                 ), "the type of `loss` of the Engine arguments should be Variable."
                 self._losses = auto_utils.to_list(self._loss)
-        print('serial_main_prog', serial_main_prog, flush=1)
-        print('serial_startup_prog', serial_startup_prog, flush=1)
+
+        # TODO(zhiqiu): distributed_context is no longer used in pir_program
+        # so, just return here and need to reimplement the logics below
+        if self._in_pir_mode:
+            if mode != "train":
+                self._fwd_main_progs[mode] = serial_main_prog.clone(
+                    for_test=True
+                )
+            else:
+                self._fwd_main_progs[mode] = serial_main_prog
+            return
+
         default_ctx = get_default_distributed_context()
         if not default_ctx.has_annotation:
             # We build the world process group because the data parallel
