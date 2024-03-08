@@ -147,8 +147,9 @@ void InferSymExprForBlock(const Block& block,
               shape_analysis->GetShapeOrDataForValue(res).shape();
 
           PADDLE_ENFORCE_EQ(
-              infer_meta_shape.size(),
-              infer_sym_shape.size(),
+              infer_meta_shape.size() == infer_sym_shape.size() ||
+                  infer_meta_shape.size() == 0 && infer_sym_shape.size() == 1,
+              true,
               "InferSymbolicShape for %s failed! rank of infer_meta_shape is "
               "[%d] but rank of infer_sym_shape is [%d]",
               op.name(),
