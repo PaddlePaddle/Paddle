@@ -399,7 +399,7 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
   // TODO(liuzhenhai): support sharded scale and bias
   TensorDistAttr scale_dist_attr = GetReplicatedDistAttr(scale.dist_attr());
   TensorDistAttr bias_dist_attr = GetReplicatedDistAttr(bias.dist_attr());
-  TensorDistAttr x_grad_dist_attr = GetReplicatedDistAttr(out_grad_dist_attr);
+  TensorDistAttr x_grad_dist_attr = out_grad_dist_attr;
   TensorDistAttr scale_grad_dist_attr =
       GetReplicatedDistAttr(scale.dist_attr());
   TensorDistAttr bias_grad_dist_attr = GetReplicatedDistAttr(bias.dist_attr());
