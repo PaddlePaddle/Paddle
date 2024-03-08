@@ -603,21 +603,35 @@ void BindOperation(py::module *m) {
              print_stream << ")";
              return print_stream.str();
            })
-      .def("set_opcallstack",
-           [](Operation &self,
-              const std::vector<std::string> &callstack) -> void {
-             std::vector<pir::Attribute> op_callstack_infos;
-             for (auto str : callstack) {
-               op_callstack_infos.push_back(
-                   pir::StrAttribute::get(pir::IrContext::Instance(), str));
-             }
+      .def_property(
+          "callstack",
 
-             self.set_attribute(
-                 paddle::framework::OpProtoAndCheckerMaker::
-                     OpCreationCallstackAttrName(),
-                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
-                                          op_callstack_infos));
-           });
+          [](Operation &self) -> py::list {
+            py::list callstack_list;
+            pir::Attribute op_callstack = self.attribute<pir::Attribute>(
+                paddle::framework::OpProtoAndCheckerMaker::
+                    OpCreationCallstackAttrName());
+            auto op_callstack_infos = paddle::get<std::vector<std::string>>(
+                paddle::dialect::GetAttributeData(op_callstack));
+            for (auto &op_callstack_info : op_callstack_infos) {
+              callstack_list.append(op_callstack_info);
+            }
+            return callstack_list;
+          },
+          [](Operation &self,
+             const std::vector<std::string> &callstack) -> void {
+            std::vector<pir::Attribute> op_callstack_infos;
+            for (auto str : callstack) {
+              op_callstack_infos.push_back(
+                  pir::StrAttribute::get(pir::IrContext::Instance(), str));
+            }
+
+            self.set_attribute(
+                paddle::framework::OpProtoAndCheckerMaker::
+                    OpCreationCallstackAttrName(),
+                pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                         op_callstack_infos));
+          });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.

@@ -304,24 +304,23 @@ def update_op_callstack_with_origin_info(program):
 
         return callstack
 
-    def get_all_pir_block_ops(block, ops):
+    def get_all_pir_block_ops(block):
+        ops = []
         for op in block.ops:
             ops.append(op)
             for sub_block in op.blocks():
-                get_all_pir_block_ops(sub_block, ops)
+                ops += get_all_pir_block_ops(sub_block)
+        return ops
 
     op_maker = core.op_proto_and_checker_maker
     callstack_var_name = op_maker.kOpCreationCallstackAttrName()
 
     if use_pir_api():
         global_block = program.global_block()
-        ops = []
-        get_all_pir_block_ops(global_block, ops)
+        ops = get_all_pir_block_ops(global_block)
         for op in ops:
             if op.has_attr(callstack_var_name):
-                callstack = op.attrs()[callstack_var_name]
-                callstack = get_new_op_callstack(callstack)
-                op.set_opcallstack(callstack)
+                op.callstack = get_new_op_callstack(op.callstack)
     else:
         for block in program.blocks:
             for i, op in enumerate(block.ops):
