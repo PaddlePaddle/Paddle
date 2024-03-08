@@ -837,9 +837,17 @@ class CinnGroupClusterPattern
       auto new_group_op = ReplaceWithGroupOp(
           &rewriter, uniq_ops, node, output_values, &ir_mapping);
 
+      auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+          group_op->GetParentProgram());
       // update ir mapping
       for (size_t i = 0; i < output_values.size(); ++i) {
         ir_mapping.Add(output_values[i], new_group_op->result(i));
+
+        if (shape_analysis.HasShapeOrDataForValue(output_values[i])) {
+          shape_analysis.SetShapeOrDataForValue(
+              new_group_op->result(i),
+              shape_analysis.GetShapeOrDataForValue(output_values[i]));
+        }
       }
 
       for (size_t i = 0; i < output_values.size(); ++i) {
