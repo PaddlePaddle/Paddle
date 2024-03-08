@@ -50,7 +50,7 @@ def initialize_p2p_groups(
         _timers = timer.get_timers()
 
 
-class SendPackType:
+class SendRecvPackType:
     TENSOR = 0
     TENSOR_LIST_OR_TENSOR_TUPLE = 1
     DICT_OF_STR_TENSOR_PAIR = 2
@@ -239,7 +239,7 @@ class SendRecvMeta:
     def _obtain_send_message(self, tensor):
         if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
             return (
-                SendPackType.TENSOR,
+                SendRecvPackType.TENSOR,
                 tensor.shape,
                 paddle_2_number(tensor.dtype),
                 None,
@@ -259,7 +259,7 @@ class SendRecvMeta:
                 dtypes.append(dtype)
                 keys_names.append(k)
             return (
-                SendPackType.DICT_OR_TENSOR_TYPE,
+                SendRecvPackType.DICT_OR_TENSOR_TYPE,
                 shapes,
                 dtypes,
                 tuple(keys_names),
@@ -277,7 +277,7 @@ class SendRecvMeta:
                 shapes.append(shape)
                 dtypes.append(dtype)
             return (
-                SendPackType.TENSOR_LIST_OR_TENSOR_TUPLE,
+                SendRecvPackType.TENSOR_LIST_OR_TENSOR_TUPLE,
                 tuple(shapes),
                 tuple(dtypes),
                 None,
