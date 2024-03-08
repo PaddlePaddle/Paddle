@@ -17,7 +17,6 @@ limitations under the License. */
 #include <stddef.h>  // for size_t
 
 #include <string>
-#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace memory {
@@ -49,7 +48,7 @@ class GPUAllocator : public SystemAllocator {
  public:
   explicit GPUAllocator(int gpu_id) : gpu_id_(gpu_id) {}
 
-  TEST_API virtual void* Alloc(size_t* index, size_t size);
+  virtual void* Alloc(size_t* index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);
   virtual bool UseGpu() const;
 
@@ -60,7 +59,7 @@ class GPUAllocator : public SystemAllocator {
 
 class CUDAPinnedAllocator : public SystemAllocator {
  public:
-  TEST_API virtual void* Alloc(size_t* index, size_t size);
+  virtual void* Alloc(size_t* index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);
   virtual bool UseGpu() const;
 
