@@ -112,6 +112,14 @@ void ApplyBuildGroupOpPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateBuildCinnPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateReorderBlockPass());
+  pass_manager->Run(program);
+}
+
+void ApplyInsertBroadcastPass(
+    ::pir::Program* program,
+    const std::function<std::shared_ptr<pir::PassManager>()>&
+        CreatePassManager) {
+  std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (HasDynamicShape(*program)) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
@@ -190,6 +198,7 @@ void ApplyCinnPass(::pir::Program* program,
                        CreatePassManager) {
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
+  ApplyInsertBroadcastPass(program, CreatePassManager);
   ApplyGroupOpPass(program, CreatePassManager);
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
   ApplyCinnLowerPass(program, CreatePassManager);
