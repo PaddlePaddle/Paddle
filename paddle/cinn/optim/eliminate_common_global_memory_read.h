@@ -20,9 +20,9 @@ namespace cinn {
 namespace optim {
 
 /**
- * Remove common global tensor and substitue them with local tensor.
+ * Remove common global memory read and substitue them with local memory read.
  */
-void EliminateCommonGlobalTensor(Expr* e);
+void EliminateCommonGlobalMemoryRead(Expr* e);
 
 }  // namespace optim
 }  // namespace cinn

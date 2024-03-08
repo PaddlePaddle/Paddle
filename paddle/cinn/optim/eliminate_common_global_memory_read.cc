@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/eliminate_common_global_tensor.h"
+#include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -61,7 +61,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
-  std::unordered_set<std::string> GetEliminateTensorNames() const {
+  std::unordered_set<std::string> GetEliminateBufferNames() const {
     auto IndiceToExprWithForVar =
         [&](ir::Expr indice,
             const std::unordered_map<ir::Var, ir::Var>& for_var_map)
@@ -115,14 +115,14 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       return AllIndiceAndExtentEqual(indice_and_extent);
     };
 
-    std::unordered_set<std::string> global_tensor;
-    for (const auto& [tensor_name, indice_and_extent] :
-         tensor_to_indice_and_extent_) {
+    std::unordered_set<std::string> global_buffer_name;
+    for (const auto& [buffer_name, indice_and_extent] :
+         buffer_to_indice_and_extent_) {
       if (IsGlobalTensorNeedEliminate(indice_and_extent)) {
-        global_tensor.insert(tensor_name);
+        global_buffer_name.insert(buffer_name);
       }
     }
-    return global_tensor;
+    return global_buffer_name;
   }
 
  private:
@@ -167,9 +167,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         }
         tensor_indices.push_back(new_indice);
       }
-      for (const auto& [var, extent] : for_var_extents_) {
-      }
-      tensor_to_indice_and_extent_[load_buffer->name].push_back(
+      buffer_to_indice_and_extent_[load_buffer->name].push_back(
           {tensor_indices, for_var_extents_});
     }
   }
@@ -177,13 +175,13 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
   std::vector<ForVarExtent> for_var_extents_;
   std::unordered_map<ir::Var, ir::Expr> var_to_sb_expr_;
   std::unordered_map<std::string, std::vector<IndicesAndExtent>>
-      tensor_to_indice_and_extent_;
+      buffer_to_indice_and_extent_;
 };
 
-struct CommonGlobalTensorEliminator : public ir::IRMutator<Expr*> {
-  CommonGlobalTensorEliminator(
-      const std::unordered_set<std::string>& eliminate_tensor_names)
-      : eliminate_tensor_names_(eliminate_tensor_names) {}
+struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
+  CommonGlobalMemoryEliminator(
+      const std::unordered_set<std::string>& eliminate_buffer_names)
+      : eliminate_buffer_names_(eliminate_buffer_names) {}
 
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -206,11 +204,11 @@ struct CommonGlobalTensorEliminator : public ir::IRMutator<Expr*> {
     auto* node = expr->As<ir::Load>();
     CHECK(node);
     const auto& buffer_name = node->tensor.as_tensor_ref()->buffer->name;
-    if (eliminate_tensor_names_.count(buffer_name) == 0) {
+    if (eliminate_buffer_names_.count(buffer_name) == 0) {
       return;
     }
 
-    if (global_tensor_to_local_tensor_.count(buffer_name) == 0) {
+    if (global_buffer_to_local_buffer_.count(buffer_name) == 0) {
       InsertLocalTensorBlock(node, buffer_name);
     }
     SubstituteGlobalTensor(node, buffer_name);
@@ -241,28 +239,28 @@ struct CommonGlobalTensorEliminator : public ir::IRMutator<Expr*> {
     ir::Expr new_sbr = ir::ScheduleBlockRealize::Make(
         ir::ir_utils::IRCopy(current_sbr_->iter_values), new_sb);
     PADDLE_ENFORCE_EQ(
-        global_tensor_to_local_tensor_.count(buffer_name),
+        global_buffer_to_local_buffer_.count(buffer_name),
         0,
         ::common::errors::InvalidArgument(
-            "buffer_name %s should not be in global_tensor_to_local_tensor_",
+            "buffer_name %s should not be in global_buffer_to_local_buffer_",
             buffer_name));
-    global_tensor_to_local_tensor_[buffer_name] = new_tensor;
+    global_buffer_to_local_buffer_[buffer_name] = new_tensor;
     current_block_->stmts.insert(current_block_->stmts.begin(), new_sbr);
   }
 
   void SubstituteGlobalTensor(ir::Load* load_node,
                               const std::string& buffer_name) {
     PADDLE_ENFORCE_GT(
-        global_tensor_to_local_tensor_.count(buffer_name),
+        global_buffer_to_local_buffer_.count(buffer_name),
         0,
         ::common::errors::InvalidArgument(
-            "global_tensor_to_local_tensor_ should contain buffer_name %s",
+            "global_buffer_to_local_buffer_ should contain buffer_name %s",
             buffer_name));
-    load_node->tensor = global_tensor_to_local_tensor_[buffer_name];
+    load_node->tensor = global_buffer_to_local_buffer_[buffer_name];
   }
 
-  std::unordered_set<std::string> eliminate_tensor_names_;
-  std::unordered_map<std::string, ir::Expr> global_tensor_to_local_tensor_;
+  std::unordered_set<std::string> eliminate_buffer_names_;
+  std::unordered_map<std::string, ir::Expr> global_buffer_to_local_buffer_;
 
   ir::Block* current_block_;
   ir::ScheduleBlockRealize* current_sbr_;
@@ -270,16 +268,16 @@ struct CommonGlobalTensorEliminator : public ir::IRMutator<Expr*> {
 
 }  // namespace
 
-void EliminateCommonGlobalTensor(Expr* e) {
-  VLOG(4) << "Before EliminateCommonGlobalTensor: \n" << *e;
+void EliminateCommonGlobalMemoryRead(Expr* e) {
+  VLOG(4) << "Before EliminateCommonGlobalMemoryRead: \n" << *e;
   GlobalTensorInfoCollector collector;
   collector(e);
 
-  const auto& eliminate_tensor_names = collector.GetEliminateTensorNames();
+  const auto& eliminate_buffer_names = collector.GetEliminateBufferNames();
 
-  CommonGlobalTensorEliminator eliminator(eliminate_tensor_names);
+  CommonGlobalMemoryEliminator eliminator(eliminate_buffer_names);
   eliminator(e);
-  VLOG(4) << "After EliminateCommonGlobalTensor: \n" << *e;
+  VLOG(4) << "After EliminateCommonGlobalMemoryRead: \n" << *e;
 }
 
 }  // namespace optim
