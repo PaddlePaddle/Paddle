@@ -52,7 +52,7 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                               decrease_axis,
                               &tmp);
   const phi::KernelKey& strided_copy_key = {
-      phi::TransToPhiBackend(out_grad->place()),
+      phi::TransToPhiBackend(out_grad.place()),
       phi::DataLayout::ALL_LAYOUT,
       input.dtype()};
   using strided_copy_signature = void (*)(const DeviceContext&,
