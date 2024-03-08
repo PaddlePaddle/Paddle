@@ -28,6 +28,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/parse_kernel_key.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -1359,7 +1360,7 @@ phi::DataType ParsePhiDType(pir::Type type) {
   }
 }
 
-void AddShadowFeedOpForOp(
+void AddShadowFeedTensorsOpForOp(
     const phi::Place& place,
     pir::Operation* op_item,
     pir::Operation* op,
@@ -1367,7 +1368,7 @@ void AddShadowFeedOpForOp(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
-  VLOG(4) << "Add ShadowFeedOp for op " << op_item->name();
+  VLOG(4) << "Add ShadowFeedTensorOp for op " << op_item->name();
 
   bool add_shadow_feed = true;
   if (op_item->attributes().count("place")) {
@@ -1379,14 +1380,27 @@ void AddShadowFeedOpForOp(
   }
 
   // if value place not gpu, add shadow feed op
+  std::vector<pir::Type> types_in_vec;
   if (platform::is_gpu_place(place) && add_shadow_feed) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       PADDLE_ENFORCE_EQ(
           op_item->result(i).type().isa<DenseTensorType>(),
           true,
           phi::errors::PreconditionNotMet(
-              "AddShadowFeedOpForOp only support DenseTensorType Now"));
+              "AddShadowFeedTensorsOpForOp only support DenseTensorType Now"));
+      types_in_vec.push_back(op->result(i).type());
     }
+
+    // Add combine op
+    std::string combine_op_name(pir::CombineOp::name());
+    pir::OpInfo combine_op_info = ctx->GetRegisteredOpInfo(combine_op_name);
+
+    pir::Type target_vec_type = pir::VectorType::get(ctx, types_in_vec);
+    pir::Operation* combine_op = pir::Operation::Create(
+        op->results(), {}, {target_vec_type}, combine_op_info);
+    block->push_back(combine_op);
+
+    // Add ShadowFeedTensor Op
     phi::KernelKey shadow_key{
         phi::Backend::GPU,
         phi::DataLayout::ANY,
@@ -1398,23 +1412,28 @@ void AddShadowFeedOpForOp(
         {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed_tensors")},
         {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
 
-    std::vector<pir::Type> vec_output_types(op_item->num_results());
-    for (size_t i = 0; i < op_item->num_results(); ++i) {
-      vec_output_types[i] = AllocatedDenseTensorType::get(
-          ctx,
-          phi::TransToPhiPlace(shadow_key.backend()),
-          op_item->result(i).type().dyn_cast<DenseTensorType>());
-    }
-
     pir::OpInfo phi_kernel_op_info =
         ctx->GetRegisteredOpInfo(PhiKernelOp::name());
-    pir::Operation* shadow_tensors_op = pir::Operation::Create(
-        op->results(), attr_map, vec_output_types, phi_kernel_op_info);
 
-    (*map_op_pair)[op_item] = shadow_tensors_op;
+    pir::Operation* shadow_tensors_op =
+        pir::Operation::Create({combine_op->result(0)},
+                               attr_map,
+                               {target_vec_type},
+                               phi_kernel_op_info);
     block->push_back(shadow_tensors_op);
+
+    // Add Split Op
+    std::string split_op_name(pir::SplitOp::name());
+    pir::OpInfo split_op_info = ctx->GetRegisteredOpInfo(split_op_name);
+
+    // pir::Type target_vec_type = pir::VectorType::get(ctx, {});
+    pir::Operation* split_op = pir::Operation::Create(
+        shadow_tensors_op->results(), {}, types_in_vec, split_op_info);
+    block->push_back(split_op);
+
+    (*map_op_pair)[op_item] = split_op;
     for (size_t i = 0; i < op_item->num_results(); ++i) {
-      (*map_value_pair)[op_item->result(i)] = shadow_tensors_op->result(i);
+      (*map_value_pair)[op_item->result(i)] = split_op->result(i);
     }
   }
 }
@@ -1726,7 +1745,7 @@ void HandleForSpecialOp(
           (*map_value_pair)[op_item->result(i)] = op->result(i);
         }
       }
-      AddShadowFeedOpForOp(
+      AddShadowFeedTensorsOpForOp(
           place, op_item, op, block, ctx, map_op_pair, map_value_pair);
       return;
     }
