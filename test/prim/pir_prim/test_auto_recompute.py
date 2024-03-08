@@ -119,7 +119,7 @@ class TestAutoRecomputeRmsNorm(unittest.TestCase):
             )
             [out] = decompose(main_program, [out])
             [dweight, dhidden] = ir_grad(out, [weight, hidden], out_grad)
-            main_program, _ = paddle.decomposition.min_cut_auto_recompute(
+            main_program, _ = paddle.decomposition.auto_recompute(
                 main_program,
                 [weight, hidden],
                 [out],
