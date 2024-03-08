@@ -275,9 +275,7 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
 
         assert (
             dinput_parallel.shape[0] % parallelism == 0
-        ), "Input sequence length {0} can't be divided exactly by sequence parallelism {1}".format(
-            dinput_parallel.shape[0], parallelism
-        )
+        ), f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
         dx_shape = dinput_parallel.shape
         dx_shape[0] = dx_shape[0] // parallelism
         dx = paddle.empty(shape=dx_shape, dtype=dinput_parallel.dtype)
