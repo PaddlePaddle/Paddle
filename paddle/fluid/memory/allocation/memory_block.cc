@@ -43,7 +43,9 @@ MemoryBlock* MemoryBlock::GetRightBuddy(MetadataCache* cache) {
   return cache->LoadDesc(this)->right_buddy;
 }
 
-void MemoryBlock::Split(MetadataCache* cache, size_t size) {
+void MemoryBlock::Split(MetadataCache* cache,
+                        size_t size,
+                        size_t extra_padding_size) {
   auto desc = cache->LoadDesc(this);
   // make sure the split fits
   PADDLE_ENFORCE_GE(desc->total_size,
@@ -55,7 +57,8 @@ void MemoryBlock::Split(MetadataCache* cache, size_t size) {
                         size));
 
   // bail out if there is no room for another partition
-  if (desc->total_size - size <= sizeof(MemoryBlock::Desc)) {
+  if (desc->total_size - size <=
+      (sizeof(MemoryBlock::Desc) + extra_padding_size)) {
     return;
   }
 
