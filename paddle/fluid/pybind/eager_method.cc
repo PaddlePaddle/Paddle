@@ -3191,6 +3191,34 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__update_serialized_data_length(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  auto string_tensor =
+      std::dynamic_pointer_cast<phi::StringTensor>(self->tensor.impl());
+  if (string_tensor) {
+    return ToPyObject(string_tensor->UpdateSerializedDataLength());
+  } else {
+    return ToPyObject(0);
+  }
+}
+
+static int tensor_method__set_serialized_data_length(TensorObject* self,
+                                                     PyObject* args,
+                                                     PyObject* kwargs) {
+  EAGER_TRY
+  auto length = CastPyArg2Longs(args, 0);
+  if (length < 0) {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("The length should not be negative"));
+    return -1;
+  }
+  auto self_string_tensor =
+      paddle::experimental::TensorToStringTensor(self->tensor);
+  self_string_tensor->SetSerializeDataLength(length) return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
+}
+
 PyMethodDef variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
@@ -3486,6 +3514,14 @@ PyMethodDef string_tensor_variable_methods[] = {
     {"_is_string_tensor_hold_allocation",
      (PyCFunction)(void (*)(
          void))tensor_method__is_string_tensor_hold_allocation,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_update_serialized_data_length",
+     (PyCFunction)(void (*)())tensor_method__update_serialized_data_length,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_set_serialized_data_length",
+     (PyCFunction)(void (*)())tensor_method__set_serialized_data_length,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.

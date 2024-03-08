@@ -21,6 +21,11 @@ namespace phi {
 namespace strings {
 
 template <typename Context>
+int GetAllStringsSize(const Context& dev_ctx,
+                      const phi::dtype::pstring* src_ptr,
+                      size_t numel);
+
+template <typename Context>
 void Serialize(const Context& dev_ctx,
                const StringTensor& src,
                DenseTensor* dst);

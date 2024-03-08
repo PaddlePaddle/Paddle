@@ -104,6 +104,7 @@ struct StringTensorMeta {
   bool is_scalar{false};
   DDim dims;
   size_t offset{0};
+  size_t serialized_length{0};
 };
 
 inline bool operator==(const StringTensorMeta& lhs,

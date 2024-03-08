@@ -164,6 +164,11 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                            bool sync_op,
                                            bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::StringTensor* tensor,
+                                           int src_rank,
+                                           bool sync_op,
+                                           bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
                                            int dst_rank,
                                            int64_t offset,
@@ -171,11 +176,11 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                            bool sync_op,
                                            bool use_calc_stream) override;
 
-  std::shared_ptr<ProcessGroup::Task> Send(const phi::StringTensor& string_tensor,
-                                           const Place& place,
-                                           int dst_rank,
-                                           bool sync_op,
-                                           bool use_calc_stream) override;
+  std::shared_ptr<ProcessGroup::Task> Send(
+      const phi::StringTensor& string_tensor,
+      int dst_rank,
+      bool sync_op,
+      bool use_calc_stream) override;
 
   static void GroupStart();
 

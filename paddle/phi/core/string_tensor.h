@@ -128,6 +128,11 @@ class StringTensor : public TensorBase,
   dtype::pstring* mutable_data(const phi::Place& place,
                                size_t requested_size = 0);
 
+  size_t UpdateSerializedDataLength();
+  void SetSerializeDataLength(size_t length) {
+    meta_.serialized_length = length;
+  }
+
  private:
   friend class StringTensorUtils;
 

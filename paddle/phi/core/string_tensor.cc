@@ -16,8 +16,14 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/pstring.h"
+#include "paddle/phi/kernels/strings/strings_serialize_kernel.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
 
 namespace phi {
 
@@ -204,6 +210,43 @@ dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
   }
   return reinterpret_cast<dtype::pstring*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
+}
+
+size_t StringTensor::UpdateSerializedDataLength() {
+  size_t nbytes = 0;
+
+  if (numel() == 0) {
+    meta_.serialized_length = nbytes;
+    return nbytes;
+  }
+
+  if (place().GetType() == phi::AllocationType::CPU) {
+    int64_t nbytes = sizeof(int) * (numel() + 1);
+    auto* src_str = data();
+    for (int64_t i = 0; i < numel(); ++i) {
+      nbytes += src_str[i].length() +
+                1;  // accumulate count of actual content. `1` means EOF ?
+    }
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  else if (place().GetType() == phi::AllocationType::GPU) {
+    auto* src_str = data();
+    phi::GPUContext* dev_ctx = static_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(place()));
+    nbytes = phi::strings::GetAllStringsSize(dev_ctx, src_str, numel());
+    nbytes += sizeof(int32_t) * (numel() + 1);
+  }
+#endif
+  else {
+    PADDLE_THROW(
+        errors::Unimplemented("StringTensor can only be serialized in "
+                              "CPU or place. But now attemps to serialize "
+                              "StringTensor on %s",
+                              holder_->place().DebugString()));
+  }
+
+  meta_.serialized_length = nbytes;
+  return nbytes;
 }
 
 }  // namespace phi
