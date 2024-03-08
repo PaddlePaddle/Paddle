@@ -80,6 +80,7 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
 #endif
 
@@ -979,6 +980,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         ::pir::PassManager mkldnn_pm(::pir::IrContext::Instance(), 2);
 
         mkldnn_pm.AddPass(::pir::CreateConv2dBiasFusePass());
+        mkldnn_pm.AddPass(::pir::CreateConv2dTransposeBiasFusePass());
+        mkldnn_pm.AddPass(::pir::CreateConv3dBiasFusePass());
+        mkldnn_pm.AddPass(::pir::CreateBatchNormActFusePass());
 
         auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
         constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
@@ -1041,7 +1045,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     }
   }
 
-  if (config_.enable_memory_optim_) {
+  if (config_.enable_memory_optim_ && !config_.use_optimized_model_) {
     auto *pass_res_info =
         inference::analysis::PassResultInfoForRuntime::Instance();
     auto reuse_table =

@@ -359,7 +359,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
   std::vector<std::string> reduce_axis_input =
       stages[this]->origin_reduce_axis_names();
   auto origin_domain = stages[this]->domain();
-  auto reduce_axis_output = poly::GetRelatedOutputAxies(
+  auto reduce_axis_output = poly::GetRelatedOutputAxes(
       temp_transform, origin_domain, reduce_axis_input);
   std::set<std::string> reduce_axis_output_set;
   for (auto &i : reduce_axis_output) {
@@ -374,7 +374,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
     }
   }
 
-  temp_transform = poly::RemoveAxiesByOutputNames(
+  temp_transform = poly::RemoveAxesByOutputNames(
       temp_transform, origin_domain, reduce_axis_output);
 
   //! When the first axis is not reduce axis, do ComputeAt.
@@ -386,7 +386,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
     init_tensor->shape = shape;
     return init_tensor;
   }
-  //! When reduce axies are reordered to front, ComputeAt is illegal.
+  //! When reduce axes are reordered to front, ComputeAt is illegal.
   //! So we just copy transform and forloopInfo.
   isl_map_set_tuple_name(
       temp_transform.get(), isl_dim_in, init_reduce_tensor_name.c_str());
