@@ -340,7 +340,7 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
 
   // build relationship between host event node and op supplement node
   for (auto it = post_order_nodes.begin(); it < post_order_nodes.end(); ++it) {
-    int op_supplement_count = 0;  // NOLINT
+    // int op_supplement_count = 0;
     bool hasenter = false;
     std::vector<OperatorSupplementEventNode*>::iterator firstposition;
     std::vector<OperatorSupplementEventNode*>::iterator lastposition =
@@ -355,7 +355,7 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
           hasenter = true;
         }
         (*it)->SetOperatorSupplementNode(*op_supplement_it);
-        op_supplement_count += 1;
+        // op_supplement_count += 1;
       } else {
         if ((*op_supplement_it)->TimeStampNs() > (*it)->EndNs()) {
           lastposition = op_supplement_it;

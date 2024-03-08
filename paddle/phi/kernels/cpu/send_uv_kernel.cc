@@ -66,10 +66,10 @@ void GraphSendUVOpKernelLaunchHelper(const Context& ctx,
                               index_size));
 
   auto out_dims = out->dims();
-  int64_t memset_size = 1;
-  for (int i = 0; i < out_dims.size(); i++) {
-    memset_size *= out_dims[i];
-  }
+  // int64_t memset_size = 1;
+  // for (int i = 0; i < out_dims.size(); i++) {
+  //   memset_size *= out_dims[i];
+  // }
   ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
 
