@@ -143,6 +143,50 @@ class StmtFusionHelper {
     return ret;
   }
 
+  std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(std::list<StmtPattern>* stmts) const {
+    const auto ConstructISPattern = [&](const auto& ops) { return IS{ops}; };
+    return MultiFuse(IsISPattern, ConstructISPattern, stmts);
+  }
+
+  std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
+    return FuseIternalPattenPrototype(
+      stmt_patterns,
+      [](const StmtPattern& upstream, const StmtPattern& downstream){
+        return IsISPattern(upstream) && IsPSPattern(downstream);
+      }
+    );
+  }
+
+  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
+    const auto ConstructPSPattern = [&](const auto& ops) {
+      const auto shardable_axes_signature = GetShardableAxesSignature(ops);
+      return PS{
+        .ops=ops,
+        .shardable_axes_signature=shardable_axes_signature,
+      };
+    };
+    return MultiFuse(IsPSPattern, ConstructISPattern, stmts);
+  }
+
+  std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::list<StmtPattern>* stmt_patterns) const {
+    return FuseIternalPattenPrototype(
+      stmt_patterns,
+      [](const StmtPattern& upstream, const StmtPattern& downstream){
+        return IsISPattern(upstream) && IsRPattern(downstream);
+      }
+    );
+  }
+
+  std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(std::list<StmtPattern>* stmt_patterns) const {
+    return FuseIternalPattenPrototype(
+      stmt_patterns,
+      [](const StmtPattern& upstream, const StmtPattern& downstream){
+        return IsPSPattern(upstream) && IsRPattern(downstream);
+      }
+    );
+  }
+
+ private:
   using StmtIter = std::list<StmtPattern>::iterator;
 
   static std::function<std::optional<StmtIter>(const pir::Operation*)>
@@ -223,6 +267,7 @@ class StmtFusionHelper {
     const auto Cmp = [&](const auto* lhs, const auto& rhs) {
       return GetOrder(lhs) < GetOrder(rhs);
     };
+    common::BfsWalker<StmtIter> reverse_walker(VisitInputStmt);
     const auto& GetVisitedOps = [&](const auto stmt_iter) {
       std::vector<const pir::Operation*> visited_ops;
       reverse_walker(start, [&](const auto node){
@@ -231,7 +276,6 @@ class StmtFusionHelper {
       std::sort(visited_ops.begin(), visited_ops.end(), Cmp);
       return visited_ops;
     };
-    common::BfsWalker<StmtIter> reverse_walker(VisitInputStmt);
     std::list<StmtPattern> fused_stmts;
     for (auto stmt_iter = stmts->begin(); stmt_iter != stmts->end(); ++stmt_iter) {
       if (!IsSinkPattern(stmt_iter)) continue;
@@ -431,20 +475,6 @@ class StmtFusionHelper {
     return {};
   }
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(std::list<StmtPattern>* stmts) const {
-    const auto ConstructISPattern = [&](const auto& ops) { return IS{ops}; };
-    return MultiFuse(IsISPattern, ConstructISPattern, stmts);
-  }
-
-  std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
-    return FuseIternalPattenPrototype(
-      stmt_patterns,
-      [](const StmtPattern& upstream, const StmtPattern& downstream){
-        return IsISPattern(upstream) && IsPSPattern(downstream);
-      }
-    );
-  }
-
   ShardableAxesSignature GetShardableAxesSignature(const std::vector<const pir::Operation*>& ops) const {
     std::unordered_set<const pir::Operation*> ops_set(ops.begin(), ops.end());
     const auto VisitUpStreamInOps = [&](const pir::Operation* op, const OpVisitor& DoEach) {
@@ -537,35 +567,6 @@ class StmtFusionHelper {
       }
     });
     return value2shardable_axes;
-  }
-
-  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const {
-    const auto ConstructPSPattern = [&](const auto& ops) {
-      const auto shardable_axes_signature = GetShardableAxesSignature(ops);
-      return PS{
-        .ops=ops,
-        .shardable_axes_signature=shardable_axes_signature,
-      };
-    };
-    return MultiFuse(IsPSPattern, ConstructISPattern, stmts);
-  }
-
-  std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::list<StmtPattern>* stmt_patterns) const {
-    return FuseIternalPattenPrototype(
-      stmt_patterns,
-      [](const StmtPattern& upstream, const StmtPattern& downstream){
-        return IsISPattern(upstream) && IsRPattern(downstream);
-      }
-    );
-  }
-
-  std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(std::list<StmtPattern>* stmt_patterns) const {
-    return FuseIternalPattenPrototype(
-      stmt_patterns,
-      [](const StmtPattern& upstream, const StmtPattern& downstream){
-        return IsPSPattern(upstream) && IsRPattern(downstream);
-      }
-    );
   }
 
  private:
