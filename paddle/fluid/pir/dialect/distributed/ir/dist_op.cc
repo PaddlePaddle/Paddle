@@ -53,7 +53,7 @@ void ShardTensorOp::VerifySig() {
                        attributes.at("op_dist_attr")
                            .isa<paddle::dialect::OperationDistAttribute>(),
                    phi::errors::PreconditionNotMet(
-                       "Type of attribute: tensor_dist_attr is not right."));
+                       "Type of attribute: op_dist_attr is not right."));
   }
   VLOG(4) << "Verifying outputs:";
   {
@@ -68,6 +68,25 @@ void ShardTensorOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }
+  VLOG(4) << "Verifying op dist attrs:";
+  {
+    auto op_dist_attr =
+        this->attribute<paddle::dialect::OperationDistAttribute>(
+            "op_dist_attr");
+    PADDLE_ENFORCE_EQ(op_dist_attr.num_operand_dist_attrs(),
+                      0u,
+                      phi::errors::PreconditionNotMet(
+                          "The op_dist_attr input size %d must be equal to 0.",
+                          op_dist_attr.num_operand_dist_attrs()));
+
+    PADDLE_ENFORCE_EQ(
+        op_dist_attr.num_result_dist_attrs(),
+        num_results(),
+        phi::errors::PreconditionNotMet("The op_dist_attr output size %d must "
+                                        "be equal to op output size %d.",
+                                        op_dist_attr.num_result_dist_attrs(),
+                                        num_results()));
+  }
   VLOG(4) << "End Verifying for: ShardTensorOp.";
 }
 
@@ -76,6 +95,7 @@ void ShardTensorOp::Build(pir::Builder& builder,
                           pir::Value input,
                           pir::AttributeMap attributes) {
   VLOG(4) << "Start build ShardOp";
+  // Temporary restriction, will support input use_empty false in the future
   PADDLE_ENFORCE_EQ(
       input.use_empty(),
       true,
@@ -103,26 +123,12 @@ void ShardTensorOp::Build(pir::Builder& builder,
   VLOG(4) << "Builder construction attributes";
   auto process_mesh_attr = tensor_dist_attr.process_mesh_attr();
   auto dims_mapping = tensor_dist_attr.dims_mapping();
-  TensorDistAttribute operand_dist_attr =
-      TensorDistAttribute::get(pir::IrContext::Instance(),
-                               process_mesh_attr,
-                               dims_mapping,
-                               tensor_dist_attr.partial_status());
-  std::vector<TensorDistAttribute> operand_dist_attrs =
-      std::vector<TensorDistAttribute>{operand_dist_attr};
 
-  TensorDistAttribute result_dist_attr =
-      TensorDistAttribute::get(pir::IrContext::Instance(),
-                               process_mesh_attr,
-                               dims_mapping,
-                               tensor_dist_attr.partial_status());
-  std::vector<TensorDistAttribute> result_dist_attrs =
-      std::vector<TensorDistAttribute>{result_dist_attr};
-  pir::Attribute op_dist_attr =
-      OperationDistAttribute::get(pir::IrContext::Instance(),
-                                  process_mesh_attr,
-                                  operand_dist_attrs,
-                                  result_dist_attrs);
+  pir::Attribute op_dist_attr = OperationDistAttribute::get(
+      pir::IrContext::Instance(),
+      process_mesh_attr,
+      std::vector<TensorDistAttribute>(),
+      std::vector<TensorDistAttribute>{tensor_dist_attr});
   argument.AddAttribute("op_dist_attr", op_dist_attr);
 
   VLOG(4) << "Builder construction outputs";
