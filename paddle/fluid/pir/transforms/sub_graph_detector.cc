@@ -515,10 +515,10 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
   return insert_point_op;
 }
 
-struct CompareOperation {
+struct IncrementalOrder {
   bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
-    return lhs->operator Block::ConstIterator() <
-           rhs->operator Block::ConstIterator();
+    return std::distance(lhs->operator Block::ConstIterator(),
+                         rhs->operator Block::ConstIterator()) > 0;
   }
 };
 
@@ -542,10 +542,8 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
     if (visited_ops->count(defining_op) || !IsInBlock(defining_op, block))
       continue;
     visited_ops->insert(defining_op);
-    const bool is_before_position =
-        std::distance(defining_op->operator Block::ConstIterator(),
-                      position_op->operator Block::ConstIterator()) > 0;
-    if (is_before_position) continue;
+    if (!IncrementalOrder()(defining_op, position_op)) continue;
+
     ops.insert(defining_op);
     auto recursive_ops = GetUpstreamOpsAfterPosition(
         position_op, block, defining_op, visited_ops);
@@ -558,7 +556,7 @@ void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
                                pir::Block* block,
                                pir::Operation* insert_point_op) {
   const auto moved_ops = [&]() {
-    std::set<pir::Operation*, CompareOperation> ops_set;
+    std::set<pir::Operation*, IncrementalOrder> ops_set;
     std::unordered_set<pir::Operation*> visited_ops;
     for (auto& op : group_ops) {
       auto upstream_ops =
