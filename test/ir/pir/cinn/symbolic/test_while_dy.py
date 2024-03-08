@@ -38,7 +38,7 @@ class WhileExpSub(nn.Layer):
         ):
             x = paddle.exp(x) - x
             loop_count += 1
-        # x = paddle.exp(x)
+        x = paddle.exp(x)
 
         return x
 
@@ -65,13 +65,10 @@ class TestWhile(unittest.TestCase):
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x)
-        # if use_cinn:
-        #     self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        # if utils.unittest_use_cinn():
         cinn_out = self.eval(use_cinn=True)
         print("fin")
         np.testing.assert_allclose(
