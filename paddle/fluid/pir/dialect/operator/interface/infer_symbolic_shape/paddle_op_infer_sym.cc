@@ -1170,9 +1170,11 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
   // input
   const auto &x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
-  IR_ENFORCE(!x_shape_or_data.data().has_value(),
-             "Currently InferSymbolicShape of SplitOp only support "
-             "input without value.");
+  PADDLE_ENFORCE_EQ(x_shape_or_data.data().has_value(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "InferSymbolicShape of SplitOp only support input with "
+                        "value now."));
   const auto &x_dims_sym = x_shape_or_data.shape();
 
   // axis
