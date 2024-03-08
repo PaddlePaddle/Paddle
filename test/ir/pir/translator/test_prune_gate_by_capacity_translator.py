@@ -24,13 +24,14 @@ class TestPruneGateByCapacityOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "prune_gate_by_capacity"
         gate_idx = paddle.ones(shape=(200,), dtype='int64')
-        expert_count = paddle.ones(shape=(10, 200), dtype='int64')
+        expert_count = paddle.ones(shape=(48,), dtype='int64')
+        new_gate_idx = paddle.zeros_like(expert_count)
         attrs = {'n_expert': 24, 'n_worker': 2}
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
-            inputs={"GateIdx": gate_idx},
-            outputs={"ExpertCount": expert_count},
+            inputs={"GateIdx": gate_idx, "ExpertCount": expert_count},
+            outputs={"NewGateIdx": new_gate_idx},
             attrs=attrs,
         )
 

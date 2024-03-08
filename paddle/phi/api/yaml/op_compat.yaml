@@ -3661,12 +3661,6 @@
 
 - op: distributed_lookup_table
   inputs:
-    {gate_idx: GateIdx, expert_count: ExpertCount, n_expert: n_expert, n_worker: n_worker}
-  outputs:
-    new_gate_idx: NewGateIdx
-
-- op: distributed_lookup_table
-  inputs:
     {ids: Ids, w: W}
   outputs:
     outputs: Outputs
@@ -3804,6 +3798,12 @@
 - op: partial_send
   inputs :
     x : X
+
+- op: prune_gate_by_capacity
+  inputs:
+    {gate_idx: GateIdx, expert_count: ExpertCount, n_expert: n_expert, n_worker: n_worker}
+  outputs:
+    new_gate_idx: NewGateIdx
 
 - op: random_routing
   inputs:
