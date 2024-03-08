@@ -91,7 +91,6 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
 
     group_tile_info->reduce_axis_.push_back(dim);
-    std::cerr << "reduce axis    " << dim << std::endl;
     reduce_set.insert(dim);
   }
 
@@ -115,9 +114,6 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
   }
 
-  std::cerr << "group_tile_info->reduce_axis_.size() "
-            << group_tile_info->reduce_axis_.size() << "\t"
-            << group_tile_info->data_rank << std::endl;
   bool is_reduce_all =
       (group_tile_info->reduce_axis_.size() == group_tile_info->data_rank);
 
@@ -138,7 +134,6 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   int warp_num = 1;
   group_tile_info->is_reduce_all = is_reduce_all;
 
-  std::cerr << "reduce all " << group_tile_info->is_reduce_all << std::endl;
   if (is_reduce_all) {
     // warp reduce
     reduce_block = 1024;
