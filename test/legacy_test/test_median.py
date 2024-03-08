@@ -166,11 +166,6 @@ class TestMedianAvg(unittest.TestCase):
 
 
 class TestMedianMin(unittest.TestCase):
-    def check_numpy_res(self, np1, np2):
-        self.assertEqual(np1.shape, np2.shape)
-        mismatch = np.sum((np1 - np2) * (np1 - np2))
-        self.assertAlmostEqual(mismatch, 0, DELTA)
-
     def static_single_test_median(self, lis_test):
         paddle.enable_static()
         x, axis, keepdims = lis_test
@@ -182,7 +177,7 @@ class TestMedianMin(unittest.TestCase):
             x_in = paddle.static.data(shape=x.shape, dtype=x.dtype, name='x')
             y = paddle.median(x_in, axis, keepdims, mode='min')
             [res_pd, _] = exe.run(feed={'x': x}, fetch_list=[y])
-            self.check_numpy_res(res_pd, res_np)
+            np.testing.assert_allclose(res_pd, res_np)
         paddle.disable_static()
 
     def dygraph_single_test_median(self, lis_test):
@@ -191,7 +186,7 @@ class TestMedianMin(unittest.TestCase):
         res_pd, _ = paddle.median(
             paddle.to_tensor(x), axis, keepdims, mode='min'
         )
-        self.check_numpy_res(res_pd.numpy(False), res_np)
+        np.testing.assert_allclose(res_pd.numpy(False), res_np)
 
     @test_with_pir_api
     def test_median_static(self):
