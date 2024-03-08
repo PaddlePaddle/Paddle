@@ -243,6 +243,7 @@ struct ArgumentMappingFnRegistrar {
       __registrar_arg_map_fn_for_##op_type(#op_type, arg_mapping_fn);    \
   int TouchArgumentMappingFnSymbol_##op_type() { return 0; }
 
+#if(WIN32)
 #define PD_DECLARE_ARG_MAPPING_FN(op_type)                              \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
       PD_DECLARE_arg_map_fn_ns_check_##op_type,                         \
@@ -250,5 +251,13 @@ struct ArgumentMappingFnRegistrar {
   TEST_API extern int TouchArgumentMappingFnSymbol_##op_type();         \
   UNUSED static int __declare_arg_map_fn_symbol_for_##op_type =         \
       TouchArgumentMappingFnSymbol_##op_type()
-
+#else
+#define PD_DECLARE_ARG_MAPPING_FN(op_type)                              \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
+      PD_DECLARE_arg_map_fn_ns_check_##op_type,                         \
+      "PD_DECLARE_ARG_MAPPING_FN must be called in global namespace."); \
+  __declspec(dllexport) TEST_API extern int TouchArgumentMappingFnSymbol_##op_type();         \
+  UNUSED static int __declare_arg_map_fn_symbol_for_##op_type =         \
+      TouchArgumentMappingFnSymbol_##op_type()
+#endif
 }  // namespace phi
