@@ -310,6 +310,11 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
         base_info.with_constrain = true;
         broadcast_info[ValueName(op->result(0))] = base_info;
       }
+
+      // if( erase_reshape.count(op_result.defining_op()) )
+      // {
+
+      // }
     }
 
     for (auto opresult : op->results()) {
@@ -709,6 +714,10 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
       if (op_out.use_count() == 1 &&
           op_out.first_use().owner()->name() == "cf.yield") {
+        info.with_constrain = true;
+      }
+
+      if (erase_reshape.count(op_out.first_use().owner())) {
         info.with_constrain = true;
       }
 
