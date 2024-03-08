@@ -844,6 +844,24 @@ bool MatmulOpInferSymbolicShape(
   shape_analysis->SetShapeOrDataForValue(op->result(0),
                                          ShapeOrData{TensorExprs(out_dims)});
 
+  if ((x_dims.size() == y_dims.size()) && x_dims.size() >= 2) {
+    if (transpose_x_attr == false && transpose_y_attr == false) {
+      std::cerr << "equal    " << x_dims[ndims_x - 1] << "\t"
+                << y_dims[ndims_x - 2] << std::endl;
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 1],
+                                                    y_dims[ndims_x - 2]);
+    } else if (transpose_x_attr == false && transpose_y_attr == true) {
+      std::cerr << "equal    " << x_dims[ndims_x - 1] << "\t"
+                << y_dims[ndims_x - 1] << std::endl;
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 1],
+                                                    y_dims[ndims_x - 1]);
+    }
+
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      std::cerr << "equal    " << x_dims[i] << "\t" << y_dims[i] << std::endl;
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[i], y_dims[i]);
+    }
+  }
   return true;
 }
 
