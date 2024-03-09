@@ -166,7 +166,8 @@ template <typename T, typename Context>
 void DivideDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& y,
                             const DenseTensor& out,
-                            const DenseTensor& dx,
+                            const DenseTensor& grad_out,
+                            const paddle::optional<DenseTensor>& dx,
                             const paddle::optional<DenseTensor>& ddx,
                             const paddle::optional<DenseTensor>& ddy,
                             int axis,
@@ -175,6 +176,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                             DenseTensor* ddout) {
   auto* ddx_tensor = ddx.get_ptr();
   auto* ddy_tensor = ddy.get_ptr();
+  auto* dx_tensor = dx.get_ptr();
   // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
   // dY = Out * dX * ddY / Y - dX * ddX / Y
   // dOut = - dX * ddY
@@ -193,13 +195,24 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     if (ddx_tensor == nullptr && ddy_tensor == nullptr) {
       dy = nullptr;
     } else {
+      if (dx_tensor == nullptr || dx_tensor->dims() != out.dims()) {
+        DenseTensor dz_div_y;
+        dz_div_y.Resize(out.dims());
+        dev_ctx.template Alloc<T>(&dz_div_y);
+        funcs::DefaultElementwiseOperator<Context,
+                                          T,
+                                          funcs::DivideFunctor<T>,
+                                          funcs::InverseDivideFunctor<T>>(
+            dev_ctx, grad_out, y, &dz_div_y, axis);
+        dx_tensor = &dz_div_y;
+      }
       DenseTensor tmp_dy = tmp;
       // dX / Y
       funcs::DefaultElementwiseOperator<Context,
                                         T,
                                         funcs::DivideFunctor<T>,
                                         funcs::InverseDivideFunctor<T>>(
-          dev_ctx, dx, y, &tmp_dy, axis);
+          dev_ctx, *dx_tensor, y, &tmp_dy, axis);
       if (ddx_tensor != nullptr && ddy_tensor == nullptr) {
         // dy = -dX * ddX / Y
         funcs::DefaultElementwiseOperator<Context,
@@ -299,12 +312,23 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     if (ddy_tensor == nullptr) {
       dout = nullptr;
     } else {
+      if (dx_tensor == nullptr || dx_tensor->dims() != out.dims()) {
+        DenseTensor dz_div_y;
+        dz_div_y.Resize(out.dims());
+        dev_ctx.template Alloc<T>(&dz_div_y);
+        funcs::DefaultElementwiseOperator<Context,
+                                          T,
+                                          funcs::DivideFunctor<T>,
+                                          funcs::InverseDivideFunctor<T>>(
+            dev_ctx, grad_out, y, &dz_div_y, axis);
+        dx_tensor = &dz_div_y;
+      }
       // dOut = - dX * ddY
       funcs::DefaultElementwiseOperator<Context,
                                         T,
                                         funcs::MultiplyFunctor<T>,
                                         funcs::InverseMultiplyFunctor<T>>(
-          dev_ctx, dx, *ddy_tensor, dout, axis);
+          dev_ctx, *dx_tensor, *ddy_tensor, dout, axis);
       auto& place = *dev_ctx.eigen_device();
       auto dout_result = phi::EigenVector<T>::Flatten(*dout);
       dout_result.device(place) = static_cast<T>(-1) * dout_result;
