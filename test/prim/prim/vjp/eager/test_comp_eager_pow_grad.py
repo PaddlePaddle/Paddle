@@ -22,7 +22,6 @@ import paddle
 from paddle.base import core
 
 sys.path.append('../../../../legacy_test/')
-import gradient_checker
 
 from paddle import base
 
@@ -40,7 +39,7 @@ class TestPowGradComp(unittest.TestCase):
         if cls.cotangent is not None:
             cls.cotangent = cls.cotangent.astype(cls.dtype)
 
-    def test_pow_grad_comp(self):
+    def test_pow_grad_comp_dygraph(self):
         def actual(primal):
             paddle.disable_static()
             core.set_prim_eager_enabled(True)
@@ -71,39 +70,41 @@ class TestPowGradComp(unittest.TestCase):
         )
         core.set_prim_eager_enabled(False)
 
+    def test_pow_grad_comp_static(self):
+        def actual(primal):
+            paddle.disable_static()
+            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y = paddle.pow(x, 6.9)
+            x_cotangent = paddle.grad(
+                y, x, create_graph=True, retain_graph=True
+            )
+            return x_cotangent[0]
 
-class TestPowGradCheck(unittest.TestCase):
-    def pow_wrapper(self, x, e):
-        return paddle.pow(x, e)
+        def desired(primal):
+            paddle.enable_static()
+            core._set_prim_forward_enabled(False)
+            core._set_prim_backward_enabled(True)
+            main_prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.assign(primal)
+                x.stop_gradient = False
+                y = paddle.pow(x, 6.9)
+                dx = paddle.static.gradients(y, x)
 
-    def func(self, place):
-        core.set_prim_eager_enabled(True)
-        # the shape of input variable should be clearly specified, not include -1.
-        eps = 0.005
-        dtype = np.float32
+            exe = paddle.static.Executor(base.CPUPlace())
+            exe.run(startup_prog)
+            (dx_result,) = exe.run(main_prog, fetch_list=[dx])
+            return dx_result
 
-        data1 = paddle.static.data('data1', [10, 10], dtype)
-        data1.persistable = True
-        data1.stop_gradient = False
-        e = 6.9
-        out = paddle.pow(data1, e)
-        data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
-        gradient_checker.double_grad_check(
-            [data1],
-            out,
-            x_init=[data1_arr],
-            place=place,
-            eps=eps,
+        np.testing.assert_allclose(
+            actual=actual(self.primal),
+            desired=desired(self.primal),
+            rtol=1e-6,
+            atol=0,
         )
         core.set_prim_eager_enabled(False)
-
-    def test_grad(self):
-        paddle.enable_static()
-        places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
-            self.func(p)
 
 
 if __name__ == '__main__':
