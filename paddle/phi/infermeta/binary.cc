@@ -2167,6 +2167,15 @@ void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void LimitByCapacityInferMeta(const MetaTensor& expert_count,
+                              const MetaTensor& capacity,
+                              int n_worker,
+                              MetaTensor* out) {
+  out->share_dims(expert_count);
+  out->share_lod(expert_count);
+  out->set_dtype(expert_count.dtype());
+}
+
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       float epsilon,

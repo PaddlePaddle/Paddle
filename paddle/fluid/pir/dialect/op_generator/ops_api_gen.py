@@ -178,6 +178,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_recv',
     'nop',
     'nop_',
+    'limit_by_capacity',
+    'global_scatter',
 ]
 
 
