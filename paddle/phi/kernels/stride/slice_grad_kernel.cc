@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fill_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
-#include "paddle/phi/kernels/stride/stride_funcs.h"
+#include "paddle/phi/kernels/stride_funcs.h"
 
 namespace phi {
 
