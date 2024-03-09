@@ -88,7 +88,7 @@ std::vector<paddle::Tensor> TritonWint8(const paddle::Tensor& x,
         (cudaEventCreate(&end));
         (cudaEventRecord(beg));
       }
-
+      cudaMemset(dev_c, 0, sizeof(phi::dtype::float16) * m * n);
       auto status = wint8_kernel(c_out.stream(),
                                  (CUdeviceptr)(dev_x),
                                  (CUdeviceptr)(dev_weight),
