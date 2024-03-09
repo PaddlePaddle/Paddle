@@ -41,6 +41,7 @@ class TestAbsDoubleGradComp(unittest.TestCase):
         def actual(primal):
             paddle.disable_static()
             core.set_prim_eager_enabled(True)
+            core._set_prim_backward_blacklist("abs_grad")
             x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
             y = paddle.tanh(paddle.abs(x))
