@@ -43,7 +43,7 @@ void tanh_double_grad(const Tensor& out,
   // ddx)
   auto out_m_grad_x_grad = out * grad_x_grad;
   if (out_grad) {
-    auto out_grad_tmp = -2 * grad_out * out_m_grad_x_grad;
+    auto out_grad_tmp = scale<T>(grad_out, -2.0) * out_m_grad_x_grad;
     set_output<T>(out_grad_tmp, out_grad);
   }
 
@@ -65,23 +65,24 @@ void tanh_triple_grad(const Tensor& out,
   if (out_grad) {
     if (grad_out_grad_grad) {
       if (grad_out_new_grad) {
-        auto out_grad_tmp =
-            (-2 * out * grad_x_grad_forward * grad_out_grad_grad.get()) -
-            (2 * grad_out_forward * grad_x_grad_forward *
-             grad_out_new_grad.get());
+        auto out_grad_tmp = (scale<T>(out, -2.0) * grad_x_grad_forward *
+                             grad_out_grad_grad.get()) -
+                            (scale<T>(grad_out_forward, 2.0) *
+                             grad_x_grad_forward * grad_out_new_grad.get());
         set_output<T>(out_grad_tmp, out_grad);
       } else {
-        auto out_grad_tmp =
-            -2 * out * grad_x_grad_forward * grad_out_grad_grad.get();
+        auto out_grad_tmp = scale<T>(out, -2.0) * grad_x_grad_forward *
+                            grad_out_grad_grad.get();
         set_output<T>(out_grad_tmp, out_grad);
       }
     } else {
       if (grad_out_new_grad) {
-        auto out_grad_tmp = -(2 * grad_out_forward * grad_x_grad_forward *
-                              grad_out_new_grad.get());
+        auto out_grad_tmp = scale<T>(grad_out_forward, -2.0) *
+                            grad_x_grad_forward * grad_out_new_grad.get();
         set_output<T>(out_grad_tmp, out_grad);
       } else {
-        auto out_grad_tmp = 0 * out;
+        auto out_grad_tmp =
+            full<T>(common::vectorize(out.dims()), 0, out.dtype(), out.place());
         set_output<T>(out_grad_tmp, out_grad);
       }
     }
@@ -90,10 +91,11 @@ void tanh_triple_grad(const Tensor& out,
   if (grad_out_forward_grad) {
     if (grad_out_new_grad) {
       auto grad_out_forward_grad_tmp =
-          -2 * out * grad_x_grad_forward * grad_out_new_grad.get();
+          scale<T>(out, -2.0) * grad_x_grad_forward * grad_out_new_grad.get();
       set_output<T>(grad_out_forward_grad_tmp, grad_out_forward_grad);
     } else {
-      auto grad_out_forward_grad_tmp = 0 * out;
+      auto grad_out_forward_grad_tmp =
+          full<T>(common::vectorize(out.dims()), 0, out.dtype(), out.place());
       set_output<T>(grad_out_forward_grad_tmp, grad_out_forward_grad);
     }
   }
@@ -102,21 +104,25 @@ void tanh_triple_grad(const Tensor& out,
     if (grad_out_grad_grad) {
       if (grad_out_new_grad) {
         auto grad_x_grad_forward_grad_tmp =
-            (1 - (out * out)) * grad_out_grad_grad.get() -
-            2 * out * grad_out_forward * grad_out_new_grad.get();
+            scale<T>(out * out, -1.0, 1.0) * grad_out_grad_grad.get() -
+            scale<T>(out, 2.0) * grad_out_forward * grad_out_new_grad.get();
         set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
       } else {
         auto grad_x_grad_forward_grad_tmp =
-            (1 - (out * out)) * grad_out_grad_grad.get();
+            scale<T>(out * out, -1.0, 1.0) * grad_out_grad_grad.get();
         set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
       }
     } else {
       if (grad_out_new_grad) {
         auto grad_x_grad_forward_grad_tmp =
-            -(2 * out * grad_out_forward * grad_out_new_grad.get());
+            scale<T>(out, -2.0) * grad_out_forward * grad_out_new_grad.get();
         set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
       } else {
-        auto grad_x_grad_forward_grad_tmp = 0 * grad_x_grad_forward;
+        auto grad_x_grad_forward_grad_tmp =
+            full<T>(common::vectorize(grad_x_grad_forward.dims()),
+                    0,
+                    grad_x_grad_forward.dtype(),
+                    grad_x_grad_forward.place());
         set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
       }
     }
@@ -440,16 +446,17 @@ void silu_double_grad(const Tensor& x,
                       const Tensor& grad_x_grad,
                       Tensor* grad_x,
                       Tensor* grad_out_grad) {
-  auto sigmoid = 1 / (1 + exp<T>(-x));
-  auto tmp1 = 1 - sigmoid;
-  auto tmp2 = 1 + tmp1 * x;
+  auto sigmoid = 1 / (scale<T>(exp<T>(scale<T>(x, -1.0)), 1.0, 1.0));
+  auto tmp1 = scale<T>(sigmoid, -1.0, 1.0);
+  auto tmp2 = scale<T>(tmp1 * x, 1.0, 1.0);
   auto grad_x_grad_mul_sigmoid = grad_x_grad * sigmoid;
   if (grad_out_grad) {
     auto ddout = grad_x_grad_mul_sigmoid * tmp2;
     set_output<T>(ddout, grad_out_grad);
   }
   if (grad_x) {
-    auto dx = grad_x_grad_mul_sigmoid * out_grad * (1 + (tmp2 - out)) * tmp1;
+    auto dx = grad_x_grad_mul_sigmoid * out_grad *
+              (scale<T>(tmp2 - out, 1.0, 1.0)) * tmp1;
     set_output<T>(dx, grad_x);
   }
 }
