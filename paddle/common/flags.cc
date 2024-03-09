@@ -1475,7 +1475,7 @@ PHI_DEFINE_EXPORTED_bool(prim_check_ops,
  * Name: FLAGS_prim_forward_blacklist
  * Value Range: string, default=""
  * Example: FLAGS_prim_forward_blacklist="pd_op.relu;pd_op.mean" would block
- * `relu` and `mean` two ops in decompsition when using CINN
+ * `relu` and `mean` two ops in decompsition
  */
 PHI_DEFINE_EXPORTED_string(
     prim_forward_blacklist,
