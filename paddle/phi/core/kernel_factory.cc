@@ -28,9 +28,15 @@
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/utils/string/string_helper.h"
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
+                         false,
+                         "Whether to use stride kernel if op support stride.");
+#else
 PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
                          true,
                          "Whether to use stride kernel if op support stride.");
+#endif
 
 COMMON_DECLARE_int32(low_precision_op_list);
 COMMON_DECLARE_bool(enable_api_kernel_fallback);
