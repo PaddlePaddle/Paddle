@@ -26,7 +26,7 @@
 
 COMMON_DECLARE_bool(prim_skip_dynamic);
 COMMON_DECLARE_bool(prim_check_ops);
-PD_DECLARE_string(prim_forward_blacklist);
+COMMON_DECLARE_string(prim_forward_blacklist);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
