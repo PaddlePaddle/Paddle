@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle.framework import (
+    _current_expected_place_,
     base as imperative_base,
     core,
 )
@@ -33,6 +34,7 @@ class HOOK_ACTION:
 
 alignment = {
     "gpu": 256,
+    "npu": 256,
 }
 
 align = {
@@ -40,6 +42,29 @@ align = {
     paddle.bfloat16.value: 2,
     paddle.float32.value: 4,
 }
+
+
+__current_device_type__ = None
+
+
+def get_current_device_type():
+    global __current_device_type__
+    if __current_device_type__ is None:
+        if paddle.is_compiled_with_cuda():
+            device_type = "gpu"
+        elif paddle.is_compiled_with_xpu():
+            device_type = "xpu"
+        else:
+            current_device = _current_expected_place_()
+            try:
+                device_type = current_device.get_device_type()
+            except:
+                device_type = "unknown"
+        assert (
+            device_type in alignment.keys()
+        ), f"tensor fusion helper now only support {alignment.keys()}, but got device {device_type} instead."
+        __current_device_type__ = device_type
+    return __current_device_type__
 
 
 def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
@@ -76,8 +101,12 @@ def flatten_dense_tensors(
     for param in parameters:
         assert param.trainable, "param must be trainable..."
         size = np.prod(param.shape) * align[dtype]
-        remaining = size % alignment["gpu"]
-        ali = 0 if remaining == 0 else alignment["gpu"] - remaining
+        remaining = size % alignment[get_current_device_type()]
+        ali = (
+            0
+            if remaining == 0
+            else alignment[get_current_device_type()] - remaining
+        )
         align_ = ali // align[dtype]
         _param2offset[param.name] = _buffer_size
         _buffer_size += np.prod(param.shape) + align_
@@ -88,7 +117,7 @@ def flatten_dense_tensors(
 
     if fuse_param:
         param_storage = ParamStorage(
-            size=_buffer_size, dtype=dtype, device="gpu"
+            size=_buffer_size, dtype=dtype, device=get_current_device_type()
         )
         param_storage.add_rank_params(parameters, _param2align)
 
@@ -97,7 +126,7 @@ def flatten_dense_tensors(
     grad_storage = GradStorage(
         size=_buffer_size,
         dtype=grad_dtype,
-        device="gpu",
+        device=get_current_device_type(),
         destination="0",
         parm2align=_param2align,
     )
@@ -200,9 +229,12 @@ class ShardingGradView:
         stop_gradient = self._param.stop_gradient
         self._param.stop_gradient = True
         self._param.flatten_()
-        self._param_buffer[
-            self._index : self._index + self._param._numel()
-        ] = self._param
+        paddle.assign(
+            self._param,
+            self._param_buffer._slice(
+                self._index, self._index + self._param._numel()
+            ),
+        )
         self._param.get_tensor()._set_dims(param_shape)
         self._param.stop_gradient = stop_gradient
         self._param_buffer._slice(
@@ -258,7 +290,7 @@ def build_reduce_scatter_buffer(
 
     def get_padded_size(param):
         size = np.prod(param.shape)
-        align_size = alignment["gpu"] // align[dtype]
+        align_size = alignment[get_current_device_type()] // align[dtype]
         align_size = align_size * sharding_degree
         padded_size = ((size + align_size - 1) // align_size) * align_size
         return padded_size
@@ -320,6 +352,7 @@ class FusedCommBuffer:
         fuse_param=False,
         scale_after_comm=True,
         release_grads=False,
+        use_reduce_avg=False,
     ):
         self._id = id
         self._params = params
@@ -328,6 +361,7 @@ class FusedCommBuffer:
         self._scale_after_comm = scale_after_comm
         self._fuse_param = fuse_param
         self._release_grads = release_grads
+        self._use_reduce_avg = use_reduce_avg
 
         assert not (
             self._fuse_param and self._release_grads
@@ -356,7 +390,7 @@ class FusedCommBuffer:
             assert dst != -1
         else:
             raise ValueError(
-                "The act should be allreudce for dp or reduce for sharding."
+                "The act should be allreduce for dp or reduce for sharding."
             )
         self._dst = dst
 
@@ -541,19 +575,29 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def _comm_grads(self):
-        if not self._scale_after_comm:
+        reduce_op = (
+            paddle.distributed.ReduceOp.AVG
+            if self._use_reduce_avg
+            else paddle.distributed.ReduceOp.SUM
+        )
+        # scale will be skiped when reduce_avg comm operation is enabled.
+        if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
 
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(
-                self.grad_storage, group=self._comm_group, sync_op=False
+                self.grad_storage,
+                op=reduce_op,
+                group=self._comm_group,
+                sync_op=False,
             )
 
         elif self._act == HOOK_ACTION.REDUCE:
             task = paddle.distributed.reduce(
                 self.grad_storage,
                 dst=self._dst,
+                op=reduce_op,
                 group=self._comm_group,
                 sync_op=False,
             )
@@ -566,6 +610,7 @@ class FusedCommBuffer:
             task = paddle.distributed.reduce_scatter(
                 reduce_scattered,
                 self.grad_storage,
+                op=reduce_op,
                 group=self._comm_group,
                 sync_op=False,
             )
@@ -576,7 +621,8 @@ class FusedCommBuffer:
         assert self._task is not None, "Task is not initialized."
         self._task.wait()
 
-        if self._scale_after_comm:
+        # scale will be skiped when use reduce_avg comm operation
+        if self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
 
@@ -604,6 +650,7 @@ def obtain_storage(
     dst=-1,
     acc_steps=1,
     scale_after_comm=False,
+    use_reduce_avg=False,
 ):
     if len(parameters) < 1:
         return [], []
@@ -622,6 +669,7 @@ def obtain_storage(
             use_main_grad=use_main_grad,
             fuse_param=fuse_param,
             scale_after_comm=scale_after_comm,
+            use_reduce_avg=use_reduce_avg,
         )
         if fuse_param:
             param_buffer = comm_buffer.param_storage
@@ -682,6 +730,7 @@ def _fused_parameters_impl(
     acc_step=1,
     scale_after_comm=False,
     apply_decay_param_fun=None,
+    use_reduce_avg=False,
 ):
     param_groups = []
     attrs = []
@@ -732,6 +781,7 @@ def _fused_parameters_impl(
             dst=dst,
             acc_steps=acc_step,
             scale_after_comm=scale_after_comm,
+            use_reduce_avg=use_reduce_avg,
         )
         other, other_buffers = obtain_storage(
             other_params,
@@ -745,6 +795,7 @@ def _fused_parameters_impl(
             dst=dst,
             acc_steps=acc_step,
             scale_after_comm=scale_after_comm,
+            use_reduce_avg=use_reduce_avg,
         )
         decay_fused += decay
         all_fused += decay
@@ -767,6 +818,7 @@ def fused_parameters(
     scale_after_comm=False,
     group_params=False,
     apply_decay_param_fun=None,
+    use_reduce_avg=False,
 ):
     """
     Fuse gradients. Fuse parameters if be enabled. Prepare for comm overlap if be enabled.
@@ -780,7 +832,8 @@ def fused_parameters(
     :param fuse_param: fuse param or not
     :param scale_after_comm: if enable comm overlap, specify the location of grad scale
     :param group_params: the format of the input parameters is param group
-    :param apply_decay_param_fun: the funtion to filter decay param
+    :param apply_decay_param_fun: the function to filter decay param
+    :param use_reduce_avg: use reduce_avg comm operation instead of scale and reduce_sum
     :return: param storage if fused, comm buffers if comm overlap, param groups if use group params
     """
     if act is None:
@@ -827,6 +880,7 @@ def fused_parameters(
                 acc_step=acc_step,
                 scale_after_comm=scale_after_comm,
                 apply_decay_param_fun=apply_decay_param_fun,
+                use_reduce_avg=use_reduce_avg,
             )
             if comm_overlap:
                 comm_buffers.extend(group_all_buffers)
@@ -847,6 +901,7 @@ def fused_parameters(
             acc_step=acc_step,
             scale_after_comm=scale_after_comm,
             apply_decay_param_fun=apply_decay_param_fun,
+            use_reduce_avg=use_reduce_avg,
         )
 
         return decay_fused, all_fused, all_buffers

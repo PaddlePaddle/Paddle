@@ -296,7 +296,7 @@ class TestReQuantizeOp_U8_DifferentScales_2_DifferentShift_2(
         self.shift_out = 128.0
 
 
-# ---------------test non-four dimentional formats--------------------------
+# ---------------test non-four dimensional formats--------------------------
 
 
 class TestReQuantizeOp_2DimFormat(TestReQuantizeOp):

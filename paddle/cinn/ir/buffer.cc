@@ -27,7 +27,7 @@ namespace ir {
 
 std::string TensorGetBufferName(const _Tensor_ *tensor) {
   CHECK(!tensor->name.empty());
-  CHECK(!utils::Startswith(tensor->name, "_"))
+  CHECK(!utils::StartsWith(tensor->name, "_"))
       << "the name with prefix _ is not allowed for tensor. Current tensor's "
          "name is: "
       << tensor->name;
@@ -35,7 +35,7 @@ std::string TensorGetBufferName(const _Tensor_ *tensor) {
 }
 std::string BufferGetTensorName(const _Buffer_ *buffer) {
   CHECK(!buffer->name.empty());
-  CHECK(utils::Startswith(buffer->name, "_"))
+  CHECK(utils::StartsWith(buffer->name, "_"))
       << "buffer's name should start with _";
   return buffer->name.substr(1);
 }

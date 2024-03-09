@@ -37,7 +37,7 @@ class ParametersRecorder:
         mappings = self.tensor2value[key]
         if id(tensor) not in mappings:
             non_used_initializer = paddle.nn.initializer.Constant(0.0)
-            op_result = create_parameter(
+            value = create_parameter(
                 dtype=vartype_to_datatype[tensor.dtype],
                 shape=tensor.shape,
                 type=tensor.type,
@@ -45,7 +45,7 @@ class ParametersRecorder:
             )
             if isinstance(tensor, paddle.Tensor):
                 params.add(tensor)
-            mappings[id(tensor)] = op_result
+            mappings[id(tensor)] = value
         return mappings[id(tensor)]
 
     def pop(self, program):
@@ -53,12 +53,12 @@ class ParametersRecorder:
         params = self.params_dict.get(hash_id)
         if params is None:
             return [], []
-        params_values = [
-            self.tensor2value[hash_id][id(x)] for x in list(params)
-        ]
+        params = list(params)
+        params.sort(key=lambda x: x.name)
+        params_values = [self.tensor2value[hash_id][id(x)] for x in params]
         del self.params_dict[hash_id]
         del self.tensor2value[hash_id]
-        return list(params), list(params_values)
+        return params, params_values
 
 
 class InplaceMap:

@@ -29,7 +29,7 @@ limitations under the License. */
 
 namespace phi {
 
-// Transform applys a unary or a binary functor on each element in a
+// Transform applies a unary or a binary functor on each element in a
 // range defined by a pair of iterators.
 //
 // - The specialization for CPU calls std::transform.

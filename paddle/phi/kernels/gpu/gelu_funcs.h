@@ -16,13 +16,13 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-PHI_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_fast_math);
 
 namespace phi {
 

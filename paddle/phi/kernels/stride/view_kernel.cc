@@ -65,7 +65,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
             input.dtype(),
             dtype,
             input.strides()[input.strides().size() - 1]));
-    size_t times = input_dtype_size / output_dtype_size;
+    size_t times = input_dtype_size / output_dtype_size;  // NOLINT
 
     DDim output_dims = input.dims();
     output_dims[output_dims.size() - 1] =

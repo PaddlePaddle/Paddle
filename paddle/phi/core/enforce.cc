@@ -22,35 +22,20 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
-#include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
-PD_DECLARE_int32(call_stack_level);
+COMMON_DECLARE_int32(call_stack_level);
 namespace phi {
 namespace enforce {
 
-TEST_API int GetCallStackLevel() { return FLAGS_call_stack_level; }
-
 void ThrowWarnInternal(const std::string& msg) {
   LOG(WARNING) << "WARNING :" << msg;
-}
-
-TEST_API std::string SimplifyErrorTypeFormat(const std::string& str) {
-  std::ostringstream sout;
-  size_t type_end_pos = str.find(':', 0);
-  if (type_end_pos == std::string::npos) {
-    sout << str;
-  } else {
-    // Remove "Error:", add "()""
-    sout << "(" << str.substr(0, type_end_pos - 5) << ")"
-         << str.substr(type_end_pos + 1);
-  }
-  return sout.str();
 }
 
 /**************************************************************************/

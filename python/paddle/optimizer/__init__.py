@@ -18,6 +18,7 @@ from .adagrad import Adagrad
 from .adam import Adam
 from .adamax import Adamax
 from .adamw import AdamW
+from .asgd import ASGD
 from .lamb import Lamb
 from .lbfgs import LBFGS
 from .momentum import Momentum
@@ -32,6 +33,7 @@ __all__ = [
     'Adam',
     'AdamW',
     'Adamax',
+    'ASGD',
     'RMSProp',
     'Adadelta',
     'SGD',

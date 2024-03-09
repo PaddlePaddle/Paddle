@@ -18,22 +18,26 @@
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/loop_reorder_alignment_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace ir {
 
 void DynamicShapeGroupScheduler::Init() {
+  VLOG(4) << "=============================Start group "
+             "schedule==============================";
+  VLOG(4) << "original group func body: \n"
+          << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
-  tactics_.emplace_back(new AlignIterSpaceTactic());
-  tactics_.emplace_back(new ComputeInlineTactic());
-  tactics_.emplace_back(new TileTactic());
-  tactics_.emplace_back(new OptimizeReductionTactic());
-  tactics_.emplace_back(new BindCudaTactic());
-  tactics_.emplace_back(new ArrangeStorageTactic());
+  tactics_.emplace_back(CreateLoopReorderAlignmentTactic());
+  tactics_.emplace_back(CreateTileFirstGeneralTactic());
 }
 
 void DynamicShapeGroupScheduler::InitBuckets() {
@@ -81,7 +85,8 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     ScheduleContext schedule_context{output_names,
                                      target_,
                                      std::move(iter_space_info),
-                                     std::move(bucket_info)};
+                                     std::move(bucket_info),
+                                     group_tile_info_};
     BucketContext bucket_context{std::move(predicate),
                                  std::move(ir_sch),
                                  std::move(schedule_block_graph),
@@ -154,6 +159,7 @@ DynamicShapeGroupScheduler::GetIRs() {
 
 IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
     ScheduleBlockNode* node) {
+  VLOG(5) << "global master: " << node->id();
   IterativeSpaceInfo info;
   std::vector<int> sp_iter_indices;
   std::vector<int> rb_iter_indices;
@@ -199,12 +205,16 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
       CHECK_NOTNULL(index.as_var());
       ir::Var iter_var = index.as_var_ref();
       ir::Expr iter_value = iter_var2value.at(iter_var);
-      CHECK_NOTNULL(iter_value.as_var());
+      CHECK(iter_value.as_var() || iter_value.is_constant());
       ir::For* for_node;
-      for (ir::Expr& loop : loops) {
-        if (loop.As<ir::For>()->loop_var == iter_value.as_var_ref()) {
-          for_node = loop.As<ir::For>();
+      if (iter_value.as_var()) {
+        for (ir::Expr& loop : loops) {
+          if (loop.As<ir::For>()->loop_var == iter_value.as_var_ref()) {
+            for_node = loop.As<ir::For>();
+          }
         }
+      } else if (iter_value.is_constant()) {
+        for_node = loops.at(loop_idx).As<ir::For>();
       }
       CHECK_NOTNULL(for_node);
       bool is_reduce_iter_var = reduce_iter_vars.count(iter_var) > 0;

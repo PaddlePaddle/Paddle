@@ -131,7 +131,7 @@ struct PrelnSkipLayerNorm : public PatternBase {
 // and then convert the corresponding subgraph to:
 //
 // (word, pos, sent, weights_0, weights_1, weights_2,
-//       scale, baias)   Prelnembedding_eltwise_layernorm -> layer_norm_out +
+//       scale, bias)   Prelnembedding_eltwise_layernorm -> layer_norm_out +
 //       elementwise_add_out
 //
 //

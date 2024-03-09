@@ -29,16 +29,6 @@ typedef void* CCLComm;
 typedef std::vector<uint8_t> CCLRootId;
 
 enum CCLReduceOp { SUM = 0, AVG, MAX, MIN, PRODUCT };
-enum CCLDataType {
-  CCL_DATA_TYPE_FP64 = 0,
-  CCL_DATA_TYPE_FP32,
-  CCL_DATA_TYPE_FP16,
-  CCL_DATA_TYPE_INT64,
-  CCL_DATA_TYPE_INT32,
-  CCL_DATA_TYPE_INT16,
-  CCL_DATA_TYPE_INT8,
-  CCL_DATA_TYPE_UINT8
-};
 
 inline CCLReduceOp ToXCCLReduceOp(int reduce_type) {
   phi::ccl::CCLReduceOp red_type = phi::ccl::CCLReduceOp::SUM;
@@ -64,47 +54,6 @@ inline CCLReduceOp ToXCCLReduceOp(int reduce_type) {
           "of SUM, MAX, MIN, PRODUCT and AVG."));
   }
   return red_type;
-}
-
-inline CCLDataType ToCCLDataType(phi::DataType type) {
-  if (type == phi::DataType::FLOAT64) {
-    return CCL_DATA_TYPE_FP64;
-  } else if (type == phi::DataType::FLOAT32) {
-    return CCL_DATA_TYPE_FP32;
-  } else if (type == phi::DataType::FLOAT16) {
-    return CCL_DATA_TYPE_FP16;
-  } else if (type == phi::DataType::INT64) {
-    return CCL_DATA_TYPE_INT64;
-  } else if (type == phi::DataType::INT32) {
-    return CCL_DATA_TYPE_INT32;
-  } else if (type == phi::DataType::INT8) {
-    return CCL_DATA_TYPE_INT8;
-  } else if (type == phi::DataType::UINT8) {
-    return CCL_DATA_TYPE_UINT8;
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("This datatype %s in CCL is not supported.",
-                                   phi::DataTypeToString(type)));
-  }
-}
-
-inline phi::DataType ToPhiDataType(CCLDataType type) {
-  if (type == CCLDataType::CCL_DATA_TYPE_FP64) {
-    return phi::DataType::FLOAT64;
-  } else if (type == CCLDataType::CCL_DATA_TYPE_FP32) {
-    return phi::DataType::FLOAT32;
-  } else if (type == CCLDataType::CCL_DATA_TYPE_FP16) {
-    return phi::DataType::FLOAT16;
-  } else if (type == CCLDataType::CCL_DATA_TYPE_INT64) {
-    return phi::DataType::INT64;
-  } else if (type == CCLDataType::CCL_DATA_TYPE_INT32) {
-    return phi::DataType::INT32;
-  } else if (type == CCLDataType::CCL_DATA_TYPE_INT8) {
-    return phi::DataType::INT8;
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("This datatype in CCL is not supported."));
-  }
 }
 
 inline std::string SerializeXCCLUniqueId(const phi::ccl::CCLRootId& ccl_id) {

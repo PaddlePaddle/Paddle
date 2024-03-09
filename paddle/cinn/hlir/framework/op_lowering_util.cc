@@ -622,7 +622,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
           // the loop size at axis is 1, need remove
           axes_shift_num[j] = -1;
         } else if (axes[j] > idx) {
-          // the axies value need left shift
+          // the axes value need left shift
           axes_shift_num[j]++;
         }
       }
@@ -805,7 +805,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
       ir_sch.Fuse(block_name, {axes[index + 1], axes[index + 1] + 1});
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target, true);
-    // fuse axis before reduce to bind blockidx.
+    // fuse axis before reduce to bind block idx.
     for (int idx = 0; idx < static_cast<int>(inshape.size() - axes.size()) - 1;
          ++idx) {
       ir_sch.Fuse(block_name, {0, 1});
@@ -902,7 +902,7 @@ Node* GetMasterToComputeAt(
         done_schedule.insert(tmp);
       }
     }
-    // remove all consuemr reducer node of node from done_schedule.
+    // remove all consumer reducer node of node from done_schedule.
     std::unordered_set<Node*> visited;
     std::queue<Node*> candidates;
     candidates.push(node);

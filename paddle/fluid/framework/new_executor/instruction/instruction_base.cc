@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace paddle {
 namespace framework {
@@ -288,7 +288,7 @@ void InstructionBase::InitInputsOutputsIds(
     ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
   std::string op_name;
-  if (op_attributes.count("op_name ")) {
+  if (op_attributes.count("op_name")) {
     op_name =
         op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   }
@@ -359,10 +359,6 @@ std::string InstructionBase::DebugStringEx(
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
         }
-        double ele_sum = GetDenseTensorEleSum(*scope, var_name);
-        if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << ";";
-        }
       }
     }
     ++it;
@@ -389,10 +385,6 @@ std::string InstructionBase::DebugStringEx(
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
-        }
-        double ele_sum = GetDenseTensorEleSum(*scope, var_name);
-        if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << ";";
         }
       }
     }

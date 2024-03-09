@@ -87,8 +87,8 @@ std::unique_ptr<ScheduleBase> ScheduleBase::Make(ModuleExpr&& module_expr,
  */
 #define CINN_IR_SCHEDULE_END(err_msg_level)                    \
   }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  catch (const utils::ErrorHandler& err_handler) {             \
+    CINN_THROW(err_handler.FormatErrorMessage(err_msg_level)); \
   }
 
 void BaseInliner::operator()(Expr* expr) {
@@ -449,6 +449,16 @@ Expr IRSchedule::Fuse(const Expr& block, const std::vector<int>& loops_index) {
   return result;
 }
 
+void IRSchedule::Broadcast(const std::string& block_name,
+                           const BroadcastInfo& info) {
+  impl_->Broadcast(block_name, info);
+}
+
+void IRSchedule::BroadcastToElementwise(const std::string& block_name,
+                                        const std::vector<int64_t>& axes) {
+  impl_->BroadcastToElementwise(block_name, axes);
+}
+
 void IRSchedule::ComputeAt(const Expr& block,
                            const Expr& loop,
                            bool keep_unit_loops) {
@@ -619,12 +629,17 @@ Expr IRSchedule::Rfactor(const Expr& rf_loop, int rf_axis) {
   return result;
 }
 
-Expr IRSchedule::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
-  auto result = impl_->FactorizeReduction(rf_loop, rf_axis);
-  trace_.Append(ScheduleDesc::Step("FactorizeReduction",
-                                   {{"rf_loop", std::vector<Expr>({rf_loop})}},
-                                   {{"rf_axis", rf_axis}},
-                                   {result}));
+Expr IRSchedule::FactorizeReduction(const Expr& rf_loop,
+                                    int rf_axis,
+                                    bool with_write_back_block_init) {
+  auto result =
+      impl_->FactorizeReduction(rf_loop, rf_axis, with_write_back_block_init);
+  trace_.Append(ScheduleDesc::Step(
+      "FactorizeReduction",
+      {{"rf_loop", std::vector<Expr>({rf_loop})}},
+      {{"rf_axis", rf_axis},
+       {"with_write_back_block_init", with_write_back_block_init}},
+      {result}));
   return result;
 }
 

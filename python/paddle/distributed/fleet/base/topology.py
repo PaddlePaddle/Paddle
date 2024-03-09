@@ -29,6 +29,10 @@ _use_four_directions = os.environ.get(
     'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
 )
 
+g_pipeline_nccl_comm_init_option = int(
+    os.environ.get("FLAGS_pipeline_nccl_comm_init_option", 0)
+)
+
 
 class ParallelMode:
     """
@@ -190,13 +194,14 @@ class HybridCommunicateGroup:
         self.stage_id = self._get_pipe_parallel_id()
 
         assert (
-            self._check_vaild_topo()
-        ), "mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
+            self._check_valid_topo()
+        ), "nranks: {}, mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
             self.nranks,
             self._mp_degree,
             self._sharding_degree,
             self._pp_degree,
             self._dp_degree,
+            self._sep_degree,
         )
 
         # create comm group for pipe parallel
@@ -328,7 +333,7 @@ class HybridCommunicateGroup:
             # pp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
-    def _check_vaild_topo(self):
+    def _check_valid_topo(self):
         return (
             self._dp_degree
             * self._mp_degree
@@ -346,8 +351,16 @@ class HybridCommunicateGroup:
         parallel_comm_group = None
         parallel_groups = self._topo.get_comm_list(parallel_method)
 
+        group_nccl_comm_init_option = (
+            g_pipeline_nccl_comm_init_option
+            if (parallel_method == "pipe")
+            else 0
+        )
         for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(ranks=group)
+            comm_group = paddle.distributed.new_group(
+                ranks=group,
+                nccl_comm_init_option=group_nccl_comm_init_option,
+            )
             if self.global_rank in group:
                 parallel_group = group
                 parallel_comm_group = comm_group

@@ -1130,8 +1130,8 @@ def _build_table(
         )
         if len(model_perspective_items) > 1:
             all_row_values = []
-            accmulation_time = 0
-            gpu_accmulation_time = 0
+            accumulation_time = 0
+            gpu_accumulation_time = 0
             gpu_total_time = (
                 statistic_data.event_summary.model_perspective_items[
                     'ProfileStep'
@@ -1171,11 +1171,11 @@ def _build_table(
                     ]
                     all_row_values.append(row_values)
                     if 'ProfileStep' not in name:
-                        accmulation_time += item.cpu_time
-                        gpu_accmulation_time += item.gpu_time
+                        accumulation_time += item.cpu_time
+                        gpu_accumulation_time += item.gpu_time
 
-            other_time = total_time - accmulation_time
-            other_gpu_time = gpu_total_time - gpu_accmulation_time
+            other_time = total_time - accumulation_time
+            other_gpu_time = gpu_total_time - gpu_accumulation_time
             if gpu_total_time == 0:
                 gpu_ratio = 0
             else:

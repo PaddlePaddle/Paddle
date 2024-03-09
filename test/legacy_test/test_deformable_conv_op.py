@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from itertools import product
 
 import numpy as np
 from op_test import OpTest
@@ -73,47 +74,26 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
     assert out_w == in_w
 
     col_buffer = np.zeros((in_n, in_c * f_h * f_w, in_h * in_w))
-    for n in range(in_n):
-        for c in range(in_c):
-            for h in range(out_h):
-                for w in range(out_w):
-                    for kh in range(f_h):
-                        for kw in range(f_w):
-                            offset_h_table = offset[n, ::2, h, w].reshape(
-                                f_h, f_w
-                            )
-                            offset_w_table = offset[n, 1::2, h, w].reshape(
-                                f_h, f_w
-                            )
-                            mask_table = mask[n, :, h, w].reshape(f_h, f_w)
-                            offset_h = offset_h_table[kh, kw]
-                            offset_w = offset_w_table[kh, kw]
-                            val = 0
-                            im_h = (
-                                h * stride[0]
-                                + kh * dilation[0]
-                                + offset_h
-                                - pad[0]
-                            )
-                            im_w = (
-                                w * stride[0]
-                                + kw * dilation[0]
-                                + offset_w
-                                - pad[1]
-                            )
-                            if (
-                                im_h > -1
-                                and im_w > -1
-                                and im_h < in_h
-                                and im_w < in_h
-                            ):
-                                val = dmc_bilinear(
-                                    input[n, c], in_h, in_w, im_h, im_w
-                                )
-                            val_out = val * mask_table[kh, kw]
-                            col_buffer[
-                                n, c * f_h * f_w + kh * f_w + kw, h * in_w + w
-                            ] = val_out
+    for n, c, h, w, kh, kw in product(
+        range(in_n),
+        range(in_c),
+        range(out_h),
+        range(out_w),
+        range(f_h),
+        range(f_w),
+    ):
+        offset_h_table = offset[n, ::2, h, w].reshape(f_h, f_w)
+        offset_w_table = offset[n, 1::2, h, w].reshape(f_h, f_w)
+        mask_table = mask[n, :, h, w].reshape(f_h, f_w)
+        offset_h = offset_h_table[kh, kw]
+        offset_w = offset_w_table[kh, kw]
+        val = 0
+        im_h = h * stride[0] + kh * dilation[0] + offset_h - pad[0]
+        im_w = w * stride[0] + kw * dilation[0] + offset_w - pad[1]
+        if im_h > -1 and im_w > -1 and im_h < in_h and im_w < in_h:
+            val = dmc_bilinear(input[n, c], in_h, in_w, im_h, im_w)
+        val_out = val * mask_table[kh, kw]
+        col_buffer[n, c * f_h * f_w + kh * f_w + kw, h * in_w + w] = val_out
 
     out = np.zeros((in_n, group, int(out_c // group), out_h * out_w))
     weight = filter.reshape(group, int(out_c // group), f_c * f_h * f_w)

@@ -233,7 +233,6 @@ void BindGraphPyClient(py::module* m) {
       .def("add_table_feat_conf", &GraphPyClient::add_table_feat_conf)
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
       .def("start_client", &GraphPyClient::start_client)
-      .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighbors)
       .def("batch_sample_neighbors", &GraphPyClient::batch_sample_neighbors)
       // .def("use_neighbors_sample_cache",
       //      &GraphPyClient::use_neighbors_sample_cache)

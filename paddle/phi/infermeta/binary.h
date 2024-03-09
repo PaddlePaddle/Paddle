@@ -186,6 +186,17 @@ void DistInferMeta(const MetaTensor& x,
                    float p,
                    MetaTensor* out);
 
+void DistributeLookupTableInferMeta(
+    const std::vector<const phi::MetaTensor*>& ids,
+    const MetaTensor& w,
+    int table_id,
+    bool is_distributed,
+    const std::string& lookup_table_version,
+    int64_t padding_idx,
+    DataType dtype,
+    bool is_test,
+    std::vector<MetaTensor*> outputs);
+
 void DistributeFpnProposalsInferMeta(
     const MetaTensor& fpn_rois,
     const MetaTensor& rois_num,
@@ -198,6 +209,34 @@ void DistributeFpnProposalsInferMeta(
     std::vector<MetaTensor*> multi_level_rois_num,
     MetaTensor* restore_index,
     MetaConfig config = MetaConfig());
+
+void DistributedFusedLambInitInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    float beta1,
+    float beta2,
+    const std::vector<int>& apply_weight_decay,
+    int alignment,
+    int rank,
+    int nranks,
+    MetaTensor* fp32_fused_param,
+    MetaTensor* fp32_fused_grad,
+    MetaTensor* fp16_fused_param,
+    MetaTensor* fp16_fused_grad,
+    MetaTensor* moment1,
+    MetaTensor* moment2,
+    MetaTensor* beta1_pow,
+    MetaTensor* beta2_pow,
+    MetaTensor* fused_param_offsets,
+    MetaTensor* fp32_shard_fused_param_offsets,
+    MetaTensor* fp16_shard_fused_param_offsets,
+    MetaTensor* param_info,
+    MetaTensor* param_order,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> master_param_out,
+    std::vector<MetaTensor*> grad_out,
+    MetaTensor* global_scale,
+    MetaTensor* step);
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
@@ -271,7 +310,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
                           bool transpose_y,
                           const float matmul_alpha,
                           const std::string& fuse_activation,
-                          const float fuse_lapha,
+                          const float fuse_alpha,
                           const float fuse_beat,
                           const float fused_output_scale,
                           const std::vector<int>& fused_reshape_X,
@@ -533,6 +572,8 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            MetaConfig config = MetaConfig());
 
 void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void SwiGLUInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void UnpoolInferMeta(const MetaTensor& x,
                      const MetaTensor& indices,

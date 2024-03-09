@@ -30,11 +30,11 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
-#include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/pass/pass_registry.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 namespace cinn {
 namespace dialect {
@@ -67,22 +67,32 @@ class GroupOpGenerateShapeOpsPattern
   }
 };
 
-class MoveGenerateShapeOpsToProloguePass : public pir::PatternRewritePass {
+class MoveGenerateShapeOpsToProloguePass : public pir::Pass {
  public:
   MoveGenerateShapeOpsToProloguePass()
-      : pir::PatternRewritePass("move_generate_shape_ops_to_prologue", 1) {}
+      : pir::Pass("move_generate_shape_ops_to_prologue", /*opt_level=*/1) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
-    pir::RewritePatternSet ps(context);
-    ps.Add<GroupOpGenerateShapeOpsPattern>(context);
-    return ps;
+  void Run(pir::Operation* op) override {
+    auto group_op = op->dyn_cast<cinn::dialect::GroupOp>();
+    CHECK(group_op);
+    ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+    pir::ShapeConstraintIRAnalysis& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
+    ShapeOrDataDimExprsAccessor dim_exprs_accessor{
+        .GetShapeOrDataDimExprs =
+            [&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+          return shape_analysis.GetShapeOrDataForValue(value);
+        },
+        .SetShapeOrDataDimExprs =
+            [&](pir::Value value,
+                const symbol::ShapeOrDataDimExprs& dim_exprs) {
+              shape_analysis.SetShapeOrDataForValue(value, dim_exprs);
+            }};
+    MoveGenerateShapeOpsToPrologue(ctx, group_op.block(), dim_exprs_accessor);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    if (!(op->isa<pir::ModuleOp>() && op->num_regions() > 0)) return false;
-    auto* program = op->GetParentProgram();
-    VLOG(4) << "Before MoveGenerateShapeOpsToProloguePass: " << *program;
-    return true;
+    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
   }
 };
 

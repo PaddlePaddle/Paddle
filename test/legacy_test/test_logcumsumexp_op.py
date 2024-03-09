@@ -122,7 +122,7 @@ class TestLogcumsumexp(unittest.TestCase):
         np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
         y = paddle.logcumsumexp(data, dtype='float32')
-        self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(y.dtype == paddle.float32)
 
         y = paddle.logcumsumexp(data, axis=-2)
         z = np_logcumsumexp(data_np, axis=-2)
@@ -325,7 +325,7 @@ class TestLogcumsumexpFP16(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestLogcumsumexpBF16Op(OpTest):
     def setUp(self):

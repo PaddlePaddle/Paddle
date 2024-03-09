@@ -22,7 +22,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #ifdef CINN_WITH_CUDNN
 PD_DEFINE_bool(
@@ -69,6 +69,10 @@ PD_DEFINE_bool(cinn_bucket_compile,
                BoolFromEnv("FLAGS_cinn_bucket_compile", false),
                "Whether to enable bucket compile for dynamic shape.");
 
+PD_DEFINE_bool(group_schedule_tiling_first,
+               BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
+               "Whether to enable new group scheduler tiling first strategy.");
+
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                            false),
@@ -97,7 +101,7 @@ PD_DEFINE_bool(cinn_enable_map_expr_dynamic_shape,
 
 PD_DEFINE_bool(cinn_enable_map_expr_index_detail,
                BoolFromEnv("FLAGS_cinn_enable_map_expr_index_detail", false),
-               "It controls whether to display datail tensor index");
+               "It controls whether to display detail tensor index");
 
 PD_DEFINE_bool(
     cinn_use_custom_call,
@@ -116,7 +120,7 @@ PD_DEFINE_string(cinn_check_fusion_accuracy_pass,
 
 PD_DEFINE_bool(cinn_use_cuda_vectorize,
                BoolFromEnv("FLAGS_cinn_use_cuda_vectorize", false),
-               "Whether use cuda vectroize on schedule config");
+               "Whether use cuda vectorize on schedule config");
 
 PD_DEFINE_bool(use_reduce_split_pass,
                BoolFromEnv("FLAGS_use_reduce_split_pass", false),
@@ -141,7 +145,7 @@ PD_DEFINE_bool(
     BoolFromEnv("FLAGS_cinn_nvrtc_cubin_with_fmad", true),
     "Whether nvrtc enables fmad when compile to cubin. This flag only works "
     "when FLAGS_nvrtc_compile_to_cubin=true. Fmad is the cuda speed up "
-    "technique which contract fp mulitplication and addition/subtraction into "
+    "technique which contract fp multiplication and addition/subtraction into "
     "multiply-add operation. It may result in different fp precision.");
 
 // FLAGS for performance analysis and accuracy debug
@@ -199,6 +203,10 @@ PD_DEFINE_string(cinn_pass_visualize_dir,
                  "Specify the directory path of pass visualize file of graph, "
                  "which is used for debug.");
 
+PD_DEFINE_bool(cinn_runtime_display_debug_info,
+               false,
+               "Whether to display debug information in runtime");
+
 PD_DEFINE_bool(enable_auto_tuner,
                BoolFromEnv("FLAGS_enable_auto_tuner", false),
                "Whether enable auto tuner.");
@@ -239,15 +247,17 @@ PD_DEFINE_bool(cinn_use_cutlass,
                BoolFromEnv("FLAGS_cinn_use_cutlass", false),
                "Whether to use cutlass kernels");
 
-PD_DEFINE_string(cinn_convert_static_dim_to_dynamic,
-                 StringFromEnv("FLAGS_cinn_convert_static_dim_to_dynamic", ""),
+PD_DEFINE_string(cinn_convert_static_dim_to_dynamic_dim,
+                 StringFromEnv("FLAGS_cinn_convert_static_dim_to_dynamic_dim",
+                               ""),
                  "A test flag whether to convert static dim to dynamic, e.g.: "
-                 "FLAGS_cinn_convert_static_dim_to_dynamic=128:s0,299:s1");
+                 "FLAGS_cinn_convert_static_dim_to_dynamic_dim=128:s0,299:s1");
 
-PD_DEFINE_string(cinn_convert_dynamic_to_static_dim,
-                 StringFromEnv("FLAGS_cinn_convert_dynamic_to_static_dim", ""),
+PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
+                 StringFromEnv("FLAGS_cinn_convert_dynamic_dim_to_static_dim",
+                               ""),
                  "A test flag whether to convert dynamic to static dim, e.g.: "
-                 "FLAGS_cinn_convert_dynamic_to_static_dim=s0:128,s1:299");
+                 "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
 
 namespace cinn {
 namespace runtime {

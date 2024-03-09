@@ -18,8 +18,8 @@
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
@@ -36,29 +36,49 @@ class Conv2dBnFusePattern
             ->dyn_cast<paddle::dialect::Conv2dOp>();
     if (!conv2d_op) return false;
 
-    pir::Value conv2d_out = conv2d_op.out();
-    if (!conv2d_out.HasOneUse()) return false;
+    auto conv2d_attributes = conv2d_op->attributes();
+    auto padding_algorithm = conv2d_attributes.at("padding_algorithm")
+                                 .dyn_cast<pir::StrAttribute>()
+                                 .AsString();
+    if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+        padding_algorithm != "VALID") {
+      return false;
+    }
+    auto data_format = conv2d_attributes.at("data_format")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+    if (data_format != "NCHW" && data_format != "AnyLayout" &&
+        data_format != "NHWC") {
+      return false;
+    }
+    auto groups =
+        conv2d_attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+    if (groups < 1) {
+      return false;
+    }
+    if (!conv2d_op.out().HasOneUse()) return false;
+    // (bukejiyu): The bn
+    // outputs(mean_out\variance_out\saved_mean\saved_variance)
+    //  cannot be used in conv bn fusion
+    if (!op.mean_out().use_empty()) return false;
+    if (!op.variance_out().use_empty()) return false;
+    if (!op.saved_mean().use_empty()) return false;
+    if (!op.saved_variance().use_empty()) return false;
 
     pir::Value conv2d_filter = conv2d_op.filter();
-
-    pir::Value conv2d_filter_result = conv2d_filter;
-    IR_ENFORCE(conv2d_filter_result);
-
-    pir::Value bn_input = op.x();
-    IR_ENFORCE(bn_input == conv2d_out);
-
     pir::Value bn_mean = op.mean();
     pir::Value bn_variance = op.variance();
     pir::Value bn_scale = op.scale();
     pir::Value bn_bias = op.bias();
 
     // --- deal with filter ---
-    rewriter.set_insertion_point(op);
-    phi::DDim bn_variance_shape =
-        bn_variance.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    auto bn_variance_shape = pir::GetShapeFromValue(bn_variance);
     float epsilon = op.attribute<pir::FloatAttribute>("epsilon").data();
-    paddle::dialect::FullOp full_op = rewriter.Build<paddle::dialect::FullOp>(
-        common::vectorize(bn_variance_shape), epsilon);
+    if (epsilon < 0.0f || epsilon > 0.001f) {
+      return false;
+    }
+    paddle::dialect::FullOp full_op =
+        rewriter.Build<paddle::dialect::FullOp>(bn_variance_shape, epsilon);
     paddle::dialect::AddOp add_op =
         rewriter.Build<paddle::dialect::AddOp>(bn_variance, full_op.out());
     paddle::dialect::SqrtOp sqrt_op =
@@ -73,14 +93,23 @@ class Conv2dBnFusePattern
     paddle::dialect::ReshapeOp reshape_scale_op =
         rewriter.Build<paddle::dialect::ReshapeOp>(div_op.out(),
                                                    bn_scale_new_shape);
-    // new filter --> mul_op.out()
-    paddle::dialect::MultiplyOp mul_op =
-        rewriter.Build<paddle::dialect::MultiplyOp>(conv2d_filter_result,
-                                                    reshape_scale_op.out());
-
-    auto conv2d_attributes = conv2d_op->attributes();
-    auto new_conv2d_op = rewriter.Build<paddle::dialect::Conv2dOp>(
-        conv2d_op.input(), mul_op.out(), conv2d_attributes);
+    paddle::dialect::Conv2dOp new_conv2d_op;
+    auto conv2d_filter_dtype = pir::GetDataTypeFromValue(conv2d_filter);
+    if (conv2d_filter_dtype.isa<pir::Float16Type>()) {
+      auto cast_in_op = rewriter.Build<paddle::dialect::CastOp>(
+          conv2d_filter, phi::DataType::FLOAT32);
+      auto mul_op = rewriter.Build<paddle::dialect::MultiplyOp>(
+          cast_in_op.out(), reshape_scale_op.out());
+      auto cast_out_op = rewriter.Build<paddle::dialect::CastOp>(
+          mul_op.out(), phi::DataType::FLOAT16);
+      new_conv2d_op = rewriter.Build<paddle::dialect::Conv2dOp>(
+          conv2d_op.input(), cast_out_op.out(), conv2d_attributes);
+    } else {
+      auto mul_op = rewriter.Build<paddle::dialect::MultiplyOp>(
+          conv2d_filter, reshape_scale_op.out());
+      new_conv2d_op = rewriter.Build<paddle::dialect::Conv2dOp>(
+          conv2d_op.input(), mul_op.out(), conv2d_attributes);
+    }
 
     // --- deal with bias ---
     paddle::dialect::MultiplyOp mul_bias_op =
@@ -91,17 +120,20 @@ class Conv2dBnFusePattern
     // reshape new bias
     auto new_conv2d_out_shape = pir::GetShapeFromValue(new_conv2d_op.out());
     std::vector<int64_t> new_bias_new_shape(new_conv2d_out_shape.size(), 1);
-    std::string data_format =
-        new_conv2d_op.attribute<pir::StrAttribute>("data_format").AsString();
-    if (data_format != "NCHW") {
-      return false;
-    }
     new_bias_new_shape[1] = new_conv2d_out_shape[1];
     paddle::dialect::ReshapeOp reshape_bias_op =
         rewriter.Build<paddle::dialect::ReshapeOp>(sub_op.out(),
                                                    new_bias_new_shape);
-    paddle::dialect::AddOp add_bias_op = rewriter.Build<paddle::dialect::AddOp>(
-        new_conv2d_op.out(), reshape_bias_op.out());
+    paddle::dialect::AddOp add_bias_op;
+    if (conv2d_filter_dtype.isa<pir::Float16Type>()) {
+      auto cast_op = rewriter.Build<paddle::dialect::CastOp>(
+          reshape_bias_op.out(), phi::DataType::FLOAT16);
+      add_bias_op = rewriter.Build<paddle::dialect::AddOp>(new_conv2d_op.out(),
+                                                           cast_op.out());
+    } else {
+      add_bias_op = rewriter.Build<paddle::dialect::AddOp>(
+          new_conv2d_op.out(), reshape_bias_op.out());
+    }
 
     rewriter.ReplaceAllUsesWith(op.out(), add_bias_op.out());
 

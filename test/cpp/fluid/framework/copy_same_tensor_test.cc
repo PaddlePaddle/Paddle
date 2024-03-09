@@ -18,11 +18,11 @@
 
 #include "gtest/gtest.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(use_system_allocator);
 

@@ -54,7 +54,7 @@ import setuptools
 
 import paddle
 
-NEED_SKIP_THIRD_PARTIY_MODULES = {
+NEED_SKIP_THIRD_PARTY_MODULES = {
     abc,
     collections,
     contextlib,
@@ -98,13 +98,13 @@ if sys.version_info < (3, 11):
     import sre_compile
     import sre_parse
 
-    NEED_SKIP_THIRD_PARTIY_MODULES.add(sre_compile)
-    NEED_SKIP_THIRD_PARTIY_MODULES.add(sre_parse)
+    NEED_SKIP_THIRD_PARTY_MODULES.add(sre_compile)
+    NEED_SKIP_THIRD_PARTY_MODULES.add(sre_parse)
 
 if sys.version_info < (3, 12):
     import distutils
 
-    NEED_SKIP_THIRD_PARTIY_MODULES.add(distutils)
+    NEED_SKIP_THIRD_PARTY_MODULES.add(distutils)
 
 
 def _strip_init_py(s):
@@ -115,7 +115,7 @@ def _module_dir(m: types.ModuleType):
     return _strip_init_py(m.__file__)
 
 
-skip_file_names = {_module_dir(m) for m in NEED_SKIP_THIRD_PARTIY_MODULES}
+skip_file_names = {_module_dir(m) for m in NEED_SKIP_THIRD_PARTY_MODULES}
 
 
 sot_path = os.path.dirname(__file__).rpartition(os.sep)[0] + os.sep

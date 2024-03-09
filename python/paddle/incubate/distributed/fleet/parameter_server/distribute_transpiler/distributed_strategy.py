@@ -108,7 +108,7 @@ class TrainerRuntimeConfig:
                     'WARNING: In {} mode, communicator_max_merge_var_num '
                     'must be equal to CPU_NUM. But received, '
                     'communicator_max_merge_var_num = {}, CPU_NUM = '
-                    '{}. communicator_max_merge_var_num will be fored to {}.'.format(
+                    '{}. communicator_max_merge_var_num will be forced to {}.'.format(
                         mode_str, max_merge_var_num, num_threads, num_threads
                     )
                 )
@@ -120,7 +120,7 @@ class TrainerRuntimeConfig:
                     'WARNING: In {} mode, communicator_send_queue_size '
                     'must be equal to CPU_NUM. But received, '
                     'communicator_send_queue_size = {}, CPU_NUM = '
-                    '{}. communicator_send_queue_size will be fored to {}.'.format(
+                    '{}. communicator_send_queue_size will be forced to {}.'.format(
                         mode_str, send_queue_size, num_threads, num_threads
                     )
                 )

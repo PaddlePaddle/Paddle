@@ -203,9 +203,9 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
         grad_tensor = scope.var(grad_var_name(name)).get_tensor()
         out_dtype = out_tensor.dtype()
         if data is None:
-            if out_dtype == core.VarDesc.VarType.FP64:
+            if out_dtype == paddle.float64:
                 data = np.ones(out_tensor.shape(), dtype=np.float64)
-            elif out_dtype == core.VarDesc.VarType.FP32:
+            elif out_dtype == paddle.float32:
                 data = np.ones(out_tensor.shape(), dtype=np.float32)
             else:
                 raise ValueError("Not supported data type " + str(out_dtype))
@@ -462,9 +462,17 @@ class TestBatchNormOpInference(unittest.TestCase):
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3, 4, 5],
                 )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3],
+                )
                 self.check_with_place_without_scale_and_bias(
                     place, data_format, self.dtype, [2, 3, 4, 5]
                 )
@@ -493,9 +501,17 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:
                 self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3, 4, 5],
                 )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3],
+                )
 
 
 @unittest.skipIf(
@@ -516,9 +532,17 @@ class TestBF16BatchNormOpInference(TestBatchNormOpInference):
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:
                 self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3, 4, 5],
                 )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3],
+                )
 
 
 class TestBatchNormOpTraining(unittest.TestCase):
@@ -918,8 +942,11 @@ class TestBatchNormOpError(unittest.TestCase):
 
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             batch_norm = paddle.nn.BatchNorm(10)
             # the input of BatchNorm must be Variable.
             x1 = base.create_lod_tensor(
@@ -950,7 +977,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
                     )
-                    y = bn(base.dygraph.to_variable(x))
+                    y = bn(paddle.to_tensor(x))
                 return y.numpy()
 
             x = np.random.randn(*shape).astype("float32")

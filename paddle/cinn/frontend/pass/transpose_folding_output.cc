@@ -53,7 +53,7 @@ class TransposeFoldingOutputPass : public TransposeFoldingBase {
         in2instr.at(gemm_out_name).size() == 1) {
       // for example: dot -> x -> scale -> y -> transpose -> z
       // fold_instrs = {"scale", "transpose"}
-      // ensure the foldiong structions's output only link to one op
+      // ensure the folding instructions's output only link to one op
       const auto& fold_instrs = GetFoldInstruction(
           *in2instr.at(gemm_out_name).begin(), out2instr, in2instr, false);
 
@@ -101,7 +101,7 @@ class TransposeFoldingOutputPass : public TransposeFoldingBase {
           }
           continue;
         } else {
-          // invlid folding op, skip
+          // invalid folding op, skip
           continue;
         }
 
