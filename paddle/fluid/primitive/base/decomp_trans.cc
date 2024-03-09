@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
+#include <regex>
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -25,6 +26,7 @@
 
 COMMON_DECLARE_bool(prim_skip_dynamic);
 COMMON_DECLARE_bool(prim_check_ops);
+PD_DECLARE_string(prim_forward_blacklist);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -43,6 +45,17 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
 //
 std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
                                                            "pd_op.unsqueeze"};
+
+namespace {
+std::unordered_set<std::string> StringSplit(const std::string& str) {
+  std::regex reg(";");
+  std::unordered_set<std::string> elems{
+      std::sregex_token_iterator(str.begin(), str.end(), reg, -1),
+      std::sregex_token_iterator()};
+  elems.erase("");
+  return elems;
+}
+}  // namespace
 
 static bool has_dynamic_shape(const phi::DDim& dims) {
   std::vector<int64_t> vec = common::vectorize<int64_t>(dims);
@@ -314,11 +327,12 @@ bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
       flag = false;
     }
   }
-  if (blacklist_.size() > 0) {
-    if (blacklist_.find(op_name) != blacklist_.end()) {
-      flag = false;
-    }
-  }
+  auto from_flag_blacklist = StringSplit(FLAGS_prim_forward_blacklist);
+  if (from_flag_blacklist.size() > 0 &&
+      from_flag_blacklist.find(op_name) != from_flag_blacklist.end())
+    flag = false;
+  if (blacklist_.size() > 0 && blacklist_.find(op_name) != blacklist_.end())
+    flag = false;
   return flag;
 }
 
