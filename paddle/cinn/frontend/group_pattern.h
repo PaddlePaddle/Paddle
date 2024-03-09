@@ -3,40 +3,38 @@
 #include <unordered_map>
 #include <atomic>
 #include <vector>
+#include <unordered_map>
+#include <variant>
 #include "paddle/cinn/api/op_topo_pattern.h"
 #include "paddle/pir/include/core/operation.h"
-
-namespace cinn::frontend {
-
-struct FrontendPattern {};
-
-}
+#include "glog/logging.h"
 
 namespace cinn::api {
 
+struct FrontendPattern {};
+
 template<>
-struct ErrorPattern<frontend::FrontendPattern> {
-  explicit ErrorPattern(const ErrorPattern<frontend::FrontendPatterns>& other) = default;
+struct ErrorPattern<FrontendPattern> {
+  explicit ErrorPattern(const ErrorPattern<FrontendPattern>& other) = default;
 
   std::vector<const pir::Operation*> ops;
   std::string error_string;
 };
 
 template<>
-struct InjectiveSourcePattern<frontend::FrontendPattern> {
-  explicit InjectiveSourcePattern(const InjectiveSourcePattern<frontend::FrontendPatterns>& other) = default;
+struct InjectiveSourcePattern<FrontendPattern> {
+  explicit InjectiveSourcePattern(const InjectiveSourcePattern<FrontendPattern>& other) = default;
   std::vector<const pir::Operation*> ops;
 };
 
 template<>
-struct SingleReductionOpPattern<frontend::FrontendPattern> {
-  explicit SingleReductionOpPattern(const SingleReductionOpPattern<frontend::FrontendPatterns>& other) = default;
+struct SingleReductionOpPattern<FrontendPattern> {
+  explicit SingleReductionOpPattern(const SingleReductionOpPattern<FrontendPattern>& other) = default;
   const pir::Operation* reduce_op;
 };
-
 struct ShardableAxis {
   int axis;
-  std::optional<std::string> axis_name;
+  std::string axis_name;
 
   bool operator==(const ShardableAxis& other) const {
     return this->axis == other.axis && this->axis_name == other.axis_name;
@@ -51,7 +49,7 @@ struct ShardableAxis {
 using ShardableAxes = std::vector<ShardableAxis>;
 
 struct ShardableAxesUtil {
-  using OldName2NewName = std::unorderd_map<std::string, std::string>;
+  using OldName2NewName = std::unordered_map<std::string, std::string>;
 
   static OldName2NewName GetOldName2NewName(const ShardableAxes& old_sa, const ShardableAxes& new_sa) {
     OldName2NewName old_name2new_name;
@@ -69,7 +67,7 @@ struct ShardableAxesUtil {
     for (auto iter = sa->begin(); iter != sa->end();) {
       const auto& pair_it = old2new.find(iter->axis_name);
       if (pair_it != old2new.end()) {
-        iter->axis_name = pair_it.second;
+        iter->axis_name = pair_it->second;
         ++iter; 
       } else {
         iter = sa->erase(iter); 
@@ -109,8 +107,8 @@ struct ShardableAxesSignature {
 };
 
 template<>
-struct PartialShardablePattern<frontend::FrontendPattern> {
-  explicit PartialShardablePattern(const PartialShardablePattern<frontend::FrontendPatterns>& other) = default;
+struct PartialShardablePattern<FrontendPattern> {
+  explicit PartialShardablePattern(const PartialShardablePattern<FrontendPattern>& other) = default;
 
   std::vector<const pir::Operation*> ops;
   ShardableAxesSignature shardable_axes_signature;
@@ -119,8 +117,12 @@ struct PartialShardablePattern<frontend::FrontendPattern> {
 }
 
 namespace cinn::frontend {
+using IS = api::InjectiveSourcePattern<api::FrontendPattern>;
+using R = api::ReductionPattern<api::FrontendPattern>;
+using PS = api::PartialShardablePattern<api::FrontendPattern>;
 
-using GroupPattern = api::OpTopoPattern<FrontendPattern>;
-using ErrorGroupPattern = api::ErrorPattern<FrontendPattern>;
+using StmtPattern = std::variant<IS, R, PS>;
+using ErrorGroupPattern = api::ErrorPattern<api::FrontendPattern>;
+using GroupPattern = std::variant<ErrorGroupPattern, StmtPattern>;
 
 }

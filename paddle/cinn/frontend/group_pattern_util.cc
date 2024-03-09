@@ -5,36 +5,30 @@
 #include <optional>
 #include <typeinfo>
 #include <algorithm>
+#include <variant>
 
 namespace cinn::frontend {
 
 namespace {
-
-using IS = api::InjectiveSourcePattern<FrontendPattern>;
-using R = api::ReductionPattern<FrontendPattern>;
-using PS = api::PartialShardablePattern<FrontendPattern>;
-using StmtPattern = api::StmtPattern<FrontendPattern>;
 using OpPatternKind = cinn::hlir::framework::OpPatternKind;
+
+using StmtIter = std::list<StmtPattern>::iterator;
+using OpVisitor = std::function<void(const pir::Operation*)>;
+using NodeVisitor = std::function<void(StmtIter)>;
+
 
 OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
   return hlir::framework::pir::CompatibleInfo::OpKind(*node);
 }
 
-std::function<size_t(const pir::Operation*)> MakeGetterOrderValue4Op(const cinn::dialect::FusionOp& fusion_op) {
-  std::unordered_map<pir::Operation*, size_t> op2order_in_block;
-  size_t order = 0;
-  for (const pir::Operation* op : fusion_op.block()->ops()) {
-    op2order_in_block[op] = ++order;
-  }
-  return [map=std::move(op2order_in_block)](const pir::Operation* op) {
-    const auto& iter = map.find(op);
-    CHECK(iter != map.end());
-    return iter->second;
-  };
+bool IsGeneralInjective(const pir::Operation* op) {
+  hlir::framework::OpPatternKind op_pattern_kind = GetOpPatternKind(op);
+  return op_pattern_kind == hlir::framework::kElementWise
+    || op_pattern_kind == hlir::framework::kBroadcast
+    || op_pattern_kind == hlir::framework::kInjective;
 }
 
-
-bool IsISPattern(const StmtPattern& pattern){
+bool IsISPattern(StmtPattern& pattern){
   return std::holds_alternative<IS>(pattern);
 }
 
@@ -44,6 +38,47 @@ bool IsPSPattern(const StmtPattern& pattern){
 
 bool IsRPattern(const StmtPattern& pattern){
   return std::holds_alternative<R>(pattern);
+}
+
+void VisitInputOp(const pir::Operation* op, const OpVisitor& DoEach) {
+  for (int i = 0; i < op->num_operands(); ++i) {
+    const auto* input_op = op->operand_source(i).defining_op();
+    DoEach(input_op);
+  }
+}
+
+void VisitOutputOp(const pir::Operation* op, const OpVisitor& DoEach) {
+  for (int i = 0; i < op->num_results(); ++i) {
+    pir::Value output = op->result(i);
+    for (auto consumer_it = output.use_begin(); consumer_it != output.use_end(); ++consumer_it) {
+      const auto* consumer_op = consumer_it->owner();
+      DoEach(consumer_op);
+    }
+  }
+}
+
+template <typename DoEachT>
+void VisitStmtOpImpl(const IS& injective_source, const DoEachT& DoEach) {
+  for (const auto* op : injective_source.ops) {
+    DoEach(op);
+  }
+}
+
+template <typename DoEachT>
+void VisitStmtOpImpl(const R& reduce, const DoEachT& DoEach) {
+  DoEach(reduce.reduce_op);
+}
+
+template <typename DoEachT>
+void VisitStmtOpImpl(const PS& partial_shardable, const DoEachT& DoEach) {
+  for (const auto* op : partial_shardable.ops) {
+    DoEach(op);
+  }
+}
+
+template <typename DoEachT>
+void VisitStmtOp(const StmtPattern& stmt, const DoEachT& DoEach) {
+  std::visit([&](const auto& impl) { VisitStmtOpImpl(impl, DoEach); }, stmt);
 }
 
 std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(const cinn::dialect::FusionOp& fusion_op) {
@@ -58,47 +93,26 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(const 
   };
 }
 
-bool IsGeneralInjective(const pir::Operation* op) {
-  hlir::framework::OpPatternKind op_pattern_kind = GetOpPatternKind(op);
-  return op_pattern_kind == hlir::framework::kElementWise
-    || op_pattern_kind == hlir::framework::kBroadcast
-    || op_pattern_kind == hlir::framework::kInjective;
-}
-
 std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
     const cinn::dialect::FusionOp& fusion_op,
     const std::function<bool(const pir::Operation*)>& IsInThisFusionOp) {
-  using NodeVisitor = std::function<void(pir::Operation*)>;
-  const auto VisitEachInput = [&](const pir::Operation* op, const NodeVisitor& DoEach) {
-    for (int i = 0; i < op->num_operands(); ++i) {
-      const auto* input_op = op->operand_source(i).defining_op();
-      if (IsInThisFusionOp(input_op)) {
-        DoEach(input_op);
-      }
-    }
-  };
-  const auto VisitEachOutput = [&](const pir::Operation* op, const NodeVisitor& DoEach) {
-    for (int i = 0; i < op->num_results(); ++i) {
-      pir::Value output = op->result(i);
-      for (auto consumer_it = output.use_begin(); consumer_it != output.use_end(); ++consumer_it) {
-        const auto* consumer_op = consumer_it->owner();
-        if (IsInThisFusionOp(consumer_op)) {
-          DoEach(consumer_op);
+
+  const auto& IsSource = [&](const pir::Operation* op) {
+    std::size_t num_inputs = 0;
+    VisitInputOp(op, 
+      [&](const pir::Operation* input) { 
+        if(IsInThisFusionOp(input)){
+          ++num_inputs;
         }
       }
-    }
+    );
+    return num_inputs == 0;
   };
 
   const auto starts = [&]{
-    const auto& IsSource = [&](const pir::Operation* op) {
-      std::size_t num_inputs = 0;
-      VisitEachInput([&](const pir::Operation*) { ++num_inputs});
-      return num_inputs == 0;
-    };
     std::list<const pir::Operation*> starts;
     for (const auto* op : fusion_op.GetOperators()) {
-      if (!IsInThisFusionOp(op)) continue;
-      if (IsSource(op)) {
+      if (!IsInThisFusionOp(op) && IsSource(op)) {
         starts.push_back(op);
       } else {
         // do nothing.
@@ -111,9 +125,13 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
 
   auto IsInputsAllInjectiveSource = [&](const pir::Operation* op) {
     bool is_inputs_all_injective_source = true;
-    VisitEachInput(op, [&](const pir::Operation* input){
-      is_inputs_all_injective_source = (is_inputs_all_injective_source && op_2_is_injective_source.at(input));
-    });
+    VisitInputOp(op, 
+      [&](const pir::Operation* input){
+        if (IsInThisFusionOp(input)){
+          is_inputs_all_injective_source = (is_inputs_all_injective_source && op_2_is_injective_source.at(input));
+        }
+      }
+    );
     return is_inputs_all_injective_source;
   };
 
@@ -138,7 +156,7 @@ class StmtFusionHelper {
 
   std::list<StmtPattern> ConvertToStmtsPattern() const {
     std::list<StmtPattern> ret;
-    for (const auto* op : fusion_op_.block()->ops()) {
+    for (const auto* op : fusion_op_.GetOperators()) {
       if (!IsInThisFusionOp(op)) continue;
       ret.emplace_back(ConvertToStmtPattern(op));
     }
@@ -190,7 +208,6 @@ class StmtFusionHelper {
   std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::list<StmtPattern>* stmt_patterns) const { 
     return FuseFilteredStmtPatterns<FusePolicy_IS_x_PS_2_PS>(stmt_patterns);
   }
-
   struct FusePolicy_IS_x_R_2_R {
     static bool FuseCondition(const StmtPattern& upstream, const StmtPattern& downstream) {
       return IsISPattern(upstream) && IsRPattern(downstream);
@@ -246,133 +263,6 @@ class StmtFusionHelper {
   }
 
  private:
-  using StmtIter = std::list<StmtPattern>::iterator;
-
-  static std::function<std::optional<StmtIter>(const pir::Operation*)>
-  MakeGetterStmt4Op(std::list<StmtPattern>* stmts) const {
-    std::unordered_map<const pir::Operation*, StmtIter> op2stmt_iter;
-    for (auto iter = stmts->begin(); iter != stmts->end(); ++iter) {
-      VisitStmtOp(*iter, [&](const auto* op) { op2stmt_iter[op] = iter; });
-    }
-    return [map=std::move(op2stmt_iter)](const pir::Operation* op) -> std::optional<StmtIter> {
-      const auto iter = map.find(op);
-      if (iter == map.end()) return std::nullopt;
-      return iter->second;
-    };
-  }
-
-  template <typename DoEachT>
-  void VisitStmtOpImpl(const IS& injective_source, const DoEachT& DoEach) const {
-    for (const auto* op : injective_source.ops) {
-      DoEach(op);
-    }
-  }
-
-  template <typename DoEachT>
-  void VisitStmtOpImpl(const R& reduce, const DoEachT& DoEach) const {
-    DoEach(reduce.reduce_op);
-  }
-
-  template <typename DoEachT>
-  void VisitStmtOpImpl(const PS& partial_shardable, const DoEachT& DoEach) const {
-    for (const auto* op : partial_shardable.ops) {
-      DoEach(op);
-    }
-  }
-
-  template <typename DoEachT>
-  void VisitStmtOp(const StmtPattern& stmt, const DoEachT& DoEach) const {
-    std::visit([&](const auto& impl) { VisitStmtOpImpl(impl, DoEach); }, stmt);
-  }
-
-  template<typename IsDetailPatternT, typename ConstructPatternT>
-  std::optional<ErrorGroupPattern> MultiFuse(
-      const IsDetailPatternT& IsDetailPattern,
-      const ConstructPatternT& ConstructPattern,
-      std::list<StmtPattern>* stmts) const {
-    const auto StmtIter4Op = MakeGetterStmt4Op(stmts);
-    using NodeVisitor = std::function<void(StmtIter)>;
-    const auto VisitInputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
-      VisitStmtOp(*stmt, [&](const auto* op){
-        VisitInputOp(op, [&](const pir::Operation* input) {
-          if (const auto& input_stmt = StmtIter4Op(input)) {
-            if (IsDetailPattern(*input_stmt.value())) {
-              DoEach(input_stmt.value());
-            }
-          }
-        });
-      });
-    };
-    const auto VisitOutputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
-      VisitStmtOp(*stmt, [&](const auto* op){
-        VisitOutputOp(op, [&](const pir::Operation* output) {
-          if (const auto& output_stmt = StmtIter4Op(output)) {
-            if (IsDetailPattern(*output_stmt.value())) {
-              DoEach(output_stmt.value());
-            }
-          }
-        });
-      });      
-    };
-    const auto IsSinkPattern = [&](StmtIter stmt) {
-      if (!IsDetailPattern(*stmt)) return false;
-      std::size_t num_injective_src_outputs = 0;
-      VisitOutputStmt(node, [&](const auto& consumer) {
-        num_injective_src_outputs += IsDetailPattern(*consumer);
-      });
-      return num_injective_src_outputs == 0;
-    };
-    const auto GetOrder = MakeGetterOrderValue4Op(fusion_op_);
-    const auto Cmp = [&](const auto* lhs, const auto& rhs) {
-      return GetOrder(lhs) < GetOrder(rhs);
-    };
-    common::BfsWalker<StmtIter> reverse_walker(VisitInputStmt);
-    const auto& GetVisitedOps = [&](const auto stmt_iter) {
-      std::vector<const pir::Operation*> visited_ops;
-      reverse_walker(start, [&](const auto node){
-        VisitStmtOp(node, [&](const auto* op) { visited_ops.push_back(op); });
-      });
-      std::sort(visited_ops.begin(), visited_ops.end(), Cmp);
-      return visited_ops;
-    };
-    std::list<StmtPattern> fused_stmts;
-    for (auto stmt_iter = stmts->begin(); stmt_iter != stmts->end(); ++stmt_iter) {
-      if (!IsSinkPattern(stmt_iter)) continue;
-      fused_stmts.emplace_back(ConstructPattern(GetVisitedOps(stmt_iter)));
-    }
-    for (auto stmt_iter = stmts->begin(); stmt_iter != start->end();) {
-      if (IsDetailPattern(*stmt_iter)) {
-        stmt_iter = stmts->erase(stmt_iter);
-      } else {
-        ++stmt_iter;
-      }
-    }
-    stmts->splice(stmts->begin(), std::move(fused_stmts));
-    return std::nullopt;
-  }
-  
-  using OpVisitor = std::function<void(const pir::Operation*)>;
-
-  void VisitInputOp(const pir::Operation* op, const OpVisitor& DoEach) const {
-    for (int i = 0; i < op->num_operands(); ++i) {
-      const auto* input_op = op->operand_source(i).defining_op();
-      if (IsInThisFusionOp(input_op)) {
-        DoEach(input_op);
-      }
-    }
-  }
-
-  void VisitOutputOp(const pir::Operation* op, const OpVisitor& DoEach) const {
-    for (int i = 0; i < op->num_results(); ++i) {
-      pir::Value output = op->result(i);
-      for (auto consumer_it = output.use_begin(); consumer_it != output.use_end(); ++consumer_it) {
-        const auto* consumer_op = consumer_it->owner();
-        if (IsInThisFusionOp(consumer_op)) {
-          DoEach(consumer_op);
-        }
-      }
-    }
-  }
 
   StmtPattern ConvertToStmtPattern(const pir::Operation* op) const {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
@@ -398,10 +288,6 @@ class StmtFusionHelper {
     return R{{}, {op}};
   }
 
-  size_t GetRank(pir::Value value) const {
-    return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
-  };
-
   PS ConvertOpToPS(const pir::Operation* op) const {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
     return PS{
@@ -409,6 +295,102 @@ class StmtFusionHelper {
       .shardable_axes_signature=MakeShardableAxesSignature4Op(op),
     };
   }
+
+  static std::function<std::optional<StmtIter>(const pir::Operation*)>
+  MakeStmtFinderFromOp(std::list<StmtPattern>* stmts) {
+    std::unordered_map<const pir::Operation*, StmtIter> op2stmt_iter;
+    for (auto iter = stmts->begin(); iter != stmts->end(); ++iter) {
+      VisitStmtOp(*iter, [&](const auto* op) { op2stmt_iter[op] = iter; });
+    }
+    return [map=std::move(op2stmt_iter)](const pir::Operation* op) -> std::optional<StmtIter> {
+      const auto iter = map.find(op);
+      if (iter == map.end()) return std::nullopt;
+      return iter->second;
+    };
+  }
+
+  std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(cinn::dialect::FusionOp& fusion_op) const {
+    std::unordered_map<pir::Operation*, size_t> op2order_in_block;
+    size_t order = 0;
+    for (const pir::Operation* op : fusion_op.GetOperators()) {
+      op2order_in_block[op] = ++order;
+    }
+    return [map=std::move(op2order_in_block)](const pir::Operation* op) {
+      const auto& iter = map.find(op);
+      CHECK(iter != map.end());
+      return iter->second;
+    };
+  }
+
+  template<typename IsDetailPatternT, typename ConstructPatternT>
+  std::optional<ErrorGroupPattern> MultiFuse(
+      const IsDetailPatternT& IsDetailPattern,
+      const ConstructPatternT& ConstructPattern,
+      std::list<StmtPattern>* stmts) const {
+    const auto StmtFinder = MakeStmtFinderFromOp(stmts);
+
+    const auto VisitInputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
+      VisitStmtOp(*stmt, [&](const auto* op){
+        VisitInputOp(op, [&](const pir::Operation* input) {
+          if (const auto& input_stmt = StmtFinder(input)) {
+            if (IsDetailPattern(input_stmt->value())) {
+              DoEach(input_stmt.value());
+            }
+          }
+        });
+      });
+    };
+    const auto VisitOutputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
+      VisitStmtOp(*stmt, [&](const auto* op){
+        VisitOutputOp(op, [&](const pir::Operation* output) {
+          if (const auto& output_stmt = StmtFinder(output)) {
+            if (IsDetailPattern(*output_stmt.value())) {
+              DoEach(output_stmt.value());
+            }
+          }
+        });
+      });      
+    };
+    const auto IsSinkPattern = [&](StmtIter stmt) {
+      if (!IsDetailPattern(*stmt)) return false;
+      std::size_t num_injective_src_outputs = 0;
+      VisitOutputStmt(node, [&](const auto& consumer) {
+        num_injective_src_outputs += IsDetailPattern(*consumer);
+      });
+      return num_injective_src_outputs == 0;
+    };
+    const auto GetOrder = MakeTopoOrderFinderOfOp(fusion_op_);
+    const auto Cmp = [&](const auto* lhs, const auto& rhs) {
+      return GetOrder(lhs) < GetOrder(rhs);
+    };
+    common::BfsWalker<StmtIter> reverse_walker(VisitInputStmt);
+    const auto& GetUpstreamOps = [&](const auto stmt_iter) {
+      std::vector<const pir::Operation*> visited_ops;
+      reverse_walker(start, [&](const auto node){
+        VisitStmtOp(node, [&](const auto* op) { visited_ops.push_back(op); });
+      });
+      std::sort(visited_ops.begin(), visited_ops.end(), Cmp);
+      return visited_ops;
+    };
+    std::list<StmtPattern> fused_stmts;
+    for (auto stmt_iter = stmts->begin(); stmt_iter != stmts->end(); ++stmt_iter) {
+      if (!IsSinkPattern(stmt_iter)) continue;
+      fused_stmts.emplace_back(ConstructPattern(GetUpstreamOps(stmt_iter)));
+    }
+    for (auto stmt_iter = stmts->begin(); stmt_iter != start->end();) {
+      if (IsDetailPattern(*stmt_iter)) {
+        stmt_iter = stmts->erase(stmt_iter);
+      } else {
+        ++stmt_iter;
+      }
+    }
+    stmts->splice(stmts->begin(), std::move(fused_stmts));
+    return std::nullopt;
+  }
+
+  size_t GetRank(pir::Value value) const {
+    return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
+  };
 
   ShardableAxesSignature MakeShardableAxesSignature4Op(const pir::Operation* op) const {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
@@ -461,6 +443,28 @@ class StmtFusionHelper {
     StmtIter upstream_iter;
     StmtIter downstream_iter;
   };
+
+  bool IsConnected(const StmtIter& upstream, const StmtIter& downstream){
+    const auto StmtFinder = MakeStmtFinderFromOp({*upstream, *downstream});
+    const auto VisitInputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
+      VisitStmtOp(*stmt, [&](const auto* op)){
+        VisitInputOp(op, [&](const pir::Operation* input) {
+          if (const auto& input_stmt = StmtFinder(input)) {
+            if (IsDetailPattern(input_stmt->value())) {
+              DoEach(input_stmt.value());
+            }
+          }
+        });
+      };
+    };
+
+    auto downstream_input_patterns = std::unordered_set<StmtIter>();
+    VisitInputStmt(*downstream, [&](const StmtIter& input_pattern){
+      downstream_input_patterns.insert(input_pattern);
+    })
+
+    return downstream_input_patterns.count(upstream) > 0;
+  }
 
   template <typename FuseTargetConditionT>
   std::optional<StmtIterPair> FindConnetedPattenPairWithCondition(
