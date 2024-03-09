@@ -18,7 +18,7 @@ template<>
 struct ErrorPattern<frontend::FrontendPattern> {
   explicit ErrorPattern(const ErrorPattern<frontend::FrontendPatterns>& other) = default;
 
-  const pir::Operation* op;
+  std::vector<const pir::Operation*> ops;
   std::string error_string;
 };
 
