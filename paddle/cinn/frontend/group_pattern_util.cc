@@ -1,14 +1,28 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/cinn/frontend/group_pattern_util.h"
-#include "paddle/cinn/common/topo_walker.h"
 #include "paddle/cinn/common/bfs_walker.h"
-#include "paddle/cinn/hlir/framework/op.h"
-#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/cinn/common/topo_walker.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
+#include <algorithm>
 #include <optional>
 #include <typeinfo>
-#include <algorithm>
 #include <variant>
 
 namespace cinn::frontend {
@@ -26,27 +40,26 @@ using StmtPtr = StmtPattern*;
 using OpVisitor = std::function<void(const pir::Operation*)>;
 using NodeVisitor = std::function<void(StmtPtr)>;
 
-
 OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
   return hlir::framework::pir::CompatibleInfo::OpKind(*node);
 }
 
 bool IsGeneralInjective(const pir::Operation* op) {
   hlir::framework::OpPatternKind op_pattern_kind = GetOpPatternKind(op);
-  return op_pattern_kind == hlir::framework::kElementWise
-    || op_pattern_kind == hlir::framework::kBroadcast
-    || op_pattern_kind == hlir::framework::kInjective;
+  return op_pattern_kind == hlir::framework::kElementWise ||
+         op_pattern_kind == hlir::framework::kBroadcast ||
+         op_pattern_kind == hlir::framework::kInjective;
 }
 
-bool IsISPattern(const StmtPattern& pattern){
+bool IsISPattern(const StmtPattern& pattern) {
   return std::holds_alternative<IS>(pattern);
 }
 
-bool IsPSPattern(const StmtPattern& pattern){
+bool IsPSPattern(const StmtPattern& pattern) {
   return std::holds_alternative<PS>(pattern);
 }
 
-bool IsRPattern(const StmtPattern& pattern){
+bool IsRPattern(const StmtPattern& pattern) {
   return std::holds_alternative<R>(pattern);
 }
 
@@ -60,7 +73,8 @@ void VisitInputOp(const pir::Operation* op, const OpVisitor& DoEach) {
 void VisitOutputOp(const pir::Operation* op, const OpVisitor& DoEach) {
   for (int i = 0; i < op->num_results(); ++i) {
     pir::Value output = op->result(i);
-    for (auto consumer_it = output.use_begin(); consumer_it != output.use_end(); ++consumer_it) {
+    for (auto consumer_it = output.use_begin(); consumer_it != output.use_end();
+         ++consumer_it) {
       const auto* consumer_op = consumer_it->owner();
       if (consumer_op->isa<pir::YieldOp>()) continue;
       DoEach(consumer_op);
@@ -92,7 +106,8 @@ void VisitStmtOp(const StmtPattern& stmt, const DoEachT& DoEach) {
   std::visit([&](const auto& impl) { VisitStmtOpImpl(impl, DoEach); }, stmt);
 }
 
-std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(const cinn::dialect::FusionOp& fusion_op) {
+std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
+    cinn::dialect::FusionOp& fusion_op) {
   std::set<const pir::Operation*> set;
   for (const pir::Operation* op : fusion_op.GetOperators()) {
     if (!op->isa<::pir::YieldOp>()) {
@@ -105,22 +120,19 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(const 
 }
 
 std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
-    const cinn::dialect::FusionOp& fusion_op,
+    cinn::dialect::FusionOp& fusion_op,
     const std::function<bool(const pir::Operation*)>& IsInThisFusionOp) {
-
   const auto& IsSource = [&](const pir::Operation* op) {
     std::size_t num_inputs = 0;
-    VisitInputOp(op, 
-      [&](const pir::Operation* input) { 
-        if(IsInThisFusionOp(input)){
-          ++num_inputs;
-        }
+    VisitInputOp(op, [&](const pir::Operation* input) {
+      if (IsInThisFusionOp(input)) {
+        ++num_inputs;
       }
-    );
+    });
     return num_inputs == 0;
   };
 
-  const auto starts = [&]{
+  const auto starts = [&] {
     std::list<const pir::Operation*> starts;
     for (const auto* op : fusion_op.GetOperators()) {
       if (!IsInThisFusionOp(op) && IsSource(op)) {
@@ -136,19 +148,19 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
 
   auto IsInputsAllInjectiveSource = [&](const pir::Operation* op) {
     bool is_inputs_all_injective_source = true;
-    VisitInputOp(op, 
-      [&](const pir::Operation* input){
-        if (IsInThisFusionOp(input)){
-          is_inputs_all_injective_source = (is_inputs_all_injective_source && op_2_is_injective_source.at(input));
-        }
+    VisitInputOp(op, [&](const pir::Operation* input) {
+      if (IsInThisFusionOp(input)) {
+        is_inputs_all_injective_source = (is_inputs_all_injective_source &&
+                                          op_2_is_injective_source.at(input));
       }
-    );
+    });
     return is_inputs_all_injective_source;
   };
 
   common::TopoWalker<const pir::Operation*> walker{VisitInputOp, VisitOutputOp};
-  walker(starts.begin(), starts.end(), [&](const pir::Operation* op){
-    op_2_is_injective_source[op] = (IsGeneralInjective(op) && IsInputsAllInjectiveSource(op));
+  walker(starts.begin(), starts.end(), [&](const pir::Operation* op) {
+    op_2_is_injective_source[op] =
+        (IsGeneralInjective(op) && IsInputsAllInjectiveSource(op));
   });
   return [map = std::move(op_2_is_injective_source)](const pir::Operation* op) {
     const auto& iter = map.find(op);
@@ -161,9 +173,11 @@ size_t GetRank(pir::Value value) {
   return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
 }
 
-ShardableAxesSignature MakeShardableAxesSignature4ElementWiseOp(const pir::Operation* op) {
-  CHECK(!op->isa<cinn::dialect::ReshapeOp>()) << "reshape not supported. TODO(wuzhanfei).";
-  const size_t rank = [&]{
+ShardableAxesSignature MakeShardableAxesSignature4ElementWiseOp(
+    const pir::Operation* op) {
+  CHECK(!op->isa<cinn::dialect::ReshapeOp>())
+      << "reshape not supported. TODO(wuzhanfei).";
+  const size_t rank = [&] {
     std::optional<size_t> rank;
     for (int i = 0; i < op->num_operands(); ++i) {
       if (rank.has_value()) {
@@ -181,18 +195,20 @@ ShardableAxesSignature MakeShardableAxesSignature4ElementWiseOp(const pir::Opera
     CHECK(rank.has_value());
     return rank.value();
   }();
-  const ShardableAxes output_shardable_axes = ShardableAxesUtil::GetFullyShardableAxes(rank);
+  const ShardableAxes output_shardable_axes =
+      ShardableAxesUtil::GetFullyShardableAxes(rank);
   std::unordered_map<OpAndOperandIndex, ShardableAxes> input_shardable_axes;
   for (int i = 0; i < op->num_operands(); ++i) {
     input_shardable_axes[OpAndOperandIndex{op, i}] = output_shardable_axes;
   }
   return ShardableAxesSignature{
-    .output_shardable_axes=output_shardable_axes,
-    .input_shardable_axes=input_shardable_axes,
+      .output_shardable_axes = output_shardable_axes,
+      .input_shardable_axes = input_shardable_axes,
   };
 }
 
-ShardableAxesSignature MakeShardableAxesSignature4BroadcastOp(const pir::Operation* op) {
+ShardableAxesSignature MakeShardableAxesSignature4BroadcastOp(
+    const pir::Operation* op) {
   LOG(FATAL) << "TODO(wuzhanfei).";
 }
 
@@ -203,7 +219,9 @@ ShardableAxesSignature MakeShardableAxesSignature4Op(const pir::Operation* op) {
   } else if (kind == hlir::framework::kBroadcast) {
     return MakeShardableAxesSignature4BroadcastOp(op);
   } else {
-    LOG(FATAL) << "only kReduction, kElementWise, kBroadcast supported. op_name:" << op->name(); 
+    LOG(FATAL)
+        << "only kReduction, kElementWise, kBroadcast supported. op_name:"
+        << op->name();
   }
   LOG(FATAL) << "Dead code";
 }
@@ -213,20 +231,22 @@ std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
     const pir::Operation* sink,
     const ShardableAxes& init_sa) {
   std::unordered_map<pir::Value, ShardableAxes> value2shardable_axes{
-    {sink->result(0), init_sa}
-  };
-  const auto& UpdateValue2ShardableAxes = [&](pir::Value value, const ShardableAxes& sa) {
+      {sink->result(0), init_sa}};
+  const auto& UpdateValue2ShardableAxes = [&](pir::Value value,
+                                              const ShardableAxes& sa) {
     auto iter = value2shardable_axes.find(value);
     if (iter != value2shardable_axes.end()) {
-      iter->second = ShardableAxesUtil::GetCommonShardableAxes(iter->second, sa);
+      iter->second =
+          ShardableAxesUtil::GetCommonShardableAxes(iter->second, sa);
     } else {
       iter->second = sa;
     }
   };
-  reversed_walker(sink, [&](const auto* op){
+  reversed_walker(sink, [&](const auto* op) {
     auto shardable_axes_sig = MakeShardableAxesSignature4Op(op);
-    const auto& old2new = ShardableAxesUtil::GetOldName2NewName(shardable_axes_sig.output_shardable_axes,
-                                              value2shardable_axes.at(op->result(0)));
+    const auto& old2new = ShardableAxesUtil::GetOldName2NewName(
+        shardable_axes_sig.output_shardable_axes,
+        value2shardable_axes.at(op->result(0)));
     for (auto& pair : shardable_axes_sig.input_shardable_axes) {
       const auto& [my_op, input_idx] = pair.first;
       CHECK_EQ(my_op, op);
@@ -239,21 +259,25 @@ std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
   return value2shardable_axes;
 }
 
-common::TopoWalker<const pir::Operation*> GetOpsTopoWalker(const std::unordered_set<const pir::Operation*>& ops) {
+common::TopoWalker<const pir::Operation*> GetOpsTopoWalker(
+    const std::unordered_set<const pir::Operation*>& ops) {
   const auto* ops_set = &ops;
-  const auto VisitUpStreamInOps = [ops_set](const pir::Operation* op, const OpVisitor& DoEach) {
-    VisitInputOp(op, [&](const auto* input){
+  const auto VisitUpStreamInOps = [ops_set](const pir::Operation* op,
+                                            const OpVisitor& DoEach) {
+    VisitInputOp(op, [&](const auto* input) {
       if (ops_set->count(input) == 0) return;
       DoEach(input);
     });
   };
-  const auto VisitDownStreamInOps = [ops_set](const pir::Operation* op, const OpVisitor& DoEach) {
-    VisitOutputOp(op, [&](const auto* output){
+  const auto VisitDownStreamInOps = [ops_set](const pir::Operation* op,
+                                              const OpVisitor& DoEach) {
+    VisitOutputOp(op, [&](const auto* output) {
       if (ops_set->count(output) == 0) return;
       DoEach(output);
     });
   };
-  common::TopoWalker<const pir::Operation*> reversed_walker(VisitDownStreamInOps, VisitUpStreamInOps);
+  common::TopoWalker<const pir::Operation*> reversed_walker(
+      VisitDownStreamInOps, VisitUpStreamInOps);
   return reversed_walker;
 }
 
@@ -262,7 +286,9 @@ std::list<const pir::Operation*> GetSinks(
   const auto IsSink = [&](const pir::Operation* op) {
     for (int i = 0; i < op->num_results(); ++i) {
       pir::Value output = op->result(i);
-      for (auto consumer_it = output.use_begin(); consumer_it != output.use_end(); ++consumer_it) {
+      for (auto consumer_it = output.use_begin();
+           consumer_it != output.use_end();
+           ++consumer_it) {
         const auto* consumer_op = consumer_it->owner();
         if (consumer_op->isa<pir::YieldOp>()) continue;
         if (ops.count(consumer_op) > 0) return false;
@@ -281,13 +307,14 @@ std::list<const pir::Operation*> GetSinks(
 
 class StmtFusionHelper {
  public:
-  explicit StmtFusionHelper(const cinn::dialect::FusionOp& fusion_op)
-     : fusion_op_(fusion_op) {
+  explicit StmtFusionHelper(cinn::dialect::FusionOp& fusion_op)
+      : fusion_op_(fusion_op) {
     this->IsInThisFusionOp = MakePredicatorIsInThisFusionOp(fusion_op_);
-    this->IsInjectiveSource = MakePredicatorIsInjectiveSource(fusion_op_, this->IsInThisFusionOp);
+    this->IsInjectiveSource =
+        MakePredicatorIsInjectiveSource(fusion_op_, this->IsInThisFusionOp);
   }
 
-  std::vector<StmtPattern> ConvertToStmtsPattern() const {
+  std::vector<StmtPattern> ConvertToStmtsPattern() {
     std::vector<StmtPattern> ret;
     for (const auto* op : fusion_op_.GetOperators()) {
       if (!IsInThisFusionOp(op)) continue;
@@ -296,24 +323,27 @@ class StmtFusionHelper {
     return ret;
   }
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(std::vector<StmtPattern>* stmt_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(
+      std::vector<StmtPattern>* stmt_patterns) {
     const auto ConstructISPattern = [&](const auto& ops) { return IS{ops}; };
     return MultiFuse(IsISPattern, ConstructISPattern, stmt_patterns);
   }
 
-  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(std::vector<StmtPattern>* stmt_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(
+      std::vector<StmtPattern>* stmt_patterns) {
     const auto ConstructPSPattern = [&](const auto& ops) {
       const auto shardable_axes_signature = GetShardableAxesSignature(ops);
       return PS{
-        .ops=ops,
-        .shardable_axes_signature=shardable_axes_signature,
+          .ops = ops,
+          .shardable_axes_signature = shardable_axes_signature,
       };
     };
     return MultiFuse(IsPSPattern, ConstructPSPattern, stmt_patterns);
   }
 
   struct FusePolicy_IS_x_PS_2_PS {
-    static bool FuseCondition(const StmtPattern& upstream, const StmtPattern& downstream) {
+    static bool FuseCondition(const StmtPattern& upstream,
+                              const StmtPattern& downstream) {
       return IsISPattern(upstream) && IsPSPattern(downstream);
     }
     static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
@@ -321,34 +351,35 @@ class StmtFusionHelper {
       return MergePatternImpl(std::get<IS>(upstream), std::get<PS>(downstream));
     }
     static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
-        const IS& upstream,
-        const PS& downstream) {
-      const auto& ops = [&]{
+        const IS& upstream, const PS& downstream) {
+      const auto& ops = [&] {
         std::vector<const pir::Operation*> ops;
         ops.insert(ops.end(), upstream.ops.begin(), upstream.ops.end());
         ops.insert(ops.end(), downstream.ops.begin(), downstream.ops.end());
         std::unique(ops.begin(), ops.end());
         return ops;
       }();
-      const auto& shardable_axes_signature = MergeShardableAxesSignature(upstream, downstream);
+      const auto& shardable_axes_signature =
+          MergeShardableAxesSignature(upstream, downstream);
       return StmtPattern(PS{
-        .ops=ops,
-        .shardable_axes_signature=shardable_axes_signature,
+          .ops = ops,
+          .shardable_axes_signature = shardable_axes_signature,
       });
     }
 
     static ShardableAxesSignature MergeShardableAxesSignature(
-        const IS& upstream,
-        const PS& downstream) {
+        const IS& upstream, const PS& downstream) {
       LOG(FATAL) << "TODO(tianchao)";
     }
   };
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(std::vector<StmtPattern>* stmt_patterns) const { 
+  std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(
+      std::vector<StmtPattern>* stmt_patterns) {
     return FuseFilteredStmtPatterns<FusePolicy_IS_x_PS_2_PS>(stmt_patterns);
   }
   struct FusePolicy_IS_x_R_2_R {
-    static bool FuseCondition(const StmtPattern& upstream, const StmtPattern& downstream) {
+    static bool FuseCondition(const StmtPattern& upstream,
+                              const StmtPattern& downstream) {
       return IsISPattern(upstream) && IsRPattern(downstream);
     }
     static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
@@ -356,12 +387,11 @@ class StmtFusionHelper {
       return MergePatternImpl(std::get<IS>(upstream), std::get<R>(downstream));
     }
     static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
-        const IS& upstream,
-        const R& downstream) {
+        const IS& upstream, const R& downstream) {
       if (downstream.HasFusedInput()) {
         return ErrorGroupPattern{
-          .ops={downstream.reduction_op_pattern.reduce_op},
-          .error_string="The input of reduce has been fused.",
+            .ops = {downstream.reduction_op_pattern.reduce_op},
+            .error_string = "The input of reduce has been fused.",
         };
       }
       R new_pattern = R(downstream);
@@ -370,12 +400,14 @@ class StmtFusionHelper {
     }
   };
 
-  std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(std::vector<StmtPattern>* stmt_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(
+      std::vector<StmtPattern>* stmt_patterns) {
     return FuseFilteredStmtPatterns<FusePolicy_IS_x_R_2_R>(stmt_patterns);
   }
 
   struct FusePolicy_PS_x_R_2_R {
-    static bool FuseCondition(const StmtPattern& upstream, const StmtPattern& downstream) {
+    static bool FuseCondition(const StmtPattern& upstream,
+                              const StmtPattern& downstream) {
       return IsISPattern(upstream) && IsRPattern(downstream);
     }
     static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
@@ -383,12 +415,11 @@ class StmtFusionHelper {
       return MergePatternImpl(std::get<PS>(upstream), std::get<R>(downstream));
     }
     static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
-        const PS& upstream,
-        const R& downstream) {
+        const PS& upstream, const R& downstream) {
       if (downstream.HasFusedInput()) {
         return ErrorGroupPattern{
-          .ops={downstream.reduction_op_pattern.reduce_op},
-          .error_string="The input of reduce has been fused.",
+            .ops = {downstream.reduction_op_pattern.reduce_op},
+            .error_string = "The input of reduce has been fused.",
         };
       }
       R new_pattern = R(downstream);
@@ -397,13 +428,13 @@ class StmtFusionHelper {
     }
   };
 
-  std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(std::vector<StmtPattern>* stmt_patterns) const {
+  std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(
+      std::vector<StmtPattern>* stmt_patterns) {
     return FuseFilteredStmtPatterns<FusePolicy_PS_x_R_2_R>(stmt_patterns);
   }
 
  private:
-
-  StmtPattern ConvertToStmtPattern(const pir::Operation* op) const {
+  StmtPattern ConvertToStmtPattern(const pir::Operation* op) {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
     if (IsInjectiveSource(op)) {
       return ConvertToIS(op);
@@ -414,61 +445,64 @@ class StmtFusionHelper {
     } else if (kind == hlir::framework::kBroadcast) {
       return ConvertOpToPS(op);
     } else {
-      LOG(FATAL) << "only kReduction, kElementWise, kBroadcast supported. op_name:" << op->name(); 
+      LOG(FATAL)
+          << "only kReduction, kElementWise, kBroadcast supported. op_name:"
+          << op->name();
     }
     LOG(FATAL) << "Dead code";
   }
 
-  IS ConvertToIS(const pir::Operation* op) const {
-    return IS{{op}};
-  }
+  IS ConvertToIS(const pir::Operation* op) { return IS{{op}}; }
 
-  R ConvertReductionOpToReductionPattern(const pir::Operation* op) const {
+  R ConvertReductionOpToReductionPattern(const pir::Operation* op) {
     return R{{}, {op}};
   }
 
-  PS ConvertOpToPS(const pir::Operation* op) const {
+  PS ConvertOpToPS(const pir::Operation* op) {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
     return PS{
-      .ops={op},
-      .shardable_axes_signature=MakeShardableAxesSignature4Op(op),
+        .ops = {op},
+        .shardable_axes_signature = MakeShardableAxesSignature4Op(op),
     };
   }
 
-  using StmtPtr4OpT = std::function<std::optional<StmtPtr>(const pir::Operation*)>;
+  using StmtPtr4OpT =
+      std::function<std::optional<StmtPtr>(const pir::Operation*)>;
   static StmtPtr4OpT MakeStmtFinderFromOp(std::vector<StmtPattern>* stmts) {
     std::unordered_map<const pir::Operation*, StmtPtr> op2stmt_ptr;
     for (auto& stmt : *stmts) {
       VisitStmtOp(stmt, [&](const auto* op) { op2stmt_ptr[op] = &stmt; });
     }
-    return [map=std::move(op2stmt_ptr)](const pir::Operation* op) -> std::optional<StmtPtr> {
+    return [map = std::move(op2stmt_ptr)](
+               const pir::Operation* op) -> std::optional<StmtPtr> {
       const auto iter = map.find(op);
       if (iter == map.end()) return std::nullopt;
       return iter->second;
     };
   }
 
-  std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(const cinn::dialect::FusionOp& fusion_op) const {
+  std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
+      cinn::dialect::FusionOp& fusion_op) {
     std::unordered_map<const pir::Operation*, size_t> op2order_in_block;
     size_t order = 0;
     for (const pir::Operation* op : fusion_op.GetOperators()) {
       op2order_in_block[op] = ++order;
     }
-    return [map=std::move(op2order_in_block)](const pir::Operation* op) {
+    return [map = std::move(op2order_in_block)](const pir::Operation* op) {
       const auto& iter = map.find(op);
       CHECK(iter != map.end());
       return iter->second;
     };
   }
 
-  template<typename IsChozenPatternT, typename ConstructPatternT>
+  template <typename IsChozenPatternT, typename ConstructPatternT>
   std::optional<ErrorGroupPattern> MultiFuse(
       const IsChozenPatternT& IsChozenPattern,
       const ConstructPatternT& ConstructPattern,
-      std::vector<StmtPattern>* stmts) const {
+      std::vector<StmtPattern>* stmts) {
     const auto StmtFinder = MakeStmtFinderFromOp(stmts);
     const auto VisitInputStmt = [&](StmtPtr stmt, const NodeVisitor& DoEach) {
-      VisitStmtOp(*stmt, [&](const auto* op){
+      VisitStmtOp(*stmt, [&](const auto* op) {
         VisitInputOp(op, [&](const pir::Operation* input) {
           if (const auto& input_stmt = StmtFinder(input)) {
             if (IsChozenPattern(*input_stmt.value())) {
@@ -479,7 +513,7 @@ class StmtFusionHelper {
       });
     };
     const auto VisitOutputStmt = [&](StmtPtr stmt, const NodeVisitor& DoEach) {
-      VisitStmtOp(*stmt, [&](const auto* op){
+      VisitStmtOp(*stmt, [&](const auto* op) {
         VisitOutputOp(op, [&](const pir::Operation* output) {
           if (const auto& output_stmt = StmtFinder(output)) {
             if (IsChozenPattern(*output_stmt.value())) {
@@ -487,7 +521,7 @@ class StmtFusionHelper {
             }
           }
         });
-      });      
+      });
     };
     const auto IsSinkPattern = [&](StmtPtr stmt) {
       if (!IsChozenPattern(*stmt)) return false;
@@ -504,14 +538,14 @@ class StmtFusionHelper {
     common::BfsWalker<StmtPtr> reverse_walker(VisitInputStmt);
     const auto& GetUpstreamOps = [&](const auto stmt_ptr) {
       std::vector<const pir::Operation*> visited_ops;
-      reverse_walker(stmt_ptr, [&](const auto node){
+      reverse_walker(stmt_ptr, [&](const auto node) {
         VisitStmtOp(*node, [&](const auto* op) { visited_ops.push_back(op); });
       });
       std::sort(visited_ops.begin(), visited_ops.end(), Cmp);
       return visited_ops;
     };
-  
-    std::vector<StmtPattern> ret_stmts = [&]{
+
+    std::vector<StmtPattern> ret_stmts = [&] {
       std::vector<StmtPattern> ret_stmts;
       ret_stmts.reserve(stmts->size());
       for (const auto& stmt : *stmts) {
@@ -536,9 +570,11 @@ class StmtFusionHelper {
     std::list<StmtPtr>::iterator downstream_iter;
   };
 
-  bool IsConnected(const StmtPtr4OpT& StmtFinder, const StmtPtr& upstream, const StmtPtr& downstream) const {
+  bool IsConnected(const StmtPtr4OpT& StmtFinder,
+                   const StmtPtr& upstream,
+                   const StmtPtr& downstream) {
     const auto VisitInputStmt = [&](StmtPtr stmt, const NodeVisitor& DoEach) {
-      VisitStmtOp(*stmt, [&](const auto* op){
+      VisitStmtOp(*stmt, [&](const auto* op) {
         VisitInputOp(op, [&](const pir::Operation* input) {
           if (const auto& input_stmt = StmtFinder(input)) {
             DoEach(input_stmt.value());
@@ -548,7 +584,7 @@ class StmtFusionHelper {
     };
 
     bool found = false;
-    VisitInputStmt(downstream, [&](const StmtPtr& input_pattern){
+    VisitInputStmt(downstream, [&](const StmtPtr& input_pattern) {
       if (input_pattern == upstream) {
         found = true;
       }
@@ -560,15 +596,17 @@ class StmtFusionHelper {
   std::optional<StmtIterPair> FindConnetedPattenPairWithCondition(
       const StmtPtr4OpT& StmtFinder,
       std::list<StmtPtr>* stmt_ptrs,
-      const FuseTargetConditionT& FuseTargetCondition) const {
-    for (auto dst_iter = stmt_ptrs->begin(); dst_iter != stmt_ptrs->end(); ++dst_iter) {
-      for (auto src_iter = stmt_ptrs->begin(); src_iter != stmt_ptrs->end(); ++src_iter) {
+      const FuseTargetConditionT& FuseTargetCondition) {
+    for (auto dst_iter = stmt_ptrs->begin(); dst_iter != stmt_ptrs->end();
+         ++dst_iter) {
+      for (auto src_iter = stmt_ptrs->begin(); src_iter != stmt_ptrs->end();
+           ++src_iter) {
         if (src_iter == dst_iter) continue;
         if (!IsConnected(StmtFinder, *src_iter, *dst_iter)) continue;
         if (FuseTargetCondition(**src_iter, **dst_iter)) {
           return StmtIterPair{
-            .upstream_iter=src_iter,
-            .downstream_iter=dst_iter,
+              .upstream_iter = src_iter,
+              .downstream_iter = dst_iter,
           };
         }
       }
@@ -578,8 +616,8 @@ class StmtFusionHelper {
 
   template <typename FusionPolicy>
   std::optional<ErrorGroupPattern> FuseFilteredStmtPatterns(
-      std::vector<StmtPattern>* stmt_patterns) const{
-    std::list<StmtPtr> stmts_iters = [&]{
+      std::vector<StmtPattern>* stmt_patterns) {
+    std::list<StmtPtr> stmts_iters = [&] {
       std::list<StmtPtr> stmts_iters;
       for (auto& stmt : *stmt_patterns) {
         stmts_iters.push_back(&stmt);
@@ -595,12 +633,13 @@ class StmtFusionHelper {
       stmt_patterns->push_back(stmt_pattern);
       stmts_iters.push_back(&stmt_patterns->back());
     };
-    while(true){
+    while (true) {
       const auto& pattern_pair = FindConnetedPattenPairWithCondition(
-        StmtFinder, &stmts_iters, &FusionPolicy::FuseCondition);
+          StmtFinder, &stmts_iters, &FusionPolicy::FuseCondition);
       if (!pattern_pair.has_value()) break;
-      const std::variant<StmtPattern, ErrorGroupPattern>& new_pattern = 
-        FusionPolicy::MergePattern(**pattern_pair.value().upstream_iter, **pattern_pair.value().downstream_iter);
+      const std::variant<StmtPattern, ErrorGroupPattern>& new_pattern =
+          FusionPolicy::MergePattern(**pattern_pair.value().upstream_iter,
+                                     **pattern_pair.value().downstream_iter);
 
       if (std::holds_alternative<ErrorGroupPattern>(new_pattern)) {
         return std::get<ErrorGroupPattern>(new_pattern);
@@ -608,7 +647,7 @@ class StmtFusionHelper {
       EraseOld(pattern_pair.value());
       InsertNew(std::get<StmtPattern>(new_pattern));
     }
-    *stmt_patterns = [&]{
+    *stmt_patterns = [&] {
       std::vector<StmtPattern> ret_patterns;
       ret_patterns.reserve(stmts_iters.size());
       for (const auto& stmt_iter : stmts_iters) {
@@ -619,19 +658,21 @@ class StmtFusionHelper {
     return std::nullopt;
   }
 
-  ShardableAxesSignature GetShardableAxesSignature(const std::vector<const pir::Operation*>& ops) const {
+  ShardableAxesSignature GetShardableAxesSignature(
+      const std::vector<const pir::Operation*>& ops) {
     std::unordered_set<const pir::Operation*> ops_set(ops.begin(), ops.end());
-    const pir::Operation* sink = [&]{
+    const pir::Operation* sink = [&] {
       const auto& sinks = GetSinks(ops_set);
       CHECK_EQ(sinks.size(), 1) << "ops must have only one sink node.";
       return *sinks.begin();
     }();
-    const auto& value2shardable_axes = InferShardableAxesFromSink(sink, ops_set);
+    const auto& value2shardable_axes =
+        InferShardableAxesFromSink(sink, ops_set);
     const auto& IsInputOpOperand = [&](const auto* op, int input_idx) {
       const auto& defining_op = op->operand_source(input_idx).defining_op();
       return IsInThisFusionOp(defining_op) && ops_set.count(defining_op) == 0;
     };
-    const auto& input_op_operands = [&]{
+    const auto& input_op_operands = [&] {
       std::vector<OpAndOperandIndex> op_operands;
       for (const auto* op : ops) {
         for (int i = 0; i < op->num_operands(); ++i) {
@@ -641,9 +682,10 @@ class StmtFusionHelper {
       }
       return op_operands;
     }();
-    const auto& shardable_axes_sig = [&]{
+    const auto& shardable_axes_sig = [&] {
       ShardableAxesSignature signature;
-      signature.output_shardable_axes = value2shardable_axes.at(sink->result(0));
+      signature.output_shardable_axes =
+          value2shardable_axes.at(sink->result(0));
       for (const auto& pair : input_op_operands) {
         const auto& [op, idx] = pair;
         pir::Value input = op->operand_source(idx);
@@ -660,20 +702,26 @@ class StmtFusionHelper {
   std::function<bool(const pir::Operation*)> IsInjectiveSource;
 };
 
-GroupPattern FuseToGroupPattern(const cinn::dialect::FusionOp& fusion_op) {
+GroupPattern FuseToGroupPattern(cinn::dialect::FusionOp& fusion_op) {
   StmtFusionHelper helper(fusion_op);
   std::vector<StmtPattern> stmt_patterns = helper.ConvertToStmtsPattern();
-  if (const auto& error = helper.Fuse_IS_x_IS_2_IS(&stmt_patterns)) return error.value();
-  if (const auto& error = helper.Fuse_PS_x_PS_2_PS(&stmt_patterns)) return error.value();
-  if (const auto& error = helper.Fuse_IS_x_PS_2_PS(&stmt_patterns)) return error.value();
-  if (const auto& error = helper.Fuse_IS_x_R_2_R(&stmt_patterns)) return error.value();
-  if (const auto& error = helper.Fuse_PS_x_R_2_R(&stmt_patterns)) return error.value();
+  if (const auto& error = helper.Fuse_IS_x_IS_2_IS(&stmt_patterns))
+    return error.value();
+  if (const auto& error = helper.Fuse_PS_x_PS_2_PS(&stmt_patterns))
+    return error.value();
+  if (const auto& error = helper.Fuse_IS_x_PS_2_PS(&stmt_patterns))
+    return error.value();
+  if (const auto& error = helper.Fuse_IS_x_R_2_R(&stmt_patterns))
+    return error.value();
+  if (const auto& error = helper.Fuse_PS_x_R_2_R(&stmt_patterns))
+    return error.value();
   return stmt_patterns;
 }
 
-}
+}  // namespace
 
-GroupPattern GenerateGroupPatternFromFusionOp(const cinn::dialect::FusionOp& fusion_op) {
+GroupPattern GenerateGroupPatternFromFusionOp(
+    cinn::dialect::FusionOp& fusion_op) {
   return FuseToGroupPattern(fusion_op);
 }
 
@@ -687,14 +735,15 @@ std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
   return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
 }
 
-std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(const std::unordered_set<const pir::Operation*>& ops) {
+std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(
+    const std::unordered_set<const pir::Operation*>& ops) {
   auto reversed_walker = GetOpsTopoWalker(ops);
-  const pir::Operation* sink = [&]{
+  const pir::Operation* sink = [&] {
     const auto& sinks = GetSinks(ops);
     CHECK_EQ(sinks.size(), 1) << "ops must have only one sink node.";
     return *sinks.begin();
   }();
-  const auto& value2shardable_axes = [&]{
+  const auto& value2shardable_axes = [&] {
     size_t rank = GetRank(sink->result(0));
     const auto& init_sa = ShardableAxesUtil::GetFullyShardableAxes(rank);
     return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
@@ -702,4 +751,4 @@ std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(const std::unor
   return value2shardable_axes;
 }
 
-}
+}  // namespace cinn::frontend
