@@ -41,6 +41,25 @@ bool ConcatOpInferSymbolicShape(
   const auto input_values = op->operands_source();
   const auto input_size = input_values.size();
 
+  if (shape_analysis->GetShapeOrDataForValue(input_values[0])
+          .data()
+          .has_value()) {
+    std::vector<symbol::DimExpr> out_data;
+    for (const auto &value : input_values) {
+      const auto &shape_or_data = shape_analysis->GetShapeOrDataForValue(value);
+      for (size_t i = 0; i < shape_or_data.data().value().size(); ++i) {
+        out_data.emplace_back(shape_or_data.data().value()[i]);
+      }
+    }
+    const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(shape, out_data)};
+
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    return true;
+  }
+
   int axis = op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
 
   const auto &GetOutDimExprs = [&]() -> std::vector<symbol::DimExpr> {
@@ -74,16 +93,11 @@ bool ConcatOpInferSymbolicShape(
 
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &attr_map = op->attributes();
-  PADDLE_ENFORCE(
-      attr_map.count("keep_dim"),
-      phi::errors::PreconditionNotMet(
-          "attr [keep_dim] MUST in attribute map for [%s] op", op->name()));
-  bool keepdim = attr_map.at("keep_dim").dyn_cast<pir::BoolAttribute>().data();
+  bool keep_dim = GetBoolAttr(op, "keep_dim");
   auto axis = paddle::dialect::details::GetVectorAttr(op, "dim");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::details::ReduceInferDim(
-      op, shape_analysis, axis, keepdim, reduce_all);
+      op, shape_analysis, axis, keep_dim, reduce_all);
 }
 
 bool ReduceMaxOpInferSymbolicShape(

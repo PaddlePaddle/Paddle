@@ -236,7 +236,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
     if (flatten) {
-      if (keepdims) {
+      if (keepdims) {  // NOLINT
         vec = std::vector<int64_t>(x.dims().size(), -1);
       } else {
         vec = {};
@@ -307,7 +307,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 
   std::vector<int64_t> vec;
   if (flatten) {
-    if (keepdims) {
+    if (keepdims) {  // NOLINT
       vec = std::vector<int64_t>(x.dims().size(), 1);
     } else {
       vec = {};
@@ -2188,7 +2188,7 @@ void KthvalueInferMeta(const MetaTensor& x,
   indices->set_dtype(x.dtype());
 }
 
-void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out) {
+void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out) {
   UnchangedInferMeta(x, out);
   if (!(out->is_same_tensor(x))) {
     out->set_dtype(DataType::BOOL);
@@ -2584,7 +2584,7 @@ void NanmedianInferMeta(const MetaTensor& x,
       }
     }
   } else {
-    std::vector<int64_t> formated_axis;
+    std::vector<int64_t> formatted_axis;
     for (auto& axis : axis_list) {
       if (x_rank == 0) {
         PADDLE_ENFORCE_EQ(axis == 0 || axis == -1,
@@ -2612,17 +2612,17 @@ void NanmedianInferMeta(const MetaTensor& x,
       }
       if (axis < 0) axis += x_rank;
       PADDLE_ENFORCE_EQ(
-          std::find(formated_axis.begin(), formated_axis.end(), axis),
-          formated_axis.end(),
+          std::find(formatted_axis.begin(), formatted_axis.end(), axis),
+          formatted_axis.end(),
           errors::InvalidArgument("Attr(axes) has duplicated elements: %d.",
                                   static_cast<int>(axis)));
 
-      formated_axis.push_back(axis);
+      formatted_axis.push_back(axis);
     }
 
     for (int64_t i = 0; i < x_rank; i++) {
-      if (std::find(formated_axis.begin(), formated_axis.end(), i) ==
-          formated_axis.end()) {
+      if (std::find(formatted_axis.begin(), formatted_axis.end(), i) ==
+          formatted_axis.end()) {
         out_dim.push_back(x_dim[i]);  // NOLINT
       } else if (keep_dim) {
         out_dim.push_back(1);
@@ -3382,7 +3382,7 @@ DDim ReduceInferDim(const MetaTensor& x,
                     bool reduce_all) {
   int x_rank = x.dims().size();
 
-  std::vector<int64_t> formated_axis = axis;
+  std::vector<int64_t> formatted_axis = axis;
   for (size_t i = 0; i < axis.size(); ++i) {
     if (x_rank == 0) {
       PADDLE_ENFORCE_EQ(
@@ -3414,12 +3414,12 @@ DDim ReduceInferDim(const MetaTensor& x,
     }
 
     if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
+      formatted_axis[i] = axis[i] + x_rank;
     }
   }
 
   bool full_dim = true;
-  std::set<int64_t> dims_set(formated_axis.begin(), formated_axis.end());
+  std::set<int64_t> dims_set(formatted_axis.begin(), formatted_axis.end());
   for (int64_t i = 0; i < x_rank; ++i) {
     if (dims_set.find(i) == dims_set.end()) {
       full_dim = false;
@@ -3588,11 +3588,28 @@ void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,
                       MetaTensor* out,
                       MetaConfig config) {
-  auto& shape_data = shape.GetData();
+  auto shape_data = shape.GetData();
   PADDLE_ENFORCE_NOT_NULL(out,
                           phi::errors::InvalidArgument(
                               "Output(Out) of ReshapeOp should not be null."));
   if (!config.is_runtime && shape.FromTensor()) {
+    const int64_t copy_dim_flag = 0;
+    const auto& in_dims = x.dims();
+    for (size_t i = 0; i < shape_data.size(); ++i) {
+      if (shape_data[i] == copy_dim_flag) {
+        PADDLE_ENFORCE_LT(
+            static_cast<int>(i),
+            in_dims.size(),
+            phi::errors::InvalidArgument(
+                "The index of 0 in `shape` must be less than "
+                "the input tensor X's dimensions. But received shape[%d] "
+                "= 0, X's dimensions = %d, X's shape = [%s].",
+                i,
+                in_dims.size(),
+                in_dims));
+        shape_data[i] = static_cast<int>(in_dims[static_cast<int>(i)]);
+      }
+    }
     out->set_dims(common::make_ddim(shape_data));
     out->share_lod(x);
     out->set_dtype(x.dtype());
@@ -4017,7 +4034,8 @@ void SplitInferMeta(const MetaTensor& x,
   if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1 ||
       (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims;
-    if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1) {
+    if ((sections.FromTensor() && !config.is_runtime) ||
+        axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
           sections_data.size(),
           common::make_ddim(std::vector<int>(x.dims().size(), -1)));
@@ -4109,7 +4127,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
   // fill out dims with -1
   if (axis_value == -1 || (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims;
-    if (axis_value == -1) {
+    if (axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
           num, common::make_ddim(std::vector<int>(x.dims().size(), -1)));
     } else {
@@ -4130,7 +4148,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     }
   } else {
     auto input_axis_dim = x.dims().at(axis_value);
-    // step1: get formated sections
+    // step1: get formatted sections
     std::vector<int64_t> sections_vec;
     PADDLE_ENFORCE_NE(
         num,
@@ -4739,7 +4757,7 @@ void TransposeInferMeta(const MetaTensor& x,
                         x_rank,
                         axis_size));
 
-  std::vector<int> formated_axis = axis;
+  std::vector<int> formatted_axis = axis;
   std::vector<int> count(axis_size, 0);
   for (int i = 0; i < axis_size; i++) {
     PADDLE_ENFORCE_LT(axis[i],
@@ -4762,10 +4780,10 @@ void TransposeInferMeta(const MetaTensor& x,
                           axis[i]));
 
     if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
+      formatted_axis[i] = axis[i] + x_rank;
     }
     PADDLE_ENFORCE_EQ(
-        ++count[formated_axis[i]],
+        ++count[formatted_axis[i]],
         1,
         errors::InvalidArgument("Each element of axis should be unique. but "
                                 "axis[%d] is %d appear not only once",
@@ -4775,7 +4793,7 @@ void TransposeInferMeta(const MetaTensor& x,
 
   phi::DDim out_dims(x_dims);
   for (int i = 0; i < axis_size; ++i) {
-    out_dims[i] = x_dims[formated_axis[i]];
+    out_dims[i] = x_dims[formatted_axis[i]];
   }
 
   out->set_dims(out_dims);
@@ -5398,7 +5416,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> dim_out;
-  if (algo == "weight_only_int8" || algo == "llm.int8") {
+  if (algo == "weight_only_int8" || algo == "llm.int8") {  // NOLINT
     dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
   } else if (algo == "weight_only_int4") {
     dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});

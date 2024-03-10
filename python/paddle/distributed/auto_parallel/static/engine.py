@@ -257,6 +257,11 @@ class Engine:
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
+        if auto_utils.use_new_executor():
+            is_pir_mode = os.environ.get("FLAGS_enable_pir_in_executor", None)
+            if is_pir_mode is None:
+                paddle.framework.set_flags({'FLAGS_enable_pir_in_executor': 1})
+
         self.enable_job_schedule_profiler = False
 
     # get dist input spec from shard dataloader
@@ -774,6 +779,11 @@ class Engine:
             self._json_config,
         )
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
+        self._dist_contexts[
+            mode
+        ].gradient_scale_using_allreduce_avg = (
+            self._strategy.gradient_scale_using_allreduce_avg
+        )
         self._fwd_main_progs[mode] = serial_main_prog.clone()
 
     def _optimization_tuning(self, mode, dataset, batch_size):

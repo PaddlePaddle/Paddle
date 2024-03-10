@@ -812,7 +812,7 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
     kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
   }
 
-  if (op_item->isa<AddN_Op>() || op_item->isa<AddNWithKernelOp>()) {
+  if (op_item->isa<AddN_Op>() || op_item->isa<AddNOp>()) {
     if (op_item->result(0).type().isa<SelectedRowsType>()) {
       kernel_fn_str = "add_n_sr";
     }

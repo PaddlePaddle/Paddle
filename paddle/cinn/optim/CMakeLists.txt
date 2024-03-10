@@ -30,6 +30,7 @@ gather_srcs(
   update_buffer_axis_pass.cc
   trans_buffer_with_dynamic_shape.cc
   schedule_block_dce.cc
+  eliminate_common_factor_of_local_index.cc
   if_fusion.cc)
 
 if(WITH_CUDA)

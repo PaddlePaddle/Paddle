@@ -571,10 +571,10 @@ class DeviceTracerImpl : public DeviceTracer {
         Event *e = c->second;
         Event *parent = e->parent();
         while (parent) {
-          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);  // NOLINT
           parent = parent->parent();
         }
-        e->AddCudaElapsedTime(r.start_ns, r.end_ns);
+        e->AddCudaElapsedTime(r.start_ns, r.end_ns);  // NOLINT
       }
     }
     for (const auto &r : mem_records_) {
@@ -583,10 +583,10 @@ class DeviceTracerImpl : public DeviceTracer {
         Event *e = c->second;
         Event *parent = e->parent();
         while (parent) {
-          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);  // NOLINT
           parent = parent->parent();
         }
-        e->AddCudaElapsedTime(r.start_ns, r.end_ns);
+        e->AddCudaElapsedTime(r.start_ns, r.end_ns);  // NOLINT
       }
     }
 #endif
