@@ -24,17 +24,21 @@ namespace dialect {
 class DistDenseTensorTypeStorage;
 
 class DistDenseTensorType
-    : public pir::Type::
-          TypeBase<DistDenseTensorType, pir::Type, DistDenseTensorTypeStorage> {
+    : public pir::Type::TypeBase<DistDenseTensorType,
+                                 pir::Type,
+                                 DistDenseTensorTypeStorage,
+                                 pir::WrapTypeInterface> {
  public:
   using Base::Base;
 
   pir::DenseTensorType dense_tensor_type() const;
   TensorDistAttribute tensor_dist_attr() const;
-  const common::DDim& global_ddim() const;
-  const common::DDim& local_ddim() const { return dense_tensor_type().dims(); }
+  const common::DDim& global_ddim() const { return dense_tensor_type().dims(); }
+  const common::DDim& local_ddim() const;
   Type dtype() const { return dense_tensor_type().dtype(); }
   DataLayout data_layout() const { return dense_tensor_type().data_layout(); }
+
+  Type prim_type() { return dense_tensor_type(); }
 
   ProcessMeshAttribute process_mesh_attr() const {
     return tensor_dist_attr().process_mesh_attr();
@@ -52,7 +56,7 @@ class DistDenseTensorType
   static DistDenseTensorType get(pir::IrContext* ctx,
                                  pir::DenseTensorType dense_tensor_type,
                                  TensorDistAttribute tensor_dist_attr,
-                                 const common::DDim& global_ddim);
+                                 const common::DDim& local_ddim);
 };
 
 }  // namespace dialect

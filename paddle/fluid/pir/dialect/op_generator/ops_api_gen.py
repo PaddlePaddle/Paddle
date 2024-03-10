@@ -115,6 +115,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'quantize_linear_',
     'dequantize_linear',
     'dequantize_linear_',
+    'coalesce_tensor_',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -133,6 +134,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_sum',
     'c_reducescatter',
     'c_softmax_with_cross_entropy',
+    'c_split',
     'decayed_adagrad',
     'distributed_lookup_table',
     'dpsgd',
@@ -172,6 +174,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'push_sparse_v2',
     'push_sparse_v2_',
     'partial_send',
+    'nop',
+    'nop_',
 ]
 
 

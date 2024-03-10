@@ -471,6 +471,12 @@
   outputs :
     {softmax : Softmax, loss : Loss}
 
+- op : c_split
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -3766,6 +3772,12 @@
     {input : Input, label : Label, weight : Weight, bias : Bias, sample_weight : SampleWeight, custom_dist_probs : CustomDistProbs, custom_dist_alias : CustomDistAlias, custom_dist_alias_probs : CustomDistAliasProbs}
   outputs:
     {cost : Cost, sample_logits : SampleLogits, sample_labels : SampleLabels}
+
+- op: nop
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: number_count
   inputs :
