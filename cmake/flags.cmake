@@ -158,16 +158,22 @@ if(NOT WIN32)
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
       ${fsanitize})
 
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 9.0)
+      set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-error=deprecated-copy)
+    endif()
+  endif()
+
   if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(COMMON_FLAGS
         ${COMMON_FLAGS}
-        -Wno-unused-private-field
-        -Wno-unused-const-variable
-        -Wno-deprecated-copy-with-user-provided-copy # For three/five/zeros rule, clang
-        -Wno-deprecated-copy # Same above
-        -Wno-inconsistent-missing-override # For lots of warnings when not using override for virtual functions, clang
-        -Wno-bitwise-instead-of-logical # Warning in "unsupported/Eigen/CXX11/Tensor"
-        -Wno-overloaded-virtual # For some inconsistent virtual function signature, clang
+        -Wno-error=unused-private-field
+        -Wno-error=unused-const-variable
+        -Wno-error=deprecated-copy-with-user-provided-copy # For three/five/zeros rule, clang
+        -Wno-error=deprecated-copy # Same above
+        -Wno-error=inconsistent-missing-override # For lots of warnings when not using override for virtual functions, clang
+        -Wno-error=bitwise-instead-of-logical # Warning in "unsupported/Eigen/CXX11/Tensor"
+        -Wno-error=overloaded-virtual # For some inconsistent virtual function signature, clang
     )
   endif()
 
