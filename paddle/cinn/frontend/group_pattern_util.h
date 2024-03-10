@@ -6,5 +6,6 @@
 namespace cinn::frontend {
 
 GroupPattern GenerateGroupPatternFromFusionOp(const cinn::dialect::FusionOp&);
+std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(const std::vector<const pir::Operation*>& ops);
 
 }
