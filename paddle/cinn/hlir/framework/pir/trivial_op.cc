@@ -32,6 +32,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
+// #include "paddle/cinn/frontend/group_pattern_util.h"
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -280,11 +282,165 @@ ir::Expr TrivialFusion(ir::Expr upper, ir::Expr down) {
 struct FusionNode {
   // Function bodies losses the kind information which needed in trivialop
   // fusion.
-  ir::Expr op_compute_body;
+  std::vector<ir::Expr> op_compute_body;
   OpPatternKind op_pattern;
+
+  std::vector<::pir::Operator*> output_ops;
+
+  std::unordered_map<FusionNode*, pir::Value> upstream;
+  std::unordered_map<FusionNode*, pir::Value> downstream;
+
   explicit FusionNode(ir::Expr op_compute_body, OpPatternKind op_pattern)
       : op_compute_body(op_compute_body), op_pattern(op_pattern) {}
+
+  void init_topo_info(FusionNode* upstream_node, FusionNode* downstream_node){
+    upstream.insert(upstream.end(), upstream_node.upstream.begin(), upstream_node.upstream.end());
+    upstream.insert(upstream.end(), downstream_node.upstream.begin(), downstream_node.upstream.end());
+    upstream.erase(upstream_node);
+
+    downstream.insert(downstream.end(), upstream_node.upstream.begin(), upstream_node.upstream.end());
+    downstream.insert(downstream.end(), downstream_node.upstream.begin(), downstream_node.upstream.end());
+    downstream.erase(downstream_node);
+
+    output_ops.insert(output_ops.end(), upstream_node.output_ops.begin(), upstream_node.output_ops.end());
+    output_ops.insert(output_ops.end(), downstream_node.output_ops.begin(), downstream_node.output_ops.end());
+    upstream_node->downstream[downstream_node].defining_op();
+    output_ops.erase();
+  }
+
 };
+
+struct FusionGraph {
+
+  explicit FusionGraph(
+      const std::vector<::pir::Operation*>& ops,
+      const std::vector<ir::Expr>& op_compute_bodies){
+
+    // shardable_axes_ = InferShardableAxes(ops);
+
+    const auto& op_patterns = trivial_fusion_detail::GetOpPatternKindVector(ops);
+    trivial_fusion_detail::CheckFusionInputValid(op_compute_bodies, op_patterns);
+
+    std::unordered_map<::pir::Operation*, FusionNode*> op_to_node_map;
+
+    for (int i=0; i<ops.size(); ++i){
+      if (ops[i]->isa<pir::YieldOp()>)
+        continue;
+      FusionNode* node = new FusionNode(op_compute_bodies[i], op_patterns[i]);
+      op_to_node_map[ops[i]] = node;
+      all_fusion_nodes_.emplace(node);
+      node->output_op.emplace_back(ops[i]);
+    }
+
+    for (const ::pir::Operation* op : ops){
+      if (op->isa<pir::YieldOp()>)
+        continue;
+      FusionNode* node = op_to_node_map[op];
+
+      // add upstream nodes
+      for (int i = 0; i < op->num_operands(); ++i){
+        pir::Value input_value = op->operand_source(i);
+        const ::pir::Operation* input_op = input_value.defining_op();
+        if (op_to_node_map.find(input_op) != op_to_node_map.end()){
+          node->upstream[op_to_node_map[input_op]] = input_value;
+        }
+      }
+
+      // add downstream nodes
+      for (int i = 0; i < op->num_results(); ++i) {
+        pir::Value output_value = op->result(i);
+        for (auto consumer_it = output_value.use_begin(); consumer_it != output_value.use_end(); ++consumer_it) {
+          const auto* output_op = consumer_it->owner();
+          if (op_to_node_map.find(output_op) != op_to_node_map.end()){
+            node->downstream[op_to_node_map[output_op]]= output_value;
+          }
+        }
+      }
+
+      if (node->upstream.size() == 0){
+        entrance_nodes_.emplace(node);
+      }
+
+      if (node->downstream.size() == 0){
+        exit_nodes_.emplace(node);
+      }
+    }
+  }
+
+  ~FusionGraph(){
+    for (FusionNode* node: all_fusion_nodes_){
+      delete node;
+    }
+  }
+
+  std::vector<ir::Expr> DoFusion(){
+    trivial_op_fusion();
+    return get_expr_results();
+  }
+
+private:
+  void trivial_op_fusion(){
+    std::queue<FusionNode*> candidates;
+    std::transform(
+      entrance_nodes_.begin(),
+      entrance_nodes_.end(),
+      std::inserter(bfs_candidates),
+      [](FusionNode* node){return node;}
+    );
+
+    while(!candidates.empty()){
+      FusionNode* upstream = bfs_candidates.front();
+      candidates.pop();
+
+      bool need_fusion = IsTrivialKind(upstream);
+
+      for (const auto& pair_data : cur_node->downstream){
+        FusionNode* downstream = pair_data.first;
+        if (need_fusion){
+          FusionNode* new_node = new FusionNode(
+            TrivialFusion(upstream_node.op_compute_body,downstream_node.op_compute_body),
+            downstream.op_pattern
+          );
+          new_node.init_topo_info(upstream, downstream);
+          candidates.push(new_node);
+          remove_fusion_node(downstream);
+        }else(
+          candidates.push(downstream);
+        )
+      }
+      remove_fusion_node(upstream);
+    }
+  }
+
+  std::vector<ir::Expr> get_expr_results() {
+    std::vector<ir::Expr> output_exprs;
+    for (const auto& node : all_fusion_nodes_) {
+      output_exprs.push_back(node->op_compute_body);
+    }
+    return output_exprs;
+  }
+
+  void remove_fusion_node(FusionNode* node){
+    if (all_fusion_nodes_.find(node) != all_fusion_nodes_.end()){
+      all_fusion_nodes_.erase(node);
+    }
+    if (entrance_nodes_.find(node) != entrance_nodes_.end()){
+      entrance_nodes_.erase(node);
+    }
+    if (exit_nodes_.find(node) != exit_nodes_.end()){
+      exit_nodes_.erase(node);
+    }
+    delete node;
+  }
+
+private:
+  std::unordered_set<FusionNode*> all_fusion_nodes_;
+  std::unordered_set<FusionNode*> entrance_nodes_;
+  std::unordered_set<FusionNode*> exit_nodes_;
+
+  std::unordered_map<pir::Value, ShardableAxes> shardable_axes_;
+
+}
 
 std::vector<FusionNode> ConstructFusionNodeElementwisely(
     const std::vector<ir::Expr>& op_compute_bodies,
@@ -387,6 +543,13 @@ void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
 }  // namespace trivial_fusion_detail
 
 std::vector<ir::Expr> TrivialOpFusion(
+    const std::vector<::pir::Operation*>& ops,
+    const std::vector<ir::Expr>& op_compute_bodies) {
+  trivial_fusion_detail::FusionGraph graph = trivial_fusion_detail::FusionGraph(ops, op_compute_bodies);
+  return graph.DoFusion();
+}
+
+std::vector<ir::Expr> TrivialOpFusion_(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies) {
   const auto& op_patterns = trivial_fusion_detail::GetOpPatternKindVector(ops);
