@@ -27,6 +27,8 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -1079,23 +1081,23 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
   // check output shape
-  CHECK(!output_shapes.empty() && !output_shapes[0].empty())
-      << "Output shape is empty! Please check.\n";
+  PADDLE_ENFORCE(!output_shapes.empty() && !output_shapes[0].empty(),
+                 "Output shape is empty! Please check.\n");
 
   std::vector<int> axis;
   auto input_shape = inputs[0]->shape;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
     axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
-    CHECK_EQ(axis.size(), output_shapes[0].size())
-        << "axis size is not equal output_shapes size! Please check setting.\n";
+    PADDLE_ENFORCE_EQ(
+        axis.size(),
+        output_shapes[0].size(),
+        "axis size is not equal output_shapes size! Please check setting.\n");
     // check axis and shape
     for (int idx = 0; idx < axis.size(); ++idx) {
-      CHECK(axis[idx] >= 0 && axis[idx] < axis.size());
+      PADDLE_ENFORCE(axis[idx] >= 0 && axis[idx] < axis.size());
       for (int idy = idx + 1; idy < axis.size(); ++idy) {
-        CHECK_NE(axis[idx], axis[idy]) << "axis can't repeat!";
+        PADDLE_ENFORCE_NE(axis[idx], axis[idy], "axis can't repeat!");
       }
-      // CHECK_EQ(output_shapes[0][idx], input_shape[axis[idx]].as_int32())
-      //     << "output shape is not equal! Please check!\n";
     }
   } else {
     LOG(FATAL) << "axis is not be set! Please check.";
@@ -1103,15 +1105,16 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
 
   framework::CINNCompute transpose_compute([=](lang::Args args,
                                                lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of transpose compute is empty! Please check.\n";
+    PADDLE_ENFORCE(
+        !args.empty(),
+        "The input argument of transpose compute is empty! Please check.\n");
     CINNValuePack input_args = args[0];
-    CHECK(!input_args.empty())
-        << "at least one input tensor for transpose compute\n";
+    PADDLE_ENFORCE(!input_args.empty(),
+                   "at least one input tensor for transpose compute\n");
     Expr A = input_args[0];
-    CHECK(A.as_tensor());
-    CHECK_EQ(input_args.size(), 2);
-    CHECK(input_args[1].is_string());
+    PADDLE_ENFORCE(A.as_tensor());
+    PADDLE_ENFORCE_EQ(input_args.size(), 2);
+    PADDLE_ENFORCE(input_args[1].is_string());
     std::string tensor_name = input_args[1].operator std::string();
 
     auto out = pe::Transpose(A.as_tensor_ref(), axis, tensor_name);
