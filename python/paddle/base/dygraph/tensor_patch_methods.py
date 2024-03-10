@@ -25,6 +25,7 @@ from paddle.base.data_feeder import (
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
     convert_uint16_to_float,
 )
+from paddle.base.framework import paddle_type_to_proto_type
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
@@ -219,10 +220,14 @@ def monkey_patch_tensor():
             else:
                 dtype = convert_np_dtype_to_dtype_(value.dtype)
 
+            self_dtype = self.dtype
+            if isinstance(self_dtype, core.DataType):
+                self_dtype = paddle_type_to_proto_type[self_dtype]
+
             assert (
-                self.dtype == dtype
+                self_dtype == dtype
             ), "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                self.name, self.dtype, dtype
+                self.name, self_dtype, dtype
             )
 
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
