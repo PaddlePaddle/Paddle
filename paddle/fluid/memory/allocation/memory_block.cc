@@ -56,9 +56,10 @@ void MemoryBlock::Split(MetadataCache* cache,
                         desc->total_size,
                         size));
 
+  size_t pay_load_size = sizeof(MemoryBlock::Desc) + extra_padding_size;
+
   // bail out if there is no room for another partition
-  if (desc->total_size - size <=
-      (sizeof(MemoryBlock::Desc) + extra_padding_size)) {
+  if (desc->total_size - size <= pay_load_size) {
     return;
   }
 
@@ -74,13 +75,13 @@ void MemoryBlock::Split(MetadataCache* cache,
   cache->Save(static_cast<MemoryBlock*>(right_partition),
               MemoryBlock::Desc(FREE_CHUNK,
                                 desc->index,
-                                remaining_size - sizeof(MemoryBlock::Desc),
+                                remaining_size - pay_load_size,
                                 remaining_size,
                                 this,
                                 new_block_right_buddy));
 
   desc->right_buddy = static_cast<MemoryBlock*>(right_partition);
-  desc->size = size - sizeof(MemoryBlock::Desc);
+  desc->size = size - pay_load_size;
   desc->total_size = size;
 
   desc->UpdateGuards();

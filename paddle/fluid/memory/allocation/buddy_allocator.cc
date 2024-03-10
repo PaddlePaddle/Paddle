@@ -335,7 +335,7 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
 
   VLOG(10) << "Split block (" << block << ", " << desc->get_total_size()
            << ") into";
-  block->Split(&cache_, size, extra_padding_size_);
+  block->Split(&cache_, size);
 
   VLOG(10) << "Left block (" << block << ", " << desc->get_total_size() << ")";
   desc->set_type(MemoryBlock::ARENA_CHUNK);
