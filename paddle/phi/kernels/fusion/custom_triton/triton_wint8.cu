@@ -29,8 +29,6 @@ std::vector<paddle::Tensor> TritonWint8(const paddle::Tensor& x,
   int k = x.shape()[1];
   int n = scales.shape()[0];
 
-  printf("%d %d %d\n", m, n, k);
-
   auto c_out = paddle::full({m, n}, 0, x.dtype(), x.place());
 
   auto dev_x = x.data<phi::dtype::float16>();
