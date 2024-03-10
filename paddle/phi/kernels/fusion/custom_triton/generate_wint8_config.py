@@ -28,12 +28,12 @@ python3.8  ${compile_file}     \
 
 for num_stages in [2, 3, 4, 5, 6]:
     for block_m in [16]:
-        for block_n in [32, 64, 128]:
+        for block_n in [16, 32, 64, 128]:
             for block_k in [32, 64, 128, 256]:
                 num_warps = 4
                 if block_n >= 128 and block_k >= 256:
                     continue
-                for split_k in [1, 2, 4]:
+                for split_k in [1, 2, 4, 8]:
                     values = {
                         "num_stages": str(num_stages),
                         "block_m": str(block_m),
