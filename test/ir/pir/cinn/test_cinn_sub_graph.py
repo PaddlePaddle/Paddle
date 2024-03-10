@@ -203,7 +203,7 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
         dy_out, dy_x_grad, dy_w_grad, dy_b_grad = self.train(use_cinn=False)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
         np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-8)
-        # np.testing.assert_allclose(cinn_w_grad, dy_w_grad, atol=1e-8)
+        np.testing.assert_allclose(cinn_w_grad, dy_w_grad, atol=1e-8)
         np.testing.assert_allclose(cinn_b_grad, dy_b_grad, atol=1e-8)
 
 

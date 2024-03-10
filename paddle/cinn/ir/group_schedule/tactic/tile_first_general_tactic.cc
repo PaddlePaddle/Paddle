@@ -17,6 +17,8 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
+PD_DECLARE_bool(support_reduce_stride_read);
+
 namespace cinn {
 namespace ir {
 
@@ -174,15 +176,35 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                   context_->group_tile_info->reduce_inner_num));
     split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
   } else {
-    split_factors.emplace_back(
-        std::ceil(context_->group_tile_info->reduce_block * 1.0 /
-                  context_->group_tile_info->reduce_inner_num));
-    split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
+    if (FLAGS_support_reduce_stride_read) {
+      split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
+      split_factors.emplace_back(
+          std::ceil(context_->group_tile_info->reduce_block * 1.0 /
+                    context_->group_tile_info->reduce_inner_num));
+    } else {
+      split_factors.emplace_back(
+          std::ceil(context_->group_tile_info->reduce_block * 1.0 /
+                    context_->group_tile_info->reduce_inner_num));
+      split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
+    }
   }
 
   auto split_loops = sch->Split(loops[reduce_current_axis_], split_factors);
 
-  if (IsReduceBlock(context_->group_tile_info, block_id)) {
+  if (FLAGS_support_reduce_stride_read) {
+    loops = sch->GetLoops(block_id);
+
+    sch->Reorder(
+        {loops[reduce_current_axis_ + 1], loops[reduce_current_axis_]});
+
+    loops = sch->GetLoops(block_id);
+
+    if (IsReduceBlock(context_->group_tile_info, block_id)) {
+      sch->FactorizeReduction(loops[reduce_current_axis_],
+                              0,
+                              /* with_write_back_block_init = */ false);
+    }
+  } else {
     sch->FactorizeReduction(
         split_loops[0], 0, /* with_write_back_block_init = */ false);
   }

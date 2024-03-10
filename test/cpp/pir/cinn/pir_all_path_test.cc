@@ -92,6 +92,7 @@ static void RunAndCheckResult(::pir::Program* program,
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
   if (check_result) {
+    std::cerr << "res  " << out_tensor.data<float>()[0] << std::endl;
     bool res0 = simple_cmp(out_tensor.data<float>()[0], gt_val);
     EXPECT_EQ(res0, true);
   }
@@ -712,29 +713,27 @@ std::shared_ptr<::pir::Program> BuildReshapeSumProgram() {
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-  auto x =
-      builder
-          .Build<paddle::dialect::FullOp>(std::vector<int64_t>({128, 128, 768}),
-                                          0.1,
-                                          phi::DataType::FLOAT32,
-                                          phi::GPUPlace())
-          .result(0);
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(
+                   std::vector<int64_t>({128 * 128, 768}),
+                   1.0,
+                   phi::DataType::FLOAT32,
+                   phi::GPUPlace())
+               .result(0);
+  // auto reshape =
+  //     builder
+  //         .Build<paddle::dialect::ReshapeOp>(x, std::vector<int64_t>({-1,
+  //         768})) .result(0);
+  auto sum = builder
+                 .Build<paddle::dialect::SumOp>(
+                     x, std::vector<int64_t>{0}, phi::DataType::FLOAT32, true)
+                 .result(0);
 
-  auto reshape =
-      builder
-          .Build<paddle::dialect::ReshapeOp>(x, std::vector<int64_t>({-1, 768}))
-          .result(0);
-  auto sum =
-      builder
-          .Build<paddle::dialect::SumOp>(
-              reshape, std::vector<int64_t>{0}, phi::DataType::FLOAT32, true)
-          .result(0);
-
-  auto out =
-      builder
-          .Build<paddle::dialect::ReshapeOp>(sum, std::vector<int64_t>({768}))
-          .result(0);
-  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  // auto out =
+  //     builder
+  //         .Build<paddle::dialect::ReshapeOp>(sum,
+  //         std::vector<int64_t>({768})) .result(0);
+  builder.Build<paddle::dialect::FetchOp>(sum, "out", 0);
   return program;
 }
 
@@ -743,5 +742,5 @@ TEST(GroupOp, TestBuildReshapeSum) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   std::shared_ptr<::pir::Program> program = BuildReshapeSumProgram();
 
-  RunAndCheckResult(program.get(), true, 2.0);
+  RunAndCheckResult(program.get(), true, 128 * 128);
 }

@@ -57,6 +57,8 @@ void LoopReorderAlignmentTactic::Init(ScheduleContext* context) {
 
 void LoopReorderAlignmentTactic::Apply(ir::IRSchedule* sch,
                                        const std::string& block_id) {
+  std::cerr << "init state: [" << block_id << "], loop nest:\n"
+            << sch->GetLoops(block_id)[0] << std::endl;
   DoBroadcastLoop(sch, block_id);
 
   if (!ir::IsReduceInitTensorName(block_id)) {
@@ -66,6 +68,9 @@ void LoopReorderAlignmentTactic::Apply(ir::IRSchedule* sch,
   if (need_reorder_loops_ && !ir::IsReduceInitTensorName(block_id)) {
     DoReorder(sch, block_id);
   }
+
+  std::cerr << "order [" << block_id << "], loop nest:\n"
+            << sch->GetLoops(block_id)[0] << std::endl;
 }
 
 void LoopReorderAlignmentTactic::UpdateBaseRank(ir::IRSchedule* sch,
@@ -173,7 +178,7 @@ void LoopReorderAlignmentTactic::DoReorder(ir::IRSchedule* sch,
   const auto IsReduceBlock = [&](const std::string& block_id) {
     return context_->group_tile_info->reduce_tensor_names.count(block_id) > 0;
   };
-  if (!IsReduceBlock(block_id)) {
+  if (IsReduceBlock(block_id)) {
     return;
   }
 
