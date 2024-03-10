@@ -8,30 +8,37 @@
 #include "paddle/cinn/api/op_topo_pattern.h"
 #include "paddle/pir/include/core/operation.h"
 #include "glog/logging.h"
+#include "paddle/cinn/adt/adt.h"
 
-namespace cinn::api {
+namespace cinn::frontend {
+
+struct OpAndOperandIndex {
+  const pir::Operation* op;
+  const int operand_index;
+
+  bool operator==(const OpAndOperandIndex& other) const {
+    return this->op == other.op && this->operand_index == other.operand_index;
+  }
+};
+
+}
+
+namespace std {
+
+template<>
+struct hash<cinn::frontend::OpAndOperandIndex> {
+
+  size_t operator()(const cinn::frontend::OpAndOperandIndex& op_operand) const {
+    return cinn::adt::hash_combine(std::hash<const pir::Operation*>()(op_operand.op), op_operand.operand_index);
+  }
+};
+
+}
+
+namespace cinn::frontend {
 
 struct FrontendPattern {};
 
-template<>
-struct ErrorPattern<FrontendPattern> {
-  explicit ErrorPattern(const ErrorPattern<FrontendPattern>& other) = default;
-
-  std::vector<const pir::Operation*> ops;
-  std::string error_string;
-};
-
-template<>
-struct InjectiveSourcePattern<FrontendPattern> {
-  explicit InjectiveSourcePattern(const InjectiveSourcePattern<FrontendPattern>& other) = default;
-  std::vector<const pir::Operation*> ops;
-};
-
-template<>
-struct SingleReductionOpPattern<FrontendPattern> {
-  explicit SingleReductionOpPattern(const SingleReductionOpPattern<FrontendPattern>& other) = default;
-  const pir::Operation* reduce_op;
-};
 struct ShardableAxis {
   int axis;
   std::string axis_name;
@@ -100,29 +107,40 @@ struct ShardableAxesUtil {
 };
 
 struct ShardableAxesSignature {
-  using OpOperand = std::pair<const pir::Operation*, /*operand index*/int>;
-
   ShardableAxes output_shardable_axes;
-  std::unordered_map<OpOperand, ShardableAxes> input_shardable_axes;
+  std::unordered_map<OpAndOperandIndex, ShardableAxes> input_shardable_axes;
+};
+
+}
+
+namespace cinn::api {
+
+template<>
+struct ErrorPattern<frontend::FrontendPattern> {
+  std::vector<const pir::Operation*> ops;
+  std::string error_string;
 };
 
 template<>
-struct PartialShardablePattern<FrontendPattern> {
-  explicit PartialShardablePattern(const PartialShardablePattern<FrontendPattern>& other) = default;
-
+struct InjectiveSourcePattern<frontend::FrontendPattern> {
   std::vector<const pir::Operation*> ops;
-  ShardableAxesSignature shardable_axes_signature;
+};
+
+template<>
+struct SingleReductionOpPattern<frontend::FrontendPattern> {  
+  const pir::Operation* reduce_op;
+};
+template<>
+struct PartialShardablePattern<frontend::FrontendPattern> {
+  std::vector<const pir::Operation*> ops;
+  frontend::ShardableAxesSignature shardable_axes_signature;
 };
 
 }
 
 namespace cinn::frontend {
-using IS = api::InjectiveSourcePattern<api::FrontendPattern>;
-using R = api::ReductionPattern<api::FrontendPattern>;
-using PS = api::PartialShardablePattern<api::FrontendPattern>;
 
-using StmtPattern = std::variant<IS, R, PS>;
-using ErrorGroupPattern = api::ErrorPattern<api::FrontendPattern>;
-using GroupPattern = std::variant<ErrorGroupPattern, StmtPattern>;
+using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
+using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
 
 }
