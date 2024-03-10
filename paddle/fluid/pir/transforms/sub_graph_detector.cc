@@ -517,8 +517,19 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
 
 struct IncrementalOrder {
   bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
-    return std::distance(lhs->operator Block::ConstIterator(),
-                         rhs->operator Block::ConstIterator()) > 0;
+    CHECK(lhs->GetParent(), rhs->GetParent())
+        << "lhs and rhs should have same parent block.";
+    auto lhs_iter = lhs->operator Block::ConstIterator();
+    auto rhs_iter = rhs->operator Block::ConstIterator();
+    auto end_iter = lhs->GetParent()->end();
+    while (lhs_iter != end_iter) {
+      lhs_iter++;
+      if (lhs_iter == rhs_iter) return true;
+      if (lhs_iter == end_iter) return false;
+    }
+    CHECK(false) << "rhs " << rhs->id() << " is not reachable from lhs "
+                 << lhs->id();
+    return false;
   }
 };
 
