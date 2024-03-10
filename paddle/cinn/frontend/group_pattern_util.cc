@@ -239,9 +239,8 @@ std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
   return value2shardable_axes;
 }
 
-common::TopoWalker<const pir::Operation*> GetOpsTopoWalker(const std::vector<const pir::Operation*>& ops) {
-  using Cache = std::unordered_set<const pir::Operation*>;
-  auto ops_set = std::make_shared<Cache>(ops.begin(), ops.end());
+common::TopoWalker<const pir::Operation*> GetOpsTopoWalker(const std::unordered_set<const pir::Operation*>& ops) {
+  const auto* ops_set = &ops;
   const auto VisitUpStreamInOps = [ops_set](const pir::Operation* op, const OpVisitor& DoEach) {
     VisitInputOp(op, [&](const auto* input){
       if (ops_set->count(input) == 0) return;
@@ -258,21 +257,26 @@ common::TopoWalker<const pir::Operation*> GetOpsTopoWalker(const std::vector<con
   return reversed_walker;
 }
 
-std::list<const pir::Operation*> GetStarts(
-    const common::TopoWalker<const pir::Operation*>& topo_walker,
-    const std::vector<const pir::Operation*>& ops) {
-  const auto IsStart = [&](const pir::Operation* op) {
-    size_t num_prevs = 0;
-    topo_walker.VisitPrevNodes(op, [&](const auto*){  ++num_prevs; });
-    return num_prevs == 0;
+std::list<const pir::Operation*> GetSinks(
+    const std::unordered_set<const pir::Operation*>& ops) {
+  const auto IsSink = [&](const pir::Operation* op) {
+    for (int i = 0; i < op->num_results(); ++i) {
+      pir::Value output = op->result(i);
+      for (auto consumer_it = output.use_begin(); consumer_it != output.use_end(); ++consumer_it) {
+        const auto* consumer_op = consumer_it->owner();
+        if (consumer_op->isa<pir::YieldOp>()) continue;
+        if (ops.count(consumer_op) > 0) return false;
+      }
+    }
+    return true;
   };
-  std::list<const pir::Operation*> starts;
+  std::list<const pir::Operation*> sinks;
   for (const auto* op : ops) {
-    if (IsStart(op)) {
-      starts.push_back(op);
+    if (IsSink(op)) {
+      sinks.push_back(op);
     }
   }
-  return starts;
+  return sinks;
 }
 
 class StmtFusionHelper {
@@ -617,17 +621,12 @@ class StmtFusionHelper {
 
   ShardableAxesSignature GetShardableAxesSignature(const std::vector<const pir::Operation*>& ops) const {
     std::unordered_set<const pir::Operation*> ops_set(ops.begin(), ops.end());
-    auto reversed_walker = GetOpsTopoWalker(ops);
     const pir::Operation* sink = [&]{
-      const auto& sinks = GetStarts(reversed_walker, ops);
+      const auto& sinks = GetSinks(ops_set);
       CHECK_EQ(sinks.size(), 1) << "ops must have only one sink node.";
       return *sinks.begin();
     }();
-    const auto& value2shardable_axes = [&]{
-      size_t rank = GetRank(sink->result(0));
-      const auto& init_sa = ShardableAxesUtil::GetFullyShardableAxes(rank);
-      return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
-    }();
+    const auto& value2shardable_axes = InferShardableAxesFromSink(sink, ops_set);
     const auto& IsInputOpOperand = [&](const auto* op, int input_idx) {
       const auto& defining_op = op->operand_source(input_idx).defining_op();
       return IsInThisFusionOp(defining_op) && ops_set.count(defining_op) == 0;
@@ -678,10 +677,20 @@ GroupPattern GenerateGroupPatternFromFusionOp(const cinn::dialect::FusionOp& fus
   return FuseToGroupPattern(fusion_op);
 }
 
-std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(const std::vector<const pir::Operation*>& ops) {
+std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
+    const pir::Operation* sink,
+    const std::unordered_set<const pir::Operation*>& ops) {
+  auto reversed_walker = GetOpsTopoWalker(ops);
+  CHECK_GT(ops.count(sink), 0);
+  size_t rank = GetRank(sink->result(0));
+  const auto& init_sa = ShardableAxesUtil::GetFullyShardableAxes(rank);
+  return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
+}
+
+std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(const std::unordered_set<const pir::Operation*>& ops) {
   auto reversed_walker = GetOpsTopoWalker(ops);
   const pir::Operation* sink = [&]{
-    const auto& sinks = GetStarts(reversed_walker, ops);
+    const auto& sinks = GetSinks(ops);
     CHECK_EQ(sinks.size(), 1) << "ops must have only one sink node.";
     return *sinks.begin();
   }();
