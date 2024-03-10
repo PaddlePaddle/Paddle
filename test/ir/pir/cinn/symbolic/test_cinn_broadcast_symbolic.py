@@ -26,7 +26,7 @@ from paddle.static import InputSpec
 
 
 def broadcast_add(x, y):
-    return x - y
+    return paddle.exp(x) - y
 
 
 class CINNSubGraphNet(paddle.nn.Layer):

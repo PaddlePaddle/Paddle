@@ -316,9 +316,17 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
     CINNValuePack pack_args = args[0];
     CHECK(!pack_args.empty())
         << "The input tensors of broadcast_to compute is empty! Please check.";
-    CHECK_GE(pack_args.size(), 2U);
-    CHECK(pack_args[2].is_string());
-    std::string tensor_name = pack_args[2].operator std::string();
+    std::string tensor_name = [&] {
+      if (pack_args.size() == 2) {
+        return pack_args[1].operator std::string();
+      } else {
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          3,
+                          "The input tensors of broadcast_to compute is %d.",
+                          pack_args.size());
+        return pack_args[2].operator std::string();
+      }
+    }();
 
     Expr A_expr = pack_args[0];
     CHECK(A_expr.as_tensor());
