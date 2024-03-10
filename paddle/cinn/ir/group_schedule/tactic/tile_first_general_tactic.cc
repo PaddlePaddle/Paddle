@@ -205,8 +205,10 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                               /* with_write_back_block_init = */ false);
     }
   } else {
-    sch->FactorizeReduction(
-        split_loops[0], 0, /* with_write_back_block_init = */ false);
+    if (IsReduceBlock(context_->group_tile_info, block_id)) {
+      sch->FactorizeReduction(
+          split_loops[0], 0, /* with_write_back_block_init = */ false);
+    }
   }
 }
 
