@@ -539,10 +539,10 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
   for (auto value : op->operands_source()) {
     if (!value || !value.defining_op()) continue;
     pir::Operation* defining_op = value.defining_op();
-    if (visited_ops->count(defining_op) || !IsInBlock(defining_op, block))
-      continue;
+    if (visited_ops->count(defining_op)) continue;
     visited_ops->insert(defining_op);
-    if (!IncrementalOrder()(defining_op, position_op)) continue;
+    if (!IsInBlock(defining_op, block)) continue;
+    if (IncrementalOrder()(defining_op, position_op)) continue;
 
     ops.insert(defining_op);
     auto recursive_ops = GetUpstreamOpsAfterPosition(
