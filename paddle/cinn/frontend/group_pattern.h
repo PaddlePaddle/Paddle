@@ -143,4 +143,6 @@ namespace cinn::frontend {
 using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
 using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
 
+std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(const cinn::pir::FusionOp& fusion_op);
+
 }
