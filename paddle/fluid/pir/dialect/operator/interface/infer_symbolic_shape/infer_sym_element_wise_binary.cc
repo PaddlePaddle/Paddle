@@ -30,7 +30,7 @@ bool InferSymbolicShapeElementWiseBinary(
   std::vector<symbol::DimExpr> shape_0;
   // For ElementWiseBinary ops, if the input tensor is from full op, the value
   // of fullop is useless, only the shape need doing broadcast
-  if (!ShouldUseData(op->operand_source(0)) &&
+  if (ShouldUseData(op->operand_source(0)) &&
       x_shapeordata.data().has_value()) {
     shape_0 = x_shapeordata.data().value();
   } else {
@@ -40,7 +40,7 @@ bool InferSymbolicShapeElementWiseBinary(
   const auto &y_shapeordata =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
   std::vector<symbol::DimExpr> shape_1;
-  if (!ShouldUseData(op->operand_source(1)) &&
+  if (ShouldUseData(op->operand_source(1)) &&
       y_shapeordata.data().has_value()) {
     shape_1 = y_shapeordata.data().value();
   } else {
