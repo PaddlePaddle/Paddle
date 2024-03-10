@@ -284,7 +284,6 @@ bool KthvalueOpInferSymbolicShape(
 
 symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
     const symbol::ShapeOrDataDimExprs &x_shape) {
-  std::vector<symbol::DimExpr> result;
   const std::vector<symbol::DimExpr> result = [&] {
     std::vector<symbol::DimExpr> new_x_dims;
     new_x_dims.reserve(x_shape.shape().size() + 1);
