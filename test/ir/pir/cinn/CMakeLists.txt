@@ -41,6 +41,16 @@ if(WITH_GPU)
   set_tests_properties(test_cinn_sub_graph_stride_read
                        PROPERTIES LABELS "RUN_TYPE=CINN")
 
+  add_test(
+    NAME test_cinn_ops
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_enable_pir_api=1 FLAGS_group_schedule_tiling_first=1
+      FLAGS_cinn_bucket_compile=True ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_cinn_ops.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_tests_properties(test_subgraph_checker PROPERTIES LABELS "RUN_TYPE=CINN")
   # add_test(
   #   NAME test_rms_norm_seq_len_symbolic
   #   COMMAND

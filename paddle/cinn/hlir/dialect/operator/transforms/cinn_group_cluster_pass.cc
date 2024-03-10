@@ -339,6 +339,7 @@ std::vector<pir::Type> BuildOutType(
                                                 group_ops.end());
 
   std::vector<::pir::Value> new_output;
+
   for (size_t i = 0; i < output_value.size(); ++i) {
     new_output.push_back(ir_mapping->Lookup<::pir::Value>(output_value[i]));
   }
@@ -353,6 +354,10 @@ std::vector<pir::Type> BuildOutType(
 bool CanFuse(const GroupClusterNode& first,
              const GroupClusterNode& second,
              ScheduleInfoNode* sch_node) {
+  if (!first.ops.empty() &&
+      (first.ops.front()->name() == "cinn_op.generate_shape")) {
+    return true;
+  }
   if ((second.ops.size() == 1) &&
       (second.ops.front()->name() == "cinn_op.reshape") &&
       (IsLastReshape(second.ops.front()))) {
@@ -522,6 +527,11 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .type()
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
+    if (cluster_node->reduce_axis.size() == 0) {
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        cluster_node->reduce_axis.push_back(i);
+      }
+    }
   } else if (cluster_node->group_kind == cinn::hlir::framework::kElementWise) {
     cluster_node->loop_ranges =
         phi::vectorize(op->result(0)
@@ -573,6 +583,19 @@ bool CanOpMergeNode(
     return false;
   }
 
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) ==
+      cinn::hlir::framework::kReduction) {
+    if (cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() == 0 ||
+        cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() ==
+            cur_op->operand_source(0)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size()) {
+      return false;
+    }
+  }
+
   // TODO(phlrain): need update here
   // different loop range can merge, like [128, 128, 1], with [128, 128]
   if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
@@ -592,6 +615,19 @@ bool ShouldOutputPreNode(
   if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
       cinn::hlir::framework::kReduction) {
     return false;
+  }
+
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) ==
+      cinn::hlir::framework::kReduction) {
+    if (cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() == 0 ||
+        cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() ==
+            cur_op->operand_source(0)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size()) {
+      return true;
+    }
   }
 
   // TODO(phlrain): need update here
@@ -728,7 +764,7 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
     if (yield_output_ops.count(op) ||
         cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
             cinn::hlir::framework::kReduction) {
-      // TODO(phlrain): yiled output no nedd to push into first stage output,
+      // TODO(phlrain): yield output no nedd to push into first stage output,
       // Update here
       if (!first_output_ops.count(op)) {
         first_stage_output.push_back(op_path[op]);
@@ -841,16 +877,24 @@ class CinnGroupClusterPattern
       auto new_group_op = ReplaceWithGroupOp(
           &rewriter, uniq_ops, node, output_values, &ir_mapping);
 
+      auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+          group_op->GetParentProgram());
       // update ir mapping
       for (size_t i = 0; i < output_values.size(); ++i) {
         ir_mapping.Add(output_values[i], new_group_op->result(i));
+
+        if (shape_analysis.HasShapeOrDataForValue(output_values[i])) {
+          shape_analysis.SetShapeOrDataForValue(
+              new_group_op->result(i),
+              shape_analysis.GetShapeOrDataForValue(output_values[i]));
+        }
       }
 
       for (size_t i = 0; i < output_values.size(); ++i) {
         auto find_it = all_output_values.find(output_values[i]);
         if ((find_it != all_output_values.end()) &&
             (find_it->second < group_op->num_results())) {
-          // id < num_results means yiled input
+          // id < num_results means yield input
           rewriter.ReplaceAllUsesWith(group_op.result(find_it->second),
                                       new_group_op->result(i));
         }
@@ -876,7 +920,7 @@ class CinnGroupClusterPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 
