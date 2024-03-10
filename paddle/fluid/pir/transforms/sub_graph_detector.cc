@@ -517,7 +517,7 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
 
 struct IncrementalOrder {
   bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
-    CHECK(lhs->GetParent(), rhs->GetParent())
+    CHECK(lhs->GetParent() == rhs->GetParent())
         << "lhs and rhs should have same parent block.";
     auto lhs_iter = lhs->operator Block::ConstIterator();
     auto rhs_iter = rhs->operator Block::ConstIterator();
