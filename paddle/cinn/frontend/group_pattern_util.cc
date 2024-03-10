@@ -22,9 +22,9 @@ using PS = api::PartialShardablePattern<frontend::FrontendPattern>;
 using StmtPattern = api::StmtPattern<frontend::FrontendPattern>;
 using StmtsPattern = api::StmtsPattern<frontend::FrontendPattern>;
 
-using StmtIter = StmtPattern*;
+using StmtPtr = StmtPattern*;
 using OpVisitor = std::function<void(const pir::Operation*)>;
-using NodeVisitor = std::function<void(StmtIter)>;
+using NodeVisitor = std::function<void(StmtPtr)>;
 
 
 OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
@@ -313,13 +313,13 @@ class StmtFusionHelper {
     };
   }
 
-  using StmtIter4OpT = std::function<std::optional<StmtIter>(const pir::Operation*)>;
-  static StmtIter4OpT MakeStmtFinderFromOp(std::vector<StmtPattern>* stmts) {
-    std::unordered_map<const pir::Operation*, StmtIter> op2stmt_iter;
+  using StmtPtr4OpT = std::function<std::optional<StmtPtr>(const pir::Operation*)>;
+  static StmtPtr4OpT MakeStmtFinderFromOp(std::vector<StmtPattern>* stmts) {
+    std::unordered_map<const pir::Operation*, StmtPtr> op2stmt_ptr;
     for (auto& stmt : *stmts) {
-      VisitStmtOp(stmt, [&](const auto* op) { op2stmt_iter[op] = &stmt; });
+      VisitStmtOp(stmt, [&](const auto* op) { op2stmt_ptr[op] = &stmt; });
     }
-    return [map=std::move(op2stmt_iter)](const pir::Operation* op) -> std::optional<StmtIter> {
+    return [map=std::move(op2stmt_ptr)](const pir::Operation* op) -> std::optional<StmtPtr> {
       const auto iter = map.find(op);
       if (iter == map.end()) return std::nullopt;
       return iter->second;
@@ -345,7 +345,7 @@ class StmtFusionHelper {
       const ConstructPatternT& ConstructPattern,
       std::vector<StmtPattern>* stmts) const {
     const auto StmtFinder = MakeStmtFinderFromOp(stmts);
-    const auto VisitInputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
+    const auto VisitInputStmt = [&](StmtPtr stmt, const NodeVisitor& DoEach) {
       VisitStmtOp(*stmt, [&](const auto* op){
         VisitInputOp(op, [&](const pir::Operation* input) {
           if (const auto& input_stmt = StmtFinder(input)) {
@@ -356,7 +356,7 @@ class StmtFusionHelper {
         });
       });
     };
-    const auto VisitOutputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
+    const auto VisitOutputStmt = [&](StmtPtr stmt, const NodeVisitor& DoEach) {
       VisitStmtOp(*stmt, [&](const auto* op){
         VisitOutputOp(op, [&](const pir::Operation* output) {
           if (const auto& output_stmt = StmtFinder(output)) {
@@ -367,7 +367,7 @@ class StmtFusionHelper {
         });
       });      
     };
-    const auto IsSinkPattern = [&](StmtIter stmt) {
+    const auto IsSinkPattern = [&](StmtPtr stmt) {
       if (!IsChozenPattern(*stmt)) return false;
       std::size_t num_injective_src_outputs = 0;
       VisitOutputStmt(stmt, [&](const auto& consumer) {
@@ -379,10 +379,10 @@ class StmtFusionHelper {
     const auto Cmp = [&](const auto* lhs, const auto& rhs) {
       return GetOrder(lhs) < GetOrder(rhs);
     };
-    common::BfsWalker<StmtIter> reverse_walker(VisitInputStmt);
-    const auto& GetUpstreamOps = [&](const auto stmt_iter) {
+    common::BfsWalker<StmtPtr> reverse_walker(VisitInputStmt);
+    const auto& GetUpstreamOps = [&](const auto stmt_ptr) {
       std::vector<const pir::Operation*> visited_ops;
-      reverse_walker(stmt_iter, [&](const auto node){
+      reverse_walker(stmt_ptr, [&](const auto node){
         VisitStmtOp(*node, [&](const auto* op) { visited_ops.push_back(op); });
       });
       std::sort(visited_ops.begin(), visited_ops.end(), Cmp);
@@ -461,12 +461,12 @@ class StmtFusionHelper {
   }
 
   struct StmtIterPair {
-    std::list<StmtIter>::iterator upstream_iter;
-    std::list<StmtIter>::iterator downstream_iter;
+    std::list<StmtPtr>::iterator upstream_iter;
+    std::list<StmtPtr>::iterator downstream_iter;
   };
 
-  bool IsConnected(const StmtIter4OpT& StmtFinder, const StmtIter& upstream, const StmtIter& downstream) const {
-    const auto VisitInputStmt = [&](StmtIter stmt, const NodeVisitor& DoEach) {
+  bool IsConnected(const StmtPtr4OpT& StmtFinder, const StmtPtr& upstream, const StmtPtr& downstream) const {
+    const auto VisitInputStmt = [&](StmtPtr stmt, const NodeVisitor& DoEach) {
       VisitStmtOp(*stmt, [&](const auto* op){
         VisitInputOp(op, [&](const pir::Operation* input) {
           if (const auto& input_stmt = StmtFinder(input)) {
@@ -477,7 +477,7 @@ class StmtFusionHelper {
     };
 
     bool found = false;
-    VisitInputStmt(downstream, [&](const StmtIter& input_pattern){
+    VisitInputStmt(downstream, [&](const StmtPtr& input_pattern){
       if (input_pattern == upstream) {
         found = true;
       }
@@ -487,11 +487,11 @@ class StmtFusionHelper {
 
   template <typename FuseTargetConditionT>
   std::optional<StmtIterPair> FindConnetedPattenPairWithCondition(
-      const StmtIter4OpT& StmtFinder,
-      std::list<StmtIter>* stmt_iters,
+      const StmtPtr4OpT& StmtFinder,
+      std::list<StmtPtr>* stmt_ptrs,
       const FuseTargetConditionT& FuseTargetCondition) const {
-    for (auto dst_iter = stmt_iters->begin(); dst_iter != stmt_iters->end(); ++dst_iter) {
-      for (auto src_iter = stmt_iters->begin(); src_iter != stmt_iters->end(); ++src_iter) {
+    for (auto dst_iter = stmt_ptrs->begin(); dst_iter != stmt_ptrs->end(); ++dst_iter) {
+      for (auto src_iter = stmt_ptrs->begin(); src_iter != stmt_ptrs->end(); ++src_iter) {
         if (src_iter == dst_iter) continue;
         if (!IsConnected(StmtFinder, *src_iter, *dst_iter)) continue;
         if (FuseTargetCondition(**src_iter, **dst_iter)) {
@@ -508,8 +508,8 @@ class StmtFusionHelper {
   template <typename FusionPolicy>
   std::optional<ErrorGroupPattern> FuseFilteredStmtPatterns(
       std::vector<StmtPattern>* stmt_patterns) const{
-    std::list<StmtIter> stmts_iters = [&]{
-      std::list<StmtIter> stmts_iters;
+    std::list<StmtPtr> stmts_iters = [&]{
+      std::list<StmtPtr> stmts_iters;
       for (auto& stmt : *stmt_patterns) {
         stmts_iters.push_back(&stmt);
       }
