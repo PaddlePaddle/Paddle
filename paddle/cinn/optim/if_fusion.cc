@@ -93,6 +93,7 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
     EraseBlankElements(const_cast<ir::Block *>(op), element_num_before_visit);
   }
 
+  // Recode for the sequent Erasure
   void RecordIndexForErase(Expr op, ir::Block *cur_block) {
     for (int i = 0; i < cur_block->stmts.size(); i++) {
       if (ir::ir_utils::IRCompare(cur_block->stmts[i], op)) {
@@ -102,6 +103,7 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
     }
   }
 
+  // Erase the blank block
   void EraseBlankElements(ir::Block *op, int stack_upper_bound) {
     while (erase_elements_ind.size() > stack_upper_bound) {
       int erase_pos = erase_elements_ind.top();
