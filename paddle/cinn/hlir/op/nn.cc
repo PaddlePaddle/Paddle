@@ -309,21 +309,23 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch_is_gpu()) {
+      if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDNN
-      // If conv_type is backward_filter or backward_data, we built a fake op.
-      // As runtime use cudnn to compute conv2d, this fake op is not to be
-      // called. When cinn support backward_filter/backward_data code gen,
-      // this code is to be removed.
-      if (conv_type != "forward") {
-        CHECK_EQ(vec_ast.size(), 1);
-        pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
-        std::vector<CINNValue> res{
-            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = CINNValuePack{res};
-        return;
-      }
+        // If conv_type is backward_filter or backward_data, we built a fake op.
+        // As runtime use cudnn to compute conv2d, this fake op is not to be
+        // called. When cinn support backward_filter/backward_data code gen,
+        // this code is to be removed.
+        if (conv_type != "forward") {
+          CHECK_EQ(vec_ast.size(), 1);
+          pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
+          std::vector<CINNValue> res{
+              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+          *ret = CINNValuePack{res};
+          return;
+        }
 #endif
+      }
       int expr_size = vec_ast.size();
       if (expr_size == 2) {
         pe::IRCudaScheduleConv(ir_sch, target);
@@ -2339,7 +2341,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
       .set_attr("generate_equations",
                 MakeOpFunction(cinn::hlir::op::GenerateEquationsForRelu))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif
@@ -2357,7 +2359,7 @@ CINN_REGISTER_HELPER(nn_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForRelu6)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForRelu))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif
@@ -2375,7 +2377,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConv2d))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConv2d))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConv2d))
 #endif
@@ -2395,7 +2397,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConv2dNCHWc))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConv2dNCHWc))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConv2dNCHWc))
 #endif
@@ -2413,11 +2415,12 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConv2d))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConv2d))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConv2d))
 #endif
-#ifdef CINN_WITH_CUDNN
+//#ifdef CINN_WITH_CUDNN
+#ifdef CINN_WITH_GPU
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
 #else
@@ -2439,7 +2442,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForBatchNorm))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForBatchNorm))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForBatchNorm))
 #endif
@@ -2456,7 +2459,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForPool1d))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForPool))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForPool))
 #endif
@@ -2474,7 +2477,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForPool2d))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForPool))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForPool))
 #endif
@@ -2493,7 +2496,7 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForPool3d))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForPool))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForPool))
 #endif
@@ -2511,7 +2514,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForSoftmax))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForSoftmax))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForSoftmax))
 #endif
@@ -2529,7 +2532,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForDropoutInfer))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForDropoutInfer))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif
@@ -2547,7 +2550,7 @@ CINN_REGISTER_HELPER(nn_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForSelect))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForSelect))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))
 #endif

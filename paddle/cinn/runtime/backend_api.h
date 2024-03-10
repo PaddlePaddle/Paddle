@@ -56,6 +56,11 @@ class BackendAPI {
    */
   virtual void set_device(int device_id) =0;
   /*!
+   * \brief get the current device_id
+   * \return device_id
+   */
+  virtual int get_device() =0;
+  /*!
    * \brief Set active device by device_ids
    * \param device_ids
    */

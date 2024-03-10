@@ -24,6 +24,7 @@ class CUDABackendAPI final : public BackendAPI {
   ~CUDABackendAPI(){};
   static CUDABackendAPI* Global();
   void set_device(int device_id) final;
+  int get_device() final;
   // void set_active_devices(std::vector<int> device_ids) final;
   std::variant<int, std::array<int, 3>> get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id = std::nullopt) final;

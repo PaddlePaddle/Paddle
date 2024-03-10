@@ -1076,7 +1076,8 @@ void IRPoolScheduleGPU(ir::IRSchedule &ir_sch,  // NOLINT
   // Blocks were changed after Fuse, so we have to get all blocks again.
   all_blocks = ir_sch.GetAllBlocks();
   loops = ir_sch.GetLoops(all_blocks[0]);
-  auto splited = ir_sch.Split(loops[0], {-1, 1024});
+  int tot_extent = loops[0].As<ir::For>()->extent.get_constant();
+  auto splited = ir_sch.Split(loops[0], {-1, std::min(tot_extent, 1024)});
   ir_sch.Bind(splited[0], "blockIdx.x");
   ir_sch.Bind(splited[1], "threadIdx.x");
   VLOG(3) << "End IRPoolScheduleGPU: " << ir_sch.GetModule().GetExprs().at(0);

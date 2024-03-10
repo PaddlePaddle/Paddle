@@ -1086,7 +1086,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
 #endif
@@ -1104,7 +1104,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForConstScalar))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForConstScalar))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForConstScalar))
 #endif
@@ -1135,7 +1135,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr(
           "generate_equations",
           MakeOpFunction(cinn::hlir::op::GenerateEquationsForFillConstant))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForFillConstant))
 #endif
@@ -1153,7 +1153,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForAssignValue))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForAssignValue))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForAssignValue))
 #endif

@@ -21,6 +21,7 @@
 #include "paddle/cinn/runtime/custom_function.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/cinn/runtime/backend_api.h"
 
 PD_DECLARE_string(cinn_check_fusion_accuracy_pass);
 
@@ -115,6 +116,10 @@ bool MemcpyToHost(void* dst,
         << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
     return false;
 #endif
+  }else if (input_target.arch_is_gpu()){
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(input_target)->memcpy(dst, src, bytes, BackendAPI::MemcpyType::DeviceToHost);
+    return true;
   }
   if (input_target == common::DefaultHostTarget()) {
     memcpy(dst, src, bytes);
@@ -131,32 +136,30 @@ bool MemcpyToDevice(void* dst,
                     size_t bytes,
                     const Target& input_target,
                     void* stream = nullptr) {
-#ifdef CINN_WITH_CUDA
   if (input_target == common::DefaultNVGPUTarget()) {
+#ifdef CINN_WITH_CUDA
     cudaMemcpyAsync(dst,
                     src,
                     bytes,
                     cudaMemcpyDeviceToDevice,
                     static_cast<cudaStream_t>(stream));
     return true;
-  } else if (input_target == common::DefaultHostTarget()) {
-    cudaMemcpyAsync(dst,
-                    src,
-                    bytes,
-                    cudaMemcpyHostToDevice,
-                    static_cast<cudaStream_t>(stream));
-    return true;
-  } else {
-    LOG(FATAL) << "MemcpyToDevice only support cpu or nvgpu -> nvgpu, but here "
-                  "the input target is "
-               << input_target << "! Please check.";
-    return false;
-  }
 #else
-  LOG(FATAL) << "MemcpyToDevice only support nvgpu, and NVGPU Target only "
-                "support when flag CINN_WITH_CUDA ON! Please check.";
-  return false;
+    LOG(FATAL)
+        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    return false;
 #endif
+  } else if (input_target.arch_is_gpu()){
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(input_target)->memcpy(dst, src, bytes, BackendAPI::MemcpyType::DeviceToDevice);
+    return true;
+  } else if (input_target == common::DefaultHostTarget()) {
+    memcpy(dst, src, bytes);
+    return true;
+  }
+  LOG(FATAL) << "MemcpyToDevice Only support cpu or gpu, but here the "
+                "input target is "
+             << input_target << "! Please check.";
 }
 }  // namespace utils
 

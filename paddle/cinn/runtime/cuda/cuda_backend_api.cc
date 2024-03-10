@@ -13,6 +13,11 @@ void CUDABackendAPI::set_device(int device_id) {
   CUDA_CALL(cudaSetDevice(device_id));
   this->now_device_id = device_id;
 }
+int CUDABackendAPI::get_device() {
+  int device_id = 0;
+  CUDA_CALL(cudaGetDevice(&device_id));
+  return device_id;
+}
 
 std::variant<int, std::array<int, 3>> CUDABackendAPI::get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id) {

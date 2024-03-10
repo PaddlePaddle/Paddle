@@ -97,6 +97,8 @@ class CodeGenSYCL_Dev : public CodeGenC {
   void PrintFunctionBody(const ir::_LoweredFunc_ *op);
 
  private:
+  //generate unique kernel name, which is namespace + op->name.
+  std::string GenerateKernelName(const ir::_LoweredFunc_ *op);
   Target target_;
   bool for_syclrtc_{false};
   // names of vectorized tensors from `Let` statments where dtypes of the

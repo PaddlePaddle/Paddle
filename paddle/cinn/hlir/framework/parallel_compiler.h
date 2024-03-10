@@ -25,6 +25,9 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #endif
+#ifdef CINN_WITH_SYCL
+#include "paddle/cinn/runtime/sycl/sycl_module.h"
+#endif
 #include "paddle/cinn/utils/error.h"
 
 PD_DECLARE_int32(cinn_error_message_level);
@@ -37,11 +40,11 @@ class ParallelCompiler {
  public:
   struct Task {
     Task(int device_id,
-         int group_id,
+         std::vector<int> group_ids,
          ParallelCompiler* compiler,
          CompilationContext* context)
         : device_id(device_id),
-          group_id(group_id),
+          group_ids(group_ids),
           pcompiler(compiler),
           context(context) {}
     void Lowering();
@@ -55,11 +58,14 @@ class ParallelCompiler {
     std::string message;
 
     const int device_id;
-    int group_id;
+    std::vector<int> group_ids;
 
     std::unique_ptr<backends::ExecutionEngine> engine;
 #ifdef CINN_WITH_CUDA
     std::unique_ptr<runtime::cuda::CUDAModule> cumodule;
+#endif
+#ifdef CINN_WITH_SYCL
+    std::unique_ptr<runtime::Sycl::SYCLModule> sycl_module;
 #endif
   };
 

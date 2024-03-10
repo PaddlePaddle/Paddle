@@ -54,6 +54,13 @@ $ vim ~/.bashrc
 export PADDLE_PATH=/home/share/Paddle
 export PYTHONPATH=$PADDLE_PATH/build/python:${PYTHONPATH}
 ```
+### 安装不带CINN的Paddle
+```
+# 下载预编译的安装包
+wget https://paddle-device.bj.bcebos.com/2.5.2/dcu/paddlepaddle_rocm-2.5.2-cp39-cp39-linux_x86_64.whl
+# 安装
+python3.9 -m pip install paddlepaddle_rocm-2.5.2-cp39-cp39-linux_x86_64.whl
+```
 
 ## paddle with cinn联合编译，未验证可能出错。
 

@@ -17,4 +17,6 @@
 
 #ifdef CINN_WITH_SYCL
 CINN_USE_REGISTER(cinn_sycl_host_api)
+CINN_USE_REGISTER(sycl_intrinsics)
+CINN_USE_REGISTER(sycl_intrinsics_reduce)
 #endif

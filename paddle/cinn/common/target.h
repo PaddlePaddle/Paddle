@@ -23,6 +23,10 @@ namespace cinn {
 namespace common {
 
 struct Target {
+
+  static Target* now_target;
+  static void set_now_target(Target * target);
+  static Target* get_now_target();
   /**
    * The operating system used by the target. Determines which system calls to
    * generate.

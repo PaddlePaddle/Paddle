@@ -525,7 +525,7 @@ CINN_REGISTER_HELPER(broadcast_ops) {
                 MakeOpFunction(cinn::hlir::op::InferDtypeForBroadcast))
       .set_attr("generate_equations",
                 MakeOpFunction(cinn::hlir::op::GenerateEquationsForBroadcastTo))
-#ifndef CINN_WITH_CUDA
+#ifndef CINN_WITH_GPU
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcastTo))
 #endif

@@ -22,6 +22,8 @@ namespace cinn {
 namespace backends {
 namespace syclrtc {
 
+int NUM::n = 0;
+
 Compiler::Compiler() {}
 
 Compiler* Compiler::Global() {
@@ -44,7 +46,7 @@ std::string Compiler::CompileToSo(const std::string& source_code, const Target::
   }
   // get unqiue file_path
   compile_num++;
-  std::string filename = prefix_dir + "/sycl_" + std::to_string(compile_num);
+  std::string filename = prefix_dir + "/sycl_" + std::to_string(NUM::getNumxx());
   source_file_path = filename + ".cc";
   shared_lib_path = filename + ".so";
   // write source file

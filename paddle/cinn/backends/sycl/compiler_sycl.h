@@ -21,6 +21,18 @@ namespace cinn {
 namespace backends {
 namespace syclrtc {
 
+
+class NUM {
+  public:
+    static int n;
+    static int getNum(){
+      return n;
+    }
+    static int getNumxx(){
+      return n++;
+    }
+};
+
 /**
  * Input SYCL source code, get shared library.
  */

@@ -85,6 +85,7 @@ class SYCLBackendAPI final : public BackendAPI {
    */
   Target::Arch Init(Target::Arch arch);
   void set_device(int device_id) final;
+  int get_device() final;
   std::variant<int, std::array<int, 3>> get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id = std::nullopt) final;
   void* malloc(size_t numBytes) final;

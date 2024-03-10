@@ -73,7 +73,7 @@ class ReduceSplitPass {
  public:
   // Find the reduce op with nwhc format and large shape, split it into two ops
   static int Apply(framework::Graph* graph) {
-    int MAX_NUM_THREADS = common::DefaultNVGPUTarget().max_num_threads();
+    int MAX_NUM_THREADS = common::Target::get_now_target()->max_num_threads();
     constexpr int MAX_ITER_PER_THREAD = 32;  // empirical value
 
     int cnt = 0;

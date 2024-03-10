@@ -36,7 +36,6 @@
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/backends/sycl/codegen_sycl_dev.h"
 #include "paddle/cinn/backends/sycl/compiler_sycl.h"
-#include "paddle/cinn/runtime/sycl/sycl_module.h"
 #endif
 
 PD_DECLARE_int32(cinn_parallel_compile_thread);
@@ -87,12 +86,25 @@ void ParallelCompiler::SplitTask() {
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
   int device_id = 0;
-#ifdef CINN_WITH_CUDA
-  CUDA_CALL(cudaGetDevice(&device_id));
-#endif
-  for (int group_id = 0; group_id < context_->graph->fusion_groups.size();
-       ++group_id) {
-    tasks_.emplace_back(device_id, group_id, this, context_);
+  if (context_->target.arch_is_gpu()){
+    using cinn::runtime::BackendAPI;
+    device_id = BackendAPI::get_backend(context_->target)->get_device();
+  }
+  // set max_group_num_of_one_task
+  int max_group_num_of_one_task = 1;
+  if (context_->target.language == Target::Language::sycl){
+    max_group_num_of_one_task = 100;
+  }
+  for (int start_group_id = 0; start_group_id < context_->graph->fusion_groups.size();
+       start_group_id += max_group_num_of_one_task) {
+    int groups_num =
+        std::min(max_group_num_of_one_task,
+                 (int)(context_->graph->fusion_groups.size() - start_group_id));
+    std::vector<int> group_ids;
+    for (int i = 0; i < groups_num; i++) {
+      group_ids.push_back(start_group_id + i);
+    }
+    tasks_.emplace_back(device_id, group_ids, this, context_);
   }
 }
 
@@ -138,9 +150,10 @@ void ParallelCompiler::RunTask() {
 
 void ParallelCompiler::LaunchTask() {
   int device_id = 0;
-#ifdef CINN_WITH_CUDA
-  CUDA_CALL(cudaGetDevice(&device_id));
-#endif
+  if (context_->target.arch_is_gpu()){
+    using cinn::runtime::BackendAPI;
+    device_id = BackendAPI::get_backend(context_->target)->get_device();
+  }
   int num_threads = FLAGS_cinn_parallel_compile_thread;
 #if defined(PADDLE_WITH_DISTRIBUTE)
   if (device_id > 0) {
@@ -185,63 +198,73 @@ void ParallelCompiler::Task::Lowering() {
                                 __FILE__,
                                 __LINE__);
     }
-    pcompiler->result_.SetLoweredFuncs(group_id,
+    for(int group_id : group_ids){
+      pcompiler->result_.SetLoweredFuncs(group_id,
                                        context->lowered_funcs[group_id]);
+    }
   } else {
-    auto& dtype_dict =
+    for(int group_id : group_ids){
+      auto& dtype_dict =
         context->graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
             "inferdtype");
-    auto& shape_dict =
-        context->graph
-            ->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
-                "infershape");
-    auto op_lowerer = CreateOpLowerer(dtype_dict, shape_dict, context->target);
-    auto& group = context->graph->fusion_groups[group_id];
-    VLOG(4) << "Start Lowering Group " << group_id << " at "
-            << std::this_thread::get_id() << " :\n"
-            << "Group " << group_id << " {\n"
-            << context->graph->DebugGroupedGraph(group->CollectNodes())
-            << "}\n";
-    //LOG(INFO) << group->CollectNodes()[0]->op()->name;
-    auto lowered_funcs = op_lowerer.Lower(group);
-    //LOG(INFO) << lowered_funcs[0]->body;
-    if (lowered_funcs.size() != 1) {
-      std::ostringstream err_msg;
-      err_msg << "Lowering Group: " << group_id
-              << ", the number of LoweredFuncs is not equal 1, but "
-              << lowered_funcs.size()
-              << "\nOur current principle is to generate 1 LoweredFunc for "
-                 "each Group"
-              << "\n";
-      std::ostringstream detail_info;
-      detail_info << "LoweredFuncs:\n";
-      for (const ir::LoweredFunc& func : lowered_funcs) {
-        detail_info << func << "\n";
+      auto& shape_dict =
+          context->graph
+              ->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
+                  "infershape");
+      auto op_lowerer = CreateOpLowerer(dtype_dict, shape_dict, context->target);
+      auto& group = context->graph->fusion_groups[group_id];
+      VLOG(4) << "Start Lowering Group " << group_id << " at "
+              << std::this_thread::get_id() << " :\n"
+              << "Group " << group_id << " {\n"
+              << context->graph->DebugGroupedGraph(group->CollectNodes())
+              << "}\n";
+      //std::cout <<"group "<< group_id << "\n";
+      //std::cout << group->CollectNodes()[0]->op()->name << ":\n";
+      //LOG(INFO) << group->CollectNodes()[0]->op()->name;
+      auto lowered_funcs = op_lowerer.Lower(group);
+      //std::cout << lowered_funcs[0]->body << "\n";
+      //LOG(INFO) << lowered_funcs[0]->body;
+      if (lowered_funcs.size() != 1) {
+        std::ostringstream err_msg;
+        err_msg << "Lowering Group: " << group_id
+                << ", the number of LoweredFuncs is not equal 1, but "
+                << lowered_funcs.size()
+                << "\nOur current principle is to generate 1 LoweredFunc for "
+                  "each Group"
+                << "\n";
+        std::ostringstream detail_info;
+        detail_info << "LoweredFuncs:\n";
+        for (const ir::LoweredFunc& func : lowered_funcs) {
+          detail_info << func << "\n";
+        }
+        detail_info << "Group:\n";
+        detail_info << context->graph->DebugGroupedGraph(group->CollectNodes())
+                    << "\n";
+        throw CompileErrorHandler(CompilationStatus::LOWERING_FAIL,
+                                  err_msg.str(),
+                                  detail_info.str(),
+                                  __FILE__,
+                                  __LINE__);
       }
-      detail_info << "Group:\n";
-      detail_info << context->graph->DebugGroupedGraph(group->CollectNodes())
-                  << "\n";
-      throw CompileErrorHandler(CompilationStatus::LOWERING_FAIL,
-                                err_msg.str(),
-                                detail_info.str(),
-                                __FILE__,
-                                __LINE__);
+      pcompiler->result_.SetLoweredFuncs(group_id, lowered_funcs);
     }
-    pcompiler->result_.SetLoweredFuncs(group_id, lowered_funcs);
   }
-  backends::CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
+  for(int group_id : group_ids){
+    backends::CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
       pcompiler->result_.LoweredFuncs(group_id).front(), group_id, device_id);
+  }
 }
 
 void ParallelCompiler::Task::CodegenAndJit() {
-  VLOG(2) << "Start Codegen and JIT on Group " << group_id
-          << " at thread: " << std::this_thread::get_id();
   // build module
   ir::Module::Builder builder(common::UniqName("module"), context->target);
-  for (auto& func : pcompiler->result_.LoweredFuncs(group_id)) {
-    builder.AddFunction(func);
+  for(int group_id : group_ids){
+    VLOG(2) << "Start Codegen and JIT on Group " << group_id
+          << " at thread: " << std::this_thread::get_id();
+    for (auto& func : pcompiler->result_.LoweredFuncs(group_id)) {
+      builder.AddFunction(func);
+    }
   }
-
   auto ir_module = builder.Build();
   if (context->target == common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
@@ -305,7 +328,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
     backends::syclrtc::Compiler compiler;
     std::string share_library = compiler(source_code, context->target.arch);
     CHECK(!share_library.empty()) << "Compile SYCL code failed from source code" << source_code;
-    SYCLModule* sycl_module = new SYCLModule(source_code, share_library, SYCLModule::Kind::so);
+    sycl_module = std::make_unique<SYCLModule>(source_code, share_library, SYCLModule::Kind::so);
     // register kernel
     backends::RuntimeSymbols symbols;
     for (auto& fn : device_module.functions()) {
@@ -323,25 +346,27 @@ void ParallelCompiler::Task::CodegenAndJit() {
 }
 
 void ParallelCompiler::Task::BuildInstruction() {
-  // create instruction.
-  VLOG(4) << "Start BuildInstruction of Group " << group_id
-          << " at thread: " << std::this_thread::get_id();
-  auto& group = context->graph->fusion_groups[group_id];
-  CHECK(!group->input_names.empty() || !group->output_names.empty());
-  auto instr = std::make_unique<Instruction>(context->target,
-                                             context->scope.get(),
-                                             group->input_names,
-                                             group->output_names,
-                                             group->GetFuncName());
+  for(int group_id : group_ids){
+    // create instruction.
+    VLOG(4) << "Start BuildInstruction of Group " << group_id
+            << " at thread: " << std::this_thread::get_id();
+    auto& group = context->graph->fusion_groups[group_id];
+    CHECK(!group->input_names.empty() || !group->output_names.empty());
+    auto instr = std::make_unique<Instruction>(context->target,
+                                              context->scope.get(),
+                                              group->input_names,
+                                              group->output_names,
+                                              group->GetFuncName());
 
-  auto fn_ptr = engine->Lookup(group->GetFuncName());
-  CHECK(fn_ptr) << "Can't find jit function : " << group->GetFuncName();
-  instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), group->GetFuncName());
+    auto fn_ptr = engine->Lookup(group->GetFuncName());
+    CHECK(fn_ptr) << "Can't find jit function : " << group->GetFuncName();
+    instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), group->GetFuncName());
 
-  instr->Finalize();
-  backends::CompilationInfoDumper::DumpInstructionByGroupIndex(
-      instr, group_id, device_id);
-  pcompiler->result_.SetInstruction(group_id, std::move(instr));
+    instr->Finalize();
+    backends::CompilationInfoDumper::DumpInstructionByGroupIndex(
+        instr, group_id, device_id);
+    pcompiler->result_.SetInstruction(group_id, std::move(instr));
+  }
 }
 
 int ParallelCompiler::GetTaskIdx() {

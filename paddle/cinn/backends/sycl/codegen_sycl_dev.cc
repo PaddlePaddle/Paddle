@@ -24,6 +24,9 @@
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 
+#include "paddle/cinn/backends/sycl/compiler_sycl.h"
+using cinn::backends::syclrtc::NUM;
+
 namespace cinn {
 namespace backends {
 
@@ -98,7 +101,7 @@ void CodeGenSYCL_Dev::Visit(const ir::_LoweredFunc_ *op) {
   str_ += "Q.submit([&](sycl::handler &h) {\n";
   IncIndent();
   DoIndent();
-  str_ += "h.parallel_for(sycl::nd_range<3>(dimGrid * dimBlock, dimBlock), [=](sycl::nd_item<3> item) "
+  str_ += "h.parallel_for<class " + GenerateKernelName(op) + ">(sycl::nd_range<3>(dimGrid * dimBlock, dimBlock), [=](sycl::nd_item<3> item) "
           "[[intel::kernel_args_restrict]]";
   if (op->cuda_axis_info.valid()) {
     str_ += "[[intel::max_work_group_size(";
@@ -440,6 +443,13 @@ void CodeGenSYCL_Dev::Visit(const ir::Store *op) {
   } else {
     CodeGenC::Visit(op);
   }
+}
+
+std::string CodeGenSYCL_Dev::GenerateKernelName(const ir::_LoweredFunc_ *op){
+  std::string kernel_name = "space" + std::to_string(NUM::getNum());
+  kernel_name += "_";
+  kernel_name += op->name;
+  return kernel_name;
 }
 
 }  // namespace backends

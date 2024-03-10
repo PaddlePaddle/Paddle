@@ -90,6 +90,10 @@ void SYCLBackendAPI::set_device(int device_id) {
   this->now_device_id = device_id;
 }
 
+int SYCLBackendAPI::get_device(){
+  return this->now_device_id;
+}
+
 std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id) {
   int index = device_id.value_or(this->now_device_id);
@@ -101,7 +105,8 @@ std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(Device
       break;
     }
     case DeviceProperty::MaxGridDims: {
-      LOG(FATAL) << "SYCL Not supported device property : MaxGridDims !";
+      sycl::id<3> grid_dims = this->devices[index].get_info<sycl::ext::oneapi::experimental::info::device::max_work_groups<3>>() / this->devices[index].get_info<sycl::info::device::max_work_item_sizes<3>>();
+      rv = std::array<int, 3>{grid_dims[0], grid_dims[2], grid_dims[2]};
       break;
     }
     case DeviceProperty::MaxSharedMemoryPerBlock: {
@@ -113,8 +118,8 @@ std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(Device
       break;
     }
     case DeviceProperty::MaxThreadsPerSM: {
-      LOG(FATAL) << "SYCL Not supported device property : MaxThreadsPerSM !";
-      // rv = this->devices[index].get_info<sycl::info::device::max_work_group_size>();
+      // LOG(FATAL) << "SYCL Not supported device property : MaxThreadsPerSM !";
+      rv = this->devices[index].get_info<sycl::info::device::max_work_group_size>();
       break;
     }
     case DeviceProperty::MultiProcessorCount: {

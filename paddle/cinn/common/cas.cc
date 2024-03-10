@@ -1072,7 +1072,7 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
       }
     }
   }
-#ifdef CINN_WITH_CUDA
+#ifdef CINN_WITH_GPU
   return false;
 #else
 
