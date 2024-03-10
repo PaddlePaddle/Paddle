@@ -89,7 +89,6 @@ struct SimplifyDoubleNeg {
     } else {
       return expr;
     }
-    LOG(FATAL) << "Dead code";
   }
 };
 
