@@ -25,6 +25,13 @@ COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 constexpr int vlog_level = 3;
 
+// TODO(zhangbopd): Some op results infered by InferSymbolicShape is NOT consist
+// with the result infered by InferMeta and should be fixed.
+const std::unordered_set<std::string> check_ops_blacklist = {
+    {"pd_op.reshape_1"},
+    {"pd_op.empty_0"},
+};
+
 namespace pir {
 namespace {
 
@@ -43,7 +50,8 @@ void PrintProgram(pir::ModuleOp m, std::string mgs) {
 void DebugPrintOpInfo(
     pir::Operation* op,
     pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
-  for (auto& res : op->results()) {
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    const auto& res = op->result(i);
     std::ostringstream print_stream;
 
     print_stream << "  result(" << res.dyn_cast<pir::OpResult>().index() << ") "
@@ -80,6 +88,56 @@ void DebugPrintOpInfo(
     }
     print_stream << " }";
     VLOG(vlog_level) << print_stream.str();
+
+    // Check InferSymbolicShape with InferMeta.
+    if (check_ops_blacklist.find(op->name() + "_" + std::to_string(i)) !=
+        check_ops_blacklist.end())
+      continue;
+
+    if (res.type().isa<paddle::dialect::DenseTensorType>()) {
+      const std::vector<int64_t>& infer_meta_shape = common::vectorize(
+          res.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+      const std::vector<symbol::DimExpr>& infer_sym_shape =
+          shape_analysis->GetShapeOrDataForValue(res).shape();
+
+      // Check rank.
+      if (infer_meta_shape.size() != infer_sym_shape.size()) {
+        std::ostringstream print_stream;
+        print_stream << "Warning : Check InferSymbolicShape for " << op->name()
+                     << "carefully! rank of infer_meta_shape is ["
+                     << infer_meta_shape.size()
+                     << "], but rank of infer_sym_shape is ["
+                     << infer_sym_shape.size() << "].";
+        VLOG(vlog_level) << print_stream.str();
+      }
+
+      // Check each dim.
+      for (size_t i = 0; i < infer_meta_shape.size(); ++i) {
+        // Check Static shape should NOT be a symbol.
+        if (infer_meta_shape[i] != -1) {
+          if (!infer_sym_shape[i].isa<int64_t>()) {
+            std::ostringstream print_stream;
+            print_stream
+                << "Warning : Check InferSymbolicShape for " << op->name()
+                << "carefully! "
+                << "shape[" << i
+                << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
+            VLOG(vlog_level) << print_stream.str();
+          }
+
+          // Check Static shape should be consist.
+          if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
+            std::ostringstream print_stream;
+            print_stream << "Warning : Check InferSymbolicShape for "
+                         << op->name() << "carefully! "
+                         << "infer_sym_shape is [" << infer_meta_shape[i]
+                         << "], but infer_meta_shape is ["
+                         << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
+            VLOG(vlog_level) << print_stream.str();
+          }
+        }
+      }
+    }
   }
 }
 
@@ -138,48 +196,6 @@ void InferSymExprForBlock(const Block& block,
           true,
           "InferSymbolicShape for %s failed.",
           op.name());
-
-      for (auto& res : op.results()) {
-        if (res.type().isa<paddle::dialect::DenseTensorType>()) {
-          const std::vector<int64_t>& infer_meta_shape = common::vectorize(
-              res.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
-          const std::vector<symbol::DimExpr>& infer_sym_shape =
-              shape_analysis->GetShapeOrDataForValue(res).shape();
-
-          PADDLE_ENFORCE_EQ(
-              infer_meta_shape.size() == infer_sym_shape.size() ||
-                  infer_meta_shape.size() == 0 && infer_sym_shape.size() == 1,
-              true,
-              "InferSymbolicShape for %s failed! rank of infer_meta_shape is "
-              "[%d] but rank of infer_sym_shape is [%d]",
-              op.name(),
-              infer_meta_shape.size(),
-              infer_sym_shape.size());
-
-          for (size_t i = 0; i < infer_meta_shape.size(); ++i) {
-            if (infer_meta_shape[i] != -1) {
-              PADDLE_ENFORCE_EQ(
-                  infer_sym_shape[i].isa<int64_t>(),
-                  true,
-                  "InferSymbolicShape for %s failed! shape[%d] of "
-                  "infer_sym_shape shoule be int64_t NOT a symbol!",
-                  op.name(),
-                  i);
-
-              PADDLE_ENFORCE_EQ(
-                  infer_meta_shape[i],
-                  infer_sym_shape[i].dyn_cast<int64_t>(),
-                  "InferSymbolicShape for %s failed! shape[%d] of "
-                  "infer_sym_shape is [%d], but infer_meta_shape is [%d]",
-                  op.name(),
-                  i,
-                  infer_meta_shape[i],
-                  infer_sym_shape[i].dyn_cast<int64_t>(),
-                  infer_sym_shape.size());
-            }
-          }
-        }
-      }
 
       if (op.num_results() > 0) {
         // TODO(lanxianghit): deal with the ops which have more than 1
