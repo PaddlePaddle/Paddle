@@ -340,6 +340,7 @@ std::vector<pir::Type> BuildOutType(
                                                 group_ops.end());
 
   std::vector<::pir::Value> new_output;
+
   for (size_t i = 0; i < output_value.size(); ++i) {
     new_output.push_back(ir_mapping->Lookup<::pir::Value>(output_value[i]));
   }
@@ -556,6 +557,12 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
       }
     }
 
+    if (cluster_node->reduce_axis.size() == 0) {
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        cluster_node->reduce_axis.push_back(i);
+      }
+    }
+
   } else if (cluster_node->group_kind == cinn::hlir::framework::kElementWise) {
     cluster_node->loop_ranges =
         phi::vectorize(op->result(0)
@@ -643,6 +650,19 @@ bool CanOpMergeNode(
     return false;
   }
 
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) ==
+      cinn::hlir::framework::kReduction) {
+    if (cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() == 0 ||
+        cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() ==
+            cur_op->operand_source(0)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size()) {
+      return false;
+    }
+  }
+
   // TODO(phlrain): need update here
   // different loop range can merge, like [128, 128, 1], with [128, 128]
   if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
@@ -662,6 +682,19 @@ bool ShouldOutputPreNode(
   if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
       cinn::hlir::framework::kReduction) {
     return false;
+  }
+
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) ==
+      cinn::hlir::framework::kReduction) {
+    if (cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() == 0 ||
+        cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() ==
+            cur_op->operand_source(0)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size()) {
+      return true;
+    }
   }
 
   // TODO(phlrain): need update here
