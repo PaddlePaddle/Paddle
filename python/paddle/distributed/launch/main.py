@@ -627,38 +627,28 @@ def launch():
             job_id += 1
             task_job_id = "auto_tuner_" + str(job_id)
             ctx.args.job_id = task_job_id
-
+            log_dir = "Job{}_GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}".format(
+                job_id,
+                global_batch_size,
+                cur_cfg["dp_degree"],
+                cur_cfg["mp_degree"],
+                cur_cfg["pp_degree"],
+                cur_cfg["vpp_degree"],
+                cur_cfg["sharding_degree"],
+                cur_cfg["sharding_stage"],
+                cur_cfg["micro_batch_size"],
+                cur_cfg["use_recompute"],
+                cur_cfg["recompute_granularity"],
+                cur_cfg["acc_steps"],
+            )
             if "sharding_overlap" in cur_cfg:
-                log_dir = "Job{}_GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}_Overlap_{}".format(
-                    job_id,
-                    global_batch_size,
-                    cur_cfg["dp_degree"],
-                    cur_cfg["mp_degree"],
-                    cur_cfg["pp_degree"],
-                    cur_cfg["vpp_degree"],
-                    cur_cfg["sharding_degree"],
-                    cur_cfg["sharding_stage"],
-                    cur_cfg["micro_batch_size"],
-                    cur_cfg["use_recompute"],
-                    cur_cfg["recompute_granularity"],
-                    cur_cfg["acc_steps"],
-                    cur_cfg["sharding_overlap"],
-                )
-            else:
-                log_dir = "Job{}_GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}".format(
-                    job_id,
-                    global_batch_size,
-                    cur_cfg["dp_degree"],
-                    cur_cfg["mp_degree"],
-                    cur_cfg["pp_degree"],
-                    cur_cfg["vpp_degree"],
-                    cur_cfg["sharding_degree"],
-                    cur_cfg["sharding_stage"],
-                    cur_cfg["micro_batch_size"],
-                    cur_cfg["use_recompute"],
-                    cur_cfg["recompute_granularity"],
-                    cur_cfg["acc_steps"],
-                )
+                log_dir = log_dir + f"_Overlap_{cur_cfg['sharding_overlap']}"
+            if "refined_recompute" in tuner_cfg:
+                for key in tuner_cfg["refined_recompute"]:
+                    dir_name = "".join(i.capitalize() for i in key.split("_"))
+                    dir_name += str(cur_cfg[key])
+                    log_dir = log_dir + "_" + dir_name
+
             ctx.args.log_dir = os.path.join(
                 os.path.dirname(ctx.args.auto_tuner_json), log_dir
             )

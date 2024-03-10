@@ -289,6 +289,21 @@ bool ConcatOpInferSymbolicShape(
   axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
 
   if (shape_data_list[0].data().has_value()) {
+    if (rank == 1) {
+      ExprVec data = details::GetExprVecFromData(
+          shape_analysis->GetShapeOrDataForValue(operand_source));
+      const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
+      symbol::ShapeOrDataDimExprs shape_data{
+          symbol::TensorShapeOrDataDimExprs(shape, data)};
+      pir::Value res = op->result(0);
+      shape_analysis->SetShapeOrDataForValue(res, shape_data);
+
+      return true;
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          op->name() +
+          " 's InferSymbolicShape can NOT deal with rank > 1 now."));
+    }
     std::vector<symbol::DimExpr> data;
     data.reserve(shape_data_list.size());
     for (auto &data_elem : shape_data_list) {
@@ -436,9 +451,9 @@ bool SqueezeOpInferSymbolicShape(
         if (in_dims_sym[current] == 1) {
           should_squeeze[current] = true;
         } else if (!in_dims_sym[current].Has<std::int64_t>()) {
-          PADDLE_THROW(
-              phi::errors::Unimplemented("SqueezeOpInferSymbolicShape CAN NOT "
-                                         "deal with symbol in axis now"));
+          should_squeeze[current] = true;
+        } else {
+          should_squeeze[current] = true;
         }
       }
     }
