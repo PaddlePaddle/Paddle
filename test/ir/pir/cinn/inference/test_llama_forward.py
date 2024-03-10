@@ -23,6 +23,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
+from paddle.base import core
 from paddle.incubate.nn.functional import swiglu
 from paddle.static import InputSpec
 
@@ -684,4 +685,5 @@ class TestLlamaModel(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    core._set_prim_forward_blacklist("pd_op.embedding", "pd_op.softmax")
     unittest.main()

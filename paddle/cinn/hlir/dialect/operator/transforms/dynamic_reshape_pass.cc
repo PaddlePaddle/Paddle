@@ -38,7 +38,6 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
           shape_analysis->GetShapeOrDataForValue(op->result(0)).shape();
       int temp_dim = -1;
 
-      int temp_dim = -1;
       for (size_t i = 0; i < shape_info.size(); ++i) {
         if (shape_info[i].isa<int64_t>()) {
           shape[i] = shape_info[i].Get<int64_t>();

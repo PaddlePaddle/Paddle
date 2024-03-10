@@ -52,6 +52,16 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool SoftmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
 bool ShapeOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =

@@ -594,9 +594,20 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
       for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
         if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
           cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
+        }
 
+        if (sch_node->factor_info[i] < 0 && sym_shape[i].isa<int64_t>()) {
           sch_node->factor_info[i] = sym_shape[i].Get<int64_t>();
         }
+        // else{
+        //   std::cerr << "wrong broadcast \t" << op->name() << std::endl;
+        //   for( auto d :  sch_node->factor_info)
+        //   {
+        //     std::cerr << "dd " << d << std::endl;
+        //   }
+
+        //   throw std::runtime_error("error broadcast info");
+        // }
       }
     }
   } else if (op->name() == "cinn_op.generate_shape") {

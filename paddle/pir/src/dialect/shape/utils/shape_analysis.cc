@@ -34,7 +34,10 @@ void ShapeConstraintIRAnalysis::Init() {
 }
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
-  return "S" + std::to_string(next_sym_idx_++);
+  auto out = "S" + std::to_string(next_sym_idx_ % 2);
+  next_sym_idx_++;
+
+  return out;
 }
 
 bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {

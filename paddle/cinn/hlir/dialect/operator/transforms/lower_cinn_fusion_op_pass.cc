@@ -472,11 +472,13 @@ void CompileGroupToJitKernelOp(
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
     CHECK(jit_kernel_op.num_results() == group_output_values.size());
+    std::cerr << "begin to replace all user\n";
     for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(group_output_values[i],
                                   jit_kernel_op.result(i));
     }
 
+    std::cerr << "finish replace all user\n";
     // Delete origin group ops
     std::vector<pir::Operation*> group_ops;
     for (auto iter = block->rbegin(); iter != block->rend(); iter++) {
@@ -658,6 +660,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     pir::Operation* compiled_op =
         ProcessGroup(group, shape_analysis, ir_compiler, rewriter);
 
+    std::cerr << "begin to replace\n";
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(fusion_op.result(i), compiled_op->result(i));
       if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
@@ -671,7 +674,10 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       }
     }
 
+    std::cerr << "finish to replace\n";
+
     rewriter.EraseOp(fusion_op);
+    std::cerr << "finish erase \n";
     return true;
   }
 
@@ -689,8 +695,10 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
+    std::cerr << "begin build jit kernel op\n";
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
+    std::cerr << "fin build jit kernel op\n";
     return jit_kernel_op;
   }
 

@@ -98,12 +98,13 @@ class TestLlamaPostProcess(unittest.TestCase):
     def eval(self, use_cinn):
         paddle.seed(2024)
         net = LlamaPostProcess()
+        net.eval()
         input_spec = [
             InputSpec(shape=[None, None, 3200], dtype='float32'),  # logits
             InputSpec(shape=[None, None], dtype='int64'),  # input_ids
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
-        net.eval()
+
         # paddle.jit.save(net, sys.path.join(dirname(__file__), "post_model"))
         out = net(self.logits, self.input_ids)
         if use_cinn:

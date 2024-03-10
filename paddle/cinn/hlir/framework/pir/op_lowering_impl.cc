@@ -691,6 +691,10 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           }
         } else {
           for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+            if (in_dim[i] < 0 || output_shape[broadcast_axes[i]] < 0) {
+              std::cerr << "skip negative broadcast\n";
+              continue;
+            }
             if (in_dim[i] != output_shape[broadcast_axes[i]]) {
               if (in_dim[i] != 1) {
                 throw std::runtime_error("Only support 1 - D broadcast ");
@@ -1150,6 +1154,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
                                /* is_dy_shape = */ true,
                                group_tile_info);
   group_scheduler->Schedule();
+  std::cerr << "finish schedule \n";
   return ir_sch.GetModule().GetExprs().at(0);
 }
 

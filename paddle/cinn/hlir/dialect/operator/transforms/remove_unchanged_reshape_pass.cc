@@ -35,24 +35,28 @@ namespace ir {
 
 bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   const auto& IsSameShape = [&]() -> bool {
-    // if (op->operand_source(0)
-    //         .type()
-    //         .dyn_cast<pir::ShapedTypeInterface>()
-    //         .IsDynamicShape() ||
-    //     op->result(0)
-    //         .type()
-    //         .dyn_cast<pir::ShapedTypeInterface>()
-    //         .IsDynamicShape()) {
-    //   pir::ShapeConstraintIRAnalysis& shape_analysis =
-    //       pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    //   if (shape_analysis.HasShapeOrDataForValue(op->operand_source(0)) &&
-    //       shape_analysis.HasShapeOrDataForValue(op->result(0))) {
-    //     return shape_analysis.GetShapeOrDataForValue(op->operand_source(0))
-    //                .shape() ==
-    //            shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
-    //   }
-    //   return false;
-    // }
+    if (op->operand_source(0)
+            .type()
+            .dyn_cast<pir::ShapedTypeInterface>()
+            .IsDynamicShape() ||
+        op->result(0)
+            .type()
+            .dyn_cast<pir::ShapedTypeInterface>()
+            .IsDynamicShape()) {
+      if (op->result(0).use_count() == 1 &&
+          op->result(0).first_use().owner()->name() == "builtin.combine") {
+        return false;
+      }
+
+      pir::ShapeConstraintIRAnalysis& shape_analysis =
+          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+      if (shape_analysis.HasShapeOrDataForValue(op->operand_source(0)) &&
+          shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+        return shape_analysis.IsShapeEqual(op->operand_source(0),
+                                           op->result(0));
+      }
+      return false;
+    }
 
     return (op->operand_source(0)
                 .type()
@@ -113,6 +117,7 @@ class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
     // remove out_shape equal in_shape reshape op
     ps.Add<RemoveUnchangedReshapePattern<cinn::dialect::ReshapeOp>>(context);
     ps.Add<RemoveUnchangedReshapePattern<paddle::dialect::ReshapeOp>>(context);
+    // ps.Add<RemoveUnchangedReshapePattern<cinn::dialect::BroadcastOp>>(context);
     ps.Add<MergeReshapePattern>(context);
 
     return ps;
