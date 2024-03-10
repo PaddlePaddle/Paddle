@@ -208,13 +208,18 @@ ShardableAxesSignature MakeShardableAxesSignature4Op(const pir::Operation* op) {
   LOG(FATAL) << "Dead code";
 }
 
+template<typename InputIt>
 std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
-    common::TopoWalker<const pir::Operation*>& reversed_walker,
-    const pir::Operation* sink,
-    const ShardableAxes& init_sa) {
-  std::unordered_map<pir::Value, ShardableAxes> value2shardable_axes{
-    {sink->result(0), init_sa}
-  };
+    const common::TopoWalker<const pir::Operation*>& reversed_walker,
+    InputIt sink_and_init_begin, InputIt sink_and_init_end) {
+  std::unordered_map<pir::Value, ShardableAxes> value2shardable_axes;
+  std::list<const pir::Operation*> sinks;
+  for (auto iter = sink_and_init_begin; iter != sink_and_init_end; ++iter) {
+    const pir::Operation* sink = iter->first;
+    CHECK_EQ(sink->num_results(), 1);
+    sinks.push_back(sink);
+    value2shardable_axes[sink->result(0)] = iter->second;
+  }
   const auto& UpdateValue2ShardableAxes = [&](pir::Value value, const ShardableAxes& sa) {
     auto iter = value2shardable_axes.find(value);
     if (iter != value2shardable_axes.end()) {
@@ -223,7 +228,7 @@ std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
       iter->second = sa;
     }
   };
-  reversed_walker(sink, [&](const auto* op){
+  reversed_walker(sinks.begin(), sinks.end(), [&](const auto* op){
     auto shardable_axes_sig = MakeShardableAxesSignature4Op(op);
     const auto& old2new = ShardableAxesUtil::GetOldName2NewName(shardable_axes_sig.output_shardable_axes,
                                               value2shardable_axes.at(op->result(0)));
@@ -237,6 +242,15 @@ std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
     }
   });
   return value2shardable_axes;
+}
+
+std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
+    const common::TopoWalker<const pir::Operation*>& reversed_walker,
+    const pir::Operation* sink,
+    const ShardableAxes& init_sa) {
+  using OpAndInitValue = std::pair<const pir::Operation*, ShardableAxes>;
+  std::array<OpAndInitValue, 1> sinks{OpAndInitValue{sink, init_sa}};
+  return ReversedInferShardableAxes(reversed_walker, sinks.begin(), sinks.end());
 }
 
 common::TopoWalker<const pir::Operation*> GetOpsTopoWalker(const std::unordered_set<const pir::Operation*>& ops) {
