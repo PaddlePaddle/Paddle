@@ -70,7 +70,6 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
     rewriter->EraseOp(op);
     return true;
   }
-
   return false;
 }
 
