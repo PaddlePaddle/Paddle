@@ -1014,7 +1014,6 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
     CINNValuePack pack_args = args[0];
     CHECK_GE(pack_args.size(), 1U)
         << "at least 1 input tensors for Reshape compute\n";
-    VLOG(-1) << "pack args size: " << pack_args.size();
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -1033,7 +1032,6 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
     }
 
     ir::Tensor out = pe::Reshape(tensor_A, output_shapes[0], tensor_name);
-    VLOG(-1) << "reshape output tensor names is: " << tensor_name;
     std::vector<CINNValue> res;
     stages->InsertLazily(out);
     res.push_back(CINNValue(out));
