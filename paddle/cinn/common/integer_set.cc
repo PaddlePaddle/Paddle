@@ -186,6 +186,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveGT(const ir::Expr& lhs,
   if (diff_lower_bound.is_constant() && diff_lower_bound.get_constant() > 0) {
     return true;
   }
+
   return std::nullopt;
 }
 

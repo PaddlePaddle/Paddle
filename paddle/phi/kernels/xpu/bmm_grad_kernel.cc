@@ -28,14 +28,14 @@ void MatMul(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   xpu::Context* xpu_ctx = dev_ctx.x_context();
-  int fccal_type = FCCalcType<XPUType>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     MatMulXPUFunction<T, int32_t>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     MatMulXPUFunction<T, float>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     MatMulXPUFunction<T, int_with_ll_t>(a, b, out, trans_a, trans_b, xpu_ctx);
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT16) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT16) {
     MatMulXPUFunction<T, float16>(a, b, out, trans_a, trans_b, xpu_ctx);
   } else {
     MatMulXPUFunction<T, int16_t>(a, b, out, trans_a, trans_b, xpu_ctx);

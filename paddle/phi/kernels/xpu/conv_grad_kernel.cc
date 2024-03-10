@@ -107,8 +107,8 @@ void ConvGradKernel(const Context& dev_ctx,
       filter_grad_data_ptr = filter_grad_data_tmp;
     }
   }
-  int fccal_type = FCCalcType<XPUType>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     int r =
         xpu::conv2d_grad<XPUType, XPUType, XPUType, int>(dev_ctx.x_context(),
                                                          input_data,
@@ -134,7 +134,7 @@ void ConvGradKernel(const Context& dev_ctx,
                                                          is_nchw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_grad");
 
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     int r =
         xpu::conv2d_grad<XPUType, XPUType, XPUType, float>(dev_ctx.x_context(),
                                                            input_data,
@@ -160,7 +160,7 @@ void ConvGradKernel(const Context& dev_ctx,
                                                            is_nchw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_grad");
 
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     int r = xpu::conv2d_grad<XPUType, XPUType, XPUType, int_with_ll_t>(
         dev_ctx.x_context(),
         input_data,
@@ -334,8 +334,8 @@ void Conv3DGradKernel(const Context& dev_ctx,
       filter_grad_data_ptr = filter_grad_data_tmp;
     }
   }
-  int fccal_type = FCCalcType<XPUType>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     int r =
         xpu::conv3d_grad<XPUType, XPUType, XPUType, int>(dev_ctx.x_context(),
                                                          input_data,
@@ -361,7 +361,7 @@ void Conv3DGradKernel(const Context& dev_ctx,
                                                          nullptr,
                                                          is_ncdhw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d_grad");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     int r =
         xpu::conv3d_grad<XPUType, XPUType, XPUType, float>(dev_ctx.x_context(),
                                                            input_data,
@@ -387,7 +387,7 @@ void Conv3DGradKernel(const Context& dev_ctx,
                                                            nullptr,
                                                            is_ncdhw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d_grad");
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     int r = xpu::conv3d_grad<XPUType, XPUType, XPUType, int_with_ll_t>(
         dev_ctx.x_context(),
         input_data,

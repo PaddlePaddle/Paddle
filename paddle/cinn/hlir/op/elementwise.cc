@@ -18,6 +18,7 @@
 
 #include "absl/types/optional.h"
 #include "paddle/cinn/adt/op_equation_context.h"
+#include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -1017,17 +1018,19 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
-    // auto attr_store = attrs.attr_store;
-    // CHECK(attr_store.count("shape")) << "find no attr of shape";
     auto tensor_A = A.as_tensor_ref();
     auto stages = CreateStages({});
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    // CHECK_EQ(pack_args.size(), 2);
-    VLOG(-1) << "hahahaha";
-    CHECK(pack_args[2].is_string());
-    std::string tensor_name = pack_args[2].operator std::string();
+    std::string tensor_name;
+    if (pack_args.size() == 4) {
+      CHECK(pack_args[2].is_string());
+      tensor_name = pack_args[2].operator std::string();
+    } else {
+      CHECK(pack_args[1].is_string());
+      tensor_name = pack_args[1].operator std::string();
+    }
 
     ir::Tensor out = pe::Reshape(tensor_A, output_shapes[0], tensor_name);
     VLOG(-1) << "reshape output tensor names is: " << tensor_name;
@@ -1271,51 +1274,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
         // std::string tensor_name = pack_args[1].operator std::string();
         // ir::Tensor out = pe::Cast(tensor_A, tensor_A->type(), tensor_name);
         ir::Tensor out(ir::_Tensor_::Make("generate_shape_var",
-                                          tensor_A->type(),
-                                          {
-                                              Expr(1),
-                                          },
-                                          {
-                                              Expr(1),
-                                          }));
-        std::vector<CINNValue> res;
-        stages->InsertLazily(out);
-        res.push_back(CINNValue(out));
-        CHECK(!out_type.empty())
-            << "Output type of Cast is empty! Please check.\n";
-        res.push_back(CINNValue(stages));
-        *ret = CINNValuePack{res};
-      });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute, lang::PackedFunc(), "strategy.store.x86", 1);
-  return strategy;
-}
-
-std::shared_ptr<framework::OpStrategy> StrategyForGenerateShape(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  framework::CINNCompute cast_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input arguments of Cast compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "at least 1 input tensors for Cast compute\n";
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        CHECK(!output_shapes.empty());
-        auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
-        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        CHECK_EQ(pack_args.size(), 2U);
-        std::string tensor_name = pack_args[1].operator std::string();
-        // ir::Tensor out = pe::Cast(tensor_A, tensor_A->type(), tensor_name);
-        ir::Tensor out(ir::_Tensor_::Make(tensor_name,
                                           tensor_A->type(),
                                           {
                                               Expr(1),
@@ -1682,8 +1640,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .describe("This operator is used to cast input tensor's type to target.")
       .set_num_inputs(1)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForGenerateShape)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic",
           cinn::hlir::op::StrategyForGenerateShapeSymbolic)
@@ -1693,7 +1649,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
 
   CINN_REGISTER_OP(arange)
