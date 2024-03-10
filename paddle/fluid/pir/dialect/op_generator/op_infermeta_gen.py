@@ -674,3 +674,13 @@ def gen_infermeta_by_invoke_func_str(op_class_name, invoke_class_name):
     return OP_INFERMETA_BY_INVOKE_TEMPLATE.format(
         op_name=op_class_name, invoke_class=invoke_class_name
     )
+
+
+def gen_op_infermeta_func(args, op_info, op_info_items):
+    interface = []
+    if op_info.infer_meta_func:
+        interface = ["paddle::dialect::InferMetaInterface"]
+    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
+        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
+            interface = ["paddle::dialect::InferMetaInterface"]
+    return interface, None, None
