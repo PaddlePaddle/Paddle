@@ -10,8 +10,8 @@ gather_srcs(
   op_mapper_registry.cc
   paddle_model_convertor.cc
   program_pass.cc
-  optimize.cc
-  group_pattern_util.cc)
+  optimize.cc)
+  # group_pattern_util.cc)
 
 if(NOT WITH_CUDA)
   cinn_cc_test(

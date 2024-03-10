@@ -279,33 +279,73 @@ ir::Expr TrivialFusion(ir::Expr upper, ir::Expr down) {
   return fused.GetFuncBody();
 }
 
+
+void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
+                           const std::vector<OpPatternKind>& op_patterns) {
+  if (VLOG_IS_ON(4)) {
+    for (const auto& func : op_compute_bodies) {
+      VLOG(4) << "TrivialOpFusion: {FuncBody is} :" << func;
+    }
+    for (const auto& op_ptn : op_patterns) {
+      VLOG(4) << "OpPattern is :" << op_ptn;
+    }
+  }
+  VLOG(4) << "      op_patterns.size() = " << op_compute_bodies.size();
+  VLOG(4) << "op_compute_bodies.size() = " << op_patterns.size();
+  PADDLE_ENFORCE_EQ(
+      op_patterns.size(), op_compute_bodies.size(), "ops and  size not equal");
+}
+
 struct FusionNode {
   // Function bodies losses the kind information which needed in trivialop
   // fusion.
   std::vector<ir::Expr> op_compute_body;
   OpPatternKind op_pattern;
 
-  std::vector<::pir::Operator*> output_ops;
+  ::pir::Operation* expr_related_op;
 
-  std::unordered_map<FusionNode*, pir::Value> upstream;
-  std::unordered_map<FusionNode*, pir::Value> downstream;
+  std::unordered_map<FusionNode*, ::pir::Value> upstream;
+  std::unordered_map<FusionNode*, ::pir::Value> downstream;
 
   explicit FusionNode(ir::Expr op_compute_body, OpPatternKind op_pattern)
-      : op_compute_body(op_compute_body), op_pattern(op_pattern) {}
+      : op_compute_body({op_compute_body}), op_pattern(op_pattern) {}
 
-  void init_topo_info(FusionNode* upstream_node, FusionNode* downstream_node){
-    upstream.insert(upstream.end(), upstream_node.upstream.begin(), upstream_node.upstream.end());
-    upstream.insert(upstream.end(), downstream_node.upstream.begin(), downstream_node.upstream.end());
-    upstream.erase(upstream_node);
+  void replace_topo_structure_of_fused_nodes(FusionNode* fused_up_node, FusionNode* fused_down_node){
+    upstream.insert(fused_up_node->upstream.begin(), fused_up_node->upstream.end());
+    upstream.insert(fused_down_node->upstream.begin(), fused_down_node->upstream.end());
+    upstream.erase(fused_up_node);
 
-    downstream.insert(downstream.end(), upstream_node.upstream.begin(), upstream_node.upstream.end());
-    downstream.insert(downstream.end(), downstream_node.upstream.begin(), downstream_node.upstream.end());
-    downstream.erase(downstream_node);
+    downstream.insert(fused_up_node->downstream.begin(), fused_up_node->downstream.end());
+    downstream.insert(fused_down_node->downstream.begin(), fused_down_node->downstream.end());
+    downstream.erase(fused_down_node);
 
-    output_ops.insert(output_ops.end(), upstream_node.output_ops.begin(), upstream_node.output_ops.end());
-    output_ops.insert(output_ops.end(), downstream_node.output_ops.begin(), downstream_node.output_ops.end());
-    upstream_node->downstream[downstream_node].defining_op();
-    output_ops.erase();
+    expr_related_op = fused_down_node->expr_related_op;
+
+    for (const auto& pair_data: upstream){
+      FusionNode* upstream_node = pair_data.first;
+      ::pir::Value related_value = pair_data.second;
+      if (upstream_node->downstream.find(fused_up_node) != upstream_node->downstream.end()){
+        upstream_node->downstream.erase(fused_up_node);
+        upstream_node->downstream[this] = related_value;
+      }
+      if (upstream_node->downstream.find(fused_down_node) != upstream_node->downstream.end()){
+        upstream_node->downstream.erase(fused_down_node);
+        upstream_node->downstream[this] = related_value;
+      }
+    }
+
+    for (const auto& pair_data: downstream){
+      FusionNode* downstream_node = pair_data.first;
+      ::pir::Value related_value = pair_data.second;
+      if (downstream_node->upstream.find(fused_up_node) != downstream_node->upstream.end()){
+        downstream_node->upstream.erase(fused_up_node);
+        downstream_node->upstream[this] = related_value;
+      }
+      if (downstream_node->upstream.find(fused_down_node) != downstream_node->upstream.end()){
+        downstream_node->upstream.erase(fused_down_node);
+        downstream_node->upstream[this] = related_value;
+      }
+    }
   }
 
 };
@@ -318,51 +358,51 @@ struct FusionGraph {
 
     // shardable_axes_ = InferShardableAxes(ops);
 
-    const auto& op_patterns = trivial_fusion_detail::GetOpPatternKindVector(ops);
-    trivial_fusion_detail::CheckFusionInputValid(op_compute_bodies, op_patterns);
+    const auto& op_patterns = GetOpPatternKindVector(ops);
+    CheckFusionInputValid(op_compute_bodies, op_patterns);
 
     std::unordered_map<::pir::Operation*, FusionNode*> op_to_node_map;
 
     for (int i=0; i<ops.size(); ++i){
-      if (ops[i]->isa<pir::YieldOp()>)
-        continue;
       FusionNode* node = new FusionNode(op_compute_bodies[i], op_patterns[i]);
       op_to_node_map[ops[i]] = node;
       all_fusion_nodes_.emplace(node);
-      node->output_op.emplace_back(ops[i]);
+      node->expr_related_op = ops[i];
     }
 
-    for (const ::pir::Operation* op : ops){
-      if (op->isa<pir::YieldOp()>)
-        continue;
-      FusionNode* node = op_to_node_map[op];
+    for (::pir::Operation* op : ops){
+      FusionNode* cur_node = op_to_node_map[op];
 
       // add upstream nodes
       for (int i = 0; i < op->num_operands(); ++i){
-        pir::Value input_value = op->operand_source(i);
-        const ::pir::Operation* input_op = input_value.defining_op();
+        ::pir::Value related_value = op->operand_source(i);
+        ::pir::Operation* input_op = related_value.defining_op();
         if (op_to_node_map.find(input_op) != op_to_node_map.end()){
-          node->upstream[op_to_node_map[input_op]] = input_value;
+          FusionNode* upstream_node = op_to_node_map[input_op];
+          cur_node->upstream[upstream_node] = related_value;
+          upstream_node->downstream[cur_node] = related_value;
         }
       }
 
       // add downstream nodes
       for (int i = 0; i < op->num_results(); ++i) {
-        pir::Value output_value = op->result(i);
-        for (auto consumer_it = output_value.use_begin(); consumer_it != output_value.use_end(); ++consumer_it) {
-          const auto* output_op = consumer_it->owner();
+        ::pir::Value related_value = op->result(i);
+        for (auto consumer_it = related_value.use_begin(); consumer_it != related_value.use_end(); ++consumer_it) {
+          ::pir::Operation* output_op = consumer_it->owner();
           if (op_to_node_map.find(output_op) != op_to_node_map.end()){
-            node->downstream[op_to_node_map[output_op]]= output_value;
+            FusionNode* downstream_node = op_to_node_map[output_op];
+            cur_node->downstream[downstream_node]= related_value;
+            downstream_node->upstream[cur_node] = related_value;
           }
         }
       }
 
-      if (node->upstream.size() == 0){
-        entrance_nodes_.emplace(node);
+      if (cur_node->upstream.size() == 0){
+        entrance_nodes_.emplace(cur_node);
       }
 
-      if (node->downstream.size() == 0){
-        exit_nodes_.emplace(node);
+      if (cur_node->downstream.size() == 0){
+        exit_nodes_.emplace(cur_node);
       }
     }
   }
@@ -379,34 +419,30 @@ struct FusionGraph {
   }
 
 private:
+  FusionNode* find_trivial_node(){
+    for (FusionNode* node: all_fusion_nodes_){
+      if (IsTrivialKind(node->op_pattern) && node->downstream.size() > 0){
+        CHECK(node->op_compute_body.size() == 1);
+        return node;
+      }
+    }
+    return nullptr;
+  }
+
   void trivial_op_fusion(){
-    std::queue<FusionNode*> candidates;
-    std::transform(
-      entrance_nodes_.begin(),
-      entrance_nodes_.end(),
-      std::inserter(bfs_candidates),
-      [](FusionNode* node){return node;}
-    );
-
-    while(!candidates.empty()){
-      FusionNode* upstream = bfs_candidates.front();
-      candidates.pop();
-
-      bool need_fusion = IsTrivialKind(upstream);
-
-      for (const auto& pair_data : cur_node->downstream){
+    FusionNode* upstream;
+    while((upstream = find_trivial_node()) != nullptr){
+      for (const auto& pair_data : upstream->downstream){
         FusionNode* downstream = pair_data.first;
-        if (need_fusion){
-          FusionNode* new_node = new FusionNode(
-            TrivialFusion(upstream_node.op_compute_body,downstream_node.op_compute_body),
-            downstream.op_pattern
-          );
-          new_node.init_topo_info(upstream, downstream);
-          candidates.push(new_node);
-          remove_fusion_node(downstream);
-        }else(
-          candidates.push(downstream);
-        )
+        CHECK(downstream->op_compute_body.size() == 1);
+
+        FusionNode* new_node = new FusionNode(
+          TrivialFusion(upstream->op_compute_body[0], downstream->op_compute_body[0]),
+          downstream->op_pattern
+        );
+        new_node->replace_topo_structure_of_fused_nodes(upstream, downstream);
+        append_fusion_node(new_node);
+        remove_fusion_node(downstream);
       }
       remove_fusion_node(upstream);
     }
@@ -415,7 +451,7 @@ private:
   std::vector<ir::Expr> get_expr_results() {
     std::vector<ir::Expr> output_exprs;
     for (const auto& node : all_fusion_nodes_) {
-      output_exprs.push_back(node->op_compute_body);
+      output_exprs.insert(output_exprs.end(), node->op_compute_body.begin(), node->op_compute_body.end());
     }
     return output_exprs;
   }
@@ -433,14 +469,24 @@ private:
     delete node;
   }
 
+  void append_fusion_node(FusionNode* node){
+    all_fusion_nodes_.emplace(node);
+    if (node->upstream.size() == 0){
+      entrance_nodes_.emplace(node);
+    }
+
+    if (node->downstream.size() == 0){
+      exit_nodes_.emplace(node);
+    }
+  }
+
 private:
   std::unordered_set<FusionNode*> all_fusion_nodes_;
   std::unordered_set<FusionNode*> entrance_nodes_;
   std::unordered_set<FusionNode*> exit_nodes_;
 
-  std::unordered_map<pir::Value, ShardableAxes> shardable_axes_;
-
-}
+  // std::unordered_map<::pir::Value, ShardableAxes> shardable_axes_;
+};
 
 std::vector<FusionNode> ConstructFusionNodeElementwisely(
     const std::vector<ir::Expr>& op_compute_bodies,
@@ -457,8 +503,8 @@ bool IsAdjecentInjectiveBetween(const FusionNode& upstream_node,
   return upstream_node.op_compute_body != downstream_node.op_compute_body &&
          IsTrivialKind(upstream_node.op_pattern) &&
          IsTrivialKind(downstream_node.op_pattern) &&
-         IsAdjecent(upstream_node.op_compute_body,
-                    downstream_node.op_compute_body);
+         IsAdjecent(upstream_node.op_compute_body[0],
+                    downstream_node.op_compute_body[0]);
 }
 
 std::optional<FusionNode> FindUpstreamNodeUsedByOthers(
@@ -483,8 +529,8 @@ std::vector<FusionNode> FuseEachUpstreamUse(
       std::back_inserter(fused_nodes),
       [&](const FusionNode& downstream_node) {
         if (IsAdjecentInjectiveBetween(upstream_node, downstream_node)) {
-          return FusionNode(TrivialFusion(upstream_node.op_compute_body,
-                                          downstream_node.op_compute_body),
+          return FusionNode(TrivialFusion(upstream_node.op_compute_body[0],
+                                          downstream_node.op_compute_body[0]),
                             OpPatternKind::kInjective);
         }
         return downstream_node;
@@ -519,25 +565,9 @@ std::vector<ir::Expr> ExtractBodiesFromFusionNodes(
     const std::vector<FusionNode>& fusion_nodes) {
   std::vector<ir::Expr> output_exprs;
   for (const auto& node : fusion_nodes) {
-    output_exprs.push_back(node.op_compute_body);
+    output_exprs.emplace_back(node.op_compute_body[0]);
   }
   return output_exprs;
-}
-
-void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
-                           const std::vector<OpPatternKind>& op_patterns) {
-  if (VLOG_IS_ON(4)) {
-    for (const auto& func : op_compute_bodies) {
-      VLOG(4) << "TrivialOpFusion: {FuncBody is} :" << func;
-    }
-    for (const auto& op_ptn : op_patterns) {
-      VLOG(4) << "OpPattern is :" << op_ptn;
-    }
-  }
-  VLOG(4) << "      op_patterns.size() = " << op_compute_bodies.size();
-  VLOG(4) << "op_compute_bodies.size() = " << op_patterns.size();
-  PADDLE_ENFORCE_EQ(
-      op_patterns.size(), op_compute_bodies.size(), "ops and  size not equal");
 }
 
 }  // namespace trivial_fusion_detail
