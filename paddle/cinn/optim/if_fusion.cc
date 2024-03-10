@@ -14,18 +14,11 @@
 
 #include "paddle/cinn/optim/if_fusion.h"
 
-<<<<<<< HEAD
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_compare.h"
-#include "paddle/cinn/optim/ir_simplify.h"
-=======
 #include <stack>
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/optim/optimize.h"
->>>>>>> 764bc274f5ae9ca13ae7a4d537056daa48dc1519
 
 namespace cinn {
 namespace optim {
@@ -34,7 +27,6 @@ namespace {
 
 #define VisitImpl(_TYPE)                                 \
   void Visit(const ir::_TYPE *op, Expr *expr) override { \
-    VLOG(-1) << op->node_type();                         \
     last_op = Expr(const_cast<ir::_TYPE *>(op));         \
     ir::IRMutator<>::Visit(op, expr);                    \
   }
