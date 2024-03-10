@@ -66,7 +66,24 @@ class CommonNotMetException : public std::exception {
 };
 
 namespace enforce {
+
+TEST_API void SkipPaddleFatal(bool skip = true);
+TEST_API bool IsPaddleFatalSkip();
+
 namespace details {
+
+class PaddleFatalGuard {
+ public:
+  PaddleFatalGuard() : skip_paddle_fatal_(IsPaddleFatalSkip()) {
+    if (!skip_paddle_fatal_) SkipPaddleFatal(true);
+  }
+  ~PaddleFatalGuard() {
+    if (!skip_paddle_fatal_) SkipPaddleFatal(false);
+  }
+
+ private:
+  bool skip_paddle_fatal_;
+};
 template <typename T>
 struct CanToString {
  private:
@@ -107,7 +124,6 @@ struct BinaryCompareMessageConverter<false> {
 #define __THROW_ERROR_INTERNAL__(__ERROR_SUMMARY) \
   do {                                            \
     HANDLE_THE_ERROR                              \
-    ::common::enforce::SkipPaddleFatal();         \
     throw ::common::enforce::EnforceNotMet(       \
         __ERROR_SUMMARY, __FILE__, __LINE__);     \
     END_HANDLE_THE_ERROR                          \
@@ -115,8 +131,6 @@ struct BinaryCompareMessageConverter<false> {
 
 }  // namespace details
 
-TEST_API void SkipPaddleFatal(bool skip = true);
-TEST_API bool IsPaddleFatalSkip();
 TEST_API int GetCallStackLevel();
 TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
 TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
@@ -207,6 +221,8 @@ struct EnforceNotMet : public std::exception {
   // Simple error message used when no C++ stack and python compile stack
   // e.g. (InvalidArgument) ***
   std::string simple_err_str_;
+
+  details::PaddleFatalGuard paddle_fatal_guard_;
 };
 /** HELPER MACROS AND FUNCTIONS **/
 #ifndef PADDLE_MAY_THROW
@@ -368,6 +384,7 @@ class IrNotMetException : public std::exception {
 
  private:
   std::string err_str_;
+  ::common::enforce::details::PaddleFatalGuard paddle_fatal_guard_;
 };
 
 #define IR_THROW(...)                                                     \
@@ -389,7 +406,6 @@ class IrNotMetException : public std::exception {
     bool __cond__(COND);                                                    \
     if (UNLIKELY(is_error(__cond__))) {                                     \
       try {                                                                 \
-        ::common::enforce::SkipPaddleFatal();                               \
         throw pir::IrNotMetException(                                       \
             paddle::string::Sprintf("Error occurred at: %s:%d :\n%s",       \
                                     __FILE__,                               \

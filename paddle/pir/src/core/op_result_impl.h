@@ -42,7 +42,7 @@ class OpResultImpl : public ValueImpl {
   ///
   uint32_t index() const;
 
-  ~OpResultImpl();
+  TEST_API ~OpResultImpl();
 
   ///
   /// \brief attribute related public interfaces
@@ -60,7 +60,7 @@ class OpResultImpl : public ValueImpl {
 ///
 class OpInlineResultImpl : public OpResultImpl {
  public:
-  OpInlineResultImpl(Type type, uint32_t result_index);
+  TEST_API OpInlineResultImpl(Type type, uint32_t result_index);
 
   static bool classof(const ValueImpl &value) {
     return value.kind() < OUTLINE_RESULT_IDX;

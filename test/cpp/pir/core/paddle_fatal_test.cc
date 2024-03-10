@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,10 +34,10 @@ TEST(paddle_fatal_test, base) {
   EXPECT_FALSE(::common::enforce::IsPaddleFatalSkip());
   EXPECT_DEATH(terminate_in_func(), "fatal occured in deconstructor!.*");
   EXPECT_THROW(throw_exception_in_func(), common::enforce::EnforceNotMet);
-  EXPECT_TRUE(::common::enforce::IsPaddleFatalSkip());
+  EXPECT_FALSE(::common::enforce::IsPaddleFatalSkip());
+  ::common::enforce::SkipPaddleFatal(true);
   // skip fatal.
   terminate_in_func();
   // unskip paddle fatal.
   ::common::enforce::SkipPaddleFatal(false);
-  EXPECT_DEATH(terminate_in_func(), "fatal occured in deconstructor!.*");
 }
