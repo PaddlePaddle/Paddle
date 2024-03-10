@@ -165,6 +165,7 @@ bool Cumsum_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return CumsumOpInferSymbolicShape(op, shape_analysis);
 }
+
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
@@ -280,6 +281,7 @@ bool KthvalueOpInferSymbolicShape(
   shape_analysis->SetShapeOrDataForValue(op->result(1), shape_data);
   return true;
 }
+
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
@@ -329,10 +331,11 @@ bool ReshapeOpInferSymbolicShape(
     const auto &numel =
         GetProduct(original_shape, [](const auto &) { return true; });
 
+    ExprVec target_shape = details::GetExprVecFromData(operand_shape_or_data);
     const auto &product_exclude_minus_one =
-        GetProduct(operand_shape_or_data.data().value(), IsNotMinusOne);
+        GetProduct(target_shape, IsNotMinusOne);
 
-    const auto &input_dims = operand_shape_or_data.data().value();
+    const auto &input_dims = target_shape;
 
     std::vector<symbol::DimExpr> out_dims;
     out_dims.reserve(input_dims.size());

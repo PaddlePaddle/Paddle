@@ -30,7 +30,8 @@ gather_srcs(
   update_buffer_axis_pass.cc
   trans_buffer_with_dynamic_shape.cc
   schedule_block_dce.cc
-  eliminate_common_factor_of_local_index.cc)
+  eliminate_common_factor_of_local_index.cc
+  eliminate_common_global_memory_read.cc)
 
 if(WITH_CUDA)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)
