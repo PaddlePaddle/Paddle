@@ -2953,7 +2953,7 @@
     out : Out
 
 - op : send_and_recv
-  inputes :
+  inputs :
     x: X
   outputs :
     out : Out
