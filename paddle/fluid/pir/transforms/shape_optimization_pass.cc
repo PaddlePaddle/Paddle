@@ -109,9 +109,9 @@ void PrintOpInfo(pir::Operation* op) {
 void DebugPrintOpInfo(
     pir::Operation* op,
     pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+  std::ostringstream print_stream;
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
-    std::ostringstream print_stream;
     print_stream << "\tresult(" << res.dyn_cast<pir::OpResult>().index() << ") "
                  << "ShapeOrData: {";
 
