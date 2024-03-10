@@ -307,12 +307,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
                  output_shapes[0].end(),
                  out_shape.begin(),
                  [](const ir::Dim &dim) { return dim->dim_expr; });
-  std::vector<int> broadcast_axes;
-  CHECK_GT(attrs.attr_store.count("broadcast_axes"), 0);
-  broadcast_axes =
-      absl::get<std::vector<int>>(attrs.attr_store.at("broadcast_axes"));
   VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
-  VLOG(3) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
 
   framework::CINNCompute broadcast_to_compute([=](lang::Args args,
                                                   lang::RetValue *ret) {
@@ -328,7 +323,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
     Expr A_expr = pack_args[0];
     CHECK(A_expr.as_tensor());
     ir::Tensor A = A_expr.as_tensor_ref();
-    auto out = pe::BroadcastTo(A, out_shape, broadcast_axes, tensor_name);
+    auto out = pe::BroadcastTo(A, out_shape, tensor_name);
     auto stages = CreateStages({A, out});
     *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
   });
