@@ -20,16 +20,16 @@
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 
-namespace cinn {
-namespace optim {
-
-namespace {
-
 #define VisitImpl(_TYPE)                                 \
   void Visit(const ir::_TYPE *op, Expr *expr) override { \
     last_op = Expr(const_cast<ir::_TYPE *>(op));         \
     ir::IRMutator<>::Visit(op, expr);                    \
   }
+
+namespace cinn {
+namespace optim {
+
+namespace {
 
 struct IfFusionMutator : public ir::IRMutator<Expr *> {
   void operator()(Expr *expr) { Visit(expr, expr); }
