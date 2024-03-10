@@ -88,8 +88,17 @@ void DebugPrintOpInfo(
     }
     print_stream << " }";
     VLOG(vlog_level) << print_stream.str();
+  }
+}
 
-    // Check InferSymbolicShape with InferMeta.
+void CheckInferSymWithInferMeta(
+    pir::Operation* op,
+    pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    const auto& res = op->result(i);
+    std::ostringstream print_stream;
+
+    // InferMeta funcs of some Ops are not corrrect now, we don't check them.
     if (check_ops_blacklist.find(op->name() + "_" + std::to_string(i)) !=
         check_ops_blacklist.end())
       continue;
@@ -104,11 +113,12 @@ void DebugPrintOpInfo(
       if (infer_meta_shape.size() != infer_sym_shape.size()) {
         std::ostringstream print_stream;
         print_stream << "Warning : Check InferSymbolicShape for " << op->name()
-                     << "carefully! rank of infer_meta_shape is ["
+                     << " carefully! rank of infer_meta_shape is ["
                      << infer_meta_shape.size()
                      << "], but rank of infer_sym_shape is ["
                      << infer_sym_shape.size() << "].";
         VLOG(vlog_level) << print_stream.str();
+        continue;
       }
 
       // Check each dim.
@@ -119,17 +129,18 @@ void DebugPrintOpInfo(
             std::ostringstream print_stream;
             print_stream
                 << "Warning : Check InferSymbolicShape for " << op->name()
-                << "carefully! "
+                << " carefully! "
                 << "shape[" << i
                 << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
             VLOG(vlog_level) << print_stream.str();
+            continue;
           }
 
           // Check Static shape should be consist.
           if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
             std::ostringstream print_stream;
             print_stream << "Warning : Check InferSymbolicShape for "
-                         << op->name() << "carefully! "
+                         << op->name() << " carefully! "
                          << "infer_sym_shape is [" << infer_meta_shape[i]
                          << "], but infer_meta_shape is ["
                          << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
@@ -208,6 +219,7 @@ void InferSymExprForBlock(const Block& block,
           op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
     }
     DebugPrintOpInfo(&op, shape_analysis);
+    CheckInferSymWithInferMeta(&op, shape_analysis);
   }
 }
 
