@@ -40,7 +40,7 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   const auto& IsDynamicShape = [](const pir::Value& value) -> bool {
     return value.type().dyn_cast<pir::ShapedTypeInterface>().IsDynamicShape();
   };
-  const auto& GetDims = [](const pir::Value& value) {
+  const auto& GetDims = [](const pir::Value& value) -> decltype(auto) {
     return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
   };
 
