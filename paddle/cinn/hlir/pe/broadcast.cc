@@ -23,6 +23,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/common/errors.h"
 PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
@@ -379,8 +380,9 @@ Tensor BroadcastTo(const Tensor& A,
   PADDLE_ENFORCE_GE(
       out_shape.size(),
       A_shape.size(),
-      "broadcast_to's out_shape's size should be GreaterEqual with the input "
-      "shape's size");
+      ::common::errors::InvalidArgument(
+          "broadcast_to's out_shape's size should be GreaterEqual "
+          "with the input shape's size"));
 
   return Compute(
       ToCinnExprs(out_shape),
