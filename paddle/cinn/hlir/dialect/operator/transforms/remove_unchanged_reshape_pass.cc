@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -114,6 +115,7 @@ class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
     ps.Add<RemoveUnchangedReshapePattern<cinn::dialect::ReshapeOp>>(context);
     ps.Add<RemoveUnchangedReshapePattern<paddle::dialect::ReshapeOp>>(context);
     ps.Add<MergeReshapePattern>(context);
+    ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;
   }
