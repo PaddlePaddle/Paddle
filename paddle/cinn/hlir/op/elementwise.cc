@@ -1259,9 +1259,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
     const Target &target) {
   framework::CINNCompute cast_compute([=](lang::Args args,
                                           lang::RetValue *ret) {
-    PADDLE_ENFORCE(
-        !args.empty(),
-        "The input arguments of Cast compute is empty! Please check.\n");
+    PADDLE_ENFORCE(!args.empty(),
+                   "The input arguments of generate_shape compute is empty! "
+                   "Please check.\n");
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(
         pack_args->size(), 1U, "at least 1 input tensors for Cast compute\n");
@@ -1282,7 +1282,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
     stages->InsertLazily(out);
     res.push_back(CINNValue(out));
     PADDLE_ENFORCE(!out_type.empty(),
-                   "Output type of Cast is empty! Please check.\n");
+                   "Output type of generate_shape is empty! Please check.\n");
 
     res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
