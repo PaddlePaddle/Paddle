@@ -556,11 +556,9 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
       int out_rank =
           op->result(0).type().dyn_cast<pir::DenseTensorType>().dims().size();
       std::vector<int64_t> broadcast_axes(x_rank, 0);
-      VLOG(0) << "###### broadcast_axes size : " << broadcast_axes.size();
       size_t index_gap = out_rank - x_rank;
       for (size_t i = 0; i < x_rank; ++i) {
         broadcast_axes[i] = i + index_gap;
-        VLOG(0) << "###### broadcast_axes: " << i << " : " << broadcast_axes[i];
       }
       return broadcast_axes;
     }();

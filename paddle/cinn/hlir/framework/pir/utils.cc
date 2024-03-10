@@ -368,9 +368,6 @@ bool HasHandledInPass(const ::pir::Operation& op) {
 // 3. it should be handled in pd_to_cinn_pass;
 bool IsSupportInCinn(const ::pir::Operation& op) {
   const bool is_denied = IsDeniedInCinn(op);
-  if (op.name() == "cinn_op.generate_shape") {
-    return true;
-  }
   const bool is_registered = IsRegisteredInCINN(op);
   const bool is_handled = HasHandledInPass(op);
   VLOG(5) << op.name() << ": IsDeniedInCinn = " << is_denied
