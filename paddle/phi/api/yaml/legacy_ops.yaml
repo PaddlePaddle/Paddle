@@ -1089,7 +1089,6 @@
     func : softmax
   inplace : (x -> out)
   backward : softmax_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)
