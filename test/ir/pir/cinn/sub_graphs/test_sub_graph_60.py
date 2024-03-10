@@ -44,8 +44,10 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [1, 48, 16, 16], dtype: paddle.float32, stop_gradient: False)
-        var_1,  # (shape: [1, 48, 16, 16], dtype: paddle.float32, stop_gradient: False)
+        # (shape: [1, 48, 16, 16], dtype: paddle.float32, stop_gradient: False)
+        var_0,
+        # (shape: [1, 48, 16, 16], dtype: paddle.float32, stop_gradient: False)
+        var_1,
     ):
         var_2 = paddle.tensor.manipulation.concat([var_1, var_0], axis=1)
         var_3 = paddle.nn.functional.pooling.adaptive_avg_pool2d(
@@ -121,5 +123,5 @@ class TestLayer(unittest.TestCase):
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()
