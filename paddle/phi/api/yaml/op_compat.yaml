@@ -3789,6 +3789,12 @@
   inputs :
     x : X
 
+- op: random_routing
+  inputs:
+    {prob : Prob, topk_value : TopK_Value, topk_idx : TopK_Idx}
+  outputs:
+    out : Out
+
 - op: read_from_array
   inputs:
     array : X
