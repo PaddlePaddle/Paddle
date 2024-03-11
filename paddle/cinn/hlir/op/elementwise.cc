@@ -1256,36 +1256,43 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute generate_shape_compute([=](lang::Args args,
-                                                    lang::RetValue *ret) {
-    PADDLE_ENFORCE(!args.empty(),
-                   "The input arguments of generate_shape compute is empty! "
-                   "Please check.\n");
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_GE(
-        pack_args->size(), 1U, "at least 1 input tensors for Cast compute\n");
-    auto stages = CreateStages({});
+  framework::CINNCompute generate_shape_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        PADDLE_ENFORCE(!args.empty(),
+                       ::common::errors::InvalidArgument(
+                           "Invalid argument. The input arguments of "
+                           "generate_shape compute is empty! Please check."));
+        CINNValuePack pack_args = args[0];
+        PADDLE_ENFORCE_GE(pack_args->size(),
+                          1U,
+                          ::common::errors::InvalidArgument(
+                              "At least 1 input tensors for generate_shape "
+                              "compute, but now get %d.",
+                              pack_args->size()));
+        auto stages = CreateStages({});
 
-    std::string tensor_name = pack_args.back().operator std::string();
-    ir::Tensor out(ir::_Tensor_::Make(/*name=*/tensor_name,
-                                      /*dtype=*/common::type_of<int64_t>(),
-                                      /*shape=*/
-                                      {
-                                          Expr(1),
-                                      },
-                                      /*domain=*/
-                                      {
-                                          Expr(1),
-                                      }));
-    std::vector<CINNValue> res;
-    stages->InsertLazily(out);
-    res.push_back(CINNValue(out));
-    PADDLE_ENFORCE(!out_type.empty(),
-                   "Output type of generate_shape is empty! Please check.\n");
+        std::string tensor_name = pack_args.back().operator std::string();
+        ir::Tensor out(ir::_Tensor_::Make(/*name=*/tensor_name,
+                                          /*dtype=*/common::type_of<int64_t>(),
+                                          /*shape=*/
+                                          {
+                                              Expr(1),
+                                          },
+                                          /*domain=*/
+                                          {
+                                              Expr(1),
+                                          }));
+        std::vector<CINNValue> res;
+        stages->InsertLazily(out);
+        res.push_back(CINNValue(out));
+        PADDLE_ENFORCE(!out_type.empty(),
+                       ::common::errors::InvalidArgument(
+                           "Invalid argument. The output type of "
+                           "generate_shape is empty! Please check."));
 
-    res.push_back(CINNValue(stages));
-    *ret = CINNValuePack{res};
-  });
+        res.push_back(CINNValue(stages));
+        *ret = CINNValuePack{res};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(

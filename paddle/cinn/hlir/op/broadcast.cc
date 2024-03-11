@@ -322,8 +322,10 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
       } else {
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           3,
-                          "The input tensors of broadcast_to compute is %d.",
-                          pack_args.size());
+                          ::common::errors::InvalidArgument(
+                              "The number of input tensors is wrong. "
+                              "The expected inputs is 3, but now is %d.",
+                              pack_args.size()));
         return pack_args[2].operator std::string();
       }
     }();
