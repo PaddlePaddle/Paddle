@@ -69,6 +69,7 @@ OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
 NEED_GEN_STATIC_ONLY_APIS = [
+    'distributed_fused_lamb',
     'distributed_fused_lamb_init',
     'distributed_fused_lamb_init_',
     'fetch',
@@ -172,7 +173,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_prod_',
     'push_sparse_v2',
     'push_sparse_v2_',
-    'distributed_fused_lamb',
     'partial_send',
     'nop',
     'nop_',
