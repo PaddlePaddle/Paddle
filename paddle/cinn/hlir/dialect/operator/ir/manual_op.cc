@@ -81,7 +81,13 @@ pir::Block* GroupOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> GroupOp::GetOperators() {
+pir::Block* GroupOp::block() const {
+  pir::Region& region = (*this)->region(0);
+  CHECK(!region.empty());
+  return &region.front();
+}
+
+std::vector<pir::Operation*> GroupOp::GetOperators() const {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
