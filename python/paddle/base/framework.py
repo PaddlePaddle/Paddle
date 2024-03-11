@@ -1262,7 +1262,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
-    if in_pir_mode():
+    if use_pir_api():
         return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
