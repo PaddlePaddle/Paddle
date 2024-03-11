@@ -151,10 +151,17 @@ class PADDLE_API DeviceContext {
                       bool pinned = false,
                       bool fake_alloc = false) const;
 
+#if defined(_WIN32) && defined(PADDLE_WITH_TESTING)
   template <typename T>
-  TEST_API T* Alloc(TensorBase* tensor,
-                    size_t requested_size = 0,
-                    bool pinned = false) const;
+  __declspec(dllexport) T* Alloc(TensorBase* tensor,
+                                 size_t requested_size = 0,
+                                 bool pinned = false) const;
+#else
+  template <typename T>
+  T* Alloc(TensorBase* tensor,
+           size_t requested_size = 0,
+           bool pinned = false) const;
+#endif
   /**
    * @brief Allocate host memory for tensor.
    */
