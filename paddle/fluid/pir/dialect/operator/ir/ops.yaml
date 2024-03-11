@@ -886,7 +886,7 @@
 
 - op : limit_by_capacity
   args : (Tensor expert_count, Tensor capacity, int n_worker)
-  output : Tensor(Out)
+  output : Tensor(out)
   infer_meta :
     func : LimitByCapacityInferMeta
   kernel :

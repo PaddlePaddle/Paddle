@@ -1604,7 +1604,7 @@
   attrs :
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
-- op : global_scatter(global_scatter)
+- op : global_scatter
   inputs :
     {x : X, local_count : local_count, global_count : global_count, ring_id : ring_id, use_calc_stream : use_calc_stream}
   outputs :
