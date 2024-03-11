@@ -52,8 +52,8 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
     }
 
     // judge whether condition is same
-    bool isNeedFuse = ir::ir_utils::IRCompare(op->condition, lop->condition);
-    if (isNeedFuse) {
+    bool is_need_fuse = ir::ir_utils::IRCompare(op->condition, lop->condition);
+    if (is_need_fuse) {
       // do fusion (cop.true_case <-> lop.true_case)
       Fuse(op->true_case, lop->true_case);
 
@@ -78,7 +78,7 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
       RecordIndexForErase(Expr(const_cast<ir::IfThenElse *>(op)), cur_block);
     }
 
-    if (!isNeedFuse) {
+    if (!is_need_fuse) {
       last_op = Expr(const_cast<ir::IfThenElse *>(op));
     }
   }
@@ -111,8 +111,6 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
       op->stmts.erase(op->stmts.begin() + erase_pos);
     }
   }
-
-  ir::Block *cur_block;
 
   VisitImpl(Expr);
   VisitImpl(ScheduleBlock);
@@ -160,9 +158,12 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
     neb->stmts.clear();
   }
 
+  std::stack<int> erase_elements_ind;
+
   // record the condition of it if last block is if-block, nullptr otherwise.
   Expr last_op = Expr(nullptr);
-  std::stack<int> erase_elements_ind;
+
+  ir::Block *cur_block;
 };  // IfFusionMutator
 }  // namespace
 

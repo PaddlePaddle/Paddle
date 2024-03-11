@@ -907,7 +907,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
     // 4.Apply low level pass
     func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
-    optim::IfFusion(&(func->body));
     lowered_funcs.push_back(std::move(func));
   }
 
