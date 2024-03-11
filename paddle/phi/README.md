@@ -354,7 +354,7 @@ Tensor mean(const Tensor& x);
 
 Tensor scale(const Tensor& x,
              const Scalar& scale,
-             float bias,
+             const Scalar& bias,
              bool bias_after_scale);
 ```
 
