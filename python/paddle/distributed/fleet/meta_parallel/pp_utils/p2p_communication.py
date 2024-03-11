@@ -53,6 +53,9 @@ class SendRecvMeta:
     """Mainly used to help p2p communication context information"""
 
     def __init__(self):
+        self.init_or_erase_meta()
+
+    def init_or_erase_meta(self):
         self.send_shape_message = None
         self.send_dtype_message = None
 
@@ -660,6 +663,9 @@ class P2pHelper:
         if not self._send_recv_meta.has_recv_meta:
             self._send_recv_meta.recv_meta(_hcg.get_pipe_parallel_group())
             self._send_recv_meta.has_recv_meta = self._use_cache
+
+    def clear_meta_cache(self):
+        self._send_recv_meta.init_or_erase_meta()
 
     def recv_forward(self, pp_first_stage, sync_recv=True, batch_p2p_comm=True):
         global _timers

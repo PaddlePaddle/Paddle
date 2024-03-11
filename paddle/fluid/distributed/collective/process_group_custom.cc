@@ -236,7 +236,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
 
         std::vector<void*> send_buf, recv_buf;
         std::vector<size_t> send_count, recv_count;
-        std::vector<phi::ccl::CCLDataType> send_dtype, recv_dtype;
+        std::vector<phi::DataType> send_dtype, recv_dtype;
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
           input_partial = GetPartialTensor(tensor_tmp, in_offset, in_numel);
@@ -248,8 +248,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
           recv_buf.push_back(output_partial.data());
           send_count.push_back(in_numel);
           recv_count.push_back(out_numel);
-          send_dtype.push_back(phi::ccl::ToCCLDataType(input_partial.dtype()));
-          recv_dtype.push_back(phi::ccl::ToCCLDataType(output_partial.dtype()));
+          send_dtype.push_back(input_partial.dtype());
+          recv_dtype.push_back(output_partial.dtype());
         }
 
         phi::DeviceManager::CCLAllToAll(
@@ -992,9 +992,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
         std::vector<void*> send_buf, recv_buf;
         std::vector<size_t> send_count(size_, input.numel() / size_),
             recv_count(size_, input.numel() / size_);
-        std::vector<phi::ccl::CCLDataType> send_dtype(
-            size_, phi::ccl::ToCCLDataType(input.dtype())),
-            recv_dtype(size_, phi::ccl::ToCCLDataType(input.dtype()));
+        std::vector<phi::DataType> send_dtype(size_, input.dtype()),
+            recv_dtype(size_, input.dtype());
         for (auto i = 0; i < size_; i++) {
           send_buf.push_back(
               GetPointerByOffset(input.data(), offset, input.dtype()));

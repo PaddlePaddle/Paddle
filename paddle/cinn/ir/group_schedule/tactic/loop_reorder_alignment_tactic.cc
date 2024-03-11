@@ -173,7 +173,7 @@ void LoopReorderAlignmentTactic::DoReorder(ir::IRSchedule* sch,
   const auto IsReduceBlock = [&](const std::string& block_id) {
     return context_->group_tile_info->reduce_tensor_names.count(block_id) > 0;
   };
-  if (!IsReduceBlock(block_id)) {
+  if (IsReduceBlock(block_id)) {
     return;
   }
 

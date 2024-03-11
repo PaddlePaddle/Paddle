@@ -584,88 +584,6 @@ private:
   // std::unordered_map<::pir::Value, ShardableAxes> shardable_axes_;
 };
 
-std::vector<FusionNode> ConstructFusionNodeElementwisely(
-    const std::vector<ir::Expr>& op_compute_bodies,
-    const std::vector<OpPatternKind>& op_kinds) {
-  std::vector<FusionNode> output_vector;
-  for (int i = 0; i < op_compute_bodies.size(); i++) {
-    output_vector.emplace_back(op_compute_bodies[i], op_kinds[i]);
-  }
-  return output_vector;
-}
-
-bool IsAdjecentInjectiveBetween(const FusionNode& upstream_node,
-                                const FusionNode& downstream_node) {
-  return upstream_node.op_compute_body != downstream_node.op_compute_body &&
-         IsTrivialKind(upstream_node.op_pattern) &&
-         IsTrivialKind(downstream_node.op_pattern) &&
-         IsAdjecent(upstream_node.op_compute_body[0],
-                    downstream_node.op_compute_body[0]);
-}
-
-std::optional<FusionNode> FindUpstreamNodeUsedByOthers(
-    const std::vector<FusionNode>& fusion_nodes) {
-  for (int i = 0; i < fusion_nodes.size(); i++) {
-    for (int j = i + 1; j < fusion_nodes.size(); j++) {
-      if (IsAdjecentInjectiveBetween(fusion_nodes[i], fusion_nodes[j])) {
-        return fusion_nodes[i];
-      }
-    }
-  }
-  return {};
-}
-
-std::vector<FusionNode> FuseEachUpstreamUse(
-    const std::vector<FusionNode>& origin_nodes,
-    const FusionNode& upstream_node) {
-  std::vector<FusionNode> fused_nodes;
-  std::transform(
-      origin_nodes.begin(),
-      origin_nodes.end(),
-      std::back_inserter(fused_nodes),
-      [&](const FusionNode& downstream_node) {
-        if (IsAdjecentInjectiveBetween(upstream_node, downstream_node)) {
-          return FusionNode(TTFusion(upstream_node.op_compute_body[0],
-                                          downstream_node.op_compute_body[0]),
-                            OpPatternKind::kInjective);
-        }
-        return downstream_node;
-      });
-  return fused_nodes;
-}
-
-std::vector<FusionNode> RemoveUpstreamTrivial(
-    const FusionNode& upstream_node,
-    const std::vector<FusionNode>& fusion_nodes) {
-  auto removed_nodes = fusion_nodes;
-  auto offset = std::find_if(fusion_nodes.begin(),
-                             fusion_nodes.end(),
-                             [&](const FusionNode& node) {
-                               return node.op_compute_body ==
-                                      upstream_node.op_compute_body;
-                             }) -
-                fusion_nodes.begin();
-  removed_nodes.erase(removed_nodes.begin() + offset);
-  return removed_nodes;
-}
-
-std::vector<FusionNode> FuseSingleUpstreamNode(
-    const FusionNode& fusable_upstream,
-    const std::vector<FusionNode>& fusion_nodes) {
-  const auto& fused_node = FuseEachUpstreamUse(
-      RemoveUpstreamTrivial(fusable_upstream, fusion_nodes), fusable_upstream);
-  return fused_node;
-}
-
-std::vector<ir::Expr> ExtractBodiesFromFusionNodes(
-    const std::vector<FusionNode>& fusion_nodes) {
-  std::vector<ir::Expr> output_exprs;
-  for (const auto& node : fusion_nodes) {
-    output_exprs.emplace_back(node.op_compute_body[0]);
-  }
-  return output_exprs;
-}
-
 }  // namespace trivial_fusion_detail
 
 std::vector<ir::Expr> TrivialOpFusion(
@@ -680,26 +598,6 @@ std::vector<ir::Expr> TrivialOpFusion(
   return output;
 }
 
-// std::vector<ir::Expr> TrivialOpFusion_(
-//     const std::vector<::pir::Operation*>& ops,
-//     const std::vector<ir::Expr>& op_compute_bodies) {
-//   const auto& op_patterns = trivial_fusion_detail::GetOpPatternKindVector(ops);
-//   trivial_fusion_detail::CheckFusionInputValid(op_compute_bodies, op_patterns);
-//   const auto& before_fused_nodes =
-//       trivial_fusion_detail::ConstructFusionNodeElementwisely(op_compute_bodies,
-//                                                               op_patterns);
-
-//   auto fused_nodes_each_step = before_fused_nodes;
-//   while (const auto& fusable_upstream =
-//              trivial_fusion_detail::FindUpstreamNodeUsedByOthers(
-//                  fused_nodes_each_step)) {
-//     fused_nodes_each_step = trivial_fusion_detail::FuseSingleUpstreamNode(
-//         fusable_upstream.value(), fused_nodes_each_step);
-//   }
-
-//   return trivial_fusion_detail::ExtractBodiesFromFusionNodes(
-//       fused_nodes_each_step);
-// }
 
 }  // namespace pir
 }  // namespace framework

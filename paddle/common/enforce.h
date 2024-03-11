@@ -66,7 +66,24 @@ class CommonNotMetException : public std::exception {
 };
 
 namespace enforce {
+
+TEST_API void SkipPaddleFatal(bool skip = true);
+TEST_API bool IsPaddleFatalSkip();
+
 namespace details {
+
+class PaddleFatalGuard {
+ public:
+  PaddleFatalGuard() : skip_paddle_fatal_(IsPaddleFatalSkip()) {
+    if (!skip_paddle_fatal_) SkipPaddleFatal(true);
+  }
+  ~PaddleFatalGuard() {
+    if (!skip_paddle_fatal_) SkipPaddleFatal(false);
+  }
+
+ private:
+  bool skip_paddle_fatal_;
+};
 template <typename T>
 struct CanToString {
  private:
@@ -204,6 +221,8 @@ struct EnforceNotMet : public std::exception {
   // Simple error message used when no C++ stack and python compile stack
   // e.g. (InvalidArgument) ***
   std::string simple_err_str_;
+
+  details::PaddleFatalGuard paddle_fatal_guard_;
 };
 /** HELPER MACROS AND FUNCTIONS **/
 #ifndef PADDLE_MAY_THROW
@@ -265,6 +284,14 @@ using CommonType2 = typename std::add_lvalue_reference<
                                 paddle::string::Sprintf(__VA_ARGS__))); \
     END_HANDLE_THE_ERROR                                                \
   } while (0)
+
+#define PADDLE_FATAL(...)                                          \
+  if (!::common::enforce::IsPaddleFatalSkip()) {                   \
+    auto info = ::common::enforce::EnforceNotMet(                  \
+        paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+    std::cerr << info.what() << std::endl;                         \
+    std::abort();                                                  \
+  }
 
 #define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
   do {                                                                         \
@@ -357,6 +384,7 @@ class IrNotMetException : public std::exception {
 
  private:
   std::string err_str_;
+  ::common::enforce::details::PaddleFatalGuard paddle_fatal_guard_;
 };
 
 #define IR_THROW(...)                                                     \

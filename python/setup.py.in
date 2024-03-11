@@ -135,6 +135,7 @@ is_tagged          = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
+with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
 
@@ -357,7 +358,8 @@ def cinn():
             'commit': commit,
             'is_tagged': is_tagged(),
             'with_mkl': '@WITH_MKL@',
-            'cinn': get_cinn_version()})
+            'cinn': get_cinn_version(),
+            'with_pip_cuda_libraries': '@WITH_PIP_CUDA_LIBRARIES@'})
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version/__init__.py')
 
@@ -407,10 +409,7 @@ write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/i
 
 def get_paddle_extra_install_requirements():
     #(Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
-    paddle_cuda_install_requirements = os.getenv(
-        "PADDLE_CUDA_INSTALL_REQUIREMENTS", None
-    )
-    if paddle_cuda_install_requirements == "ON":
+    if '@WITH_PIP_CUDA_LIBRARIES@' == 'ON':
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "V11": (
                 "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
