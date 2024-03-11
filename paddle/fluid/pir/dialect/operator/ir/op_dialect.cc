@@ -159,6 +159,32 @@ struct ShadowOutputOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct SplitOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    const auto& shape_data_list =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0))
+            .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+    for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
+      PADDLE_ENFORCE_EQ(
+          shape_data_list[rst_idx].data().has_value(),
+          false,
+          paddle::platform::errors::InvalidArgument(
+              "Currently InferSymbolicShape of SplitOp only support "
+              "input without value."));
+      shape_analysis->SetShapeOrDataForValue(
+          op->result(rst_idx),
+          symbol::ShapeOrDataDimExprs{shape_data_list[rst_idx]});
+    }
+    return true;
+  }
+
+  SplitOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 struct YieldOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
@@ -195,6 +221,11 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
       std::move(pir::InterfaceValue::Get<
                 InferSymbolicShapeInterface,
                 ShadowOutputOpInferSymbolicShapeInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::SplitOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               SplitOpInferSymbolicShapeInterfaceModel>()));
 
   info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
   info.AttachInterface(std::move(
