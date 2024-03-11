@@ -104,11 +104,19 @@ void RegisterAllCustomOperator(bool use_pir) {
             PADDLE_ENFORCE_EQ(
                 meta_inputs.size(),
                 inputs.size(),
-                paddle::platform::errors::InvalidArgument("The size of"));
+                paddle::platform::errors::InvalidArgument(
+                    "The number of inputs for the custom operator [%s] given "
+                    "in the Pattern needs to be consistent with the number at "
+                    "implementation time.",
+                    pir_op_name));
             PADDLE_ENFORCE_EQ(
                 meta_attrs.size(),
                 attrs.size(),
-                paddle::platform::errors::InvalidArgument("The size of"));
+                paddle::platform::errors::InvalidArgument(
+                    "The number of attrs for the custom operator [%s] given "
+                    "in the Pattern needs to be consistent with the number at "
+                    "implementation time.",
+                    pir_op_name));
 
             if (!inplace_map.empty()) {
               pir_op_name += "_";
@@ -155,7 +163,11 @@ void RegisterAllCustomOperator(bool use_pir) {
                 PADDLE_ENFORCE_EQ(
                     inputs[i].type().isa<::pir::VectorType>(),
                     true,
-                    paddle::platform::errors::InvalidArgument("The size of"));
+                    paddle::platform::errors::InvalidArgument(
+                        "The [%d] input of the custom operator [%s] "
+                        "should be a pir::VectorType.",
+                        i,
+                        pir_op_name));
                 std::vector<std::vector<int64_t>> tmp_input_shapes;
                 std::vector<phi::DataType> tmp_input_dtypes;
                 vec_input_name2id_map[meta_inputs[i]] = vec_input_index;
@@ -191,10 +203,14 @@ void RegisterAllCustomOperator(bool use_pir) {
               auto attr_name_and_type = paddle::ParseAttrStr(meta_attr);
               auto attr_name = attr_name_and_type[0];
               auto attr_type = attr_name_and_type[1];
-              PADDLE_ENFORCE_EQ(
-                  attrs.count(attr_name),
-                  true,
-                  paddle::platform::errors::InvalidArgument("The size of"));
+              PADDLE_ENFORCE_EQ(attrs.count(attr_name),
+                                true,
+                                paddle::platform::errors::InvalidArgument(
+                                    "The attr [%s] in the custom operator [%s] "
+                                    "specified in the Pattern needs to be "
+                                    "consistent with the implementation",
+                                    attr_name,
+                                    pir_op_name));
               VLOG(6) << "Custom operator add attrs " << attr_name
                       << " to CustomOpKernelContext. Attribute type = "
                       << attr_type;
