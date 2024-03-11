@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import logging
+import socket
+import time
 
 from paddle.distributed.launch import plugins
 
@@ -31,6 +33,7 @@ class Context:
         self.node = Node()
         self.status = Status()
 
+        self.update_args()
         self.logger = self.get_logger()
 
         # design for event queue, later
@@ -40,6 +43,9 @@ class Context:
             self._enable_plugin()
         self.max_time_per_task = -1
         self.run_best = False
+
+        self._ip = None
+        self._port = None
 
     def print(self):
         self.logger.info("-----------  Configuration  ----------------------")
@@ -98,6 +104,7 @@ class Context:
             return False
 
     def has_set(self, k):
+        # check if the args has been set by user
         default_values = {
             "master": None,
             "rank": -1,
@@ -135,6 +142,8 @@ class Context:
         return False
 
     def set_env_in_args(self):
+        # set args by env
+        # if user defined, use user value
         for k, v in env_args_mapping.items():
             attr, attr_type = v
             if k in self.envs:
@@ -145,6 +154,151 @@ class Context:
                         f"LAUNCH WARNNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
                     )
                     setattr(self.args, attr, attr_type(self.envs[k]))
-        # set nnodes default value
+
+    def update_by_ips(self):
+        try:
+            ip_list = []
+            with open(self.args.ips, "r") as file:
+                lines = file.readlines()
+                for line in lines:
+                    ip = line.split(" ")[0].strip()
+                    ip_list.append(ip)
+        except:
+            ip_list = self.args.ips.split(",")
+
+        if self.has_set("nnodes"):
+            nnodes = int(self.args.nnodes)
+            if nnodes < len(ip_list):
+                ip_list = ip_list[:nnodes]
+                print(
+                    f"LAUNCH WARNNING only the first {nnodes} nnodes in ip_list will be retained when nnodes {nnodes} < len(ip_list)"
+                )
+            elif nnodes > len(ip_list):
+                raise ValueError(
+                    f"LAUNCH ERROR the nnodes {nnodes} > len(ip_list)"
+                )
+
+        self.args.ips = ",".join(ip_list)
+        self.args.rank = ip_list.index(self.node.ip)
+        self.args.nnodes = str(len(ip_list))
+
+        if self.args.rank == -1:
+            print(
+                f"LAUNCH WARNNING ip {self.node.ip} is not in ip_list: {ip_list}, launch exited."
+            )
+            return
+
+        if self.has_set("master"):
+            if self._ip and self._ip not in ip_list:
+                print(
+                    f"LAUNCH WARNNING master {self.args.master} will be reset when master not in ip_list {ip_list}."
+                )
+            else:
+                return
+        else:
+            master_ip = ip_list[0]
+            self._ip = master_ip
+            if self.envs.get("PADDLE_PORT", None):
+                port = self.envs['PADDLE_PORT']
+                self.args.master = f"{master_ip}:{port}"
+            if self._port:
+                port = self._port
+                self.args.master = f"{master_ip}:{port}"
+            else:
+                # magic port
+                port = 6768
+                has_connect = False
+                if self.node.ip == master_ip:
+                    while port < 6778:
+                        ret = self.node._get_free_port(port)
+                        if ret > 0:
+                            server_socket = socket.socket(
+                                socket.AF_INET, socket.SOCK_STREAM
+                            )
+                            server_socket.bind(self.node.ip, port)
+                            server_socket.listen()
+                            connection_count = 0
+                            connections = []
+
+                            while True:
+                                connection, address = server_socket.accept()
+                                message = connection.recv(1024).decode()
+                                if message == "connect master":
+                                    connection_count += 1
+                                    connections.append([connection])
+                                if connection_count == len(ip_list):
+                                    break
+                            for connection in connections:
+                                response = "connect success"
+                                connection.send(response.encode())
+                            has_connect = True
+                        else:
+                            port += 1
+                    server_socket.close()
+                else:
+                    while port < 6778:
+                        has_connect = False
+                        for i in range(5):
+                            try:
+                                client_socket = socket.socket(
+                                    socket.AF_INET, socket.SOCK_STREAM
+                                )
+                                client_socket.connect(self.node.ip, port)
+                                message = "connect master"
+                                client_socket.send(message.encode())
+                                response = client_socket.recv(1024).decode()
+                                if response == "connect success":
+                                    has_connect = True
+                                    break
+                            except:
+                                time.sleep(2)
+                        if has_connect:
+                            break
+                        else:
+                            port += 1
+                assert has_connect
+                self.args.master = f"{master_ip}:{port}"
+                self._ip = master_ip
+                self._port = port
+
+    def update_args(self):
+        # support master: <ip>:<port>, <ip>, :<port>
+        if self.has_set(self.args.master):
+            if "etcd" not in self.args.master:
+                if ":" in self.args.master:
+                    if len(self.args.master.split(":")) == 2:
+                        ip, port = self.args.master.split(":")
+                        if ip:
+                            self._ip = ip
+                        self._port = port
+                    elif len(self.args.master.split(":")) == 1:
+                        value = self.args.master.split(":")[0]
+                        if "." in value:
+                            self._ip = value
+                        else:
+                            self._port = value
+                    else:
+                        raise ValueError(
+                            "LAUNCH ERROR master {self.args.master} is invalid."
+                        )
+
+        if self.has_set("ips"):
+            self.update_by_ips()
+
+        # reset nnodes default value if nnodes not set
         if self.args.nnodes == "-1":
             self.args.nnodes = "1"
+
+        # update master by env
+        if "etcd" not in self.args.master:
+            if not self._ip:
+                if self.envs.get("PADDLE_TRAINERS", None):
+                    self._ip = self.envs["PADDLE_TRAINERS"].split(",")[0]
+                else:
+                    raise ValueError("LAUNCH ERROR the master ip error.")
+            if not self._port:
+                if self.envs.get("PADDLE_PORT", None):
+                    self._port = self.envs.get("PADDLE_PORT")
+                else:
+                    raise ValueError("LAUNCH ERROR the master port error.")
+            self.args.master = f"{self._ip}:{self._port}"
