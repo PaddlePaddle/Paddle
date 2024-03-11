@@ -143,4 +143,19 @@ namespace cinn::frontend {
 using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
 using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
 
+template <typename T>
+struct PatternBranches {
+  using LhsLessThanRhs = adt::LT<DimExpr, DimExpr>;
+  using LhsGreaterEqualRhs = adt::GE<DimExpr, DimExpr>;
+  using Condition = std::variant<LhsLessThanRhs, LhsGreaterEqualRhs>;
+
+  Condition condition;
+  adt::List<T> true_branch;
+  adt::List<T> false_branch;
+};
+
+// ConditionalGroupPattern = GroupPatternBranches | GroupPattern
+using ConditionalGroupPattern = adt::Tree<PatternBranches, GroupPattern>;
+using GroupPatternBranches = PatternBranches<ConditionalGroupPattern>;
+
 }

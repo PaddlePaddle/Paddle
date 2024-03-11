@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/adt/tree.h"
+#include "paddle/cinn/adt/tree_util.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn::common {

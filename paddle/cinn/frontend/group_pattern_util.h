@@ -16,10 +16,24 @@
 
 #include "paddle/cinn/frontend/group_pattern.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/logical.h"
+#include "paddle/cinn/adt/tree.h"
+#include "paddle/cinn/adt/tree_util.h"
 
 namespace cinn::frontend {
 
-GroupPattern GenerateGroupPatternFromFusionOp(const cinn::dialect::FusionOp&);
+struct OpsClusteringSpec {
+  // shardable_dim_size(reduce_op) = size(reduce_op.result(0)).
+  // The infered_shardable_dim_size(reduce_op) may be less than shardable_dim_size(reduce_op) because:
+  //   infered_shardable_dim_size(reduce_op) =
+  //     min(shardable_dim_size(reduce_op), infered_shardable_dim_size(downstreams(reduce_op)))
+  const size_t reduce_op_minimal_infered_shardable_dim_size;
+};
+
+std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
+    const std::vector<pir::Operation*>& ops,
+    const OpsClusteringSpec& clusteringSpec);
 
 GroupPattern GenerateGroupPatternFromOpList(
     const std::vector<pir::Operation*>& ops);
