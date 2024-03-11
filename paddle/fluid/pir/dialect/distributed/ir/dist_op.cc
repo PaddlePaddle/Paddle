@@ -68,6 +68,7 @@ void ShardTensorOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }
+
   VLOG(4) << "Verifying op dist attrs:";
   {
     auto op_dist_attr =
@@ -95,6 +96,7 @@ void ShardTensorOp::Build(pir::Builder& builder,
                           pir::Value input,
                           pir::AttributeMap attributes) {
   VLOG(4) << "Start build ShardOp";
+
   // Temporary restriction, will support input use_empty false in the future
   PADDLE_ENFORCE_EQ(
       input.use_empty(),

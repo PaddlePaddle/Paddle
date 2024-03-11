@@ -178,6 +178,9 @@ class DeviceManager {
       const std::string& device_type);
 
   // CCL
+  static void CCLCommName(const std::string& device_type,
+                          const ccl::CCLComm& ccl_comm,
+                          char* comm_name);
   static void CCLDestroyComm(const std::string& device_type,
                              ccl::CCLComm ccl_comm);
   static void CCLCommInitRank(const std::string& device_type,
