@@ -339,6 +339,8 @@ ir::Expr TTFusion(ir::Expr upper, ir::Expr down) {
   const auto& replaced_tensor = upstream.GetOutputTensor();
   VLOG(4) << "connected tensor is:" << replaced_tensor;
   VLOG(4) << "store value is :" << downstream.GetStoreValue();
+  VLOG(4) << "upper :\n" << upper;
+  VLOG(4) << "down :\n" << down;
 
   TrivialOp fused(ir::ir_utils::IRCopy(downstream.GetFuncBody()));
   SequenceMutator(
@@ -350,7 +352,7 @@ ir::Expr TTFusion(ir::Expr upper, ir::Expr down) {
       });
 
   VLOG(4) << "After mutate, store_value is: " << fused.GetFuncBody();
-  VLOG(4) << "TTFusion end:" << fused.GetFuncBody();
+  VLOG(4) << "TTFusion end:\n" << fused.GetFuncBody();
   return fused.GetFuncBody();
 }
 
@@ -362,6 +364,9 @@ ir::Expr TRFusion(ir::Expr upper, ir::Expr down) {
   VLOG(4) << "connected tensor is:" << replaced_tensor;
   VLOG(4) << "store value is :" << downstream.GetStoreValue();
 
+  VLOG(4) << "upper :\n" << upper;
+  VLOG(4) << "down :\n" << down;
+
   ReduceOp fused(ir::ir_utils::IRCopy(downstream.GetFuncBody()));
   SequenceMutator(
       fused.GetEachTensorLoadExpr(replaced_tensor),
@@ -371,7 +376,7 @@ ir::Expr TRFusion(ir::Expr upper, ir::Expr down) {
             upstream, downstream_load_expr, downstream_body);
       });
 
-  VLOG(4) << "TRFusion end:" << fused.GetFuncBody();
+  VLOG(4) << "TRFusion end:\n" << fused.GetFuncBody();
   return fused.GetFuncBody();
 }
 
@@ -483,6 +488,8 @@ struct FusionGraph {
         exit_nodes_.emplace(cur_node);
       }
     }
+
+    VLOG(4) << "FusionGraph Created, fusion node size: " << all_fusion_nodes_.size();
   }
 
   ~FusionGraph(){
@@ -510,11 +517,10 @@ private:
   void fuse_trivial_node(){
     FusionNode* upstream;
     while((upstream = find_trivial_node()) != nullptr){
-      while(!upstream->downstream.empty()){
-        const auto& pair_data = *(upstream->downstream.begin());
+      std::unordered_map<FusionNode*, ::pir::Value> fusion_candidate = upstream->downstream;
+      upstream->downstream.clear();
+      for (const auto& pair_data : fusion_candidate) {
         FusionNode* downstream = pair_data.first;
-        upstream->downstream.erase(downstream);
-
         CHECK(downstream->op_compute_body.size() == 1);
 
         FusionNode* new_node;
@@ -666,29 +672,35 @@ std::vector<ir::Expr> TrivialOpFusion(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies) {
   trivial_fusion_detail::FusionGraph graph = trivial_fusion_detail::FusionGraph(ops, op_compute_bodies);
-  return graph.DoFusion();
-}
-
-std::vector<ir::Expr> TrivialOpFusion_(
-    const std::vector<::pir::Operation*>& ops,
-    const std::vector<ir::Expr>& op_compute_bodies) {
-  const auto& op_patterns = trivial_fusion_detail::GetOpPatternKindVector(ops);
-  trivial_fusion_detail::CheckFusionInputValid(op_compute_bodies, op_patterns);
-  const auto& before_fused_nodes =
-      trivial_fusion_detail::ConstructFusionNodeElementwisely(op_compute_bodies,
-                                                              op_patterns);
-
-  auto fused_nodes_each_step = before_fused_nodes;
-  while (const auto& fusable_upstream =
-             trivial_fusion_detail::FindUpstreamNodeUsedByOthers(
-                 fused_nodes_each_step)) {
-    fused_nodes_each_step = trivial_fusion_detail::FuseSingleUpstreamNode(
-        fusable_upstream.value(), fused_nodes_each_step);
+  auto output = graph.DoFusion();
+  VLOG(4) << "Fusion Result: output size is " << output.size();
+  for (const auto& expr : output){
+    VLOG(4) << expr;
   }
-
-  return trivial_fusion_detail::ExtractBodiesFromFusionNodes(
-      fused_nodes_each_step);
+  return output;
 }
+
+// std::vector<ir::Expr> TrivialOpFusion_(
+//     const std::vector<::pir::Operation*>& ops,
+//     const std::vector<ir::Expr>& op_compute_bodies) {
+//   const auto& op_patterns = trivial_fusion_detail::GetOpPatternKindVector(ops);
+//   trivial_fusion_detail::CheckFusionInputValid(op_compute_bodies, op_patterns);
+//   const auto& before_fused_nodes =
+//       trivial_fusion_detail::ConstructFusionNodeElementwisely(op_compute_bodies,
+//                                                               op_patterns);
+
+//   auto fused_nodes_each_step = before_fused_nodes;
+//   while (const auto& fusable_upstream =
+//              trivial_fusion_detail::FindUpstreamNodeUsedByOthers(
+//                  fused_nodes_each_step)) {
+//     fused_nodes_each_step = trivial_fusion_detail::FuseSingleUpstreamNode(
+//         fusable_upstream.value(), fused_nodes_each_step);
+//   }
+
+//   return trivial_fusion_detail::ExtractBodiesFromFusionNodes(
+//       fused_nodes_each_step);
+// }
+
 }  // namespace pir
 }  // namespace framework
 }  // namespace hlir
