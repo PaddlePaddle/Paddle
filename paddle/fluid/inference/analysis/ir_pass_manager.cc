@@ -173,6 +173,15 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "trt_exclude_var_names",
           new std::vector<std::string>(argument->trt_exclude_var_names()));
+      pass->Set(
+          "trt_parameter_run_fp16",
+          new std::vector<std::string>(argument->trt_parameter_run_fp16()));
+      pass->Set(
+          "trt_parameter_run_int8",
+          new std::vector<std::string>(argument->trt_parameter_run_int8()));
+      pass->Set(
+          "trt_parameter_run_bfp16",
+          new std::vector<std::string>(argument->trt_parameter_run_bfp16()));
       pass->Set("forbid_dynamic_op",
                 new bool(argument->trt_forbid_dynamic_op()));
 
