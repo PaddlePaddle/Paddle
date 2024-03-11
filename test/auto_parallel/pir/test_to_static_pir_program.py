@@ -95,7 +95,7 @@ class TestToStaticPirProgramEval(unittest.TestCase):
 
         dist_model.eval()
         main_program = dist_model._engine._fwd_main_progs["eval"]
-        print(main_program)
+        # print(main_program)
         for op in main_program.global_block().ops:
             tensor = op.result(0)
             if op.name() == 'pd_op.data':
@@ -123,7 +123,7 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
 
         dist_model.train()
         main_program = dist_model._engine._fwd_main_progs["train"]
-        print(main_program)
+        # print(main_program)
         for op in main_program.global_block().ops:
             tensor = op.result(0)
             if op.name() == 'pd_op.data':
