@@ -28,10 +28,18 @@ constexpr int vlog_level = 3;
 
 // TODO(zhangbopd): Some op results infered by InferSymbolicShape is NOT consist
 // with the result infered by InferMeta and should be fixed.
-const std::unordered_set<std::string> check_ops_blacklist = {
-    {"pd_op.reshape_1"},
-    {"pd_op.empty_0"},
-};
+namespace {
+bool NeedCheckInferSymbolicWithInferMeta(const std::string& op_name,
+                                         size_t result_idx) {
+  static std::unordered_map<std::string, std::unordered_set<int>> blacklist{
+      {"pd_op.reshape", {1}},
+      {"pd_op.empty", {0}},
+  };
+  const auto& iter = blacklist.find(op_name);
+  if (iter == blacklist.end()) return true;
+  return iter->second.count(result_idx) == 0;
+}
+}  // namespace
 
 namespace pir {
 namespace {
@@ -159,9 +167,7 @@ void CheckInferSymWithInferMeta(
     std::ostringstream print_stream;
 
     // InferMeta funcs of some Ops are not corrrect now, we don't check them.
-    if (check_ops_blacklist.find(op->name() + "_" + std::to_string(i)) !=
-        check_ops_blacklist.end())
-      continue;
+    if (!NeedCheckInferSymbolicWithInferMeta(op->name(), i)) continue;
 
     if (res.type().isa<paddle::dialect::DenseTensorType>()) {
       const std::vector<int64_t>& infer_meta_shape = common::vectorize(
