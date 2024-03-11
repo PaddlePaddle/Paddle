@@ -191,7 +191,7 @@ def shard_tensor(
         ), "input tensor is not pir value."
         assert (
             data.is_dense_tensor_type()
-        ), "dtensor_from_local() are only supported dense tensor type right."
+        ), "shard_tensor() input data only supported dense tensor type right."
         tensor = data
     else:
         # `paddle.to_tensor` supports both dynamic and static mode
