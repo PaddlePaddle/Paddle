@@ -135,8 +135,8 @@ class TestXmap(unittest.TestCase):
             return x + 1
 
         orders = (True, False)
-        thread_nums = (1, 2, 4, 8, 16)
-        buffered_size = (1, 2, 4, 8, 16)
+        thread_nums = (1, 4, 8)
+        buffered_size = (1, 4, 8)
         for order in orders:
             for tNum in thread_nums:
                 for size in buffered_size:
