@@ -810,9 +810,27 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
+  ///
+  /// \brief Prevent TensorRtSubgraph running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
   void Exp_DisableTensorRtSubgraph(
       const std::vector<std::string>& var_name_not_trt);
 
+  ///
+  /// \brief Specify TensorRT subgraph precision,fp16, int8 or bfp16(TensorRT
+  /// Version>=9.0) NOTE: just experimental, not an official stable API, easy to
+  /// be broken.
+  ///
+  void Exp_SpecifyTensorRTSubgraphPrecision(
+      const std::vector<std::string>& trt_parameters_fp16,
+      const std::vector<std::string>& trt_parameters_int8,
+      const std::vector<std::string>& trt_parameters_bfp16);
+
+  ///
+  /// \brief Prevent DynamicShape OPs running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
   void Exp_DisableTensorRTDynamicShapeOPs(bool trt_forbid_dynamic_op);
 
   ///
@@ -1289,6 +1307,10 @@ struct PD_INFER_DECL AnalysisConfig {
 
   std::vector<std::string> trt_output_tensor_names_{};
   std::vector<std::string> trt_exclude_var_names_{};
+  std::vector<std::string> trt_parameters_run_fp16_{};
+  std::vector<std::string> trt_parameters_run_int8_{};
+  std::vector<std::string> trt_parameters_run_bfp16_{};
+
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
