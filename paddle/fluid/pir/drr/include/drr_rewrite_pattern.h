@@ -63,6 +63,7 @@ class DrrRewritePattern : public pir::RewritePattern {
       const OpCall* drr_op,
       pir::Operation* ir_op,
       const std::unordered_set<const OpCall*>& drr_output_op_set,
+      const std::unordered_set<std::string>& drr_input_tensors,
       std::unordered_set<const OpCall*>* drr_visited_ops,
       std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>*
           output_op_bind_map) const;
