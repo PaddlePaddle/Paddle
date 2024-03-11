@@ -328,7 +328,7 @@ struct ReduceOp {
 
     PADDLE_ENFORCE(store_tensor_exprs.size() == 1,
                 "ReduceOp must store for output only once.");
-    return *(store_tensor_exprs.begin());
+    return store_tensor_exprs[0];
   }
 };
 
@@ -380,10 +380,16 @@ ir::Expr TRFusion(ir::Expr upper, ir::Expr down) {
   return fused.GetFuncBody();
 }
 
+ir::Expr TransformT2R(ir::Expr body){
+
+}
+
+ir::Expr TransformReduceLoopRange(ir::Expr upper, ir::Expr down){}
+
 struct FusionNode {
   // Function bodies losses the kind information which needed in trivialop
   // fusion.
-  std::vector<ir::Expr> op_compute_body;
+  ir::Expr op_compute_body;
   OpPatternKind op_pattern;
 
   ::pir::Operation* expr_related_op;
@@ -392,7 +398,7 @@ struct FusionNode {
   std::unordered_map<FusionNode*, ::pir::Value> downstream;
 
   explicit FusionNode(ir::Expr op_compute_body, OpPatternKind op_pattern)
-      : op_compute_body({op_compute_body}), op_pattern(op_pattern) {}
+      : op_compute_body(op_compute_body), op_pattern(op_pattern) {}
 
   void replace_topo_structure_of_fused_nodes(FusionNode* fused_up_node, FusionNode* fused_down_node){
     upstream.insert(fused_up_node->upstream.begin(), fused_up_node->upstream.end());
@@ -500,6 +506,8 @@ struct FusionGraph {
 
   std::vector<ir::Expr> DoFusion(){
     TrivialFusion();
+    TransformExitTrivialOpToReduce();
+    ReduceLoopTranform();
     return GetExprResults();
   }
 
@@ -507,7 +515,6 @@ private:
   FusionNode* FindTrivialFuseableNode(){
     for (FusionNode* node: all_fusion_nodes_){
       if (IsTrivialKind(node->op_pattern) && node->downstream.size() > 0){
-        CHECK(node->op_compute_body.size() == 1);
         return node;
       }
     }
@@ -516,22 +523,23 @@ private:
 
   void TrivialFusion(){
     FusionNode* upstream;
+    // use funcion to get upstream and downstream is save here
+    // cause we might delete Nodes in this process
     while((upstream = FindTrivialFuseableNode()) != nullptr){
       std::unordered_map<FusionNode*, ::pir::Value> fusion_candidate = upstream->downstream;
       upstream->downstream.clear();
       for (const auto& pair_data : fusion_candidate) {
         FusionNode* downstream = pair_data.first;
-        CHECK(downstream->op_compute_body.size() == 1);
 
         FusionNode* new_node;
         if (IsTrivialKind(downstream->op_pattern)){
           new_node = new FusionNode(
-            TTFusion(upstream->op_compute_body[0], downstream->op_compute_body[0]),
+            TTFusion(upstream->op_compute_body, downstream->op_compute_body),
             downstream->op_pattern
           );
         }else{
           new_node = new FusionNode(
-            TRFusion(upstream->op_compute_body[0], downstream->op_compute_body[0]),
+            TRFusion(upstream->op_compute_body, downstream->op_compute_body),
             downstream->op_pattern
           );
         }
@@ -544,10 +552,35 @@ private:
     }
   }
 
+  void TransformExitTrivialOpToReduce(){
+    for (FusionNode* exit_node: exit_nodes_){
+      if (IsTrivialKind(exit_node->op_pattern) && HasReduceUpstream(exit_node)){
+        exit_node->op_compute_body = TransformT2R(exit_node->op_compute_body);
+        exit_node->op_pattern = OpPatternKind::kReduction;
+      }
+    }
+  }
+
+  void ReduceLoopTranform(){
+    std::queue<FusionNode*> bfs_candidate;
+    bfs_candidate.emplace(exit_nodes_.begin(), exit_nodes_.end());
+
+    while(!bfs_candidate.empty()){
+      FusionNode* downstream = bfs_candidate.front();
+      bfs_candidate.pop();
+
+      for (const auto& pair_data : downstream->upstream){
+        FusionNode* upstream = pair_data.first;
+        upstream->op_compute_body = TransformReduceLoopRange(upstream->op_compute_body, downstream->op_compute_body);
+        bfs_candidate.push(upstream);
+      }
+    }
+  }
+
   std::vector<ir::Expr> GetExprResults() {
     std::vector<ir::Expr> output_exprs;
     for (const auto& node : all_fusion_nodes_) {
-      output_exprs.insert(output_exprs.end(), node->op_compute_body.begin(), node->op_compute_body.end());
+      output_exprs.emplace_back(node->op_compute_body);
     }
     return output_exprs;
   }
@@ -574,6 +607,16 @@ private:
     if (node->downstream.size() == 0){
       exit_nodes_.emplace(node);
     }
+  }
+
+  bool HasReduceUpstream(FusionNode* node){
+    for (const auto& pair_data : node->upstream){
+      FusionNode* upstream = pair_data.first;
+      if (IsTrivialKind(upstream->op_pattern)){
+        return true;
+      }
+    }
+    return false;
   }
 
 private:
