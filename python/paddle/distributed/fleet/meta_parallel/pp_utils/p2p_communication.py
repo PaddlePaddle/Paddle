@@ -64,7 +64,8 @@ class SendRecvMeta:
         self.send_pack_type = None
         self.send_shape_message = None
         self.send_dtype_message = None
-        self.send_keys_names = None  # valid in transmission of dict
+        self.send_keys_names = None  # valid in transmission of dict. Only contains keys of Tensor with `stop_gradient == False`
+        self.send_all_keys_names = None  # valid in transmission of dict. Contains keys of all Tensor whose `stop_gradient` is True or False
 
         self.recv_pack_type = None
         self.recv_shape_message = None
@@ -230,19 +231,21 @@ class SendRecvMeta:
             paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
 
             # send numbers of key-value pair
-            keys_nums = paddle.to_tensor([len(self.send_keys_names)])
+            keys_nums = paddle.to_tensor([len(self.send_all_keys_names)])
+            assert set(self.send_all_keys_names) == set(tensor.keys())
             paddle.distributed.send(keys_nums, dst=dst_rank, group=group)
-            for k, v in tensor.items():
+            # for k, v in tensor.items():
+            for k in self.send_all_keys_names:
                 assert isinstance(k, str)
                 assert isinstance(
-                    v, (paddle.Tensor, framework.core.eager.Tensor)
+                    tensor[k], (paddle.Tensor, framework.core.eager.Tensor)
                 )
 
                 # send key
                 self._send_key(k, group=group)
 
                 # send value's dim_shape and dtype
-                self._send_dims_shape_dtype(v, group=group)
+                self._send_dims_shape_dtype(tensor[k], group=group)
 
     def _obtain_send_message(self, tensor):
         if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
@@ -251,26 +254,31 @@ class SendRecvMeta:
                 tensor.shape,
                 paddle_2_number(tensor.dtype),
                 None,
+                None,
             )
         elif isinstance(tensor, (dict, collections.OrderedDict)):
             shapes = []
             dtypes = []
             keys_names = []
+            keys_all_names = []
             for k, v in tensor.items():
                 assert isinstance(
                     v, (paddle.Tensor, framework.core.eager.Tensor)
                 )
                 if v.stop_gradient:
+                    keys_all_names.append(k)
                     continue
-                _, shape, dtype, _ = self._obtain_send_message(v)
+                _, shape, dtype, _, _ = self._obtain_send_message(v)
                 shapes.append(shape)
                 dtypes.append(dtype)
                 keys_names.append(k)
+                keys_all_names.append(k)
             return (
-                SendRecvPackType.DICT_OR_TENSOR_TYPE,
+                SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR,
                 shapes,
                 dtypes,
                 tuple(keys_names),
+                tuple(keys_all_names),
             )
         else:
             shapes = []
@@ -281,13 +289,14 @@ class SendRecvMeta:
                 )
                 if d.stop_gradient:
                     continue
-                _, shape, dtype, _ = self._obtain_send_message(d)
+                _, shape, dtype, _, _ = self._obtain_send_message(d)
                 shapes.append(shape)
                 dtypes.append(dtype)
             return (
                 SendRecvPackType.TENSOR_LIST_OR_TENSOR_TUPLE,
                 tuple(shapes),
                 tuple(dtypes),
+                None,
                 None,
             )
 
@@ -297,6 +306,7 @@ class SendRecvMeta:
             self.send_shape_message,
             self.send_dtype_message,
             self.send_keys_names,
+            self.send_all_keys_names,
         ) = self._obtain_send_message(tensor)
 
     def check_send_message(self, tensor):
@@ -307,6 +317,7 @@ class SendRecvMeta:
             actual_shape,
             actual_dtype,
             actual_send_keys_names,
+            actual_send_all_keys_names,
         ) = self._obtain_send_message(tensor)
 
         assert (
@@ -330,6 +341,12 @@ class SendRecvMeta:
             self.send_keys_names, actual_send_keys_names
         )
 
+        assert (
+            self.send_all_keys_names == actual_send_all_keys_names
+        ), "send_all_keys_names: {}, actual_send_all_keys_names: {}".format(
+            self.send_all_keys_names, actual_send_all_keys_names
+        )
+
     def _serialize_from_string(
         self, string, encoding='utf-32', errors='strict'
     ):
@@ -344,11 +361,12 @@ class SendRecvMeta:
         return string
 
     def __repr__(self):
-        return "send_pack_type: {}, send_shape_message: {}, send_dtype_message: {}, send_keys_names: {}, recv_pack_type: {}, recv_shape_message: {}, recv_dtype_message: {}, recv_stop_gradient: {}, recv_keys_names: {}".format(
+        return "send_pack_type: {}, send_shape_message: {}, send_dtype_message: {}, send_keys_names: {}, send_all_keys_names: {}, recv_pack_type: {}, recv_shape_message: {}, recv_dtype_message: {}, recv_stop_gradient: {}, recv_keys_names: {}".format(
             self.send_pack_type,
             self.send_shape_message,
             self.send_dtype_message,
             self.send_keys_names,
+            self.send_all_keys_names,
             self.recv_pack_type,
             self.recv_shape_message,
             self.recv_dtype_message,
@@ -777,13 +795,17 @@ def _p2p_ops_wrapper(_p2p_ops):
                 assert isinstance(
                     tensor_send_next, (dict, collections.OrderedDict)
                 )
-                assert set(send_recv_meta.send_keys_names) == set(
-                    tensor_send_next.keys()
-                ), "`tensor_send_next.keys()` should be equal to `send_recv_meta.send_keys_names`"
+
+                send_meta_all_keys = set(send_recv_meta.send_all_keys_names)
+                tensor_send_next_keys = set(tensor_send_next.keys())
+                assert (
+                    send_meta_all_keys == tensor_send_next_keys
+                ), "`tensor_send_next.keys()` should be equal to `send_recv_meta.send_all_keys_names`"
+
                 tensor_send_next = tuple(
                     [
                         tensor_send_next[key]
-                        for key in send_recv_meta.send_keys_names
+                        for key in send_recv_meta.send_all_keys_names
                     ]
                 )
 
@@ -841,6 +863,7 @@ def _p2p_helper(
     send_shape_msg = send_recv_meta.send_shape_message
     send_dtype_msg = send_recv_meta.send_dtype_message
     send_keys_names = send_recv_meta.send_keys_names
+    send_all_keys_names = send_recv_meta.send_all_keys_names
 
     # model parallel message
     mp_group = _hcg.get_model_parallel_group()
