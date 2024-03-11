@@ -15,6 +15,7 @@
 import collections
 import distutils.util
 import os
+from enum import IntEnum
 
 import numpy as np
 
@@ -50,7 +51,7 @@ def initialize_p2p_groups(
         _timers = timer.get_timers()
 
 
-class SendRecvPackType:
+class SendRecvPackType(IntEnum):
     TENSOR = 0
     TENSOR_LIST_OR_TENSOR_TUPLE = 1
     DICT_WITH_STR_TENSOR_PAIR = 2
@@ -116,13 +117,13 @@ class SendRecvMeta:
         paddle.distributed.recv(tensor_type, src=src_rank, group=group)
         tensor_type = tensor_type.item()
 
-        if tensor_type == 0:
+        if tensor_type == SendRecvPackType.TENSOR:
             shape, dtype, stop_grad = self._recv_shape_dtype(group)
             self.recv_shape_message = shape
             self.recv_dtype_message = dtype
             self.recv_stop_gradient = bool(stop_grad)
 
-        elif tensor_type == 1:
+        elif tensor_type == SendRecvPackType.TENSOR_LIST_OR_TENSOR_TUPLE:
             num = paddle.to_tensor([0])
             paddle.distributed.recv(num, src=src_rank, group=group)
             num = num.item()
@@ -139,7 +140,7 @@ class SendRecvMeta:
             self.recv_dtype_message = tuple(dtypes)
             self.recv_stop_gradient = tuple(stop_grads)
 
-        elif tensor_type == 2:
+        elif tensor_type == SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR:
             num_kv = paddle.to_tensor([0])
             paddle.distributed.recv(num_kv, src=src_rank, group=group)
             num_kv = num_kv.item()
@@ -198,13 +199,15 @@ class SendRecvMeta:
         dst_rank = _hcg._get_p2p_next_rank()
 
         if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
-            tensor_type = paddle.to_tensor([0])
+            tensor_type = paddle.to_tensor([int(SendRecvPackType.TENSOR)])
             # send tensor type
             paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
 
             self._send_dims_shape_dtype(tensor, group)
         elif isinstance(tensor, tuple):
-            tensor_type = paddle.to_tensor([1])
+            tensor_type = paddle.to_tensor(
+                [int(SendRecvPackType.TENSOR_LIST_OR_TENSOR_TUPLE)]
+            )
             # send tensor type
             paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
 
@@ -217,7 +220,9 @@ class SendRecvMeta:
                 )
                 self._send_dims_shape_dtype(d, group=group)
         elif isinstance(tensor, (dict, collections.OrderedDict)):
-            tensor_type = paddle.to_tensor([2])
+            tensor_type = paddle.to_tensor(
+                [int(SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR)]
+            )
             # send tensor type
             paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
 
