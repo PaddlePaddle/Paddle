@@ -1007,7 +1007,7 @@ def decorate(
     if paddle.framework.in_pir_mode():
         assert not isinstance(models, (list, tuple))
         assert not isinstance(optimizers, (list, tuple))
-        if level == 'O1':
+        if level in ['O0', 'OD', 'O1']:
             if optimizers is None:
                 return models
             else:
@@ -1050,9 +1050,8 @@ def decorate(
                     use_master_grad=master_grad,
                 )
                 return models, optimizers
-
         else:
-            raise ValueError(f'level should be O1 or O2, but level={level}')
+            raise ValueError("level should be O0, OD, O1 or O2.")
 
     return amp_decorate(
         models,
