@@ -852,12 +852,38 @@ GroupPattern FuseToGroupPattern(const std::vector<pir::Operation*>& ops) {
   return stmt_patterns;
 }
 
+class ClusteringHelper {
+ public:
+  ClusteringHelper(
+      const pir::ShapeConstraintIRAnalysis* shape_analysis,
+      const std::vector<pir::Operation*>& ops,
+      const OpsClusteringSpec& clustering_spec)
+    : shape_analysis_(shape_analysis), ops_(ops), clustering_spec_(clustering_spec) {
+    this->IsInThisOpList = MakePredicatorIsInThisFusionOp(ops);
+    this->IsInjectiveSource =
+        MakePredicatorIsInjectiveSource(ops_, this->IsInThisOpList);
+  }
+
+  std::vector<ConditionalGroupPattern> ClusterIntoGroupPatterns() {
+    LOG(FATAL) << "TODO(tianchao)";
+  }
+
+ private:
+  const pir::ShapeConstraintIRAnalysis* shape_analysis_;
+  const std::vector<pir::Operation*> ops_;
+  const OpsClusteringSpec clustering_spec_;
+  std::function<bool(const pir::Operation*)> IsInThisOpList;
+  std::function<bool(const pir::Operation*)> IsInjectiveSource;
+};
+
 }  // namespace
 
 std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis,
     const std::vector<pir::Operation*>& ops,
-    const OpsClusteringSpec& clusteringSpec) {
-  // TODO();
+    const OpsClusteringSpec& clustering_spec) {
+  ClusteringHelper helper(shape_analysis, ops, clustering_spec);
+  return helper.ClusterIntoGroupPatterns();
 }
 
 GroupPattern GenerateGroupPatternFromOpList(
