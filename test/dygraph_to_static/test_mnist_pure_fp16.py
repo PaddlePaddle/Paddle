@@ -16,6 +16,10 @@ import unittest
 from time import time
 
 import numpy as np
+from dygraph_to_static_utils import (
+    test_ast_only,
+    test_legacy_only,
+)
 from test_mnist import MNIST, SEED, TestMNIST
 
 import paddle
@@ -31,6 +35,8 @@ class TestPureFP16(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
+    @test_legacy_only
+    @test_ast_only
     def test_mnist_to_static(self):
         if paddle.base.is_compiled_with_cuda():
             dygraph_loss = self.train_dygraph()

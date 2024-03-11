@@ -19,6 +19,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
+    test_default_and_pir,
     test_default_mode_only,
 )
 from test_resnet import SEED, ResNet, optimizer_setting
@@ -116,7 +117,7 @@ class TestResnet(Dy2StTestBase):
         with enable_to_static_guard(to_static):
             return train()
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
