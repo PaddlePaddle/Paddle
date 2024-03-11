@@ -272,30 +272,7 @@ def _as_list(x):
 
 
 def some_in_set(value_list, value_set):
-    # def operand2value(values):
-    #     value_set = ValueSet()
-    #     for item in values:
-    #         if isinstance(item, pir.OpOperand):
-    #             value_set.add(item.source())
-    #         else:
-    #             value_set.add(item)
-    #     return value_set
-    for value in value_list:
-        assert isinstance(value, (pir.Value, type(None)))
-
-    for value in value_set:
-        assert isinstance(value, (pir.Value, type(None)))
-
-    def to_value(value):
-        if isinstance(value, pir.Value):
-            return value
-        elif isinstance(value, pir.OpOperand):
-            return value.source()
-        else:
-            raise ValueError(f'Unsupported type {type(value)}')
-
-    # if operand2value(value_list) & operand2value(value_set):
-    return any(to_value(v) in value_set for v in value_list)
+    return any(v in value_set for v in value_list)
 
 
 def is_control_flow(op):
