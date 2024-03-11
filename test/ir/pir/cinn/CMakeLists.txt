@@ -10,9 +10,6 @@ if(WITH_GPU)
     "test_*.py")
   string(REPLACE ".py" "" CINN_PIR_TEST "${CINN_PIR_TEST}")
 
-  # The following UT is enabled manually by add_test
-  list(REMOVE_ITEM CINN_PIR_TEST)
-
   foreach(cinn_pir_test_name ${CINN_PIR_TEST})
     add_test(
       NAME ${cinn_pir_test_name}
