@@ -533,8 +533,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstantSymbolic(
         CHECK(!args.empty()) << "The input argument of fill_constant compute "
                                 "is empty! Please check.";
         bool force_cpu = false;
-        CHECK(attrs.attr_store.count("shape"));
-        auto shape = absl::get<std::vector<int>>(attrs.attr_store.at("shape"));
+        auto shape = output_shapes[0];
         CHECK(attrs.attr_store.count("value"));
         auto value = GetScalarExpr(attrs.attr_store.at("value"));
         CHECK(attrs.attr_store.count("force_cpu"));

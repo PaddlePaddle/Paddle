@@ -844,6 +844,25 @@ bool MatmulOpInferSymbolicShape(
   shape_analysis->SetShapeOrDataForValue(op->result(0),
                                          ShapeOrData{TensorExprs(out_dims)});
 
+  if ((ndims_x == ndims_y) && ndims_x >= 2) {
+    if (transpose_x_attr == false && transpose_y_attr == false) {
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 1],
+                                                    y_dims[ndims_x - 2]);
+    } else if (transpose_x_attr == false && transpose_y_attr == true) {
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 1],
+                                                    y_dims[ndims_x - 1]);
+    } else if (transpose_x_attr == true && transpose_y_attr == false) {
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 2],
+                                                    y_dims[ndims_x - 2]);
+    } else {
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 2],
+                                                    y_dims[ndims_x - 1]);
+    }
+
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[i], y_dims[i]);
+    }
+  }
   return true;
 }
 
@@ -939,8 +958,98 @@ bool ExpandAsOpInferSymbolicShape(
 
 bool SplitOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  // input
+  const auto &x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  PADDLE_ENFORCE_EQ(x_shape_or_data.data().has_value(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "InferSymbolicShape of SplitOp only support input with "
+                        "value now."));
+  const auto &x_dims_sym = x_shape_or_data.shape();
+
+  // axis
+  CHECK(op->operand_source(2).defining_op()->isa<paddle::dialect::FullOp>());
+
+  int64_t axis = op->operand_source(2)
+                     .defining_op<paddle::dialect::FullOp>()
+                     .attributes()
+                     .at("value")
+                     .dyn_cast<paddle::dialect::ScalarAttribute>()
+                     .data()
+                     .to<int64_t>();
+
+  // sections
+  const std::vector<symbol::DimExpr> &sections_sym = [&] {
+    const auto &sections_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+    std::vector<symbol::DimExpr> sections_sym;
+    if (sections_shape_or_data.data().has_value()) {
+      sections_sym = sections_shape_or_data.data().value();
+    } else {
+      sections_sym = sections_shape_or_data.shape();
+    }
+    return sections_sym;
+  }();
+
+  // output
+  const symbol::TensorListShapeOrDataDimExprs &output_shape_data_list = [&] {
+    const auto &GetSum = [&](const auto &dim_exprs, const auto &Filter) {
+      symbol::DimExpr sum{0};
+      for (const auto &dim_expr : dim_exprs) {
+        if (Filter(dim_expr)) {
+          sum = sum + dim_expr;
+        }
+      }
+      return sum;
+    };
+    const auto &All = [&](const auto &dim_exprs, const auto &Cond) {
+      for (const auto &dim_expr : dim_exprs) {
+        if (!Cond(dim_expr)) {
+          return false;
+        }
+      }
+      return true;
+    };
+    const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
+      if (dim_expr.isa<int64_t>()) {
+        return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
+      }
+      return true;
+    };
+    const auto &sum_exclude_minus_one = GetSum(sections_sym, IsNotMinusOne);
+
+    const bool &all_sections_sym_not_minus_one =
+        All(sections_sym, IsNotMinusOne);
+    if (all_sections_sym_not_minus_one) {
+      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims_sym[axis],
+                                                    sum_exclude_minus_one);
+    }
+
+    symbol::TensorListShapeOrDataDimExprs shape_data_list;
+    std::vector<symbol::DimExpr> output_dims_sym = x_dims_sym;
+    if (!all_sections_sym_not_minus_one && sections_sym.size() == 1) {
+      VLOG(3) << "[SplitOp]-1 is the only split section. The output shape is "
+                 "identical to the input shape.";
+      shape_data_list.push_back(
+          symbol::TensorShapeOrDataDimExprs(output_dims_sym));
+      return shape_data_list;
+    }
+    for (uint32_t idx = 0; idx < sections_sym.size(); idx++) {
+      const auto &section_sym = sections_sym[idx];
+      output_dims_sym[axis] = IsNotMinusOne(section_sym)
+                                  ? section_sym
+                                  : x_dims_sym[axis] - sum_exclude_minus_one;
+
+      shape_data_list.push_back(
+          symbol::TensorShapeOrDataDimExprs(output_dims_sym));
+    }
+    return shape_data_list;
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{output_shape_data_list});
+
   return true;
 }
 
