@@ -82,9 +82,9 @@ struct SimplifyDoubleNeg {
   using dim_expr_type = Negative<DimExpr>;
 
   DimExpr Rewrite(const DimExpr& expr) {
-    const auto& [inner_expr] = *expr.Get<Negative<DimExpr>>();
+    const auto& inner_expr = expr.Get<Negative<DimExpr>>()->data;
     if (inner_expr.Has<Negative<DimExpr>>()) {
-      const auto& [ret_expr] = *inner_expr.Get<Negative<DimExpr>>();
+      const auto& ret_expr = inner_expr.Get<Negative<DimExpr>>()->data;
       return ret_expr;
     } else {
       return expr;
