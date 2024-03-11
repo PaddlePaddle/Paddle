@@ -17,9 +17,8 @@ import inspect
 import logging
 from collections import defaultdict
 
-import numpy as np
-
 import paddle
+from paddle import core
 from paddle.jit import not_to_static, to_static
 from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
@@ -30,7 +29,6 @@ from paddle.nn import Layer
 from paddle.static import Parameter, global_scope, program_guard
 from paddle.static.amp.fp16_utils import (
     DEFAULT_AMP_OPTIONS,
-    _convert_float_to_bfloat16,
     prepare_op_amp_options,
 )
 
@@ -353,6 +351,12 @@ class ProgramHelper:
         if self.lazy_init:
             return
 
+        amp_stragety = dist_context.strategy.amp
+        amp_config = copy.deepcopy(amp_stragety.to_dict())
+        need_cast_paramter = amp_stragety.enable and amp_config["level"] in [
+            "o2",
+            "o3",
+        ]
         is_comm = False
         for param in self.concrete_program.parameters:
             if param.is_dist():
@@ -392,58 +396,77 @@ class ProgramHelper:
                     param.numpy(), dist_attr
                 )
                 param_tensor.set(sliced_param, place)
+                if not need_cast_paramter:
+                    param.get_tensor()._clear()
             elif param.is_dist():
                 dense_tensor = global_scope().var(param.name).get_tensor()
                 dense_tensor._share_data_with(param.get_tensor().get_tensor())
 
         # transform the parameter in eager mode for amp.
-        amp_stragety = dist_context.strategy.amp
-        amp_config = copy.deepcopy(amp_stragety.to_dict())
-        if amp_stragety.enable and amp_config["level"] in ["o2", "o3"]:
+        if need_cast_paramter:
             for param in self.concrete_program.parameters:
                 amp_dtype = amp_config["dtype"]
                 scope_var = global_scope().find_var(param.name)
-                scope_tensor = global_scope().var(param.name).get_tensor()
                 # The parameter is not in this rank.
                 if not scope_var:
                     continue
                 # The parameter do not need to transform
                 if param.dtype in [paddle.float16, paddle.bfloat16]:
                     continue
+                scope_tensor = global_scope().var(param.name).get_tensor()
                 assert (
                     scope_var and scope_tensor._is_initialized()
                 ), f"Parameter: {param.name} is not put into global_scope or not initialized."
-                var = main_program.global_block().vars[param.name]
-                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                    var
-                )
-                dist_attr = {
-                    "dims_mapping": var_dist_attr.dims_mapping,
-                    "process_shape": var_dist_attr.process_mesh.shape,
-                    "process_group": var_dist_attr.process_mesh.process_ids,
-                }
-                if amp_dtype == "float16":
-                    if param.is_dist():
-                        sliced_param = np.float16(param._local_value().numpy())
-                    else:
-                        sliced_param = Converter.slice_with_dist_attr(
-                            np.float16(param.numpy()), dist_attr
-                        )
-                    scope_tensor.set(sliced_param, place)
-                elif amp_dtype == "bfloat16":
-                    if param.is_dist():
-                        sliced_param = _convert_float_to_bfloat16(
-                            place, param._local_value().numpy()
-                        )
-                    else:
-                        sliced_param = Converter.slice_with_dist_attr(
-                            _convert_float_to_bfloat16(place, param.numpy()),
-                            dist_attr,
-                        )
-                    scope_tensor.set(
-                        sliced_param,
-                        place,
+                param_used = param
+                # For the params without dist_attr.
+                # NOTE(lizhiyu): In principle, each param should have dist_attr.
+                if param.is_dense():
+                    # get param_var's dist_attr
+                    var = main_program.global_block().vars[param.name]
+                    var_dist_attr = (
+                        dist_context.get_tensor_dist_attr_for_program(var)
                     )
+                    dist_attr = {
+                        "dims_mapping": var_dist_attr.dims_mapping,
+                        "process_shape": var_dist_attr.process_mesh.shape,
+                        "process_group": var_dist_attr.process_mesh.process_ids,
+                    }
+                    # slice param_value with dist_attr
+                    sliced_param = Converter.slice_with_dist_attr(
+                        param.numpy(), dist_attr
+                    )
+                    with paddle.base.dygraph.guard():
+                        param_used = paddle.to_tensor(
+                            sliced_param, place=param.place
+                        )
+                    param.get_tensor()._clear()
+                with paddle.base.dygraph.guard():
+                    if amp_dtype == "float16":
+                        with paddle.no_grad():
+                            with paddle.base.framework._dygraph_place_guard(
+                                place=place
+                            ):
+                                t_casted = param_used.cast(
+                                    dtype=core.VarDesc.VarType.FP16
+                                )
+                    elif amp_dtype == "bfloat16":
+                        with paddle.no_grad():
+                            with paddle.base.framework._dygraph_place_guard(
+                                place=place
+                            ):
+                                t_casted = param_used.cast(
+                                    dtype=core.VarDesc.VarType.BF16
+                                )
+                    # NOTE(lizhiyu): Clear the origin param. Don't use `param_used.get_tensor().get_tensor()._clear()` to
+                    #                clear the `DistTensor`, because it can't clear the `_holder`,
+                    #                which `param_used.get_tensor().get_tensor()` will copy one `DenseTensor`.
+                    param_used.get_tensor()._clear()
+                    if t_casted.is_dist():
+                        scope_tensor._share_data_with(
+                            t_casted.get_tensor().get_tensor()
+                        )
+                    else:
+                        scope_tensor._share_data_with(t_casted.get_tensor())
 
         world_group = get_world_process_group()
         if (
