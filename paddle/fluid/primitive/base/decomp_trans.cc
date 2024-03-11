@@ -49,7 +49,7 @@ std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
 namespace {
 std::set<std::string> StringSplit(const std::string& str) {
   std::istringstream iss(str);
-  std::unordered_set<std::string> tokens;
+  std::set<std::string> tokens;
   std::string token;
 
   while (std::getline(iss, token, ';')) {
