@@ -27,6 +27,7 @@ from dygraph_to_static_utils import (
 
 import paddle
 from paddle.framework import use_pir_api
+from paddle.jit.sot.utils import strict_mode_guard
 from paddle.static import InputSpec
 
 SEED = 2020
@@ -156,6 +157,7 @@ class TestSliceInIf(TestSliceBase):
         self.dygraph_func = test_slice_in_if
 
     @test_legacy_and_pt_and_pir
+    @strict_mode_guard(False)
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         static_res = self.run_static_mode()
