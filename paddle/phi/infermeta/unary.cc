@@ -2567,6 +2567,7 @@ void MultinomialInferMeta(const MetaTensor& x,
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,
+                        const std::string& mode,
                         MetaTensor* out,
                         MetaTensor* median_index) {
   std::vector<int64_t> axis_list = axes.GetData();
