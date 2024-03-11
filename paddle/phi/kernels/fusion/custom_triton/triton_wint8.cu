@@ -79,6 +79,7 @@ std::vector<paddle::Tensor> TritonWint8(const paddle::Tensor& x,
 
   for (int algo_id = 0; algo_id < wint8_kernel_get_num_algos(); ++algo_id) {
     cudaEvent_t beg, end;
+    auto status = CUDA_SUCCESS;
 
     for (int ii = 0; ii < WARMUP + REPEAT; ii++) {
       if (ii == WARMUP) {
@@ -87,7 +88,7 @@ std::vector<paddle::Tensor> TritonWint8(const paddle::Tensor& x,
         (cudaEventRecord(beg));
       }
       cudaMemset(dev_c, 0, sizeof(phi::dtype::float16) * m * n);
-      auto status = wint8_kernel(c_out.stream(),
+      status = wint8_kernel(c_out.stream(),
                                  (CUdeviceptr)(dev_x),
                                  (CUdeviceptr)(dev_weight),
                                  (CUdeviceptr)(dev_c),
@@ -103,14 +104,14 @@ std::vector<paddle::Tensor> TritonWint8(const paddle::Tensor& x,
                                  n,
                                  1,
                                  algo_id);
-      assert(status == CUDA_SUCCESS);
+      // assert(status == CUDA_SUCCESS);
     }
 
     (cudaEventRecord(end));
     (cudaEventSynchronize(end));
     float elapsed_time;
     (cudaEventElapsedTime(&elapsed_time, beg, end));
-    if (elapsed_time < min_time) {
+    if (elapsed_time < min_time && status == CUDA_SUCCESS) {
       min_time = elapsed_time;
       select_id = algo_id;
     }
