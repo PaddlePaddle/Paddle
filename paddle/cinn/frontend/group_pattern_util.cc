@@ -107,9 +107,9 @@ void VisitStmtOp(const StmtPattern& stmt, const DoEachT& DoEach) {
 }
 
 std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
-    cinn::dialect::FusionOp& fusion_op) {
+    const std::vector<pir::Operation*>& ops) {
   std::set<const pir::Operation*> set;
-  for (const pir::Operation* op : fusion_op.GetOperators()) {
+  for (const pir::Operation* op : ops) {
     if (!op->isa<::pir::YieldOp>()) {
       set.insert(op);
     }
@@ -120,12 +120,12 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
 }
 
 std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
-    cinn::dialect::FusionOp& fusion_op,
-    const std::function<bool(const pir::Operation*)>& IsInThisFusionOp) {
+    const std::vector<pir::Operation*>& ops,
+    const std::function<bool(const pir::Operation*)>& IsInThisOpList) {
   const auto& IsSource = [&](const pir::Operation* op) {
     std::size_t num_inputs = 0;
     VisitInputOp(op, [&](const pir::Operation* input) {
-      if (IsInThisFusionOp(input)) {
+      if (IsInThisOpList(input)) {
         ++num_inputs;
       }
     });
@@ -134,8 +134,8 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
 
   const auto starts = [&] {
     std::list<const pir::Operation*> starts;
-    for (const auto* op : fusion_op.GetOperators()) {
-      if (!IsInThisFusionOp(op) && IsSource(op)) {
+    for (const auto* op : ops) {
+      if (!IsInThisOpList(op) && IsSource(op)) {
         starts.push_back(op);
       } else {
         // do nothing.
@@ -149,7 +149,7 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
   auto IsInputsAllInjectiveSource = [&](const pir::Operation* op) {
     bool is_inputs_all_injective_source = true;
     VisitInputOp(op, [&](const pir::Operation* input) {
-      if (IsInThisFusionOp(input)) {
+      if (IsInThisOpList(input)) {
         is_inputs_all_injective_source = (is_inputs_all_injective_source &&
                                           op_2_is_injective_source.at(input));
       }
@@ -307,17 +307,17 @@ std::list<const pir::Operation*> GetSinks(
 
 class StmtFusionHelper {
  public:
-  explicit StmtFusionHelper(cinn::dialect::FusionOp& fusion_op)
-      : fusion_op_(fusion_op) {
-    this->IsInThisFusionOp = MakePredicatorIsInThisFusionOp(fusion_op_);
+  explicit StmtFusionHelper(const std::vector<pir::Operation*>& ops)
+      : ops_(ops) {
+    this->IsInThisOpList = MakePredicatorIsInThisFusionOp(ops);
     this->IsInjectiveSource =
-        MakePredicatorIsInjectiveSource(fusion_op_, this->IsInThisFusionOp);
+        MakePredicatorIsInjectiveSource(ops_, this->IsInThisOpList);
   }
 
   std::vector<StmtPattern> ConvertToStmtsPattern() {
     std::vector<StmtPattern> ret;
-    for (const auto* op : fusion_op_.GetOperators()) {
-      if (!IsInThisFusionOp(op)) continue;
+    for (const auto* op : ops_) {
+      if (!IsInThisOpList(op)) continue;
       ret.emplace_back(ConvertToStmtPattern(op));
     }
     return ret;
@@ -482,10 +482,10 @@ class StmtFusionHelper {
   }
 
   std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
-      cinn::dialect::FusionOp& fusion_op) {
+      const std::vector<pir::Operation*>& ops) {
     std::unordered_map<const pir::Operation*, size_t> op2order_in_block;
     size_t order = 0;
-    for (const pir::Operation* op : fusion_op.GetOperators()) {
+    for (const pir::Operation* op : ops) {
       op2order_in_block[op] = ++order;
     }
     return [map = std::move(op2order_in_block)](const pir::Operation* op) {
@@ -531,7 +531,7 @@ class StmtFusionHelper {
       });
       return num_injective_src_outputs == 0;
     };
-    const auto GetOrder = MakeTopoOrderFinderOfOp(fusion_op_);
+    const auto GetOrder = MakeTopoOrderFinderOfOp(ops_);
     const auto Cmp = [&](const auto* lhs, const auto& rhs) {
       return GetOrder(lhs) < GetOrder(rhs);
     };
@@ -670,7 +670,7 @@ class StmtFusionHelper {
         InferShardableAxesFromSink(sink, ops_set);
     const auto& IsInputOpOperand = [&](const auto* op, int input_idx) {
       const auto& defining_op = op->operand_source(input_idx).defining_op();
-      return IsInThisFusionOp(defining_op) && ops_set.count(defining_op) == 0;
+      return IsInThisOpList(defining_op) && ops_set.count(defining_op) == 0;
     };
     const auto& input_op_operands = [&] {
       std::vector<OpAndOperandIndex> op_operands;
@@ -697,13 +697,13 @@ class StmtFusionHelper {
   }
 
  private:
-  cinn::dialect::FusionOp fusion_op_;
-  std::function<bool(const pir::Operation*)> IsInThisFusionOp;
+  std::vector<pir::Operation*> ops_;
+  std::function<bool(const pir::Operation*)> IsInThisOpList;
   std::function<bool(const pir::Operation*)> IsInjectiveSource;
 };
 
-GroupPattern FuseToGroupPattern(cinn::dialect::FusionOp& fusion_op) {
-  StmtFusionHelper helper(fusion_op);
+GroupPattern FuseToGroupPattern(const std::vector<pir::Operation*>& ops) {
+  StmtFusionHelper helper(ops);
   std::vector<StmtPattern> stmt_patterns = helper.ConvertToStmtsPattern();
   if (const auto& error = helper.Fuse_IS_x_IS_2_IS(&stmt_patterns))
     return error.value();
@@ -722,7 +722,12 @@ GroupPattern FuseToGroupPattern(cinn::dialect::FusionOp& fusion_op) {
 
 GroupPattern GenerateGroupPatternFromFusionOp(
     cinn::dialect::FusionOp& fusion_op) {
-  return FuseToGroupPattern(fusion_op);
+  return FuseToGroupPattern(fusion_op.GetOperators());
+}
+
+GroupPattern GenerateGroupPatternFromOpList(
+    const std::vector<pir::Operation*>& ops) {
+  return FuseToGroupPattern(ops);
 }
 
 std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
