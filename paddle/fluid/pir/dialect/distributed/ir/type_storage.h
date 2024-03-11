@@ -33,10 +33,10 @@ struct DistDenseTensorTypeStorage : public pir::TypeStorage {
 
   DistDenseTensorTypeStorage(pir::DenseTensorType dense_tensor_type,
                              TensorDistAttribute tensor_dist_attr,
-                             const common::DDim& global_ddim)
+                             const common::DDim& local_ddim)
       : dense_tensor_type(dense_tensor_type),
         tensor_dist_attr(tensor_dist_attr),
-        global_ddim(global_ddim) {}
+        local_ddim(local_ddim) {}
 
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
@@ -53,10 +53,10 @@ struct DistDenseTensorTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     auto dense_tensor_type_hash = std::hash<pir::Type>()(std::get<0>(key));
     auto tensor_dist_attr_hash = std::hash<pir::Attribute>()(std::get<1>(key));
-    auto global_ddim_hash = std::hash<common::DDim>()(std::get<2>(key));
+    auto local_ddim_hash = std::hash<common::DDim>()(std::get<2>(key));
     auto value = pir::detail::hash_combine(dense_tensor_type_hash,
                                            tensor_dist_attr_hash);
-    return pir::detail::hash_combine(value, global_ddim_hash);
+    return pir::detail::hash_combine(value, local_ddim_hash);
   }
 
   ///
@@ -65,16 +65,16 @@ struct DistDenseTensorTypeStorage : public pir::TypeStorage {
   bool operator==(const ParamKey& key) const {
     return dense_tensor_type == std::get<0>(key) &&
            tensor_dist_attr == std::get<1>(key) &&
-           global_ddim == std::get<2>(key);
+           local_ddim == std::get<2>(key);
   }
 
   ///
   /// \brief DistDenseTensorTypeStorage include three parameters:
-  /// dense_tensor_type, tensor_dist_attr and global_ddim;
+  /// dense_tensor_type, tensor_dist_attr and local_ddim;
   ///
   pir::DenseTensorType dense_tensor_type;
   TensorDistAttribute tensor_dist_attr;
-  common::DDim global_ddim;
+  common::DDim local_ddim;
 };
 
 }  // namespace dialect

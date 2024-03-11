@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
@@ -54,5 +53,7 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(NotEqual)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(NotEqual_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Remainder)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Remainder_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Subtract)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Subtract_)
 
 }  // namespace paddle::dialect

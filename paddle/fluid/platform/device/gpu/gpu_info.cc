@@ -256,6 +256,7 @@ class RecordedGpuMallocHelper {
    * would be clear.
    */
   gpuError_t MallocAsync(void **ptr, size_t size, gpuStream_t stream) {
+#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
     LockGuardPtr<std::mutex> lock(mtx_);
     if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
       return gpuErrorOutOfMemory;
@@ -298,6 +299,10 @@ class RecordedGpuMallocHelper {
       // return cudaErrorMemoryAllocation directly here.
       return gpuErrorOutOfMemory;
     }
+#else
+    PADDLE_THROW(phi::errors::Unavailable(
+        "MallocAsync is not supported in this version of CUDA."));
+#endif
   }
 
   /**
@@ -338,6 +343,7 @@ class RecordedGpuMallocHelper {
   }
 
   void FreeAsync(void *ptr, size_t size, gpuStream_t stream) {
+#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
     // Purposefully allow cudaErrorCudartUnloading, because
     // that is returned if you ever call cudaFree after the
     // driver has already shutdown. This happens only if the
@@ -378,6 +384,11 @@ class RecordedGpuMallocHelper {
         "The RecordedGpuMallocHelper::GetBasePtr is only implemented with "
         "testing, should not use for release."));
     return nullptr;
+#endif
+
+#else
+    PADDLE_THROW(phi::errors::Unavailable(
+        "FreeAsync is not supported in this version of CUDA."));
 #endif
   }
 
@@ -445,18 +456,22 @@ class RecordedGpuMallocHelper {
   const int dev_id_;
   const uint64_t limit_size_;
   std::atomic<uint64_t> cur_size_{0};
+
+#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
   cudaMemPool_t memPool_;
+  static std::once_flag set_cudamempoolattr_once_flag_;
+#endif
 
   mutable std::unique_ptr<std::mutex> mtx_;
-
   static std::once_flag once_flag_;
-  static std::once_flag set_cudamempoolattr_once_flag_;
-
   std::set<void *> gpu_ptrs;  // just for testing
 };                            // NOLINT
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
+
+#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
 std::once_flag RecordedGpuMallocHelper::set_cudamempoolattr_once_flag_;
+#endif
 
 gpuError_t RecordedGpuMalloc(void **ptr,
                              size_t size,

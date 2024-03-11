@@ -575,14 +575,6 @@ void WhileOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th input, it should be a "
             "bool DenseTensorType."));
-  } else if (auto cond_type =
-                 operand_type(0).dyn_cast<AllocatedDenseTensorType>()) {
-    PADDLE_ENFORCE_EQ(
-        cond_type.dtype().isa<pir::BoolType>(),
-        true,
-        phi::errors::PreconditionNotMet(
-            "Type validation failed for the 0th input, it should be a "
-            "bool DenseTensorType."));
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
         "Currently,  the while op cond input only support bool dense_tensor "
@@ -803,8 +795,7 @@ void HasElementsOp::VerifySig() {
 
   // Verify outputs:
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
-  IR_ENFORCE((*this)->result_type(0).isa<DenseTensorType>() ||
-                 (*this)->result_type(0).isa<AllocatedDenseTensorType>(),
+  IR_ENFORCE((*this)->result_type(0).isa<DenseTensorType>(),
              "The type of cf.has_elements' output is not correct.");
 }
 
@@ -874,8 +865,7 @@ void AssertOp::VerifySig() {
             (*this)->operand(1).type().dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); ++i) {
         IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
-                       vec_type[i].isa<paddle::dialect::SelectedRowsType>() ||
-                       vec_type[i].isa<AllocatedDenseTensorType>(),
+                       vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
                    "Type validation failed for the 1th input.");
       }
     } else {
@@ -885,7 +875,6 @@ void AssertOp::VerifySig() {
                   ->operand(1)
                   .type()
                   .isa<paddle::dialect::SelectedRowsType>(),
-          (*this)->operand(1).type().isa<AllocatedDenseTensorType>(),
           "Type validation failed for the 1th input.");
     }
   }

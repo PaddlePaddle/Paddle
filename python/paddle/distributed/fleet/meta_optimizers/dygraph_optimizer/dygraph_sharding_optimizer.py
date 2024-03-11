@@ -23,6 +23,10 @@ from paddle import framework
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
+from paddle.distributed.communication.reduce import (
+    ReduceOp,
+    is_avg_reduce_op_supported,
+)
 
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
@@ -97,6 +101,15 @@ class DygraphShardingOptimizer:
         self.fuse_optimizer = strategy.hybrid_configs[
             'sharding_configs'
         ].fuse_optimizer
+        self.use_reduce_avg = strategy.hybrid_configs[
+            'sharding_configs'
+        ].use_reduce_avg
+        if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
+            self.use_reduce_avg = False
+            warnings.warn(
+                "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
+            )
+
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
@@ -207,6 +220,7 @@ class DygraphShardingOptimizer:
                 acc_step=self.accumulate_steps,
                 scale_after_comm=False,
                 apply_decay_param_fun=self.origin_decay_param_fun,
+                use_reduce_avg=self.use_reduce_avg,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer
@@ -281,7 +295,6 @@ class DygraphShardingOptimizer:
                 buffer.scale_grads()
             return
         with framework.no_grad():
-            sharding_nrank = hcg.get_sharding_parallel_group().nranks
             for param in parameter_list:
                 g_var = None
                 if param.trainable and (param._grad_ivar() is not None):
@@ -292,11 +305,14 @@ class DygraphShardingOptimizer:
                     ), "param.grad should be None when using main_grad"
                     g_var = param.main_grad
                 if g_var is not None:
-                    g_var.scale_(1.0 / sharding_nrank)
+                    reduce_op = (
+                        ReduceOp.AVG if self.use_reduce_avg else ReduceOp.SUM
+                    )
                     param_rank = self._param2rank[param.name]
                     if not g_shard_use_reduce:
                         paddle.distributed.all_reduce(
                             g_var,
+                            op=reduce_op,
                             group=hcg.get_sharding_parallel_group(),
                             sync_op=True,
                         )
@@ -307,6 +323,7 @@ class DygraphShardingOptimizer:
                             dst=hcg.get_sharding_parallel_group().ranks[
                                 param_rank
                             ],
+                            op=reduce_op,
                             group=hcg.get_sharding_parallel_group(),
                             sync_op=True,
                         )

@@ -63,14 +63,14 @@ void BmmKernel(const Context& dev_ctx,
           y_dims[1]));
 
   xpu::Context* xpu_ctx = dev_ctx.x_context();
-  int fccal_type = FCCalcType<XPUType>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, xpu_ctx);
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     MatMulXPUFunction<T, float>(x, y, out, trans_x, trans_y, xpu_ctx);
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     MatMulXPUFunction<T, int_with_ll_t>(x, y, out, trans_x, trans_y, xpu_ctx);
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT16) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT16) {
     MatMulXPUFunction<T, float16>(x, y, out, trans_x, trans_y, xpu_ctx);
   } else {
     MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, xpu_ctx);

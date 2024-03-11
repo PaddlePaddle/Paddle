@@ -129,6 +129,13 @@ void GetOutputShape(const std::vector<int>& real_axes,
   if (output_shape->empty()) {
     output_shape->push_back(cinn::common::make_one());
   }
+
+  CHECK(!tensor->shape.empty());
+  if (tensor->shape[0]->type() == Int(64)) {
+    for (auto& shape_item : *output_shape) {
+      shape_item->convert_int32_to_int64();
+    }
+  }
 }
 
 /*!
