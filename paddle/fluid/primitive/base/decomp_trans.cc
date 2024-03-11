@@ -48,12 +48,21 @@ std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
 
 namespace {
 std::unordered_set<std::string> StringSplit(const std::string& str) {
-  std::regex reg(";");
-  std::unordered_set<std::string> elems{
-      std::sregex_token_iterator(str.begin(), str.end(), reg, -1),
-      std::sregex_token_iterator()};
-  elems.erase("");
-  return elems;
+  std::istringstream iss(str);
+  std::unordered_set<std::string> tokens;
+  std::string token;
+
+  while (std::getline(iss, token, ';')) {
+    size_t startpos = token.find_first_not_of(" ");
+    size_t endpos = token.find_last_not_of(" ");
+    if ((startpos != std::string::npos) && (endpos != std::string::npos)) {
+      token = token.substr(startpos, endpos - startpos + 1);
+    } else if (startpos != std::string::npos) {
+      token = token.substr(startpos);
+    }
+    tokens.insert(token);
+  }
+  return tokens;
 }
 }  // namespace
 
