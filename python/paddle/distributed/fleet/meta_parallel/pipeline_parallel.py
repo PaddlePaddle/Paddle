@@ -48,11 +48,9 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 
 __all__ = []
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
-
 
 def get_action(is_dp, shard_split_param=False):
-    if is_dp or not g_shard_use_reduce:
+    if is_dp:
         return HOOK_ACTION.ALL_REDUCE
     if shard_split_param:
         return HOOK_ACTION.REDUCE_SCATTER
