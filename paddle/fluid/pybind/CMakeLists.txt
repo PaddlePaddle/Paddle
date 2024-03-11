@@ -155,7 +155,7 @@ set(PYBIND_SRCS
     op_callstack_utils.cc)
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-  set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
 #endif
 
 if(NOT WITH_SHARED_IR)

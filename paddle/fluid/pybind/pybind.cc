@@ -3056,7 +3056,6 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindDistApi(&m);
 #endif
-
 }
 }  // namespace pybind
 }  // namespace paddle
