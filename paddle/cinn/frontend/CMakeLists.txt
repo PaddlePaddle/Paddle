@@ -11,7 +11,8 @@ gather_srcs(
   paddle_model_convertor.cc
   program_pass.cc
   optimize.cc)
-  # group_pattern_util.cc)
+
+gather_srcs(group_pattern_util SRCS group_pattern_util.cc)
 
 if(NOT WITH_CUDA)
   cinn_cc_test(
