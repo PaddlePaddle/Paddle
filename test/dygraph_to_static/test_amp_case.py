@@ -62,6 +62,8 @@ class TestPartialAutoCast(Dy2StTestBase):
     @test_ast_only
     @test_pir_only
     def test_run(self):
+        if not paddle.base.core.is_compiled_with_cuda():
+            return
         x = paddle.randn([5, 5], 'float32')
         net = Net()
         net = paddle.jit.to_static(net)
