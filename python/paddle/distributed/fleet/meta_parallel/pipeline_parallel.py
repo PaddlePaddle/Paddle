@@ -883,7 +883,7 @@ class PipelineParallel(MetaParallelBase):
                 for buffer in buffers:
                     buffer._clear_grad_storage()
         else:
-            self.optimizer.clear_grad()
+            self.optimizer.clear_grad(set_to_zero=True)
 
         if self.lr_scheduler:
             self.lr_scheduler.step()

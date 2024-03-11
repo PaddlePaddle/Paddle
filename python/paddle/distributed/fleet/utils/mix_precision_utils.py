@@ -168,7 +168,7 @@ class MixPrecisionOptimizer:
                 )
 
     @framework.dygraph_only
-    def clear_grad(self, set_to_zero=True):
+    def clear_grad(self, set_to_zero=False):
         param_list = []
         if self._parameter_list is None or not isinstance(
             self._parameter_list[0], dict

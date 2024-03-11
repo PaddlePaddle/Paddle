@@ -854,7 +854,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
   VLOG(4) << "ClearGradient " << self->tensor.name();
 
   Py_ssize_t args_num = PyTuple_Size(args);
-  bool set_to_zero = true;
+  bool set_to_zero = false;
   if (args_num == (Py_ssize_t)1) {
     set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   }
@@ -896,11 +896,6 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
           phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
-          if (is_leaf) {
-            std::static_pointer_cast<egr::GradNodeAccumulation>(
-                egr::EagerUtils::grad_node(self->tensor))
-                ->SetFakeEmpty(true);
-          }
         } else {
           VLOG(4) << "Gradient of " << self->tensor.name()
                   << " is initialized, will be released.";
@@ -2947,28 +2942,6 @@ static PyObject* tensor__local_value(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor__unset_fake_empty(TensorObject* self,
-                                          PyObject* args,
-                                          PyObject* kwargs) {
-  EAGER_TRY
-  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
-  PADDLE_ENFORCE_EQ(
-      grad != nullptr,
-      true,
-      platform::errors::InvalidArgument(
-          "Detected nullptr grad. Please check if you have manually "
-          "cleared the grad inside autograd_meta"));
-
-  bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
-  if (is_leaf) {
-    std::static_pointer_cast<egr::GradNodeAccumulation>(
-        egr::EagerUtils::grad_node(self->tensor))
-        ->SetFakeEmpty(false);
-  }
-  RETURN_PY_NONE
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 PyDoc_STRVAR(tensor_data_ptr__doc__,
              R"DOC(data_ptr($self, /)
 --
@@ -3465,10 +3438,6 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_local_value",
      (PyCFunction)(void (*)())tensor__local_value,
-     METH_VARARGS | METH_KEYWORDS,
-     nullptr},
-    {"_unset_fake_empty",
-     (PyCFunction)(void (*)())tensor__unset_fake_empty,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"data_ptr",

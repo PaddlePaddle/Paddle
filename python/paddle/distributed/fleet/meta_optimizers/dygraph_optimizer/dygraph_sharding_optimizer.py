@@ -180,7 +180,7 @@ class DygraphShardingOptimizer:
             # operations), here we manually let the allocator release the cached memory.
             paddle.device.cuda.empty_cache()
 
-    def clear_grad(self, set_to_zero=True):
+    def clear_grad(self, set_to_zero=False):
         """
         should clear grad for all parameters in model
         """
@@ -621,7 +621,7 @@ class DygraphShardingOptimizerV2:
             )
             self._comm_buffer_list.append(buffer)
 
-    def clear_grad(self, set_to_zero=True):
+    def clear_grad(self, set_to_zero=False):
         """
         should clear grad for all parameters in model
         """
