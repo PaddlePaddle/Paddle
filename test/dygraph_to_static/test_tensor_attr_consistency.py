@@ -107,6 +107,7 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'is_dist_dense_tensor_type',
         'dims_mapping',  # TODO Unify as Placement
         'partial_dims',  # TODO Unify as Placement
+        'replace_grad_users_with',
     ]
 )
 
