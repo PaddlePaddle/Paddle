@@ -50,7 +50,8 @@ class IR_API GroupOp
                     const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
-  std::vector<pir::Operation *> GetOperators();
+  pir::Block *block() const;
+  std::vector<pir::Operation *> GetOperators() const;
 
   bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 
