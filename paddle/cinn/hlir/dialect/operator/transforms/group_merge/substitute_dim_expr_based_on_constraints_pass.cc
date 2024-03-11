@@ -32,22 +32,7 @@ namespace ir {
 
 namespace {
 
-template <typename DoEachT>
-void VisitEachOp(cinn::dialect::GroupOp op, const DoEachT& DoEach) {
-  for (pir::Operation* sub_op : op.GetOperators()) {
-    DoEach(sub_op);
-  }
-}
-
-template <typename DoEachT>
-void VisitEachValue(const pir::Operation* op, const DoEachT& DoEach) {
-  for (std::size_t i = 0; i < op->num_operands(); ++i) {
-    DoEach(op->operand_source(i));
-  }
-  for (std::size_t i = 0; i < op->num_results(); ++i) {
-    DoEach(op->result(i));
-  }
-}
+namespace detail {
 
 void Trim(std::string* str) {
   str->erase(0, str->find_first_not_of(' '));
@@ -95,6 +80,31 @@ std::vector<symbol::DimExprConstraint> ParseDimExprConstraintsFLAGS() {
     }
     return dim_expr_constraints;
   }();
+  return dim_expr_constraints;
+}
+
+}  // namespace detail
+
+template <typename DoEachT>
+void VisitEachOp(cinn::dialect::GroupOp op, const DoEachT& DoEach) {
+  for (pir::Operation* sub_op : op.GetOperators()) {
+    DoEach(sub_op);
+  }
+}
+
+template <typename DoEachT>
+void VisitEachValue(const pir::Operation* op, const DoEachT& DoEach) {
+  for (std::size_t i = 0; i < op->num_operands(); ++i) {
+    DoEach(op->operand_source(i));
+  }
+  for (std::size_t i = 0; i < op->num_results(); ++i) {
+    DoEach(op->result(i));
+  }
+}
+
+const std::vector<symbol::DimExprConstraint>& ParseDimExprConstraintsFLAGS() {
+  static std::vector<symbol::DimExprConstraint> dim_expr_constraints{
+      detail::ParseDimExprConstraintsFLAGS()};
   return dim_expr_constraints;
 }
 
@@ -168,22 +178,24 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const cinn::common::UnionFindSet<symbol::DimExpr>& union_find_set = [&]() {
     cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
-    const auto& shape_analysis_constraints =
-        shape_analysis->CreateDimExprBuilder().constraints();
-    std::vector<symbol::DimExprConstraint> dim_expr_constraints =
-        ParseDimExprConstraintsFLAGS();
-    dim_expr_constraints.reserve(dim_expr_constraints.size() +
-                                 shape_analysis_constraints.size());
-    dim_expr_constraints.insert(dim_expr_constraints.end(),
-                                shape_analysis_constraints.begin(),
-                                shape_analysis_constraints.end());
-    for (const auto& constraint : dim_expr_constraints) {
-      CHECK(std::holds_alternative<symbol::Equal<symbol::DimExpr>>(constraint))
-          << "The DimExprConstraint type is no Equal<DimExpr>, this part is to "
-             "be completed.";
+    auto AddEqualCstr = [&](const symbol::DimExprConstraint& constraint) {
+      if (!std::holds_alternative<symbol::Equal<symbol::DimExpr>>(constraint)) {
+        VLOG(0) << "The DimExprConstraint type is no Equal<DimExpr>, this part "
+                   "is to be completed.";
+        return;
+      }
       const auto& data =
           std::get<symbol::Equal<symbol::DimExpr>>(constraint).data;
       union_find_set.Union(data->lhs, data->rhs);
+    };
+    const auto& shape_analysis_constraints =
+        shape_analysis->CreateDimExprBuilder().constraints();
+    for (const auto& constraint : shape_analysis_constraints) {
+      AddEqualCstr(constraint);
+    }
+    const auto& dim_expr_constraints = ParseDimExprConstraintsFLAGS();
+    for (const auto& constraint : dim_expr_constraints) {
+      AddEqualCstr(constraint);
     }
     return union_find_set;
   }();
