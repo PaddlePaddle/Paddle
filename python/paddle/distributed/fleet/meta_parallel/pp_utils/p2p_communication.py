@@ -122,6 +122,7 @@ class SendRecvMeta:
             self.recv_shape_message = shape
             self.recv_dtype_message = dtype
             self.recv_stop_gradient = bool(stop_grad)
+            self.recv_pack_type = SendRecvPackType.TENSOR
 
         elif tensor_type == SendRecvPackType.TENSOR_LIST_OR_TENSOR_TUPLE:
             num = paddle.to_tensor([0])
@@ -139,6 +140,7 @@ class SendRecvMeta:
             self.recv_shape_message = tuple(shapes)
             self.recv_dtype_message = tuple(dtypes)
             self.recv_stop_gradient = tuple(stop_grads)
+            self.recv_pack_type = SendRecvPackType.TENSOR_LIST_OR_TENSOR_TUPLE
 
         elif tensor_type == SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR:
             num_kv = paddle.to_tensor([0])
@@ -161,6 +163,7 @@ class SendRecvMeta:
             self.recv_shape_message = tuple(shapes)
             self.recv_dtype_message = tuple(dtypes)
             self.recv_stop_gradient = tuple(stop_grads)
+            self.recv_pack_type = SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR
 
     def _send_dims_shape_dtype(self, tensor, group):
         # send len(shape)
@@ -735,17 +738,19 @@ def _p2p_ops_wrapper(_p2p_ops):
             == SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR
         ):
             if tensor_send_prev is not None:
-                # NOTE: what if `list(tensor_send_prev.keys()) != send_recv_meta.recv_keys_names`?
                 assert isinstance(
                     tensor_send_prev, (dict, collections.OrderedDict)
                 )
-                assert set(send_recv_meta.recv_keys_names) == set(
-                    tensor_send_prev.keys()
-                ), "`tensor_send_prev.keys()` should be equal to `send_recv_meta.recv_keys_names`"
+                tensor_send_prev_keys = set(tensor_send_prev.keys())
+                # NOTE: tensor_send_prev.keys() will not equal to send_recv_meta.recv_keys_names only if tensor with `stop_gradient == True` exists.
+                assert tensor_send_prev_keys.issubset(
+                    set(send_recv_meta.recv_keys_names)
+                ), "`tensor_send_prev.keys()` should be a subset of `send_recv_meta.recv_keys_names`"
                 tensor_send_prev = tuple(
                     [
                         tensor_send_prev[key]
                         for key in send_recv_meta.recv_keys_names
+                        if key in tensor_send_prev_keys
                     ]
                 )
 
