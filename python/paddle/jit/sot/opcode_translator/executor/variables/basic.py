@@ -287,7 +287,9 @@ class TensorDtypeVariable(DataVariable):
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, paddle.dtype):
+        if isinstance(
+            value, (paddle.base.core.VarDesc.VarType, paddle.core.DataType)
+        ):
             return TensorDtypeVariable(value, graph, tracker)
 
 
