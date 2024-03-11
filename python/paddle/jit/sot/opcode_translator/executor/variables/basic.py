@@ -22,7 +22,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 import paddle
-from paddle.base.framework import paddle_type_to_proto_type
 from paddle.framework import core
 
 from ....infer_meta import MetaInfo
@@ -61,30 +60,30 @@ if TYPE_CHECKING:
 
 
 FP_DTYPE_ABBRS = {
-    paddle.bfloat16: "bfloat16",
-    paddle.float64: "float64",
-    paddle.float32: "float32",
-    paddle.float16: "float16",
+    core.DataType.BFLOAT16: "bfloat16",
+    core.DataType.FLOAT64: "float64",
+    core.DataType.FLOAT32: "float32",
+    core.DataType.FLOAT16: "float16",
 }
 
 CP_DTYPE_ABBRS = {
-    paddle.complex64: "complex64",
-    paddle.complex128: "complex128",
+    core.DataType.COMPLEX64: "complex64",
+    core.DataType.COMPLEX128: "complex128",
 }
 
 INT_DTYPE_ABBRS = {
-    paddle.int8: "int8",
-    paddle.int16: "int16",
-    paddle.int32: "int32",
-    paddle.int64: "int64",
-    paddle.uint8: "uint8",
+    core.DataType.INT8: "int8",
+    core.DataType.INT16: "int16",
+    core.DataType.INT32: "int32",
+    core.DataType.INT64: "int64",
+    core.DataType.UINT8: "uint8",
 }
 
 DTYPE_ABBRS = {
     **FP_DTYPE_ABBRS,
     **CP_DTYPE_ABBRS,
     **INT_DTYPE_ABBRS,
-    paddle.bool: "bool",
+    core.DataType.BOOL: "bool",
 }
 
 
@@ -393,8 +392,8 @@ class TensorVariable(VariableBase):
     @property
     def main_info(self) -> dict[str, Any]:
         dtype = self.meta.dtype
-        if isinstance(dtype, core.DataType):
-            dtype = paddle_type_to_proto_type[dtype]
+        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
         return {
             "shape": self.meta.shape,
             "dtype": DTYPE_ABBRS[dtype],
@@ -487,16 +486,22 @@ class TensorVariable(VariableBase):
 
     def is_complex(self):
         dtype = self.meta.dtype
+        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_cp_dtype = dtype in CP_DTYPE_ABBRS
         return ConstantVariable(is_cp_dtype, self.graph, DummyTracker([self]))
 
     def is_integer(self):
         dtype = self.meta.dtype
+        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_int_dtype = dtype in INT_DTYPE_ABBRS
         return ConstantVariable(is_int_dtype, self.graph, DummyTracker([self]))
 
     def is_floating_point(self):
         dtype = self.meta.dtype
+        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_fp_dtype = dtype in FP_DTYPE_ABBRS
         return ConstantVariable(is_fp_dtype, self.graph, DummyTracker([self]))
 
