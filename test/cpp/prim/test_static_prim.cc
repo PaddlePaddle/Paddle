@@ -198,27 +198,19 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(grad_ops[0]->Inputs().at("Y")[0], "b");
   ASSERT_EQ(grad_ops[0]->Inputs().at("X")[0], "b");
 
-  ASSERT_EQ(grad_ops[1]->Type(), "fill_constant");
+  ASSERT_EQ(grad_ops[1]->Type(), "scale");
   ASSERT_EQ(PADDLE_GET_CONST(int, grad_ops[1]->GetAttr("dtype")),
             static_cast<int>(5));  // ProtoDataType::FP32
   ASSERT_EQ(grad_ops[1]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 
-  ASSERT_EQ(grad_ops[2]->Type(), "elementwise_sub");
+  ASSERT_EQ(grad_ops[2]->Type(), "elementwise_mul");
   ASSERT_EQ(grad_ops[2]->Inputs().at("X").size(), static_cast<std::size_t>(1));
   ASSERT_EQ(grad_ops[2]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops[2]->Inputs().at("X")[0],
+  ASSERT_EQ(grad_ops[2]->Inputs().at("Y")[0],
             grad_ops[1]->Outputs().at("Out")[0]);
+  ASSERT_EQ(grad_ops[2]->Inputs().at("X")[0], "b@GRAD");
   ASSERT_EQ(grad_ops[2]->Outputs().at("Out").size(),
-            static_cast<std::size_t>(1));
-
-  ASSERT_EQ(grad_ops[3]->Type(), "elementwise_mul");
-  ASSERT_EQ(grad_ops[3]->Inputs().at("X").size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops[3]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops[3]->Inputs().at("Y")[0],
-            grad_ops[2]->Outputs().at("Out")[0]);
-  ASSERT_EQ(grad_ops[3]->Inputs().at("X")[0], "b@GRAD");
-  ASSERT_EQ(grad_ops[3]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 }
 
