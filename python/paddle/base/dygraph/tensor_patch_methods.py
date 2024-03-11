@@ -25,7 +25,6 @@ from paddle.base.data_feeder import (
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
     convert_uint16_to_float,
 )
-from paddle.base.framework import paddle_type_to_proto_type
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
@@ -189,13 +188,12 @@ def monkey_patch_tensor():
                 ...     linear.weight.set_value(custom_weight)  # change existing weight
                 ...     out = linear(t)  # call with different weight
         """
-        base_tensor = core.eager.Tensor
         assert isinstance(
-            value, (np.ndarray, base_tensor, dict, str)
+            value, (np.ndarray, paddle.Tensor, dict, str)
         ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
         if self.is_dist():
             assert isinstance(
-                value, (np.ndarray, base_tensor)
+                value, (np.ndarray, paddle.Tensor)
             ), "For set_value function of dist tensor, arguments type only support numpy or Tensor."
 
         if isinstance(value, (dict, str)):
@@ -215,19 +213,17 @@ def monkey_patch_tensor():
                 self.name, self.shape, value.shape
             )
 
-            if isinstance(value, base_tensor):
+            if isinstance(value, paddle.Tensor):
                 dtype = value.dtype
+            elif paddle.framework.use_pir_api():
+                dtype = paddle.pir.core.convert_np_dtype_to_dtype_(value.dtype)
             else:
                 dtype = convert_np_dtype_to_dtype_(value.dtype)
 
-            self_dtype = self.dtype
-            if isinstance(self_dtype, core.DataType):
-                self_dtype = paddle_type_to_proto_type[self_dtype]
-
             assert (
-                self_dtype == dtype
+                self.dtype == dtype
             ), "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                self.name, self_dtype, dtype
+                self.name, self.dtype, dtype
             )
 
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
