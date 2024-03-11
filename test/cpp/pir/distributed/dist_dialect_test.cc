@@ -18,6 +18,7 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_op.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -279,6 +280,7 @@ TEST(shard_tensor_op_replicate_test, base) {
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_operand_dist_attrs(),
             (uint32_t)0);
+
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_result_dist_attrs(),
             (uint32_t)1);
@@ -391,4 +393,83 @@ TEST(shard_tensor_op_shard_col_test, base) {
   EXPECT_EQ(shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
             mesh_attr);
+}
+
+TEST(mix_to_dist_pass_test, base) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<DistDialect>();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
+
+  pir::Program program(ctx);
+  pir::Block* block = program.block();
+  pir::Builder builder(ctx, block);
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  phi::distributed::ProcessMesh process_mesh(
+      mesh_shape, process_ids, dim_names);
+  auto mesh_attr = ProcessMeshAttribute::get(ctx, process_mesh);
+  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
+  std::vector<int64_t> x_shape = {12, 6};
+  std::vector<int64_t> y_shape = {6, 8};
+
+  // construct x
+  std::vector<int64_t> x_dims_mapping = {0, 1};
+  auto x_data_op = builder.Build<paddle::dialect::DataOp>(
+      "x", x_shape, phi::DataType::FLOAT32, phi::CPUPlace());
+  std::vector<int64_t> x_local_shape = {6, 2};
+  auto x_tensor_dist_attr =
+      TensorDistAttribute::get(ctx, mesh_attr, x_dims_mapping, partial_status);
+  pir::AttributeMap x_attr_map = {{"tensor_dist_attr", x_tensor_dist_attr}};
+
+  // construct y
+  std::vector<int64_t> y_dims_mapping = {1, -1};
+  auto y_data_op = builder.Build<paddle::dialect::DataOp>(
+      "y", y_shape, phi::DataType::FLOAT32, phi::CPUPlace());
+  std::vector<int64_t> y_local_shape = {2, 8};
+  auto y_tensor_dist_attr =
+      TensorDistAttribute::get(ctx, mesh_attr, y_dims_mapping, partial_status);
+  pir::AttributeMap y_attr_map = {{"tensor_dist_attr", y_tensor_dist_attr}};
+
+  // shard_tensor op
+  paddle::dialect::ShardTensorOp x_shard_op =
+      builder.Build<paddle::dialect::ShardTensorOp>(x_data_op.result(0),
+                                                    x_attr_map);
+  paddle::dialect::ShardTensorOp y_shard_op =
+      builder.Build<paddle::dialect::ShardTensorOp>(y_data_op.result(0),
+                                                    y_attr_map);
+  EXPECT_EQ(x_shard_op.attribute<OperationDistAttribute>("op_dist_attr")
+                .num_result_dist_attrs(),
+            (uint32_t)1);
+  EXPECT_EQ(y_shard_op.attribute<OperationDistAttribute>("op_dist_attr")
+                .num_result_dist_attrs(),
+            (uint32_t)1);
+
+  // Apply Pass
+  std::cout << "IR before MixToDist Pass = " << program << std::endl;
+  std::shared_ptr<pir::Program> new_program =
+      paddle::dialect::MixToDistPass(&program);
+  std::cout << "IR before MixToDist Pass = " << new_program << std::endl;
+  pir::Block* new_block = new_program->block();
+  EXPECT_EQ(2, static_cast<int>(new_block->num_ops()));
+  std::vector<pir::Operation*> ops;
+  for (auto& op : *new_block) {
+    ops.push_back(&op);
+  }
+
+  EXPECT_EQ(true, ops[0]->result(0).type().isa<DistDenseTensorType>());
+  EXPECT_EQ(
+      phi::make_ddim(x_shape),
+      ops[0]->result(0).type().dyn_cast<DistDenseTensorType>().global_ddim());
+  EXPECT_EQ(
+      phi::make_ddim(x_local_shape),
+      ops[0]->result(0).type().dyn_cast<DistDenseTensorType>().local_ddim());
+  EXPECT_EQ(true, ops[1]->result(0).type().isa<DistDenseTensorType>());
+  EXPECT_EQ(
+      phi::make_ddim(y_shape),
+      ops[1]->result(0).type().dyn_cast<DistDenseTensorType>().global_ddim());
+  EXPECT_EQ(
+      phi::make_ddim(y_local_shape),
+      ops[1]->result(0).type().dyn_cast<DistDenseTensorType>().local_ddim());
 }

@@ -179,6 +179,11 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
                            const std::string& reduce,
                            MetaTensor* out);
 
+void RandomRoutingInferMeta(const MetaTensor& prob,
+                            const MetaTensor& topk_value,
+                            const MetaTensor& topk_idx,
+                            MetaTensor* out);
+
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,
                        const MetaTensor& boxes_num,
