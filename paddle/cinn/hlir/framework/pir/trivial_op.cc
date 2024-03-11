@@ -499,12 +499,12 @@ struct FusionGraph {
   }
 
   std::vector<ir::Expr> DoFusion(){
-    fuse_trivial_node();
-    return get_expr_results();
+    TrivialFusion();
+    return GetExprResults();
   }
 
 private:
-  FusionNode* find_trivial_node(){
+  FusionNode* FindTrivialFuseableNode(){
     for (FusionNode* node: all_fusion_nodes_){
       if (IsTrivialKind(node->op_pattern) && node->downstream.size() > 0){
         CHECK(node->op_compute_body.size() == 1);
@@ -514,9 +514,9 @@ private:
     return nullptr;
   }
 
-  void fuse_trivial_node(){
+  void TrivialFusion(){
     FusionNode* upstream;
-    while((upstream = find_trivial_node()) != nullptr){
+    while((upstream = FindTrivialFuseableNode()) != nullptr){
       std::unordered_map<FusionNode*, ::pir::Value> fusion_candidate = upstream->downstream;
       upstream->downstream.clear();
       for (const auto& pair_data : fusion_candidate) {
@@ -537,14 +537,14 @@ private:
         }
 
         new_node->replace_topo_structure_of_fused_nodes(upstream, downstream);
-        append_fusion_node(new_node);
-        remove_fusion_node(downstream);
+        AppendNode(new_node);
+        RemoveNode(downstream);
       }
-      remove_fusion_node(upstream);
+      RemoveNode(upstream);
     }
   }
 
-  std::vector<ir::Expr> get_expr_results() {
+  std::vector<ir::Expr> GetExprResults() {
     std::vector<ir::Expr> output_exprs;
     for (const auto& node : all_fusion_nodes_) {
       output_exprs.insert(output_exprs.end(), node->op_compute_body.begin(), node->op_compute_body.end());
@@ -552,7 +552,7 @@ private:
     return output_exprs;
   }
 
-  void remove_fusion_node(FusionNode* node){
+  void RemoveNode(FusionNode* node){
     if (all_fusion_nodes_.find(node) != all_fusion_nodes_.end()){
       all_fusion_nodes_.erase(node);
     }
@@ -565,7 +565,7 @@ private:
     delete node;
   }
 
-  void append_fusion_node(FusionNode* node){
+  void AppendNode(FusionNode* node){
     all_fusion_nodes_.emplace(node);
     if (node->upstream.size() == 0){
       entrance_nodes_.emplace(node);
