@@ -850,12 +850,12 @@ class DynamicGraphAdapter:
             scaled.backward()
             if update:
                 self.model._scaler.minimize(self.model._optimizer, scaled)
-                self.model.network.clear_gradients()
+                self.model.network.clear_gradients(True)
         else:
             final_loss.backward()
             if update:
                 self.model._optimizer.minimize(final_loss)
-                self.model.network.clear_gradients()
+                self.model.network.clear_gradients(True)
 
         metrics = []
         for metric in self.model._metrics:
