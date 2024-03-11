@@ -1350,7 +1350,9 @@ def _create_tensor(
     **kwargs,
 ):
     if dtype is not None:
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if isinstance(dtype, core.DataType):
+            dtype = paddle_type_to_proto_type[dtype]
+        elif not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
     eager_tensor = core.eager.Tensor(

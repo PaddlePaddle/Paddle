@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
 from ..base import framework
 from ..base.core import (
     DataType,
@@ -57,6 +59,22 @@ def bind_vartype():
 
     bool = VarDesc.VarType.BOOL
 
+    paddle.dtype = dtype
+    paddle.uint8 = uint8
+    paddle.int8 = int8
+    paddle.int16 = int16
+    paddle.int32 = int32
+    paddle.int64 = int64
+
+    paddle.float32 = float32
+    paddle.float64 = float64
+    paddle.float16 = float16
+    paddle.bfloat16 = bfloat16
+
+    paddle.complex64 = complex64
+    paddle.complex128 = complex128
+    paddle.bool = bool
+
 
 def bind_datatype():
     global dtype
@@ -92,6 +110,22 @@ def bind_datatype():
     complex128 = DataType.COMPLEX128
 
     bool = DataType.BOOL
+
+    paddle.dtype = dtype
+    paddle.uint8 = uint8
+    paddle.int8 = int8
+    paddle.int16 = int16
+    paddle.int32 = int32
+    paddle.int64 = int64
+
+    paddle.float32 = float32
+    paddle.float64 = float64
+    paddle.float16 = float16
+    paddle.bfloat16 = bfloat16
+
+    paddle.complex64 = complex64
+    paddle.complex128 = complex128
+    paddle.bool = bool
 
 
 enable_pir_api = framework.get_flags("FLAGS_enable_pir_api")[
