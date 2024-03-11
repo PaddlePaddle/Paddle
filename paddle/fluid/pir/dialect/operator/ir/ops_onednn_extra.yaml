@@ -15,7 +15,7 @@
 
 - op : abs_grad
 
-- op : add_n_onednn
+- op : add_n
   extra_args : str mkldnn_data_type="float32"
 
 - op : batch_norm
@@ -51,6 +51,14 @@
 - op : conv2d_grad
   extra_args : bool is_test=false
   data_format_tensors : input, out_grad
+
+- op : conv2d_transpose
+  extra_args : bool is_test=false
+  data_format_tensors : x
+
+- op : conv2d_transpose_bias
+  extra_args : bool is_test=false, bool force_fp32_output = false, str mkldnn_data_type = "float32", bool fuse_relu = false, str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f
+  data_format_tensors : x
 
 - op : conv3d
   extra_args : bool is_test=false

@@ -97,7 +97,6 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
           static_cast<std::int64_t>(shape_data_list.size()));
     } else {
       for (int i = 0; i < rank; ++i) {
-        if (i == axis) continue;
         details::BuildCstrEqForTensorListAlongAxis(
             shape_analysis, shape_data_list, i);
       }
@@ -203,8 +202,8 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   std::vector<int64_t> axes_vec = details::GetVectorAttr(op, "axes");
 
   // // Currently, we DO NOT support any element in `starts` is a Symbol.
-  ExprVec starts = slice_uitls::GetExprVecFromData(starts_shape_data);
-  ExprVec ends = slice_uitls::GetExprVecFromData(ends_shape_data);
+  ExprVec starts = slice_utils::GetExprVecFromData(starts_shape_data);
+  ExprVec ends = slice_utils::GetExprVecFromData(ends_shape_data);
 
   std::vector<int64_t> infer_flags = details::GetVectorAttr(op, "infer_flags");
 
@@ -213,7 +212,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
   shape_analysis->SetShapeOrDataForValue(
       res,
-      slice_uitls::SliceRawInferSymbolicShape(operand_shape_or_data,
+      slice_utils::SliceRawInferSymbolicShape(operand_shape_or_data,
                                               starts,
                                               ends,
                                               axes_vec,
@@ -290,6 +289,21 @@ bool ConcatOpInferSymbolicShape(
   axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
 
   if (shape_data_list[0].data().has_value()) {
+    if (rank == 1) {
+      ExprVec data = details::GetExprVecFromData(
+          shape_analysis->GetShapeOrDataForValue(operand_source));
+      const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
+      symbol::ShapeOrDataDimExprs shape_data{
+          symbol::TensorShapeOrDataDimExprs(shape, data)};
+      pir::Value res = op->result(0);
+      shape_analysis->SetShapeOrDataForValue(res, shape_data);
+
+      return true;
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          op->name() +
+          " 's InferSymbolicShape can NOT deal with rank > 1 now."));
+    }
     std::vector<symbol::DimExpr> data;
     data.reserve(shape_data_list.size());
     for (auto &data_elem : shape_data_list) {
@@ -437,9 +451,9 @@ bool SqueezeOpInferSymbolicShape(
         if (in_dims_sym[current] == 1) {
           should_squeeze[current] = true;
         } else if (!in_dims_sym[current].Has<std::int64_t>()) {
-          PADDLE_THROW(
-              phi::errors::Unimplemented("SqueezeOpInferSymbolicShape CAN NOT "
-                                         "deal with symbol in axis now"));
+          should_squeeze[current] = true;
+        } else {
+          should_squeeze[current] = true;
         }
       }
     }
@@ -931,26 +945,6 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
 }
 
 //  Not Implemented Ops.
-
-bool DiagEmbedOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-bool DiagonalOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-bool DirichletOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
 bool GatherOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto &input_shape_or_data =
@@ -1020,17 +1014,33 @@ bool GatherOpInferSymbolicShape(
 
 bool KronOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-bool KthvalueOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const auto &x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &y_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const int rank_x = x_shape_or_data.size();
+  const int rank_y = y_shape_or_data.size();
+  const int rank = (rank_x > rank_y) ? rank_x : rank_y;
+
+  std::vector<symbol::DimExpr> dim_out;
+  dim_out.reserve(rank);
+  const auto one = symbol::DimExpr{1};
+  const auto minus_one = symbol::DimExpr{-1};
+  for (int i = 0; i < rank; i++) {
+    symbol::DimExpr dim_xi =
+        (i < rank - rank_x) ? one : x_shape_or_data.at(i - (rank - rank_x));
+    symbol::DimExpr dim_yi =
+        (i < rank - rank_y) ? one : y_shape_or_data.at(i - (rank - rank_y));
+    dim_out.push_back(dim_xi * dim_yi);
+  }
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(dim_out)};
+  pir::Value res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
 
+//  Not Impelmented Ops.
 bool LogcumsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
@@ -1095,32 +1105,6 @@ bool UniqueConsecutiveOpInferSymbolicShape(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
-
-bool EinsumOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-bool EmptyOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-bool Exponential_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-bool GaussianOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
 bool LinspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(

@@ -76,8 +76,8 @@ void Conv2dTransposeKernel(const Context& ctx,
   const int img_xh = static_cast<int>(out->dims()[2]);
   const int img_xw = static_cast<int>(out->dims()[3]);
 
-  int fccal_type = FCCalcType<XPUType>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
         ctx.x_context(),
         x.data<float>(),
@@ -98,7 +98,7 @@ void Conv2dTransposeKernel(const Context& ctx,
         nullptr,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     int r = xpu::conv2d_transpose_v2<float, float, float, float>(
         ctx.x_context(),
         x.data<float>(),
@@ -119,7 +119,7 @@ void Conv2dTransposeKernel(const Context& ctx,
         nullptr,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     if (output_size.size()) {
       VLOG(4) << "int_with_ll quantization is not supported when output_size "
                  "is specified, "
