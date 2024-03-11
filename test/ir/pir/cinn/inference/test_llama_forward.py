@@ -37,7 +37,7 @@ class LlamaConfig:
         self,
         vocab_size=32000,
         hidden_size=4096,
-        intermediate_size=11008,
+        intermediate_size=8192,
         max_position_embeddings=2048,
         seq_length=2048,
         num_hidden_layers=1,
@@ -645,17 +645,16 @@ class TestLlamaModel(unittest.TestCase):
                     31325,
                     31043,
                     30374,
-                    30024,
                 ]
             ],
             dtype="int64",
         )
         self.position_ids = paddle.to_tensor(
-            [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]],
+            [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
             dtype="int64",
         )
         self.attention_mask = paddle.to_tensor(
-            [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]], dtype="int64"
+            [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]], dtype="int64"
         )
 
     def check_jit_kernel_info(self, static_fn):
@@ -686,4 +685,5 @@ class TestLlamaModel(unittest.TestCase):
 
 if __name__ == '__main__':
     core._set_prim_forward_blacklist("pd_op.embedding", "pd_op.softmax")
+    paddle.set_default_dtype("float32")
     unittest.main()

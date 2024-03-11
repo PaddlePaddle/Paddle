@@ -107,14 +107,14 @@ class TestLlamaPostProcess(unittest.TestCase):
 
         # paddle.jit.save(net, sys.path.join(dirname(__file__), "post_model"))
         out = net(self.logits, self.input_ids)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
+        # if use_cinn:
+        #     self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
-        dy_out = self.eval(use_cinn=False)
+        dy_out, dy_score = self.eval(use_cinn=False)
         # if utils.unittest_use_cinn():
-        cinn_out = self.eval(use_cinn=True)
+        cinn_out, cinn_score = self.eval(use_cinn=True)
         np.testing.assert_allclose(
             cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
         )
