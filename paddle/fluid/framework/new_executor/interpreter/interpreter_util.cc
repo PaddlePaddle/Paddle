@@ -1356,7 +1356,7 @@ void PrintValuesAndVariables(
 
           // get origin name
           std::string origin_name;
-          if (!origin_output_names.empty() && i < origin_output_names.size())
+          if (!origin_output_names.empty())
             origin_name = origin_output_names[i];
           else
             origin_name = var_name;
@@ -1407,7 +1407,7 @@ void PrintValuesAndVariables(
 
           // get origin name
           std::string origin_name;
-          if (!origin_input_names.empty() && i < origin_input_names.size())
+          if (!origin_input_names.empty())
             origin_name = origin_input_names[i];
           else
             origin_name = var_name;
