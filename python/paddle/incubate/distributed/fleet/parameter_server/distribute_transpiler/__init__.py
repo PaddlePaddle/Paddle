@@ -257,14 +257,14 @@ class FleetTranspiler(Fleet):
             sparse_varnames = self.compiled_config.get_sparse_varname_on_ps(
                 True
             )
-            distribtued_varnames = (
+            distributed_varnames = (
                 self.compiled_config.get_sparse_varname_on_ps(False)
             )
 
             remaining_vars = list(
                 filter(
                     FleetTranspiler.__exclude_vars(
-                        sparse_varnames + distribtued_varnames
+                        sparse_varnames + distributed_varnames
                     ),
                     self.main_program.list_vars(),
                 )
@@ -282,7 +282,7 @@ class FleetTranspiler(Fleet):
             )
 
             # todo(tangwei12) load distributed vars
-            # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
+            # self._load_sparse_params(dirname=model_dir, varnames=distributed_varnames)
 
     def init_server(self, model_dir=None, **kwargs):
         """

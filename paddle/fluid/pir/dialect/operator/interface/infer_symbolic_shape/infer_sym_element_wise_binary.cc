@@ -23,7 +23,9 @@ bool InferSymbolicShapeElementWiseBinary(
   // For ElementWiseBinary ops, if the input tensor is from full op, the value
   // of fullop is useless, only the shape need doing broadcast
   bool x_from_fullop =
-      op->operand_source(0).defining_op()->isa<paddle::dialect::FullOp>();
+      op->operand_source(0).defining_op()
+          ? op->operand_source(0).defining_op()->isa<paddle::dialect::FullOp>()
+          : false;
   if (!x_from_fullop && x_shapeordata.data().has_value()) {
     shape_0 = x_shapeordata.data().value();
   } else {
@@ -34,7 +36,9 @@ bool InferSymbolicShapeElementWiseBinary(
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
   std::vector<symbol::DimExpr> shape_1;
   bool y_from_fullop =
-      op->operand_source(1).defining_op()->isa<paddle::dialect::FullOp>();
+      op->operand_source(1).defining_op()
+          ? op->operand_source(1).defining_op()->isa<paddle::dialect::FullOp>()
+          : false;
   if (!y_from_fullop && y_shapeordata.data().has_value()) {
     shape_1 = y_shapeordata.data().value();
   } else {
@@ -79,27 +83,34 @@ bool InferSymbolicShapeElementWiseBinary(
 }
 
 namespace paddle::dialect {
-
 bool AddOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
 bool Add_OpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
 bool BitwiseAndOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
 bool BitwiseAnd_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return BitwiseAndOpInferSymbolicShape(op, shape_analysis);
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
+bool BitwiseXorOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool BitwiseXor_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool ComplexOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
 bool DivideOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
@@ -108,42 +119,82 @@ bool Divide_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
 bool ElementwisePowOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
+bool FmaxOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool FminOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool GreaterEqualOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool GreaterEqual_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
 bool GreaterThanOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
 bool GreaterThan_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return GreaterThanOpInferSymbolicShape(op, shape_analysis);
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
+bool LessEqualOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool LessEqual_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
 bool LessThanOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
 bool LessThan_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return LessThanOpInferSymbolicShape(op, shape_analysis);
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
 bool LogicalAndOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
 bool LogicalAnd_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return LogicalAndOpInferSymbolicShape(op, shape_analysis);
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
+bool LogicalOrOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool LogicalOr_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool LogicalXorOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool LogicalXor_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool MaximumOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool MinimumOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
 bool MultiplyOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
@@ -152,23 +203,37 @@ bool MultiplySrOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-bool Multiply_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
-}
 bool MultiplySr_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
+bool Multiply_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
 bool NotEqualOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
-
 bool NotEqual_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return NotEqualOpInferSymbolicShape(op, shape_analysis);
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool RemainderOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool Remainder_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
+bool SubtractOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool Subtract_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
 }  // namespace paddle::dialect
