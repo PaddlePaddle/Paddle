@@ -172,8 +172,8 @@ class TestNanmedianModeMin(unittest.TestCase):
             out2 = paddle.tensor.nanmedian(x, keepdim=False, mode='min')
             out3 = paddle.tensor.stat.nanmedian(x, keepdim=False, mode='min')
             axis = np.arange(len(data.shape)).tolist()
-            out4, _ = paddle.nanmedian(x, axis=axis, keepdim=False, mode='min')
-            out5, _ = paddle.nanmedian(
+            out4 = paddle.nanmedian(x, axis=axis, keepdim=False, mode='min')
+            out5 = paddle.nanmedian(
                 x, axis=tuple(axis), keepdim=False, mode='min'
             )
             exe = paddle.static.Executor(self.place)
@@ -216,7 +216,7 @@ class TestNanmedianModeMin(unittest.TestCase):
                 )
 
         def test_axis_case(data, axis):
-            if axis is not None:
+            if (axis is not None) and (not isinstance(axis, (list, tuple))):
                 pd_res, _ = paddle.nanmedian(
                     paddle.to_tensor(data), axis=axis, keepdim=False, mode='min'
                 )
