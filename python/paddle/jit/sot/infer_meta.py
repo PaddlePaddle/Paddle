@@ -40,7 +40,6 @@ class MetaInfo:
 
     @staticmethod
     def from_tensor(tensor):
-        # We always use float32 in simulation if AMP is enabled.
         if isinstance(tensor, paddle.pir.Value):
             name = "Value@NoName"
         else:  # For Tensor or Variable
@@ -53,6 +52,8 @@ class MetaInfo:
             else paddle.core.VarDesc.VarType
         )
         assert isinstance(dtype, expected_dtype_class)
+
+        # We always use float32 in simulation if AMP is enabled.
         current_amp_state = amp_state()
         if (
             dtype == paddle.float16
