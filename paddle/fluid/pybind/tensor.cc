@@ -473,6 +473,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              return common::DataLayoutToString(self.layout());
            })
       .def("_share_data_with", &phi::DenseTensor::ShareDataWith)
+      .def("_get_use_count", &phi::DenseTensor::get_use_count)
       .def("_share_data_nocheck_with", &phi::DenseTensor::ShareDataNoCheckWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
       .def("__str__",

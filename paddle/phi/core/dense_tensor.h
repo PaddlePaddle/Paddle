@@ -191,6 +191,14 @@ class TEST_API DenseTensor : public TensorBase,
     meta_.offset = 0;
   }
 
+  const int get_use_count() const {
+    if (holder_) {
+      return holder_.use_count();
+    } else {
+      return 0;
+    }
+  }
+
  private:
   friend class DenseTensorUtils;
   friend class phi::distributed::DistTensor;
