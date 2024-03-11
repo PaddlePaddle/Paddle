@@ -37,6 +37,8 @@ python ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
 
 lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
+
+
 # full html report
 
 function gen_full_html_report_cinn(){
