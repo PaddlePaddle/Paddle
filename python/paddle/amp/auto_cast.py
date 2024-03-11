@@ -1052,14 +1052,14 @@ def decorate(
                 return models, optimizers
         else:
             raise ValueError("level should be O0, OD, O1 or O2.")
-
-    return amp_decorate(
-        models,
-        optimizers,
-        level,
-        dtype,
-        master_weight,
-        save_dtype,
-        master_grad,
-        excluded_layers,
-    )
+    else:
+        return amp_decorate(
+            models,
+            optimizers,
+            level,
+            dtype,
+            master_weight,
+            save_dtype,
+            master_grad,
+            excluded_layers,
+        )
