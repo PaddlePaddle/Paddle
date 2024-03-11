@@ -214,13 +214,23 @@ void matmul_double_grad(const Tensor& x,
   }
   Tensor dx, dy, ddout_1, ddout_2, ddout;
   if (!grad_x_grad && !grad_y_grad) {
-    x_grad = nullptr;
-    y_grad = nullptr;
-    grad_out_grad = nullptr;
+    if (x_grad) {
+      set_output<T>(full<T>(common::vectorize(x.dims()), 0, x.dtype()), x_grad);
+    }
+    if (y_grad) {
+      set_output<T>(full<T>(common::vectorize(y.dims()), 0, y.dtype()), y_grad);
+    }
+    if (grad_out_grad) {
+      set_output<T>(
+          full<T>(common::vectorize(grad_out.dims()), 0, grad_out.dtype()),
+          grad_out_grad);
+    }
     return;
 
   } else if (!grad_x_grad) {
-    y_grad = nullptr;
+    if (y_grad) {
+      set_output<T>(full<T>(common::vectorize(y.dims()), 0, y.dtype()), y_grad);
+    }
     if (!transpose_x && !transpose_y) {
       if (x_grad) {
         dx = matmul<T>(out_help, yg_help, false, true);
@@ -252,7 +262,9 @@ void matmul_double_grad(const Tensor& x,
     }
 
   } else if (!grad_y_grad) {
-    x_grad = nullptr;
+    if (x_grad) {
+      set_output<T>(full<T>(common::vectorize(x.dims()), 0, x.dtype()), x_grad);
+    }
     if (!transpose_x && !transpose_y) {
       if (y_grad) {
         dy = matmul<T>(xg_help, out_help, true, false);
@@ -573,8 +585,6 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
       } else {
         by_pass<T>(grad_grad_out_grad, grad_grad_y_grad);
       }
-    } else {
-      grad_grad_y_grad = nullptr;
     }
   }
   if (grad_grad_x_grad) {
@@ -595,8 +605,6 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
       } else {
         by_pass<T>(grad_grad_out_grad, grad_grad_x_grad);
       }
-    } else {
-      grad_grad_x_grad = nullptr;
     }
   }
 }
@@ -617,7 +625,9 @@ void subtract_double_grad(const Tensor& y,
     } else if (grad_y_grad) {
       set_output<T>(-grad_y_grad.get(), grad_out_grad);
     } else {
-      grad_out_grad = nullptr;
+      set_output<T>(
+          full<T>(common::vectorize(grad_out.dims()), 0, grad_out.dtype()),
+          grad_out_grad);
     }
   }
 }
