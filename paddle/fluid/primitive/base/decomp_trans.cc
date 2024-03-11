@@ -47,7 +47,7 @@ std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
                                                            "pd_op.unsqueeze"};
 
 namespace {
-std::unordered_set<std::string> StringSplit(const std::string& str) {
+std::set<std::string> StringSplit(const std::string& str) {
   std::istringstream iss(str);
   std::unordered_set<std::string> tokens;
   std::string token;
@@ -146,8 +146,8 @@ void DecompProgram::check_ops() {
   auto primitives_set = GetPrimitiveOpNames();
   std::set<std::string> undecomposed_set;
   for (const auto& element : decomposed_prog_ops_set_) {
-    auto iter = primitives_set.find(element);
-    if (iter == primitives_set.end()) {
+    if (primitives_set.find(element) == primitives_set.end() &&
+        blacklist_.find(element) == blacklist_.end()) {
       undecomposed_set.insert(element);
     }
   }
@@ -337,9 +337,8 @@ bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
     }
   }
   auto from_flag_blacklist = StringSplit(FLAGS_prim_forward_blacklist);
-  if (from_flag_blacklist.size() > 0 &&
-      from_flag_blacklist.find(op_name) != from_flag_blacklist.end())
-    flag = false;
+  if (from_flag_blacklist.size() > 0)
+    blacklist_.insert(from_flag_blacklist.begin(), from_flag_blacklist.end());
   if (blacklist_.size() > 0 && blacklist_.find(op_name) != blacklist_.end())
     flag = false;
   return flag;
