@@ -177,6 +177,17 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
   auto* ddx_tensor = ddx.get_ptr();
   auto* ddy_tensor = ddy.get_ptr();
   auto* dx_tensor = dx.get_ptr();
+  DenseTensor dz_div_y;
+  dz_div_y.Resize(out.dims());
+  if (dx_tensor == nullptr || dx_tensor->dims() != out.dims()) {
+    dev_ctx.template Alloc<T>(&dz_div_y);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::DivideFunctor<T>,
+                                      funcs::InverseDivideFunctor<T>>(
+        dev_ctx, grad_out, y, &dz_div_y, axis);
+    dx_tensor = &dz_div_y;
+  }
   // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
   // dY = Out * dX * ddY / Y - dX * ddX / Y
   // dOut = - dX * ddY
@@ -195,17 +206,6 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     if (ddx_tensor == nullptr && ddy_tensor == nullptr) {
       dy = nullptr;
     } else {
-      if (dx_tensor == nullptr || dx_tensor->dims() != out.dims()) {
-        DenseTensor dz_div_y;
-        dz_div_y.Resize(out.dims());
-        dev_ctx.template Alloc<T>(&dz_div_y);
-        funcs::DefaultElementwiseOperator<Context,
-                                          T,
-                                          funcs::DivideFunctor<T>,
-                                          funcs::InverseDivideFunctor<T>>(
-            dev_ctx, grad_out, y, &dz_div_y, axis);
-        dx_tensor = &dz_div_y;
-      }
       DenseTensor tmp_dy = tmp;
       // dX / Y
       funcs::DefaultElementwiseOperator<Context,
@@ -312,17 +312,6 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     if (ddy_tensor == nullptr) {
       dout = nullptr;
     } else {
-      if (dx_tensor == nullptr || dx_tensor->dims() != out.dims()) {
-        DenseTensor dz_div_y;
-        dz_div_y.Resize(out.dims());
-        dev_ctx.template Alloc<T>(&dz_div_y);
-        funcs::DefaultElementwiseOperator<Context,
-                                          T,
-                                          funcs::DivideFunctor<T>,
-                                          funcs::InverseDivideFunctor<T>>(
-            dev_ctx, grad_out, y, &dz_div_y, axis);
-        dx_tensor = &dz_div_y;
-      }
       // dOut = - dX * ddY
       funcs::DefaultElementwiseOperator<Context,
                                         T,
