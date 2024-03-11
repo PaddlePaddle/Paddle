@@ -16,10 +16,6 @@
 
 #include "paddle/cinn/frontend/group_pattern.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/adt/logical.h"
-#include "paddle/cinn/adt/tree.h"
-#include "paddle/cinn/adt/tree_util.h"
 
 namespace cinn::frontend {
 
