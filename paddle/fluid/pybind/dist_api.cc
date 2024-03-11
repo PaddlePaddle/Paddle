@@ -25,8 +25,6 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-PyTypeObject *g_ir_value_pytype = nullptr;
-
 void BindDistOpsAPI(pybind11::module *module) {
   {
     if (PyModule_AddFunctions(module->ptr(), DistOpsAPI) < 0) {

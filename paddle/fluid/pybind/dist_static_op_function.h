@@ -16,12 +16,8 @@
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
-#include "paddle/fluid/pybind/op_function_common.h"
-#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {

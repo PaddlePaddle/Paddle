@@ -249,7 +249,6 @@ def shard_tensor(
             dist_tensor.stop_gradient = tensor.stop_gradient
             return dist_tensor
     elif paddle.framework.in_pir_mode():
-        global_dims = list(tensor.shape)
         sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
         dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
         dist_tensor = paddle._pir_ops.shard_tensor(tensor, mesh, dims_mapping)
