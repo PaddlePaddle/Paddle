@@ -173,6 +173,7 @@ void CheckInferSymWithInferMeta(
       if (infer_meta_shape.size() != infer_sym_shape.size()) {
         std::ostringstream print_stream;
         print_stream << "Warning : Check InferSymbolicShape for " << op->name()
+                     << " (op_" << op->id() << ") "
                      << " carefully! rank of infer_meta_shape is ["
                      << infer_meta_shape.size()
                      << "], but rank of infer_sym_shape is ["
@@ -189,6 +190,7 @@ void CheckInferSymWithInferMeta(
             std::ostringstream print_stream;
             print_stream
                 << "Warning : Check InferSymbolicShape for " << op->name()
+                << " (op_" << op->id() << ") "
                 << " carefully! "
                 << "shape[" << i
                 << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
@@ -200,7 +202,8 @@ void CheckInferSymWithInferMeta(
           if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
             std::ostringstream print_stream;
             print_stream << "Warning : Check InferSymbolicShape for "
-                         << op->name() << " carefully! "
+                         << op->name() << " (op_" << op->id() << ") "
+                         << " carefully! "
                          << "infer_sym_shape is [" << infer_meta_shape[i]
                          << "], but infer_meta_shape is ["
                          << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
