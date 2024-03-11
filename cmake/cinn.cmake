@@ -218,6 +218,7 @@ function(gen_cinncore LINKTYPE)
     ${LINKTYPE}
     SRCS
     ${core_src}
+    ${group_pattern_util}
     DEPS
     glog
     ${llvm_libs}
@@ -231,8 +232,9 @@ function(gen_cinncore LINKTYPE)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   if(NOT CINN_ONLY)
-    target_link_libraries(${CINNCORE_TARGET} op_dialect pir phi)
-    add_dependencies(${CINNCORE_TARGET} op_dialect pir phi)
+    target_link_libraries(${CINNCORE_TARGET} cinn_op_dialect cinn_runtime pir
+                          phi)
+    add_dependencies(${CINNCORE_TARGET} cinn_op_dialect cinn_runtime pir phi)
   endif()
 
   add_dependencies(${CINNCORE_TARGET} pybind)
