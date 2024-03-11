@@ -380,10 +380,6 @@ ir::Expr TRFusion(ir::Expr upper, ir::Expr down) {
   return fused.GetFuncBody();
 }
 
-ir::Expr RTFusion(ir::Expr upper, ir::Expr down) {
-  //
-}
-
 struct FusionNode {
   // Function bodies losses the kind information which needed in trivialop
   // fusion.
