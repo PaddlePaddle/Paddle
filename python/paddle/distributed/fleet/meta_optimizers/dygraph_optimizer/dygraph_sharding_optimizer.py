@@ -373,7 +373,6 @@ class DygraphShardingOptimizer:
         # hack to grad_clip all parameters,
         # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
         # TODO(pangengzheng): remove the hacked grad_clip codes here when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
-        origin_clip = self._inner_opt._grad_clip
         target_param_list = (
             self._origin_parameter_list
             if (not self.tensor_fusion or not self.fuse_optimizer)
@@ -467,14 +466,6 @@ class DygraphShardingOptimizerV2:
     .. ZeRO: https://arxiv.org/abs/1910.02054
 
     """
-
-    # TODO (JZ-LIANG)
-    # TO support following features in future:
-    # 1. fused update parameter sync
-    # 2. parameters_groups
-    # 3. dynamic trainable params, which is the case between pretraining and finetuning
-    # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
-    # 5. do not shard small params
 
     def __init__(self, optimizer, hcg):
         logger.info("init DygraphShardingOptimizerV2")
