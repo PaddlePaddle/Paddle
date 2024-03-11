@@ -281,10 +281,10 @@ def some_in_set(value_list, value_set):
     #             value_set.add(item)
     #     return value_set
     for value in value_list:
-        assert isinstance(value, pir.Value)
+        assert isinstance(value, (pir.Value, type(None)))
 
     for value in value_set:
-        assert isinstance(value, pir.Value)
+        assert isinstance(value, (pir.Value, type(None)))
 
     def to_value(value):
         if isinstance(value, pir.Value):
@@ -295,10 +295,7 @@ def some_in_set(value_list, value_set):
             raise ValueError(f'Unsupported type {type(value)}')
 
     # if operand2value(value_list) & operand2value(value_set):
-    if any(to_value(v) in value_set for v in value_list):
-        return True
-    else:
-        return False
+    return any(to_value(v) in value_set for v in value_list)
 
 
 def is_control_flow(op):
