@@ -30,6 +30,7 @@
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -890,6 +891,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names);
 #ifdef CINN_WITH_CUDA
+    optim::EliminateCommonGlobalMemoryRead(&(func_body));
     optim::OptimizeExprGPU(&(func_body));
 #endif
 
