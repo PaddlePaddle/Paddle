@@ -31,13 +31,15 @@ sys.path.append(dirname(dirname(__file__)))
 
 import utils
 
+inter_value = None
+
 
 class LlamaConfig:
     def __init__(
         self,
         vocab_size=32000,
         hidden_size=4096,
-        intermediate_size=8192,
+        intermediate_size=11008,
         max_position_embeddings=2048,
         seq_length=2048,
         num_hidden_layers=1,
@@ -246,7 +248,7 @@ class LlamaRMSNorm(nn.Layer):
         self.weight = paddle.create_parameter(
             shape=[self.hidden_size],
             dtype=paddle.get_default_dtype(),
-            default_initializer=nn.initializer.Constant(1.0),
+            default_initializer=nn.initializer.Constant(0.5),
         )
         self.variance_epsilon = config.rms_norm_eps
         self.config = config
@@ -613,10 +615,10 @@ class LlamaModel(nn.Layer):
                 next_decoder_cache += (
                     layer_outputs[2 if output_attentions else 1],
                 )
-
+        t = hidden_states
         hidden_states = self.norm(hidden_states)
-
-        return hidden_states
+        t2 = hidden_states
+        return hidden_states, t, t2
 
 
 class TestLlamaModel(unittest.TestCase):
@@ -675,12 +677,20 @@ class TestLlamaModel(unittest.TestCase):
         return out
 
     def test_eval(self):
-        dy_out = self.eval(use_cinn=False)
+        dy_out, dy_t, dy_t2 = self.eval(use_cinn=False)
         # if utils.unittest_use_cinn():
-        cinn_out = self.eval(use_cinn=True)
+        cinn_out, cinn_t, cinn_t2 = self.eval(use_cinn=True)
         np.testing.assert_allclose(
-            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+            cinn_t.numpy(), dy_t.numpy(), atol=1e-6, rtol=1e-6
         )
+
+        np.testing.assert_allclose(
+            cinn_t2.numpy(), dy_t2.numpy(), atol=1e-6, rtol=1e-6
+        )
+
+        # np.testing.assert_allclose(
+        #     cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        # )
 
 
 if __name__ == '__main__':
