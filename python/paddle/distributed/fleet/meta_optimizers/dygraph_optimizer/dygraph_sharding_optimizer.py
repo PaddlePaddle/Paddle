@@ -23,7 +23,10 @@ from paddle import framework
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
-from paddle.distributed.communication.reduce import ReduceOp
+from paddle.distributed.communication.reduce import (
+    ReduceOp,
+    is_avg_reduce_op_supported,
+)
 
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
@@ -101,11 +104,10 @@ class DygraphShardingOptimizer:
         self.use_reduce_avg = strategy.hybrid_configs[
             'sharding_configs'
         ].use_reduce_avg
-        if self.use_reduce_avg and paddle.base.core.nccl_version() < 21000:
+        if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
             self.use_reduce_avg = False
             warnings.warn(
-                "nccl reduce_avg requires nccl>=2.10.0, but current version is %s"
-                % paddle.base.core.nccl_version()
+                "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
             )
 
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap

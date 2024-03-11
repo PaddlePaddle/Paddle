@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
+#include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
@@ -71,6 +73,9 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
   context_ = context;
   reduce_current_axis_ =
       IsInnerThreadSpatialLoopGT(context_->group_tile_info, 1) ? 2 : 1;
+  if (context_->group_tile_info->is_reduce_all) {
+    reduce_current_axis_ = 0;
+  }
   // reduce axis have be re-order to last
   vec_flatten_axis_.clear();
   vec_reduce_axis_.clear();
@@ -135,9 +140,12 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
   std::vector<int32_t> fuse_axis = vec_reduce_axis_;
   if (vec_reduce_axis_.size() >= 2) {
     for (size_t i = 0; i < fuse_axis.size(); ++i) {
-      fuse_axis[i] -= (vec_flatten_axis_.size() - 1);
+      if (vec_flatten_axis_.size() > 2) {
+        fuse_axis[i] -= (vec_flatten_axis_.size() - 1);
+      }
     }
   }
+
   if (vec_reduce_axis_.size() >= 2 && !ir::IsReduceInitTensorName(block_id)) {
     sch->Fuse(block_id, fuse_axis);
   }
@@ -160,7 +168,8 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
   auto loops = sch->GetLoops(block_id);
   auto reduce_loop = loops[reduce_current_axis_].As<ir::For>();
 
-  if (ir::GetLoopExtent(reduce_loop) == 1) {
+  if (reduce_loop->extent.is_constant() &&
+      ir::GetLoopExtent(reduce_loop) == 1) {
     return;
   }
 
@@ -168,7 +177,10 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
     return context_->group_tile_info->reduce_block >= num;
   };
   std::vector<int> split_factors;
-  if (IsReduceBlockGE(2048)) {
+  if (context_->group_tile_info->is_reduce_all) {
+    split_factors.push_back(256);
+    split_factors.push_back(-1);
+  } else if (IsReduceBlockGE(2048)) {
     split_factors.emplace_back(
         std::ceil(context_->group_tile_info->reduce_numel * 1.0 /
                   context_->group_tile_info->reduce_inner_num));
@@ -209,6 +221,22 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
   };
   if (!IsWarpNumGT(1)) return;
 
+  const auto LimitWarpNum = [&](const std::shared_ptr<GroupTileInfo>& tile_info,
+                                const ir::Expr& loop) {
+    ir::Expr extent = loop.As<ir::For>()->extent;
+    common::cas_intervals_t var_intervals =
+        common::CollectVarIntervalsOfExprs({extent});
+    common::SymbolicExprAnalyzer analyzer(var_intervals);
+    const auto& proved_gt =
+        analyzer.ProveGT(ir::Expr(tile_info->warp_num), extent);
+    if (proved_gt.value_or(false)) {
+      ir::Expr upper_bound = analyzer.UpperBound(extent);
+      if (upper_bound.is_constant()) {
+        tile_info->warp_num = upper_bound.get_constant();
+      }
+    }
+  };
+
   if (!HasReduceAxis(context_->group_tile_info)) {
     // get num warp from flatten num
     auto loops = sch->GetLoops(block_id);
@@ -218,6 +246,7 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
   } else if (IsInnerThreadSpatialLoopGT(context_->group_tile_info, 1)) {
     // get num warp from flatten num
     auto loops = sch->GetLoops(block_id);
+    LimitWarpNum(context_->group_tile_info, loops[0]);
     sch->Split(loops[0],
                std::vector<int>({-1, context_->group_tile_info->warp_num}));
 
@@ -241,19 +270,27 @@ void TileFirstGeneralTactic::Unroll(ir::IRSchedule* sch,
                                     const std::string& block_id) {
   auto loops = sch->GetLoops(block_id);
   if (loops.size() > 2) {
-    sch->Unroll(loops[2]);
+    if (loops[2].As<ir::For>()->extent.is_constant()) {
+      sch->Unroll(loops[2]);
+    }
   }
   if (loops.size() > 3) {
-    sch->Unroll(loops[3]);
+    if (loops[3].As<ir::For>()->extent.is_constant()) {
+      sch->Unroll(loops[3]);
+    }
   }
 
   if (IsReduceBlock(context_->group_tile_info, block_id)) {
     auto loops = sch->GetLoops(block_id + "_rf");
     if (loops.size() > 2) {
-      sch->Unroll(loops[2]);
+      if (loops[2].As<ir::For>()->extent.is_constant()) {
+        sch->Unroll(loops[2]);
+      }
     }
     if (loops.size() > 3) {
-      sch->Unroll(loops[3]);
+      if (loops[3].As<ir::For>()->extent.is_constant()) {
+        sch->Unroll(loops[3]);
+      }
     }
   }
 }
@@ -289,7 +326,7 @@ void TileFirstGeneralTactic::SetReduceType(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
                                           const std::string& block_id) {
   auto loops = sch->GetLoops(block_id);
-  if (loops.size() == 1) {
+  if (loops.size() == 1 || context_->group_tile_info->is_reduce_all) {
     sch->Split(loops[0], std::vector<int>({1, -1}));
   }
 
@@ -299,6 +336,11 @@ void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
 
   if (IsReduceBlock(context_->group_tile_info, block_id)) {
     auto loops = sch->GetLoops(block_id + "_rf");
+    if (context_->group_tile_info->is_reduce_all) {
+      sch->Split(loops[0], std::vector<int>({1, -1}));
+    }
+
+    loops = sch->GetLoops(block_id + "_rf");
     sch->Bind(loops[0], "blockIdx.x");
     sch->Bind(loops[1], "threadIdx.x");
   }

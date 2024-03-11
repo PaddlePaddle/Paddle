@@ -85,6 +85,8 @@ struct GroupTileInfo {
   int64_t reduce_inner_num;
   int64_t reduce_block;
 
+  bool is_reduce_all{false};
+
   std::set<std::string> reduce_tensor_names;
   std::set<std::string> temp_var_names;
 
