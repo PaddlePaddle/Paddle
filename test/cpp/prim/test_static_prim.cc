@@ -182,7 +182,7 @@ TEST(StaticPrim, TanhBackwardComposite) {
                                        target_block,
                                        grad_sub_block));
   ASSERT_EQ(target_block->AllOps().size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops.size(), static_cast<std::size_t>(4));
+  ASSERT_EQ(grad_ops.size(), static_cast<std::size_t>(3));
   ASSERT_EQ(target_block->AllOps()[0]->Type(), "tanh");
   ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("X").size(),
             static_cast<std::size_t>(1));
