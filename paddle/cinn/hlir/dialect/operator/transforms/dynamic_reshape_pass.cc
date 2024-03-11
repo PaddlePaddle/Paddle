@@ -36,10 +36,14 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
     if (shape_analysis->HasShapeOrDataForValue(op->result(0))) {
       auto shape_info =
           shape_analysis->GetShapeOrDataForValue(op->result(0)).shape();
+      int temp_dim = -1;
 
       for (size_t i = 0; i < shape_info.size(); ++i) {
         if (shape_info[i].isa<int64_t>()) {
           shape[i] = shape_info[i].Get<int64_t>();
+        } else {
+          shape[i] = temp_dim;
+          temp_dim = 1;
         }
       }
     }
@@ -116,7 +120,8 @@ class DynamicReshapeOpPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<DynamicReshapeOpPattern>(context);
+    // Comment out the DynamicReshapeOpPattern to use pd_op.reshape in
+    // cinn.group ps.Add<DynamicReshapeOpPattern>(context);
     ps.Add<DynamicSqueezeOpPattern>(context);
     ps.Add<DynamicUnsqueezeOpPattern>(context);
     return ps;
