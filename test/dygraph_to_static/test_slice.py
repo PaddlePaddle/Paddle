@@ -328,4 +328,5 @@ class TestSliceZeroShapeTensor(Dy2StTestBase):
 
 
 if __name__ == '__main__':
+    breakpoint()
     unittest.main()
