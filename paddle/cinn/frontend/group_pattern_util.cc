@@ -855,9 +855,10 @@ GroupPattern FuseToGroupPattern(const std::vector<pir::Operation*>& ops) {
 class ClusteringHelper {
  public:
   ClusteringHelper(
+      const pir::ShapeConstraintIRAnalysis* shape_analysis,
       const std::vector<pir::Operation*>& ops,
       const OpsClusteringSpec& clustering_spec)
-    : ops_(ops), clustering_spec_(clustering_spec){
+    : shape_analysis_(shape_analysis), ops_(ops), clustering_spec_(clustering_spec) {
     this->IsInThisOpList = MakePredicatorIsInThisFusionOp(ops);
     this->IsInjectiveSource =
         MakePredicatorIsInjectiveSource(ops_, this->IsInThisOpList);
@@ -868,6 +869,7 @@ class ClusteringHelper {
   }
 
  private:
+  const pir::ShapeConstraintIRAnalysis* shape_analysis_;
   const std::vector<pir::Operation*> ops_;
   const OpsClusteringSpec clustering_spec_;
   std::function<bool(const pir::Operation*)> IsInThisOpList;
@@ -877,9 +879,11 @@ class ClusteringHelper {
 }  // namespace
 
 std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis,
     const std::vector<pir::Operation*>& ops,
     const OpsClusteringSpec& clustering_spec) {
-  return ClusteringHelper(ops, clustering_spec).ClusterIntoGroupPatterns();
+  ClusteringHelper helper(shape_analysis, ops, clustering_spec);
+  return helper.ClusterIntoGroupPatterns();
 }
 
 GroupPattern GenerateGroupPatternFromOpList(
