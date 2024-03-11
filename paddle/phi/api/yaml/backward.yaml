@@ -1019,6 +1019,15 @@
     func : gelu_grad
   composite: gelu_grad(x, out_grad, approximate, x_grad)
 
+- backward_op : global_scatter_grad
+  forward : (Tensor x, Tensor local_count, Tensor global_count, int ring_id=0, bool use_calc_stream=false) -> Tensor(out)
+  args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id=0, bool use_calc_stream=false)
+  output : Tensor(x_grad), Tensor(local_count), Tensor(global_count)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : global_scatter_grad
+
 - backward_op : grid_sample_grad
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
