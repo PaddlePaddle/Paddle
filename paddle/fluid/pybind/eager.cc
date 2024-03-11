@@ -256,8 +256,15 @@ void InitDistTensorWithTensor(TensorObject* self,
                                        "uninitialized input tensor."));
       tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl());
     }
+    VLOG(4) << "Before make dist_tensor, use_count: "
+            << tensor->get_use_count();
     self->tensor.set_impl(
         std::make_shared<DistTensor>(tensor, process_mesh, placements));
+    VLOG(4) << "After make dist_tensor, use_count: " << tensor->get_use_count();
+    auto dist_tensor =
+        std::static_pointer_cast<DistTensor>(self->tensor.impl());
+    VLOG(4) << "After the dist_tensor, use_count: "
+            << dist_tensor->value().get_use_count();
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }
   if (src.get_autograd_meta()) {
@@ -927,6 +934,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           VLOG(6) << "Calling case5's or case6's or case7's initializer";
           AutoInitTensorByTensor(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
+
           return 0;
         } else if (PyObject_TypeCheck(kw_value, g_framework_tensor_pytype)) {
           VLOG(6) << "Calling case8's initializer.";

@@ -129,6 +129,8 @@ class TEST_API Scope {
 
   void SetCanReused(bool can_reused) { can_reused_ = can_reused; }
 
+  std::vector<std::string> LocalVarsNames();
+
  protected:
   struct KeyHasher {
     std::size_t operator()(const std::string& key) const {

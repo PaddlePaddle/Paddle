@@ -1386,6 +1386,10 @@ All parameter, weight, gradient are variables in Paddle.
                out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
+      .def("local_vars", &Scope::LocalVars, py::return_value_policy::reference)
+      .def("local_var_names",
+           &Scope::LocalVarsNames,
+           py::return_value_policy::reference)
       .def("size", &Scope::Size)
       .def("erase",
            &Scope::EraseVars,

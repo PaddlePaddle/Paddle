@@ -146,6 +146,18 @@ std::vector<Variable*> Scope::LocalVars() {
   return known_vars;
 }
 
+std::vector<std::string> Scope::LocalVarsNames() {
+  std::vector<std::string> var_names;
+  {
+    SCOPE_VARS_READER_LOCK
+    var_names.reserve(this->vars_.size());
+    for (auto& p : vars_) {
+      var_names.emplace_back(p.first);
+    }
+  }
+  return var_names;
+}
+
 void Scope::DeleteScope(Scope* scope) const {
   {
     SCOPE_KIDS_WRITER_LOCK

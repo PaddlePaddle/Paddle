@@ -1806,7 +1806,8 @@ class DistModel:
 
         if strategy is None:
             return None
-        inner_strategy = auto_strategy.Strategy()
+        inner_strategy = copy.deepcopy(strategy)
+        # inner_strategy = auto_strategy.Strategy()
         inner_strategy.fused_passes.enable = strategy.fused_passes.enable
         if getattr(strategy.fused_passes, "gemm_epilogue", False):
             inner_strategy.fused_passes.fused_passes_list.append(

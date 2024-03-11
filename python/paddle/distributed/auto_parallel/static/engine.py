@@ -26,6 +26,9 @@ import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.static.utils import (
+    print_program_with_dist_attr,
+)
 from paddle.framework import (
     IrGraph,
     _current_expected_place as _get_device,
@@ -939,7 +942,19 @@ class Engine:
             # The model's instance variables (not parameters), used in forward function,
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
-                for buffer in self._model.buffers():
+                for idx, buffer in enumerate(self._model.buffers()):
+                    # if buffer._is_initialized():
+                    #     if buffer.is_dist():
+                    #         print(f"--- dist buffer: {buffer.name},{buffer.get_tensor().get_tensor().shape()}")
+                    #     else:
+                    #         print(f"--- dense buffer: {buffer.name},{buffer.get_tensor().shape()}")
+                    # if buffer._is_initialized() and buffer.name not in dist_main_program.global_block().vars:
+                    #     print(f"+++ buffer is_initialized but not in global_block: {buffer.name},{buffer.get_tensor().shape()}")
+                    # if not buffer.is_dist():
+                    #     buffer.get_tensor()._clear()
+                    # else:
+                    #     buffer.get_tensor().get_tensor()._clear()
+                    # continue
                     if dist_main_program.global_block().has_var(buffer.name):
                         dest_type = (
                             dist_main_program.global_block()
@@ -967,6 +982,26 @@ class Engine:
                         else:
                             buffer_tensor.set(buffer.numpy(), self._place)
 
+        def print_memory_usage(message=""):
+            mem_alloc = paddle.device.cuda.memory_allocated() / (2**30)
+            max_mem_alloc = paddle.device.cuda.max_memory_allocated() / (
+                2**30
+            )
+            mem_reserve = paddle.device.cuda.memory_reserved() / (2**30)
+            max_mem_reserve = paddle.device.cuda.max_memory_reserved() / (
+                2**30
+            )
+            print(
+                "============== {}: allocated: {} GB, max_allocated: {} GB, reserved: {} GB, max_reserved: {} GB,".format(
+                    message,
+                    mem_alloc,
+                    max_mem_alloc,
+                    mem_reserve,
+                    max_mem_reserve,
+                )
+            )
+
+        print_memory_usage("After init buffer ")
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
             uninitialized = []
@@ -978,14 +1013,24 @@ class Engine:
                 if scope_var and scope_var.get_tensor()._is_initialized():
                     continue
                 uninitialized.append(var)
+            print_program_with_dist_attr(dist_startup_prog, dist_context)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
-
+                print_program_with_dist_attr(prune_startup_prog, dist_context)
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
                 self._set_state_dict(
                     mode, self._strict, self._state_dict, self._dist_attr
                 )
+            print_memory_usage("After init param ")
+            print(
+                "After init param global_scope size: ",
+                paddle.static.global_scope().size(),
+            )
+            # var_names = paddle.static.global_scope().local_var_names()
+            # vars = paddle.static.global_scope().local_vars()
+            # for idx in range(len(var_names)):
+            #     print(f"After init, var_name: {var_names[idx]}, var_shape: {vars[idx].get_tensor().shape()}")
 
         if self._strategy.reinit:
             self._logger.info("NOTE: parameters will be re-initialized.")

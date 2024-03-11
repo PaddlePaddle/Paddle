@@ -17,9 +17,8 @@ import inspect
 import logging
 from collections import defaultdict
 
-import numpy as np
-
 import paddle
+from paddle.base import core
 from paddle.jit import not_to_static, to_static
 from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
@@ -30,9 +29,21 @@ from paddle.nn import Layer
 from paddle.static import Parameter, global_scope, program_guard
 from paddle.static.amp.fp16_utils import (
     DEFAULT_AMP_OPTIONS,
-    _convert_float_to_bfloat16,
     prepare_op_amp_options,
 )
+
+
+def print_memory_usage(message=""):
+    mem_alloc = paddle.device.cuda.memory_allocated() / (2**30)
+    max_mem_alloc = paddle.device.cuda.max_memory_allocated() / (2**30)
+    mem_reserve = paddle.device.cuda.memory_reserved() / (2**30)
+    max_mem_reserve = paddle.device.cuda.max_memory_reserved() / (2**30)
+    print(
+        "============== {}: allocated: {} GB, max_allocated: {} GB, reserved: {} GB, max_reserved: {} GB,".format(
+            message, mem_alloc, max_mem_alloc, mem_reserve, max_mem_reserve
+        )
+    )
+
 
 from .converter import Converter
 from .process_group import get_world_process_group
@@ -399,51 +410,77 @@ class ProgramHelper:
         # transform the parameter in eager mode for amp.
         amp_stragety = dist_context.strategy.amp
         amp_config = copy.deepcopy(amp_stragety.to_dict())
+        print_memory_usage("Befor amp ")
         if amp_stragety.enable and amp_config["level"] in ["o2", "o3"]:
             for param in self.concrete_program.parameters:
                 amp_dtype = amp_config["dtype"]
                 scope_var = global_scope().find_var(param.name)
-                scope_tensor = global_scope().var(param.name).get_tensor()
                 # The parameter is not in this rank.
                 if not scope_var:
                     continue
                 # The parameter do not need to transform
+                scope_tensor = global_scope().var(param.name).get_tensor()
                 if param.dtype in [paddle.float16, paddle.bfloat16]:
                     continue
                 assert (
                     scope_var and scope_tensor._is_initialized()
                 ), f"Parameter: {param.name} is not put into global_scope or not initialized."
-                var = main_program.global_block().vars[param.name]
-                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                    var
+                print(
+                    f"param.get_tensor().get_tensor()._get_use_count(): {param.get_tensor().get_tensor()._get_use_count()}"
                 )
-                dist_attr = {
-                    "dims_mapping": var_dist_attr.dims_mapping,
-                    "process_shape": var_dist_attr.process_mesh.shape,
-                    "process_group": var_dist_attr.process_mesh.process_ids,
-                }
-                if amp_dtype == "float16":
-                    if param.is_dist():
-                        sliced_param = np.float16(param._local_value().numpy())
-                    else:
-                        sliced_param = Converter.slice_with_dist_attr(
-                            np.float16(param.numpy()), dist_attr
-                        )
-                    scope_tensor.set(sliced_param, place)
-                elif amp_dtype == "bfloat16":
-                    if param.is_dist():
-                        sliced_param = _convert_float_to_bfloat16(
-                            place, param._local_value().numpy()
-                        )
-                    else:
-                        sliced_param = Converter.slice_with_dist_attr(
-                            _convert_float_to_bfloat16(place, param.numpy()),
-                            dist_attr,
-                        )
-                    scope_tensor.set(
-                        sliced_param,
-                        place,
+                with paddle.base.dygraph.guard():
+                    if amp_dtype == "float16":
+                        with paddle.no_grad():
+                            with paddle.base.framework._dygraph_place_guard(
+                                place=place
+                            ):
+                                t_casted = param.cast(
+                                    dtype=core.VarDesc.VarType.FP16
+                                )
+                    elif amp_dtype == "bfloat16":
+                        with paddle.no_grad():
+                            with paddle.base.framework._dygraph_place_guard(
+                                place=place
+                            ):
+                                t_casted = param.cast(
+                                    dtype=core.VarDesc.VarType.BF16
+                                )
+                    scope_tensor._share_data_with(
+                        t_casted.get_tensor().get_tensor()
                     )
+                param.get_tensor()._clear()
+        print_memory_usage("After amp ")
+        # var = main_program.global_block().vars[param.name]
+        # var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+        #     var
+        # )
+        # dist_attr = {
+        #     "dims_mapping": var_dist_attr.dims_mapping,
+        #     "process_shape": var_dist_attr.process_mesh.shape,
+        #     "process_group": var_dist_attr.process_mesh.process_ids,
+        # }
+        # if amp_dtype == "float16":
+        #     if param.is_dist():
+        #         sliced_param = np.float16(param._local_value().numpy())
+        #     else:
+        #         sliced_param = Converter.slice_with_dist_attr(
+        #             np.float16(param.numpy()), dist_attr
+        #         )
+        #     scope_tensor.set(sliced_param, place)
+        # elif amp_dtype == "bfloat16":
+        #     if param.is_dist():
+        #         sliced_param = _convert_float_to_bfloat16(
+        #             place, param._local_value().numpy()
+        #         )
+        #     else:
+        #         sliced_param = Converter.slice_with_dist_attr(
+        #             _convert_float_to_bfloat16(place, param.numpy()),
+        #             dist_attr,
+        #         )
+        #     scope_tensor.set(
+        #         sliced_param,
+        #         place,
+        #     )
 
         world_group = get_world_process_group()
         if (
