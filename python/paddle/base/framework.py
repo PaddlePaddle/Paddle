@@ -7590,6 +7590,9 @@ class EagerParamBase(core.eager.Tensor):
                 )
 
         if dtype is not None:
+            # TODO: Remove this conversion after the we use DataType in Tensor constructor
+            if isinstance(dtype, core.DataType):
+                dtype = paddle_type_to_proto_type[dtype]
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
