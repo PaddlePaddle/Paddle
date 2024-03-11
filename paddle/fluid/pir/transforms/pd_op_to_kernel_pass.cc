@@ -1397,9 +1397,9 @@ void AddShadowFeedForValue(
                                attr_map,
                                {out_type},
                                phi_kernel_op_info);
-
-    (*map_op_pair)[op_item] = shadow_op;
     block->push_back(shadow_op);
+    (*map_op_pair)[op_item] = shadow_op;
+    (*map_value_pair)[op_item->result(index)] = shadow_op->result(0);
   } else if (op_item->result(index).type().isa<pir::VectorType>()) {
     auto vec_type = op_item->result(index).type().dyn_cast<pir::VectorType>();
     for (size_t i = 0; i < vec_type.size(); ++i) {
@@ -1423,10 +1423,18 @@ void AddShadowFeedForValue(
     pir::OpInfo phi_kernel_op_info =
         ctx->GetRegisteredOpInfo(PhiKernelOp::name());
 
+    std::vector<pir::Type> vec_out_types;
+    for (size_t i = 0; i < vec_type.size(); ++i) {
+      vec_out_types.push_back(AllocatedDenseTensorType::get(
+          ctx,
+          phi::TransToPhiPlace(shadow_key.backend()),
+          vec_type[i].dyn_cast<DenseTensorType>()));
+    }
+    auto out_type = pir::VectorType::get(ctx, vec_out_types);
     pir::Operation* shadow_tensors_op =
         pir::Operation::Create({op_item_with_place->result(index)},
                                attr_map,
-                               {vec_type},
+                               {out_type},
                                phi_kernel_op_info);
     block->push_back(shadow_tensors_op);
     (*map_op_pair)[op_item] = shadow_tensors_op;
