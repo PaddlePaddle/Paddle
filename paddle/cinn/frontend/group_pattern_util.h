@@ -29,7 +29,7 @@ struct OpsClusteringSpec {
 
 std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
     const std::vector<pir::Operation*>& ops,
-    const OpsClusteringSpec& clusteringSpec);
+    const OpsClusteringSpec& clustering_spec);
 
 GroupPattern GenerateGroupPatternFromOpList(
     const std::vector<pir::Operation*>& ops);

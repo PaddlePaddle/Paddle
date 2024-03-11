@@ -852,12 +852,34 @@ GroupPattern FuseToGroupPattern(const std::vector<pir::Operation*>& ops) {
   return stmt_patterns;
 }
 
+class ClusteringHelper {
+ public:
+  ClusteringHelper(
+      const std::vector<pir::Operation*>& ops,
+      const OpsClusteringSpec& clustering_spec)
+    : ops_(ops), clustering_spec_(clustering_spec){
+    this->IsInThisOpList = MakePredicatorIsInThisFusionOp(ops);
+    this->IsInjectiveSource =
+        MakePredicatorIsInjectiveSource(ops_, this->IsInThisOpList);
+  }
+
+  std::vector<ConditionalGroupPattern> ClusterIntoGroupPatterns() {
+    LOG(FATAL) << "TODO(tianchao)";
+  }
+
+ private:
+  const std::vector<pir::Operation*> ops_;
+  const OpsClusteringSpec clustering_spec_;
+  std::function<bool(const pir::Operation*)> IsInThisOpList;
+  std::function<bool(const pir::Operation*)> IsInjectiveSource;
+};
+
 }  // namespace
 
 std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
     const std::vector<pir::Operation*>& ops,
-    const OpsClusteringSpec& clusteringSpec) {
-  // TODO();
+    const OpsClusteringSpec& clustering_spec) {
+  return ClusteringHelper(ops, clustering_spec).ClusterIntoGroupPatterns();
 }
 
 GroupPattern GenerateGroupPatternFromOpList(
