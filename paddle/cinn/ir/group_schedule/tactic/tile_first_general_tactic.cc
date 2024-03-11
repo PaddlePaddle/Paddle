@@ -215,6 +215,7 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
       }
     } else {
       // split warp num first
+      split_factors.clear();
       split_factors.emplace_back(context_->group_tile_info->warp_num);
       split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
       split_factors.emplace_back(32);
