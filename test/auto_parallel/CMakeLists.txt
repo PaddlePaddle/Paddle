@@ -4,6 +4,7 @@
 add_subdirectory(spmd_rules)
 add_subdirectory(hybrid_strategy)
 add_subdirectory(custom_op)
+add_subdirectory(pir)
 
 if(WITH_DISTRIBUTE AND WITH_GPU)
 

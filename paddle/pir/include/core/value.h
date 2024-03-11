@@ -32,7 +32,7 @@ class ValueImpl;
 ///
 class IR_API Value {
  public:
-  Value() = default;
+  Value(std::nullptr_t ptr = nullptr){};  // NOLINT
 
   Value(detail::ValueImpl *impl) : impl_(impl) {}  // NOLINT
 
