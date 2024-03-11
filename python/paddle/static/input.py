@@ -215,7 +215,10 @@ class InputSpec:
         # convert dtype into united representation
         if dtype is not None:
             if isinstance(dtype, (np.dtype, str)):
-                dtype = convert_np_dtype_to_dtype_(dtype)
+                if paddle.framework.use_pir_api():
+                    dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+                else:
+                    dtype = convert_np_dtype_to_dtype_(dtype)
 
         self.dtype = dtype
         self.name = name
