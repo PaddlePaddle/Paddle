@@ -370,9 +370,6 @@ class DygraphShardingOptimizer:
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
-        # hack to grad_clip all parameters,
-        # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
-        # TODO(pangengzheng): remove the hacked grad_clip codes here when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
         target_param_list = (
             self._origin_parameter_list
             if (not self.tensor_fusion or not self.fuse_optimizer)
