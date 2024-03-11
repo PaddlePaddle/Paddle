@@ -288,7 +288,7 @@ class TensorDtypeVariable(DataVariable):
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(
-            value, (paddle.base.core.VarDesc.VarType, paddle.core.DataType)
+            value, (paddle.core.VarDesc.VarType, paddle.core.DataType)
         ):
             return TensorDtypeVariable(value, graph, tracker)
 
@@ -394,7 +394,7 @@ class TensorVariable(VariableBase):
     @property
     def main_info(self) -> dict[str, Any]:
         dtype = self.meta.dtype
-        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+        if isinstance(dtype, paddle.core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
         return {
             "shape": self.meta.shape,
@@ -488,21 +488,21 @@ class TensorVariable(VariableBase):
 
     def is_complex(self):
         dtype = self.meta.dtype
-        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+        if isinstance(dtype, paddle.core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_cp_dtype = dtype in CP_DTYPE_ABBRS
         return ConstantVariable(is_cp_dtype, self.graph, DummyTracker([self]))
 
     def is_integer(self):
         dtype = self.meta.dtype
-        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+        if isinstance(dtype, paddle.core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_int_dtype = dtype in INT_DTYPE_ABBRS
         return ConstantVariable(is_int_dtype, self.graph, DummyTracker([self]))
 
     def is_floating_point(self):
         dtype = self.meta.dtype
-        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+        if isinstance(dtype, paddle.core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_fp_dtype = dtype in FP_DTYPE_ABBRS
         return ConstantVariable(is_fp_dtype, self.graph, DummyTracker([self]))
