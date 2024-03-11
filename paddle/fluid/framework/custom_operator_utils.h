@@ -24,6 +24,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 constexpr char kCustomDialectPrefix[] = "custom_op.";  // NOLINT
+constexpr char kGradSuffix[] = "_grad";                // NOLINT
+constexpr char kDoubleGradSuffix[] = "_grad_grad";     // NOLINT
+
 namespace detail {
 
 // dynamic lib load func
@@ -93,10 +96,10 @@ inline static const OpMetaInfo* GetGradOpInfoByFwdPirName(
   }
 
   pos = custom_name.length();
-  if (custom_name.find("_grad_grad") != custom_name.npos) {
-    pos = custom_name.find("_grad_grad");
-  } else if (custom_name.find("_grad") != custom_name.npos) {
-    pos = custom_name.find("_grad");
+  if (custom_name.find(kDoubleGradSuffix) != custom_name.npos) {
+    pos = custom_name.find(kDoubleGradSuffix);
+  } else if (custom_name.find(kGradSuffix) != custom_name.npos) {
+    pos = custom_name.find(kGradSuffix);
   }
   auto custom_name_prefix = custom_name.substr(0, pos);
   auto map_iter =
@@ -106,10 +109,10 @@ inline static const OpMetaInfo* GetGradOpInfoByFwdPirName(
   }
   const auto& vec_op_meta = map_iter->second;
   const OpMetaInfo* ret = nullptr;
-  if (custom_name.find("_grad_grad") != custom_name.npos) {
+  if (custom_name.find(kDoubleGradSuffix) != custom_name.npos) {
     PADDLE_THROW("Custom op : " + custom_name_prefix +
                  " doesn't support triple grad.");
-  } else if (custom_name.find("_grad") != custom_name.npos) {
+  } else if (custom_name.find(kGradSuffix) != custom_name.npos) {
     bool has_double_grad = vec_op_meta.size() >= 3;
     ret = has_double_grad ? &(vec_op_meta[2]) : nullptr;
   } else {
@@ -130,10 +133,10 @@ inline static const OpMetaInfo& GetOpInfoByPirName(
   }
 
   pos = custom_name.length();
-  if (custom_name.find("_grad_grad") != custom_name.npos) {
-    pos = custom_name.find("_grad_grad");
-  } else if (custom_name.find("_grad") != custom_name.npos) {
-    pos = custom_name.find("_grad");
+  if (custom_name.find(kDoubleGradSuffix) != custom_name.npos) {
+    pos = custom_name.find(kDoubleGradSuffix);
+  } else if (custom_name.find(kGradSuffix) != custom_name.npos) {
+    pos = custom_name.find(kGradSuffix);
   }
   auto custom_name_prefix = custom_name.substr(0, pos);
   auto map_iter =
@@ -142,9 +145,9 @@ inline static const OpMetaInfo& GetOpInfoByPirName(
     PADDLE_THROW("The info of custom op : " + custom_name + " is not exists!");
   }
   const auto& vec_op_meta = map_iter->second;
-  if (custom_name.find("_grad_grad") != custom_name.npos) {
+  if (custom_name.find(kDoubleGradSuffix) != custom_name.npos) {
     return vec_op_meta[2];
-  } else if (custom_name.find("_grad") != custom_name.npos) {
+  } else if (custom_name.find(kGradSuffix) != custom_name.npos) {
     return vec_op_meta[1];
   } else {
     return vec_op_meta[0];
@@ -161,10 +164,10 @@ inline static bool HasGradOp(const std::string& fwd_pir_op_name) {
   }
 
   pos = custom_name.length();
-  if (custom_name.find("_grad_grad") != custom_name.npos) {
-    pos = custom_name.find("_grad_grad");
-  } else if (custom_name.find("_grad") != custom_name.npos) {
-    pos = custom_name.find("_grad");
+  if (custom_name.find(kDoubleGradSuffix) != custom_name.npos) {
+    pos = custom_name.find(kDoubleGradSuffix);
+  } else if (custom_name.find(kGradSuffix) != custom_name.npos) {
+    pos = custom_name.find(kGradSuffix);
   }
   auto custom_name_prefix = custom_name.substr(0, pos);
   auto map_iter =
@@ -174,10 +177,10 @@ inline static bool HasGradOp(const std::string& fwd_pir_op_name) {
                  " is not exists!");
   }
   const auto& vec_op_meta = map_iter->second;
-  if (custom_name.find("_grad_grad") != custom_name.npos) {
+  if (custom_name.find(kDoubleGradSuffix) != custom_name.npos) {
     // custom op only support double grad, there will not have triple grad op
     return false;
-  } else if (custom_name.find("_grad") != custom_name.npos) {
+  } else if (custom_name.find(kGradSuffix) != custom_name.npos) {
     // vec_op_meta.size() == 3 means the op has double grad op
     return vec_op_meta.size() > 2UL;
   } else {
@@ -247,7 +250,8 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
     const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
     const std::unordered_map<std::string, int>& vec_input_name2id_map) {
   std::vector<std::vector<int64_t>> output_shapes;
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(custom_op_meta);
+  auto& inplace_reverse_map =
+      OpMetaInfoHelper::GetInplaceReverseMap(custom_op_meta);
   // Op is grad op
   if (custom_op_meta.IsGradOp() || custom_op_meta.IsDoubleGradOp()) {
     bool is_double_grad = custom_op_meta.IsDoubleGradOp();
@@ -278,6 +282,10 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
                       bwd_input_name) != bwd_inputs_name.end()) {
           int input_index = input_name2id_map.at(bwd_input_name);
           auto input_shape = input_shapes[input_index];
+          if (input_shape.size() == 0) {
+            // if optional tensor is None, we don't need to infer shape
+            continue;
+          }
           output_shapes.push_back(input_shape);
         } else {
           PADDLE_ENFORCE_EQ(
@@ -299,7 +307,8 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
   }
 
   // Op is forward op
-  if (inplace_map.empty()) {  // general case, assure single input and output
+  if (inplace_reverse_map
+          .empty()) {  // general case, assure single input and output
     VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
     if (input_shapes.size() == 1) {
       output_shapes = input_shapes;
@@ -311,15 +320,21 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
           "and only one output without setting the InferShapeFn. "));
     }
   } else {  // inplace case
-    for (auto const& pair : inplace_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
-        int input_index = vec_input_name2id_map.at(pair.first);
+    const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(custom_op_meta);
+    for (auto& output : outputs) {
+      auto input_name = inplace_reverse_map.at(output);
+      if (paddle::framework::detail::IsDuplicableVar(output)) {
+        int input_index = vec_input_name2id_map.at(input_name);
         auto input_shape = vec_input_shapes[input_index];
         output_shapes.insert(
             output_shapes.end(), input_shape.begin(), input_shape.end());
       } else {
-        int input_index = input_name2id_map.at(pair.first);
+        int input_index = input_name2id_map.at(input_name);
         auto input_shape = input_shapes[input_index];
+        if (input_shape.size() == 0) {
+          // if optional tensor is None, we don't need to infer shape
+          continue;
+        }
         output_shapes.push_back(input_shape);
       }
     }
@@ -334,7 +349,8 @@ static std::vector<DataType> RunDefaultInferDtype(
     const std::vector<std::vector<DataType>>& vec_input_dtypes,
     const std::unordered_map<std::string, int>& vec_input_name2id_map) {
   std::vector<DataType> output_dtypes;
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(custom_op_meta);
+  auto& inplace_reverse_map =
+      OpMetaInfoHelper::GetInplaceReverseMap(custom_op_meta);
   // Op is grad op
   if (custom_op_meta.IsGradOp() || custom_op_meta.IsDoubleGradOp()) {
     bool is_double_grad = custom_op_meta.IsDoubleGradOp();
@@ -357,6 +373,10 @@ static std::vector<DataType> RunDefaultInferDtype(
                       bwd_input_name) != bwd_inputs_name.end()) {
           int input_index = input_name2id_map.at(bwd_input_name);
           auto input_dtype = input_dtypes[input_index];
+          if (input_dtype == DataType::UNDEFINED) {
+            // if optional tensor is None, we don't need to infer dtype
+            continue;
+          }
           output_dtypes.push_back(input_dtype);
         } else {
           // If there is no corresponding input for the output, set float as
@@ -368,7 +388,8 @@ static std::vector<DataType> RunDefaultInferDtype(
     return output_dtypes;
   }
 
-  if (inplace_map.empty()) {  // general case, assure single input and output
+  if (inplace_reverse_map
+          .empty()) {  // general case, assure single input and output
     VLOG(3) << "Custom Operator: Default InferDtype - share ddim.";
     if (input_dtypes.size() == 1) {
       output_dtypes = input_dtypes;
@@ -380,15 +401,21 @@ static std::vector<DataType> RunDefaultInferDtype(
           "and only one output without setting the InferDtypeFn. "));
     }
   } else {  // inplace case
-    for (auto const& pair : inplace_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
-        int input_index = vec_input_name2id_map.at(pair.first);
+    const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(custom_op_meta);
+    for (auto& output : outputs) {
+      auto input_name = inplace_reverse_map.at(output);
+      if (paddle::framework::detail::IsDuplicableVar(output)) {
+        int input_index = vec_input_name2id_map.at(input_name);
         auto input_dtype = vec_input_dtypes[input_index];
         output_dtypes.insert(
             output_dtypes.end(), input_dtype.begin(), input_dtype.end());
       } else {
-        int input_index = input_name2id_map.at(pair.first);
+        int input_index = input_name2id_map.at(input_name);
         auto input_dtype = input_dtypes[input_index];
+        if (input_dtype == DataType::UNDEFINED) {
+          // if optional tensor is None, we don't need to infer dtype
+          continue;
+        }
         output_dtypes.push_back(input_dtype);
       }
     }
@@ -405,7 +432,57 @@ static std::vector<std::vector<int64_t>> RunInferShape(
     const std::unordered_map<std::string, int>& vec_input_name2id_map,
     const std::vector<paddle::any>& custom_attrs) {
   if (infershape_func) {
-    return infershape_func(input_shapes, vec_input_shapes, custom_attrs);
+    std::vector<std::vector<int64_t>> infershape_result =
+        infershape_func(input_shapes, vec_input_shapes, custom_attrs);
+    std::vector<std::vector<int64_t>> complete_result;
+    const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(custom_op_meta);
+    const auto& inplace_reverse_map =
+        paddle::OpMetaInfoHelper::GetInplaceReverseMap(custom_op_meta);
+
+    // The real output shape result is ( infershape func result + inplace output
+    // result), because the infershape doesn't create output shape that belongs
+    // to inplace output.
+    size_t infershape_result_index = 0;
+    for (auto& out_name : outputs) {
+      if (paddle::framework::detail::IsDuplicableVar(out_name)) {
+        PADDLE_ENFORCE(
+            inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
+            phi::errors::InvalidArgument(
+                "Custom operator only supports `paddle::Vec(...)` inputs and "
+                "cannot support `paddle::Vec(...)` output without setting "
+                "InplaceMap. If you have to use `paddle::Vec(...)` output, "
+                "please indicate it by setting InplaceMap manually."));
+        auto in_name = inplace_reverse_map.at(out_name);
+        if (custom_op_meta.IsGradOp() || custom_op_meta.IsDoubleGradOp()) {
+          const auto& bwd_op_name =
+              paddle::OpMetaInfoHelper::GetOpName(custom_op_meta);
+          bool is_double_grad_op =
+              (bwd_op_name.find(kDoubleGradSuffix) != bwd_op_name.npos) ? true
+                                                                        : false;
+          in_name =
+              paddle::framework::detail::NoGrad(out_name, is_double_grad_op);
+        }
+        auto index = vec_input_name2id_map.at(in_name);
+        const auto& vec_input_shape = vec_input_shapes[index];
+        complete_result.insert(complete_result.end(),
+                               vec_input_shape.begin(),
+                               vec_input_shape.end());
+      } else {
+        if (inplace_reverse_map.find(out_name) != inplace_reverse_map.end()) {
+          auto in_name = inplace_reverse_map.at(out_name);
+          auto index = input_name2id_map.at(in_name);
+          if (input_shapes[index].size() == 0) {
+            // if optional tensor is None, we don't need to infer shape，
+            continue;
+          }
+          complete_result.push_back(input_shapes[index]);
+        } else {
+          complete_result.push_back(infershape_result[infershape_result_index]);
+          infershape_result_index++;
+        }
+      }
+    }
+    return complete_result;
   } else {
     return RunDefaultInferShape(custom_op_meta,
                                 input_shapes,
@@ -424,7 +501,57 @@ static std::vector<DataType> RunInferDtype(
     const std::unordered_map<std::string, int>& vec_input_name2id_map,
     const std::vector<paddle::any>& custom_attrs) {
   if (inferdtype_func) {
-    return inferdtype_func(input_dtypes, vec_input_dtypes, custom_attrs);
+    std::vector<DataType> complete_result;
+    const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(custom_op_meta);
+    const auto& inplace_reverse_map =
+        paddle::OpMetaInfoHelper::GetInplaceReverseMap(custom_op_meta);
+    std::vector<DataType> inferdtype_result =
+        inferdtype_func(input_dtypes, vec_input_dtypes, custom_attrs);
+
+    // The real output dtype result is ( infershape func dtype + inplace output
+    // dtype), because the inferdtype doesn't create output dtype that belongs
+    // to inplace output.
+    size_t inferdtype_result_index = 0;
+    for (auto& out_name : outputs) {
+      if (paddle::framework::detail::IsDuplicableVar(out_name)) {
+        PADDLE_ENFORCE(
+            inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
+            phi::errors::InvalidArgument(
+                "Custom operator only supports `paddle::Vec(...)` inputs and "
+                "cannot support `paddle::Vec(...)` output without setting "
+                "InplaceMap. If you have to use `paddle::Vec(...)` output, "
+                "please indicate it by setting InplaceMap manually."));
+        auto in_name = inplace_reverse_map.at(out_name);
+        if (custom_op_meta.IsGradOp() || custom_op_meta.IsDoubleGradOp()) {
+          const auto& bwd_op_name =
+              paddle::OpMetaInfoHelper::GetOpName(custom_op_meta);
+          bool is_double_grad_op =
+              (bwd_op_name.find(kDoubleGradSuffix) != bwd_op_name.npos) ? true
+                                                                        : false;
+          in_name =
+              paddle::framework::detail::NoGrad(out_name, is_double_grad_op);
+        }
+        auto index = vec_input_name2id_map.at(in_name);
+        const auto& vec_input_dtype = vec_input_dtypes[index];
+        complete_result.insert(complete_result.end(),
+                               vec_input_dtype.begin(),
+                               vec_input_dtype.end());
+      } else {
+        if (inplace_reverse_map.find(out_name) != inplace_reverse_map.end()) {
+          auto in_name = inplace_reverse_map.at(out_name);
+          auto index = input_name2id_map.at(in_name);
+          if (input_dtypes[index] == DataType::UNDEFINED) {
+            // if optional tensor is None, we don't need to infer dtype
+            continue;
+          }
+          complete_result.push_back(input_dtypes[index]);
+        } else {
+          complete_result.push_back(inferdtype_result[inferdtype_result_index]);
+          inferdtype_result_index++;
+        }
+      }
+    }
+    return complete_result;
   } else {
     return RunDefaultInferDtype(custom_op_meta,
                                 input_dtypes,

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
+#include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
@@ -219,6 +221,22 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
   };
   if (!IsWarpNumGT(1)) return;
 
+  const auto LimitWarpNum = [&](const std::shared_ptr<GroupTileInfo>& tile_info,
+                                const ir::Expr& loop) {
+    ir::Expr extent = loop.As<ir::For>()->extent;
+    common::cas_intervals_t var_intervals =
+        common::CollectVarIntervalsOfExprs({extent});
+    common::SymbolicExprAnalyzer analyzer(var_intervals);
+    const auto& proved_gt =
+        analyzer.ProveGT(ir::Expr(tile_info->warp_num), extent);
+    if (proved_gt.value_or(false)) {
+      ir::Expr upper_bound = analyzer.UpperBound(extent);
+      if (upper_bound.is_constant()) {
+        tile_info->warp_num = upper_bound.get_constant();
+      }
+    }
+  };
+
   if (!HasReduceAxis(context_->group_tile_info)) {
     // get num warp from flatten num
     auto loops = sch->GetLoops(block_id);
@@ -228,6 +246,7 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
   } else if (IsInnerThreadSpatialLoopGT(context_->group_tile_info, 1)) {
     // get num warp from flatten num
     auto loops = sch->GetLoops(block_id);
+    LimitWarpNum(context_->group_tile_info, loops[0]);
     sch->Split(loops[0],
                std::vector<int>({-1, context_->group_tile_info->warp_num}));
 

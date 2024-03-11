@@ -75,7 +75,17 @@ class BlockArgumentImpl : public ValueImpl {
 
 BlockArgumentImpl::~BlockArgumentImpl() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destroyed a block argument that is still in use.";
+    if (is_kwarg_) {
+      PADDLE_FATAL(
+          "Destroyed a keyword block argument that is still in use. The key is "
+          ": %s",
+          keyword_);
+    } else {
+      PADDLE_FATAL(
+          "Destroyed a position block argument that is still in use. The index "
+          "is : %u",
+          index_);
+    }
   }
 }
 
