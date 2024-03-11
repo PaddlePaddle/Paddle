@@ -361,8 +361,10 @@ bool DrrRewritePattern::MatchFromOutputToInput(
         continue;
       }
       // Check whether tensor and value have the same use_count.
-      if (drr_input_tensors[i]->consumers().size() !=
-          ir_input_values[i].use_count()) {
+      if (source_pattern_graph.input_tensors().count(
+              drr_input_tensors[i]->name()) == 0 &&
+          drr_input_tensors[i]->consumers().size() !=
+              ir_input_values[i].use_count()) {
         matched = false;
         VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
                 << i << "] { " << drr_node->outputs().size()
