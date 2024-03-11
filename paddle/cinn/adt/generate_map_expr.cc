@@ -27,6 +27,7 @@
 #include "paddle/cinn/adt/print.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
 #include "paddle/cinn/adt/tree.h"
+#include "paddle/cinn/adt/tree_util.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/runtime/flags.h"

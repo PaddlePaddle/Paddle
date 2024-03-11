@@ -854,9 +854,10 @@ GroupPattern FuseToGroupPattern(const std::vector<pir::Operation*>& ops) {
 
 }  // namespace
 
-GroupPattern GenerateGroupPatternFromFusionOp(
-    cinn::dialect::FusionOp& fusion_op) {
-  return FuseToGroupPattern(fusion_op.GetOperators());
+std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
+    const std::vector<pir::Operation*>& ops,
+    const OpsClusteringSpec& clusteringSpec) {
+  // TODO();
 }
 
 GroupPattern GenerateGroupPatternFromOpList(

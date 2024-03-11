@@ -18,6 +18,7 @@
 #include "paddle/cinn/adt/inline_translator_trait.h"
 #include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/tree.h"
+#include "paddle/cinn/adt/tree_util.h"
 
 namespace cinn::adt {
 

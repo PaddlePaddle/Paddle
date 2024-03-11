@@ -9,6 +9,9 @@
 #include "paddle/pir/include/core/operation.h"
 #include "glog/logging.h"
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/logical.h"
+#include "paddle/cinn/adt/tree.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn::frontend {
 
@@ -142,5 +145,20 @@ namespace cinn::frontend {
 
 using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
 using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
+
+template <typename T>
+struct PatternBranches {
+  using LhsLessThanRhs = adt::LT<symbol::DimExpr, symbol::DimExpr>;
+  using LhsGreaterEqualRhs = adt::GE<symbol::DimExpr, symbol::DimExpr>;
+  using Condition = std::variant<LhsLessThanRhs, LhsGreaterEqualRhs>;
+
+  Condition condition;
+  adt::List<T> true_branch;
+  adt::List<T> false_branch;
+};
+
+// ConditionalGroupPattern = GroupPatternBranches | GroupPattern
+using ConditionalGroupPattern = adt::Tree<PatternBranches, GroupPattern>;
+using GroupPatternBranches = PatternBranches<ConditionalGroupPattern>;
 
 }
