@@ -73,6 +73,7 @@
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/ir_mapping.h"
 #include "paddle/pir/include/core/parser/ir_parser.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/type.h"
@@ -110,6 +111,8 @@ using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
 using pir::BoolAttribute;
+using pir::CloneOptions;
+using pir::IrMapping;
 using pir::IrParser;
 using pir::Operation;
 using pir::OpOperand;
@@ -461,6 +464,30 @@ void BindBlock(py::module *m) {
       });
 }
 
+void BindIrMapping(py::module *m) {
+  py::class_<IrMapping> ir_mapping(*m, "IrMapping");
+  ir_mapping.def(py::init<>())
+      .def("look_up",
+           [](IrMapping &self, Value from) { return self.Lookup(from); })
+      .def("add", [](IrMapping &self, Value from, Value to) {
+        self.Add<Value>(from, to);
+      });
+}
+
+void BindCloneOptions(py::module *m) {
+  py::class_<CloneOptions> clone_options(*m, "CloneOptions");
+  clone_options.def(
+      "__init__",
+      [](CloneOptions &self,
+         bool clone_regions,
+         bool clone_operands,
+         bool clone_successors) {
+        new (&self)
+            CloneOptions(clone_regions, clone_operands, clone_successors);
+      },
+      return_value_policy::reference);
+}
+
 void BindOperation(py::module *m) {
   py::class_<Operation> op(*m, "Operation", R"DOC(
     In IR, all the operation are represented by Operation, and Operation
@@ -508,6 +535,12 @@ void BindOperation(py::module *m) {
                    paddle::dialect::GetAttributeData(pair.second);
              }
              return attrs_dict;
+           })
+      .def("set_scheduling_priority",
+           [](Operation &self, int64_t priority) {
+             self.set_attribute("scheduling_priority",
+                                pir::Int64Attribute::get(
+                                    pir::IrContext::Instance(), priority));
            })
       .def("operands_source",
            [](Operation &self) -> py::list {
@@ -596,12 +629,23 @@ void BindOperation(py::module *m) {
            })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
-      .def("__repr__", [](Operation &self) {
-        std::ostringstream print_stream;
-        print_stream << "Operation(";
-        self.Print(print_stream);
-        print_stream << ")";
-        return print_stream.str();
+      .def("__repr__",
+           [](Operation &self) {
+             std::ostringstream print_stream;
+             print_stream << "Operation(";
+             self.Print(print_stream);
+             print_stream << ")";
+             return print_stream.str();
+           })
+      .def(
+          "clone",
+          [](Operation &self, IrMapping &ir_mapping, CloneOptions options) {
+            auto op = self.Clone(ir_mapping, options);
+            return ApiBuilder::Instance().GetBuilder()->Insert(op);
+          },
+          return_value_policy::reference)
+      .def("move_before", [](Operation &self, Operation &other) {
+        self.MoveTo(other.GetParent(), Block::Iterator{other});
       });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
@@ -836,6 +880,19 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<DistDenseTensorType>(); })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
+      .def("replace_grad_users_with",
+           [](Value self,
+              Value value,
+              std::unordered_set<Operation *> &grad_ops) {
+             for (auto it = self.use_begin(); it != self.use_end();) {
+               auto use_op = it.owner();
+               if (grad_ops.find(use_op) != grad_ops.end()) {
+                 (it++)->set_source(value);
+               } else {
+                 it++;
+               }
+             }
+           })
       .def("set_type", [](Value self, Type type) { self.set_type(type); })
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
@@ -1731,8 +1788,10 @@ void BindPir(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
   BindBlock(&ir_module);
-  BindOperation(&ir_module);
   BindValue(&ir_module);
+  BindIrMapping(&ir_module);
+  BindCloneOptions(&ir_module);
+  BindOperation(&ir_module);
   BindOpOperand(&ir_module);
   BindType(&ir_module);
   BindAttribute(&ir_module);
