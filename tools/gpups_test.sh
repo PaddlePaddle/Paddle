@@ -80,7 +80,7 @@ parallel_list="^init_phi_test$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
 ^test_executor_feed_non_tensor$|\
-^test_flash_attention$|\
+^test_flash_attn$|\
 ^test_flash_attention_deterministic$|\
 ^test_fuse_resunit_pass$|\
 ^test_fused_adam_op$|\
