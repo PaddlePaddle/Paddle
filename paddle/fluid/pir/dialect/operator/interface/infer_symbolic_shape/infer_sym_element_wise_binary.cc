@@ -15,10 +15,9 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_element_wise_binary.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
-bool ShouldIgnoreData(pir::Value val) {
+bool ShouldUseData(pir::Value val) {
   if (!val.defining_op()) return false;
-  if (val.defining_op()->isa<paddle::dialect::FullOp>() ||
-      val.defining_op()->isa<paddle::dialect::SliceOp>()) {
+  if (val.defining_op()->isa<paddle::dialect::ShapeOp>()) {
     return true;
   }
   return false;
@@ -31,7 +30,7 @@ bool InferSymbolicShapeElementWiseBinary(
   std::vector<symbol::DimExpr> shape_0;
   // For ElementWiseBinary ops, if the input tensor is from full op, the value
   // of fullop is useless, only the shape need doing broadcast
-  if (!ShouldIgnoreData(op->operand_source(0)) &&
+  if (ShouldUseData(op->operand_source(0)) &&
       x_shapeordata.data().has_value()) {
     shape_0 = x_shapeordata.data().value();
   } else {
@@ -41,7 +40,7 @@ bool InferSymbolicShapeElementWiseBinary(
   const auto &y_shapeordata =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
   std::vector<symbol::DimExpr> shape_1;
-  if (!ShouldIgnoreData(op->operand_source(1)) &&
+  if (ShouldUseData(op->operand_source(1)) &&
       y_shapeordata.data().has_value()) {
     shape_1 = y_shapeordata.data().value();
   } else {
