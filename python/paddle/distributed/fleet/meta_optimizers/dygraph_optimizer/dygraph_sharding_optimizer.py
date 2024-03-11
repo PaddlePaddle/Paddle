@@ -554,6 +554,14 @@ class DygraphShardingOptimizerV2:
         self.pp_overlap = pp_config.sharding_comm_overlap
         self.pp_release_grads = pp_config.release_gradients
 
+        # Check nccl reduce_avg setting
+        self.use_reduce_avg = sharding_config.use_reduce_avg
+        if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
+            self.use_reduce_avg = False
+            warnings.warn(
+                "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
+            )
+
         self._build_comm_buffers(acc_steps)
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
@@ -620,6 +628,7 @@ class DygraphShardingOptimizerV2:
                 acc_steps,
                 act=HOOK_ACTION.REDUCE_SCATTER,
                 release_grads=self.pp_release_grads,
+                use_reduce_avg=self.use_reduce_avg,
             )
             self._comm_buffer_list.append(buffer)
 
