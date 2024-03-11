@@ -432,16 +432,15 @@
   optional : rois_num, multi_level_rois_num
 
 - op : distributed_fused_lamb
-  args : (Tensor[] param, Tensor[] grad, Tensor fp32fusedparam, Tensor fp32fusedgrad, Tensor fp16fusedparam, Tensor fp16fusedgrad, Tensor moment1, Tensor moment2, Tensor beta1pow, Tensor beta2pow, Tensor fusedparamoffsets, Tensor fp32shardfusedparamoffsets, Tensor fp16shardfusedparamoffsets, Tensor paraminfo, Tensor paramorder, Tensor learningrate, Tensor globalscale, float beta1, float beta2, float epsilon, float max_global_grad_norm, float weight_decay, bool clip_after_allreduce, bool use_master_param_norm = true, bool use_master_acc_grad = true, bool is_grad_scaled_by_nranks = true, int64_t nranks = 1, int[] ring_ids= {0}, bool use_hierarchical_allreduce = false, int acc_steps = 1)
-  output : Tensor(fp32fusedparamout), Tensor(fp16fusedparamout), Tensor(fp32accfusedgrad), Tensor(fp16accfusedgrad), Tensor(moment1out), Tensor(moment2out), Tensor(beta1powout), Tensor(beta2powout), Tensor[](paramout){param.size()}, Tensor(foundinf), Tensor(accstep), Tensor(stopupdate), Tensor(step)
+  args : (Tensor[] param, Tensor[] grad, Tensor fp32_fused_param, Tensor fp32fusedgrad, Tensor fp16fusedparam, Tensor fp16fusedgrad, Tensor moment1, Tensor moment2, Tensor beta1pow, Tensor beta2pow, Tensor fusedparamoffsets, Tensor fp32shardfusedparamoffsets, Tensor fp16shardfusedparamoffsets, Tensor paraminfo, Tensor paramorder, Tensor learningrate, Tensor globalscale, float beta1, float beta2, float epsilon, float max_global_grad_norm, float weight_decay, bool clip_after_allreduce, bool use_master_param_norm = true, bool use_master_acc_grad = true, bool is_grad_scaled_by_nranks = true, int64_t nranks = 1, int[] ring_ids= {0}, bool use_hierarchical_allreduce = false, int acc_steps = 1)
+  output : Tensor(fp32_fused_param_out), Tensor(fp16fusedparamout), Tensor(fp32accfusedgrad), Tensor(fp16accfusedgrad), Tensor(moment1out), Tensor(moment2out), Tensor(beta1powout), Tensor(beta2powout), Tensor[](paramout){param.size()}, Tensor(foundinf), Tensor(accstep), Tensor(stopupdate), Tensor(step)
   infer_meta :
     func : DistributedFusedLambInferMeta
     param : [param, grad, fp32fusedparam, fp32fusedgrad, fp16fusedparam, fp16fusedgrad, moment1, moment2, beta1pow, beta2pow, fusedparamoffsets, fp32shardfusedparamoffsets, fp16shardfusedparamoffsets, fp16shardfusedparamoffsets, paraminfo, paramorder, learningrate, globalscale, acc_steps, beta1, beta2, epsilon, max_global_grad_norm, weight_decay, clip_after_allreduce, use_master_param_norm, use_master_acc_grad, is_grad_scaled_by_nranks, nranks, ring_ids, use_hierarchical_allreduce]
   kernel :
     func : distributed_fused_lamb
     param : [param, grad, fp32fusedparam, fp32fusedgrad, fp16fusedparam, fp16fusedgrad, moment1, moment2, beta1pow, beta2pow, fusedparamoffsets, fp32shardfusedparamoffsets, fp16shardfusedparamoffsets, fp16shardfusedparamoffsets, paraminfo, paramorder, learningrate, globalscale, acc_steps, beta1, beta2, epsilon, max_global_grad_norm, weight_decay, clip_after_allreduce, use_master_param_norm, use_master_acc_grad, is_grad_scaled_by_nranks, nranks, ring_ids, use_hierarchical_allreduce]
-  optional : fp32fusedparam, fp32fusedgrad, fp16fusedparam, fp16fusedgrad, fp32fusedparamout, fp16fusedparamout, fp32accfusedgrad, fp16accfusedgrad, accstep, stopupdate
-  inplace : (fp32fusedparam -> fp32fusedparamout), (fp16fusedparam -> fp16fusedparamout)
+  optional : fp32_fused_param, fp32fusedgrad, fp16fusedparam, fp16fusedgrad, fp32_fused_param_out, fp16fusedparamout, fp32accfusedgrad, fp16accfusedgrad, accstep, stopupdate
 
 - op : distributed_fused_lamb_init
   args : (Tensor[] param, Tensor[] grad, float beta1, float beta2, int[] apply_weight_decay, int alignment, int rank, int nranks)
