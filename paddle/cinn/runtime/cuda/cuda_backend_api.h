@@ -36,7 +36,7 @@ class CUDABackendAPI final : public BackendAPI {
   void stream_sync(void* stream) final;
  private:
   // now_device_id, change by set_device()
-  int now_device_id = -1;
+  int now_device_id = 0;
 };
 }  // namespace cuda
 }  // namespace runtime

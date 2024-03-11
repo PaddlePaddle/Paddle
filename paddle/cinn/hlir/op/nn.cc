@@ -1533,6 +1533,8 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     if ((A_tensor->shape[2].as_int32() * A_tensor->shape[3].as_int32()) >= warp_size) {
       use_warp_reduce = true;
     }
+    use_warp_reduce = false;
+    //LOG(INFO) << "use_warp_reduce:" << use_warp_reduce;
   }
   strategy->AddImpl(pool2d_compute, pool2d_schedule, "strategy.pool2d.x86", 1);
   if (use_warp_reduce) {

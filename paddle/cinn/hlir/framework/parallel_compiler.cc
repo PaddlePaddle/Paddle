@@ -284,9 +284,9 @@ void ParallelCompiler::Task::CodegenAndJit() {
     }
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
-    backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
-        cuda_c, group_id, device_id);
-    pcompiler->result_.SetSourceCode(group_id, cuda_c);
+    //backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+    //    cuda_c, group_id, device_id);
+    //pcompiler->result_.SetSourceCode(group_id, cuda_c);
 
     cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
     VLOG(4) << "[CUDA]:\n" << cuda_c;
@@ -294,9 +294,9 @@ void ParallelCompiler::Task::CodegenAndJit() {
     backends::nvrtc::Compiler compiler;
     auto ptx = compiler(cuda_c);
     CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
-    backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
-        ptx, group_id, device_id);
-    pcompiler->result_.SetSourcePtx(group_id, ptx);
+    //backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
+    //    ptx, group_id, device_id);
+    //pcompiler->result_.SetSourcePtx(group_id, ptx);
     // load cumodule
     cumodule = std::make_unique<CUDAModule>(ptx,
                                             compiler.compile_to_cubin()

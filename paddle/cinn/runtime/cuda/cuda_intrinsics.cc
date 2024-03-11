@@ -21,7 +21,7 @@
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 using cinn::backends::GlobalSymbolRegistry;
 #include "paddle/cinn/runtime/cuda/cuda_backend_api.h"
-using cinn::runtime::CUDABackendAPI;
+using cinn::runtime::cuda::CUDABackendAPI;
 
 CINN_REGISTER_HELPER(cuda_intrinsics) {
   auto target = cinn::common::DefaultNVGPUTarget();

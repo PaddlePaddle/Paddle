@@ -19,7 +19,7 @@ SYCLModule::SYCLModule(const std::string& source_code, std::string& shared_libra
 SYCLModule::~SYCLModule() {
   std::cout << "destructor for SYCLModule" << std::endl;
   if (so_handler_ != nullptr) {
-    dlclose(so_handler_);
+    //dlclose(so_handler_);
   }
 }
 

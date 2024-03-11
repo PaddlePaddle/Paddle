@@ -29,7 +29,7 @@ BackendAPI* BackendAPI::get_backend(common::Target::Language target_language) {
   void * temp_backend_api;
   switch(target_language){
     case common::Target::Language::cuda:
-      temp_backend_api = GlobalSymbolRegistry::Global().Lookup("backend_api.cuda");
+      temp_backend_api = GlobalSymbolRegistry::Global().Lookup("backend_api.sycl");
       CHECK(temp_backend_api != nullptr) << "global symbol (backend_api.cuda) not found!";
       break;
     case common::Target::Language::sycl:

@@ -15,8 +15,7 @@ Target::Arch SYCLBackendAPI::Init(Target::Arch arch) {
   switch (arch) {
     case Target::Arch::Unk:
       SYCL_CALL(backend =
-                    sycl::device::get_devices(sycl::info::device_type::gpu)[0]
-                        .get_backend());
+                    sycl::device::get_devices(sycl::info::device_type::gpu)[0].get_backend());
       break;
     case Target::Arch::NVGPU:
       backend = sycl::backend::ext_oneapi_cuda;
@@ -101,12 +100,12 @@ std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(Device
   switch (device_property) {
     case DeviceProperty::MaxBlockDims: {
       sycl::id<3> max_work_item_sizes = this->devices[index].get_info<sycl::info::device::max_work_item_sizes<3>>();
-      rv = std::array<int, 3>{max_work_item_sizes[0], max_work_item_sizes[2], max_work_item_sizes[2]};
+      rv = std::array<int, 3>{max_work_item_sizes[2], max_work_item_sizes[1], max_work_item_sizes[0]};
       break;
     }
     case DeviceProperty::MaxGridDims: {
-      sycl::id<3> grid_dims = this->devices[index].get_info<sycl::ext::oneapi::experimental::info::device::max_work_groups<3>>() / this->devices[index].get_info<sycl::info::device::max_work_item_sizes<3>>();
-      rv = std::array<int, 3>{grid_dims[0], grid_dims[2], grid_dims[2]};
+      //sycl::id<3> grid_dims = this->devices[index].get_info<sycl::ext::oneapi::experimental::info::device::max_work_groups<3>>() / this->devices[index].get_info<sycl::info::device::max_work_item_sizes<3>>();
+      rv = std::array<int, 3>{2097151, 1024, 1024};
       break;
     }
     case DeviceProperty::MaxSharedMemoryPerBlock: {

@@ -2,6 +2,10 @@
 
 ## docker环境建立
 
+### Nvidia GPU
+参考: https://www.paddlepaddle.org.cn/documentation/docs/zh/install/compile/linux-compile-by-make.html#paddlepaddle
+
+### Hygon DCU
 ```shell
 # 拉取镜像
 docker pull dongbaiyue/sycl:dtk23.04-ubuntu20.04-gcc8.2-dpcpp240119
@@ -41,12 +45,23 @@ $ mkdir -p build && cd build #创建并进入build目录
 # 设置编译选项
 $ cp -r ../cmake ./
 $ vim cmake/cinn/config.cmake
-set(CINN_WITH_SYCL ON)
-set(CINN_WITH_ROCM ON)
+# Whether enable SYCL runtime
+#
+# Possible values:
+# - ON: enable SYCL with cmake's auto search.
+# - OFF: disable SYCL
+# - /path/to/sycl: use specific path to sycl root
+set(CINN_WITH_SYCL OFF)
+# Whether enable ROCM runtime
+#
+# Possible values:
+# - ON: enable ROCM with cmake's auto search.
+# - OFF: disable ROCM
+set(CINN_WITH_ROCM OFF)
 # 设置使用gcc8.2版本编译
 $ export CC="/opt/compiler/gcc8.2/bin/gcc"
 $ export CXX="/opt/compiler/gcc8.2/bin/g++"
-# 编译CINN
+# 编译CINN，WITH_GPU选项控制是否启用CUDA后端
 $ cmake .. -DCINN_ONLY=ON -DWITH_CINN=ON -DWITH_GPU=OFF -DWITH_TESTING=OFF -DPY_VERSION=3.x # 设置python具体版本，如3.8
 $ make -j
 # 安装CINN。设置PYTHONPATH

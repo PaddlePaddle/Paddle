@@ -260,10 +260,12 @@ const Target &DefaultNVGPUTarget() {
 }
 
 const Target &SYCLTarget(Target::Arch arch) {
+  //arch = BackendAPI::get_backend(Target::Language::sycl)->Init(arch);
+#ifdef CINN_WITH_SYCL
   arch = SYCLBackendAPI::Global()->Init(arch);
+#endif
   static Target target(
       Target::OS::Linux, arch, Target::Language::sycl, Target::Bit::k64, {}, {});
-  //BackendAPI::get_backend(target);
   return target;
 }
 
