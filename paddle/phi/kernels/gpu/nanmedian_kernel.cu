@@ -168,7 +168,8 @@ __global__ void CalcNanmedianMinKernel(const T* sort_out_ptr,
                                        const bool is_odd,
                                        const int64_t pre_dim,
                                        const int64_t max_valid_num,
-                                       const int64_t stride const T nan_val) {
+                                       const int64_t stride,
+                                       const T nan_val) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t pos = static_cast<int64_t>(index * max_valid_num);
     int64_t nan_cnt = nan_counts[index];
