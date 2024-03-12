@@ -35,7 +35,8 @@ using R = api::ReductionPattern<frontend::FrontendPattern>;
 using PS = api::PartialShardablePattern<frontend::FrontendPattern>;
 using StmtPattern = api::StmtPattern<frontend::FrontendPattern>;
 using StmtsPattern = api::StmtsPattern<frontend::FrontendPattern>;
-
+using OpSet = std::unordered_set<const pir::Operation*>;
+using OpSetPtr = std::shared_ptr<const OpSet>;
 using StmtPtr = StmtPattern*;
 using OpVisitor = std::function<void(const pir::Operation*)>;
 using NodeVisitor = std::function<void(StmtPtr)>;
@@ -272,19 +273,18 @@ std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
   return ReversedInferShardableAxes(reversed_walker, sinks.begin(), sinks.end());
 }
 
-common::TopoWalker<const pir::Operation*> GetOpsTopoWalker(const std::unordered_set<const pir::Operation*>& ops) {
-  const auto* ops_set = &ops;
-  const auto VisitUpStreamInOps = [ops_set](const pir::Operation* op,
+common::TopoWalker<const pir::Operation*> GetOpsReversedTopoWalker(const OpSetPtr& ops) {
+  const auto VisitUpStreamInOps = [ops](const pir::Operation* op,
                                             const OpVisitor& DoEach) {
     VisitInputOp(op, [&](const auto* input) {
-      if (ops_set->count(input) == 0) return;
+      if (ops->count(input) == 0) return;
       DoEach(input);
     });
   };
-  const auto VisitDownStreamInOps = [ops_set](const pir::Operation* op,
+  const auto VisitDownStreamInOps = [ops](const pir::Operation* op,
                                               const OpVisitor& DoEach) {
     VisitOutputOp(op, [&](const auto* output) {
-      if (ops_set->count(output) == 0) return;
+      if (ops->count(output) == 0) return;
       DoEach(output);
     });
   };
@@ -294,7 +294,7 @@ common::TopoWalker<const pir::Operation*> GetOpsTopoWalker(const std::unordered_
 }
 
 std::list<const pir::Operation*> GetSinks(
-    const std::unordered_set<const pir::Operation*>& ops) {
+    const OpSetPtr& ops) {
   const auto IsSink = [&](const pir::Operation* op) {
     for (int i = 0; i < op->num_results(); ++i) {
       pir::Value output = op->result(i);
@@ -303,13 +303,13 @@ std::list<const pir::Operation*> GetSinks(
            ++consumer_it) {
         const auto* consumer_op = consumer_it->owner();
         if (consumer_op->isa<pir::YieldOp>()) continue;
-        if (ops.count(consumer_op) > 0) return false;
+        if (ops->count(consumer_op) > 0) return false;
       }
     }
     return true;
   };
   std::list<const pir::Operation*> sinks;
-  for (const auto* op : ops) {
+  for (const auto* op : *ops) {
     if (IsSink(op)) {
       sinks.push_back(op);
     }
@@ -318,9 +318,9 @@ std::list<const pir::Operation*> GetSinks(
 }
 
 std::unordered_map<const pir::Operation*, ShardableAxesSignature>
-GetOp2ShardableAxesSignature(const std::unordered_set<const pir::Operation*>& ops) {
+GetOp2ShardableAxesSignature(const OpSetPtr& ops) {
   std::unordered_map<const pir::Operation*, ShardableAxesSignature> ret;
-  for (const auto* op : ops) {
+  for (const auto* op : *ops) {
     ret[op] = MakeShardableAxesSignature4Op(op);
   }
   return ret;
@@ -328,12 +328,12 @@ GetOp2ShardableAxesSignature(const std::unordered_set<const pir::Operation*>& op
 
 std::map<std::string, std::vector<std::string>>
 GetAxisName2BoundAxisName(
-    const std::unordered_set<const pir::Operation*>& ops,
+    const OpSetPtr& ops,
     const std::unordered_map<const pir::Operation*, ShardableAxesSignature>& op2shardable_axes_signature) {
   const auto GetInputShardableAxes = [&](const OpAndOperandIndex& op_and_idx) -> std::optional<const ShardableAxes*> {
     const auto& [op, idx] = op_and_idx;
     const auto* input_op = op->operand_source(idx).defining_op();
-    if (ops.count(input_op) == 0) return std::nullopt;
+    if (ops->count(input_op) == 0) return std::nullopt;
     const auto& iter = op2shardable_axes_signature.find(input_op);
     if (iter == op2shardable_axes_signature.end()) return std::nullopt;
     const auto& output_sa = iter->second.output_shardable_axes;
@@ -361,7 +361,7 @@ GetAxisName2BoundAxisName(
 
 std::unordered_map<std::string, std::string>
 GetAxisName2UnionFindSetRoot(
-    const std::unordered_set<const pir::Operation*>& ops,
+    const OpSetPtr& ops,
     const std::unordered_map<const pir::Operation*, ShardableAxesSignature>& op2shardable_axes_signature) {
   const auto axis_name2bound_axis_name = GetAxisName2BoundAxisName(ops, op2shardable_axes_signature);
   using NodeVisitor = std::function<void(const std::string&)>;
@@ -429,7 +429,7 @@ void RenameDuplicatedAxisName(std::unordered_map<pir::Value, ShardableAxes>* sin
 
 std::unordered_map<pir::Value, ShardableAxes> GetSinkAndInitValues(
     const common::TopoWalker<const pir::Operation*>& reverse_walker,
-    const std::unordered_set<const pir::Operation*>& ops,
+    const OpSetPtr& ops,
     const std::list<const pir::Operation*>& sinks) {
   const auto& op2shardable_axes_signature = GetOp2ShardableAxesSignature(ops);
   const auto& axis_name2union_find_set_root = GetAxisName2UnionFindSetRoot(ops, op2shardable_axes_signature);
@@ -439,6 +439,20 @@ std::unordered_map<pir::Value, ShardableAxes> GetSinkAndInitValues(
   return sink_and_inits;
 }
 
+std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
+    const std::vector<pir::Operation*>& ops) {
+  std::unordered_map<const pir::Operation*, size_t> op2order_in_block;
+  size_t order = 0;
+  for (const pir::Operation* op : ops) {
+    op2order_in_block[op] = ++order;
+  }
+  return [map = std::move(op2order_in_block)](const pir::Operation* op) {
+    const auto& iter = map.find(op);
+    CHECK(iter != map.end());
+    return iter->second;
+  };
+}
+
 class StmtFusionHelper {
  public:
   explicit StmtFusionHelper(const std::vector<pir::Operation*>& ops)
@@ -446,6 +460,7 @@ class StmtFusionHelper {
     this->IsInThisOpList = MakePredicatorIsInThisFusionOp(ops);
     this->IsInjectiveSource =
         MakePredicatorIsInjectiveSource(ops_, this->IsInThisOpList);
+    this->GetOrderValue4Op = MakeTopoOrderFinderOfOp(ops_);
   }
 
   std::vector<StmtPattern> ConvertToStmtsPattern() {
@@ -455,6 +470,58 @@ class StmtFusionHelper {
       ret.emplace_back(ConvertToStmtPattern(op));
     }
     return ret;
+  }
+
+  std::function<std::optional<size_t>(const StmtPattern*)>
+  MakeGetOrderValue4Stmt(const std::vector<const StmtPattern*>& stmt_ptr_patterns) {
+    const auto& GetStmtSinks = [&](const StmtPattern* stmt_ptr) {
+      auto ops_set = std::make_shared<OpSet>();
+      VisitStmtOp(*stmt_ptr, [&](const pir::Operation* op) {
+        ops_set->insert(op);
+      });
+      return GetSinks(ops_set);
+    };
+    std::unordered_map<const StmtPattern*, size_t> stmt2order_value;
+    for (const auto* stmt_ptr : stmt_ptr_patterns) {
+      const auto& sinks = GetStmtSinks(stmt_ptr);
+      CHECK_EQ(sinks.size(), 1);
+      const auto* sink = *sinks.begin();
+      const size_t order_value = this->GetOrderValue4Op(sink);
+      CHECK(stmt2order_value.emplace(stmt_ptr, order_value).second);
+    }
+    return [map=std::move(stmt2order_value)](const StmtPattern* stmt_ptr) -> std::optional<size_t> {
+      const auto& iter = map.find(stmt_ptr);
+      if (iter == map.end()) return std::nullopt;
+      return iter->second;
+    };
+  }
+
+  void SortStmtPatterns(std::vector<StmtPattern>* stmt_patterns) {
+    std::vector<const StmtPattern*> stmt_ptr_patterns = [&]{
+      std::vector<const StmtPattern*> stmt_ptr_patterns;
+      stmt_ptr_patterns.reserve(stmt_patterns->size());
+      for (const auto& stmt_pattern : *stmt_patterns) {
+        stmt_ptr_patterns.push_back(&stmt_pattern);
+      }
+      return stmt_ptr_patterns;
+    }();
+    const auto& GetOrderValue4Stmt = MakeGetOrderValue4Stmt(stmt_ptr_patterns);
+    const auto Cmp = [&](const auto* lhs, const auto* rhs) {
+      const auto& lhs_order = GetOrderValue4Stmt(lhs);
+      const auto& rhs_order = GetOrderValue4Stmt(rhs);
+      CHECK(lhs_order.has_value());
+      CHECK(rhs_order.has_value());
+      return lhs_order.value() < rhs_order.value();
+    };
+    std::sort(stmt_ptr_patterns.begin(), stmt_ptr_patterns.end(), Cmp);
+    *stmt_patterns = [&]{
+      std::vector<StmtPattern> sorted_stmts;
+      sorted_stmts.reserve(stmt_ptr_patterns.size());
+      for (const auto* stmt_ptr : stmt_ptr_patterns) {
+        sorted_stmts.push_back(*stmt_ptr);
+      }
+      return sorted_stmts;
+    }();
   }
 
   std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(
@@ -615,20 +682,6 @@ class StmtFusionHelper {
     };
   }
 
-  std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
-      const std::vector<pir::Operation*>& ops) {
-    std::unordered_map<const pir::Operation*, size_t> op2order_in_block;
-    size_t order = 0;
-    for (const pir::Operation* op : ops) {
-      op2order_in_block[op] = ++order;
-    }
-    return [map = std::move(op2order_in_block)](const pir::Operation* op) {
-      const auto& iter = map.find(op);
-      CHECK(iter != map.end());
-      return iter->second;
-    };
-  }
-
   template <typename IsChozenPatternT, typename ConstructPatternT>
   std::optional<ErrorGroupPattern> MultiFuse(
       const IsChozenPatternT& IsChozenPattern,
@@ -665,9 +718,8 @@ class StmtFusionHelper {
       });
       return num_injective_src_outputs == 0;
     };
-    const auto GetOrder = MakeTopoOrderFinderOfOp(ops_);
     const auto Cmp = [&](const auto* lhs, const auto& rhs) {
-      return GetOrder(lhs) < GetOrder(rhs);
+      return this->GetOrderValue4Op(lhs) < this->GetOrderValue4Op(rhs);
     };
     common::BfsWalker<StmtPtr> reverse_walker(VisitInputStmt);
     const auto& GetUpstreamOps = [&](const auto stmt_ptr) {
@@ -794,7 +846,7 @@ class StmtFusionHelper {
 
   ShardableAxesSignature GetShardableAxesSignature(
       const std::vector<const pir::Operation*>& ops) {
-    std::unordered_set<const pir::Operation*> ops_set(ops.begin(), ops.end());
+    const auto ops_set = std::make_shared<OpSet>(ops.begin(), ops.end());
     const pir::Operation* sink = [&] {
       const auto& sinks = GetSinks(ops_set);
       CHECK_EQ(sinks.size(), 1) << "ops must have only one sink node.";
@@ -804,7 +856,7 @@ class StmtFusionHelper {
         InferShardableAxesFromSink(sink, ops_set);
     const auto& IsInputOpOperand = [&](const auto* op, int input_idx) {
       const auto& defining_op = op->operand_source(input_idx).defining_op();
-      return IsInThisOpList(defining_op) && ops_set.count(defining_op) == 0;
+      return IsInThisOpList(defining_op) && ops_set->count(defining_op) == 0;
     };
     const auto& input_op_operands = [&] {
       std::vector<OpAndOperandIndex> op_operands;
@@ -834,6 +886,7 @@ class StmtFusionHelper {
   std::vector<pir::Operation*> ops_;
   std::function<bool(const pir::Operation*)> IsInThisOpList;
   std::function<bool(const pir::Operation*)> IsInjectiveSource;
+  std::function<size_t(const pir::Operation*)> GetOrderValue4Op;
 };
 
 GroupPattern FuseToGroupPattern(const std::vector<pir::Operation*>& ops) {
@@ -849,6 +902,7 @@ GroupPattern FuseToGroupPattern(const std::vector<pir::Operation*>& ops) {
     return error.value();
   if (const auto& error = helper.Fuse_PS_x_R_2_R(&stmt_patterns))
     return error.value();
+  helper.SortStmtPatterns(&stmt_patterns);
   return stmt_patterns;
 }
 
@@ -893,17 +947,17 @@ GroupPattern GenerateGroupPatternFromOpList(
 
 std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
     const pir::Operation* sink,
-    const std::unordered_set<const pir::Operation*>& ops) {
-  auto reversed_walker = GetOpsTopoWalker(ops);
-  CHECK_GT(ops.count(sink), 0);
+    const OpSetPtr& ops) {
+  auto reversed_walker = GetOpsReversedTopoWalker(ops);
+  CHECK_GT(ops->count(sink), 0);
   size_t rank = GetRank(sink->result(0));
   const auto& init_sa = ShardableAxesUtil::GetFullyShardableAxes(rank);
   return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
 }
 
 std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(
-    const std::unordered_set<const pir::Operation*>& ops) {
-  auto reversed_walker = GetOpsTopoWalker(ops);
+    const OpSetPtr& ops) {
+  auto reversed_walker = GetOpsReversedTopoWalker(ops);
   const auto& sinks = GetSinks(ops);
   const auto& sink_and_init_value = GetSinkAndInitValues(reversed_walker, ops, sinks);
   return ReversedInferShardableAxes(reversed_walker, sink_and_init_value.begin(), sink_and_init_value.end());

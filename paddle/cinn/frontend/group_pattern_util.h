@@ -36,9 +36,9 @@ GroupPattern GenerateGroupPatternFromOpList(
     const std::vector<pir::Operation*>& ops);
 
 std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(
-    const std::unordered_set<const pir::Operation*>& ops);
+    const std::shared_ptr<std::unordered_set<const pir::Operation*>>& ops);
 
 std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
     const pir::Operation* sink,
-    const std::unordered_set<const pir::Operation*>& ops);
+    const std::shared_ptr<std::unordered_set<const pir::Operation*>>& ops);
 }  // namespace cinn::frontend
