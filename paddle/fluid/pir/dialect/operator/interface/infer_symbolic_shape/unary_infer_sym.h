@@ -18,9 +18,25 @@
 
 namespace paddle::dialect {
 
-bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ArgminOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Argmax)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Argmin)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(AsComplex)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(AsReal)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cummax)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cummin)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumprod)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumprod_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumsum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumsum_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(DiagEmbed)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Diagonal)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Einsum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Kthvalue)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reshape)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reshape_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Squeeze)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Squeeze_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze_)
 
 }  // namespace paddle::dialect

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import paddle
 from paddle import framework
@@ -38,8 +37,6 @@ from ...utils.mix_precision_utils import MixPrecisionOptimizer
 
 __all__ = []
 
-g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
-
 
 class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
@@ -55,7 +52,7 @@ class HybridParallelClipGrad:
         pp_flag = self._hcg.get_pipe_parallel_world_size() > 1
 
         # add all reduce to get global norm of distributed params_and_grads
-        if sharding_flag and not g_shard_norm_align_dp:
+        if sharding_flag:
             # norm of mp distributed variable
             if mp_flag:
                 # dist should reduce among sharding group、mp group、pp group
@@ -467,11 +464,9 @@ class HybridParallelOptimizer:
                 (DygraphShardingOptimizer, DygraphShardingOptimizerV2),
             )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)
-            # dp later do not need to use global parameter list
-            if not g_shard_norm_align_dp:
-                dp_parameter_list = self._inner_opt.filter_parameters(
-                    parameter_list, self._hcg
-                )
+            dp_parameter_list = self._inner_opt.filter_parameters(
+                parameter_list, self._hcg
+            )
         if self._dp_enable or self._sep_enable:
             fused_allreduce_gradients(dp_parameter_list, self._hcg)
 

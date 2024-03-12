@@ -14,6 +14,8 @@
 
 from paddle.base.libpaddle.pir import (  # noqa: F401
     Block,
+    CloneOptions,
+    IrMapping,
     Operation,
     OpOperand,
     PassManager,
@@ -26,6 +28,7 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     get_current_insertion_point,
     is_fake_value,
     parse_program,
+    register_dist_dialect,
     register_paddle_dialect,
     reset_insertion_point_to_end,
     reset_insertion_point_to_start,
