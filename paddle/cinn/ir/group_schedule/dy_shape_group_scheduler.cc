@@ -82,11 +82,13 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     SymbolicPredicate rb_predicate =
         ir::And::Make(rb_lower_bound_predicate, rb_upper_bound_predicate);
     SymbolicPredicate predicate = ir::And::Make(sp_predicate, rb_predicate);
+    std::shared_ptr<GroupTileInfo> group_tile_info =
+        GetGroupTileInfo(group_info_);
     ScheduleContext schedule_context{output_names,
                                      target_,
                                      std::move(iter_space_info),
                                      std::move(bucket_info),
-                                     group_tile_info_};
+                                     group_tile_info};
     BucketContext bucket_context{std::move(predicate),
                                  std::move(ir_sch),
                                  std::move(schedule_block_graph),
