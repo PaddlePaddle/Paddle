@@ -67,26 +67,6 @@ void SequenceMutator(const std::vector<A>& as, C* acc, const Func& mutator) {
   }
 }
 
-// Teller to find the father expr.
-// Getter to get the target expr from father
-// Transformer to trans the target to replaced.
-template <class C, class Teller, class Getter, class Transformer>
-void FindAndReplace(C* body,
-                    const Teller& teller,
-                    const Getter& getter,
-                    const Transformer& transformer,
-                    bool force_single_target = true) {
-  std::set<Expr> found_targets =
-      cinn::ir::ir_utils::CollectIRNodesWithoutTensor(body, teller);
-  if (force_single_target && found_targets.size() != 1) {
-    PADDLE_THROW("The expr found should have only one target.");
-  }
-  for (const auto& expr : found_targets) {
-    MappingTargetExprToDestExprMutator(getter(expr),
-                                       transformer(getter(expr)))(body);
-  }
-}
-
 static bool IsAdjecent(const ir::Expr& upstream, const ir::Expr& downstream) {
   // 1. Get inputs / output from Expr, then we can tell whether they are
   // adjecent.
@@ -239,10 +219,34 @@ bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
 
 }  // namespace ComposeUtils
 
+// Teller to find the father expr.
+// Getter to get the target expr from father
+// Transformer to trans the target to replaced.
+template <class C, class Teller, class Getter, class Transformer>
+void FindAndReplace(C* body,
+                    const Teller& teller,
+                    const Getter& getter,
+                    const Transformer& transformer,
+                    bool force_single_target = true) {
+  std::set<Expr> found_targets =
+      cinn::ir::ir_utils::CollectIRNodesWithoutTensor(*body, teller);
+  if (force_single_target && found_targets.size() != 1) {
+    PADDLE_THROW("The expr found should have only one target.");
+  }
+  for (const auto& expr : found_targets) {
+    ComposeUtils::MappingTargetExprToDestExprMutator(
+        getter(expr), transformer(getter(expr)))(body);
+  }
+}
+
 struct TrivialOp {
  public:
   explicit TrivialOp(const ir::Expr& origin_func_body) {
     func_body = ir::ir_utils::IRCopy(origin_func_body);
+  }
+
+  TrivialOp(const TrivialOp& trivial_op) {
+    func_body = trivial_op.GetFuncBody();
   }
 
   ir::Expr GetStoreValue() const {
@@ -302,6 +306,8 @@ struct ReduceOp {
     func_body = ir::ir_utils::IRCopy(origin_func_body);
   }
 
+  ReduceOp(const ReduceOp& reduce_op) { func_body = reduce_op.GetFuncBody(); }
+
   ir::Expr GetStoreValue() const {
     return GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
@@ -318,6 +324,8 @@ struct ReduceOp {
   }
 
   ir::Expr GetFuncBody() const { return func_body; }
+
+  ir::Expr* GetFuncBodyPointer() { return &func_body; }
 
   ir::Tensor GetOutputTensor() const {
     return GetSingleStoreExpr(func_body)
@@ -416,6 +424,10 @@ ir::Expr CreateReduceExpr(const ReduceOp& downstream,
 
 using FusibleOp = std::variant<ReduceOp, TrivialOp>;
 
+ir::Expr GetExpr(const FusibleOp& op) {
+  return std::visit([](auto&& arg) { return arg.GetFuncBody(); }, op);
+}
+
 struct FusionNode {
   FusibleOp fusible_op;
   ::pir::Operation* expr_related_op;
@@ -475,14 +487,8 @@ struct FusionNode {
     }
   }
 
-  bool IsTrivial() { return std::holds_alternative<TrivialOp>(fusible_op); }
-
-  ir::Expr GetExpr() {
-    if (IsTrivial()) {
-      return std::get<TrivialOp>(fusible_op).GetFuncBody();
-    } else {
-      return std::get<ReduceOp>(fusible_op).GetFuncBody();
-    }
+  bool IsTrivial() const {
+    return std::holds_alternative<TrivialOp>(fusible_op);
   }
 };
 
@@ -552,8 +558,8 @@ std::vector<ReduceOp> TransformReduceLoopRange(ReduceOp upstream,
   };
 
   for (const auto& load_tensor : load_upstream_expr) {
-    const auto& new_tensor = create_new_tensor(
-        *(load_tensor.As<ir::Load>()->tensor.As<ir::Tensor>()));
+    const auto& new_tensor =
+        create_new_tensor(load_tensor.As<ir::Load>()->tensor.as_tensor_ref());
     ir::Expr new_reduce = CreateReduceExpr(
         downstream,
         ComposeUtils::CopyedReplaceExpr(upstream.GetComputeExpr(),
@@ -563,7 +569,7 @@ std::vector<ReduceOp> TransformReduceLoopRange(ReduceOp upstream,
         new_tensor);
     ComposeUtils::MappingTargetExprToDestExprMutator(
         load_tensor.As<ir::Load>()->tensor,
-        Expr(new_tensor))(&downstream.GetFuncBody());
+        Expr(new_tensor))(downstream.GetFuncBodyPointer());
     results.emplace_back(new_reduce);
   }
 
@@ -671,11 +677,11 @@ struct FusionGraph {
         }
       }
 
-      if (cur_node->upstream.size() == 0) {
+      if (cur_node->upstream.empty()) {
         entrance_nodes_.emplace(cur_node);
       }
 
-      if (cur_node->downstream.size() == 0) {
+      if (cur_node->downstream.empty()) {
         exit_nodes_.emplace(cur_node);
       }
     }
@@ -700,7 +706,7 @@ struct FusionGraph {
  private:
   FusionNode* FindTrivialFusibleNode() {
     for (FusionNode* node : all_fusion_nodes_) {
-      if (node->IsTrivial() && node->downstream.size() > 0) {
+      if (node->IsTrivial() && !node->downstream.empty()) {
         return node;
       }
     }
@@ -708,7 +714,7 @@ struct FusionGraph {
   }
 
   void DoTrivialFusion() {
-    FusionNode* upstream;
+    FusionNode* upstream = nullptr;
     // use funcion to get upstream and downstream is save here
     // cause we might delete Nodes in this process
     while ((upstream = FindTrivialFusibleNode()) != nullptr) {
@@ -728,7 +734,7 @@ struct FusionGraph {
   }
 
   void TransformSinkTrivialOpToReduce() {
-    FusionNode* upstream;
+    FusionNode* upstream = nullptr;
     for (FusionNode* exit_node : exit_nodes_) {
       if (exit_node->IsTrivial() &&
           (upstream = FindReduceUpstream(exit_node)) != nullptr) {
@@ -742,14 +748,15 @@ struct FusionGraph {
   void ReduceLoopTranform() {
     for (FusionNode* node : exit_nodes_) {
       auto fusion_nodes = ReduceTransform(node);
-      all_fusion_nodes_.insert(fusion_nodes.begin(), fusion_nodes.end());
+      fusion_results_.insert(
+          fusion_results_.end(), fusion_nodes.begin(), fusion_nodes.end());
     }
   }
 
   std::vector<ir::Expr> GetExprResults() {
     std::vector<ir::Expr> output_exprs;
-    for (const auto& node : all_fusion_nodes_) {
-      output_exprs.emplace_back(node->GetExpr());
+    for (const auto& node : fusion_results_) {
+      output_exprs.emplace_back(GetExpr(node));
     }
     return output_exprs;
   }
@@ -769,11 +776,11 @@ struct FusionGraph {
 
   void AppendNode(FusionNode* node) {
     all_fusion_nodes_.emplace(node);
-    if (node->upstream.size() == 0) {
+    if (node->upstream.empty()) {
       entrance_nodes_.emplace(node);
     }
 
-    if (node->downstream.size() == 0) {
+    if (node->downstream.empty()) {
       exit_nodes_.emplace(node);
     }
   }
@@ -790,6 +797,7 @@ struct FusionGraph {
 
  private:
   std::unordered_set<FusionNode*> all_fusion_nodes_;
+  std::vector<FusibleOp> fusion_results_;
   std::unordered_set<FusionNode*> entrance_nodes_;
   std::unordered_set<FusionNode*> exit_nodes_;
 
