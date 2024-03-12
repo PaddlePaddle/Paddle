@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_substitute.h"
 
 #include "gtest/gtest.h"
 

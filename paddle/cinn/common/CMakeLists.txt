@@ -23,8 +23,7 @@ gather_srcs(
   nvgpu_dev_info.cc
   integer_set.cc
   dim_expr_converter.cc
-  broadcast_tree.cc
-  dim_expr_util.cc)
+  broadcast_tree.cc)
 
 cinn_cc_test(test_equation_graph_topo_walker SRCS
              equation_graph_topo_walker_test.cc DEPS gtest glog)

@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_substitute.h"
 
-namespace cinn::common {
-using namespace symbol;  // NOLINT
+namespace symbol {
 
 namespace {
 
 class SubstituteDimExprHelper final {
  public:
   explicit SubstituteDimExprHelper(
-      const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-          pattern_to_replacement)
+      const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement)
       : pattern_to_replacement_(pattern_to_replacement) {}
 
   std::optional<DimExpr> Substitute(const DimExpr& dim_expr) {
@@ -94,18 +92,17 @@ class SubstituteDimExprHelper final {
     return T{substituted_operands};
   }
 
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> pattern_to_replacement_;
+  std::unordered_map<DimExpr, DimExpr> pattern_to_replacement_;
 };
 
 }  // namespace
 
-symbol::DimExpr SubstituteDimExpr(
-    const symbol::DimExpr& dim_expr,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-        pattern_to_replacement) {
+DimExpr SubstituteDimExpr(
+    const DimExpr& dim_expr,
+    const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement) {
   const auto& opt_replaced =
       SubstituteDimExprHelper(pattern_to_replacement).Substitute(dim_expr);
   return opt_replaced.has_value() ? opt_replaced.value() : dim_expr;
 }
 
-}  // namespace cinn::common
+}  // namespace symbol

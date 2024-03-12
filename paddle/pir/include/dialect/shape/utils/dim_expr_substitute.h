@@ -14,16 +14,12 @@
 
 #pragma once
 
-#include <optional>
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
-namespace cinn::common {
+namespace symbol {
 
-symbol::DimExpr SubstituteDimExpr(
-    const symbol::DimExpr& dim_expr,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-        pattern_to_replacement);
+DimExpr SubstituteDimExpr(
+    const DimExpr& dim_expr,
+    const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement);
 
 }
