@@ -890,7 +890,7 @@ headers = (
     # init headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/drr/include')) +  # drr init headers
     # init headers
-    list(find_files('transform_general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/transforms')))  # pass utils init headers
+    list(find_files('general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/utils')))  # pass utils init headers
 
 jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'function.h']
 for f in jit_layer_headers:

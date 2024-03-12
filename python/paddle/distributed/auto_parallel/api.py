@@ -185,6 +185,14 @@ def shard_tensor(
             data._init_func is not None
         ), "Get an uninitialized param with an unregistered init_func."
         tensor = data
+    elif paddle.framework.in_pir_mode():
+        assert isinstance(
+            data, (type(None), pir.Value)
+        ), "input tensor is not pir value."
+        assert (
+            data.is_dense_tensor_type()
+        ), "shard_tensor() input data only supported dense tensor type right."
+        tensor = data
     else:
         # `paddle.to_tensor` supports both dynamic and static mode
         tensor = paddle.to_tensor(
@@ -240,6 +248,11 @@ def shard_tensor(
             # have to pass it manually.
             dist_tensor.stop_gradient = tensor.stop_gradient
             return dist_tensor
+    elif paddle.framework.in_pir_mode():
+        sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
+        dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
+        dist_tensor = paddle._pir_ops.shard_tensor(tensor, mesh, dims_mapping)
+        return dist_tensor
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
         sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)

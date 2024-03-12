@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import itertools
-import os
 import weakref
 from collections import OrderedDict
 
@@ -837,12 +836,8 @@ def fused_parameters(
     :return: param storage if fused, comm buffers if comm overlap, param groups if use group params
     """
     if act is None:
-        g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
-        act = (
-            HOOK_ACTION.ALL_REDUCE
-            if not g_shard_use_reduce
-            else HOOK_ACTION.REDUCE
-        )
+        act = HOOK_ACTION.REDUCE
+
     if comm_overlap:
         if comm_group is None:
             assert (

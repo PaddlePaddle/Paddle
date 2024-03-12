@@ -1415,6 +1415,16 @@
     func: shadow_feed
     param: [x]
 
+- op : shadow_feed_tensors
+  args : (Tensor[] x)
+  output : Tensor[](out){x.size()}
+  infer_meta:
+    func: UnchangedVectorInferMeta
+    param: [x]
+  kernel:
+    func: shadow_feed_tensors
+    param: [x]
+
 - op : share_data
   args : (Tensor x)
   output : Tensor(out)
@@ -1465,6 +1475,7 @@
     func : softmax
   inplace : (x -> out)
   backward : softmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)

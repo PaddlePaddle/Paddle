@@ -36,14 +36,6 @@ from ...utils.tensor_fusion_helper import (
     fused_parameters,
 )
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
-g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
-
-if g_shard_norm_align_dp:
-    assert (
-        not g_shard_use_reduce
-    ), "g_shard_norm_align_dp is not supported if g_shard_use_reduce is true"
-
 
 def _is_trainable(param):
     return not param.stop_gradient
@@ -309,24 +301,13 @@ class DygraphShardingOptimizer:
                         ReduceOp.AVG if self.use_reduce_avg else ReduceOp.SUM
                     )
                     param_rank = self._param2rank[param.name]
-                    if not g_shard_use_reduce:
-                        paddle.distributed.all_reduce(
-                            g_var,
-                            op=reduce_op,
-                            group=hcg.get_sharding_parallel_group(),
-                            sync_op=True,
-                        )
-                    else:
-                        # TODO(pangengzheng): change to reduce operation when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
-                        paddle.distributed.reduce(
-                            g_var,
-                            dst=hcg.get_sharding_parallel_group().ranks[
-                                param_rank
-                            ],
-                            op=reduce_op,
-                            group=hcg.get_sharding_parallel_group(),
-                            sync_op=True,
-                        )
+                    paddle.distributed.reduce(
+                        g_var,
+                        dst=hcg.get_sharding_parallel_group().ranks[param_rank],
+                        op=reduce_op,
+                        group=hcg.get_sharding_parallel_group(),
+                        sync_op=True,
+                    )
 
     def _sharding_sync_parameters(self):
         """
@@ -389,10 +370,6 @@ class DygraphShardingOptimizer:
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
-        # hack to grad_clip all parameters,
-        # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
-        # TODO(pangengzheng): remove the hacked grad_clip codes here when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
-        origin_clip = self._inner_opt._grad_clip
         target_param_list = (
             self._origin_parameter_list
             if (not self.tensor_fusion or not self.fuse_optimizer)
@@ -414,10 +391,6 @@ class DygraphShardingOptimizer:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 params_grads.append((param, grad_var))
-            if g_shard_norm_align_dp:
-                params_grads = self._inner_opt._grad_clip(params_grads)
-                # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
-                self._set_inner_opt_attr('_grad_clip', None)
             rank_params = (
                 self._rank2params[self._sharding_rank]
                 if (not self.tensor_fusion or not self.fuse_optimizer)
@@ -432,9 +405,6 @@ class DygraphShardingOptimizer:
                 startup_program=None,
                 params_grads=update_params_grads,
             )
-            if g_shard_norm_align_dp:
-                # restore the grad clip
-                self._set_inner_opt_attr('_grad_clip', origin_clip)
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()
@@ -494,19 +464,8 @@ class DygraphShardingOptimizerV2:
 
     """
 
-    # TODO (JZ-LIANG)
-    # TO support following features in future:
-    # 1. fused update parameter sync
-    # 2. parameters_groups
-    # 3. dynamic trainable params, which is the case between pretraining and finetuning
-    # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
-    # 5. do not shard small params
-
     def __init__(self, optimizer, hcg):
         logger.info("init DygraphShardingOptimizerV2")
-        assert (
-            g_shard_use_reduce
-        ), "g_shard_use_reduce must be true if DygraphShardingOptimizerV2 is used"
 
         # TODO(pangengzheng): support param_groups
         if isinstance(optimizer._parameter_list[0], dict):
@@ -553,6 +512,14 @@ class DygraphShardingOptimizerV2:
         # Setting pipeline parallelism overlap
         self.pp_overlap = pp_config.sharding_comm_overlap
         self.pp_release_grads = pp_config.release_gradients
+
+        # Check nccl reduce_avg setting
+        self.use_reduce_avg = sharding_config.use_reduce_avg
+        if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
+            self.use_reduce_avg = False
+            warnings.warn(
+                "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
+            )
 
         self._build_comm_buffers(acc_steps)
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
@@ -620,6 +587,7 @@ class DygraphShardingOptimizerV2:
                 acc_steps,
                 act=HOOK_ACTION.REDUCE_SCATTER,
                 release_grads=self.pp_release_grads,
+                use_reduce_avg=self.use_reduce_avg,
             )
             self._comm_buffer_list.append(buffer)
 

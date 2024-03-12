@@ -266,6 +266,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             paddle.full([], 4, 'int32'),
         ]
 
+    @test_with_pir_api
     def test_slice(self):
         starts = [paddle.full([], 1, 'int32'), paddle.full([], 1, 'int32')]
         ends = [paddle.full([], 3, 'int32'), paddle.full([], 3, 'int32')]
@@ -288,6 +289,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         self.assertEqual(res.shape, (5, 2, 2))
 
+    @test_with_pir_api
     def test_linspace(self):
         start = paddle.full([], 1.0)
         stop = paddle.full([], 5.0)

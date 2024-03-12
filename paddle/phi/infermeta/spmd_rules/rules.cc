@@ -626,5 +626,14 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::GatherInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::GatherInferSpmdReverseBase));
 
+// one_hot
+PD_REGISTER_SPMD_RULE(one_hot,
+                      PD_INFER_SPMD(phi::distributed::OneHotInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::OneHotInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(cumsum,
+                      PD_INFER_SPMD(phi::distributed::CumSumInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CumSumInferSpmdReverse));
+
 }  // namespace distributed
 }  // namespace phi
