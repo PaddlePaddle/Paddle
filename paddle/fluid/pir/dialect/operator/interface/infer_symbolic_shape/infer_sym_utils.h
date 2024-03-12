@@ -91,6 +91,25 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
   }
 }
 
+inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
+  const auto GetShapeExprsFromList = [&]() {
+    ExprVec result;
+    TensorListExprs list =
+        shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    for (size_t i = 0; i < list.size(); i++) {
+      for (auto expr : list[i].data().value()) {
+        result.emplace_back(expr);
+      }
+    }
+    return result;
+  };
+  if (shapeordata.isa<TensorListExprs>()) {
+    return GetShapeExprsFromList();
+  } else {
+    return shapeordata.shape();
+  }
+}
+
 std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
 
 ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec);

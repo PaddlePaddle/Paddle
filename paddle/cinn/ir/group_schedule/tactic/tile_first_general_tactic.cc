@@ -102,6 +102,10 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
+  if (sch->HasBlock(block_id)) {
+    std::cerr << "before process:  " << block_id << "\n"
+              << sch->GetLoops(block_id).front() << std::endl;
+  }
   MergeFlattenAxis(sch, block_id);
   VLOG(6) << "After MergeFlattenAxis on block: [" << block_id
           << "], loop nest:\n"
@@ -129,11 +133,18 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   BindCudaInfo(sch, block_id);
   VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
+
   VariableTypeAssignment(sch, block_id);
+
   Unroll(sch, block_id);
   VLOG(6) << "After Unroll on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
   SetReduceType(sch, block_id);
+
+  if (sch->HasBlock(block_id)) {
+    std::cerr << "process:  " << block_id << "\n"
+              << sch->GetLoops(block_id).front() << std::endl;
+  }
 }
 
 void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
@@ -164,6 +175,8 @@ void TileFirstGeneralTactic::SplitFlattenInner(ir::IRSchedule* sch,
                                                const std::string& block_id) {
   if (IsInnerThreadSpatialLoopGT(context_->group_tile_info, 1)) {
     auto loops = sch->GetLoops(block_id);
+    std::cerr << "spatial inner num "
+              << context_->group_tile_info->spatial_inner_num << std::endl;
     auto split_loops = sch->Split(
         loops[0],
         std::vector<int>({-1, context_->group_tile_info->spatial_inner_num}));

@@ -142,6 +142,7 @@ class OpTransInfo {
       "embedding",
       "gather",
       "arange",
+      "softmax",
   };
 };
 

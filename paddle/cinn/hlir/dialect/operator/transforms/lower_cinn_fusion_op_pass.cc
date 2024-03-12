@@ -229,6 +229,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
 GroupPtr CloneGroup(const GroupPtr& group,
                     pir::Block* block,
                     pir::IrMapping* ir_mapping) {
+  std::cerr << "clone grou !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
   return group->Clone(block, *ir_mapping);
 }
 
@@ -272,6 +273,7 @@ void SetLeafBlockByGroupView(
   }
 
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
+
   CHECK_EQ(origin_group->ops.size(), new_group->ops.size());
   UpdateGroupShapeExprs(new_group,
                         origin_group,
@@ -470,11 +472,13 @@ void CompileGroupToJitKernelOp(
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
     CHECK(jit_kernel_op.num_results() == group_output_values.size());
+    std::cerr << "begin to replace all user\n";
     for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(group_output_values[i],
                                   jit_kernel_op.result(i));
     }
 
+    std::cerr << "finish replace all user\n";
     // Delete origin group ops
     std::vector<pir::Operation*> group_ops;
     for (auto iter = block->rbegin(); iter != block->rend(); iter++) {
@@ -545,6 +549,8 @@ pir::Operation* ProcessDyShapeGroup(
   cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
   for (auto value : value_view) {
+    std::cerr << "get impr " << value.impl() << "\t"
+              << value.defining_op()->name() << std::endl;
     const auto& shape_dim_expr = group->GetShapeOrDataExprs(value);
     const auto& data_shape = shape_dim_expr.data();
     if (data_shape) {
@@ -654,6 +660,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     pir::Operation* compiled_op =
         ProcessGroup(group, shape_analysis, ir_compiler, rewriter);
 
+    std::cerr << "begin to replace\n";
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(fusion_op.result(i), compiled_op->result(i));
       if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
@@ -667,7 +674,10 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       }
     }
 
+    std::cerr << "finish to replace\n";
+
     rewriter.EraseOp(fusion_op);
+    std::cerr << "finish erase \n";
     return true;
   }
 
@@ -685,8 +695,10 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
+    std::cerr << "begin build jit kernel op\n";
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
+    std::cerr << "fin build jit kernel op\n";
     return jit_kernel_op;
   }
 
@@ -707,10 +719,14 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     }
 
     // Rebuild ops of the group
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
     for (auto op : fusion_op.GetOperators()) {
       if (!op->isa<::pir::YieldOp>()) {
         group->ops.push_back(op);
 
+        printer.PrintOperation(op);
+        ss << std::endl;
         group->ops_set.insert(op);
         group->op_pattern_kind =
             static_cast<int>(CompatibleInfo::OpKind(*op)) >
@@ -719,6 +735,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
                 : group->op_pattern_kind;
       }
     }
+
+    std::cerr << "after rebuild \n" << ss.str() << std::endl;
 
     // Rebuild output_ops and input_ops of the group
     auto yield_op = fusion_op.GetOperators().back();
