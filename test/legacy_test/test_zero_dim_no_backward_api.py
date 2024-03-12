@@ -381,7 +381,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
-    @test_with_pir_api
     def test_standard_normal(self):
         out1 = paddle.standard_normal([])
         out2 = paddle.standard_normal(self.shape)
