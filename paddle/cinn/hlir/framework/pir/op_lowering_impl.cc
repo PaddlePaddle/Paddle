@@ -31,6 +31,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
+#include "paddle/cinn/optim/if_fusion.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -619,6 +620,9 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
   for (auto op1 : ops) {
     auto it = align_info.find(op1);
     if (it == align_info.end()) {
+      continue;
+    }
+    if (op1->name() == "cinn_op.generate_shape") {
       continue;
     }
 

@@ -95,7 +95,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceMinOp::name(),
     CReduceProdOp::name(),
     PushSparseV2Op::name(),
-    PartialSendOp::name()};
+    PartialSendOp::name(),
+    PartialRecvOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -482,5 +483,20 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
   }
   return vec_shape;
 }
+
+const std::unordered_map<std::string, std::string>& AttrTypeMap() {
+  static const std::unordered_map<std::string, std::string> attr_type_map = {
+      {"bool", "pir::BoolAttribute"},
+      {"int", "pir::Int32Attribute"},
+      {"float", "pir::FloatAttribute"},
+      {"int64_t", "pir::Int64Attribute"},
+      {"std::string", "pir::StrAttribute"},
+      {"std::vector<int>", "pir::ArrayAttribute<pir::Int32Attribute>"},
+      {"std::vector<float>", "pir::ArrayAttribute<pir::FloatAttribute>"},
+      {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
+      {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
+  return attr_type_map;
+}
+
 }  // namespace dialect
 }  // namespace paddle

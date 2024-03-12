@@ -66,7 +66,7 @@ class IR_API Value {
 
   template <typename OpTy>
   OpTy defining_op() const {
-    /// It is safety even if defining_op() return nullptr.
+    /// It is safe even if defining_op() returns nullptr.
     return OpTy::dyn_cast(defining_op());
   }
 

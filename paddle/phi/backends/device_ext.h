@@ -548,6 +548,13 @@ struct C_DeviceInterface {
   //////////////
 
   /**
+   * @brief Get comm name.
+   *
+   * @param[char*]         comm_name
+   */
+  C_Status (*xccl_get_comm_name)(C_CCLComm comm, char* comm_name);
+
+  /**
    * @brief Get size of unique id
    *
    * @param[size_t*]         size

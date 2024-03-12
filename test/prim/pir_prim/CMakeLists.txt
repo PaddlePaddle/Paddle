@@ -8,6 +8,7 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_prim_skip_dynamic
     test_prim_dynamic
     test_prim_jit_dynamic
+    test_auto_recompute
     test_prim_sub_graph_dynamic_shape
     test_decompose_control_flow)
 
@@ -21,6 +22,8 @@ foreach(target ${TEST_PRIM_PURE_PIR_CASES})
     FLAGS_enable_pir_api=true
     FLAGS_prim_enable_dynamic=true)
 endforeach()
+
+set_tests_properties(test_auto_recompute PROPERTIES TIMEOUT 40)
 
 set(TEST_PRIM_PURE_PIR_CINN test_prim_rms_norm_st_shape
                             test_prim_flags_check_ops)
