@@ -163,6 +163,7 @@ void DoInsertCastOp(Graph* graph,
     cast_output_vardesc->SetType(var_type);
     cast_output_vardesc->SetPersistable(false);
     cast_output_vardesc->SetDataType(to_type);
+    cast_output_vardesc->SetShape(var_node->Var()->GetShape());
     cast_output_vardesc->Flush();
     auto* cast_output_node = graph->CreateVarNode(cast_output_vardesc);
     IR_NODE_LINK_TO(cast_op_node, cast_output_node);
