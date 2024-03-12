@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <list>
 #include <map>
 #include <memory>
@@ -49,3 +49,4 @@ class AutoGrowthBestFitAllocatorV2 : public AutoGrowthBestFitAllocator {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+#endif
