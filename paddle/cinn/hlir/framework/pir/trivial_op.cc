@@ -412,6 +412,11 @@ struct FusionNode {
 
   explicit FusionNode(FusibleOp fusible_op) : fusible_op(fusible_op) {}
 
+  static std::string GetTensorCounter() {
+    static int i = 0;
+    return std::to_string(i++);
+  }
+
   void replace_topo_structure_of_fused_nodes(FusionNode* fused_up_node,
                                              FusionNode* fused_down_node) {
     upstream.insert(fused_up_node->upstream.begin(),
@@ -520,13 +525,27 @@ std::vector<ReduceOp> TransformReduceLoopRange(ReduceOp upstream, ReduceOp downs
   CHECK(ComposeUtils::CheckIterEq(upstream.GetReduceIters(), downstream.GetReduceIters()));
   const auto& load_upstream_expr = downstream.GetEachTensorLoadExpr(upstream.GetOutputTensor());
   std::vector<ReduceOp> results;
+
+  ir::Tensor downstream_output_tensor = downstream.GetOutputTensor();
+  const auto create_new_tensor = [&](const ir::Tensor& downstream_load_tensor){
+    return ir::Tensor(
+      downstream_load_tensor->name + FusionNode::GetTensorCounter(),
+      downstream_load_tensor->type(),
+      downstream_output_tensor.self()->sym_shape,
+      downstream_load_tensor.self()->sym_domain,
+      downstream_load_tensor.self()->operation,
+      downstream_output_tensor.self()->reduce_axis
+    ); 
+  };
+
   for (const auto& load_tensor : load_upstream_expr){
+    const auto& new_tensor = create_new_tensor(*(load_tensor.As<ir::Load>()->tensor.As<ir::Tensor>()));
     ir::Expr new_reduce = CreateReduceExpr(
                         downstream,
-                        ComposeUtils::CopyedReplaceExpr(upstream.GetFuncBody(), upstream.GetOutputIters(), load_tensor.As<ir::Load>()->indices),
+                        ComposeUtils::CopyedReplaceExpr(upstream.GetComputeExpr(), upstream.GetOutputIters(), load_tensor.As<ir::Load>()->indices),
                         upstream.GetInitExpr(),
                         new_tensor);
-    ComposeUtils::MappingTargetExprToDestExprMutator(load_tensor.As<ir::Load>()->tensor, new_tensor)(downstream.GetFuncBody());
+    ComposeUtils::MappingTargetExprToDestExprMutator(load_tensor.As<ir::Load>()->tensor, Expr(new_tensor))(&downstream.GetFuncBody());
     results.emplace_back(new_reduce);
   }
 
