@@ -153,10 +153,10 @@ void BatchFCInferMeta(const MetaTensor& input,
   auto input_dims = input.dims();
   auto w_dims = w.dims();
 
-  PADDLE_ENFORCE_EQ(input_dims.size(),
-                    3,
-                    phi::errors::InvalidArgument(
-                        "Input of BatchFCOp should have 3D."));
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      3,
+      phi::errors::InvalidArgument("Input of BatchFCOp should have 3D."));
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       3,
