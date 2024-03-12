@@ -513,10 +513,10 @@ std::tuple<Tensor, Tensor> dropout_decomp(
   if (mode == std::string("upscale_in_train")) {
     upscale_in_train = true;
   }
-  fix_seed = true;
+
   int seed_tmp = 0;
   if (fix_seed) {
-    seed_tmp = 2023;
+    seed_tmp = seed;
   }
 
   auto dtype_tmp = org_dtype;
