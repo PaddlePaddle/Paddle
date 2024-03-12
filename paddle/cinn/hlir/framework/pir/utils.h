@@ -124,7 +124,9 @@ struct ScheduleInfoNode {
   // TOOD(phlrain): update align type by new loop alignment
   ScheduleAlignType type{ScheduleAlignType::kNone};
 
+  // reduction or broadcast axis locations
   std::vector<int64_t> axis_info;
+  // representing the iteration space
   std::vector<int64_t> factor_info;
 
   std::string DebugStr() {
