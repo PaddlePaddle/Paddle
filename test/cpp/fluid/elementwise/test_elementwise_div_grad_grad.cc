@@ -46,11 +46,12 @@ class TestElementwiseDivGradGradWithoutDout
  public:
   TestElementwiseDivGradGradWithoutDout(const platform::Place &place,
                                         const framework::DDim &dims)
-      : TestElementwiseOpGradGrad<T>("elementwise_div_grad_grad",
-                                     place,
-                                     dims,
-                                     {"Y", "Out", "DDX", "DDY", "DX"},
-                                     {"Y@GRAD", "DDOut"}) {}
+      : TestElementwiseOpGradGrad<T>(
+            "elementwise_div_grad_grad",
+            place,
+            dims,
+            {"Y", "Out", "Out@GRAD", "DDX", "DDY", "DX"},
+            {"Y@GRAD", "DDOut"}) {}
 
   using TestElementwiseOpGradGrad<T>::feed_datas_;
   using TestElementwiseOpGradGrad<T>::expected_outs_;
@@ -78,6 +79,7 @@ class TestElementwiseDivGradGradWithoutDout
         this->op_type_,
         {{"Y", {"Y"}},
          {"Out", {"Out"}},
+         {"Out@GRAD", {"Out@GRAD"}},
          {"DDX", {"DDX"}},
          {"DDY", {"DDY"}},
          {"DX", {"DX"}}},
