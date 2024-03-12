@@ -92,6 +92,10 @@ def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
 
 
+def dropout_net1(x):
+    return paddle.nn.functional.dropout(x, 0.5)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -302,6 +306,20 @@ class TestPrimSwiglu2(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = swiglu_net2
         self.necessary_ops = "pd_op.swiglu"
+        self.enable_cinn = False
+
+
+class TestPrimDropout(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        paddle.seed(2023)
+        paddle.static.default_main_program().random_seed = 2023
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = dropout_net1
+        self.necessary_ops = "pd_op.dropout"
         self.enable_cinn = False
 
 
