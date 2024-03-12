@@ -525,7 +525,7 @@ ir::Expr ReplaceReduceComputeBody(const ir::Expr& body,
   TODO;
 }
 
-ReduceOp TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
+ReduceOp TransformReduceLoopRange(const ReduceOp& upstream, const ReduceOp& downstream) {
   VLOG(4) << "RRTransform begin";
 
   const auto& down_out_iter = downstream.GetOutputIters();
@@ -539,10 +539,12 @@ ReduceOp TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
   ir::Expr new_reduce_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
   ir::Expr reduce_op_expr = ComposeUtils::TransformComputeExpr(
       new_reduce_body.GetComputeExpr(), down);
-  ir::Expr const auto& replaced_tensor = upstream.GetOutputTensor();
-
-  ir::Expr result = ComposeUtils::CreateReduceExpr(downstream, reduce_op_expr);
-
+  const auto& replaced_tensor = upstream.GetOutputTensor();
+  ir::Expr result = ComposeUtils::CreateReduceExpr(
+                                      downstream, 
+                                      reduce_op_expr, 
+                                      upstream.GetInitExpr(), 
+                                      replaced_tensor);
   VLOG(4) << "RRTransform end" << result;
   return ReduceOp(result);
 }
@@ -558,10 +560,25 @@ FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
   }
 }
 
+std::vector<ReduceOp> ReduceTransformRecursive(ReduceOp current, FusionNode* tree_root){
+  std::vector<ReduceOp> result;
+  for (auto& pair : tree_root->upstream){
+    if (pair.first->IsTrivial()){
+      PADDLE_THROW("ReduceTransformRecursive should not have trivial node");
+    } else {
+      auto new_current = TransformReduceLoopRange(current, std::get<ReduceOp>(pair.first->fusible_op));
+      auto new_result = ReduceTransformRecursive(new_current, pair.first);
+      result.insert(result.end(), new_result.begin(), new_result.end());
+    }
+  }
+  return result;
+}
+
 FusibleOp ReduceTransform(FusionNode* upstream, FusionNode* downstream) {
   if (downstream->IsTrivial()) {
     CHECK(CheckAllLoopRangeEq(std::get<ReduceOp>(upstream->fusible_op),
                               std::get<TrivialOp>(upstream->fusible_op)));
+    // TODO(@wuzhanfei)
     return upstream->fusible_op;
   } else {
     return TransformReduceLoopRange(std::get<ReduceOp>(upstream->fusible_op),
@@ -646,7 +663,7 @@ struct FusionGraph {
 
   std::vector<ir::Expr> DoFusion() {
     DoTrivialFusion();
-    TransformExitTrivialOpToReduce();
+    TransformSinkTrivialOpToReduce();
     ReduceLoopTranform();
     return GetExprResults();
   }
@@ -681,7 +698,7 @@ struct FusionGraph {
     }
   }
 
-  void TransformExitTrivialOpToReduce() {
+  void TransformSinkTrivialOpToReduce() {
     FusionNode* upstream;
     for (FusionNode* exit_node : exit_nodes_) {
       if (exit_node->IsTrivial() &&
