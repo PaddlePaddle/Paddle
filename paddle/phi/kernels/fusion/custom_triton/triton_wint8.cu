@@ -19,12 +19,13 @@
 
 std::map<std::vector<int>, int> map_problem_triton_wint8;
 
-std::vector<paddle::Tensor> TritonWint8(const paddle::Tensor& x,
-                                        const paddle::Tensor& qweight,
-                                        const paddle::Tensor& scales,
-                                        paddle::optional<paddle::Tensor>& bias,
-                                        bool bool_trans_w,
-                                        bool with_bias) {
+std::vector<paddle::Tensor> TritonWint8(
+    const paddle::Tensor& x,
+    const paddle::Tensor& qweight,
+    const paddle::Tensor& scales,
+    paddle::optional<paddle::Tensor>& bias,
+    bool bool_trans_w,
+    bool with_bias) {
   int m = x.shape()[0];
   int k = x.shape()[1];
   int n = scales.shape()[0];
@@ -32,7 +33,7 @@ std::vector<paddle::Tensor> TritonWint8(const paddle::Tensor& x,
   auto c_out = paddle::full({m, n}, 0, x.dtype(), x.place());
 
   auto dev_x = x.data<phi::dtype::float16>();
-  auto dev_weight = qweight.data<int8_t>();
+  auto dev_weight = qweight.data<uint8_t>();
   auto dev_c = c_out.data<phi::dtype::float16>();
   auto dev_scales = scales.data<phi::dtype::float16>();
   phi::dtype::float16* dev_bias = nullptr;
@@ -74,45 +75,63 @@ std::vector<paddle::Tensor> TritonWint8(const paddle::Tensor& x,
 
   float min_time = 10000.f;
   int select_id = -1;
-  constexpr int WARMUP = 10;
+  constexpr int WARMUP = 5;
   constexpr int REPEAT = 10;
 
   for (int algo_id = 0; algo_id < wint8_kernel_get_num_algos(); ++algo_id) {
-    cudaEvent_t beg, end;
+    cudaEvent_t beg[REPEAT];
+    cudaEvent_t end[REPEAT];
+    float elapsed_times[REPEAT];
+
     auto status = CUDA_SUCCESS;
 
     for (int ii = 0; ii < WARMUP + REPEAT; ii++) {
-      if (ii == WARMUP) {
-        (cudaEventCreate(&beg));
-        (cudaEventCreate(&end));
-        (cudaEventRecord(beg));
+      int repeat_id = ii - WARMUP;
+
+      if (repeat_id >= 0) {
+        (cudaEventCreate(beg + repeat_id));
+        (cudaEventCreate(end + repeat_id));
+        (cudaEventRecord(beg[repeat_id]));
       }
+
+      auto flush_l2_cache = paddle::full(
+          {10 * 1024 * 1024}, 0, paddle::DataType::INT32, x.place());
+      // std::cout << &flush_l2_cache  << std::endl;
+
       cudaMemset(dev_c, 0, sizeof(phi::dtype::float16) * m * n);
       status = wint8_kernel(c_out.stream(),
-                                 (CUdeviceptr)(dev_x),
-                                 (CUdeviceptr)(dev_weight),
-                                 (CUdeviceptr)(dev_c),
-                                 (CUdeviceptr)(dev_scales),
-                                 (CUdeviceptr)(dev_bias),
-                                 m,
-                                 n,
-                                 k,
-                                 k,
-                                 1,
-                                 stride_bk,
-                                 stride_bn,
-                                 n,
-                                 1,
-                                 algo_id);
+                            (CUdeviceptr)(dev_x),
+                            (CUdeviceptr)(dev_weight),
+                            (CUdeviceptr)(dev_c),
+                            (CUdeviceptr)(dev_scales),
+                            (CUdeviceptr)(dev_bias),
+                            m,
+                            n,
+                            k,
+                            k,
+                            1,
+                            stride_bk,
+                            stride_bn,
+                            n,
+                            1,
+                            algo_id);
       // assert(status == CUDA_SUCCESS);
+
+      if (repeat_id >= 0) {
+        (cudaEventRecord(end[repeat_id]));
+        (cudaEventSynchronize(end[repeat_id]));
+        (cudaEventElapsedTime(
+            elapsed_times + repeat_id, beg[repeat_id], end[repeat_id]));
+      }
     }
 
-    (cudaEventRecord(end));
-    (cudaEventSynchronize(end));
-    float elapsed_time;
-    (cudaEventElapsedTime(&elapsed_time, beg, end));
-    if (elapsed_time < min_time && status == CUDA_SUCCESS) {
-      min_time = elapsed_time;
+    float avg_elapsed_time = 0.f;
+    for (int ii = 0; ii < REPEAT; ++ii) {
+      avg_elapsed_time += elapsed_times[ii];
+    }
+
+    if (avg_elapsed_time < min_time && status == CUDA_SUCCESS) {
+      min_time = avg_elapsed_time;
       select_id = algo_id;
     }
   }
