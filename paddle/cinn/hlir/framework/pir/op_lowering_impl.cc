@@ -39,6 +39,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
@@ -101,8 +102,10 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   bool spatial_is_dynamic = false;
   bool reduce_is_dynamic = false;
+  std::cerr << "data rank " << group_tile_info->data_rank << std::endl;
   for (int64_t i = 0; i < group_tile_info->data_rank; ++i) {
     if (reduce_set.count(i)) {
+      std::cerr << "index i   " << i << std::endl;
       reduce_numel *= data_dim[i];
       if (data_dim[i] < 0) {
         reduce_is_dynamic = true;
@@ -143,7 +146,6 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     spatial_inner_num = 1;
     reduce_inner_num = 4;
     warp_num = 8;
-
   } else if (reduce_numel == 1) {
     reduce_block = 1;
     if (spatial_is_dynamic) {
@@ -157,6 +159,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
       group_tile_info->block_num = -1;
     } else {
       spatial_block = Next2Power(spatial_numel);
+      std::cerr << "spatial block " << spatial_block << std::endl;
       if (spatial_block > 1024) {
         spatial_block = 1024;
       }
@@ -614,7 +617,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
   // TODO(phlrain): this is primary verion for loop aligment
   // will be update by a new method
-  auto& align_info = group->alignment_schedule_info;
+  auto align_info = group->alignment_schedule_info;
 
   auto& ops = group->ops;
   for (auto op1 : ops) {
@@ -623,10 +626,21 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       continue;
     }
 
+    if (it->second.size() > 1) {
+      for (size_t i = 0; i < it->second.size(); ++i) {
+        std::cerr << "align info" << it->second[i].DebugStr() << std::endl;
+      }
+      // try to merge them
+
+      it->second.front().factor_info = it->second.back().factor_info;
+      it->second.resize(1);
+    }
+
     PADDLE_ENFORCE_EQ(
         it->second.size(),
         1,
-        phi::errors::Unimplemented("only suppopt one transform yet"));
+        phi::errors::Unimplemented("%s, only suppopt one transform yet",
+                                   it->first->name()));
 
     if (it->second[0].type == ScheduleAlignType::kBroadcast) {
       // get broadcast op
@@ -660,9 +674,18 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       cinn::ir::BroadcastInfo info;
       if (in_dim.size() == 1u && in_dim[0] == 1u) {
         info.full_broadcast = true;
+        std::cerr << "full broadcast !!!!!!!!!!!!\n";
+
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
           info.output_shape.push_back(output_shape[i]);
+
+          ::pir::ShapeConstraintIRAnalysis& shape_analysis =
+              ::pir::ShapeAnalysisManager::Instance().Get(
+                  it->first->GetParentProgram());
+          const auto& x_shape =
+              shape_analysis.GetShapeOrDataForValue(it->first->result(0));
+          info.output_dim_expr.push_back(x_shape.shape()[i]);
         }
       } else if (in_dim.size() == broadcast_axes.size()) {
         if (in_dim.size() != output_shape.size()) {
@@ -684,6 +707,10 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           }
         } else {
           for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+            if (in_dim[i] < 0 || output_shape[broadcast_axes[i]] < 0) {
+              std::cerr << "skip negative broadcast\n";
+              continue;
+            }
             if (in_dim[i] != output_shape[broadcast_axes[i]]) {
               if (in_dim[i] != 1) {
                 throw std::runtime_error("Only support 1 - D broadcast ");
@@ -706,10 +733,10 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           info.output_shape.push_back(output_shape[broadcast_axes[i]]);
         }
       }
-      PADDLE_ENFORCE_NE(
-          info.broadcast_axes.size(),
-          0,
-          phi::errors::PreconditionNotMet("broadcast axes can not be zero"));
+      // PADDLE_ENFORCE_NE(
+      //     info.broadcast_axes.size(),
+      //     0,
+      //     phi::errors::PreconditionNotMet("broadcast axes can not be zero"));
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {
         if (!align_info.count(it->first->operand_source(i).defining_op())) {
@@ -1005,6 +1032,11 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     remain_ops.push_back(op);
   }
 
+  std::cerr << "func body size " << func_bodies.size() << std::endl;
+  for (size_t i = 0; i < func_bodies.size(); ++i) {
+    std::cerr << "body i " << i << "\n" << func_bodies[i] << std::endl;
+  }
+
   VLOG(4) << "group_func_arg_tensors.size(): "
           << group_func_arg_tensors->size();
 
@@ -1139,6 +1171,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
                                /* is_dy_shape = */ true,
                                group_tile_info);
   group_scheduler->Schedule();
+  std::cerr << "finish schedule \n";
   return ir_sch.GetModule().GetExprs().at(0);
 }
 
