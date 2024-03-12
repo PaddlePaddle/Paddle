@@ -212,13 +212,19 @@ std::set<Expr> GetStoreFromBody(const ir::Expr& body) {
   return store_tensor_exprs;
 }
 
+<<<<<<< HEAD
 bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
+  TODO
 }
-ir::Expr TransformComputeExpr(ir::Expr up_compute_expr, ir::Expr downstream) {}
+ir::Expr TransformComputeExpr(ir::Expr up_compute_expr, ir::Expr downstream) {
+  TODO
+}
 ir::Expr CreateReduceExpr(std::vector<ir::Var> out_iter,
                           std::vector<ir::Var> reduce_iter,
                           ir::Expr comput_expr,
-                          ir::Tensor replaced_tensor) {}
+                          ir::Tensor replaced_tensor) {
+  TODO
+}
 }  // namespace ComposeUtils
 
 struct TrivialOp {
@@ -269,7 +275,7 @@ struct TrivialOp {
     return std::vector(load_exprs.begin(), load_exprs.end());
   }
 
-  ir::Expr GetComputeExpr() const {}
+  ir::Expr GetComputeExpr() const { return GetStoreValue(); }
 
  private:
   ir::Expr func_body;
@@ -330,9 +336,9 @@ struct ReduceOp {
     return std::vector(load_exprs.begin(), load_exprs.end());
   }
 
-  std::vector<ir::Var> GetReduceIters() const {}
-  ir::Expr GetComputeExpr() const {}
-  ir::Expr GetInitExpr() const {}
+  std::vector<ir::Var> GetReduceIters() const { TODO(@baizhou) }
+  ir::Expr GetComputeExpr() const { GetStoreValue(); }
+  ir::Expr GetInitExpr() const { TODO(@baizhou) }
 
  private:
   ir::Expr func_body;
