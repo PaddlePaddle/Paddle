@@ -52,7 +52,7 @@ class TestSparseUnary(unittest.TestCase):
 
         # --- check sparse coo with dense --- #
         dense_x = origin_x * mask
-        sp_x = self.to_sparse(dense_x, format) 
+        sp_x = self.to_sparse(dense_x, format)
         sp_x.stop_gradient = False
         if len(args) == 0:
             sp_out = sparse_func(sp_x)
