@@ -212,7 +212,6 @@ std::set<Expr> GetStoreFromBody(const ir::Expr& body) {
   return store_tensor_exprs;
 }
 
-<<<<<<< HEAD
 bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
   TODO
 }
