@@ -181,6 +181,11 @@ void AnalysisConfig::EnableXpu(int l3_size,
                                bool transformer_encoder_adaptive_seqlen,
                                bool enable_multi_stream) {
 #if defined(PADDLE_WITH_XPU) || defined(LITE_SUBGRAPH_WITH_XPU)
+  LOG_FIRST_N(WARNING, 1)
+      << "Parameters in EnableXpu/enable_xpu is deprecated since version "
+         "2.6.1, and will be removed in version 3.0! Please use "
+         "EnableXpu/enable_xpu without parameters, and use "
+         "SetXpuConfig/set_xpu_config to set options.";
   use_xpu_ = true;
   xpu_config_.l3_size = l3_size;
   xpu_config_.conv_autotune_level = conv_autotune;
