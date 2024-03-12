@@ -14,8 +14,8 @@
 
 #include "gtest/gtest.h"
 
-#include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_substitute.h"
 
 namespace symbol::test {
 
@@ -34,8 +34,7 @@ TEST(DimExprUtil, Calculate) {
   // (S0 - S1) * 2 / S0
   DimExpr dim_expr = CreateExampleDimExpr();
   // (4 - 2) * 2 / 4 => 1
-  DimExpr substitute_expr =
-      cinn::common::SubstituteDimExpr(dim_expr, {{"S0", 4}, {"S1", 2}});
+  DimExpr substitute_expr = SubstituteDimExpr(dim_expr, {{"S0", 4}, {"S1", 2}});
   DimExpr ret = SimplifyDimExpr(substitute_expr);
   ASSERT_TRUE(ret.Has<std::int64_t>());
   ASSERT_EQ(ret.Get<std::int64_t>(), 1);
