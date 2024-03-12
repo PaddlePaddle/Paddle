@@ -46,10 +46,10 @@ class MatmulOutTransposeFusePattern : public paddle::drr::DrrPatternBase {
       auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor(y));
       if (x_shape.size() < 2 || y_shape.size() < 2)
         return false;
-      const auto &perm = match_ctx.Attr<std::vector<int64_t>>("perm")
-      const auto perm_size = perm.size()
+      const auto &perm = match_ctx.Attr<std::vector<int64_t>>("perm");
+      const auto perm_size = perm.size();
       for (size_t i = 0; i < perm_size - 2; ++i) {
-        if (perm[i] != i):
+        if (perm[i] != i)
           return false; 
       }
       if ((perm[perm_size - 1] != perm_size - 2) && (perm[perm_size - 2] != perm_size - 1))
@@ -89,10 +89,10 @@ class MatmulXTransposeFusePattern : public paddle::drr::DrrPatternBase {
       auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor(y));
       if (x_shape.size() < 2 || y_shape.size() < 2)
         return false;
-      const auto &perm = match_ctx.Attr<std::vector<int64_t>>("perm")
-      const auto perm_size = perm.size()
+      const auto &perm = match_ctx.Attr<std::vector<int64_t>>("perm");
+      const auto perm_size = perm.size();
       for (size_t i = 0; i < perm_size - 2; ++i) {
-        if (perm[i] != i):
+        if (perm[i] != i)
           return false; 
       }
       if ((perm[perm_size - 1] != perm_size - 2) && (perm[perm_size - 2] != perm_size - 1))
@@ -132,10 +132,10 @@ class MatmulYTransposeFusePattern : public paddle::drr::DrrPatternBase {
       auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor(y));
       if (x_shape.size() < 2 || y_shape.size() < 2)
         return false;
-      const auto &perm = match_ctx.Attr<std::vector<int64_t>>("perm")
-      const auto perm_size = perm.size()
+      const auto &perm = match_ctx.Attr<std::vector<int64_t>>("perm");
+      const auto perm_size = perm.size();
       for (size_t i = 0; i < perm_size - 2; ++i) {
-        if (perm[i] != i):
+        if (perm[i] != i)
           return false; 
       }
       if ((perm[perm_size - 1] != perm_size - 2) && (perm[perm_size - 2] != perm_size - 1))
