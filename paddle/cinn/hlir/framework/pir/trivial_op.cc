@@ -224,10 +224,27 @@ std::set<Expr> GetStoreFromBody(const ir::Expr& body) {
   return store_tensor_exprs;
 }
 
-bool CheckIterEq(std::vector<ir::Var> up_iter,
-                 std::vector<ir::Var> down_iter){TODO}
+std::vector<ir::Var> GetOutputIters(const std::vector<ir::Expr>& indices) {
+  std::vector<ir::Var> vars;
+  std::transform(indices.begin(),
+                  indices.end(),
+                  std::back_inserter(vars),
+                  [](const ir::Expr& expr) { return expr.as_var_ref(); });
+  return vars;
+}
 
-ir::Expr TransformComputeExpr(ir::Expr up_compute_expr, ir::Expr downstream) {
+
+bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter){
+  TODO
+} 
+    
+ir::Expr TransformComputeExpr(ir::Expr up_compute_expr, ir::Expr downstream){  
+} 
+                                        
+ir::Expr CreateReduceExpr(std::vector<ir::Var> out_iter,
+                     std::vector<ir::Var> reduce_iter,
+                     ir::Expr comput_expr,
+                     ir::Tensor replaced_tensor) {
   TODO
 }
 
@@ -243,21 +260,14 @@ struct TrivialOp {
     return GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
 
+  std::vector<ir::Var> GetOutputIters() const {
+    return ComposeUtils::GetOutputIters(GetSingleStoreExpr(func_body).As<ir::Store>()->indices);
+  }
+
   std::vector<ir::Var> GetAllIterVar() const { return GetOutputIters(); }
 
   ir::Expr* GetStoreValuePointer() const {
     return &GetSingleStoreExpr(func_body).As<ir::Store>()->value;
-  }
-
-  std::vector<ir::Var> GetOutputIters() const {
-    std::vector<ir::Var> vars;
-    const auto& indices =
-        GetSingleStoreExpr(func_body).As<ir::Store>()->indices;
-    std::transform(indices.begin(),
-                   indices.end(),
-                   std::back_inserter(vars),
-                   [](const ir::Expr& expr) { return expr.as_var_ref(); });
-    return vars;
   }
 
   ir::Expr GetFuncBody() const { return func_body; }
@@ -313,14 +323,7 @@ struct ReduceOp {
   }
 
   std::vector<ir::Var> GetOutputIters() const {
-    std::vector<ir::Var> vars;
-    const auto& indices =
-        GetSingleStoreExpr(func_body).As<ir::Store>()->indices;
-    std::transform(indices.begin(),
-                   indices.end(),
-                   std::back_inserter(vars),
-                   [](const ir::Expr& expr) { return expr.as_var_ref(); });
-    return vars;
+    return ComposeUtils::GetOutputIters(GetSingleStoreExpr(func_body).As<ir::Store>()->indices);
   }
 
   ir::Expr GetFuncBody() const { return func_body; }
@@ -525,8 +528,12 @@ ir::Expr ReplaceReduceComputeBody(const ir::Expr& body,
   TODO;
 }
 
-ReduceOp TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
+
+std::vector<ReduceOp> TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
   VLOG(4) << "RRTransform begin";
+
+  const auto& replaced_tensor = upstream.GetOutputTensor();
+  const auto& replaced_vars = upstream.GetOutputIters();
 
   const auto& down_out_iter = downstream.GetOutputIters();
   const auto& up_reduce_iter = upstream.GetReduceIters();
@@ -535,11 +542,18 @@ ReduceOp TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
   // we just support fuse reduce when reduce iter eq
   CHECK(ComposeUtils::CheckIterEq(up_reduce_iter, down_reduce_iter));
 
+  const std::vector<ir::Expr> load_upstream_expr = downstream.GetEachTensorLoadExpr(replaced_tensor);
+  std::vector<ReduceOp> results;
+
+  for ()
+
+
   // TODO modify up_expr, replace out iter of up_expr i => f(i)
   ir::Expr new_reduce_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
+
+  
   ir::Expr reduce_op_expr = ComposeUtils::TransformComputeExpr(
       new_reduce_body.GetComputeExpr(), down);
-  ir::Expr const auto& replaced_tensor = upstream.GetOutputTensor();
 
   ir::Expr result = ComposeUtils::CreateReduceExpr(downstream, reduce_op_expr);
 
@@ -558,11 +572,11 @@ FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
   }
 }
 
-FusibleOp ReduceTransform(FusionNode* upstream, FusionNode* downstream) {
+std::vector<FusibleOp> ReduceTransform(FusionNode* upstream, FusionNode* downstream) {
   if (downstream->IsTrivial()) {
     CHECK(CheckAllLoopRangeEq(std::get<ReduceOp>(upstream->fusible_op),
                               std::get<TrivialOp>(upstream->fusible_op)));
-    return upstream->fusible_op;
+    return {upstream->fusible_op};
   } else {
     return TransformReduceLoopRange(std::get<ReduceOp>(upstream->fusible_op),
                                     std::get<ReduceOp>(upstream->fusible_op));
@@ -702,7 +716,10 @@ struct FusionGraph {
       bfs_candidate.pop();
       for (const auto& pair_data : downstream->upstream) {
         FusionNode* upstream = pair_data.first;
-        upstream->fusible_op = ReduceTransform(upstream, downstream);
+        const auto& new_fusible_ops = ReduceTransform(upstream, downstream);
+
+        {TODO: update topo structure with multi upstream nodes}
+
         bfs_candidate.push(upstream);
       }
     }
