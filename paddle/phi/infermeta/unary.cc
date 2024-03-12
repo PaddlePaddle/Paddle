@@ -2573,9 +2573,6 @@ void NanmedianInferMeta(const MetaTensor& x,
   std::vector<int64_t> axis_list = axes.GetData();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
-  out->set_dtype(x.dtype());
-  median_index->set_dtype(DataType::INT64);
-  median_index->set_dims(common::make_ddim({x.numel() * 2}));
 
   std::vector<int32_t> out_dim;
   if (axis_list.empty()) {
@@ -2630,8 +2627,13 @@ void NanmedianInferMeta(const MetaTensor& x,
       }
     }
   }
+  out->set_dtype(x.dtype());
+  out->set_dims(make_ddim(out_dim));
 
-  out->set_dims(common::make_ddim(out_dim));
+  auto median_dim = out_dim;
+  median_dim.push_back(2);
+  median_index->set_dtype(DataType::INT64);
+  median_index->set_dims(make_ddim(median_dim));
 }
 
 void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
