@@ -52,10 +52,7 @@ template class TypeInfoTraits<phi::TensorBase, TensorArray>;
 template class TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
 
 template class TypeInfoTraits<phi::DeviceContext, CPUContext>;
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
 template class TypeInfoTraits<phi::DeviceContext, CustomContext>;
-#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)
