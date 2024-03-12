@@ -584,13 +584,14 @@ def get_placement_with_sharding(param, sharding_mesh_axis):
             # for example, [Shard(0), Shard(1)], assert here in case
             assert (
                 shard_axis == -1
-            ), "The parameter can't be shard twice even in different mesh now."
+            ), "The parameter can't be shard twice with sharding strategy even in different mesh now."
             shard_axis = placement.get_dim()
 
     placement_with_sharding = None
     for dim in range(param.ndim):
         if dim != shard_axis:
             placement_with_sharding = dist.Shard(dim)
+            break
 
     new_placements = param.placements
     if placement_with_sharding is not None:
@@ -626,9 +627,16 @@ class _ShardOptimizer:
         self._sharding_mesh_axis = None
         self._sharding_degree = None
 
-        if isinstance(self._shard_fn, (ShardingStage1, ShardingStage3)):
+        if isinstance(
+            self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
+        ):
             self._set_and_check_sharding_prop_from_param()
             self._shard_fn._set_sharding_mesh_axis(self._sharding_mesh_axis)
+
+        # Invoke register hook for sharding stage 2 strategy
+        if isinstance(self._shard_fn, ShardingStage2):
+            for param in self._inner_opt._parameter_list:
+                self._shard_fn._register_hook_for_param_grad(param)
 
         # Invoke shard_parameter in sharding stage 3 strategy
         if isinstance(self._shard_fn, ShardingStage3):
@@ -835,9 +843,21 @@ class _ShardOptimizer:
         return getattr(self._inner_opt, item)
 
 
-class ShardingStage1:
+class _ShardingStageBase:
+    def __init__(self, mesh):
+        self._mesh = mesh
+        self._sharding_mesh_axis = None
+
+    def _set_sharding_mesh_axis(self, sharding_mesh_axis):
+        self._sharding_mesh_axis = sharding_mesh_axis
+
+
+class ShardingStage1(_ShardingStageBase):
     """
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 1.
+
+    Args:
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
 
     Examples:
         .. code-block:: python
@@ -860,7 +880,7 @@ class ShardingStage1:
             >>> layer = MLP()
             >>> batch = paddle.rand(shape=[8, 8])
             >>> opt = paddle.optimizer.AdamW(parameters=layer.parameters())
-            >>> opt = dist.shard_optimizer(opt, dist.ShardingStage1())
+            >>> opt = dist.shard_optimizer(opt, dist.ShardingStage1(mesh))
             >>> for _ in range(5):
             >>>     loss = layer(batch)
             >>>     loss.backward()
@@ -871,8 +891,7 @@ class ShardingStage1:
     """
 
     def __init__(self, mesh):
-        self._mesh = mesh
-        self._sharding_mesh_axis = None
+        super().__init__(mesh)
 
     def __call__(self, key, param, accumulator):
         if param.is_dist():
@@ -893,11 +912,94 @@ class ShardingStage1:
             )
         return accumulator
 
-    def _set_sharding_mesh_axis(self, sharding_mesh_axis):
-        self._sharding_mesh_axis = sharding_mesh_axis
+
+class ShardingStage2(_ShardingStageBase):
+    """
+    A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 2.
+
+    Args:
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc1 = paddle.nn.Linear(8, 8)
+            ...         self.fc2 = paddle.nn.Linear(8, 8)
+            ...
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> layer = MLP()
+            >>> batch = paddle.rand(shape=[8, 8])
+            >>> opt = paddle.optimizer.AdamW(parameters=layer.parameters())
+            >>> opt = dist.shard_optimizer(opt, dist.ShardingStage2(mesh))
+            >>> for _ in range(5):
+            >>>     loss = layer(batch)
+            >>>     loss.backward()
+            >>>     opt.step()
+            >>>     opt.clear_grad()
+            >>> # This case need to be executed in multi-card environment
+            >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
+    """
+
+    def __init__(self, mesh):
+        super().__init__(mesh)
+
+    def __call__(self, key, param, accumulator):
+        if param.is_dist():
+            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
+            if 'beta' not in key:
+                placements = get_placement_with_sharding(
+                    param, self._sharding_mesh_axis
+                )
+            else:
+                placements = [
+                    dist.Replicate()
+                    for _ in range(len(param.process_mesh.shape))
+                ]
+            return shard_tensor(
+                accumulator,
+                mesh=param.process_mesh,
+                placements=placements,
+            )
+        return accumulator
+
+    @staticmethod
+    def _grad_hook(grad):
+        # do reshard only if the grad is dist tensor and in partial status
+        if grad.is_dist():
+            partial_mesh_axis = None
+            for mesh_axis, placement in enumerate(grad.placements):
+                if isinstance(placement, dist.Partial):
+                    partial_mesh_axis = mesh_axis
+            if partial_mesh_axis is not None:
+                new_placements = get_placement_with_sharding(
+                    grad, partial_mesh_axis
+                )
+                return reshard(grad, grad.process_mesh, new_placements)
+
+        return grad
+
+    def _register_hook_for_param_grad(self, param):
+        if param.is_dense():
+            placements = []
+            for _ in range(len(self._mesh.shape)):
+                placements.append(dist.Replicate())
+            param._to_dist_(placements, self._mesh)
+
+        param.register_hook(ShardingStage2._grad_hook)
 
 
-class ShardingStage3:
+class ShardingStage3(_ShardingStageBase):
     """
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 3.
 
@@ -936,11 +1038,7 @@ class ShardingStage3:
     """
 
     def __init__(self, mesh):
-        self._mesh = mesh
-        self._sharding_mesh_axis = None
-
-    def _set_sharding_mesh_axis(self, sharding_mesh_axis):
-        self._sharding_mesh_axis = sharding_mesh_axis
+        super().__init__(mesh)
 
     def _shard_parameter(self, param):
         if param.is_dense():
@@ -2000,6 +2098,10 @@ def to_static(
                 strategy.sharding.enable = True
                 strategy.sharding.stage = 1
                 strategy.sharding.degree = sharding_degree
+            elif isinstance(shard_fn, ShardingStage2):
+                strategy.sharding.enable = True
+                strategy.sharding.stage = 2
+                strategy.sharding.degree = sharding_degree
             elif isinstance(shard_fn, ShardingStage3):
                 strategy.sharding.enable = True
                 strategy.sharding.stage = 3
@@ -2008,7 +2110,7 @@ def to_static(
                     shard_fn._unshard_parameter(param)
             else:
                 raise NotImplementedError(
-                    "Only sharding stage 1 and 3 can to_static for now. User-defined shard_fn and sharding stage 2 will be supported later."
+                    "Only sharding stage 1, 2 and 3 can to_static for now. User-defined shard_fn will be supported later."
                 )
 
     dist_model = DistModel(layer, loader, loss, optimizer, strategy)
