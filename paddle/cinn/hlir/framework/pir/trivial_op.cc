@@ -414,6 +414,7 @@ struct FusionNode {
   }
 
   bool IsTrivial() { return std::holds_alternative<TrivialOp>(fusible_op); }
+
   ir::Expr GetExpr(){
     if (IsTrivial()){
       return std::get<TrivialOp>(fusible_op).GetFuncBody();
