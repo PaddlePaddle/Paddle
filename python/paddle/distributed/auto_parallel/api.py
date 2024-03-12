@@ -1405,6 +1405,52 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._fused_passes = FusePasses(config_dict)
 
+        # template interface
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.RECOMPUTE, None
+        )
+        self._recompute = auto_strategy.RecomputeConfig(config_dict)
+
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.MP_OPTIMIZATION, None
+        )
+        self._mp_optimization = auto_strategy.MPOptimizationConfig(config_dict)
+
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.SP_OPTIMIZATION, None
+        )
+        self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
+
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.DP_OPTIMIZATION, None
+        )
+        self._dp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
+
+    def _convert_to_unify_strategy(self, auto_stragety):
+        import copy
+
+        self._fused_passes.enable = auto_stragety.fused_passes.enable
+        if (
+            "fused_gemm_epilogue_pass"
+            in auto_stragety.fused_passes.fused_passes_list
+        ):
+            self._fused_passes.gemm_epilogue = True
+        if (
+            "fused_dropout_add_pass"
+            in auto_stragety.fused_passes.fused_passes_list
+        ):
+            self._fused_passes.dropout_add = True
+
+        self._amp = copy.deepcopy(auto_stragety.amp)
+        self._sharding = copy.deepcopy(auto_stragety.sharding)
+        self._gradient_merge = copy.deepcopy(auto_stragety.gradient_merge)
+        self._pipeline = copy.deepcopy(auto_stragety.pipeline)
+        # template interface
+        self._recompute = copy.deepcopy(auto_stragety.recompute)
+        self._mp_optimization = copy.deepcopy(auto_stragety.mp_optimization)
+        # self._sp_optimization = copy.deepcopy(auto_stragety.sp_optimization)
+        self._dp_optimization = copy.deepcopy(auto_stragety.dp_optimization)
+
     @property
     def sharding(self):
         """
@@ -1834,6 +1880,16 @@ class DistModel:
         inner_strategy.sharding = copy.deepcopy(strategy.sharding)
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
+        # template interface
+        inner_strategy.recompute = copy.deepcopy(strategy._recompute)
+        inner_strategy.mp_optimization = copy.deepcopy(
+            strategy._mp_optimization
+        )
+        # inner_strategy.sp_optimization = copy.deepcopy(strategy._sp_optimization)
+        inner_strategy.dp_optimization = copy.deepcopy(
+            strategy._dp_optimization
+        )
+
         return inner_strategy
 
     @switch_to_static_graph
