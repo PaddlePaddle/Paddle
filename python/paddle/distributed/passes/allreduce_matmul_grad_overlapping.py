@@ -15,7 +15,6 @@
 import collections
 import logging
 
-from ..auto_parallel.static.dist_attribute import OperatorDistAttr
 from ..auto_parallel.static.utils import (
     get_logger,
     naive_set_dist_op_attr_for_program_by_mesh,
@@ -124,14 +123,6 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 'op_namescope': self.op_namescope,
             },
         )
-        op_dist_attr = OperatorDistAttr(reshape_op.desc)
-        op_dist_attr.inputs_dist_attrs = {
-            x: x_dist_attr,
-        }
-        op_dist_attr.outputs_dist_attrs = {
-            out: self.dist_context.get_tensor_dist_attr_for_program(var_out),
-            x_shape: x_dist_attr,
-        }
         naive_set_dist_op_attr_for_program_by_mesh(
             reshape_op,
             process_mesh=x_dist_attr.process_mesh,
