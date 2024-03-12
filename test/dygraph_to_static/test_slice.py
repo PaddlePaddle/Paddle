@@ -159,6 +159,7 @@ class TestSliceInIf(TestSliceBase):
     @test_legacy_and_pt_and_pir
     @strict_mode_guard(False)
     def test_transformed_static_result(self):
+        breakpoint()
         self.init_dygraph_func()
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
@@ -328,5 +329,4 @@ class TestSliceZeroShapeTensor(Dy2StTestBase):
 
 
 if __name__ == '__main__':
-    breakpoint()
     unittest.main()
