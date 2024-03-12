@@ -33,54 +33,12 @@ wint8_dir=generated/wint8/
 mkdir -p ${wint8_dir}
 
 
-s="*fp16:16, *i8:16, *fp16:16, *fp16:16, *fp16:16, i32,i32:16,i32:16,  i32:16,i32:1,  i32:1,i32:16, i32:16,i32:1,"
-
-s0="${s}"+"16, 32, 64, 1, 1"
-g0="((M+15)/16) * ((N+31)/32), 1, 1"
-
-s1="${s}"+"16, 64, 256, 1, 1"
-g1="((M+15)/16) * ((N+63)/64), 1, 1"
-
-
 # -n : the kernel name decorated by @triton.jit in your py file
 # -o : the output file name 
 # --out-name : the name of the kernel in c++ for your invoke
-python3.8  ${compile_file}     \
-/zhoukangkang/2023-06-06minigpt/PaddleNLP/paddlenlp/experimental/transformers/fused_transformer_layers.py    \
--n matmul_kernel   \
--o ${wint8_dir}/wint8     \
---out-name wint8_kernel     \
--w 4   -ns 3 -s   "${s0}" -g   "${g0}" 
 
 
-python3.8  ${compile_file}     \
-/zhoukangkang/2023-06-06minigpt/PaddleNLP/paddlenlp/experimental/transformers/fused_transformer_layers.py    \
--n matmul_kernel   \
--o ${wint8_dir}/wint8     \
---out-name wint8_kernel     \
--w 4   -ns 3 -s   "${s1}" -g   "${g1}" 
 
-
-s2="${s}"+"16, 64, 128, 1, 1"
-g2="((M+15)/16) * ((N+63)/64), 1, 1"
-
-python3.8  ${compile_file}     \
-/zhoukangkang/2023-06-06minigpt/PaddleNLP/paddlenlp/experimental/transformers/fused_transformer_layers.py    \
--n matmul_kernel   \
--o ${wint8_dir}/wint8     \
---out-name wint8_kernel     \
--w 4   -ns 3 -s   "${s2}" -g   "${g2}" 
-
-
-s3="${s}"+"16, 64, 64, 1, 1"
-g3="((M+15)/16) * ((N+63)/64), 1, 1"
-
-python3.8  ${compile_file}     \
-/zhoukangkang/2023-06-06minigpt/PaddleNLP/paddlenlp/experimental/transformers/fused_transformer_layers.py    \
--n matmul_kernel   \
--o ${wint8_dir}/wint8     \
---out-name wint8_kernel     \
--w 4   -ns 4 -s   "${s3}" -g   "${g3}" 
 
 
 
