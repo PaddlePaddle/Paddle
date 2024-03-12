@@ -335,6 +335,34 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetDistAttr(dist_attr);
       meta.SetDistTensorGlobalDims(dist_tensor->dims());
       SetIsRunAutoParallel(true);
+    } else if (phi::SparseCsrTensor::classof(fwd_in.impl().get())) {
+      // TODO Implement semantically more reasonable code.
+      phi::SparseCsrTensor* sparse_tensor =
+          static_cast<phi::SparseCsrTensor*>(fwd_in.impl().get());
+      const phi::DenseTensor dense_tensor =
+          static_cast<const phi::DenseTensor>(sparse_tensor->values());
+      PADDLE_ENFORCE_NE(
+          dense_tensor.dtype(),
+          phi::DataType::UNDEFINED,
+          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                          "with phi::DataType::UNDEFINED,"
+                                          "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in.place());
+    } else if (phi::SparseCooTensor::classof(fwd_in.impl().get())) {
+      // TODO Implement semantically more reasonable code.
+      phi::SparseCooTensor* sparse_tensor =
+          static_cast<phi::SparseCooTensor*>(fwd_in.impl().get());
+      const phi::DenseTensor dense_tensor =
+          static_cast<const phi::DenseTensor>(sparse_tensor->values());
+      PADDLE_ENFORCE_NE(
+          dense_tensor.dtype(),
+          phi::DataType::UNDEFINED,
+          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                          "with phi::DataType::UNDEFINED,"
+                                          "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in.place());
     } else {
       VLOG(7)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
@@ -501,6 +529,32 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
         meta.SetTensorMeta(dense_tensor.meta());
         meta.SetPlace(fwd_in_tensor.place());
       }
+    } else if (phi::SparseCsrTensor::classof(fwd_in_tensor.impl().get())) {
+      phi::SparseCsrTensor* sparse_tensor =
+          static_cast<phi::SparseCsrTensor*>(fwd_in_tensor.impl().get());
+      const phi::DenseTensor dense_tensor =
+          static_cast<const phi::DenseTensor>(sparse_tensor->values());
+      PADDLE_ENFORCE_NE(
+          dense_tensor.dtype(),
+          phi::DataType::UNDEFINED,
+          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                          "with phi::DataType::UNDEFINED,"
+                                          "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in_tensor.place());
+    } else if (phi::SparseCooTensor::classof(fwd_in_tensor.impl().get())) {
+      phi::SparseCooTensor* sparse_tensor =
+          static_cast<phi::SparseCooTensor*>(fwd_in_tensor.impl().get());
+      const phi::DenseTensor dense_tensor =
+          static_cast<const phi::DenseTensor>(sparse_tensor->values());
+      PADDLE_ENFORCE_NE(
+          dense_tensor.dtype(),
+          phi::DataType::UNDEFINED,
+          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                          "with phi::DataType::UNDEFINED,"
+                                          "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in_tensor.place());
     } else {
       VLOG(7)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
@@ -659,7 +713,9 @@ GradNodeBase::ApplyGradientHooks(
 
   return outs;
 }
-
+//添加注释 这里是出问题的代码
+//是不是这里的代码可以改掉??????????
+// egr::GradNodeBase::HandleComplexGradToRealGrad
 void GradNodeBase::HandleComplexGradToRealGrad(
     paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>*
         out_grads) {
@@ -668,7 +724,7 @@ void GradNodeBase::HandleComplexGradToRealGrad(
     for (size_t rank_id = 0; rank_id < slot_out_grads.size(); rank_id++) {
       if (bwd_out_meta_[slot_id].size() == 0) continue;
       const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id][rank_id];
-
+      VLOG(6) << "out_grad" << slot_out_grads[rank_id].dtype();
       PADDLE_ENFORCE(
           slot_meta.HasTensorMeta() > 0,
           paddle::platform::errors::Fatal(
