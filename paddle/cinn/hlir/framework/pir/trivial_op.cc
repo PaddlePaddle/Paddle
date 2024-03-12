@@ -32,6 +32,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
+#include <variant>
 // #include "paddle/cinn/frontend/group_pattern_util.h"
 
 namespace cinn {
@@ -203,18 +204,14 @@ std::set<Expr> GetStoreFromBody(const ir::Expr& body) {
   return store_tensor_exprs;
 }
 
-bool CheckReduceIterEq(std::vector<ir::Var> up_iter,
-                       std::vector<ir::Var> down_iter) {
-  TODO(@baizhou)
-}
-ir::Expr TransformComputeExpr(ir::Expr up_compute_expr, ir::Expr downstream) {
-  TODO(@zhanfei)
-}
-ir::Expr CreateReduceExpr(std::vector<ir::Var> out_iter,
-                          std::vector<ir::Var> reduce_iter,
-                          ir::Expr comput_expr,
-                          ir::Tensor replaced_tensor) {
-  TODO(@xiongkun)
+bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter){
+    TODO} ir::Expr TransformComputeExpr(ir::Expr up_compute_expr,
+                                        ir::Expr downstream){TODO} ir::Expr
+    CreateReduceExpr(std::vector<ir::Var> out_iter,
+                     std::vector<ir::Var> reduce_iter,
+                     ir::Expr comput_expr,
+                     ir::Tensor replaced_tensor) {
+  TODO
 }
 }  // namespace ComposeUtils
 
@@ -227,6 +224,8 @@ struct TrivialOp {
   ir::Expr GetStoreValue() const {
     return GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
+
+  std::vector<ir::Var> GetAllIterVar() const { return GetOutputIters(); }
 
   ir::Expr* GetStoreValuePointer() const {
     return &GetSingleStoreExpr(func_body).As<ir::Store>()->value;
@@ -289,6 +288,8 @@ struct ReduceOp {
     return GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
 
+  std::vector<ir::Var> GetAllIterVar() const {TODO}
+
   ir::Expr* GetStoreValuePointer() const {
     return &GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
@@ -349,111 +350,16 @@ struct ReduceOp {
   }
 };
 
-ir::Expr TTFusion(ir::Expr upper, ir::Expr down) {
-  VLOG(4) << "TTFusion begin.";
-  TrivialOp upstream(upper);
-  TrivialOp downstream(down);
-  const auto& replaced_tensor = upstream.GetOutputTensor();
-  VLOG(4) << "connected tensor is:" << replaced_tensor;
-  VLOG(4) << "store value is :" << downstream.GetStoreValue();
-  VLOG(4) << "upper :\n" << upper;
-  VLOG(4) << "down :\n" << down;
-
-  TrivialOp fused(ir::ir_utils::IRCopy(downstream.GetFuncBody()));
-  SequenceMutator(
-      fused.GetEachTensorLoadExpr(replaced_tensor),
-      fused.GetStoreValuePointer(),
-      [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
-        ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
-            upstream, downstream_load_expr, downstream_body);
-      });
-
-  VLOG(4) << "After mutate, store_value is: " << fused.GetFuncBody();
-  VLOG(4) << "TTFusion end:\n" << fused.GetFuncBody();
-  return fused.GetFuncBody();
-}
-
-ir::Expr TRFusion(ir::Expr upper, ir::Expr down) {
-  VLOG(4) << "TRFusion begin.";
-  TrivialOp upstream(upper);
-  ReduceOp downstream(down);
-  const auto& replaced_tensor = upstream.GetOutputTensor();
-  VLOG(4) << "connected tensor is:" << replaced_tensor;
-  VLOG(4) << "store value is :" << downstream.GetStoreValue();
-
-  VLOG(4) << "upper :\n" << upper;
-  VLOG(4) << "down :\n" << down;
-
-  ReduceOp fused(ir::ir_utils::IRCopy(downstream.GetFuncBody()));
-  SequenceMutator(
-      fused.GetEachTensorLoadExpr(replaced_tensor),
-      fused.GetStoreValuePointer(),
-      [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
-        ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
-            upstream, downstream_load_expr, downstream_body);
-      });
-
-  VLOG(4) << "TRFusion end:\n" << fused.GetFuncBody();
-  return fused.GetFuncBody();
-}
-
-ir::Expr TransformT2R(ir::Expr reduce_upper, ir::Expr trivial_down) {
-  ReduceOp upstream(reduce_upper);
-  TrivialOp downstream(trivial_down);
-  const auto& replaced_tensor = upstream.GetOutputTensor();
-  ir::Expr result = ComposeUtils::CreateReduceExpr(downstream.GetOutputIters(),
-                                                   upstream.GetReduceIters(),
-                                                   downstream.GetComputeExpr(),
-                                                   replaced_tensor);
-  VLOG(4) << "T2Rransform end" << result;
-  return result;
-}
-
-ir::Expr ReplaceReduceComputeBody(const ir::Expr& body,
-                                  const ir::Expr& new_body) {
-  TODO;
-}
-
-ir::Expr TransformReduceLoopRange(const ir::Expr upper, ir::Expr down) {
-  VLOG(4) << "RRTransform begin";
-  ReduceOp upstream(upper);
-  ReduceOp downstream(down);
-
-  const auto& down_out_iter = downstream.GetOutputIters();
-  const auto& up_reduce_iter = upstream.GetReduceIters();
-  const auto& down_reduce_iter = downstream.GetReduceIters();
-
-  // we only support fuse reduce when reduce iter eq.
-  CHECK(ComposeUtils::CheckReduceIterEq(up_reduce_iter, down_reduce_iter));
-
-  // TODO modify up_expr, replace out iter of up_expr i => f(i)
-  ir::Expr new_reduce_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
-  ir::Expr reduce_op_expr = ComposeUtils::TransformComputeExpr(
-      new_reduce_body.GetComputeExpr(), down);
-  ir::Expr
-
-      const auto& replaced_tensor = upstream.GetOutputTensor();
-
-  ir::Expr result = ComposeUtils::CreateReduceExpr(
-      down_out_iter, up_reduce_iter, new_expr, origin_tensor, replaced_tensor);
-
-  VLOG(4) << "RRTransform end" << result;
-  return result;
-}
+using FusibleOp = std::variant<ReduceOp, TrivialOp>;
 
 struct FusionNode {
-  // Function bodies losses the kind information which needed in trivialop
-  // fusion.
-  ir::Expr op_compute_body;
-  OpPatternKind op_pattern;
-
+  FusibleOp fusible_op;
   ::pir::Operation* expr_related_op;
 
   std::unordered_map<FusionNode*, ::pir::Value> upstream;
   std::unordered_map<FusionNode*, ::pir::Value> downstream;
 
-  explicit FusionNode(ir::Expr op_compute_body, OpPatternKind op_pattern)
-      : op_compute_body(op_compute_body), op_pattern(op_pattern) {}
+  explicit FusionNode(FusibleOp fusible_op) : fusible_op(fusible_op) {}
 
   void replace_topo_structure_of_fused_nodes(FusionNode* fused_up_node,
                                              FusionNode* fused_down_node) {
@@ -499,7 +405,121 @@ struct FusionNode {
       downstream_node->upstream[this] = related_value;
     }
   }
+
+  bool IsTrivial() { return std::holds_alternative<TrivialOp>(fusible_op); }
+
+  ir::Expr GetExpr() {
+    if (IsTrivial()) {
+      return std::get<TrivialOp>(fusible_op).GetFuncBody();
+    } else {
+      return std::get<ReduceOp>(fusible_op).GetFuncBody();
+    }
+  }
 };
+
+TrivialOp TTFusion(TrivialOp upstream, TrivialOp downstream) {
+  VLOG(4) << "TTFusion begin.";
+
+  const auto& replaced_tensor = upstream.GetOutputTensor();
+  VLOG(4) << "connected tensor is:" << replaced_tensor;
+  VLOG(4) << "store value is :" << downstream.GetStoreValue();
+
+  TrivialOp fused(ir::ir_utils::IRCopy(downstream.GetFuncBody()));
+  SequenceMutator(
+      fused.GetEachTensorLoadExpr(replaced_tensor),
+      fused.GetStoreValuePointer(),
+      [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
+        ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
+            upstream, downstream_load_expr, downstream_body);
+      });
+
+  VLOG(4) << "After mutate, store_value is: " << fused.GetFuncBody();
+  VLOG(4) << "TTFusion end:\n" << fused.GetFuncBody();
+  return TrivialOp(fused.GetFuncBody());
+}
+
+ReduceOp TRFusion(TrivialOp upstream, ReduceOp downstream) {
+  VLOG(4) << "TRFusion begin.";
+
+  const auto& replaced_tensor = upstream.GetOutputTensor();
+  VLOG(4) << "connected tensor is:" << replaced_tensor;
+  VLOG(4) << "store value is :" << downstream.GetStoreValue();
+
+  ReduceOp fused(ir::ir_utils::IRCopy(downstream.GetFuncBody()));
+  SequenceMutator(
+      fused.GetEachTensorLoadExpr(replaced_tensor),
+      fused.GetStoreValuePointer(),
+      [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
+        ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
+            upstream, downstream_load_expr, downstream_body);
+      });
+
+  VLOG(4) << "TRFusion end:\n" << fused.GetFuncBody();
+  return ReduceOp(fused.GetFuncBody());
+}
+
+TrivialOp TransformT2R(ReduceOp reduce_upper, TrivialOp trivial_down) {}
+
+bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down) {}
+
+ir::Expr ReplaceReduceComputeBody(const ir::Expr& body,
+                                  const ir::Expr& new_body) {
+  TODO;
+}
+ReduceOp TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
+  VLOG(4) << "RRTransform begin";
+
+  const auto& down_out_iter = downstream.GetOutputIters();
+  const auto& up_reduce_iter = upstream.GetReduceIters();
+  const auto& down_reduce_iter = downstream.GetReduceIters();
+
+  // we just support fuse reduce when reduce iter eq
+  CHECK(ComposeUtils::CheckIterEq(up_reduce_iter, down_reduce_iter));
+
+  // TODO modify up_expr, replace out iter of up_expr i => f(i)
+  ir::Expr new_reduce_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
+  ir::Expr reduce_op_expr = ComposeUtils::TransformComputeExpr(
+      new_reduce_body.GetComputeExpr(), down);
+  ir::Expr
+
+      const auto& replaced_tensor = upstream.GetOutputTensor();
+
+  ir::Expr result = ComposeUtils::CreateReduceExpr(
+      down_out_iter, up_reduce_iter, new_expr, origin_tensor, replaced_tensor);
+
+  VLOG(4) << "RRTransform end" << result;
+  return ReduceOp(result);
+}
+
+FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
+  CHECK(upstream->IsTrivial());
+  if (downstream->IsTrivial()) {
+    return TTFusion(std::get<TrivialOp>(upstream->fusible_op),
+                    std::get<TrivialOp>(upstream->fusible_op));
+  } else {
+    return TRFusion(std::get<TrivialOp>(upstream->fusible_op),
+                    std::get<ReduceOp>(upstream->fusible_op));
+  }
+}
+
+FusibleOp ReduceTransform(FusionNode* upstream, FusionNode* downstream) {
+  if (downstream->IsTrivial()) {
+    CHECK(CheckAllLoopRangeEq(std::get<ReduceOp>(upstream->fusible_op),
+                              std::get<TrivialOp>(upstream->fusible_op)));
+    return upstream->fusible_op;
+  } else {
+    return TransformReduceLoopRange(std::get<ReduceOp>(upstream->fusible_op),
+                                    std::get<ReduceOp>(upstream->fusible_op));
+  }
+}
+
+FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern) {
+  if (IsTrivialKind(op_pattern)) {
+    return TrivialOp(compute_body);
+  } else {
+    return ReduceOp(compute_body);
+  }
+}
 
 struct FusionGraph {
   explicit FusionGraph(const std::vector<::pir::Operation*>& ops,
@@ -513,7 +533,8 @@ struct FusionGraph {
     std::unordered_map<::pir::Operation*, FusionNode*> op_to_node_map;
 
     for (int i = 0; i < ops.size(); ++i) {
-      FusionNode* node = new FusionNode(op_compute_bodies[i], op_patterns[i]);
+      FusionNode* node =
+          new FusionNode(CreateFusibleOp(op_compute_bodies[i], op_patterns[i]));
       op_to_node_map[ops[i]] = node;
       all_fusion_nodes_.emplace(node);
       node->expr_related_op = ops[i];
@@ -568,44 +589,34 @@ struct FusionGraph {
   }
 
   std::vector<ir::Expr> DoFusion() {
-    TrivialFusion();
+    DoTrivialFusion();
     TransformExitTrivialOpToReduce();
     ReduceLoopTranform();
     return GetExprResults();
   }
 
  private:
-  FusionNode* FindTrivialFuseableNode() {
+  FusionNode* FindTrivialFusibleNode() {
     for (FusionNode* node : all_fusion_nodes_) {
-      if (IsTrivialKind(node->op_pattern) && node->downstream.size() > 0) {
+      if (node->IsTrivial() && node->downstream.size() > 0) {
         return node;
       }
     }
     return nullptr;
   }
 
-  void TrivialFusion() {
+  void DoTrivialFusion() {
     FusionNode* upstream;
     // use funcion to get upstream and downstream is save here
     // cause we might delete Nodes in this process
-    while ((upstream = FindTrivialFuseableNode()) != nullptr) {
+    while ((upstream = FindTrivialFusibleNode()) != nullptr) {
       std::unordered_map<FusionNode*, ::pir::Value> fusion_candidate =
           upstream->downstream;
       upstream->downstream.clear();
       for (const auto& pair_data : fusion_candidate) {
         FusionNode* downstream = pair_data.first;
-
-        FusionNode* new_node;
-        if (IsTrivialKind(downstream->op_pattern)) {
-          new_node = new FusionNode(
-              TTFusion(upstream->op_compute_body, downstream->op_compute_body),
-              downstream->op_pattern);
-        } else {
-          new_node = new FusionNode(
-              TRFusion(upstream->op_compute_body, downstream->op_compute_body),
-              downstream->op_pattern);
-        }
-
+        FusionNode* new_node =
+            new FusionNode(TrivialFusion(upstream, downstream));
         new_node->replace_topo_structure_of_fused_nodes(upstream, downstream);
         AppendNode(new_node);
         RemoveNode(downstream);
@@ -617,11 +628,11 @@ struct FusionGraph {
   void TransformExitTrivialOpToReduce() {
     FusionNode* upstream;
     for (FusionNode* exit_node : exit_nodes_) {
-      if (IsTrivialKind(exit_node->op_pattern) &&
+      if (exit_node->IsTrivial() &&
           (upstream = FindReduceUpstream(exit_node)) != nullptr) {
-        exit_node->op_compute_body = TransformT2R(exit_node->op_compute_body,
-                                                  upstream->op_computer_body);
-        exit_node->op_pattern = OpPatternKind::kReduction;
+        exit_node->fusible_op =
+            TransformT2R(std::get<ReduceOp>(upstream->fusible_op),
+                         std::get<TrivialOp>(exit_node->fusible_op));
       }
     }
   }
@@ -633,11 +644,9 @@ struct FusionGraph {
     while (!bfs_candidate.empty()) {
       FusionNode* downstream = bfs_candidate.front();
       bfs_candidate.pop();
-
       for (const auto& pair_data : downstream->upstream) {
         FusionNode* upstream = pair_data.first;
-        upstream->op_compute_body = TransformReduceLoopRange(
-            upstream->op_compute_body, downstream->op_compute_body);
+        upstream->fusible_op = ReduceTransform(upstream, downstream);
         bfs_candidate.push(upstream);
       }
     }
@@ -646,7 +655,7 @@ struct FusionGraph {
   std::vector<ir::Expr> GetExprResults() {
     std::vector<ir::Expr> output_exprs;
     for (const auto& node : all_fusion_nodes_) {
-      output_exprs.emplace_back(node->op_compute_body);
+      output_exprs.emplace_back(node->GetExpr());
     }
     return output_exprs;
   }
@@ -678,7 +687,7 @@ struct FusionGraph {
   FusionNode* FindReduceUpstream(FusionNode* node) {
     for (const auto& pair_data : node->upstream) {
       FusionNode* upstream = pair_data.first;
-      if (!IsTrivialKind(upstream->op_pattern)) {
+      if (!upstream->IsTrivial()) {
         return upstream;
       }
     }
