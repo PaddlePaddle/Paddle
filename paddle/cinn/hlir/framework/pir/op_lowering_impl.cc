@@ -622,6 +622,9 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
     if (it == align_info.end()) {
       continue;
     }
+    if (op1->name() == "cinn_op.generate_shape") {
+      continue;
+    }
 
     PADDLE_ENFORCE_EQ(
         it->second.size(),
