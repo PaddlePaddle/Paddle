@@ -1238,6 +1238,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_enabled() const;
 
+  void EnableCustomPasses(const std::vector<std::string>& passes);
+
  protected:
   // Update the config.
   void Update();
@@ -1465,6 +1467,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool skip_load_params_{false};
 
   bool use_pir_{false};
+
+  std::vector<std::string> custom_passes_;
 };
 
 }  // namespace paddle

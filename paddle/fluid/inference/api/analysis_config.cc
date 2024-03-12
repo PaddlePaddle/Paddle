@@ -586,6 +586,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(use_new_executor_);
   CP_MEMBER(use_pir_);
+  CP_MEMBER(custom_passes_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -1651,5 +1652,10 @@ void AnalysisConfig::EnableCINN() {
 }
 
 bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
+
+void AnalysisConfig::EnableCustomPasses(
+    const std::vector<std::string> &passes) {
+  custom_passes_ = passes;
+}
 
 }  // namespace paddle
