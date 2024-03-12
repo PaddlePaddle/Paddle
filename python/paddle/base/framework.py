@@ -1350,13 +1350,15 @@ def _create_tensor(
     **kwargs,
 ):
     if dtype is not None:
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
         if isinstance(dtype, core.DataType):
             dtype = paddle_type_to_proto_type[dtype]
-        elif not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+    else:
+        dtype = core.VarDesc.VarType.FP32
 
     eager_tensor = core.eager.Tensor(
-        dtype if dtype else core.VarDesc.VarType.FP32,
+        dtype,
         list(shape) if shape else [],
         name,
         type if type else core.VarDesc.VarType.LOD_TENSOR,
