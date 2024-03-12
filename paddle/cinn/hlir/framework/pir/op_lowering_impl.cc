@@ -304,7 +304,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
 
   // =========== OpFusion ============
 
-  func_bodies = TrivialOpFusion(ops, func_bodies);
+  func_bodies = OperationFusion(ops, func_bodies);
 
   // =========== CodeGen And Optimizer ================
 
@@ -554,8 +554,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
                &tensor_map,
                &tmp_tensor_info);
 
-  func_bodies = TrivialOpFusion(ops, func_bodies);
-
+  // func_bodies = TrivialOpFusion(ops, func_bodies);
   std::unordered_set<::pir::Value> inner_genevalue;
   std::unordered_set<::pir::Operation*> ops_set(ops.begin(), ops.end());
   for (auto* op : ops) {
