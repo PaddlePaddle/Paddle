@@ -234,7 +234,7 @@ std::vector<ir::Var> GetOutputIters(const std::vector<ir::Expr>& indices) {
 }
 
 bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
-  TODO
+  ;
 }
 
 }  // namespace ComposeUtils
@@ -254,7 +254,7 @@ struct TrivialOp {
         GetSingleStoreExpr(func_body).As<ir::Store>()->indices);
   }
 
-  std::vector<ir::Var> GetAllIterVar() const { return GetOutputIters(); }
+  // std::vector<ir::Var> GetAllIterVar() const { return GetOutputIters(); }
 
   ir::Expr* GetStoreValuePointer() const {
     return &GetSingleStoreExpr(func_body).As<ir::Store>()->value;
@@ -306,7 +306,7 @@ struct ReduceOp {
     return GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
 
-  std::vector<ir::Var> GetAllIterVar() const {TODO}
+  // std::vector<ir::Var> GetAllIterVar() const {TODO}
 
   ir::Expr* GetStoreValuePointer() const {
     return &GetSingleStoreExpr(func_body).As<ir::Store>()->value;
@@ -340,9 +340,21 @@ struct ReduceOp {
     return std::vector(load_exprs.begin(), load_exprs.end());
   }
 
-  std::vector<ir::Var> GetReduceIters() const { TODO(@baizhou) }
-  ir::Expr GetComputeExpr() const { GetStoreValue(); }
-  ir::Expr GetInitExpr() const { TODO(@baizhou) }
+  // std::vector<ir::Var> GetReduceIters() const { TODO(@baizhou) }
+  ir::Expr GetComputeExpr() const {
+    std::set<Expr> init_expr = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(
+        GetFuncBody(), [](const Expr* expr) { return expr->As<ir::Reduce>(); });
+    PADDLE_ENFORCE(init_expr.size() == 1,
+                   "ReduceOp must have only one ir::Reduce Block.");
+    return (init_expr.begin()->As<ir::Reduce>()->body);
+  }
+  ir::Expr GetInitExpr() const {
+    std::set<Expr> init_expr = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(
+        GetFuncBody(), [](const Expr* expr) { return expr->As<ir::Reduce>(); });
+    PADDLE_ENFORCE(init_expr.size() == 1,
+                   "ReduceOp must have only one ir::Reduce Block.");
+    return (init_expr.begin()->As<ir::Reduce>()->init);
+  }
 
  private:
   ir::Expr func_body;
@@ -518,8 +530,8 @@ std::vector<ReduceOp> TransformReduceLoopRange(ReduceOp upstream,
                                                ReduceOp downstream) {
   VLOG(4) << "RRTransform begin";
 
-  CHECK(ComposeUtils::CheckIterEq(upstream.GetReduceIters(),
-                                  downstream.GetReduceIters()));
+  // CHECK(ComposeUtils::CheckIterEq(upstream.GetReduceIters(),
+  // downstream.GetReduceIters()));
   const auto& load_upstream_expr =
       downstream.GetEachTensorLoadExpr(upstream.GetOutputTensor());
   std::vector<ReduceOp> results;
@@ -572,7 +584,7 @@ std::vector<ReduceOp> ReduceTransformRecursive(ReduceOp reduce_op,
 
 std::vector<FusibleOp> ReduceTransform(FusionNode* downstream) {
   if (downstream->IsTrivial()) {
-    TODO
+    PADDLE_THROW("TODO: implement the R + T fusion.");
   } else {
     auto reduces = ReduceTransformRecursive(
         std::get<ReduceOp>(downstream->fusible_op), downstream);
