@@ -121,28 +121,20 @@ void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
 
 namespace ComposeUtils {
 
-struct MappingLoadStoreExprToDestExprMutator : public ir::IRMutator<> {
-  explicit MappingLoadStoreExprToDestExprMutator(const ir::Expr& source,
-                                                 const ir::Expr& dest)
+struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
+  explicit MappingTargetExprToDestExprMutator(const ir::Expr& source,
+                                              const ir::Expr& dest)
       : source_(source), dest_(dest) {}
 
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
  private:
-  void Visit(const ir::Load* load, Expr* op) override {
-    if (load == source_.ptr()) {
+  void Visit(const ir::Expr* current, Expr* op) override {
+    if (current == &source_) {
       VLOG(4) << "substitude find!";
       *op = dest_;
     } else {
-      IRMutator::Visit(load, op);
-    }
-  }
-  void Visit(const ir::Store* store, Expr* op) override {
-    if (store == source_.ptr()) {
-      VLOG(4) << "substitude find!";
-      *op = dest_;
-    } else {
-      IRMutator::Visit(store, op);
+      IRMutator::Visit(current, op);
     }
   }
 
@@ -212,16 +204,13 @@ std::set<Expr> GetStoreFromBody(const ir::Expr& body) {
   return store_tensor_exprs;
 }
 
-bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
-  TODO
-}
-ir::Expr TransformComputeExpr(ir::Expr up_compute_expr, ir::Expr downstream) {
-  TODO
-}
-ir::Expr CreateReduceExpr(std::vector<ir::Var> out_iter,
-                          std::vector<ir::Var> reduce_iter,
-                          ir::Expr comput_expr,
-                          ir::Tensor replaced_tensor) {
+bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter){
+    TODO} ir::Expr TransformComputeExpr(ir::Expr up_compute_expr,
+                                        ir::Expr downstream){TODO} ir::Expr
+    CreateReduceExpr(std::vector<ir::Var> out_iter,
+                     std::vector<ir::Var> reduce_iter,
+                     ir::Expr comput_expr,
+                     ir::Tensor replaced_tensor) {
   TODO
 }
 }  // namespace ComposeUtils
@@ -235,6 +224,8 @@ struct TrivialOp {
   ir::Expr GetStoreValue() const {
     return GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
+
+  std::vector<ir::Var> GetAllIterVar() const { return GetOutputIters(); }
 
   ir::Expr* GetStoreValuePointer() const {
     return &GetSingleStoreExpr(func_body).As<ir::Store>()->value;
@@ -296,6 +287,8 @@ struct ReduceOp {
   ir::Expr GetStoreValue() const {
     return GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
+
+  std::vector<ir::Var> GetAllIterVar() const {TODO}
 
   ir::Expr* GetStoreValuePointer() const {
     return &GetSingleStoreExpr(func_body).As<ir::Store>()->value;
@@ -415,10 +408,10 @@ struct FusionNode {
 
   bool IsTrivial() { return std::holds_alternative<TrivialOp>(fusible_op); }
 
-  ir::Expr GetExpr(){
-    if (IsTrivial()){
+  ir::Expr GetExpr() {
+    if (IsTrivial()) {
       return std::get<TrivialOp>(fusible_op).GetFuncBody();
-    }else{
+    } else {
       return std::get<ReduceOp>(fusible_op).GetFuncBody();
     }
   }
@@ -469,6 +462,10 @@ TrivialOp TransformT2R(ReduceOp reduce_upper, TrivialOp trivial_down) {}
 
 bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down) {}
 
+ir::Expr ReplaceReduceComputeBody(const ir::Expr& body,
+                                  const ir::Expr& new_body) {
+  TODO;
+}
 ReduceOp TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
   VLOG(4) << "RRTransform begin";
 
@@ -480,13 +477,16 @@ ReduceOp TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
   CHECK(ComposeUtils::CheckIterEq(up_reduce_iter, down_reduce_iter));
 
   // TODO modify up_expr, replace out iter of up_expr i => f(i)
-  ir::Expr new_expr =
-      ComposeUtils::TransformComputeExpr(upstream.GetComputeExpr(), down);
+  ir::Expr new_reduce_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
+  ir::Expr reduce_op_expr = ComposeUtils::TransformComputeExpr(
+      new_reduce_body.GetComputeExpr(), down);
+  ir::Expr
 
-  const auto& replaced_tensor = upstream.GetOutputTensor();
+      const auto& replaced_tensor = upstream.GetOutputTensor();
 
   ir::Expr result = ComposeUtils::CreateReduceExpr(
-      down_out_iter, up_reduce_iter, new_expr, replaced_tensor);
+      down_out_iter, up_reduce_iter, new_expr, origin_tensor, replaced_tensor);
+
   VLOG(4) << "RRTransform end" << result;
   return ReduceOp(result);
 }
