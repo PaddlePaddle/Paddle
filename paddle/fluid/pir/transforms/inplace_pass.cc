@@ -213,6 +213,7 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
       skip_dels.insert(op.result(0));
       continue;
     }
+    // TODO(chenxi67) add logic for shadow_feed_tensors op
     if (upper_op_name == "pd_op.fetch" ||
         upper_op_name == "builtin.shadow_output") {
       skip_dels.insert(op.operand_source(0));

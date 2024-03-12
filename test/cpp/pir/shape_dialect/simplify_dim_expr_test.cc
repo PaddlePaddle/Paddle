@@ -59,6 +59,15 @@ TEST(Simplify, UnitReciprocal) {
   ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
 }
 
+TEST(Simplify, DoubleNegative) {
+  DimExpr inner_expr{Negative<DimExpr>(DimExpr{1})};
+  DimExpr expr{Negative<DimExpr>(inner_expr)};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(expr);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
+}
+
 TEST(Simplify, UnitNegative) {
   DimExpr unit{Negative<DimExpr>{DimExpr{0}}};
 
