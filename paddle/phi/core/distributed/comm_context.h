@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <string>
 #include "paddle/phi/core/macros.h"
 
 namespace phi {

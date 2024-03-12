@@ -227,6 +227,7 @@ __global__ void FusedResidualDropoutBias(
 /**
  * @brief dst = residual + dropout(src + bias);
  */
+// TODO(@wufeisheng): residual_alpha
 template <typename T,
           typename MaskType,
           typename InType = T,
@@ -246,7 +247,8 @@ void LaunchResidualDropoutBias(const uint32_t rows,
                                const phi::GPUContext &ctx,
                                const float quant_last_in_scale = 1.0,
                                const float *dequant_out_scale_data = nullptr,
-                               const float quant_next_in_scale = 1.0) {
+                               const float quant_next_in_scale = 1.0,
+                               const float residual_alpha = 1.0) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     // NOTE(minghaoBD): OutType should be T if dropout_prob == 1.0

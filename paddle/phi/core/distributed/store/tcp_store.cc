@@ -110,6 +110,18 @@ void MasterDaemon::_do_get(SocketType socket) {
   tcputils::send_vector<uint8_t>(socket, value);
 }
 
+void MasterDaemon::_do_check(SocketType socket) {
+  std::string key = tcputils::receive_string(socket);
+  VLOG(4) << "MasterDaemon::_do_get key(" << key << ") " << GetSockName(socket);
+
+  auto iter = _store.find(key);
+  if (iter != _store.end()) {
+    tcputils::send_value<ReplyType>(socket, ReplyType::READY);
+  } else {
+    tcputils::send_value<ReplyType>(socket, ReplyType::NOT_READY);
+  }
+}
+
 #ifndef _WIN32
 void MasterDaemon::InitControlFd() {
   PADDLE_ENFORCE_NE(
@@ -188,6 +200,9 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
           break;
         case Command::GET:
           _do_get(fds[i].fd);
+          break;
+        case Command::CHECK:
+          _do_check(fds[i].fd);
           break;
         case Command::SET:
           _do_set(fds[i].fd);
@@ -415,6 +430,17 @@ std::vector<uint8_t> TCPStore::get(const std::string& key) {
   _client->send_command_for_key(Command::GET, _key_prefix + key);
   VLOG(3) << "TCPStore get.";
   return _client->receive_vector<uint8_t>();
+}
+
+bool TCPStore::check(const std::string& key) {
+  _client->send_command_for_key(Command::CHECK, _key_prefix + key);
+  VLOG(3) << "TCPStore check.";
+  auto response = _client->receive_value<ReplyType>();
+  if (response == ReplyType::READY) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 void TCPStore::wait(const std::string& key) {

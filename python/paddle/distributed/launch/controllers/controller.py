@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import signal
 import sys
@@ -221,6 +222,8 @@ class Controller(ControllerBase):
     ):
 
         if not container:
+            envs = copy.deepcopy(envs)
+            envs['PADDLE_LOG_DIR'] = str(os.path.abspath(self.ctx.args.log_dir))
             container = self.new_container(
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file
             )

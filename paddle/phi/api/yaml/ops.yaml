@@ -453,6 +453,15 @@
     func : cumprod
   backward : cumprod_grad
 
+- op : cutlass_fused_multihead_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor mask, float scale, bool causal)
+  output : Tensor
+  infer_meta :
+    func : FusedMultiHeadAttentionInferMeta
+  kernel :
+    func : fused_multihead_attention
+  optional : mask
+
 - op : det
   args : (Tensor x)
   output : Tensor
@@ -678,20 +687,21 @@
   backward : fill_diagonal_tensor_grad
 
 - op : flash_attn
-  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false)
+  args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, Tensor attn_mask, Tensor attn_mask_start_row_indices, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", int attn_mask_start_row = 0)
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional : fixed_seed_offset, attn_mask, attn_mask_start_row_indices
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
   kernel :
     func : flash_attn
     data_type : q
-  intermediate : softmax_lse, seed_offset
   backward : flash_attn_grad
 
 - op : flash_attn_unpadded
-  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false)
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional :  fixed_seed_offset , attn_mask
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
@@ -700,6 +710,29 @@
     data_type : q
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
+
+- op : flash_attn_v1
+  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false)
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  infer_meta :
+    func : FlashAttnV1InferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_v1
+    data_type : q
+  backward : flash_attn_v1_grad
+
+- op : flash_attn_v1_unpadded
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false)
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  infer_meta :
+    func : FlashAttnV1InferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_v1_unpadded
+    data_type : q
+  intermediate : softmax_lse, seed_offset
+  backward : flash_attn_v1_unpadded_grad
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
@@ -750,6 +783,16 @@
   kernel :
     func : frame
   backward : frame_grad
+
+- op : fused_multihead_attention_variable
+  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor mask, float scale, bool causal)
+  output : Tensor
+  infer_meta :
+    func : FusedMultiHeadAttentionVariableInferMeta
+  kernel :
+    func : fused_multihead_attention_variable
+    data_type : query
+  optional : mask
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
@@ -1873,6 +1916,16 @@
     func : svd
   backward : svd_grad
 
+- op : swiglu
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta:
+     func: SwiGLUInferMeta
+  kernel:
+     func : swiglu
+  optional : y
+  backward: swiglu_grad
+
 - op : take_along_axis
   args : (Tensor arr, Tensor indices, int axis)
   output : Tensor
@@ -1933,13 +1986,14 @@
   backward : thresholded_relu_grad
 
 - op : top_p_sampling
-  args : (Tensor x, Tensor ps, int random_seed=-1)
+  args : (Tensor x, Tensor ps, Tensor threshold, int random_seed=-1)
   output : Tensor (out), Tensor(ids)
   infer_meta :
     func : TopPSamplingInferMeta
   kernel :
     func : top_p_sampling
     data_type : x
+  optional : threshold
 
 - op : topk
   args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)

@@ -12,17 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
+    DygraphShardingOptimizerV2,
 )
+from paddle.distributed.fleet.utils.mix_precision_utils import (
+    MixPrecisionLayer,
+    MixPrecisionOptimizer,
+)
+
+g_shard_split_param = int(os.environ.get("FLAGS_shard_split_param", 0))
+
 
 vocab_size = 20
 hidden_size = 10
@@ -55,72 +63,6 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
     else:
         logits = paddle.matmul(lm_output, logit_weights, transpose_y=True)
         return logits
-
-
-class SimpleMPNet(paddle.nn.Layer):
-    def __init__(
-        self,
-        vocab_size,
-        hidden_size,
-        inner_size,
-        output_size,
-        np_fc1,
-        np_fc2,
-        mp_id,
-    ):
-        super().__init__()
-
-        if mp_id == 0:
-            init_fc1_data = np_fc1[:, : (inner_size // 2)]
-            init_fc2_data = np_fc2[: (inner_size // 2), :]
-        else:
-            init_fc1_data = np_fc1[:, (inner_size // 2) :]
-            init_fc2_data = np_fc2[(inner_size // 2) :, :]
-
-        self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-            hidden_size,
-            inner_size,
-            weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(init_fc1_data)
-            ),
-            gather_output=False,
-            has_bias=True,
-        )
-
-        self.linear2 = fleet.meta_parallel.RowParallelLinear(
-            inner_size,
-            hidden_size,
-            weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(init_fc2_data)
-            ),
-            input_is_parallel=True,
-            has_bias=True,
-        )
-
-        self.linear3 = paddle.nn.Linear(
-            hidden_size,
-            output_size,
-            weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)
-            ),
-            bias_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)
-            ),
-        )
-
-        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-            vocab_size,
-            hidden_size,
-            weight_attr=paddle.nn.initializer.Constant(value=0.5),
-        )
-
-    def forward(self, x):
-        x = self.embedding(x)
-        x = self.linear1(x)
-        x = self.linear2(x)
-        x = self.linear3(x)
-        x = parallel_matmul(x, self.embedding.weight, False)
-        return x
 
 
 class SimpleDPNet(paddle.nn.Layer):
@@ -184,12 +126,16 @@ class TestDistMPTraning(unittest.TestCase):
         paddle.seed(2021)
 
         self.strategy = fleet.DistributedStrategy()
+
         self.strategy.hybrid_configs = {
             "sharding_degree": 2,
             "dp_degree": 1,
             "mp_degree": 1,
             "pp_degree": 1,
         }
+        self.strategy.hybrid_configs[
+            "sharding_configs"
+        ].split_param = g_shard_split_param
         fleet.init(is_collective=True, strategy=self.strategy)
         self.data = [
             np.random.randint(
@@ -229,13 +175,7 @@ class TestDistMPTraning(unittest.TestCase):
             )
         return optimizer
 
-    def build_model_optimizer(self, Optimizer="adam"):
-        hcg = fleet.get_hybrid_communicate_group()
-        word_size = hcg.get_model_parallel_world_size()
-        sharding_id = hcg.get_sharding_parallel_rank()
-        dp_id = hcg.get_data_parallel_rank()
-        rank_id = dist.get_rank()
-
+    def build_model_optimizer(self, Optimizer="adam", amp_level=None):
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
 
@@ -247,8 +187,6 @@ class TestDistMPTraning(unittest.TestCase):
             strategy=self.strategy,
             Optimizer=Optimizer,
         )
-        model_a = fleet.distributed_model(model_a)
-        optimizer_a = fleet.distributed_optimizer(optimizer_a)
 
         model_b = SimpleDPNet(
             vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
@@ -259,20 +197,35 @@ class TestDistMPTraning(unittest.TestCase):
             Optimizer=Optimizer,
         )
 
+        if amp_level is not None and amp_level == "O2":
+            model_a = MixPrecisionLayer(model_a)
+            optimizer_a = MixPrecisionOptimizer(optimizer_a)
+            model_b = MixPrecisionLayer(model_b)
+            optimizer_b = MixPrecisionOptimizer(optimizer_b)
+
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
         return model_a, optimizer_a, model_b, optimizer_b
 
-    def sharding_model(self, Optimizer, sharded_accumulators):
+    def sharding_model(self, Optimizer, sharded_accumulators, amp_level=None):
         model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
-            Optimizer=Optimizer
+            Optimizer=Optimizer,
+            amp_level=amp_level,
         )
-
-        self.assertTrue(
-            isinstance(optimizer_a._inner_opt, DygraphShardingOptimizer)
+        opt_cls = (
+            DygraphShardingOptimizerV2
+            if g_shard_split_param
+            else DygraphShardingOptimizer
         )
+        self.assertTrue(isinstance(optimizer_a._inner_opt, opt_cls))
 
         for idx in range(STEPS):
 
-            if idx == 2 and paddle.distributed.get_rank() == 0:
+            if (
+                idx == 2
+                and paddle.distributed.get_rank() == 0
+                and not g_shard_split_param
+            ):
                 self.assertTrue(
                     set(optimizer_a._inner_opt._inner_opt.state_dict().keys())
                     == sharded_accumulators
@@ -295,37 +248,55 @@ class TestDistMPTraning(unittest.TestCase):
                 )
 
     def test_sharding_adam(self):
-        sharded_accumulators = {
-            'linear_0.w_0_moment1_0',
-            'linear_1.b_0_moment1_0',
-            'linear_2.b_0_moment1_0',
-            'embedding_0.w_0_moment1_0',
-            'linear_0.w_0_moment2_0',
-            'linear_1.b_0_moment2_0',
-            'linear_2.b_0_moment2_0',
-            'embedding_0.w_0_moment2_0',
-            'linear_0.w_0_beta1_pow_acc_0',
-            'linear_1.b_0_beta1_pow_acc_0',
-            'linear_2.b_0_beta1_pow_acc_0',
-            'embedding_0.w_0_beta1_pow_acc_0',
-            'linear_0.w_0_beta2_pow_acc_0',
-            'linear_1.b_0_beta2_pow_acc_0',
-            'linear_2.b_0_beta2_pow_acc_0',
-            'embedding_0.w_0_beta2_pow_acc_0',
-        }
-        self.sharding_model(
-            Optimizer="adam", sharded_accumulators=sharded_accumulators
-        )
+        if not g_shard_split_param:
+            sharded_accumulators = {
+                "linear_0.b_0_moment2_0",
+                'embedding_0.w_0_beta1_pow_acc_0',
+                'linear_2.b_0_beta2_pow_acc_0',
+                'linear_0.b_0_beta1_pow_acc_0',
+                'linear_2.b_0_moment2_0',
+                'linear_0.b_0_beta2_pow_acc_0',
+                'linear_1.b_0_moment1_0',
+                'embedding_0.w_0_moment2_0',
+                'linear_1.b_0_moment2_0',
+                'linear_2.b_0_beta1_pow_acc_0',
+                'linear_0.b_0_moment1_0',
+                'linear_2.b_0_moment1_0',
+                'embedding_0.w_0_moment1_0',
+                'embedding_0.w_0_beta2_pow_acc_0',
+                'linear_1.b_0_beta1_pow_acc_0',
+                'linear_1.b_0_beta2_pow_acc_0',
+            }
+            self.sharding_model(
+                Optimizer="adam",
+                sharded_accumulators=sharded_accumulators,
+            )
 
     def test_sharding_momentum(self):
+        if not g_shard_split_param:
+            sharded_accumulators = {
+                'linear_8.b_0_velocity_0',
+                'embedding_2.w_0_velocity_0',
+                'linear_6.b_0_velocity_0',
+                'linear_7.b_0_velocity_0',
+            }
+            self.sharding_model(
+                Optimizer="Momentum",
+                sharded_accumulators=sharded_accumulators,
+            )
+
+    def test_sharding_momentum_amp(self):
+
         sharded_accumulators = {
-            'linear_6.w_0_velocity_0',
-            'linear_7.b_0_velocity_0',
-            'linear_8.b_0_velocity_0',
-            'embedding_2.w_0_velocity_0',
+            'linear_12.b_0_velocity_0',
+            'linear_13.b_0_velocity_0',
+            'linear_14.b_0_velocity_0',
+            'embedding_4.w_0_velocity_0',
         }
         self.sharding_model(
-            Optimizer="Momentum", sharded_accumulators=sharded_accumulators
+            Optimizer="Momentum",
+            sharded_accumulators=sharded_accumulators,
+            amp_level="O2",
         )
 
 

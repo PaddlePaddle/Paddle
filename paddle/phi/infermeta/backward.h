@@ -179,10 +179,24 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
                             MetaTensor* dk,
                             MetaTensor* dv);
 
+void FlashAttnV1GradInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv);
+
 void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   const MetaTensor& out_grad,
                                   MetaTensor* x_grad,
                                   MetaTensor* y_grad);
+
+void FusedRopeGradInferMeta(const MetaTensor& dout_q,
+                            const MetaTensor& dout_k,
+                            const MetaTensor& dout_v,
+                            MetaTensor* dq,
+                            MetaTensor* dk,
+                            MetaTensor* dv);
 
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
@@ -421,6 +435,11 @@ void SpectralNormGradInferMeta(const MetaTensor& weight,
 void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,
                         std::vector<MetaTensor*> x_grad);
+
+void SwiGLUGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* x_grad,
+                         MetaTensor* y_grad);
 
 void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
                                        float min,

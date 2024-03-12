@@ -55,16 +55,18 @@ class MixPrecisionLayer(nn.Layer):
             ), "In main_grad node, param.grad should be None, but find param[{}] has grad.".format(
                 param.name
             )
-            if param.main_grad is None:
-                param.main_grad = core.eager.Tensor(
-                    value=tmp_grad.cast(paddle.float32).value(),
-                    place=tmp_grad.place,
-                    name="main_grad@" + param.name,
-                )
-            else:
-                param.main_grad.add_(tmp_grad)
+            if tmp_grad._is_initialized():
+                # Some previous pylayer may return None, should check grad validation.
+                if param.main_grad is None:
+                    param.main_grad = core.eager.Tensor(
+                        value=tmp_grad.cast(paddle.float32).value(),
+                        place=tmp_grad.place,
+                        name="main_grad@" + param.name,
+                    )
+                else:
+                    param.main_grad.add_(tmp_grad)
 
-            tmp_grad._clear_data()
+                tmp_grad._clear_data()
             return None
 
         return param_hook

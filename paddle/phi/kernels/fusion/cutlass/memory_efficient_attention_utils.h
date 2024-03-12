@@ -62,6 +62,30 @@ inline int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
   return 0;
 }
 
+inline int64_t GetMemoryEfficientBiasStrideH(const phi::DDim &bias_dims,
+                                             const phi::DDim &q_dims,
+                                             const phi::DDim &k_dims) {
+  int bias_dims_rank = bias_dims.size();
+  if (bias_dims_rank == 2) {
+    return 0;
+  } else {
+    PADDLE_ENFORCE_EQ(bias_dims_rank,
+                      4,
+                      phi::errors::InvalidArgument(
+                          "The rank of attn_bias should be 2 or 4."));
+    if (bias_dims[1] != q_dims[2]) {
+      PADDLE_ENFORCE_EQ(
+          bias_dims[1],
+          1,
+          phi::errors::InvalidArgument(
+              "The second dim of attn_bias should be 1 or num_heads."));
+      return 0;
+    } else {
+      return q_dims[1] * k_dims[1];
+    }
+  }
+}
+
 #define PD_MEA_CHECK_OVERFLOW(__dst, ...)                                    \
   do {                                                                       \
     auto __src = (__VA_ARGS__);                                              \

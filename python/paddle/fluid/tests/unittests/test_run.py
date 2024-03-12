@@ -55,6 +55,7 @@ def get_files(pth, prefix):
         if isfile(join(pth, f))
         and not f.endswith('gpu.log')
         and not f.startswith('envlog')
+        and not f.startswith('backup_env')
     ]
 
 

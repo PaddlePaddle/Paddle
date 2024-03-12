@@ -146,8 +146,25 @@ void InitTensorWithNumpyValue(TensorObject* self,
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
+#if defined(PADDLE_WITH_XPU)
+    phi::backends::xpu::SetXPUDeviceId(place.device);
+    VLOG(4) << "CurrentDeviceId: "
+            << phi::backends::xpu::GetXPUCurrentDeviceId() << " from "
+            << static_cast<int>(place.device);
+#else
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with XPU if use XPUPlace."));
+#endif
     SetTensorFromPyArray<platform::XPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    phi::backends::gpu::SetDeviceId(place.device);
+    VLOG(4) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+            << " from " << static_cast<int>(place.device);
+#else
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
     SetTensorFromPyArray<platform::CUDAPlace>(
         impl_ptr, array, place, zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
@@ -156,6 +173,15 @@ void InitTensorWithNumpyValue(TensorObject* self,
   } else if (platform::is_npu_place(place)) {
     SetTensorFromPyArray<platform::NPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    phi::DeviceManager::SetDevice(place);
+    VLOG(4) << "CurrentDeviceId: "
+            << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from "
+            << static_cast<int>(place.device);
+#else
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
+#endif
     SetTensorFromPyArray<platform::CustomPlace>(
         impl_ptr, array, place, zero_copy);
   } else {

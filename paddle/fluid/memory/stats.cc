@@ -104,6 +104,22 @@ void HostMemoryStatUpdate(const std::string& stat_type,
   StatRegistry::GetInstance()->Update("Host" + stat_type, dev_id, increment);
 }
 
+int64_t PinnedMemoryStatCurrentValue(const std::string& stat_type, int dev_id) {
+  return StatRegistry::GetInstance()->GetCurrentValue("Pinned" + stat_type,
+                                                      dev_id);
+}
+
+int64_t PinnedMemoryStatPeakValue(const std::string& stat_type, int dev_id) {
+  return StatRegistry::GetInstance()->GetPeakValue("Pinned" + stat_type,
+                                                   dev_id);
+}
+
+void PinnedMemoryStatUpdate(const std::string& stat_type,
+                            int dev_id,
+                            int64_t increment) {
+  StatRegistry::GetInstance()->Update("Pinned" + stat_type, dev_id, increment);
+}
+
 #define DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, id) \
   StatRegistry::GetInstance()->Register(              \
       "Device" #item, id, Stat<DeviceMemoryStat##item##id>::GetInstance());
@@ -130,12 +146,19 @@ void HostMemoryStatUpdate(const std::string& stat_type,
   StatRegistry::GetInstance()->Register( \
       "Host" #item, 0, Stat<HostMemoryStat##item##0>::GetInstance());
 
+#define PINNED_MEMORY_STAT_REGISTER(item) \
+  StatRegistry::GetInstance()->Register(  \
+      "Pinned" #item, 0, Stat<PinnedMemoryStat##item##0>::GetInstance());
+
 int RegisterAllStats() {
   DEVICE_MEMORY_STAT_REGISTER(Allocated);
   DEVICE_MEMORY_STAT_REGISTER(Reserved);
 
   HOST_MEMORY_STAT_REGISTER(Allocated);
   HOST_MEMORY_STAT_REGISTER(Reserved);
+
+  PINNED_MEMORY_STAT_REGISTER(Allocated);
+  PINNED_MEMORY_STAT_REGISTER(Reserved);
   return 0;
 }
 

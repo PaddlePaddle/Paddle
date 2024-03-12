@@ -345,6 +345,7 @@ from .autograd import set_grad_enabled  # noqa: F401
 from .autograd import is_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
+from .framework import async_save, clear_async_save_task_queue  # noqa: F401
 from .distributed import DataParallel  # noqa: F401
 
 from .framework import set_default_dtype  # noqa: F401

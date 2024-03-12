@@ -454,6 +454,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
     }
   }
 
+  if (PyList_Check(outputs)) {
+    Py_XDECREF(outputs_tuple);
+  }
+
   Py_XDECREF(forward_args);
   Py_XDECREF(kwargs_value_list);
   Py_XDECREF(backward_function);

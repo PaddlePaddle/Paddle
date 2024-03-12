@@ -17,10 +17,10 @@ include(ExternalProject)
 add_definitions(-DPADDLE_WITH_FLASHATTN)
 
 set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn)
-set(FLASHATTN_SOURCE_SUBDIR csrc/flash_attn)
+set(FLASHATTN_SOURCE_SUBDIR csrc)
 set(FLASHATTN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/flashattn)
 set(FLASHATTN_REPOSITORY ${GIT_URL}/PaddlePaddle/flash-attention.git)
-set(FLASHATTN_TAG 5ff4bbf56ad066750407c4aef16ac740ebda0717)
+set(FLASHATTN_TAG d98d8a36cc9b884a1f405d187a0c41caeb5144c6)
 
 set(FLASHATTN_INCLUDE_DIR
     "${FLASHATTN_INSTALL_DIR}/include"
@@ -62,10 +62,24 @@ else()
   set(FLASHATTN_C_FLAGS ${CMAKE_C_FLAGS})
   set(FLASHATTN_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
   set(FLASHATTN_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
-  set(FLASHATTN_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  set(FLASHATTN_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
   set(FLASHATTN_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
   set(FLASHATTN_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
+
+set(FA_NVCC_ARCH_BIN "")
+foreach(arch ${NVCC_ARCH_BIN})
+  string(STRIP ${arch} arch)
+  if(arch STREQUAL "")
+    continue()
+  endif()
+
+  if(FA_NVCC_ARCH_BIN STREQUAL "")
+    set(FA_NVCC_ARCH_BIN "${arch}")
+  else()
+    set(FA_NVCC_ARCH_BIN "${FA_NVCC_ARCH_BIN}-${arch}")
+  endif()
+endforeach()
 
 ExternalProject_Add(
   extern_flashattn
@@ -93,6 +107,9 @@ ExternalProject_Add(
              -DBUILD_SHARED=ON
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+             -DCMAKE_JOB_POOL_COMPILE:STRING=compile
+             -DNVCC_ARCH_BIN=${FA_NVCC_ARCH_BIN}
+             -DCMAKE_JOB_POOLS:STRING=compile=4
              ${EXTERNAL_OPTIONAL_ARGS}
   CMAKE_CACHE_ARGS
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}

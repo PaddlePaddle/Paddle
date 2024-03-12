@@ -422,6 +422,8 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             MetaTensor* out,
                                             MetaConfig config = MetaConfig());
 
+void SwiGLUInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,
                             int axis,
@@ -436,6 +438,7 @@ void TriangularSolveInferMeta(const MetaTensor& x,
 
 void TopPSamplingInferMeta(const MetaTensor& x,
                            const MetaTensor& ps,
+                           const MetaTensor& threshold,
                            int random_seed,
                            MetaTensor* out,
                            MetaTensor* ids);

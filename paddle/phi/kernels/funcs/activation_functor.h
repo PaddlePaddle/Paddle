@@ -3954,5 +3954,39 @@ struct CudaCELUGradFunctor : public BaseActivationFunctor<T> {
 
 #endif
 
+template <typename T>
+struct SwiGLUFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  HOSTDEVICE T operator()(T x, T y) const {
+    MPType mp_x = static_cast<MPType>(x);
+    MPType mp_y = static_cast<MPType>(y);
+    MPType one = static_cast<MPType>(1);
+    return static_cast<T>(mp_y * mp_x / (one + exp(-mp_x)));
+  }
+};
+
+template <typename T, bool HasDX = true, bool HasDY = true>
+struct SwiGLUGradFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  HOSTDEVICE void operator()(T x, T y, T dz, T* dx, T* dy) const {
+    MPType one = static_cast<MPType>(1);
+
+    MPType mp_x = static_cast<MPType>(x);
+    MPType mp_dz = static_cast<MPType>(dz);
+
+    MPType sigmoid = one / (one + exp(-mp_x));
+    MPType tmp = mp_x * sigmoid;
+    if (HasDX) {
+      MPType mp_y = static_cast<MPType>(y);
+      *dx = static_cast<T>(mp_dz * mp_y * sigmoid * (one + mp_x - tmp));
+    }
+    if (HasDY) {
+      *dy = static_cast<T>(mp_dz * tmp);
+    }
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi

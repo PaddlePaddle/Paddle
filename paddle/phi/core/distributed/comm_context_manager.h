@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <memory>
+#include <set>
 #include <unordered_map>
 
 #include "paddle/phi/core/distributed/comm_context.h"
@@ -44,6 +45,12 @@ class CommContextManager {
 
   bool Has(int ring_id) const;
 
+  void SetGroupSize(const std::string& pg_key, int size);
+
+  void AddGroupRanks(const std::string& pg_key, std::vector<int> global_ranks);
+
+  std::vector<int> GetGroupRanks(const std::string& pg_key) const;
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
                                     int dev_id,
@@ -64,6 +71,11 @@ class CommContextManager {
 
   std::unordered_map<int, std::unique_ptr<CommContext>> id_to_comm_context_;
   std::shared_ptr<Store> store_;
+
+  // process group key to global ranks map
+  std::unordered_map<std::string, std::vector<int>> pg_key_ranks_;
+  // process group key to group size map
+  std::unordered_map<std::string, int> pg_key_size_;
 };
 
 }  // namespace distributed

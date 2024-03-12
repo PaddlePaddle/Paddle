@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/global_gather_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -221,7 +222,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
     out->mutable_data<T>(out_dims, place);
 
     for (auto i = 0; i < n_expert; ++i) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+      distributed::ProcessGroupNCCL::GroupStart();
       for (auto j = 0; j < nranks; ++j) {
         int idx = i + j * n_expert;
         if (cpu_global_count_data[idx]) {
@@ -241,7 +242,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
                    /*sync_op*/ true);
         }
       }
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+      distributed::ProcessGroupNCCL::GroupEnd();
     }
 
 #ifdef PADDLE_WITH_CUDA

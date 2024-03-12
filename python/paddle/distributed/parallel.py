@@ -52,6 +52,7 @@ from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
 from . import parallel_helper
+from .backup_env import getenv_or_backup
 
 __all__ = []
 
@@ -705,6 +706,7 @@ class ParallelEnv:
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
         self._device_type = str(os.getenv("PADDLE_XCCL_BACKEND", ""))
+        self._pg_timeout = int(os.getenv("PADDLE_PG_TIMEOUT", "1800000"))
 
         # imperative only support one gpu or xpu
         if self._device_type != "":
@@ -723,7 +725,7 @@ class ParallelEnv:
                 selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
                 self._device_id = int(selected_xpus[0])
 
-        self._trainer_endpoints = os.getenv(
+        self._trainer_endpoints = getenv_or_backup(
             "PADDLE_TRAINER_ENDPOINTS", ""
         ).split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
@@ -860,6 +862,25 @@ class ParallelEnv:
         """
         return self._nrings
 
+    @property
+    def pg_timeout(self):
+        """
+        timeout of process group.
+
+        Its value is equal to the value of the environment variable ``PADDLE_PG_TIMEOUT`` . The default value is 30 minutes.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
+            import paddle.distributed as dist
+
+            env = dist.ParallelEnv()
+            print("The pg_timeout is %d" % env.pg_timeout)
+            # the pg_timeout of process group 1800000
+        """
+        return self._pg_timeout
+
     # [aliases] Compatible with old method names
     local_rank = rank
     nranks = world_size
@@ -898,7 +919,7 @@ def _is_cpuonly(backend):
 
 
 def _check_var_exists(var_name):
-    var = os.environ.get(var_name, None)
+    var = getenv_or_backup(var_name, None)
     if var is None:
         raise ValueError(
             "paddle.distributed initialize error, "
@@ -1081,7 +1102,9 @@ def init_parallel_env():
         if endpoints is None:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
-            endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
+            endpoints = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS").split(',')[
+                0
+            ]
         assert endpoints, (
             "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
             "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
@@ -1115,8 +1138,10 @@ def init_parallel_env():
         _set_group_map_backend(group, backend)
         _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
-
-        paddle.distributed.barrier(group=group)
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.uint8), group=group, sync_op=True
+            )
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}

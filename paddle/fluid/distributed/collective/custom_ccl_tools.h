@@ -22,7 +22,6 @@
 
 #include <string>
 
-#include "paddle/fluid/distributed/collective/types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -30,9 +29,12 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/distributed/types.h"
 
 namespace paddle {
 namespace distributed {
+
+using phi::distributed::ReduceOp;
 
 class CustomEventManager {
  public:

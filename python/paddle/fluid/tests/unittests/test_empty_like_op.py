@@ -39,7 +39,14 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
             f'shape should be {self.dst_shape}, but get {shape}',
         )
 
-        if data_type in ['float16', 'float32', 'float64', 'int32', 'int64']:
+        if data_type in [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'uint16',
+        ]:
             max_value = np.nanmax(out)
             min_value = np.nanmin(out)
             always_non_full_zero = max_value >= min_value

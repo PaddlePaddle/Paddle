@@ -16,17 +16,13 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace distributed {
+namespace phi {
+namespace fusion {
 
-inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
-                                         int64_t offset,
-                                         int64_t numel) {
-  phi::DenseTensor tensor_flattened;
-  tensor_flattened.ShareDataWith(tensor);
-  tensor_flattened.Resize({tensor.numel()});
-  return tensor_flattened.Slice(offset, offset + numel);
-}
-
-}  //  namespace distributed
-}  //  namespace paddle
+template <typename T, typename Context>
+void FusedSoftmaxMaskKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& mask,
+                            DenseTensor* out);
+}  // namespace fusion
+}  // namespace phi

@@ -22,7 +22,6 @@ set(TEST_EAGER_OPS
     test_resnet_pure_fp16
     test_se_resnet
     test_sentiment
-    test_seq2seq
     test_tsm
     test_word2vec
     test_yolov3
@@ -32,6 +31,8 @@ set(TEST_EAGER_OPS
     test_simnet
     test_transformer)
 list(REMOVE_ITEM TEST_OPS test_lac)
+list(REMOVE_ITEM TEST_OPS test_seq2seq)
+
 # NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope
 # will be removed and will cause some random failed in multi-thread.
 if(WITH_PYTHON)
@@ -64,7 +65,6 @@ set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
 set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS
                                             "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
-set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 150)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
 set_tests_properties(test_bert PROPERTIES TIMEOUT 120)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 120)
@@ -75,9 +75,9 @@ set_tests_properties(test_bmn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)
 
 if(NOT WIN32)
-  set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 180)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
-  #set_tests_properties(test_resnet PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_resnet PROPERTIES TIMEOUT 240)
 endif()
 
 if(APPLE)

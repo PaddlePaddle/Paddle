@@ -45,7 +45,7 @@
   support_dygraph_mode : true
 
 - op : fused_linear_param_grad_add
-  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true)
+  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true, bool has_bias = true)
   output : Tensor(dweight_out), Tensor(dbias_out)
   infer_meta:
     func : FusedLinearParamGradAddInferMeta
@@ -64,6 +64,18 @@
     func : fused_multi_transformer_xpu
     data_type : x
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask
+
+- op : fused_rotary_position_embedding
+  args : (Tensor q, Tensor k, Tensor v)
+  output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
+  infer_meta :
+    func : FusedRopeInferMeta
+  optional : k,v, out_k, out_v
+  kernel :
+    func : fused_rotary_position_embedding
+    data_type : q
+  backward: fused_rotary_position_embedding_grad
+  support_dygraph_mode : true
 
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)

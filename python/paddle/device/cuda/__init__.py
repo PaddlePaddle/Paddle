@@ -31,6 +31,10 @@ __all__ = [
     'max_memory_reserved',
     'memory_allocated',
     'memory_reserved',
+    'max_pinned_memory_allocated',
+    'max_pinned_memory_reserved',
+    'pinned_memory_allocated',
+    'pinned_memory_reserved',
     'stream_guard',
     'get_device_properties',
     'get_device_name',
@@ -107,9 +111,6 @@ def synchronize(device=None):
             paddle.device.cuda.synchronize(paddle.CUDAPlace(0))
 
     '''
-
-    device_id = -1
-
     if device is not None:
         if isinstance(device, int):
             device_id = device
@@ -117,7 +118,14 @@ def synchronize(device=None):
             device_id = device.get_device_id()
         else:
             raise ValueError("device type must be int or paddle.CUDAPlace")
-
+    else:
+        place = paddle.framework._current_expected_place()
+        if paddle.is_compiled_with_cuda() and isinstance(
+            place, paddle.CUDAPlace
+        ):
+            device_id = place.get_device_id()
+        else:
+            device_id = -1
     return core._device_synchronize(device_id)
 
 
@@ -342,6 +350,94 @@ def memory_reserved(device=None):
         )
     device_id = extract_cuda_device_id(device, op_name=name)
     return core.device_memory_stat_current_value("Reserved", device_id)
+
+
+def max_pinned_memory_allocated():
+    '''
+    Return the peak size of Pinned memory that is allocated to tensor of the given device.
+
+    Return:
+        int: The peak size of Pinned memory that is allocated to tensor of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            max_memory_allocated_size = paddle.device.cuda.max_pinned_memory_allocated()
+    '''
+    name = "paddle.device.cuda.max_pinned_memory_allocated"
+    if not core.is_compiled_with_cuda():
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    return core.pinned_memory_stat_peak_value("Allocated", 0)
+
+
+def max_pinned_memory_reserved():
+    '''
+    Return the peak size of Pinned memory that is held by the allocator of the given device.
+
+    Return:
+        int: The peak size of Pinned memory that is held by the allocator of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            max_memory_reserved_size = paddle.device.cuda.max_pinned_memory_reserved()
+    '''
+    name = "paddle.device.cuda.max_pinned_memory_reserved"
+    if not core.is_compiled_with_cuda():
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    return core.pinned_memory_stat_peak_value("Reserved", 0)
+
+
+def pinned_memory_allocated():
+    '''
+    Return the current size of Pinned memory that is allocated to tensor of the given device.
+
+    Return:
+        int: The current size of Pinned memory that is allocated to tensor of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            memory_allocated_size = paddle.device.cuda.pinned_memory_allocated()
+    '''
+    name = "paddle.device.cuda.pinned_memory_allocated"
+    if not core.is_compiled_with_cuda():
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    return core.pinned_memory_stat_current_value("Allocated", 0)
+
+
+def pinned_memory_reserved():
+    '''
+    Return the current size of Pinned memory that is held by the allocator of the given device.
+
+    Return:
+        int: The current size of Pinned memory that is held by the allocator of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            memory_reserved_size = paddle.device.cuda.pinned_memory_reserved()
+    '''
+    name = "paddle.device.cuda.pinned_memory_reserved"
+    if not core.is_compiled_with_cuda():
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    return core.pinned_memory_stat_current_value("Reserved", 0)
 
 
 def _set_current_stream(stream):

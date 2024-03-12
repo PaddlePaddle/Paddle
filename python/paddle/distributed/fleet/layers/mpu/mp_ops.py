@@ -14,6 +14,7 @@
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.autograd import PyLayer
 from paddle.distributed import collective
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
@@ -22,6 +23,59 @@ from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
+
+
+class c_identity_eager(PyLayer):
+    @staticmethod
+    def forward(ctx, tensor, group):
+        ctx.group = group
+        return _legacy_C_ops.c_identity(
+            tensor,
+            'use_calc_stream',
+            True,
+            'ring_id',
+            group.id,
+            'use_model_parallel',
+            True,
+        )
+
+    @staticmethod
+    def backward(ctx, dy):
+        op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+        group = ctx.group
+        group.process_group.all_reduce_on_calc_stream(dy, op_type)
+        return dy
+
+
+class mp_allreduce_eager(PyLayer):
+    @staticmethod
+    def forward(ctx, tensor, group, use_calc_stream, use_model_parallel):
+        ctx.ring_id = group.id
+
+        if use_calc_stream:
+            op_type = _get_reduce_op(ReduceOp.SUM, "_mp_allreduce")
+            group.process_group.all_reduce_on_calc_stream(tensor, op_type)
+            return tensor
+        else:
+            return _legacy_C_ops.c_allreduce_sum_(
+                tensor,
+                'use_calc_stream',
+                use_calc_stream,
+                'ring_id',
+                ctx.ring_id,
+            )
+
+    @staticmethod
+    def backward(ctx, dy):
+        return _legacy_C_ops.c_identity(
+            dy,
+            'use_calc_stream',
+            True,
+            'ring_id',
+            ctx.ring_id,
+            'use_model_parallel',
+            True,
+        )
 
 
 def _c_identity(tensor, group=None):
@@ -41,28 +95,7 @@ def _c_identity(tensor, group=None):
     ring_id = 0 if group is None else group.id
 
     if in_dygraph_mode():
-        from paddle.autograd import PyLayer
-
-        class c_identity_eager(PyLayer):
-            @staticmethod
-            def forward(ctx, tensor):
-                return _legacy_C_ops.c_identity(
-                    tensor,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    group.id,
-                    'use_model_parallel',
-                    True,
-                )
-
-            @staticmethod
-            def backward(ctx, dy):
-                op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-                group.process_group.all_reduce_on_calc_stream(dy, op_type)
-                return dy
-
-        return c_identity_eager.apply(tensor)
+        return c_identity_eager.apply(tensor, group)
     else:
         op_type = 'c_identity'
         helper = LayerHelper(op_type, **locals())
@@ -71,7 +104,7 @@ def _c_identity(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
 
@@ -131,7 +164,7 @@ def _c_concat(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_concat',
         )
 
@@ -197,7 +230,7 @@ def _c_split(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_split',
         )
 
@@ -230,43 +263,6 @@ def _mp_allreduce(
     if in_dygraph_mode():
         group = collective._get_default_group() if group is None else group
         assert op == ReduceOp.SUM, f"Unknown parameter: {op}."
-
-        from paddle.autograd import PyLayer
-
-        class mp_allreduce_eager(PyLayer):
-            @staticmethod
-            def forward(
-                ctx, tensor, group, use_calc_stream, use_model_parallel
-            ):
-                ctx.ring_id = group.id
-
-                if use_calc_stream:
-                    op_type = _get_reduce_op(op, "_mp_allreduce")
-                    group.process_group.all_reduce_on_calc_stream(
-                        tensor, op_type
-                    )
-                    return tensor
-                else:
-                    return _legacy_C_ops.c_allreduce_sum_(
-                        tensor,
-                        'use_calc_stream',
-                        use_calc_stream,
-                        'ring_id',
-                        ring_id,
-                    )
-
-            @staticmethod
-            def backward(ctx, dy):
-                return _legacy_C_ops.c_identity(
-                    dy,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    ctx.ring_id,
-                    'use_model_parallel',
-                    True,
-                )
-
         return mp_allreduce_eager.apply(
             tensor, group, use_calc_stream, use_model_parallel
         )
@@ -279,7 +275,7 @@ def _mp_allreduce(
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             op_type,
         )
 
@@ -295,7 +291,7 @@ def _mp_allreduce(
         return out
 
 
-def _c_lookup_table(table, index, start_index=0, name=None):
+def _c_lookup_table(table, index, start_index=0, vocab_size=-1, name=None):
     """
     Lookup table according to index.
 
@@ -311,7 +307,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     """
     if in_dygraph_mode():
         return _legacy_C_ops.c_embedding(
-            table, index, "start_index", start_index
+            table, index, "start_index", start_index, "vocab_size", vocab_size
         )
     else:
         op_type = 'c_embedding'
@@ -323,7 +319,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
             type='c_embedding',
             inputs={'Ids': index, 'W': table},
             outputs={'Out': tmp},
-            attrs={"start_index": start_index},
+            attrs={"start_index": start_index, "vocab_size": vocab_size},
         )
         return tmp
 
@@ -655,7 +651,11 @@ def _parallel_embedding(
     main_block.vars[weight.name].is_distributed = True
 
     output_parallel = _c_lookup_table(
-        weight, x, start_index=vocab_start_index, name=name
+        weight,
+        x,
+        start_index=vocab_start_index,
+        vocab_size=origin_size[0],
+        name=name,
     )
     out = _mp_allreduce(
         output_parallel,

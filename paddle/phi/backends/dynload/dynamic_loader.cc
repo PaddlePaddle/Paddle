@@ -500,6 +500,20 @@ void* GetFlashAttnDsoHandle() {
 #endif
 }
 
+void* GetFlashAttnV1DsoHandle() {
+  std::string flashattn_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    flashattn_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn_v1.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn_v1.dll");
+#else
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn_v1.so");
+#endif
+}
+
 void* GetNCCLDsoHandle() {
 #ifdef PADDLE_WITH_HIP
   std::string warning_msg(

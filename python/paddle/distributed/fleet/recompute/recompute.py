@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+import copy
 import weakref
 
 import paddle
@@ -21,6 +22,7 @@ from paddle.autograd import PyLayer
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
+from paddle.fluid.framework import EagerParamBase
 from paddle.framework import core, in_dygraph_mode
 
 from ..utils.log_util import logger
@@ -28,11 +30,26 @@ from ..utils.log_util import logger
 __all__ = []
 
 
+def _varbase_help(param):
+    state = copy.deepcopy(param.__dict__)
+    new_param = EagerParamBase(
+        shape=param.shape, dtype=param.dtype, name=param.name, **state
+    )
+
+    param._share_buffer_to(new_param)
+
+    return new_param
+
+
 def detach_variable(inputs):
     out = []
     for inp in inputs:
         if not isinstance(inp, core.eager.Tensor):
             out.append(inp)
+            continue
+
+        if isinstance(inp, EagerParamBase):
+            out.append(_varbase_help(inp))
             continue
 
         x = inp.detach()

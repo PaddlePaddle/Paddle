@@ -228,6 +228,7 @@
     param : [x, axis]
   kernel :
     func : concat
+    data_type : x
   backward : concat_grad
 
 - op : conv2d

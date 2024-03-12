@@ -1259,6 +1259,7 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dweight,
                                       const MetaTensor& dbias,
                                       bool multi_precision,
+                                      bool has_bias,
                                       MetaTensor* dweight_out,
                                       MetaTensor* dbias_out) {
   const auto dtype = dout.dtype();
@@ -1302,7 +1303,7 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
           ? DataType::FLOAT32
           : dtype;
 
-  if (dbias_out) {
+  if (has_bias && dbias_out) {
     dbias_out->set_dims({weight_dims[1]});
     dbias_out->set_dtype(multi_precision ? mp_dtype : dtype);
   }
@@ -3227,6 +3228,33 @@ void FusedAdamInferMeta(
   }
 }
 
+void FusedRopeInferMeta(const MetaTensor& q,
+                        const MetaTensor& k,
+                        const MetaTensor& v,
+                        MetaTensor* out_q,
+                        MetaTensor* out_k,
+                        MetaTensor* out_v) {
+  auto input_dims = q.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  if (q) {
+    out_q->set_dims(q.dims());
+    out_q->set_dtype(q.dtype());
+  }
+  if (k) {
+    out_k->set_dims(k.dims());
+    out_k->set_dtype(k.dtype());
+  }
+  if (v) {
+    out_v->set_dims(v.dims());
+    out_v->set_dtype(v.dtype());
+  }
+}
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,
@@ -3239,6 +3267,65 @@ void MoeInferMeta(const MetaTensor& x,
   out->share_lod(x);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void FusedMultiHeadAttentionVariableInferMeta(const MetaTensor& query,
+                                              const MetaTensor& key,
+                                              const MetaTensor& value,
+                                              const MetaTensor& seq_lens,
+                                              const MetaTensor& mask,
+                                              float scale,
+                                              bool causal,
+                                              MetaTensor* out) {
+  const int64_t query_batch_size = query.dims()[0];
+  const int64_t query_seq_length = query.dims()[2];
+  const int64_t query_num_head = query.dims()[1];
+  const int64_t value_head_size = value.dims()[3];
+  std::vector<int64_t> out_dims(
+      {query_batch_size, query_num_head, query_seq_length, value_head_size});
+  out->set_dims(phi::make_ddim(out_dims));
+  out->share_lod(query);
+  out->set_dtype(query.dtype());
+  out->set_layout(query.layout());
+}
+
+void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
+                                      const MetaTensor& key,
+                                      const MetaTensor& value,
+                                      const MetaTensor& mask,
+                                      float scale,
+                                      bool causal,
+                                      MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      query.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Query should be a 4-D tensor"
+                                   "But received Query dimension(%s)",
+                                   query.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      key.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Key should be a 4-D tensor"
+                                   "But received Key dimension(%s)",
+                                   key.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      value.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Value should be a 4-D tensor"
+                                   "But received Value dimension(%s)",
+                                   value.dims().size()));
+  const int64_t query_batch_size = query.dims()[0];
+  const int64_t query_num_head = query.dims()[1];
+  const int64_t query_seq_length = query.dims()[2];
+  const int64_t value_head_size = value.dims()[3];
+
+  std::vector<int64_t> out_dims(
+      {query_batch_size, query_num_head, query_seq_length, value_head_size});
+
+  out->set_dims(phi::make_ddim(out_dims));
+  out->share_lod(query);
+  out->set_dtype(query.dtype());
+  out->set_layout(query.layout());
 }
 
 }  // namespace phi

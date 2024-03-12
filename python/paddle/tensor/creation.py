@@ -1161,7 +1161,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'eye',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1561,7 +1561,7 @@ def meshgrid(*args, **kwargs):
             check_dtype(
                 input_.dtype,
                 'create data type',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
                 'meshgrid',
             )
 
@@ -1674,7 +1674,7 @@ def diagflat(x, offset=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'diagflat',
         )
         check_type(offset, 'offset', (int), 'diagflat')
@@ -1792,7 +1792,7 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')

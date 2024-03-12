@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
@@ -21,9 +22,29 @@ class TestHybridParallel(TestMultipleGpus):
 
     # check sharding logic as well as the accuracy with single mode
     def test_hybrid_parallel_sharding_logic(self):
+        # test shard v2
+        os.environ["FLAGS_shard_use_reduce"] = "1"
+        os.environ["FLAGS_shard_norm_align_dp"] = "0"
+        os.environ["FLAGS_shard_split_param"] = "1"
+        self.run_mnist_2gpu('hybrid_parallel_sharding_model.py')
+        # test shard grad reduce
+        os.environ["FLAGS_shard_use_reduce"] = "1"
+        os.environ["FLAGS_shard_norm_align_dp"] = "0"
+        os.environ["FLAGS_shard_split_param"] = "0"
+        self.run_mnist_2gpu('hybrid_parallel_sharding_model.py')
+        # test shard grad allreduce
+        os.environ["FLAGS_shard_use_reduce"] = "0"
+        os.environ["FLAGS_shard_norm_align_dp"] = "1"
+        os.environ["FLAGS_shard_split_param"] = "0"
         self.run_mnist_2gpu('hybrid_parallel_sharding_model.py')
 
+    def test_hybrid_parallel_sharding_param_group(self):
+        # test shard grad reduce
+        os.environ["FLAGS_shard_split_param"] = "0"
+        self.run_mnist_2gpu('hybrid_parallel_sharding_param_group.py')
+
     def test_hybrid_parallel_sharding_state_dict(self):
+        os.environ["FLAGS_shard_split_param"] = "0"
         self.run_mnist_2gpu('hybrid_parallel_sharding_state_dict.py')
 
 

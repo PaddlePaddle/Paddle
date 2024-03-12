@@ -182,6 +182,9 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
     case PaddleDType::FLOAT16:
       dt = py::dtype::of<phi::dtype::float16>();
       break;
+    // case PaddleDType::BFLOAT16:
+    //   dt = py::dtype::of<paddle_infer::bfloat16>();
+    //   break;
     case PaddleDType::UINT8:
       dt = py::dtype::of<uint8_t>();
       break;
@@ -194,7 +197,7 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, FLOAT64, "
-          "FLOAT32, FLOAT16, INT8, UINT8 and BOOL."));
+          "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
 
   return dt;
@@ -262,6 +265,11 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         static_cast<float *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::BFLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<paddle::platform::bfloat16 *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
   } else if (input_tensor.dtype() == phi::DataType::FLOAT16) {
     tensor.ShareExternalData(
         static_cast<phi::dtype::float16 *>(input_tensor.data()),
@@ -280,7 +288,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT64, FLOAT32 and FLOAT16."));
+        "INT64, FLOAT64, FLOAT32, BFLOAT16 and FLOAT16."));
   }
 }
 
@@ -299,6 +307,11 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   } else if (paddle_tensor.dtype() == phi::DataType::FLOAT32) {
     tensor.ShareExternalData(
         static_cast<float *>(paddle_tensor.data<float>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::BFLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<bfloat16 *>(paddle_tensor.data<bfloat16>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else if (paddle_tensor.dtype() == phi::DataType::FLOAT16) {
@@ -320,7 +333,7 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT32 and FLOAT16."));
+        "INT64, FLOAT32, BFLOAT16 and FLOAT16."));
   }
 }
 
@@ -354,6 +367,9 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
       break;
     case PaddleDType::FLOAT16:
       size = sizeof(phi::dtype::float16);
+      break;
+    case PaddleDType::BFLOAT16:
+      size = sizeof(paddle_infer::bfloat16);
       break;
     case PaddleDType::INT8:
       size = sizeof(int8_t);
@@ -395,6 +411,10 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
       tensor.copy_to_cpu<phi::dtype::float16>(
           static_cast<phi::dtype::float16 *>(array.mutable_data()));
       break;
+    case PaddleDType::BFLOAT16:
+      tensor.copy_to_cpu<paddle::platform::bfloat16>(
+          static_cast<paddle::platform::bfloat16 *>(array.mutable_data()));
+      break;
     case PaddleDType::UINT8:
       tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
       break;
@@ -434,6 +454,10 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
     case PaddleDType::FLOAT16:
       tensor.CopyToCpu<phi::dtype::float16>(
           static_cast<phi::dtype::float16 *>(array.mutable_data()));
+      break;
+    case PaddleDType::BFLOAT16:
+      tensor.CopyToCpu<paddle::platform::bfloat16>(
+          static_cast<paddle::platform::bfloat16 *>(array.mutable_data()));
       break;
     case PaddleDType::UINT8:
       tensor.CopyToCpu(static_cast<uint8_t *>(array.mutable_data()));
@@ -529,6 +553,7 @@ void BindPaddleDType(py::module *m) {
       .value("FLOAT64", PaddleDType::FLOAT64)
       .value("FLOAT32", PaddleDType::FLOAT32)
       .value("FLOAT16", PaddleDType::FLOAT16)
+      .value("BFLOAT16", PaddleDType::BFLOAT16)
       .value("INT64", PaddleDType::INT64)
       .value("INT32", PaddleDType::INT32)
       .value("UINT8", PaddleDType::UINT8)

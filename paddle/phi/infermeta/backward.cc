@@ -219,6 +219,23 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
 }
 
+void FlashAttnV1GradInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv) {
+  if (dq) {
+    dq->share_meta(q);
+  }
+  if (dk && k) {
+    dk->share_meta(k);
+  }
+  if (dv && v) {
+    dv->share_meta(v);
+  }
+}
+
 void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   const MetaTensor& out_grad,
                                   MetaTensor* x_grad,
@@ -774,7 +791,7 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   value_grad->set_dtype(value.dtype());
   value_grad->set_layout(value.layout());
 
-  if (bias) {
+  if (bias && bias_grad) {
     const int64_t bias_batch_size = bias.dims()[0];
     const int64_t bias_seq_length = bias.dims()[1];
     const int64_t bias_num_head = bias.dims()[2];
@@ -1115,6 +1132,18 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void SwiGLUGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* x_grad,
+                         MetaTensor* y_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (y && y_grad) {
+    y_grad->share_meta(y);
+  }
+}
+
 void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
                                        float min,
                                        float max,
@@ -1218,6 +1247,34 @@ void IndexAddGradInferMeta(const MetaTensor& index,
     add_value_grad->set_dtype(add_value.dtype());
     add_value_grad->set_layout(add_value.layout());
     add_value_grad->share_lod(add_value);
+  }
+}
+
+void FusedRopeGradInferMeta(const MetaTensor& dout_q,
+                            const MetaTensor& dout_k,
+                            const MetaTensor& dout_v,
+                            MetaTensor* dq,
+                            MetaTensor* dk,
+                            MetaTensor* dv) {
+  auto input_dims = dout_q.dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input should be a 4-D tensor of format "
+                                   "[batch_size, seq_len, num_heads, head_dim],"
+                                   "but got %u.",
+                                   input_dims.size()));
+  if (dout_q && dq) {
+    dq->set_dims(dout_q.dims());
+    dq->set_dtype(dout_q.dtype());
+  }
+  if (dout_k && dk) {
+    dk->set_dims(dout_k.dims());
+    dk->set_dtype(dout_k.dtype());
+  }
+  if (dout_v && dv) {
+    dv->set_dims(dout_v.dims());
+    dv->set_dtype(dout_v.dtype());
   }
 }
 

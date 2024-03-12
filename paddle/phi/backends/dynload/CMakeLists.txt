@@ -97,8 +97,8 @@ endif()
 if(WITH_FLASHATTN)
   cc_library(
     phi_dynload_flashattn
-    SRCS flashattn.cc
-    DEPS phi_dynamic_loader flashattn)
+    SRCS flashattn.cc flashattn_v1.cc
+    DEPS phi_dynamic_loader flashattn flashattn_v1)
 endif()
 
 cc_library(

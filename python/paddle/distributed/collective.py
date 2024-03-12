@@ -144,6 +144,7 @@ def _new_process_group_impl(
     group_name,
     pg_options,
     group_id=0,
+    nccl_comm_init_option=0,
 ):
     pg = None
     genv = _get_global_env()
@@ -151,7 +152,14 @@ def _new_process_group_impl(
     if backend == "gloo":
         pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
-        pg = core.ProcessGroupNCCL.create(store, rank, world_size, group_id)
+        pg = core.ProcessGroupNCCL.create(
+            store,
+            rank,
+            world_size,
+            group_id,
+            genv.pg_timeout,
+            nccl_comm_init_option,
+        )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
             store, genv.device_type, rank, world_size, group_id
@@ -172,7 +180,12 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def new_group(ranks=None, backend=None, timeout=_default_timeout):
+def new_group(
+    ranks=None,
+    backend=None,
+    timeout=_default_timeout,
+    nccl_comm_init_option=0,
+):
     """
 
     Creates a new distributed communication group.
@@ -225,6 +238,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 group_name,
                 pg_options=None,
                 group_id=gid,
+                nccl_comm_init_option=nccl_comm_init_option,
             )
         else:
             rank = -1
@@ -237,11 +251,11 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # three in the future.
         _add_new_group(group)
 
-        # TODO(shenliang03): This is a temporary solution to solve the problem of
-        # hang caused by tcp
-        paddle.distributed.barrier(group=group)
-        if paddle.distributed.get_world_size() > 1:
-            paddle.distributed.barrier()
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.uint8), group=group, sync_op=True
+            )
+
         return group
 
     if not backend:

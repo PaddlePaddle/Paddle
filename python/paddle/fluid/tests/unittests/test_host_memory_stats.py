@@ -29,7 +29,11 @@ class TestHostMemoryStats(unittest.TestCase):
             memory_allocated_size = core.host_memory_stat_current_value(
                 "Allocated", 0
             )
-            self.assertEqual(memory_allocated_size, alloc_size * 2)
+            pinned_memory_allocated_size = (
+                core.pinned_memory_stat_current_value("Allocated", 0)
+            )
+            self.assertEqual(memory_allocated_size, alloc_size)
+            self.assertEqual(pinned_memory_allocated_size, alloc_size)
 
             def foo():
                 tensor = paddle.zeros(shape=[256])
@@ -37,23 +41,150 @@ class TestHostMemoryStats(unittest.TestCase):
                 memory_allocated_size = core.host_memory_stat_current_value(
                     "Allocated", 0
                 )
-                self.assertEqual(memory_allocated_size, alloc_size * 4)
+                self.assertEqual(memory_allocated_size, alloc_size * 2)
                 max_allocated_size = core.host_memory_stat_peak_value(
                     "Allocated", 0
                 )
-                self.assertEqual(memory_allocated_size, alloc_size * 4)
+                self.assertEqual(max_allocated_size, alloc_size * 2)
+
+                pinned_memory_allocated_size = (
+                    core.pinned_memory_stat_current_value("Allocated", 0)
+                )
+                self.assertEqual(pinned_memory_allocated_size, alloc_size * 2)
+                pinned_max_allocated_size = core.pinned_memory_stat_peak_value(
+                    "Allocated", 0
+                )
+                self.assertEqual(pinned_max_allocated_size, alloc_size * 2)
 
             foo()
 
             memory_allocated_size = core.host_memory_stat_current_value(
                 "Allocated", 0
             )
-            self.assertEqual(memory_allocated_size, alloc_size * 2)
+            self.assertEqual(memory_allocated_size, alloc_size)
 
             max_allocated_size = core.host_memory_stat_peak_value(
                 "Allocated", 0
             )
-            self.assertEqual(max_allocated_size, alloc_size * 4)
+            self.assertEqual(max_allocated_size, alloc_size * 2)
+
+            pinned_memory_allocated_size = (
+                core.pinned_memory_stat_current_value("Allocated", 0)
+            )
+            self.assertEqual(pinned_memory_allocated_size, alloc_size)
+
+            pinned_max_allocated_size = core.pinned_memory_stat_peak_value(
+                "Allocated", 0
+            )
+            self.assertEqual(pinned_max_allocated_size, alloc_size * 2)
+
+
+class TestHostMemoryStatsAPI(unittest.TestCase):
+    def test_memory_allocated_with_pinned(self, device=None):
+        if core.is_compiled_with_cuda():
+            tensor = paddle.zeros(shape=[256])
+            tensor_pinned = tensor.pin_memory()
+            alloc_size = 4 * 256  # 256 float32 data, with 4 bytes for each one
+
+            cpu_memory_allocated_size = paddle.device.cpu.memory_allocated()
+            cpu_memory_reserved_size = paddle.device.cpu.memory_reserved()
+            cpu_max_memory_allocated_size = (
+                paddle.device.cpu.max_memory_allocated()
+            )
+            cpu_max_memory_reserved_size = (
+                paddle.device.cpu.max_memory_reserved()
+            )
+
+            pinned_memory_allocated_size = (
+                paddle.device.cuda.pinned_memory_allocated()
+            )
+            pinned_memory_reserved_size = (
+                paddle.device.cuda.pinned_memory_reserved()
+            )
+            pinned_max_memory_allocated_size = (
+                paddle.device.cuda.max_pinned_memory_allocated()
+            )
+            pinned_max_memory_reserved_size = (
+                paddle.device.cuda.max_pinned_memory_reserved()
+            )
+
+            self.assertEqual(cpu_memory_allocated_size, alloc_size)
+            self.assertEqual(cpu_memory_reserved_size, alloc_size)
+            # since had allocated in TestHostMemoryStats
+            self.assertEqual(cpu_max_memory_allocated_size, 2 * alloc_size)
+            self.assertEqual(cpu_max_memory_reserved_size, 2 * alloc_size)
+
+            self.assertEqual(pinned_memory_allocated_size, alloc_size)
+            # since had allocated in TestHostMemoryStats
+            self.assertEqual(pinned_max_memory_allocated_size, 2 * alloc_size)
+
+            def foo():
+                tensor = paddle.zeros(shape=[256])
+                tensor_pinned = tensor.pin_memory()
+
+                cpu_memory_allocated_size = paddle.device.cpu.memory_allocated()
+                cpu_memory_reserved_size = paddle.device.cpu.memory_reserved()
+                cpu_max_memory_allocated_size = (
+                    paddle.device.cpu.max_memory_allocated()
+                )
+                cpu_max_memory_reserved_size = (
+                    paddle.device.cpu.max_memory_reserved()
+                )
+
+                pinned_memory_allocated_size = (
+                    paddle.device.cuda.pinned_memory_allocated()
+                )
+                pinned_memory_reserved_size = (
+                    paddle.device.cuda.pinned_memory_reserved()
+                )
+                pinned_max_memory_allocated_size = (
+                    paddle.device.cuda.max_pinned_memory_allocated()
+                )
+                pinned_max_memory_reserved_size = (
+                    paddle.device.cuda.max_pinned_memory_reserved()
+                )
+
+                self.assertEqual(cpu_memory_allocated_size, 2 * alloc_size)
+                self.assertEqual(cpu_memory_reserved_size, 2 * alloc_size)
+                self.assertEqual(cpu_max_memory_allocated_size, 2 * alloc_size)
+                self.assertEqual(cpu_max_memory_reserved_size, 2 * alloc_size)
+
+                self.assertEqual(pinned_memory_allocated_size, 2 * alloc_size)
+                self.assertEqual(
+                    pinned_max_memory_allocated_size, 2 * alloc_size
+                )
+
+            foo()
+
+            cpu_memory_allocated_size = paddle.device.cpu.memory_allocated()
+            cpu_memory_reserved_size = paddle.device.cpu.memory_reserved()
+            cpu_max_memory_allocated_size = (
+                paddle.device.cpu.max_memory_allocated()
+            )
+            cpu_max_memory_reserved_size = (
+                paddle.device.cpu.max_memory_reserved()
+            )
+
+            pinned_memory_allocated_size = (
+                paddle.device.cuda.pinned_memory_allocated()
+            )
+            pinned_memory_reserved_size = (
+                paddle.device.cuda.pinned_memory_reserved()
+            )
+            pinned_max_memory_allocated_size = (
+                paddle.device.cuda.max_pinned_memory_allocated()
+            )
+            pinned_max_memory_reserved_size = (
+                paddle.device.cuda.max_pinned_memory_reserved()
+            )
+
+            self.assertEqual(cpu_memory_allocated_size, alloc_size)
+            self.assertEqual(cpu_memory_reserved_size, alloc_size)
+            self.assertEqual(cpu_max_memory_allocated_size, 2 * alloc_size)
+            self.assertEqual(cpu_max_memory_reserved_size, 2 * alloc_size)
+
+            self.assertEqual(pinned_memory_allocated_size, alloc_size)
+            self.assertEqual(pinned_max_memory_allocated_size, 2 * alloc_size)
 
 
 if __name__ == "__main__":

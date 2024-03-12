@@ -1036,6 +1036,13 @@ def get_package_data_and_package_dir():
             os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
         ]
         shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
+
+    if len(env_dict.get("FLASHATTN_V1_LIBRARIES", "")) > 1:
+        package_data['paddle.libs'] += [
+            os.path.basename(env_dict.get("FLASHATTN_V1_LIBRARIES"))
+        ]
+        shutil.copy(env_dict.get("FLASHATTN_V1_LIBRARIES"), libs_path)
+
     if env_dict.get("WITH_LITE") == 'ON':
         shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
         package_data['paddle.libs'] += [
@@ -1491,6 +1498,7 @@ def get_setup_parameters():
         'paddle.device',
         'paddle.device.cuda',
         'paddle.device.xpu',
+        'paddle.device.cpu',
         'paddle.version',
         'paddle.profiler',
         'paddle.geometric',

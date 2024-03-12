@@ -269,6 +269,20 @@ void FlashAttnInferMeta(const MetaTensor& q,
   out->set_layout(q.layout());
 }
 
+void FlashAttnV1InferMeta(const MetaTensor& q,
+                          const MetaTensor& k,
+                          const MetaTensor& v,
+                          MetaTensor* out,
+                          MetaTensor* softmax,
+                          MetaTensor* softmax_lse,
+                          MetaTensor* seed_offset) {
+  auto out_dims = q.dims();
+  out_dims[3] = v.dims()[3];
+  out->set_dims(out_dims);
+  out->set_dtype(q.dtype());
+  out->set_layout(q.layout());
+}
+
 void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& end,
                      const MetaTensor& step,

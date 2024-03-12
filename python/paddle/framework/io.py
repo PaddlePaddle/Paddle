@@ -17,6 +17,7 @@ import copyreg
 import os
 import pickle
 import sys
+import threading
 import warnings
 from collections.abc import Iterable
 
@@ -48,6 +49,81 @@ from .io_utils import (
 )
 
 __all__ = []
+async_save_queue = []
+
+
+def clear_async_save_task_queue():
+    '''
+    wait until all async save task to be done.
+    '''
+    while len(async_save_queue) > 0:
+        task = async_save_queue.pop()
+        if task and task.is_alive():
+            task.join()
+
+
+def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
+    '''
+    async version of paddle.save.
+    Note:
+        currently only support dygraph mode.
+    Note:
+        any argument passed through configs will be overrided by default setting.
+    Args:
+        obj(Object) : The object to be saved.
+        path(str|BytesIO) : The path/buffer of the object to be saved.
+          If saved in the current directory, the input path string will be used as the file name.
+        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
+                                 Default: 4
+        sync_other_task(bool) : Determine whether to wait other async save task to be finished before this one be put in queue.
+        **configs(dict, optional): compatible argument to paddle.save, but will be overrided by default setting.
+    Examples:
+        .. code-block:: python
+            :name: code-example-1
+
+            import paddle
+            emb = paddle.nn.Embedding(10, 10)
+            layer_state_dict = emb.state_dict()
+
+            # call paddle.async_save with the same style of paddle.save
+            paddle.async_save(layer_state_dict, "emb.pdparams")
+            for i in range(10):
+                # do some calculations here
+            # wait if any async_save task has not been done
+            paddle.clear_async_task_queue()
+    '''
+    if not _non_static_mode():
+        raise ValueError(
+            "async_save currently is not supported in static mode."
+        )
+    if len(configs) > 0:
+        warnings.warn(
+            "configs are not supported in async mode, will be overided by default settings."
+        )
+
+    # TODO: make this part async
+    def move_state_dict_to_cpu(sd):
+        for k, v in sd.items():
+            if isinstance(v, dict):
+                move_state_dict_to_cpu(v)
+            elif isinstance(v, core.eager.Tensor):
+                sd[k] = v.pin_memory() if core.is_compiled_with_cuda() else v
+        return
+
+    if isinstance(obj, dict):
+        move_state_dict_to_cpu(obj)
+    elif isinstance(obj, core.eager.Tensor):
+        obj = obj.pin_memory() if core.is_compiled_with_cuda() else obj
+    else:
+        # other types are currently not supported
+        raise TypeError(
+            f"currently async_save does not support this type: {type(obj)}"
+        )
+    if sync_other_task:
+        clear_async_save_task_queue()
+    t = threading.Thread(target=save, args=(obj, path, protocol))
+    t.start()
+    async_save_queue.append(t)
 
 
 def _build_saved_state_dict(state_dict):

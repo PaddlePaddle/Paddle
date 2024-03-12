@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import os
 from functools import reduce
 from itertools import product
 
@@ -24,6 +25,10 @@ from ..utils.log_util import logger
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
 _HYBRID_PARALLEL_GROUP = None
+
+g_pipeline_nccl_comm_init_option = int(
+    os.environ.get("FLAGS_pipeline_nccl_comm_init_option", 0)
+)
 
 
 class ParallelMode:
@@ -164,14 +169,24 @@ class HybridCommunicateGroup:
             )
         )
 
+        # create comm group for pipe parallel
+        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
+        # NOTE(shenliang03): In pipeline parallel, we use batch_isend_irecv.
+        # if batch_isend_irecv is the first collective operation, all ranks of
+        # the pipeline group must participate in this call. In order to avoid
+        # this situation, we perform a collective communication in advance and
+        # create a communicator.
+        paddle.distributed.all_reduce(
+            paddle.zeros([1], dtype="int32"),
+            op=paddle.distributed.ReduceOp.SUM,
+            group=self._pp_comm_group,
+        )
+
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group("data")
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group("model")
-
-        # create comm group for pipe parallel
-        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
 
         # create comm group for sharding parallel
         self._sharding_group, self._sharding_comm_group = self._set_comm_group(
@@ -228,20 +243,26 @@ class HybridCommunicateGroup:
         # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
-        # TODO modify 3 others parallel to support sharding
         if (
-            self._mp_degree == 1
-            and self._pp_degree == 1
-            and self._dp_degree == 1
+            self._pp_degree == 1
+            and self._mp_degree == 1
+            and self._sharding_degree == 1
+            and self._dp_degree > 1
+        ):
+            return ParallelMode.DATA_PARALLEL
+        elif (
+            self._pp_degree == 1
+            and self._mp_degree == 1
             and self._sharding_degree > 1
         ):
+            # sharding may coexist with dp
             return ParallelMode.SHARDING_PARALLEL
-        elif self._mp_degree == 1 and self._pp_degree == 1:
-            return ParallelMode.DATA_PARALLEL
-        elif self._mp_degree > 1 and self._pp_degree == 1:
+        elif self._pp_degree == 1 and self._mp_degree > 1:
+            # tp may coexist with sep、dp and sharding
             # initialize the seed
             return ParallelMode.TENSOR_PARALLEL
         elif self._pp_degree > 1:
+            # pp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
     def _check_vaild_topo(self):
@@ -258,8 +279,16 @@ class HybridCommunicateGroup:
         parallel_comm_group = None
         parallel_groups = self._topo.get_comm_list(parallel_method)
 
+        group_nccl_comm_init_option = (
+            g_pipeline_nccl_comm_init_option
+            if (parallel_method == "pipe")
+            else 0
+        )
         for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(ranks=group)
+            comm_group = paddle.distributed.new_group(
+                ranks=group,
+                nccl_comm_init_option=group_nccl_comm_init_option,
+            )
             if self.global_rank in group:
                 parallel_group = group
                 parallel_comm_group = comm_group
