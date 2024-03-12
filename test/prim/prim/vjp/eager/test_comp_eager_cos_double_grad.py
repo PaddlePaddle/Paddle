@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
@@ -20,8 +19,6 @@ import parameterized as param
 
 import paddle
 from paddle.base import core
-
-sys.path.append('../../../../legacy_test/')
 
 
 @param.parameterized_class(
@@ -45,10 +42,10 @@ class TestCosDoubleGradComp(unittest.TestCase):
             x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
             y = paddle.cos(x)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=True, retain_graph=True
-            )
-            return x_cotangent[0]
+            dx = paddle.grad(y, x, create_graph=True, retain_graph=True)
+
+            ddx = paddle.grad(dx, x, create_graph=True, retain_graph=True)
+            return ddx[0]
 
         def desired(primal):
             paddle.disable_static()
@@ -56,10 +53,10 @@ class TestCosDoubleGradComp(unittest.TestCase):
             x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
             y = paddle.cos(x)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=True, retain_graph=True
-            )
-            return x_cotangent[0]
+            dx = paddle.grad(y, x, create_graph=True, retain_graph=True)
+
+            ddx = paddle.grad(dx, x, create_graph=True, retain_graph=True)
+            return ddx[0]
 
         np.testing.assert_allclose(
             actual=actual(self.primal),
