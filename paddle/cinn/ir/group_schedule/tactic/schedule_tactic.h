@@ -16,6 +16,7 @@
 
 #include <string>
 #include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule_block_graph.h"
@@ -70,34 +71,6 @@ struct BucketInfo {
   int sp_upper_bound = UINT_MAX;
   int rb_lower_bound = 0;
   int rb_upper_bound = UINT_MAX;
-};
-
-struct GroupTileInfo {
-  GroupTileInfo() {}
-
-  std::vector<int64_t> reduce_axis_;
-  int64_t data_rank;
-
-  int64_t block_num{-1};
-  int64_t warp_num;
-  int64_t spatial_inner_num;
-  int64_t reduce_numel;
-  int64_t reduce_inner_num;
-  int64_t reduce_block;
-
-  bool is_reduce_all{false};
-
-  std::set<std::string> reduce_tensor_names;
-  std::set<std::string> temp_var_names;
-
-  std::set<std::string> shared_var_names;
-  std::set<std::string> direct_output_var_names;
-  std::vector<std::string> thread_sync_before_names;
-
-  ReduceMethod reduce_method{NoneReduceMethod()};
-
-  std::unordered_map<std::string, BroadcastInfo> broadcast_info;
-  std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
 };
 
 struct ScheduleContext {
