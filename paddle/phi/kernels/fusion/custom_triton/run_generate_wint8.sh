@@ -105,4 +105,4 @@ done
 
 python3.8 setup_cuda.py install
 #python3.8 matmul_test.py
-CUDA_VISIBLE_DEVICES=4 python3.8 wint8_test.py 
+CUDA_VISIBLE_DEVICES=4 python3.8 test_wint8.py 
