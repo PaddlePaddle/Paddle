@@ -45,7 +45,7 @@ void ScaleKernel(const Context& dev_ctx,
                      x.numel(),
                      bias_after_scale,
                      scale.to<float>(),
-                     bias);
+                     bias.to<float>());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 }
 
