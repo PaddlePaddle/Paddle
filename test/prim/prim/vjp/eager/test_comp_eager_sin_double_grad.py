@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
@@ -20,8 +19,6 @@ import parameterized as param
 
 import paddle
 from paddle.base import core
-
-sys.path.append('../../../../legacy_test/')
 
 
 @param.parameterized_class(
