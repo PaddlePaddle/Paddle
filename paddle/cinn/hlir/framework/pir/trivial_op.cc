@@ -67,6 +67,26 @@ void SequenceMutator(const std::vector<A>& as, C* acc, const Func& mutator) {
   }
 }
 
+// Teller to find the father expr.
+// Getter to get the target expr from father
+// Transformer to trans the target to replaced.
+template <class C, class Teller, class Getter, class Transformer>
+void FindAndReplace(C* body,
+                    const Teller& teller,
+                    const Getter& getter,
+                    const Transformer& transformer,
+                    bool force_single_target = true) {
+  std::set<Expr> found_targets =
+      cinn::ir::ir_utils::CollectIRNodesWithoutTensor(body, teller);
+  if (force_single_target && found_targets.size() != 1) {
+    PADDLE_THROW("The expr found should have only one target.");
+  }
+  for (const auto& expr : found_targets) {
+    MappingTargetExprToDestExprMutator(getter(expr),
+                                       transformer(getter(expr)))(body);
+  }
+}
+
 static bool IsAdjecent(const ir::Expr& upstream, const ir::Expr& downstream) {
   // 1. Get inputs / output from Expr, then we can tell whether they are
   // adjecent.
@@ -168,7 +188,7 @@ static void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
                                              const ir::Expr& dest,
                                              ir::Expr* body) {
   VLOG(4) << "Start SubstitudeTargetExprWithDestExpr";
-  MappingLoadStoreExprToDestExprMutator mapper(source, dest);
+  MappingTargetExprToDestExprMutator mapper(source, dest);
   mapper(body);
   VLOG(4) << "End SubstitudeTargetExprWithDestExpr";
 }
@@ -204,15 +224,13 @@ std::set<Expr> GetStoreFromBody(const ir::Expr& body) {
   return store_tensor_exprs;
 }
 
-bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter){
-    TODO} ir::Expr TransformComputeExpr(ir::Expr up_compute_expr,
-                                        ir::Expr downstream){TODO} ir::Expr
-    CreateReduceExpr(std::vector<ir::Var> out_iter,
-                     std::vector<ir::Var> reduce_iter,
-                     ir::Expr comput_expr,
-                     ir::Tensor replaced_tensor) {
+bool CheckIterEq(std::vector<ir::Var> up_iter,
+                 std::vector<ir::Var> down_iter){TODO}
+
+ir::Expr TransformComputeExpr(ir::Expr up_compute_expr, ir::Expr downstream) {
   TODO
 }
+
 }  // namespace ComposeUtils
 
 struct TrivialOp {
@@ -350,6 +368,46 @@ struct ReduceOp {
   }
 };
 
+ir::Expr CreateReduceExpr(const ReduceOp& downstream,
+                          const ir::Expr& reduce_body,
+                          const ir::Expr& init_body,
+                          const ir::Tensor& new_tensor) {
+  // copy downstream and replace reduce_body and init_body
+  ir::Expr copied_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
+  // STEP1: replace reduce_body.
+  FindAndReplace(
+      &copied_body,
+      [](const Expr* expr) { return expr->As<ir::Reduce>(); },
+      [](const Expr& expr) { return expr.As<ir::Reduce>()->body; },
+      [&reduce_body](const Expr& body) { return reduce_body; });
+
+  // STEP2: replace reduce_init.
+  FindAndReplace(
+      &copied_body,
+      [](const Expr* expr) { return expr->As<ir::Reduce>(); },
+      [](const Expr& expr) { return expr.As<ir::Reduce>()->init; },
+      [&init_body](const Expr& body) { return init_body; });
+
+  // STEP3: change the tensor of store.
+  FindAndReplace(
+      &copied_body,
+      [](const Expr* expr) { return expr->As<ir::Store>(); },
+      [](const Expr& expr) { return expr.As<ir::Store>()->tensor; },
+      [&](const Expr& body) { return new_tensor; });
+
+  // STEP4: change the name of ir::ScheduleBlock
+  FindAndReplace(
+      &copied_body,
+      [](const Expr* expr) { return expr->As<ir::ScheduleBlock>(); },
+      [](const Expr& expr) { return expr; },
+      [&](const Expr& scheduleblock) {
+        auto copied = ir::ir_utils::IRCopy(scheduleblock);
+        copied.As<ir::ScheduleBlock>()->name = new_tensor->name;
+        return copied;
+      });
+  return copied_body;
+}
+
 using FusibleOp = std::variant<ReduceOp, TrivialOp>;
 
 struct FusionNode {
@@ -466,6 +524,7 @@ ir::Expr ReplaceReduceComputeBody(const ir::Expr& body,
                                   const ir::Expr& new_body) {
   TODO;
 }
+
 ReduceOp TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
   VLOG(4) << "RRTransform begin";
 
@@ -480,12 +539,9 @@ ReduceOp TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
   ir::Expr new_reduce_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
   ir::Expr reduce_op_expr = ComposeUtils::TransformComputeExpr(
       new_reduce_body.GetComputeExpr(), down);
-  ir::Expr
+  ir::Expr const auto& replaced_tensor = upstream.GetOutputTensor();
 
-      const auto& replaced_tensor = upstream.GetOutputTensor();
-
-  ir::Expr result = ComposeUtils::CreateReduceExpr(
-      down_out_iter, up_reduce_iter, new_expr, origin_tensor, replaced_tensor);
+  ir::Expr result = ComposeUtils::CreateReduceExpr(downstream, reduce_op_expr);
 
   VLOG(4) << "RRTransform end" << result;
   return ReduceOp(result);
