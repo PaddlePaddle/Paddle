@@ -224,9 +224,9 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
       loops = sch->GetLoops(block_id);
       sch->Reorder(
           {loops[reduce_current_axis_ + 2], loops[reduce_current_axis_ + 1]});
-      sch->Fuse(
-          block_id,
-          std::vector<int>(reduce_current_axis_, reduce_current_axis_ + 1));
+
+      loops = sch->GetLoops(block_id);
+      sch->Fuse({loops[reduce_current_axis_], loops[reduce_current_axis_ + 1]});
 
       loops = sch->GetLoops(block_id);
 
