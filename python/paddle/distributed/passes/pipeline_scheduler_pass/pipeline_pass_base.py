@@ -17,9 +17,9 @@ import logging
 import paddle
 from paddle.base import core
 
-from ..utils.log_utils import get_logger
-from .pass_base import PassBase
-from .pass_utils import set_skip_gc_vars, shadow_var_between_sub_programs
+from ...utils.log_utils import get_logger
+from ..pass_base import PassBase
+from ..pass_utils import set_skip_gc_vars, shadow_var_between_sub_programs
 
 logger = get_logger(logging.INFO)
 
