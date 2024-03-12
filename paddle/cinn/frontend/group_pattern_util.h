@@ -29,16 +29,13 @@ struct OpsClusteringSpec {
 
 std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
     const pir::ShapeConstraintIRAnalysis* shape_analysis,
-    const std::vector<pir::Operation*>& ops,
+    const std::vector<const pir::Operation*>& ops,
     const OpsClusteringSpec& clustering_spec);
 
 GroupPattern GenerateGroupPatternFromOpList(
-    const std::vector<pir::Operation*>& ops);
+    const std::vector<const pir::Operation*>& ops);
 
 std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(
     const std::shared_ptr<std::unordered_set<const pir::Operation*>>& ops);
 
-std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
-    const pir::Operation* sink,
-    const std::shared_ptr<std::unordered_set<const pir::Operation*>>& ops);
 }  // namespace cinn::frontend

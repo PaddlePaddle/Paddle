@@ -737,8 +737,15 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
 std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
   // using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
   // using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
-  const auto& patterns =
-      frontend::GenerateGroupPatternFromOpList(group_op.GetOperators());
+  const auto& ops = [&]{
+    std::vector<const pir::Operation*> ops;
+    for (const auto& op : *group_op.block()) {
+      ops.push_back(&op);
+    }
+    return ops;
+  }();
+  const auto& pattern_tree =
+      frontend::GenerateGroupPatternFromOpList(ops);
 }
 
 // std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op)
