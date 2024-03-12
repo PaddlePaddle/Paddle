@@ -325,7 +325,7 @@ class TestNanmedianModeMin(unittest.TestCase):
     def test_mode_min_index(self):
         paddle.disable_static(place=self.place)
         x = paddle.arange(2 * 100).reshape((2, 100)).astype(paddle.float32)
-        out, index = paddle.median(x, axis=1, mode='min')
+        out, index = paddle.nanmedian(x, axis=1, mode='min')
         np.testing.assert_allclose(out.numpy(), [49.0, 149.0])
         np.testing.assert_equal(index.numpy(), [49, 49])
 
