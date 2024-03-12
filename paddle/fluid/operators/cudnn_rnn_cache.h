@@ -30,8 +30,13 @@ struct CudnnRNNCache {
   ~CudnnRNNCache() { release(); }
 
   cudnnRNNDescriptor_t rnn_desc_;
+#if CUDNN_VERSION >= 90000
+  cudnnRNNDataDescriptor_t x_desc_;
+  cudnnRNNDataDescriptor_t y_desc_;
+#else
   cudnnTensorDescriptor_t *x_desc_;
   cudnnTensorDescriptor_t *y_desc_;
+#endif
 
   cudnnTensorDescriptor_t hx_desc_;
   cudnnTensorDescriptor_t cx_desc_;
@@ -93,7 +98,37 @@ struct CudnnRNNCache {
     const auto numDirections = is_bidirec_ ? 2 : 1;
     auto cudnn_size =
         cudnn_type == CUDNN_DATA_FLOAT ? sizeof(float) : sizeof(double);
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cudnnCreateRNNDataDescriptor(&x_desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cudnnCreateRNNDataDescriptor(&y_desc_));
 
+    std::vector<int> seq_length_array(batch_size_);
+    for (int i = 0; i < batch_size_; ++i) {
+      seq_length_array[i] = seq_length_;
+    }
+
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNDataDescriptor(
+        x_desc_,
+        cudnn_type,
+        CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED,
+        seq_length_,
+        batch_size_,
+        input_size_,
+        reinterpret_cast<const int *>(seq_length_array.data()),
+        nullptr));
+
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNDataDescriptor(
+        y_desc_,
+        cudnn_type,
+        CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED,
+        seq_length_,
+        batch_size_,
+        hidden_size_ * numDirections,
+        reinterpret_cast<const int *>(seq_length_array.data()),
+        nullptr));
+#else
     x_desc_ = new cudnnTensorDescriptor_t[seq_length_];
     y_desc_ = new cudnnTensorDescriptor_t[seq_length_];
     std::vector<int> dims = {batch_size_, input_size_, 1};
@@ -114,6 +149,7 @@ struct CudnnRNNCache {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           y_desc_[i], cudnn_type, 3, dims_y.data(), strides_y.data()));
     }
+#endif
 
     std::vector<int> dims_hx = {
         num_layers_ * numDirections, batch_size_, hidden_size_};
@@ -185,7 +221,24 @@ struct CudnnRNNCache {
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateRNNDescriptor(&rnn_desc_));
-
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v8(
+        rnn_desc_,
+        CUDNN_RNN_ALGO_STANDARD,
+        CUDNN_LSTM,
+        CUDNN_RNN_DOUBLE_BIAS,
+        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL,
+        CUDNN_LINEAR_INPUT,
+        cudnn_type,
+        cudnn_type,
+        CUDNN_DEFAULT_MATH,
+        input_size_,
+        hidden_size_,
+        hidden_size_,
+        num_layers_,
+        dropout_desc_,
+        CUDNN_RNN_PADDED_IO_ENABLED));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle,
         rnn_desc_,
@@ -197,15 +250,19 @@ struct CudnnRNNCache {
         CUDNN_LSTM,
         CUDNN_RNN_ALGO_STANDARD,
         cudnn_type));
-
+#endif
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateFilterDescriptor(&w_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateFilterDescriptor(&dw_desc_));
 
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnGetRNNWeightSpaceSize(
+        handle, rnn_desc_, &weights_size_));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_, x_desc_[0], &weights_size_, cudnn_type));
-
+#endif
     PADDLE_ENFORCE_EQ(
         weights_size_,
         cudnn_size * weight_numel,
@@ -220,18 +277,32 @@ struct CudnnRNNCache {
         w_desc_, cudnn_type, CUDNN_TENSOR_NCHW, 3, dim_w));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
         dw_desc_, cudnn_type, CUDNN_TENSOR_NCHW, 3, dim_w));
-
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cudnnGetRNNTempSpaceSizes(handle,
+                                                     rnn_desc_,
+                                                     CUDNN_FWD_MODE_TRAINING,
+                                                     x_desc_,
+                                                     &workspace_size_,
+                                                     reserve_size_));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
         handle, rnn_desc_, seq_length_, x_desc_, &workspace_size_));
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnGetRNNTrainingReserveSize(
             handle, rnn_desc_, seq_length_, x_desc_, reserve_size_));
-
+#endif
     workspace_data_.Resize({static_cast<int64_t>(workspace_size_)});
     workspace_data_.mutable_data<uint8_t>(place);
   }
 
   void release() {
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cudnnDestroyRNNDataDescriptor(x_desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cudnnDestroyRNNDataDescriptor(y_desc_));
+#else
     for (size_t i = 0; i < seq_length_; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(x_desc_[i]));
@@ -241,6 +312,7 @@ struct CudnnRNNCache {
 
     delete[] x_desc_;
     delete[] y_desc_;
+#endif
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(hx_desc_));

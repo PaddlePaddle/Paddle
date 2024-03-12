@@ -159,6 +159,32 @@ struct ShadowOutputOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct SplitOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    const auto& shape_data_list =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0))
+            .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+    for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
+      PADDLE_ENFORCE_EQ(
+          shape_data_list[rst_idx].data().has_value(),
+          false,
+          paddle::platform::errors::InvalidArgument(
+              "Currently InferSymbolicShape of SplitOp only support "
+              "input without value."));
+      shape_analysis->SetShapeOrDataForValue(
+          op->result(rst_idx),
+          symbol::ShapeOrDataDimExprs{shape_data_list[rst_idx]});
+    }
+    return true;
+  }
+
+  SplitOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 struct YieldOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
@@ -195,6 +221,11 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
       std::move(pir::InterfaceValue::Get<
                 InferSymbolicShapeInterface,
                 ShadowOutputOpInferSymbolicShapeInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::SplitOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               SplitOpInferSymbolicShapeInterfaceModel>()));
 
   info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
   info.AttachInterface(std::move(
@@ -435,8 +466,10 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
         auto& grad_op_output_names =
             OpMetaInfoHelper::GetOutputs(*grad_op_meta_ptr);
         bool is_double_grad_op =
-            (grad_op_name.find("_grad_grad") != grad_op_name.npos) ? true
-                                                                   : false;
+            (grad_op_name.find(paddle::framework::kDoubleGradSuffix) !=
+             grad_op_name.npos)
+                ? true
+                : false;
         for (auto& grad_op_output_name : grad_op_output_names) {
           auto fwd_input_name = paddle::framework::detail::NoGrad(
               grad_op_output_name, is_double_grad_op);
@@ -518,7 +551,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
 struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
   static std::vector<std::vector<pir::Value>> CustomOpVjp(
       pir::Operation* op,
-      const std::vector<std::vector<pir::Value>>& inputs_,
+      const std::vector<std::vector<pir::Value>>& inputs,
       const std::vector<std::vector<pir::Value>>& outputs,
       const std::vector<std::vector<pir::Value>>& out_grads,
       const std::vector<std::vector<bool>>& stop_gradients) {
@@ -555,13 +588,13 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     auto infershape_func = OpMetaInfoHelper::GetInferShapeFn(bwd_op_meta_info);
     auto inferdtype_func = OpMetaInfoHelper::GetInferDtypeFn(bwd_op_meta_info);
     PADDLE_ENFORCE_EQ(
-        inputs_.size(),
+        inputs.size(),
         fwd_inputs_name.size(),
         paddle::platform::errors::InvalidArgument(
             "Custom op: %s inputs size should be %d, but now is %d.",
             pir_op_name,
             fwd_inputs_name.size(),
-            inputs_.size()));
+            inputs.size()));
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         fwd_outputs_name.size(),
@@ -579,9 +612,11 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
             pir_op_name,
             fwd_outputs_name.size(),
             out_grads.size()));
-
     bool is_double_grad_op =
-        (bwd_pir_op_name.find("_grad_grad") != pir_op_name.npos) ? true : false;
+        (bwd_pir_op_name.find(paddle::framework::kDoubleGradSuffix) !=
+         bwd_pir_op_name.npos)
+            ? true
+            : false;
     pir::IrContext* ctx = pir::IrContext::Instance();
     pir::OpInfo pir_info = ctx->GetRegisteredOpInfo(bwd_pir_op_name);
     pir::OperationArgument argument(pir_info);
@@ -633,7 +668,6 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
             grad_op_input_name));
       }
     };
-
     // Construct custom grad op inputs
     int input_index = 0;
     int vec_input_index = 0;
@@ -642,8 +676,8 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       const auto input_location = GetInputLocation(bwd_input_name);
       std::vector<pir::Value> input_values;
       if (input_location.first == 0) {
-        // grad op input is in inputs_
-        input_values = inputs_[input_location.second];
+        // grad op input is in inputs
+        input_values = inputs[input_location.second];
       } else if (input_location.first == 1) {
         // grad op input is in outputs
         input_values = outputs[input_location.second];
@@ -651,32 +685,43 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
         // grad op input is in out_grads
         input_values = out_grads[input_location.second];
       }
-
-      if (input_values.size() > 1) {
+      if (paddle::framework::detail::IsDuplicableVar(bwd_input_name)) {
         std::vector<std::vector<int64_t>> tmp_input_shapes;
         std::vector<phi::DataType> tmp_input_dtypes;
+        pir::Value input_value;
         vec_input_name2id_map[bwd_input_name] = vec_input_index;
         vec_input_index++;
-        for (auto& input_value : input_values) {
-          paddle::dialect::DenseTensorType input_tensor =
-              input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-          tmp_input_shapes.push_back(phi::vectorize(input_tensor.dims()));
-          tmp_input_dtypes.push_back(
-              paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+        bool is_optional =
+            (input_values.size() == 1 && input_values[0].impl() == nullptr);
+        if (!is_optional) {
+          for (auto& input_value : input_values) {
+            paddle::dialect::DenseTensorType input_tensor =
+                input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+            tmp_input_shapes.push_back(phi::vectorize(input_tensor.dims()));
+            tmp_input_dtypes.push_back(
+                paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+          }
+          input_value = paddle::dialect::builtin_combine(input_values);
         }
         vec_input_shapes.push_back(tmp_input_shapes);
         vec_input_dtypes.push_back(tmp_input_dtypes);
-        auto input_value = paddle::dialect::builtin_combine(input_values);
         argument_inputs.push_back(input_value);
       } else {
+        std::vector<int64_t> tmp_input_shape;
+        phi::DataType tmp_input_dtype = DataType::UNDEFINED;
         input_name2id_map[bwd_input_name] = input_index;
         input_index++;
         pir::Value input_value = input_values[0];  // NOLINT
-        paddle::dialect::DenseTensorType input_tensor =
-            input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-        input_shapes.push_back(phi::vectorize(input_tensor.dims()));
-        input_dtypes.push_back(
-            paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+        if (input_value.impl() != nullptr) {
+          paddle::dialect::DenseTensorType input_tensor =
+              input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+          tmp_input_shape = phi::vectorize(input_tensor.dims());
+          tmp_input_dtype =
+              paddle::dialect::TransToPhiDataType(input_tensor.dtype());
+        }
+        input_shapes.push_back(tmp_input_shape);
+        input_dtypes.push_back(tmp_input_dtype);
+
         argument_inputs.push_back(input_value);
       }
     }
@@ -691,7 +736,6 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       custom_attrs.push_back(paddle::dialect::TransAttrToAny(fwd_op_attr));
       argument.AddAttribute(fwd_attr_name, fwd_op_attr);
     }
-
     // Run Compile InferMeta
     std::vector<std::vector<int64_t>> output_shapes =
         paddle::framework::RunInferShape(infershape_func,
@@ -714,18 +758,23 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     std::unordered_map<std::string, size_t> output_name2value_num;
     for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
       const auto& bwd_output_name = bwd_outputs_name.at(i);
+      const auto& bwd_input =
+          paddle::framework::detail::NoGrad(bwd_output_name, is_double_grad_op);
+
       if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
-        const auto& bwd_input = paddle::framework::detail::NoGrad(
-            bwd_output_name, is_double_grad_op);
         auto index = vec_input_name2id_map[bwd_input];
-        auto& input_shapes = vec_input_shapes[index];
-        output_name2value_num[bwd_output_name] = input_shapes.size();
-        all_values_num += input_shapes.size();
+        auto& vec_input_shape = vec_input_shapes[index];
+        output_name2value_num[bwd_output_name] = vec_input_shape.size();
       } else {
-        output_name2value_num[bwd_output_name] = 1;
-        all_values_num++;
+        auto index = input_name2id_map[bwd_input];
+        // input_shapes[index] is dim of tensor, if the dim doesn't have
+        // element, it must be a optional tensor that is None in custom operator
+        output_name2value_num[bwd_output_name] =
+            input_shapes[index].size() == 0 ? 0 : 1;
       }
+      all_values_num += output_name2value_num[bwd_output_name];
     }
+
     PADDLE_ENFORCE_EQ(
         output_shapes.size(),
         all_values_num,
@@ -747,13 +796,18 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
             "Tensors' dtype",
             all_values_num,
             output_dtypes.size()));
-
     // Construct custom grad op outputs
     size_t value_index = 0;
     for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
       const auto& bwd_output_name = bwd_outputs_name.at(i);
+      auto value_num = output_name2value_num[bwd_output_name];
+      if (value_num == 0) {
+        // Optional value condition
+        pir::Type out_type;
+        argument_outputs.push_back(out_type);
+        continue;
+      }
       if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
-        auto value_num = output_name2value_num[bwd_output_name];
         std::vector<pir::Type> out_types;
         for (size_t j = 0; j < value_num; ++j) {
           auto ddims = phi::make_ddim(output_shapes[value_index]);
@@ -789,6 +843,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       }
     }
     argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+
     // Build Operation
     std::vector<pir::Value> op_results;
     pir::Operation* bwd_op =
@@ -801,6 +856,42 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     for (size_t i = 0; i < stop_gradients.size(); ++i) {
       res[i].resize(stop_gradients[i].size());
     }
+
+    auto GetInputGradientIndex = [&](const std::string& bwd_output_name,
+                                     bool is_double_grad_op) -> size_t {
+      /*
+        This function is used to get the index of input that need calculate
+        gradient in forward op. For example: forward inputs : TensorA, TensorB,
+        TensorC, TensorD backward outputs: TensorC@Grad, TensorA@Grad So, we
+        only need to calculate gradient of TensorA and TensorC and store them in
+        res; In this example, the res size is 2, and the first element of res
+        should store TensorA@Grad, and the second element of res should store
+        TensorC@Grad.
+
+        So, This function will return 1 if we pass TensorC@Grad and return 0 if
+        we pass TensorA@Grad.
+      */
+      size_t gradient_vec_index = 0;
+      const auto& fwd_input =
+          paddle::framework::detail::NoGrad(bwd_output_name, is_double_grad_op);
+      auto fwd_inputs_name_iter =
+          std::find(fwd_inputs_name.begin(), fwd_inputs_name.end(), fwd_input);
+      size_t input_index =
+          std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
+      for (size_t i = 0; i < input_index; ++i) {
+        for (size_t j = 0; j < bwd_outputs_name.size(); j++) {
+          const auto& fwd_input_name_tmp = paddle::framework::detail::NoGrad(
+              bwd_outputs_name[j], is_double_grad_op);
+          if (fwd_input_name_tmp == fwd_inputs_name[i]) {
+            // find forward input that need calculate gradient
+            gradient_vec_index++;
+            break;
+          }
+        }
+      }
+      return gradient_vec_index;
+    };
+
     // Build result and apply stop gradients
     for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
       const auto& bwd_output_name = bwd_outputs_name.at(i);
@@ -817,16 +908,20 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
                 "forward input that need calculate gradients.",
                 pir_op_name,
                 bwd_output_name));
-        int index =
-            std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
-        auto split_op =
-            ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>(
-                bwd_op->result(i));
-        res[index] = split_op.outputs();
+        int index = GetInputGradientIndex(bwd_output_name, is_double_grad_op);
+        if (bwd_op->result(i).type().dyn_cast<pir::VectorType>()) {
+          auto split_op =
+              ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>(
+                  bwd_op->result(i));
+          res[index] = split_op.outputs();
+        } else {
+          // optional output condition
+          pir::Value empty_value;
+          res[index][0] = empty_value;
+        }
       } else {
         if (fwd_inputs_name_iter != fwd_inputs_name.end()) {
-          int index =
-              std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
+          int index = GetInputGradientIndex(bwd_output_name, is_double_grad_op);
           res[index][0] = bwd_op->result(i);
         } else {
           // Situation that has only one input and only one output. If not meet
