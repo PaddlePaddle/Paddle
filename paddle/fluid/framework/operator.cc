@@ -128,6 +128,12 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     }
   } else if (var->IsType<Strings>()) {
     return "strings";
+  } else if (var->IsType<phi::SparseCooTensor>()) {
+    const phi::SparseCooTensor& tensor = var->Get<phi::SparseCooTensor>();
+    if (UNLIKELY(!tensor.initialized())) {
+      return "";
+    }
+    return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else {
     return "";
   }
