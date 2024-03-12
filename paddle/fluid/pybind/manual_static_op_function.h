@@ -536,13 +536,17 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       VLOG(7) << "Add un-initialized tensor "
                  "because the optional input is None";
       if (paddle::framework::detail::IsDuplicableVar(input)) {
-        vec_input_shapes.emplace_back();
-        vec_input_dtypes.emplace_back();
+        std::vector<std::vector<int64_t>> vec_input_shape;
+        std::vector<DataType> vec_input_dtype;
+        vec_input_shapes.emplace_back(vec_input_shape);
+        vec_input_dtypes.emplace_back(vec_input_dtype);
         vec_input_name2id_map[inputs[i]] = vec_input_index;
         vec_input_index++;
       } else {
-        input_shapes.emplace_back();
-        input_dtypes.emplace_back();
+        std::vector<int64_t> input_shape;
+        DataType input_dtype = DataType::UNDEFINED;
+        input_shapes.emplace_back(input_shape);
+        input_dtypes.emplace_back(input_dtype);
         input_name2id_map[inputs[i]] = input_index;
         input_index++;
       }
@@ -565,8 +569,10 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       }
       vec_input_shapes.push_back(tmp_input_shapes);
       vec_input_dtypes.push_back(tmp_input_dtypes);
-      auto input_value = paddle::dialect::stack(input_values, /*axis*/ 0);
-      argument_inputs.push_back(input_value);
+      auto combine_op = paddle::dialect::ApiBuilder::Instance()
+                            .GetBuilder()
+                            ->Build<pir::CombineOp>(input_values);
+      argument_inputs.push_back(combine_op.out());
     } else {
       input_name2id_map[inputs[i]] = input_index;
       input_index++;
@@ -717,13 +723,20 @@ static PyObject *static_api_run_custom_op(PyObject *self,
               "`SetInplaceMap` in your output when registry custom operator."));
       const auto &input = inplace_reverse_map.at(output);
       auto index = vec_input_name2id_map[input];
-      auto &input_shapes = vec_input_shapes[index];
-      output_name2value_num[output] = input_shapes.size();
-      all_values_num += input_shapes.size();
+      auto &vec_input_shape = vec_input_shapes[index];
+      output_name2value_num[output] = vec_input_shape.size();
     } else {
-      output_name2value_num[output] = 1;
-      all_values_num++;
+      if (inplace_reverse_map.find(output) != inplace_reverse_map.end()) {
+        const auto &input = inplace_reverse_map.at(output);
+        auto index = input_name2id_map[input];
+        // input_shapes[index] is dim of tensor, if the dim doesn't have
+        // element, it must be a optional tensor that is None in custom operator
+        output_name2value_num[output] = input_shapes[index].size() == 0 ? 0 : 1;
+      } else {
+        output_name2value_num[output]++;
+      }
     }
+    all_values_num += output_name2value_num[output];
   }
 
   PADDLE_ENFORCE_EQ(
@@ -751,8 +764,14 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   size_t value_index = 0;
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto &output = outputs.at(i);
+    auto value_num = output_name2value_num[output];
+    if (value_num == 0) {
+      // Optional value condition
+      pir::Type out_type;
+      argument_outputs.push_back(out_type);
+      continue;
+    }
     if (paddle::framework::detail::IsDuplicableVar(output)) {
-      auto value_num = output_name2value_num[output];
       std::vector<pir::Type> out_types;
       for (size_t j = 0; j < value_num; ++j) {
         auto ddims = phi::make_ddim(output_shapes[value_index]);
@@ -799,12 +818,14 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto &output = outputs.at(i);
     if (paddle::framework::detail::IsDuplicableVar(output)) {
-      auto split_op = paddle::dialect::ApiBuilder::Instance()
-                          .GetBuilder()
-                          ->Build<pir::SplitOp>(op->result(i));
-      auto split_outputs = split_op.outputs();
-      op_results.insert(
-          op_results.end(), split_outputs.begin(), split_outputs.end());
+      if (op->result(i).type().dyn_cast<pir::VectorType>()) {
+        auto split_op = paddle::dialect::ApiBuilder::Instance()
+                            .GetBuilder()
+                            ->Build<pir::SplitOp>(op->result(i));
+        auto split_outputs = split_op.outputs();
+        op_results.insert(
+            op_results.end(), split_outputs.begin(), split_outputs.end());
+      }
     } else {
       op_results.push_back(op->result(i));
     }

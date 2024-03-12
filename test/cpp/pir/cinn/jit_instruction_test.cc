@@ -48,18 +48,18 @@ std::unique_ptr<::pir::Program> BuildProgram() {
 
   const float value = 0.5;
   auto full_op_x =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{8, 8},
                                              value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
 
   auto full_op_y =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{8, 8},
                                              value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
   auto full_op_z =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{8, 8},
                                              value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
@@ -103,6 +103,7 @@ TEST(CinnJitInstruction, Run) {
 
       std::vector<::pir::Operation*> ops = {it};
       auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
+      group->loop_ranges = std::vector<int64_t>{8, 8};
       group->output_values.push_back(it->result(0));
       auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{

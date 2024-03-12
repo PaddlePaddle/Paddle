@@ -28,6 +28,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/parse_kernel_key.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -38,7 +39,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -75,6 +76,14 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
   } else if (op_type.isa<SelectedRowsType>()) {
     return AllocatedSelectedRowsType::get(
         ctx, place, op_type.dyn_cast<SelectedRowsType>());
+  } else if (op_type.isa<pir::VectorType>()) {
+    auto vec_type = op_type.dyn_cast<pir::VectorType>();
+    std::vector<pir::Type> vec_target_type;
+    for (size_t i = 0; i < vec_type.size(); ++i) {
+      vec_target_type.push_back(
+          ConvertOpTypeToKernelType(ctx, vec_type[i], place));
+    }
+    return pir::VectorType::get(ctx, vec_target_type);
   }
   PADDLE_THROW(platform::errors::Unimplemented(
       "Not support op type %s in ConvertOpTypeToKernelType.", op_type));
@@ -1357,6 +1366,119 @@ phi::DataType ParsePhiDType(pir::Type type) {
   }
 }
 
+void AddShadowFeedForValue(
+    size_t index,
+    pir::Operation* op_item,
+    pir::Operation* op_item_with_place,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+  if (op_item->result(index).type().isa<DenseTensorType>()) {
+    phi::KernelKey shadow_key{
+        phi::Backend::GPU,
+        phi::DataLayout::ANY,
+        TransToPhiDataType(
+            op_item->result(index).type().dyn_cast<DenseTensorType>().dtype())};
+    std::unordered_map<std::string, pir::Attribute> attr_map{
+        {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
+        {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
+        {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
+
+    auto out_type = AllocatedDenseTensorType::get(
+        ctx,
+        phi::TransToPhiPlace(shadow_key.backend()),
+        op_item->result(index).type().dyn_cast<DenseTensorType>());
+
+    pir::OpInfo phi_kernel_op_info =
+        ctx->GetRegisteredOpInfo(PhiKernelOp::name());
+    pir::Operation* shadow_op =
+        pir::Operation::Create({op_item_with_place->result(index)},
+                               attr_map,
+                               {out_type},
+                               phi_kernel_op_info);
+    block->push_back(shadow_op);
+    (*map_op_pair)[op_item] = shadow_op;
+    (*map_value_pair)[op_item->result(index)] = shadow_op->result(0);
+  } else if (op_item->result(index).type().isa<pir::VectorType>()) {
+    auto vec_type = op_item->result(index).type().dyn_cast<pir::VectorType>();
+    for (size_t i = 0; i < vec_type.size(); ++i) {
+      PADDLE_ENFORCE_EQ(
+          vec_type[i].isa<DenseTensorType>(),
+          true,
+          phi::errors::PreconditionNotMet(
+              "AddShadowFeedTensors only support DenseTensorType Now"));
+    }
+    // Add ShadowFeedTensors Op
+    phi::KernelKey shadow_key{
+        phi::Backend::GPU,
+        phi::DataLayout::ANY,
+        TransToPhiDataType(vec_type[0].dyn_cast<DenseTensorType>().dtype())};
+
+    std::unordered_map<std::string, pir::Attribute> attr_map{
+        {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed_tensors")},
+        {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed_tensors")},
+        {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
+
+    pir::OpInfo phi_kernel_op_info =
+        ctx->GetRegisteredOpInfo(PhiKernelOp::name());
+
+    std::vector<pir::Type> vec_out_types;
+    for (size_t i = 0; i < vec_type.size(); ++i) {
+      vec_out_types.push_back(AllocatedDenseTensorType::get(
+          ctx,
+          phi::TransToPhiPlace(shadow_key.backend()),
+          vec_type[i].dyn_cast<DenseTensorType>()));
+    }
+    auto out_type = pir::VectorType::get(ctx, vec_out_types);
+    pir::Operation* shadow_tensors_op =
+        pir::Operation::Create({op_item_with_place->result(index)},
+                               attr_map,
+                               {out_type},
+                               phi_kernel_op_info);
+    block->push_back(shadow_tensors_op);
+    (*map_op_pair)[op_item] = shadow_tensors_op;
+    (*map_value_pair)[op_item->result(index)] = shadow_tensors_op->result(0);
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("AddShadowFeed for value only support "
+                                   "DenseTensorType and VectorType Now"));
+  }
+}
+
+void AddShadowFeedForTuplePopOp(
+    const phi::Place& place,
+    pir::Operation* op_item,
+    pir::Operation* op_item_with_undefined_place,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+  VLOG(4) << "Add AddShadowFeed for op " << op_item->name();
+
+  bool add_shadow_feed = true;
+  if (op_item->attributes().count("place")) {
+    add_shadow_feed = (op_item->attributes()
+                           .at("place")
+                           .dyn_cast<PlaceAttribute>()
+                           .data()
+                           .GetType()) == phi::AllocationType::UNDEFINED;
+  }
+
+  // if value place not gpu, add shadow feed op
+  if (platform::is_gpu_place(place) && add_shadow_feed) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      AddShadowFeedForValue(i,
+                            op_item,
+                            op_item_with_undefined_place,
+                            block,
+                            ctx,
+                            map_op_pair,
+                            map_value_pair);
+    }
+  }
+}
+
 void HandleForSpecialOp(
     const phi::Place& place,
     pir::Operation* op_item,
@@ -1627,17 +1749,46 @@ void HandleForSpecialOp(
     }
 
     auto pop_back_op = op_item->dyn_cast<::pir::TuplePopOp>();
-    for (size_t i = 0; i < op_item->num_results(); ++i) {
-      auto cur_inlet_element = pop_back_op.inlet_element(i);
-      PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),
-                        true,
-                        phi::errors::PreconditionNotMet(
-                            "[%d]'s output of [%s] op MUST be in map pair",
-                            i,
-                            op_item->name()));
-      auto new_inlet_element = map_value_pair->at(cur_inlet_element);
 
-      op_output_types.push_back(new_inlet_element.type());
+    if (pop_back_op.has_container()) {
+      // if TuplePopOp and TuplePushOp are in the same sub_program
+      for (size_t i = 0; i < op_item->num_results(); ++i) {
+        auto cur_inlet_element = pop_back_op.inlet_element(i);
+        PADDLE_ENFORCE_EQ(map_value_pair->count(cur_inlet_element),
+                          true,
+                          phi::errors::PreconditionNotMet(
+                              "[%d]'s output of [%s] op MUST be in map pair",
+                              i,
+                              op_item->name()));
+        auto new_inlet_element = map_value_pair->at(cur_inlet_element);
+
+        op_output_types.push_back(new_inlet_element.type());
+      }
+    } else {
+      VLOG(4) << "TuplePopOp and TuplePushOp are in different sub_program.";
+      for (size_t i = 0; i < op_item->num_results(); ++i) {
+        auto cur_inlet_element = op_item->result(i);
+        auto out_place = phi::TransToPhiPlace(phi::Backend::UNDEFINED);
+        pir::Type new_inlet_element_type =
+            ConvertOpTypeToKernelType(ctx, cur_inlet_element.type(), out_place);
+        op_output_types.push_back(new_inlet_element_type);
+      }
+
+      pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
+      pir::Operation* op = pir::Operation::Create(
+          vec_inputs, op_item->attributes(), op_output_types, op_info);
+
+      block->push_back(op);
+      (*map_op_pair)[op_item] = op;
+      // only deal with single output
+      if (op_item->num_results() > 0) {
+        for (size_t i = 0; i < op_item->num_results(); ++i) {
+          (*map_value_pair)[op_item->result(i)] = op->result(i);
+        }
+      }
+      AddShadowFeedForTuplePopOp(
+          place, op_item, op, block, ctx, map_op_pair, map_value_pair);
+      return;
     }
   }
 
@@ -2311,34 +2462,12 @@ void AddShadowFeedOpForDataOrFeed(
            .GetType() == phi::AllocationType::UNDEFINED);
   bool add_shadow_feed = feed_op_add_shadow_feed || data_op_add_shadow_feed;
   if (add_shadow_feed) {
-    // if shadow data op place not gpu,add shadow feed op
-    phi::KernelKey shadow_key{
-        phi::Backend::GPU,
-        phi::DataLayout::ANY,
-        TransToPhiDataType(
-            op_item->result(0).type().dyn_cast<DenseTensorType>().dtype())};
-    std::unordered_map<std::string, pir::Attribute> attr_map{
-        {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
-        {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
-        {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
-
-    auto out_type = AllocatedDenseTensorType::get(
-        ctx,
-        phi::TransToPhiPlace(shadow_key.backend()),
-        op_item->result(0).type().dyn_cast<DenseTensorType>());
-
-    pir::OpInfo phi_kernel_op_info =
-        ctx->GetRegisteredOpInfo(PhiKernelOp::name());
-    pir::Operation* shadow_op = pir::Operation::Create(
-        {kernel_op->result(0)}, attr_map, {out_type}, phi_kernel_op_info);
-
-    (*map_op_pair)[op_item] = shadow_op;
-    block->push_back(shadow_op);
-    if (op_item->num_results() > 0) {
-      for (size_t i = 0; i < shadow_op->num_results(); ++i) {
-        (*map_value_pair)[op_item->result(i)] = shadow_op->result(i);
-      }
-    }
+    PADDLE_ENFORCE(op_item->num_results() == 1,
+                   phi::errors::PreconditionNotMet(
+                       "op_item should have only one result, but got %d",
+                       op_item->num_results()));
+    AddShadowFeedForValue(
+        0, op_item, kernel_op, block, ctx, map_op_pair, map_value_pair);
   }
 }
 

@@ -20,9 +20,13 @@ OP_GET_OUTPUT_TEMPLATE = """  pir::Value {output_name}() {{ return result({outpu
 """
 
 
-def gen_op_get_inputs_outputs_str(
-    op_input_name_list, op_mutable_attribute_name_list, op_output_name_list
-):
+# =================================== #
+#  gen get input/output methods str   #
+# =================================== #
+def gen_op_member_access_func(args, op_info, op_info_items):
+    op_input_name_list = op_info.input_name_list
+    op_mutable_attribute_name_list = op_info.mutable_attribute_name_list
+    op_output_name_list = op_info.output_name_list
     op_get_inputs_outputs_str = ""
     for idx in range(len(op_input_name_list)):
         op_get_inputs_outputs_str += OP_GET_INPUT_TEMPLATE.format(
@@ -39,4 +43,4 @@ def gen_op_get_inputs_outputs_str(
             output_name=op_output_name_list[idx],
             output_index=idx,
         )
-    return op_get_inputs_outputs_str
+    return [], op_get_inputs_outputs_str, None
