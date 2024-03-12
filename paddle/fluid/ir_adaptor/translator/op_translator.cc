@@ -334,7 +334,7 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
                paddle::framework::proto::VarType::SELECTED_ROWS) {
       need_inputs_sig.emplace_back("selected_rows");
     } else {
-      IR_THROW("Op %d only support densetensor and selected_rows, but not %d",
+      IR_THROW("Op %d only support dense tensor and selected_rows, but not %d",
                op_desc.Type(),
                var->GetType());
     }
@@ -1367,19 +1367,10 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
 struct AddNOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
-    auto prefix = GetPrefix(ctx, op_desc);
-    std::string target_op_name;
-#ifdef PADDLE_WITH_DNNL
-    if (prefix == kOneDNNTargetDialectPrefix) {
-      target_op_name = std::string(kOneDNNTargetDialectPrefix) + "add_n_onednn";
-    } else  // NOLINT
-#endif
-    {
-      target_op_name =
-          GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
-      if (IsInplace(op_desc)) {
-        target_op_name += "_";
-      }
+    std::string target_op_name =
+        GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
+    if (IsInplace(op_desc)) {
+      target_op_name += "_";
     }
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
@@ -2746,7 +2737,7 @@ struct RandIntOpTranscriber : public OpTranscriber {
     paddle::dialect::DenseTensorTypeStorage::Dim dim =
         common::make_ddim(var->GetShape());
     paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
-        paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED;
+        paddle::dialect::DenseTensorTypeStorage::DataLayout::NCHW;
     paddle::dialect::DenseTensorTypeStorage::LoD lod = {};
     size_t offset = 0;
     pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(

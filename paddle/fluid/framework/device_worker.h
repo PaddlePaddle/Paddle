@@ -60,20 +60,21 @@ class Scope;
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(phi::DenseTensor* tensor,
-                           int64_t start,
-                           int64_t end,
-                           char separator = ',',
-                           bool need_leading_separator = false);
-void PrintLodTensor(phi::DenseTensor* tensor,
-                    int64_t start,
-                    int64_t end,
-                    std::string& output_str,  // NOLINT
-                    char separator = ',',
-                    bool need_leading_separator = false,
-                    int num_decimals = 9);
-std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor, int index);
-bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
+TEST_API std::string PrintLodTensor(phi::DenseTensor* tensor,
+                                    int64_t start,
+                                    int64_t end,
+                                    char separator = ',',
+                                    bool need_leading_separator = false);
+TEST_API void PrintLodTensor(phi::DenseTensor* tensor,
+                             int64_t start,
+                             int64_t end,
+                             std::string& output_str,  // NOLINT
+                             char separator = ',',
+                             bool need_leading_separator = false,
+                             int num_decimals = 9);
+TEST_API std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor,
+                                                    int index);
+TEST_API bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 

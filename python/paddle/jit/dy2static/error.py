@@ -44,7 +44,7 @@ BLANK_COUNT_BEFORE_FILE_STR = 4
 
 def attach_error_data(error, in_runtime=False):
     """
-    Attachs error data about original source code information and traceback to an error.
+    Attaches error data about original source code information and traceback to an error.
 
     Args:
         error(Exception): An native error.
@@ -75,7 +75,7 @@ class TraceBackFrame(OriginInfo):
         self.source_code = source_code
         self.error_line = ''
 
-    def formated_message(self):
+    def formatted_message(self):
         # self.source_code may be empty in some functions.
         # For example, decorator generated function
         return (
@@ -141,7 +141,7 @@ class TraceBackFrameRange(OriginInfo):
                     + self.source_code[i]
                 )
 
-    def formated_message(self):
+    def formatted_message(self):
         msg = (
             ' ' * BLANK_COUNT_BEFORE_FILE_STR
             + 'File "{}", line {}, in {}\n'.format(
@@ -157,7 +157,7 @@ class SuggestionDict:
         # {(keywords): (suggestions)}
         self.suggestion_dict = {
             ('is not initialized.', 'Hint:', 'IsInitialized'): (
-                "Please ensure all your sublayers are inheritted from nn.Layer.",
+                "Please ensure all your sublayers are inherited from nn.Layer.",
                 "Please ensure there is no tensor created explicitly depended on external data, "
                 + "we suggest to register it as buffer tensor. "
                 + "See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/jit/principle_cn.html#buffers for details",
@@ -288,7 +288,7 @@ class ErrorData:
                     dygraph_func_info.source_code,
                 )
 
-            message_lines.append(traceback_frame.formated_message())
+            message_lines.append(traceback_frame.formatted_message())
             error_line = traceback_frame.error_line
         message_lines.append("")
 
@@ -304,7 +304,7 @@ class ErrorData:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code
             )
-            message_lines.append(traceback_frame.formated_message())
+            message_lines.append(traceback_frame.formatted_message())
         message_lines.append("")
 
         # Step3: Adds error message like "TypeError: dtype must be int32, but received float32".
@@ -413,7 +413,7 @@ class ErrorData:
                 traceback_frame = TraceBackFrame(
                     Location(filepath, lineno), funcname, code
                 )
-            error_frame.append(traceback_frame.formated_message())
+            error_frame.append(traceback_frame.formatted_message())
         error_frame.append("")
 
         # Add paddle traceback after user code traceback
@@ -428,7 +428,7 @@ class ErrorData:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code
             )
-            error_frame.append(traceback_frame.formated_message())
+            error_frame.append(traceback_frame.formatted_message())
         error_frame.append("")
 
         error_frame.extend(bottom_error_message)

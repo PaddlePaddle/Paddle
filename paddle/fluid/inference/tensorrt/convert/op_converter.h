@@ -70,7 +70,7 @@ class OpConverter {
                             1UL,
                             platform::errors::InvalidArgument(
                                 "The input op's Input(\"Y\")."
-                                "size() should equal to 1, but reveceid "
+                                "size() should equal to 1, but received "
                                 "Input(\"Y\").size() = %u.",
                                 op_desc.Input("Y").size()));
           int op_type_len = op_desc.Type().size();
@@ -179,7 +179,7 @@ class OpConverter {
     (*it)(op, scope, test_mode);
 
     size_t output_num = op_desc.OutputNames().size();
-    // only one out settensordynamicRange
+    // only one out SetTensorDynamicRange
     if (op_desc.HasAttr("out_threshold")) {
       float out_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -202,7 +202,7 @@ class OpConverter {
       VLOG(1) << "Set out scale = " << out_scale << " for tensor "
               << output_name << ".";
     }
-    // outs settensordynamicRange
+    // outs SetTensorDynamicRange
     for (size_t i = 0; i < output_num; ++i) {
       if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
         float out_scale = PADDLE_GET_CONST(

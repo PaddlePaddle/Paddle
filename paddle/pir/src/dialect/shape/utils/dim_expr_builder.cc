@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/common/enforce.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace symbol {
 
@@ -44,15 +45,15 @@ DimExpr DimExprBuilder::Div(const DimExpr& lhs, const DimExpr& rhs) {
 }
 
 DimExpr DimExprBuilder::Max(const DimExpr& lhs, const DimExpr& rhs) {
-  return MaxDimExpr{List<DimExpr>{lhs, rhs}};
+  return SimplifyDimExpr(MaxDimExpr{List<DimExpr>{lhs, rhs}});
 }
 
 DimExpr DimExprBuilder::Min(const DimExpr& lhs, const DimExpr& rhs) {
-  return MinDimExpr{List<DimExpr>{lhs, rhs}};
+  return SimplifyDimExpr(MinDimExpr{List<DimExpr>{lhs, rhs}});
 }
 
 DimExpr DimExprBuilder::Broadcast(const DimExpr& lhs, const DimExpr& rhs) {
-  return BroadcastDimExpr{List<DimExpr>{lhs, rhs}};
+  return SimplifyDimExpr(BroadcastDimExpr{List<DimExpr>{lhs, rhs}});
 }
 
 std::vector<DimExpr> DimExprBuilder::ConstShape(

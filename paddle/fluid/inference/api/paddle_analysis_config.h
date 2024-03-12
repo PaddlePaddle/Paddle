@@ -810,8 +810,28 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
+  ///
+  /// \brief Prevent TensorRtSubgraph running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
   void Exp_DisableTensorRtSubgraph(
       const std::vector<std::string>& var_name_not_trt);
+
+  ///
+  /// \brief Specify TensorRT subgraph precision,fp16, int8 or bfp16(TensorRT
+  /// Version>=9.0) NOTE: just experimental, not an official stable API, easy to
+  /// be broken.
+  ///
+  void Exp_SpecifyTensorRTSubgraphPrecision(
+      const std::vector<std::string>& trt_parameters_fp16,
+      const std::vector<std::string>& trt_parameters_int8,
+      const std::vector<std::string>& trt_parameters_bfp16);
+
+  ///
+  /// \brief Prevent DynamicShape OPs running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
+  void Exp_DisableTensorRTDynamicShapeOPs(bool trt_forbid_dynamic_op);
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
@@ -879,9 +899,21 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   int tensorrt_optimization_level() { return trt_optimization_level_; }
 
+  /// \brief A boolean state telling whether to use new executor.
+  ///
+  /// \return bool whether to use new executor.
+  ///
   void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
 
   bool new_executor_enabled() const { return use_new_executor_; }
+
+  /// \brief A boolean state telling whether to use new IR.
+  ///
+  /// \return bool whether to use new IR.
+  ///
+  void EnableNewIR(bool x = true) { use_pir_ = x; }
+
+  bool new_ir_enabled() const { return use_pir_; }
 
   ///
   /// \brief Control whether to use optimized model to inference.
@@ -1206,6 +1238,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_enabled() const;
 
+  void EnableCustomPasses(const std::vector<std::string>& passes);
+
  protected:
   // Update the config.
   void Update();
@@ -1271,8 +1305,14 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   bool trt_mark_output_{false};
+  bool trt_forbid_dynamic_op_{false};
+
   std::vector<std::string> trt_output_tensor_names_{};
   std::vector<std::string> trt_exclude_var_names_{};
+  std::vector<std::string> trt_parameters_run_fp16_{};
+  std::vector<std::string> trt_parameters_run_int8_{};
+  std::vector<std::string> trt_parameters_run_bfp16_{};
+
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
@@ -1425,6 +1465,10 @@ struct PD_INFER_DECL AnalysisConfig {
   // PrepareProgram(). So we add this flag to control the process.
   bool apply_optim_{false};
   bool skip_load_params_{false};
+
+  bool use_pir_{false};
+
+  std::vector<std::string> custom_passes_;
 };
 
 }  // namespace paddle
