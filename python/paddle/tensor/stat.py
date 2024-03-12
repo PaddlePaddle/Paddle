@@ -374,7 +374,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        ((Tensor, Tensor), optional)
+        Tensor or tuple of Tensor.
         If ``mode`` == 'avg', the result will be the tensor of median values;
         If ``mode`` == 'min' and ``axis`` is None, the result will be the tensor of median values;
         If ``mode`` == 'min' and ``axis`` is not None, the result will be a tuple of two tensors
