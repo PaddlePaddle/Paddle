@@ -3712,6 +3712,12 @@
     squared_xy : SquaredXY
     out : Out
 
+- op: fused_token_prune
+  inputs :
+    {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
+  outputs :
+    {slimmed_x : SlimmedX, clsi_nds : CLSInds}
+
 - op: get_tensor_from_selected_rows
   inputs :
     x : X

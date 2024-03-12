@@ -145,6 +145,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_elemwise_add_activation',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
+    'fused_token_prune',
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
     'nce',
