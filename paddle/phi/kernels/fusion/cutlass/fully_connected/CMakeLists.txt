@@ -1,0 +1,17 @@
+project (FC)
+cmake_minimum_required(VERSION 3.23)
+
+set(fileList)
+list(APPEND fileList "main.cu" "fc_bias_act_generate_example.cu" "fc_util.cu" "fc_util.h" "fc_decl.h")
+
+find_package(CUDA)
+
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../conv2d/cutlass/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../conv2d/cutlass/tools/util/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../")
+
+set(CUDA_NVCC_FLAGS -gencode arch=compute_80,code=sm_80 -std=c++17 --ptxas-options --verbose;)
+CUDA_ADD_EXECUTABLE(FC ${fileList})
+
+target_link_libraries(FC cublas)
+target_link_libraries(FC cudnn)
