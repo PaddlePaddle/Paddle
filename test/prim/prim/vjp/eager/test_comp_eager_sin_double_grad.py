@@ -41,14 +41,13 @@ class TestSinDoubleGradComp(unittest.TestCase):
         def actual(primal):
             paddle.disable_static()
             core.set_prim_eager_enabled(True)
-            core._set_prim_backward_blacklist("cos_grad")
+            core._set_prim_backward_blacklist("sin_grad")
             x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
             y = paddle.sin(x)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=True, retain_graph=True
-            )
-            return x_cotangent[0]
+            dx = paddle.grad(y, x, create_graph=True, retain_graph=True)
+            ddx = paddle.grad(dx, x, create_graph=True, retain_graph=True)
+            return ddx[0]
 
         def desired(primal):
             paddle.disable_static()
@@ -56,10 +55,9 @@ class TestSinDoubleGradComp(unittest.TestCase):
             x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
             y = paddle.sin(x)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=True, retain_graph=True
-            )
-            return x_cotangent[0]
+            dx = paddle.grad(y, x, create_graph=True, retain_graph=True)
+            ddx = paddle.grad(dx, x, create_graph=True, retain_graph=True)
+            return ddx[0]
 
         np.testing.assert_allclose(
             actual=actual(self.primal),
