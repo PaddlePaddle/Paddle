@@ -93,7 +93,7 @@ def mean(x, axis=None, keepdim=False, name=None):
         check_variable_and_dtype(
             x,
             'x/input',
-            ['uint16', 'float16', 'float32', 'float64'],
+            ['uint16', "int32", 'float16', 'float32', 'float64'],
             'mean/reduce_mean',
         )
         check_type(

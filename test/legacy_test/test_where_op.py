@@ -66,7 +66,7 @@ class TestWhereFP16OP(TestWhereOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestWhereBF16OP(OpTest):
     def setUp(self):
@@ -319,7 +319,7 @@ class TestWhereAPI(unittest.TestCase):
                 np.testing.assert_array_equal(out[0], expect)
 
     def __test_where_with_type_promotion(
-        self, x_dtype, y_dtype, expeced_dtype=None
+        self, x_dtype, y_dtype, expected_dtype=None
     ):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -367,7 +367,7 @@ class TestWhereAPI(unittest.TestCase):
                     )
                     expect = np.where(cond_data, x_data_convert, y_data_convert)
                     np.testing.assert_array_equal(out[0], expect)
-                    self.assertEqual(out[0].dtype.__str__(), expeced_dtype)
+                    self.assertEqual(out[0].dtype.__str__(), expected_dtype)
                 else:
                     expect = np.where(cond_data, x_data, y_data)
                     np.testing.assert_array_equal(out[0], expect)

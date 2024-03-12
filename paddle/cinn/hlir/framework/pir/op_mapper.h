@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #pragma once
+
+#include <glog/logging.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/pir/include/core/operation.h"
 
@@ -30,7 +33,7 @@ enum MapperType {
 };
 
 class OpMapper {
-  using OprandIndexsFunction = std::function<std::vector<size_t>()>;
+  using OperandIndexsFunction = std::function<std::vector<size_t>()>;
   using AppendAttrFunction =
       std::function<void(const ::pir::Operation& op,
                          utils::AttributeMap& attrs)>;  // NOLINT
@@ -72,7 +75,7 @@ class OpMapper {
   OpMapper() { RegisterMapRules(); }
   void RegisterMapRules();
 
-  std::unordered_map<std::string, OprandIndexsFunction> operand_funcs_;
+  std::unordered_map<std::string, OperandIndexsFunction> operand_funcs_;
   std::unordered_map<std::string, AppendAttrFunction> attr_funcs_;
 };
 

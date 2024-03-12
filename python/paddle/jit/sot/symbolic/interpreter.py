@@ -187,7 +187,7 @@ def compile_sir(context: SymbolicTraceContext, name: str):
 def prepare_state(SIR, inputs):
     state = {}
 
-    # update free vars if exsits
+    # update free vars if exists
     if SIRRuntimeCache().has_key(SIR.name):
         free_var_seeker = SIRRuntimeCache().get_free_vars(SIR.name)
         if free_var_seeker:

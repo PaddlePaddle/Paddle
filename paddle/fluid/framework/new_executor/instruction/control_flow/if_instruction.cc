@@ -198,27 +198,6 @@ IfInstruction::~IfInstruction() {
   }
 }
 
-void IfInstruction::CopyBranchOutput(const std::vector<std::string>& var_names,
-                                     const PirInterpreter* inter) {
-  for (size_t i = 0; i < var_names.size(); ++i) {
-    auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
-
-    if (inner_var->IsType<phi::DenseTensor>()) {
-      output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          inner_var->Get<phi::DenseTensor>());
-
-    } else if (inner_var->IsType<phi::TensorArray>()) {
-      const auto& inner_array = inner_var->Get<phi::TensorArray>();
-      auto* output_array = output_vars_[i]->GetMutable<phi::TensorArray>();
-      // output_array->clear();
-      *output_array = inner_array;
-    } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
-    }
-  }
-}
-
 void IfInstruction::Run() {
   bool cond = true;
   if (cond_var_->IsType<phi::DenseTensor>()) {
@@ -257,7 +236,8 @@ void IfInstruction::Run() {
     paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
 #endif
     true_branch_inter_->Run({}, false);
-    CopyBranchOutput(true_branch_outputs_, true_branch_inter_);
+    CopyBranchOutput(
+        true_branch_outputs_, output_vars_, true_branch_inter_->InnerScope());
   } else {
 #ifdef PADDLE_WITH_DNNL
     // Executor on being destroyed clears oneDNN cache and resets
@@ -266,7 +246,8 @@ void IfInstruction::Run() {
     paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
 #endif
     false_branch_inter_->Run({}, false);
-    CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
+    CopyBranchOutput(
+        false_branch_outputs_, output_vars_, false_branch_inter_->InnerScope());
   }
   // copy output
 }

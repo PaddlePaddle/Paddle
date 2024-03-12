@@ -154,6 +154,14 @@ void MatchMatrixTensorInferMeta(const MetaTensor& x,
                                 MetaTensor* tmp,
                                 MetaConfig config = MetaConfig());
 
+void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
+                                       const MetaTensor& in_accum,
+                                       const MetaTensor& in_state,
+                                       MetaTensor* out,
+                                       MetaTensor* out_scale,
+                                       MetaTensor* out_state,
+                                       MetaTensor* out_accum);
+
 void MultiClassNMSInferMeta(const MetaTensor& bboxes,
                             const MetaTensor& scores,
                             const MetaTensor& rois_num,
@@ -184,6 +192,11 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
                            int axis,
                            const std::string& reduce,
                            MetaTensor* out);
+
+void RandomRoutingInferMeta(const MetaTensor& prob,
+                            const MetaTensor& topk_value,
+                            const MetaTensor& topk_idx,
+                            MetaTensor* out);
 
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,

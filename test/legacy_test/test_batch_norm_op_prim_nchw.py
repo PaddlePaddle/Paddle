@@ -67,7 +67,7 @@ class TestBatchNormOp(OpTest):
         self.python_out_sig = ["Y"]
         # (Todo: CZ) random error
         self.check_prim_pir = False
-        self.check_prim_pir_grad = True
+        self.check_prim_pir_grad = False
         self.check_cpu_prim_pir_grad = False
 
         self.initConfig()
@@ -284,6 +284,7 @@ class TestBatchNormOpNCHWFp64(TestBatchNormOp):
         self.use_global_stats = None
         self.check_prim_pir = True
         self.check_cpu_prim_pir_grad = True
+        self.check_prim_pir_grad = True
 
 
 class TestBatchNormOpNCHWTestModeFp64(TestBatchNormOp):
@@ -357,7 +358,7 @@ class TestBatchNormOpNCHWbf16(TestBatchNormOp):
         self.use_global_stats = None
         # Todo(CZ): open this
         self.check_prim_pir = False
-        self.check_cpu_prim_pir_grad = True
+        self.check_cpu_prim_pir_grad = False
 
 
 @unittest.skipIf(

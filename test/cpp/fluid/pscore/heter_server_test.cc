@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <memory>
 #include <random>

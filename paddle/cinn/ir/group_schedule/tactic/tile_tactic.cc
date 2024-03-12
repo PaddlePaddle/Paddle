@@ -19,6 +19,18 @@
 namespace cinn {
 namespace ir {
 
+class TileTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "TileTactic"; }
+
+ private:
+  ScheduleContext* context_;
+};
+
 void TileTactic::Init(ScheduleContext* context) {
   context_ = context;
   // TODO(BiynXu): Create schedule config and bucket info based on hardware
@@ -112,6 +124,10 @@ void TileTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
   sch->Split(loops[0], sp_factors);
   VLOG(6) << "after split sp loop of " << block_id << ": "
           << sch->GetModule().GetExprs()[0];
+}
+
+std::unique_ptr<ScheduleTactic> CreateTileTactic() {
+  return std::make_unique<TileTactic>();
 }
 
 }  // namespace ir

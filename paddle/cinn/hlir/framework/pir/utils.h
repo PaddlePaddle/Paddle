@@ -54,16 +54,17 @@ struct CINNKernelInfo {
 
 struct CompatibleInfo {
   static constexpr char* kNamePrefix = "var";
-  // TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP
-  // macros or attempt to unify Op name with Paddle and CINN.
-  static const std::unordered_map<std::string, std::string> OP_NAMES;
   // NOTE(Aurelius): Some ops in CINN register different
   // name between OpMapper and Compute/Schedule, such as
   // 'subtract': 1. OpMapper: 'elementwise_sub'; 2. Compute/Schedule:
   // 'subtract'.
-  static const std::unordered_set<std::string> CINN_WHITE_OPS;
+  static const std::unordered_map<std::string, std::string> OP_NAMES;
 
-  static bool IsSupportCinn(const ::pir::Operation& op);
+  static const std::unordered_set<std::string> TOCINN_OPS;
+
+  static bool IsDeniedForCinn(const ::pir::Operation& op);
+
+  static bool IsSupportForCinn(const ::pir::Operation& op);
 
   static std::string OpName(const ::pir::Operation& op);
 
@@ -113,8 +114,14 @@ class PrettyNamer {
   ::cinn::common::NameGenerator name_generator_;
 };
 
+enum class ScheduleAlignType : int {
+  kNone = 0,       //! No need to align
+  kBroadcast = 1,  //! Using Broadcast schedule to align
+};
+
 struct ScheduleInfoNode {
-  std::string type;
+  // TOOD(phlrain): update align type by new loop alignment
+  ScheduleAlignType type{ScheduleAlignType::kNone};
 
   std::vector<int64_t> axis_info;
   std::vector<int64_t> factor_info;
@@ -122,7 +129,7 @@ struct ScheduleInfoNode {
   std::string DebugStr() {
     std::stringstream ss;
 
-    ss << "type  " << type << "| axis info ";
+    ss << "type  " << static_cast<int>(type) << "| axis info ";
     for (auto d : axis_info) {
       ss << " " << d;
     }

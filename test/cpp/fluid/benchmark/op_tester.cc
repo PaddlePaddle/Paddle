@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/pybind/pybind.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"

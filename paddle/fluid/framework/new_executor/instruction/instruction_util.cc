@@ -281,7 +281,9 @@ std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
     }
     if (op.isa<pir::TuplePopOp>()) {
       auto tuple_pop_op = op.dyn_cast<pir::TuplePopOp>();
-      inner_inputs.insert(tuple_pop_op.container());
+      if (tuple_pop_op.has_container()) {
+        inner_inputs.insert(tuple_pop_op.container());
+      }
     }
     for (size_t i = 0; i < op.num_operands(); ++i) {
       inner_inputs.insert(op.operand_source(i));
@@ -416,6 +418,28 @@ bool GetCondData(const phi::DenseTensor& cond) {
       "WITH_XPU option."));
 #endif
   return cpu_cond->data<bool>()[0];
+}
+
+void CopyBranchOutput(const std::vector<std::string>& var_names,
+                      const std::vector<Variable*>& output_vars,
+                      Scope* inner_scope) {
+  for (size_t i = 0; i < var_names.size(); ++i) {
+    auto* inner_var = inner_scope->GetVar(var_names[i]);
+
+    if (inner_var->IsType<phi::DenseTensor>()) {
+      output_vars[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          inner_var->Get<phi::DenseTensor>());
+
+    } else if (inner_var->IsType<phi::TensorArray>()) {
+      const auto& inner_array = inner_var->Get<phi::TensorArray>();
+      auto* output_array = output_vars[i]->GetMutable<phi::TensorArray>();
+      // output_array->clear();
+      *output_array = inner_array;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
+  }
 }
 
 }  // namespace framework

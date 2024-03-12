@@ -120,7 +120,7 @@ std::string CodeGenC::GetTypeName(Type type) {
     auto customized_name = type.customized_type();
     // get name of a cuda built-in vector type, it is started with a
     // 'CudaVectorType::' prefix
-    if (utils::Startswith(
+    if (utils::StartsWith(
             customized_name,
             cinn::common::customized_type::kcuda_builtin_vector_t)) {
       customized_name.erase(

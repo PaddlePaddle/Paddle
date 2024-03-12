@@ -31,6 +31,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_bert)
   list(REMOVE_ITEM TEST_OPS test_transformer)
   list(REMOVE_ITEM TEST_OPS test_mobile_net)
+  list(REMOVE_ITEM TEST_OPS test_seq2seq)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
@@ -40,7 +41,6 @@ endforeach()
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
 set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS
                                             "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 420)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
@@ -62,6 +62,7 @@ if(WITH_GPU)
   set_tests_properties(test_transformer PROPERTIES TIMEOUT 240)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 240)
   set_tests_properties(test_resnet PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 900)
 endif()
 
 # Legacy IR only tests for dygraph_to_static
@@ -77,5 +78,14 @@ foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
   else()
     message(
       STATUS "PT Disabled OpTest: not found ${ITEST} in dygraph_to_static")
+  endif()
+endforeach()
+
+# PIR only tests for dygraph_to_static
+set(PIR_ONLY_TEST_FILES test_error)
+foreach(ITEST ${PIR_ONLY_TEST_FILES})
+  if(TEST ${ITEST})
+    set_tests_properties(${ITEST} PROPERTIES ENVIRONMENT
+                                             "FLAGS_enable_pir_api=True")
   endif()
 endforeach()

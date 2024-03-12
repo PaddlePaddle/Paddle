@@ -291,7 +291,7 @@ def infer(use_cuda, save_dirname=None):
             feed_target_names,
             fetch_targets,
             exe,
-            parogram=inference_program,
+            program=inference_program,
             clip_extra=True,
         )
 

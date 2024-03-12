@@ -184,8 +184,8 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
           info_interface->get_op_info_(op_name),
           paddle::dialect::IsLegacyOp(op_name));
       auto& no_need_buffer_ids = info_parser.NoNeedBufferIds();
-      for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
-        if (value == op->operand_source(no_need_buffer_ids[id])) {
+      for (auto no_need_buffer_id : no_need_buffer_ids) {
+        if (value == op->operand_source(no_need_buffer_id)) {
           return true;
         }
       }
@@ -213,6 +213,7 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
       skip_dels.insert(op.result(0));
       continue;
     }
+    // TODO(chenxi67) add logic for shadow_feed_tensors op
     if (upper_op_name == "pd_op.fetch" ||
         upper_op_name == "builtin.shadow_output") {
       skip_dels.insert(op.operand_source(0));
@@ -451,7 +452,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     }
   }
   if (!FLAGS_ir_inplace_kernel_blacklist.empty()) {
-    for (auto i : inplace_ops) {
+    for (auto const& i : inplace_ops) {
       std::cout << i.second << std::endl;
     }
   }

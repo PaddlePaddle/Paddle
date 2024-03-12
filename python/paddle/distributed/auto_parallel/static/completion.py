@@ -22,7 +22,6 @@ import paddle
 from paddle.base.core import (  # noqa: F401
     contains_spmd_rule,
     get_phi_spmd_rule,
-    get_spmd_rule,
 )
 from paddle.base.framework import Operator
 from paddle.base.log_helper import get_logger
@@ -182,6 +181,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "unsqueeze2",
         "silu",
         "concat",
+        "expand_as_v2",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":
@@ -202,7 +202,7 @@ def _update_op_dims_mapping_and_distoperatorimpl(
 
     updated = dist_op_container.update_dims_mapping(dist_op)
     changed = updated or changed
-    # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
+    # TODO(ljz) remove the below code once we introduce general reshard to replace specific distopimpls
     reverted = dist_op_container.mapping_to_dist_operator_impl(
         dist_op, original_op_dist_attr
     )

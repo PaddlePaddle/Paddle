@@ -322,7 +322,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(arg_names.size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The iutput(%s) should hold only one element, but "
+                          "The input(%s) should hold only one element, but "
                           "now it holds %d elements.",
                           name,
                           arg_names.size()));
@@ -435,7 +435,7 @@ OpDesc::OpDesc(const std::string &type,
   InitRuntimeAttributeMapByOpExtraInfo(type, &runtime_attrs_);
 }
 
-OpDesc::OpDesc() {}
+OpDesc::OpDesc() = default;
 
 OpDesc::~OpDesc() = default;
 OpDesc::OpDesc(const OpDesc &other) {

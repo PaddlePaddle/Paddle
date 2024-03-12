@@ -4,6 +4,7 @@
 add_subdirectory(spmd_rules)
 add_subdirectory(hybrid_strategy)
 add_subdirectory(custom_op)
+add_subdirectory(pir)
 
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
@@ -166,6 +167,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_single_strategy)
   set_tests_properties(test_semi_auto_parallel_single_strategy
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
+  py_test_modules(test_semi_auto_parallel_sharding_strategy MODULES
+                  test_semi_auto_parallel_sharding_strategy)
+  set_tests_properties(test_semi_auto_parallel_sharding_strategy
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_semi_auto_parallel_lazy_init MODULES
                   test_semi_auto_parallel_lazy_init)
   set_tests_properties(test_semi_auto_parallel_lazy_init
@@ -180,7 +185,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_dist_tensor_api MODULES test_dist_tensor_api)
   set_tests_properties(test_dist_tensor_api
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_gpt_with_pir MODULES test_gpt_with_pir)
   set_tests_properties(test_gpt_with_pir PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                     TIMEOUT 100)

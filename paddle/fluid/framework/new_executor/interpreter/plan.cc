@@ -69,7 +69,7 @@ const std::vector<std::shared_ptr<Job>>& Plan::JobList() const {
 const std::vector<std::string> Plan::JobTypes() const {
   std::vector<std::string> res;
   res.reserve(type_to_program_.size());
-  for (auto kv : type_to_ir_program_) {
+  for (auto const& kv : type_to_ir_program_) {
     res.emplace_back(kv.first);
   }
   return res;

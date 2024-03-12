@@ -106,7 +106,7 @@ class GroupShardedStage3(nn.Layer):
         sync_buffers=False,
         device="gpu",
         segment_size=2**20,
-        pertrain_sync_models=True,
+        pretrain_sync_models=True,
         offload=False,
         sync_comm=False,
         dp_group=None,
@@ -115,9 +115,11 @@ class GroupShardedStage3(nn.Layer):
         super().__init__()
 
         # Default configs
-        assert core.is_compiled_with_cuda() or (
-            device in core.get_all_custom_device_type()
-        ), "Only support CUDA / CustomDevice."
+        assert (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_xpu()
+            or (device in core.get_all_custom_device_type())
+        ), "Only support CUDA / XPU / CustomDevice."
 
         self._layer = layer
         self._default_device = device
@@ -213,7 +215,7 @@ class GroupShardedStage3(nn.Layer):
                         item["grad_clip"] = self._optim._grad_clip
 
         # Synchronous all ranks models
-        if pertrain_sync_models:
+        if pretrain_sync_models:
             self._sync_params_and_buffers()
 
         self._segment_rank_params(self._layer)

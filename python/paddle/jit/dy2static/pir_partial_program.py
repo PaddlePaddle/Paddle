@@ -134,6 +134,8 @@ class RunableProgram:
     def _get_value_name_map_from_program(cls, program):
         ret = ValueDict()
         ret[fake_value()] = "FakeVar"
+        for keyword, arg in program.global_block().kwargs().items():
+            ret[arg] = keyword
         for op in program.global_block().ops:
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
@@ -550,13 +552,17 @@ class PartialProgramLayer:
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program):
+                # common pass
                 pm = paddle.base.libpaddle.pir.PassManager()
                 paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
                     pm, forward_program
                 )
-                if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.add_cinn_pass(pm, forward_program)
                 pm.run(forward_program)
+
+                # if-else pass
+                if self._build_strategy.build_cinn_pass:
+                    paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+
                 return forward_program, backward_program
 
             # TODO(xiongkun) who to transfer the pruning program?
@@ -572,18 +578,9 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_program)
 
             def pass_fn(forward_program, backward_program):
-                fwd_pm = paddle.base.libpaddle.pir.PassManager()
-                bwd_pm = paddle.base.libpaddle.pir.PassManager()
-
                 if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.add_cinn_pass(
-                        fwd_pm, forward_program
-                    )
-                    paddle.base.libpaddle.pir.add_cinn_pass(
-                        bwd_pm, backward_program
-                    )
-                    fwd_pm.run(forward_program)
-                    bwd_pm.run(backward_program)
+                    paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+                    paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
                 return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
@@ -744,6 +741,9 @@ class PartialProgramLayer:
         params = train_runnable_program.param_values
         combined_inputs = list(itertools.chain(inputs, params))
         forward_end_idx = len(program.global_block().ops)
+        forward_end_op = None
+        if forward_end_idx > 0:
+            forward_end_op = program.global_block().ops[-1]
         grad_info_map = [None] * len(combined_inputs)
         with backend_guard(self._backend):
             check_type(
@@ -796,6 +796,11 @@ class PartialProgramLayer:
                             )
                         ),
                     )
+                    if forward_end_op is not None:
+                        for idx, op in enumerate(program.global_block().ops):
+                            if op == forward_end_op:
+                                forward_end_idx = idx + 1
+                                break
 
             if self._hooker:
                 (

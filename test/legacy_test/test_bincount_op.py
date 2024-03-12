@@ -63,7 +63,7 @@ class TestBincountOpAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
-            inputs = base.dygraph.to_variable(inputs_np)
+            inputs = paddle.to_tensor(inputs_np)
             actual = paddle.bincount(inputs)
             expected = np.bincount(inputs)
             self.assertTrue(

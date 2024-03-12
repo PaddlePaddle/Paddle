@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import _C_ops, nn
+from paddle import _C_ops, nn, pir
 from paddle.amp.grad_scaler import OptimizerState
 from paddle.base import unique_name
 from paddle.base.dygraph.base import switch_to_static_graph
@@ -255,16 +255,41 @@ def dtensor_from_local(local_tensor, mesh, placements):
             local_dim_size = global_dims[shard_dim]
             global_dims[shard_dim] = local_dim_size * mesh.shape[idx]
 
-    place = paddle.framework._current_expected_place()
-    place = paddle.framework._get_paddle_place(place)
+    if paddle.in_dynamic_mode():
+        place = paddle.framework._current_expected_place()
+        place = paddle.framework._get_paddle_place(place)
 
-    return paddle.Tensor(
-        local_tensor,
-        dims=global_dims,
-        process_mesh=mesh,
-        placements=placements,
-        place=place,
-    )
+        return paddle.Tensor(
+            local_tensor,
+            dims=global_dims,
+            process_mesh=mesh,
+            placements=placements,
+            place=place,
+        )
+
+    # TODO Adopt Mix2Dist Pass to allow the program could be executed actually.
+    elif paddle.framework.in_pir_mode():
+        assert isinstance(
+            local_tensor, (type(None), pir.Value)
+        ), "input tensor is not pir value."
+        assert (
+            local_tensor.is_dense_tensor_type()
+        ), "dtensor_from_local() are only supported dense tensor type right."
+        sharding_specs = get_shard_spec(mesh, placements, local_tensor.ndim)
+        dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
+        local_shape = local_tensor.shape
+        global_tensor_type = paddle.pir.create_shaped_type(
+            local_tensor.type(), global_dims
+        )
+        dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
+            global_tensor_type, local_shape, mesh, dims_mapping
+        )
+        local_tensor.set_type(dist_dense_tensor_type)
+        return local_tensor
+    else:
+        raise RuntimeError(
+            "dtensor_from_local() are only supported in dynamic or pir mode."
+        )
 
 
 def dtensor_from_fn(fn, mesh, placements, *args, **kwargs):
@@ -551,6 +576,30 @@ def shard_layer(
         )
 
 
+def get_placement_with_sharding(param, sharding_mesh_axis):
+    shard_axis = -1
+    for placement in param.placements:
+        if isinstance(placement, dist.Shard):
+            # the parameter can't be shard twice with sharding on different mesh now
+            # for example, [Shard(0), Shard(1)], assert here in case
+            assert (
+                shard_axis == -1
+            ), "The parameter can't be shard twice with sharding strategy even in different mesh now."
+            shard_axis = placement.get_dim()
+
+    placement_with_sharding = None
+    for dim in range(param.ndim):
+        if dim != shard_axis:
+            placement_with_sharding = dist.Shard(dim)
+            break
+
+    new_placements = param.placements
+    if placement_with_sharding is not None:
+        new_placements[sharding_mesh_axis] = placement_with_sharding
+
+    return new_placements
+
+
 class _ShardOptimizer:
     def __init__(self, optimizer, shard_fn=None):
         assert (
@@ -575,6 +624,67 @@ class _ShardOptimizer:
             self._shard_clip = True
         self._inner_opt = optimizer
         self._shard_fn = shard_fn
+        self._sharding_mesh_axis = None
+        self._sharding_degree = None
+
+        if isinstance(
+            self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
+        ):
+            self._set_and_check_sharding_prop_from_param()
+            self._shard_fn._set_sharding_mesh_axis(self._sharding_mesh_axis)
+
+        # Invoke register hook for sharding stage 2 strategy
+        if isinstance(self._shard_fn, ShardingStage2):
+            for param in self._inner_opt._parameter_list:
+                self._shard_fn._register_hook_for_param_grad(param)
+
+        # Invoke shard_parameter in sharding stage 3 strategy
+        if isinstance(self._shard_fn, ShardingStage3):
+            for param in self._inner_opt._parameter_list:
+                self._shard_fn._shard_parameter(param)
+
+    def _set_and_check_sharding_prop_from_param(self):
+        if len(self._shard_fn._mesh._shape) == 1:
+            self._sharding_degree = self._shard_fn._mesh.get_dim_size(0)
+            self._sharding_mesh_axis = 0
+        else:
+            param_list = self._inner_opt._parameter_list
+            for param in param_list:
+                if not param.is_dist():
+                    continue
+                mesh = param.process_mesh
+                placements = param.placements
+
+                if self._sharding_degree is None:
+                    # set the sharding degree if it has not been set
+                    if any(
+                        isinstance(placement, dist.Shard)
+                        for placement in placements
+                    ):
+                        for idx, placement in enumerate(placements):
+                            if isinstance(placement, dist.Replicate):
+                                self._sharding_degree = mesh.dim_size(idx)
+                                self._sharding_mesh_axis = idx
+                                break
+                else:
+                    # check the placement on sharding axis is Replicate
+                    assert isinstance(
+                        placements[self._sharding_mesh_axis], dist.Replicate
+                    ), "The placement on sharding_mesh_axis should be Replicate"
+                    # check the sharding degree since it has already been set
+                    if any(
+                        isinstance(placement, dist.Shard)
+                        for placement in placements
+                    ):
+                        for idx, placement in enumerate(placements):
+                            if isinstance(placement, dist.Replicate):
+                                assert (
+                                    mesh.dim_size(idx) == self._sharding_degree
+                                ), "The sharding degree of all parameters must be equal currently."
+
+        assert (
+            self._sharding_degree is not None
+        ), "The sharding degree is None in ShardOptimizer"
 
     def _shard_accumulator(self, param):
         # create the accumulators
@@ -731,6 +841,243 @@ class _ShardOptimizer:
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)
+
+
+class _ShardingStageBase:
+    def __init__(self, mesh):
+        self._mesh = mesh
+        self._sharding_mesh_axis = None
+
+    def _set_sharding_mesh_axis(self, sharding_mesh_axis):
+        self._sharding_mesh_axis = sharding_mesh_axis
+
+
+class ShardingStage1(_ShardingStageBase):
+    """
+    A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 1.
+
+    Args:
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc1 = paddle.nn.Linear(8, 8)
+            ...         self.fc2 = paddle.nn.Linear(8, 8)
+            ...
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> layer = MLP()
+            >>> batch = paddle.rand(shape=[8, 8])
+            >>> opt = paddle.optimizer.AdamW(parameters=layer.parameters())
+            >>> opt = dist.shard_optimizer(opt, dist.ShardingStage1(mesh))
+            >>> for _ in range(5):
+            >>>     loss = layer(batch)
+            >>>     loss.backward()
+            >>>     opt.step()
+            >>>     opt.clear_grad()
+            >>> # This case need to be executed in multi-card environment
+            >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
+    """
+
+    def __init__(self, mesh):
+        super().__init__(mesh)
+
+    def __call__(self, key, param, accumulator):
+        if param.is_dist():
+            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
+            if 'beta' not in key:
+                placements = get_placement_with_sharding(
+                    param, self._sharding_mesh_axis
+                )
+            else:
+                placements = [
+                    dist.Replicate()
+                    for _ in range(len(param.process_mesh.shape))
+                ]
+            return shard_tensor(
+                accumulator,
+                mesh=param.process_mesh,
+                placements=placements,
+            )
+        return accumulator
+
+
+class ShardingStage2(_ShardingStageBase):
+    """
+    A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 2.
+
+    Args:
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc1 = paddle.nn.Linear(8, 8)
+            ...         self.fc2 = paddle.nn.Linear(8, 8)
+            ...
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> layer = MLP()
+            >>> batch = paddle.rand(shape=[8, 8])
+            >>> opt = paddle.optimizer.AdamW(parameters=layer.parameters())
+            >>> opt = dist.shard_optimizer(opt, dist.ShardingStage2(mesh))
+            >>> for _ in range(5):
+            >>>     loss = layer(batch)
+            >>>     loss.backward()
+            >>>     opt.step()
+            >>>     opt.clear_grad()
+            >>> # This case need to be executed in multi-card environment
+            >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
+    """
+
+    def __init__(self, mesh):
+        super().__init__(mesh)
+
+    def __call__(self, key, param, accumulator):
+        if param.is_dist():
+            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
+            if 'beta' not in key:
+                placements = get_placement_with_sharding(
+                    param, self._sharding_mesh_axis
+                )
+            else:
+                placements = [
+                    dist.Replicate()
+                    for _ in range(len(param.process_mesh.shape))
+                ]
+            return shard_tensor(
+                accumulator,
+                mesh=param.process_mesh,
+                placements=placements,
+            )
+        return accumulator
+
+    @staticmethod
+    def _grad_hook(grad):
+        # do reshard only if the grad is dist tensor and in partial status
+        if grad.is_dist():
+            partial_mesh_axis = None
+            for mesh_axis, placement in enumerate(grad.placements):
+                if isinstance(placement, dist.Partial):
+                    partial_mesh_axis = mesh_axis
+            if partial_mesh_axis is not None:
+                new_placements = get_placement_with_sharding(
+                    grad, partial_mesh_axis
+                )
+                return reshard(grad, grad.process_mesh, new_placements)
+
+        return grad
+
+    def _register_hook_for_param_grad(self, param):
+        if param.is_dense():
+            placements = []
+            for _ in range(len(self._mesh.shape)):
+                placements.append(dist.Replicate())
+            param._to_dist_(placements, self._mesh)
+
+        param.register_hook(ShardingStage2._grad_hook)
+
+
+class ShardingStage3(_ShardingStageBase):
+    """
+    A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 3.
+
+    Args:
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc1 = paddle.nn.Linear(8, 8)
+            ...         self.fc2 = paddle.nn.Linear(8, 8)
+            ...
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> layer = MLP()
+            >>> batch = paddle.rand(shape=[8, 8])
+            >>> opt = paddle.optimizer.AdamW(parameters=layer.parameters())
+            >>> opt = dist.shard_optimizer(opt, dist.ShardingStage3(mesh))
+            >>> for _ in range(5):
+            >>>     loss = layer(batch)
+            >>>     loss.backward()
+            >>>     opt.step()
+            >>>     opt.clear_grad()
+            >>> # This case need to be executed in multi-card environment
+            >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
+    """
+
+    def __init__(self, mesh):
+        super().__init__(mesh)
+
+    def _shard_parameter(self, param):
+        if param.is_dense():
+            placements = []
+            for _ in range(len(self._mesh.shape)):
+                placements.append(dist.Replicate())
+            param._to_dist_(placements, self._mesh)
+
+        new_placements = get_placement_with_sharding(
+            param, self._sharding_mesh_axis
+        )
+        shard_param = dist.reshard(param, param.process_mesh, new_placements)
+        # change the holder of param to new shard_param
+        param.get_tensor()._share_data_with(shard_param.get_tensor())
+
+    def _unshard_parameter(self, param):
+        new_placements = param.placements
+        if isinstance(new_placements[self._sharding_mesh_axis], dist.Shard):
+            new_placements[self._sharding_mesh_axis] = dist.Replicate()
+
+        new_param = dist.reshard(param, param.process_mesh, new_placements)
+        param.get_tensor()._share_data_with(new_param.get_tensor())
+
+    def __call__(self, key, param, accumulator):
+        if param.is_dist():
+            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
+            if 'beta' not in key:
+                placements = param.placements
+            else:
+                placements = [
+                    dist.Replicate()
+                    for _ in range(len(param.process_mesh.shape))
+                ]
+            return shard_tensor(
+                accumulator,
+                mesh=param.process_mesh,
+                placements=placements,
+            )
+        return accumulator
 
 
 def shard_optimizer(optimizer, shard_fn=None):
@@ -1470,6 +1817,7 @@ class DistModel:
                 "fused_dropout_add_pass"
             )
 
+        inner_strategy.amp = copy.deepcopy(strategy.amp)
         inner_strategy.sharding = copy.deepcopy(strategy.sharding)
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
@@ -1732,7 +2080,38 @@ def to_static(
             >>> # python -m paddle.distributed.launch {test_case}.py
     """
     if isinstance(optimizer, _ShardOptimizer):
+        shard_fn = optimizer._shard_fn
+        sharding_degree = optimizer._sharding_degree
         optimizer = optimizer._inner_opt
+
+        if shard_fn is not None:
+            strategy = dist.Strategy() if strategy is None else strategy
+
+            # Deduce sharding degree for static
+            # Note: Because limitation of architecture, we need to ensure that
+            # all parameters are sharded by the same mesh axis
+            assert (
+                sharding_degree is not None
+            ), "Sharding degree can not be None."
+
+            if isinstance(shard_fn, ShardingStage1):
+                strategy.sharding.enable = True
+                strategy.sharding.stage = 1
+                strategy.sharding.degree = sharding_degree
+            elif isinstance(shard_fn, ShardingStage2):
+                strategy.sharding.enable = True
+                strategy.sharding.stage = 2
+                strategy.sharding.degree = sharding_degree
+            elif isinstance(shard_fn, ShardingStage3):
+                strategy.sharding.enable = True
+                strategy.sharding.stage = 3
+                strategy.sharding.degree = sharding_degree
+                for param in optimizer._parameter_list:
+                    shard_fn._unshard_parameter(param)
+            else:
+                raise NotImplementedError(
+                    "Only sharding stage 1, 2 and 3 can to_static for now. User-defined shard_fn will be supported later."
+                )
 
     dist_model = DistModel(layer, loader, loss, optimizer, strategy)
     return dist_model
@@ -1857,22 +2236,22 @@ class ShardDataloader:
                     process_id, self._meshes
                 )
             )
+        if input_keys is not None:
+            assert len(input_keys) == 2, "input_keys lengths must be 2"
 
         self._all_inputs_in_one_mesh = len(self._meshes) == 1
         self._input_keys = input_keys
         self._shard_dims = self._process_shard_dims(shard_dims)
 
-        mesh_index = self._get_mesh_idx(process_id)
-        if mesh_index == -1:
+        mesh, shard_dim = self._get_mesh_and_shard_dim(process_id)
+        if mesh is None:
+            mesh = to_list(self._meshes[0])[0]
+            shard_dim = to_list(self._shard_dims[0])[0]
             dp_rank = 0
-            dp_world_size = self._meshes[0].get_dim_size(self._shard_dims[0])
+            dp_world_size = mesh.get_dim_size(shard_dim)
         else:
-            dp_rank = self._meshes[mesh_index].get_rank_by_dim_and_process_id(
-                self._shard_dims[mesh_index], process_id
-            )
-            dp_world_size = self._meshes[mesh_index].get_dim_size(
-                self._shard_dims[mesh_index]
-            )
+            dp_rank = mesh.get_rank_by_dim_and_process_id(shard_dim, process_id)
+            dp_world_size = mesh.get_dim_size(shard_dim)
 
         if is_dataset_splitted is True or shard_dims is None:
             self._dataloader = dataloader
@@ -1913,7 +2292,13 @@ class ShardDataloader:
 
     def _process_shard_dims(self, shard_dims):
         if isinstance(shard_dims, (int, str)) or shard_dims is None:
-            return [shard_dims] * len(self._meshes)
+            res = []
+            for i in range(len(self._meshes)):
+                if isinstance(self._meshes[i], (list, tuple)):
+                    res.append([shard_dims] * len(self._meshes[i]))
+                else:
+                    res.append(shard_dims)
+            return res
         else:
             if len(shard_dims) != len(self._meshes):
                 raise ValueError(
@@ -1923,16 +2308,30 @@ class ShardDataloader:
                 )
             return shard_dims
 
-    def _get_mesh_idx(self, process_id):
+    def _get_mesh_and_shard_dim(self, process_id):
         for i in range(len(self._meshes)):
-            if process_id in self._meshes[i]._process_ids:
-                return i
-        return -1
+            if isinstance(self._meshes[i], (list, tuple)):
+                for j in range(len(self._meshes[i])):
+                    if process_id in self._meshes[i][j]._process_ids:
+                        return self._meshes[i][j], self._shard_dims[i][j]
+            else:
+                if process_id in self._meshes[i]._process_ids:
+                    return self._meshes[i], self._shard_dims[i]
+        return None, None
 
     def _process_id_in_multi_meshes(self, process_id):
         count = 0
-        for i in range(len(self._meshes)):
-            if process_id in self._meshes[i]._process_ids:
+        flatten_meshes = []
+        for mesh in self._meshes:
+            if isinstance(mesh, (list, tuple)):
+                flatten_meshes.extend(mesh)
+            else:
+                flatten_meshes.append(mesh)
+
+        # NOTE(zhengzhonghui): User may set the same mesh for different inputs, so we need to unique the meshes
+        unique_meshes = list(set(flatten_meshes))
+        for mesh in unique_meshes:
+            if process_id in mesh._process_ids:
                 count += 1
         return count > 1
 
@@ -1962,16 +2361,69 @@ class ShardDataloader:
             placements.append(dist.Replicate())
         return mesh, placements
 
+    def _get_meshes_and_placements_for_list_input(self, index, length):
+        if self._all_inputs_in_one_mesh:
+            meshes = [self._meshes[0]] * length
+            shard_dims = [self._shard_dims[0]] * length
+        else:
+            meshes = self._meshes[index]
+            if isinstance(meshes, (list, tuple)):
+                assert len(meshes) == length
+            else:
+                meshes = [meshes] * length
+            shard_dims = self._shard_dims[index]
+            if isinstance(shard_dims, (list, tuple)):
+                assert len(shard_dims) == length
+            else:
+                shard_dims = [shard_dims] * length
+
+        placements = []
+        for i in range(length):
+            if shard_dims[i] is not None:
+                placement = [dist.Shard(0)]
+            else:
+                placement = [dist.Replicate()]
+            for _ in range(1, len(meshes[i]._shape)):
+                placement.append(dist.Replicate())
+            placements.append(placement)
+        return meshes, placements
+
+    def _dtensors_from_list_input(self, list_tensors, meshes, placements):
+        dist_data = []
+        for j in range(len(list_tensors)):
+            dist_data.append(
+                dtensor_from_local(list_tensors[j], meshes[j], placements[j])
+            )
+        return dist_data
+
     def _get_batch(self, batch_data):
         if isinstance(batch_data, (list, tuple)):
             if self._all_inputs_in_one_mesh is False:
                 assert len(batch_data) == len(self._meshes)
             dist_batch_data = []
             for i in range(len(batch_data)):
-                mesh, placements = self._get_mesh_and_placement(i)
-                dist_batch_data.append(
-                    dtensor_from_local(batch_data[i], mesh, placements)
-                )
+                input_data = batch_data[i]
+                if isinstance(input_data, (list, tuple)):
+                    (
+                        meshes,
+                        placements,
+                    ) = self._get_meshes_and_placements_for_list_input(
+                        i, len(input_data)
+                    )
+                    dist_batch_data.append(
+                        self._dtensors_from_list_input(
+                            input_data, meshes, placements
+                        )
+                    )
+                elif isinstance(input_data, paddle.Tensor):
+                    mesh, placements = self._get_mesh_and_placement(i)
+                    dist_batch_data.append(
+                        dtensor_from_local(input_data, mesh, placements)
+                    )
+                else:
+                    raise ValueError(
+                        f"Unsupported input_data type {type(input_data)}"
+                    )
             return dist_batch_data
         elif isinstance(batch_data, dict):
             if self._all_inputs_in_one_mesh is False:
@@ -1979,10 +2431,26 @@ class ShardDataloader:
             dist_batch_data = {}
             for i in range(len(self._input_keys)):
                 key = self._input_keys[i]
-                mesh, placements = self._get_mesh_and_placement(i)
-                dist_batch_data[key] = dtensor_from_local(
-                    batch_data[key], mesh, placements
-                )
+                input_data = batch_data[key]
+                if isinstance(input_data, (list, tuple)):
+                    (
+                        meshes,
+                        placements,
+                    ) = self._get_meshes_and_placements_for_list_input(
+                        i, len(input_data)
+                    )
+                    dist_batch_data[key] = self._dtensors_from_list_input(
+                        input_data, meshes, placements
+                    )
+                elif isinstance(input_data, paddle.Tensor):
+                    mesh, placements = self._get_mesh_and_placement(i)
+                    dist_batch_data[key] = dtensor_from_local(
+                        batch_data[key], mesh, placements
+                    )
+                else:
+                    raise ValueError(
+                        f"Unsupported input_data type {type(input_data)}"
+                    )
             return dist_batch_data
         else:
             raise ValueError(f"Unsupported batch_data type {type(batch_data)}")
@@ -2012,7 +2480,9 @@ def shard_dataloader(
     only if is_dataset_splitted is False and shard_dims is not None, it will do split.
 
     Args:
-        dataloader (paddle.io.DataLoader): The dataloader to be sharded.
+        dataloader (paddle.io.DataLoader): The dataloader to be sharded. the output of dataloader
+            must be a list or dict of paddle.Tensor with 2 elements, i.e. [input_data, label] or
+            {"input_data": input_data, "label": label}, input_data and label can be a list to support multiple inputs.
         meshes (ProcessMesh|list[ProcessMesh]|tuple[ProcessMesh]): The mesh list of the dataloader.
             Identify which mesh the input is on. if len(meshes) == 1 or type(meshes) == ProcessMesh,
             all the inputs are on the same mesh.
@@ -2030,6 +2500,7 @@ def shard_dataloader(
 
     Examples:
         .. code-block:: python
+            :name: example-1
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -2125,6 +2596,59 @@ def shard_dataloader(
             >>> # RUN_STATIC=1 python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" {test_case}.py
             >>> # RUN_STATIC=0 python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" {test_case}.py
 
+        .. code-block:: python
+            :name: example-2
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle.io import BatchSampler, DataLoader, Dataset
+            >>> import numpy as np
+            >>> mesh0 = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['dp', 'mp'])
+            >>> mesh1 = dist.ProcessMesh([[4, 5], [6, 7]], dim_names=['dp', 'mp'])
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, seq_len, hidden, num_samples=8):
+            ...         super().__init__()
+            ...         self.seq_len = seq_len
+            ...         self.hidden = hidden
+            ...         self.num_samples = num_samples
+            ...         self.inputs1 = [
+            ...             np.random.uniform(size=[self.seq_len, self.hidden]).astype(
+            ...                 "float32"
+            ...             )
+            ...             for _ in range(num_samples)
+            ...         ]
+            ...         self.inputs2 = [
+            ...             np.random.uniform(size=[self.seq_len, self.hidden]).astype(
+            ...                 "float32"
+            ...             )
+            ...             for _ in range(num_samples)
+            ...         ]
+            ...         self.labels = [
+            ...             np.array(index, dtype="float32") for index in range(num_samples)
+            ...         ]
+            ...     def __getitem__(self, index):
+            ...         return {
+            ...             "inputs": [self.inputs1[index], self.inputs2[index]],
+            ...             "label": self.labels[index],
+            ...         }
+            ...     def __len__(self):
+            ...         return self.num_samples
+
+            >>> dataset = RandomDataset(4, 8)
+            >>> sampler = BatchSampler(
+            ...     dataset,
+            ...     batch_size=2,
+            ... )
+            >>> dataloader = DataLoader(
+            ...     dataset,
+            ...     batch_sampler=sampler,
+            ... )
+            >>> dist_dataloader = dist.shard_dataloader(
+            ...     dataloader=dataloader,
+            ...     meshes=[mesh0, mesh1],  # or [[mesh0, mesh0], mesh1]
+            ...     shard_dims="dp",
+            ...     input_keys=["inputs", "label"],
+            ... )
     """
 
     return ShardDataloader(

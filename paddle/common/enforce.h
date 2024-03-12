@@ -55,18 +55,25 @@ inline std::string demangle(std::string name) {
 inline std::string demangle(std::string name) { return name; }
 #endif
 
-class CommonNotMetException : public std::exception {
- public:
-  explicit CommonNotMetException(const std::string& str) : err_str_(str) {}
+namespace enforce {
 
-  const char* what() const noexcept override { return err_str_.c_str(); }
+TEST_API void SkipPaddleFatal(bool skip = true);
+TEST_API bool IsPaddleFatalSkip();
+
+namespace details {
+
+class PaddleFatalGuard {
+ public:
+  PaddleFatalGuard() : skip_paddle_fatal_(IsPaddleFatalSkip()) {
+    if (!skip_paddle_fatal_) SkipPaddleFatal(true);
+  }
+  ~PaddleFatalGuard() {
+    if (!skip_paddle_fatal_) SkipPaddleFatal(false);
+  }
 
  private:
-  std::string err_str_;
+  bool skip_paddle_fatal_;
 };
-
-namespace enforce {
-namespace details {
 template <typename T>
 struct CanToString {
  private:
@@ -118,9 +125,9 @@ TEST_API int GetCallStackLevel();
 TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
 TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
 template <typename StrType>
-static std::string GetErrorSumaryString(StrType&& what,
-                                        const char* file,
-                                        int line) {
+static std::string GetErrorSummaryString(StrType&& what,
+                                         const char* file,
+                                         int line) {
   std::ostringstream sout;
   if (GetCallStackLevel() > 1) {
     sout << "\n----------------------\nError Message "
@@ -139,9 +146,9 @@ static std::string GetTraceBackString(StrType&& what,
   if (GetCallStackLevel() > 1) {
     // FLAGS_call_stack_level>1 means showing c++ call stack
     return ::common::enforce::GetCurrentTraceBackString() +
-           GetErrorSumaryString(what, file, line);
+           GetErrorSummaryString(what, file, line);
   } else {
-    return GetErrorSumaryString(what, file, line);
+    return GetErrorSummaryString(what, file, line);
   }
 }
 
@@ -204,6 +211,8 @@ struct EnforceNotMet : public std::exception {
   // Simple error message used when no C++ stack and python compile stack
   // e.g. (InvalidArgument) ***
   std::string simple_err_str_;
+
+  details::PaddleFatalGuard paddle_fatal_guard_;
 };
 /** HELPER MACROS AND FUNCTIONS **/
 #ifndef PADDLE_MAY_THROW
@@ -255,16 +264,21 @@ template <typename T1, typename T2>
 using CommonType2 = typename std::add_lvalue_reference<
     typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
 
-#define COMMON_THROW(...)                                               \
-  do {                                                                  \
-    HANDLE_THE_ERROR                                                    \
-    throw common::CommonNotMetException(                                \
-        paddle::string::Sprintf("Error occurred at: %s:%d :\n%s",       \
-                                __FILE__,                               \
-                                __LINE__,                               \
-                                paddle::string::Sprintf(__VA_ARGS__))); \
-    END_HANDLE_THE_ERROR                                                \
+#define PADDLE_THROW(...)                                         \
+  do {                                                            \
+    HANDLE_THE_ERROR                                              \
+    throw ::common::enforce::EnforceNotMet(                       \
+        ::common::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                          \
   } while (0)
+
+#define PADDLE_FATAL(...)                                          \
+  if (!::common::enforce::IsPaddleFatalSkip()) {                   \
+    auto info = ::common::enforce::EnforceNotMet(                  \
+        paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+    std::cerr << info.what() << std::endl;                         \
+    std::abort();                                                  \
+  }
 
 #define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
   do {                                                                         \
@@ -357,6 +371,7 @@ class IrNotMetException : public std::exception {
 
  private:
   std::string err_str_;
+  ::common::enforce::details::PaddleFatalGuard paddle_fatal_guard_;
 };
 
 #define IR_THROW(...)                                                     \

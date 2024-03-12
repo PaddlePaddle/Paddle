@@ -634,8 +634,8 @@ void BindImperative(py::module *m_ptr) {
           egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
-  m.def("_get_amp_state",
-        []() { return egr::Controller::Instance().GetCurrentAMPState(); });
+  m.def("_get_amp_attrs",
+        []() { return egr::Controller::Instance().GetCurrentAmpAttrs(); });
   m.def("_set_amp_op_list",
         [](std::unordered_set<std::string> &allow_ops,
            std::unordered_set<std::string> &block_ops) {
@@ -664,17 +664,17 @@ void BindImperative(py::module *m_ptr) {
       .value("O3", paddle::imperative::AmpLevel::O3)
       .export_values();
 
-  py::class_<imperative::AMPState, std::shared_ptr<imperative::AMPState>>(
-      m, "AMPState", R"DOC()DOC")
+  py::class_<imperative::AmpAttrs, std::shared_ptr<imperative::AmpAttrs>>(
+      m, "AmpAttrs", R"DOC()DOC")
       .def_property("_use_promote",
-                    &imperative::AMPState::GetUsePromote,
-                    &imperative::AMPState::SetUsePromote)
+                    &imperative::AmpAttrs::GetUsePromote,
+                    &imperative::AmpAttrs::SetUsePromote)
       .def_property("_amp_level",
-                    &imperative::AMPState::GetAmpLevel,
-                    &imperative::AMPState::SetAmpLevel)
+                    &imperative::AmpAttrs::GetAmpLevel,
+                    &imperative::AmpAttrs::SetAmpLevel)
       .def_property("_amp_dtype",
-                    &imperative::AMPState::GetAmpDtype,
-                    &imperative::AMPState::SetAmpDtype);
+                    &imperative::AmpAttrs::GetAmpDtype,
+                    &imperative::AmpAttrs::SetAmpDtype);
 
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
@@ -1357,8 +1357,9 @@ void BindImperative(py::module *m_ptr) {
           auto *index_data = index_tensor.data<int64_t>();
           auto *buffer_data =
               buffer_tensor->mutable_data<float>(buffer_tensor->place());
-          const int &slice_size = src_tensor.numel() / src_tensor.dims()[0];
-          const int &copy_bytes = slice_size * sizeof(float);
+          const int &slice_size =
+              static_cast<int>(src_tensor.numel()) / src_tensor.dims()[0];
+          const int &copy_bytes = static_cast<int>(slice_size) * sizeof(float);
           int64_t c = 0;
           for (int64_t i = 0; i < index_tensor.numel(); i++) {
             std::memcpy(buffer_data + c * slice_size,

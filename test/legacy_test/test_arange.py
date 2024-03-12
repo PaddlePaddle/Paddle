@@ -59,7 +59,7 @@ class TestFloatArangeOp(TestArangeOp):
         self.case = (0, 5, 1)
 
 
-class TestFloa16ArangeOp(TestArangeOp):
+class TestFloat16ArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.float16
         self.python_api = paddle.arange
@@ -72,7 +72,7 @@ class TestFloa16ArangeOp(TestArangeOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestBFloat16ArangeOp(OpTest):
     def setUp(self):

@@ -27,6 +27,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/eliminate_common_factor_of_local_index.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/resize_buffer.h"
@@ -319,6 +320,8 @@ class LocalAxisVisitor : public ir::IRMutator<> {
  private:
   void Visit(const ir::Store *op, Expr *expr) override {
     auto store = expr->As<ir::Store>();
+
+    ir::IRMutator<>::Visit(op, expr);
     if (!store->tensor.as_tensor_ref()->buffer.defined()) {
       return;
     }
@@ -332,11 +335,11 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         indice = cinn::common::AutoSimplify(indice);
       }
     }
-    ir::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load *op, Expr *expr) override {
     auto load = expr->As<ir::Load>();
+
     if (load->is_addr_scalar()) {
       return;
     }
@@ -441,6 +444,8 @@ void OptimizeExprGPU(Expr *expr) {
   // update local buffer axis
   LocalAxisVisitor local_axis_visitor;
   local_axis_visitor(expr);
+
+  EliminateCommonFactorOfLocalIndex(expr);
 
   ResizeBufferToMaxVarRange(expr);
 

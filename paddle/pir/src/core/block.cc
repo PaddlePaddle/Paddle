@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/core/block.h"
 
+#include <glog/logging.h>
 #include <unordered_set>
 
 #include "paddle/common/enforce.h"
@@ -23,7 +24,10 @@
 namespace pir {
 Block::~Block() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destroyed a block that is still in use.";
+    auto parent_op = GetParentOp();
+    PADDLE_FATAL(
+        "Destroyed a block that is still in use.. The parent op is : %s",
+        parent_op ? parent_op->name() : std::string("nullptr"));
   }
   ClearOps();
   ClearKwargs();
@@ -126,7 +130,7 @@ Value Block::AddKwarg(const std::string &keyword, Type type) {
   IR_ENFORCE(kwargs_.find(keyword) == kwargs_.end(),
              "Add keyword (%s) argument which has been existed.",
              keyword.c_str());
-  auto arg = BlockArgument::Create(type, this, 0);
+  auto arg = BlockArgument::Create(type, this, keyword);
   kwargs_[keyword] = arg;
   return arg;
 }

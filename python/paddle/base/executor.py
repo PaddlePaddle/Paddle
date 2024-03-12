@@ -684,7 +684,7 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
     )
 
 
-def _get_program_cache_key(feed, fetch_list):
+def _get_feed_fetch_var_names(feed, fetch_list):
     feed_var_names = []
     if isinstance(feed, dict):
         feed_var_names = list(feed.keys())
@@ -692,7 +692,11 @@ def _get_program_cache_key(feed, fetch_list):
         for i, each in enumerate(feed):
             feed_var_names += list(each.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
-    return str(feed_var_names + fetch_var_names)
+    return feed_var_names + fetch_var_names
+
+
+def _get_program_cache_key(feed, fetch_list):
+    return str(_get_feed_fetch_var_names(feed, fetch_list))
 
 
 def _as_lodtensor(data, place, dtype=None):
@@ -735,7 +739,7 @@ def _as_lodtensor(data, place, dtype=None):
             data = np.array(data)
             if data.dtype == np.object_:
                 raise TypeError(
-                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                    "\n\tFailed to convert input data to a regular ndarray :\n\t* Usually "
                     "this means the input data contains nested lists with different lengths. "
                     "Please consider using 'base.create_lod_tensor' to convert it to a LoD-Tensor."
                 )
@@ -1028,7 +1032,7 @@ class _ExecutorCache:
 
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
-            skip_var_names = eval(_get_program_cache_key(feed, fetch_list))
+            skip_var_names = _get_feed_fetch_var_names(feed, fetch_list)
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
@@ -1671,7 +1675,7 @@ class Executor:
                 needed to generate :code:`fetch_list` will be pruned. The default is False, which means the
                 program will not pruned and all the operators and variables will be executed during running.
                 Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`,
-                :code:`use_prune` will be overrided to True, and the program will be pruned.
+                :code:`use_prune` will be overridden to True, and the program will be pruned.
 
         Returns:
 
@@ -1876,7 +1880,7 @@ class Executor:
         if scope is None:
             scope = global_scope()
 
-        # use_prune can be overrided by putting optimize_ops in fetch_list
+        # use_prune can be overridden by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
         _origin_program = program
         fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(

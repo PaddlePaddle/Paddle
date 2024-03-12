@@ -40,7 +40,7 @@ void DyScheduleImpl::MergeExprs() {
   std::string primitive = "MergeExprs";
   std::ostringstream os;
   auto exprs = this->GetModule().GetExprs();
-  if (exprs.size() == 1U) return;
+  if (exprs.size() <= 1U) return;
   if (!exprs[0].As<ir::Block>()) {
     os << "Expr[0] of module_expr should be a Block!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
@@ -428,7 +428,7 @@ Expr DyScheduleImpl::SampleCategorical(
   std::string primitive = "SampleCategorical";
   std::ostringstream os;
   if (candidates.size() != probs.size()) {
-    os << "vector<int> params(candidates) and vector<int> prama(probs) must "
+    os << "vector<int> params(candidates) and vector<int> params(probs) must "
           "have same size in SampleCategorical!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }

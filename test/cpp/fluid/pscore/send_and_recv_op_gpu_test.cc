@@ -14,7 +14,7 @@ limitations under the License. */
 
 #if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSCORE)
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <memory>
 #include <random>

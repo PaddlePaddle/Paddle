@@ -205,10 +205,10 @@ class TemporalShiftOpConverter : public OpConverter {
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *reshape_layer3->getOutput(0));
       nvinfer1::Permutation permute_order{0, 2, 3, 1};
       transpose_layer2->setFirstTranspose(permute_order);
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           transpose_layer2, "temporal_shift", {output_name}, test_mode);
     } else {
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           reshape_layer3, "temporal_shift", {output_name}, test_mode);
     }
 #else

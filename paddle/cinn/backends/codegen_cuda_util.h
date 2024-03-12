@@ -20,6 +20,7 @@
 #include <tuple>
 #include <vector>
 
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -67,9 +68,11 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
       if (!op->cuda_axis_info.valid()) {
         expr->as_lowered_func_ref()->cuda_axis_info.set_valid(true);
       }
-      auto host_func = CreateHostFunctionGivenDeviceKernel(op);
+      auto host_func =
+          CreateHostFunctionGivenDeviceKernel(expr->as_lowered_func());
       host_module_builder.AddFunctionWithoutOptim(
           host_func.as_lowered_func_ref());
+
       device_module_builder.AddFunctionWithoutOptim(
           CreateDeviceFunctionGivenDeviceKernel(*expr).as_lowered_func_ref());
     }
@@ -93,7 +96,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
    * }
    * \endcode
    */
-  Expr CreateHostFunctionGivenDeviceKernel(const ir::_LoweredFunc_* func) {
+  Expr CreateHostFunctionGivenDeviceKernel(ir::_LoweredFunc_* func) {
     // std::vector<Expr> args;
     // NOTE the suffix `__ptr` makes this argument lower to a pointer in LLVM
     // backend. args.push_back(Var("args__ptr", type_of<cinn_pod_value_t*>()));
@@ -103,6 +106,21 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     ir::Var kernel_args_num(KERNEL_ARGS_NUM, type_of<int>());
     ir::Var kernel_stream(KERNEL_STREAM, type_of<void*>());
 
+    // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
+    // however, this make CodeGenCUDA_Dev before spliting the host and device
+    // module Maybe we could reorder the process.
+    CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+    codegen_dev.Compile(ir::LoweredFunc(func));
+    Expr shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+
+    VLOG(6) << "Add a call node for func->name " << func->name << "\n"
+            << "grid_dim: (" << func->cuda_axis_info.grid_dim(0) << ", "
+            << func->cuda_axis_info.grid_dim(1) << ", "
+            << func->cuda_axis_info.grid_dim(2) << "), "
+            << "block_dim: (" << func->cuda_axis_info.block_dim(0) << ", "
+            << func->cuda_axis_info.block_dim(1) << ", "
+            << func->cuda_axis_info.block_dim(2) << "), "
+            << "shared_mem: " << shared_mem_bytes;
     auto call_extern_api =
         ir::Call::Make(Void(),
                        runtime::intrinsic::call_cuda_kernel,
@@ -115,6 +133,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                         func->cuda_axis_info.block_dim(0),  // block_x
                         func->cuda_axis_info.block_dim(1),  // block_y
                         func->cuda_axis_info.block_dim(2),  // block_z
+                        shared_mem_bytes,
                         kernel_stream},
                        {},
                        ir::CallType::Extern,
