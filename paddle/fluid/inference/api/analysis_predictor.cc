@@ -921,9 +921,9 @@ bool AnalysisPredictor::PrepareExecutor() {
           if (!config_.glog_info_disabled()) {
             pass_manager->EnablePrintStatistics();
           }
-          // if (config_.ir_debug_) {
-          pass_manager->EnableIRPrinting();
-          //}
+          if (config_.ir_debug_) {
+            pass_manager->EnableIRPrinting();
+          }
           return pass_manager;
         });
       }
