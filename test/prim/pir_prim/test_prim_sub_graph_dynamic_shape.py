@@ -312,6 +312,7 @@ class TestPrimSwiglu2(TestPrimBase):
 class TestPrimDropout(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
+        paddle.seed(2023)
         self.shape_x = [300, 4096]
         self.dtype_x = "float32"
         self.init_x_shape = [None, 4096]
