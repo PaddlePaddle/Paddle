@@ -44,11 +44,20 @@ class AddYieldStoreInFusionOpPattern
 
         if ((pre_name != "cinn_op.reduce_sum") &&
             (pre_name != "cinn_op.reduce_max")) {
-          auto new_full = rewriter.Build<cinn::dialect::YieldStoreOp>(
+          auto store_op = rewriter.Build<cinn::dialect::YieldStoreOp>(
               op->operand_source(i).defining_op()->operand_source(0),
               op->operand_source(i).type());
 
-          op->operand(i).set_source(new_full.result(0));
+          op->operand(i).set_source(store_op.result(0));
+
+          auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+              reshape_op->GetParentProgram());
+
+          if (shape_analysis.HasShapeOrDataForValue(reshape_op->result(0))) {
+            shape_analysis.SetShapeOrDataForValue(
+                store_op.result(0),
+                shape_analysis.GetShapeOrDataForValue(reshape_op->result(0)));
+          }
 
           continue;
         }
@@ -58,10 +67,23 @@ class AddYieldStoreInFusionOpPattern
         continue;
       }
 
-      auto new_full = rewriter.Build<cinn::dialect::YieldStoreOp>(
+      auto store_op = rewriter.Build<cinn::dialect::YieldStoreOp>(
           op->operand_source(i), op->operand_source(i).type());
+      auto orignal_base = op->operand_source(i);
+      op->operand(i).set_source(store_op.result(0));
 
-      op->operand(i).set_source(new_full.result(0));
+      auto& shape_analysis =
+          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+      if (shape_analysis.HasShapeOrDataForValue(orignal_base)) {
+        shape_analysis.SetShapeOrDataForValue(
+            store_op.result(0),
+            shape_analysis.GetShapeOrDataForValue(orignal_base));
+        std::cerr << "set impr " << store_op.result(0).impl() << "\t"
+                  << orignal_base.impl() << std::endl;
+      } else {
+        std::cerr << "not found info for yiled stro input\n";
+      }
     }
 
     return true;

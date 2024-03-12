@@ -37,8 +37,10 @@ class LayerCase(paddle.nn.Layer):
         self,
         var_0,
     ):
-        a = paddle.full(shape=[1], fill_value=0, dtype=var_0.dtype)
-        return a / var_0
+        # a = paddle.full(shape=[1], fill_value=0, dtype=var_0.dtype)
+        # return a / var_0
+        var_0 = var_0.cast("bool")
+        return paddle.any(var_0)
 
 
 class TestLayer(unittest.TestCase):
