@@ -1094,13 +1094,14 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
         "axis size is not equal output_shapes size! Please check setting.\n");
     // check axis and shape
     for (int idx = 0; idx < axis.size(); ++idx) {
-      PADDLE_ENFORCE(axis[idx] >= 0 && axis[idx] < axis.size());
+      PADDLE_ENFORCE(axis[idx] >= 0 && axis[idx] < axis.size(),
+                     "axis is not in the tensor shape.");
       for (int idy = idx + 1; idy < axis.size(); ++idy) {
         PADDLE_ENFORCE_NE(axis[idx], axis[idy], "axis can't repeat!");
       }
     }
   } else {
-    LOG(FATAL) << "axis is not be set! Please check.";
+    PADDLE_THROW("axis is not be set! Please check.");
   }
 
   framework::CINNCompute transpose_compute([=](lang::Args args,
@@ -1110,11 +1111,14 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
         "The input argument of transpose compute is empty! Please check.\n");
     CINNValuePack input_args = args[0];
     PADDLE_ENFORCE(!input_args.empty(),
-                   "at least one input tensor for transpose compute\n");
+                   "at least one input tensor for transpose compute.\n");
     Expr A = input_args[0];
-    PADDLE_ENFORCE(A.as_tensor());
-    PADDLE_ENFORCE_EQ(input_args.size(), 2);
-    PADDLE_ENFORCE(input_args[1].is_string());
+    PADDLE_ENFORCE(A.as_tensor(), "The input argument is not Tensor.");
+    PADDLE_ENFORCE_EQ(
+        input_args.size(), 2, "The input args size must be equal to 2.");
+    PADDLE_ENFORCE(input_args[1].is_string(),
+                   "The second argument must be of type string and is the name "
+                   "of the output tensor.");
     std::string tensor_name = input_args[1].operator std::string();
 
     auto out = pe::Transpose(A.as_tensor_ref(), axis, tensor_name);
