@@ -846,7 +846,7 @@
   inputs :
     {ids : Ids, shows : Shows, clicks: Clicks}
   outputs :
-    out : Outputs
+    output : Outputs
   extra :
     attrs : ['int[] slots = {}']
 
