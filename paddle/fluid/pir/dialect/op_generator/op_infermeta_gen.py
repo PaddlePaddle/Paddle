@@ -221,8 +221,7 @@ def GenBuildOutputsPart2(
 
 """
 
-
-    CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  is_from_tensor = false;
+    CREATE_INTARRAY_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  is_from_tensor = false;
   phi::IntArray {name} = phi::IntArray(paddle::dialect::ParseValueShape({name}_, &is_from_tensor));
   if (is_from_tensor) {name}.SetFromTensor(true);\n"""
 
