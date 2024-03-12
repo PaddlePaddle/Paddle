@@ -132,4 +132,5 @@ __all__ = [
     'new_pass',
     'PassManager',
     'PassContext',
+    'pipeline_scheduler_pass',
 ]
