@@ -272,9 +272,7 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 new_var_y_grad,
                 self.dist_context.get_tensor_dist_attr_for_program(var_y_grad),
             )
-            print(
-                f"before insert matmul, program = {block}, new_out_grad = {new_out_grad}"
-            )
+
             matmul_op = block._insert_op_without_sync(
                 index=allreduce_id + 3,
                 type="matmul_v2",
@@ -297,21 +295,6 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 self.dist_context,
                 chunk_id=ref_op_dist_attr.chunk_id,
             )
-            '''
-            ref_op_dist_attr = (
-                self.dist_context.get_op_dist_attr_for_program(matmul_grad_op)
-            )
-            ref_op_dist_attr.inputs_dist_attrs = {
-                new_x : self.dist_context.get_tensor_dist_attr_for_program(block.var(new_x)),
-                new_out_grad : self.dist_context.get_tensor_dist_attr_for_program(block.var(new_out_grad))
-            }
-            ref_op_dist_attr.outputs_dist_attrs = {
-                new_y_grad : self.dist_context.get_tensor_dist_attr_for_program(new_var_y_grad)
-            }
-            self.dist_context.set_op_dist_attr_for_program(
-                matmul_op, ref_op_dist_attr
-            )
-            '''
 
             self._insert_reshape_op(
                 block,
@@ -341,21 +324,6 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 self.dist_context,
                 chunk_id=ref_op_dist_attr.chunk_id,
             )
-            '''
-            ref_op_dist_attr = (
-                self.dist_context.get_op_dist_attr_for_program(matmul_grad_op)
-            )
-            ref_op_dist_attr.inputs_dist_attrs = {
-                out_grad : self.dist_context.get_tensor_dist_attr_for_program(var_out_grad),
-                y : self.dist_context.get_tensor_dist_attr_for_program(block.var(y))
-            }
-            ref_op_dist_attr.outputs_dist_attrs = {
-                x_grad : self.dist_context.get_tensor_dist_attr_for_program(block.var(x_grad))
-            }
-            self.dist_context.set_op_dist_attr_for_program(
-                matmul_op, ref_op_dist_attr
-            )
-            '''
 
             block._remove_op(matmul_grad_id, sync=False)
         block._sync_with_cpp()

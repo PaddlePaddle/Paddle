@@ -337,11 +337,6 @@ class Parallelizer:
         return main_program, startup_program, params_grads
 
     def _check_dist_attr(self, program, num_model_chunks, dist_context):
-        from paddle.distributed.auto_parallel.static.utils import (
-            print_program_with_dist_attr,
-        )
-
-        print_program_with_dist_attr(program, self._dist_context)
         for _, block in enumerate(program.blocks):
             for _, op in enumerate(block.ops):
                 op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
