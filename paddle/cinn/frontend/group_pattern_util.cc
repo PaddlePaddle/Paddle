@@ -44,15 +44,11 @@ using StmtVisitor = std::function<void(StmtPtr)>;
 
 struct OpTopo {
   OpSetPtr ops;
-  OpSet downstream_disconnected_ops;
 
-  static OpTopo Make(
-      const std::vector<const pir::Operation*>& ops,
-      const OpSet& downstream_disconnected_ops) {
+  static OpTopo Make(const std::vector<const pir::Operation*>& ops) {
     auto ops_set = std::make_shared<OpSet>(ops.begin(), ops.end());
     return OpTopo{
       .ops=ops_set,
-      .downstream_disconnected_ops=downstream_disconnected_ops,
     };
   }
 
@@ -61,13 +57,11 @@ struct OpTopo {
     for (int i = 0; i < op->num_operands(); ++i) {
       const auto* input_op = op->operand_source(i).defining_op();
       if (this->ops->count(input_op) == 0) continue;
-      if (this->downstream_disconnected_ops.count(input_op) > 0) continue;
       DoEach(input_op);
     }
   }
 
   void VisitOutputOp(const pir::Operation* op, const OpVisitor& DoEach) const {
-    if (this->downstream_disconnected_ops.count(op) > 0) return;
     for (int i = 0; i < op->num_results(); ++i) {
       pir::Value output = op->result(i);
       for (auto consumer_it = output.use_begin(); consumer_it != output.use_end();
@@ -493,10 +487,9 @@ std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
 class StmtFusionHelper {
  public:
   StmtFusionHelper(
-        const std::vector<const pir::Operation*>& ops,
-        const OpSet& downstream_disconnected_ops)
-      : ops_(ops), downstream_disconnected_ops_(downstream_disconnected_ops) {
-    this->op_topo_ = OpTopo::Make(ops, downstream_disconnected_ops);
+        const std::vector<const pir::Operation*>& ops)
+      : ops_(ops) {
+    this->op_topo_ = OpTopo::Make(ops);
     this->IsInThisOpList = MakePredicatorIsInThisFusionOp(ops);
     this->IsInjectiveSource =
         MakePredicatorIsInjectiveSource(this->op_topo_);
@@ -573,7 +566,7 @@ class StmtFusionHelper {
   std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(
       std::vector<StmtPattern>* stmt_patterns) {
     const auto ConstructPSPattern = [&](const auto& ops) {
-      auto op_topo = OpTopo::Make(ops, this->downstream_disconnected_ops_);
+      auto op_topo = OpTopo::Make(ops);
       const auto shardable_axes_signature = GetShardableAxesSignature(op_topo);
       return PS{
           .ops = ops,
@@ -924,7 +917,6 @@ class StmtFusionHelper {
 
  private:
   std::vector<const pir::Operation*> ops_;
-  OpSet downstream_disconnected_ops_;
   OpTopo op_topo_;
   std::function<bool(const pir::Operation*)> IsInThisOpList;
   std::function<bool(const pir::Operation*)> IsInjectiveSource;
@@ -932,9 +924,8 @@ class StmtFusionHelper {
 };
 
 GroupPattern FuseToGroupPattern(
-    const std::vector<const pir::Operation*>& ops,
-    const OpSet& downstream_disconnected_ops) {
-  StmtFusionHelper helper(ops, downstream_disconnected_ops);
+    const std::vector<const pir::Operation*>& ops) {
+  StmtFusionHelper helper(ops);
   std::vector<StmtPattern> stmt_patterns = helper.ConvertToStmtsPattern();
   if (const auto& error = helper.Fuse_IS_x_IS_2_IS(&stmt_patterns))
     return error.value();
@@ -981,14 +972,13 @@ std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
 
 GroupPattern GenerateGroupPatternFromOpList(
     const std::vector<const pir::Operation*>& ops) {
-  return FuseToGroupPattern(ops, {});
+  return FuseToGroupPattern(ops);
 }
 
 std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(
     const OpSetPtr& ops) {
   auto reversed_walker = GetOpsReversedTopoWalker(OpTopo{
     .ops=ops,
-    .downstream_disconnected_ops={},
   });
   const auto& sinks = GetSinks(*ops);
   const auto& sink_and_init_value = GetSinkAndInitValues(reversed_walker, ops, sinks);
