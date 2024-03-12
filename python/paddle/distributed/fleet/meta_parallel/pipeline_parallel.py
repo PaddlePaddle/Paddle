@@ -224,14 +224,14 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].clear_every_step_cache
 
-        self._non_batch_p2p_comm = self._strategy.hybrid_configs[
+        self._use_batch_p2p_comm = self._strategy.hybrid_configs[
             "pp_configs"
-        ].non_batch_p2p_comm
-        if not self._non_batch_p2p_comm and self._overlap_p2p_comm:
+        ].use_batch_p2p_comm
+        if self._use_batch_p2p_comm and self._overlap_p2p_comm:
             warnings.warn(
                 "non_batch_p2p_comm should be enabled when overlap_p2p_comm is activated, setting non_batch_p2p_comm=True."
             )
-            self._non_batch_p2p_comm = True
+            self._use_batch_p2p_comm = False
 
         logger.info(
             f"dp_comm_overlap {self._dp_comm_overlap}; \
@@ -498,7 +498,7 @@ class PipelineParallel(MetaParallelBase):
                 continue
             input_tensor = self._p2p_helper.recv_forward(
                 self.is_pipeline_first_stage(),
-                batch_p2p_comm=(not self._non_batch_p2p_comm),
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
             self._record_stamp("F", step_id, '"B"', self._forward_color)
@@ -507,7 +507,7 @@ class PipelineParallel(MetaParallelBase):
             self._p2p_helper.send_forward(
                 output_tensor,
                 self.is_pipeline_last_stage(),
-                batch_p2p_comm=(not self._non_batch_p2p_comm),
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
             input_buffers.append(input_tensor)
@@ -519,7 +519,7 @@ class PipelineParallel(MetaParallelBase):
         if steady_steps > 0 and not static_scheduler:
             input_tensor = self._p2p_helper.recv_forward(
                 self.is_pipeline_first_stage(),
-                batch_p2p_comm=(not self._non_batch_p2p_comm),
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
         for i in range(steady_steps):
@@ -542,7 +542,7 @@ class PipelineParallel(MetaParallelBase):
             output_tensor_grad = self._p2p_helper.send_forward_recv_backward(
                 output_tensor,
                 self.is_pipeline_last_stage(),
-                batch_p2p_comm=(not self._non_batch_p2p_comm),
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
             input_buffers.append(input_tensor)
@@ -566,13 +566,13 @@ class PipelineParallel(MetaParallelBase):
                 self._p2p_helper.send_backward(
                     input_tensor_grad,
                     self.is_pipeline_first_stage(),
-                    batch_p2p_comm=(not self._non_batch_p2p_comm),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
                 )
             else:
                 input_tensor = self._p2p_helper.send_backward_recv_forward(
                     input_tensor_grad,
                     self.is_pipeline_first_stage(),
-                    batch_p2p_comm=(not self._non_batch_p2p_comm),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
                 )
 
         for i in range(startup_steps):
@@ -585,7 +585,7 @@ class PipelineParallel(MetaParallelBase):
 
             output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage(),
-                batch_p2p_comm=(not self._non_batch_p2p_comm),
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
             self._record_stamp(
@@ -600,7 +600,7 @@ class PipelineParallel(MetaParallelBase):
             self._p2p_helper.send_backward(
                 input_tensor_grad,
                 self.is_pipeline_first_stage(),
-                batch_p2p_comm=(not self._non_batch_p2p_comm),
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
         if static_scheduler:
@@ -1265,7 +1265,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 self._p2p_helper.recv_forward(
                     self.is_pipeline_first_stage(),
                     sync_recv=False,
-                    batch_p2p_comm=(not self._non_batch_p2p_comm),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
                 )
             )
 
@@ -1334,7 +1334,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         input_tensor_grad,
                         recv_prev=recv_prev,
                         recv_next=recv_next,
-                        batch_p2p_comm=(not self._non_batch_p2p_comm),
+                        batch_p2p_comm=self._use_batch_p2p_comm,
                     )
                     # output_tensor_grad is not none if recv_next
                     # append output_tensor_grad no matter none or not
@@ -1345,7 +1345,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     input_tensor = self._p2p_helper.send_forward_recv_forward(
                         output_tensor,
                         recv_prev=recv_prev,
-                        batch_p2p_comm=(not self._non_batch_p2p_comm),
+                        batch_p2p_comm=self._use_batch_p2p_comm,
                     )
                 # append input_tensor no matter none or not
                 self.input_tensors[next_virtual_pp_rank].append(input_tensor)
@@ -1356,7 +1356,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 ) = self._p2p_helper.send_forward_recv_forward(
                     output_tensor,
                     recv_prev=recv_prev,
-                    batch_p2p_comm=(not self._non_batch_p2p_comm),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
                     overlap_p2p_comm=True,
                 )
                 if (
@@ -1375,7 +1375,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     ) = self._p2p_helper.send_backward_recv_backward(
                         input_tensor_grad,
                         recv_next=recv_next,
-                        batch_p2p_comm=(not self._non_batch_p2p_comm),
+                        batch_p2p_comm=self._use_batch_p2p_comm,
                         overlap_p2p_comm=True,
                     )
                     self.output_tensor_grads[self.num_model_chunks - 1].append(
@@ -1466,7 +1466,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 ) = self._p2p_helper.send_forward_recv_forward(
                     output_tensor,
                     recv_prev=recv_prev,
-                    batch_p2p_comm=(not self._non_batch_p2p_comm),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
                     overlap_p2p_comm=True,
                 )
 
@@ -1512,7 +1512,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 ) = self._p2p_helper.send_backward_recv_backward(
                     input_tensor_grad,
                     recv_next=recv_next,
-                    batch_p2p_comm=(not self._non_batch_p2p_comm),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
                     overlap_p2p_comm=True,
                 )
             else:
@@ -1598,7 +1598,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     input_tensor_grad,
                     recv_prev=recv_prev,
                     recv_next=recv_next,
-                    batch_p2p_comm=(not self._non_batch_p2p_comm),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
                 )
             # append input_tensor no matter none or not
             self.input_tensors[next_forward_virtual_pp_rank].append(
@@ -1624,7 +1624,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if not steady_steps:
                 output_tensor_grad = p2p.recv_backward(
                     self.is_pipeline_last_stage(),
-                    batch_p2p_comm=(not self._non_batch_p2p_comm),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
                 )
                 self.output_tensor_grads[self.num_model_chunks - 1].append(
                     output_tensor_grad
@@ -1671,7 +1671,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     self._p2p_helper.send_backward_recv_backward(
                         input_tensor_grad,
                         recv_next=recv_next,
-                        batch_p2p_comm=(not self._non_batch_p2p_comm),
+                        batch_p2p_comm=self._use_batch_p2p_comm,
                     )
                 )
 
@@ -1835,7 +1835,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         self.set_virtual_pipeline_rank(0)
         self.input_tensors[0].append(
             self._p2p_helper.recv_forward(
-                self.is_pipeline_first_stage(), sync_recv=False
+                self.is_pipeline_first_stage(),
+                sync_recv=False,
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
         )
 
@@ -1871,7 +1873,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
                     output_tensor = send_recv_buffer_queue.get()
 
             input_tensor = self._p2p_helper.send_forward_recv_forward(
-                output_tensor, recv_prev=recv_prev
+                output_tensor,
+                recv_prev=recv_prev,
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
             self.input_tensors[next_virtual_pp_rank].append(input_tensor)
 
@@ -1885,7 +1889,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         if not forward_only:
             self.output_tensor_grads[self.num_model_chunks - 1].append(
                 self._p2p_helper.recv_backward(
-                    self.is_pipeline_last_stage(), sync_recv=False
+                    self.is_pipeline_last_stage(),
+                    sync_recv=False,
+                    batch_p2p_comm=self._use_batch_p2p_comm,
                 )
             )
 
@@ -1920,7 +1926,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
                 self.output_tensor_grads[next_backward_virtual_pp_rank].append(
                     self._p2p_helper.send_backward_recv_backward(
-                        input_tensor_grad, recv_next=recv_next
+                        input_tensor_grad,
+                        recv_next=recv_next,
+                        batch_p2p_comm=self._use_batch_p2p_comm,
                     )
                 )
 
