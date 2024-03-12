@@ -1399,8 +1399,8 @@ def get_headers():
         )
         + list(  # pass utils init headers
             find_files(
-                'transform_general_functions.h',
-                paddle_source_dir + '/paddle/fluid/pir/transforms',
+                'general_functions.h',
+                paddle_source_dir + '/paddle/fluid/pir/utils',
                 recursive=True,
             )
         )

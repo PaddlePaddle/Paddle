@@ -29,7 +29,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/pass/pass.h"
@@ -213,6 +213,7 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
       skip_dels.insert(op.result(0));
       continue;
     }
+    // TODO(chenxi67) add logic for shadow_feed_tensors op
     if (upper_op_name == "pd_op.fetch" ||
         upper_op_name == "builtin.shadow_output") {
       skip_dels.insert(op.operand_source(0));

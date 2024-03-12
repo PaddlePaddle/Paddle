@@ -937,6 +937,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
       .def("exp_disable_tensorrt_subgraph",
            &AnalysisConfig::Exp_DisableTensorRtSubgraph)
+      .def("exp_specify_tensorrt_subgraph_precision",
+           &AnalysisConfig::Exp_SpecifyTensorRTSubgraphPrecision)
       .def("exp_disable_tensorrt_dynamic_shape_ops",
            &AnalysisConfig::Exp_DisableTensorRTDynamicShapeOPs)
       .def("enable_tensorrt_dla",
@@ -1034,6 +1036,7 @@ void BindAnalysisConfig(py::module *m) {
             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
           },
           py::return_value_policy::reference)
+      .def("enable_custom_passes", &AnalysisConfig::EnableCustomPasses)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);

@@ -16,7 +16,7 @@ import inspect
 from collections.abc import Sequence
 
 from paddle.base import core
-from paddle.base.framework import Program
+from paddle.framework import use_pir_api
 from paddle.utils import gast
 
 from .utils import ORIGIN_INFO
@@ -269,8 +269,6 @@ def update_op_callstack_with_origin_info(program):
     Replaces op callstack information about transformed static code with original dygraph code.
     """
 
-    assert isinstance(program, Program)
-
     def get_new_op_callstack(callstack):
         """
         An example of callstack:
@@ -306,21 +304,35 @@ def update_op_callstack_with_origin_info(program):
 
         return callstack
 
+    def get_all_pir_block_ops(block):
+        ops = []
+        for op in block.ops:
+            ops.append(op)
+            for sub_block in op.blocks():
+                ops += get_all_pir_block_ops(sub_block)
+        return ops
+
     op_maker = core.op_proto_and_checker_maker
     callstack_var_name = op_maker.kOpCreationCallstackAttrName()
 
-    for block in program.blocks:
-        for i, op in enumerate(block.ops):
+    if use_pir_api():
+        global_block = program.global_block()
+        ops = get_all_pir_block_ops(global_block)
+        for op in ops:
             if op.has_attr(callstack_var_name):
-                callstack = op.attr(callstack_var_name)
+                op.callstack = get_new_op_callstack(op.callstack)
+    else:
+        for block in program.blocks:
+            for i, op in enumerate(block.ops):
+                if op.has_attr(callstack_var_name):
+                    callstack = op.attr(callstack_var_name)
 
-                callstack = get_new_op_callstack(callstack)
+                    callstack = get_new_op_callstack(callstack)
 
-                try:
-                    # (@xiongkun) In 2-order derivative for paddle science, there may exists `pow_grad`
-                    # which has op_proto == nullptr and causes _set_attr failed. so we add a try...except.
-                    op._set_attr(callstack_var_name, callstack)
-                except:
-                    pass
-
+                    try:
+                        # (@xiongkun) In 2-order derivative for paddle science, there may exists `pow_grad`
+                        # which has op_proto == nullptr and causes _set_attr failed. so we add a try...except.
+                        op._set_attr(callstack_var_name, callstack)
+                    except:
+                        pass
     return program
