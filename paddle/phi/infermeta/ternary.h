@@ -53,6 +53,19 @@ void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& step,
                            MetaTensor* out);
 
+void BatchFCInferMeta(const MetaTensor& input,
+                      const MetaTensor& w,
+                      const MetaTensor& bias,
+                      MetaTensor* out);
+
+void BatchFCGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& w,
+                          const MetaTensor& bias,
+                          const MetaTensor& out_grad,
+                          MetaTensor* intput_grad,
+                          MetaTensor* w_grad,
+                          MetaTensor* bias_grad);
+
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,
                        const MetaTensor& target_box,
