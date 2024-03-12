@@ -131,6 +131,7 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
 
 void OperatorDistAttr::set_input_dist_attrs(
     const std::map<std::string, TensorDistAttr>& dist_attrs) {
+  input_dist_attrs_.clear();
   for (const auto& item : dist_attrs) {
     set_input_dist_attr(item.first, item.second);
   }
@@ -138,6 +139,7 @@ void OperatorDistAttr::set_input_dist_attrs(
 
 void OperatorDistAttr::set_output_dist_attrs(
     const std::map<std::string, TensorDistAttr>& dist_attrs) {
+  output_dist_attrs_.clear();
   for (const auto& item : dist_attrs) {
     set_output_dist_attr(item.first, item.second);
   }
@@ -307,6 +309,7 @@ bool OperatorDistAttr::verify_annotated(
 
 bool OperatorDistAttr::verify(const OpDesc* op) const {
   if (!verify_process_mesh(process_mesh_)) {
+    VLOG(0) << "verify_process_mesh failed";
     return false;
   }
   for (auto const& item : input_dist_attrs_) {
@@ -314,10 +317,12 @@ bool OperatorDistAttr::verify(const OpDesc* op) const {
     auto found =
         std::find(std::begin(input_names), std::end(input_names), item.first);
     if (found == std::end(input_names)) {
+      VLOG(0) << "verify input_name failed" << item.first;
       return false;
     }
     auto tensor = op->Block()->FindVarRecursive(item.first);
     if (!verify_input_dist_attr(item.first, item.second, tensor)) {
+      VLOG(0) << "verify input_name failed" << item.first;
       return false;
     }
   }
@@ -326,10 +331,12 @@ bool OperatorDistAttr::verify(const OpDesc* op) const {
     auto found =
         std::find(std::begin(output_names), std::end(output_names), item.first);
     if (found == std::end(output_names)) {
+      VLOG(0) << "verify output_name failed" << item.first;
       return false;
     }
     auto tensor = op->Block()->FindVarRecursive(item.first);
     if (!verify_output_dist_attr(item.first, item.second, tensor)) {
+      VLOG(0) << "verify output_name failed" << item.first;
       return false;
     }
   }

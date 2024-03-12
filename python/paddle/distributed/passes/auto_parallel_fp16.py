@@ -524,9 +524,7 @@ class FP16State:
                         num_cast_ops += 1
 
                     op._rename_input(in_var.name, cast_name)
-                    consume_op_attr.set_input_dist_attr(
-                        cast_name, in_var_dist_attr
-                    )
+                    consume_op_attr.rename_input(in_var.name, cast_name)
 
         if op.has_attr('out_dtype') and op.attr('out_dtype') != -1:
             assert op.attr('out_dtype') == dst_dtype
@@ -566,7 +564,7 @@ class FP16State:
                 src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
                 assert src_var_dist_attr is not None
                 op._rename_input(src_name, cast_name)
-                grad_op_attr.set_input_dist_attr(cast_name, src_var_dist_attr)
+                grad_op_attr.rename_input(src_name, cast_name)
 
             # create cast grad
             grad_slot_name = slot_name + "@GRAD"
@@ -579,7 +577,10 @@ class FP16State:
                 ), f"[{grad_slot_name}], Current Op: {str(op)}"
                 grad_name = op.output(grad_slot_name)[0]
                 grad = block.var(grad_name)
-                grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
+
+                grad_dist_attr = copy.deepcopy(
+                    grad_op_attr.get_output_dist_attr(grad_name)
+                )
                 assert grad_dist_attr is not None, f"{grad_name}"
                 ref_mesh = grad_dist_attr.process_mesh
                 ref_mapping = grad_dist_attr.dims_mapping
@@ -600,6 +601,7 @@ class FP16State:
                     cast_grad, grad_dist_attr
                 )
                 op._rename_output(grad_name, cast_grad.name)
+                grad_op_attr.rename_output(grad_name, cast_grad.name)
                 grad_op_attr.set_output_dist_attr(
                     cast_grad.name, grad_dist_attr
                 )
