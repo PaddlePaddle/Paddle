@@ -52,8 +52,7 @@ class TestSparseUnary(unittest.TestCase):
 
         # --- check sparse coo with dense --- #
         dense_x = origin_x * mask
-        sp_x = self.to_sparse(dense_x, format)
-
+        sp_x = self.to_sparse(dense_x, format) 
         sp_x.stop_gradient = False
         if len(args) == 0:
             sp_out = sparse_func(sp_x)
@@ -97,16 +96,32 @@ class TestSparseUnary(unittest.TestCase):
         )
 
     def compare_with_dense(self, dense_func, sparse_func, dtype='float32'):
+        paddle.set_device('cpu')
+        self.check_result(dense_func, sparse_func, 'coo', dtype)
+        self.check_result(dense_func, sparse_func, 'csr', dtype)
+        paddle.set_device('gpu')
         self.check_result(dense_func, sparse_func, 'coo', dtype)
         self.check_result(dense_func, sparse_func, 'csr', dtype)
 
     def compare_with_dense_one_attr(self, dense_func, sparse_func, attr1):
+        paddle.set_device('cpu')
+        self.check_result(dense_func, sparse_func, 'coo', 'float32', attr1)
+        self.check_result(dense_func, sparse_func, 'csr', 'float32', attr1)
+        paddle.set_device('gpu')
         self.check_result(dense_func, sparse_func, 'coo', 'float32', attr1)
         self.check_result(dense_func, sparse_func, 'csr', 'float32', attr1)
 
     def compare_with_dense_two_attr(
         self, dense_func, sparse_func, attr1, attr2
     ):
+        paddle.set_device('cpu')
+        self.check_result(
+            dense_func, sparse_func, 'coo', 'float32', attr1, attr2
+        )
+        self.check_result(
+            dense_func, sparse_func, 'csr', 'float32', attr1, attr2
+        )
+        paddle.set_device('gpu')
         self.check_result(
             dense_func, sparse_func, 'coo', 'float32', attr1, attr2
         )
