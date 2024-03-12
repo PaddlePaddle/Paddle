@@ -181,6 +181,11 @@ void AnalysisConfig::EnableXpu(int l3_size,
                                bool transformer_encoder_adaptive_seqlen,
                                bool enable_multi_stream) {
 #if defined(PADDLE_WITH_XPU) || defined(LITE_SUBGRAPH_WITH_XPU)
+  LOG_FIRST_N(WARNING, 1)
+      << "Parameters in EnableXpu/enable_xpu is deprecated since version "
+         "2.6.1, and will be removed in version 3.0! Please use "
+         "EnableXpu/enable_xpu without parameters, and use "
+         "SetXpuConfig/set_xpu_config to set options.";
   use_xpu_ = true;
   xpu_config_.l3_size = l3_size;
   xpu_config_.conv_autotune_level = conv_autotune;
@@ -586,6 +591,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(use_new_executor_);
   CP_MEMBER(use_pir_);
+  CP_MEMBER(custom_passes_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -1651,5 +1657,10 @@ void AnalysisConfig::EnableCINN() {
 }
 
 bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
+
+void AnalysisConfig::EnableCustomPasses(
+    const std::vector<std::string> &passes) {
+  custom_passes_ = passes;
+}
 
 }  // namespace paddle
