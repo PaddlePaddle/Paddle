@@ -48,7 +48,9 @@ CINN_REGISTER_HELPER(cuda_intrinsics_reduce) {
 
 #define EXPAND_REDUCE_BOOL_REGISTER_MACRO(MACRO, ...) \
   MACRO(all, bool, ##__VA_ARGS__)                     \
-  MACRO(any, bool, ##__VA_ARGS__)
+  MACRO(any, bool, ##__VA_ARGS__)                     \
+  MACRO(sum, bool, ##__VA_ARGS__)                     \
+  MACRO(prod, bool, ##__VA_ARGS__)
 
 #define EXPAND_REDUCE_BF16_REGISTER_MACRO(MACRO, ...) \
   MACRO(sum_bf16, bfloat16, ##__VA_ARGS__)            \

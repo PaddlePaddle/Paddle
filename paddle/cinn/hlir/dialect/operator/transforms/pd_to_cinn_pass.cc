@@ -31,31 +31,75 @@ namespace dialect {
 namespace ir {
 using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
 
-class SumOpPattern : public paddle::drr::DrrPatternBase {
+// class SumOpPattern : public paddle::drr::DrrPatternBase {
+//  public:
+//   std::string name() const override { return "SumOpPattern"; }
+
+//   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+//     // Source Pattern
+//     paddle::drr::SourcePattern pattern = ctx->SourcePattern();
+//     const auto &full_int_array =
+//         pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+//                    {{"value", pattern.Attr("axis_info")},
+//                     {"dtype", pattern.Attr("dtype_2")},
+//                     {"place", pattern.Attr("place_2")}});
+
+//     const auto &sum = pattern.Op(paddle::dialect::SumOp::name(),
+//                                  {{"dtype", pattern.Attr("dtype")},
+//                                   {"keepdim", pattern.Attr("keep_dim")}});
+//     pattern.Tensor("ret") = sum(pattern.Tensor("arg0"), full_int_array());
+
+//     // Result patterns
+//     paddle::drr::ResultPattern res = pattern.ResultPattern();
+//     const auto &cinn_reduce_sum =
+//         res.Op(cinn::dialect::ReduceSumOp::name(),
+//                {{"dim", pattern.Attr("axis_info")},
+//                 {"keep_dim", pattern.Attr("keep_dim")}});
+//     res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
+//   }
+// };
+
+class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
  public:
-  std::string name() const override { return "SumOpPattern"; }
+  using pir::OpRewritePattern<paddle::dialect::SumOp>::OpRewritePattern;
 
-  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    // Source Pattern
-    paddle::drr::SourcePattern pattern = ctx->SourcePattern();
-    const auto &full_int_array =
-        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
-                   {{"value", pattern.Attr("axis_info")},
-                    {"dtype", pattern.Attr("dtype_2")},
-                    {"place", pattern.Attr("place_2")}});
+  bool Match(paddle::dialect::SumOp op) const override {
+    auto full_op = op->operand_source(1)
+                       .defining_op()
+                       ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    return full_op;
+  }
 
-    const auto &sum = pattern.Op(paddle::dialect::SumOp::name(),
-                                 {{"dtype", pattern.Attr("dtype")},
-                                  {"keepdim", pattern.Attr("keep_dim")}});
-    pattern.Tensor("ret") = sum(pattern.Tensor("arg0"), full_int_array());
+  void Rewrite(paddle::dialect::SumOp op,
+               pir::PatternRewriter &rewriter) const override {
+    auto scale_factor_gen_op = op->operand_source(1).defining_op();
+    auto full_op =
+        scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    // scale is generator by full op
+    // get attribute value from full op
 
-    // Result patterns
-    paddle::drr::ResultPattern res = pattern.ResultPattern();
-    const auto &cinn_reduce_sum =
-        res.Op(cinn::dialect::ReduceSumOp::name(),
-               {{"dim", pattern.Attr("axis_info")},
-                {"keep_dim", pattern.Attr("keep_dim")}});
-    res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
+    auto reduce_axis = cinn::dialect::ir::GetVectorAttr(full_op, "value");
+    auto keep_dim =
+        op.attribute("keepdim").dyn_cast<pir::BoolAttribute>().data();
+
+    // if(
+    // op->operand_source(0).type().dyn_cast<paddle::dialect::DenseTensorType>().dtype().isa<pir::BoolType>())
+    // {
+    //   auto cast_1 = rewriter.Build<paddle::dialect::CastOp>(
+    //       op->operand_source(0), phi::DataType::FLOAT32);
+    //    auto cinn_reduce_sum = rewriter.Build<cinn::dialect::ReduceSumOp>(
+    //       cast_1->result(0),  reduce_axis, keep_dim);
+    //   auto cast_2 = rewriter.Build<paddle::dialect::CastOp>(
+    //       cinn_reduce_sum->result(0), phi::DataType::BOOL);
+    //    rewriter.ReplaceAllUsesWith(op.result(0), cast_2.result(0));
+    // }
+    // else
+    {
+      auto cinn_reduce_sum = rewriter.Build<cinn::dialect::ReduceSumOp>(
+          op->operand_source(0), reduce_axis, keep_dim);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce_sum.result(0));
+    }
+    rewriter.EraseOp(op);
   }
 };
 
@@ -719,11 +763,12 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   pir::RewritePatternSet ps(context);
   ps.Add<ScaleOpPattern>(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
-  ps.Add(paddle::drr::Create<SumOpPattern>(context));
+  // ps.Add(paddle::drr::Create<SumOpPattern>(context));
   ps.Add(paddle::drr::Create<MaxOpPattern>(context));
   ps.Add(paddle::drr::Create<MinOpPattern>(context));
   ps.Add(paddle::drr::Create<ProdOpPattern>(context));
   ps.Add<ReshapeOpPattern>(context);
+  ps.Add<SumOpPattern>(context);
   ps.Add<PowOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
