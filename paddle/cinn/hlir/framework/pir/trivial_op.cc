@@ -415,6 +415,13 @@ struct FusionNode {
   }
 
   bool IsTrivial() { return std::holds_alternative<TrivialOp>(fusible_op); }
+  ir::Expr GetExpr(){
+    if (IsTrivial()){
+      return std::get<TrivialOp>(fusible_op).GetFuncBody();
+    }else{
+      return std::get<ReduceOp>(fusible_op).GetFuncBody();
+    }
+  }
 };
 
 TrivialOp TTFusion(TrivialOp upstream, TrivialOp downstream) {
@@ -648,7 +655,7 @@ struct FusionGraph {
   std::vector<ir::Expr> GetExprResults() {
     std::vector<ir::Expr> output_exprs;
     for (const auto& node : all_fusion_nodes_) {
-      output_exprs.emplace_back(node->op_compute_body);
+      output_exprs.emplace_back(node->GetExpr());
     }
     return output_exprs;
   }
