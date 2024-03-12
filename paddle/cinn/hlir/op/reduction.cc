@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+c  // Copyright (c) 2021 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/flags.h"
 
-PD_DECLARE_bool(cinn_enable_map_expr);
+    PD_DECLARE_bool(cinn_enable_map_expr);
 
 PD_DECLARE_bool(cinn_new_group_scheduler);
 
