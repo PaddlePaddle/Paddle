@@ -237,16 +237,6 @@ std::vector<ir::Var> GetOutputIters(const std::vector<ir::Expr>& indices) {
 bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter){
   TODO
 } 
-    
-ir::Expr TransformComputeExpr(ir::Expr up_compute_expr, ir::Expr downstream){  
-} 
-                                        
-ir::Expr CreateReduceExpr(std::vector<ir::Var> out_iter,
-                     std::vector<ir::Var> reduce_iter,
-                     ir::Expr comput_expr,
-                     ir::Tensor replaced_tensor) {
-  TODO
-}
 
 }  // namespace ComposeUtils
 
@@ -523,42 +513,24 @@ TrivialOp TransformT2R(ReduceOp reduce_upper, TrivialOp trivial_down) {}
 
 bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down) {}
 
-ir::Expr ReplaceReduceComputeBody(const ir::Expr& body,
-                                  const ir::Expr& new_body) {
-  TODO;
-}
-
 
 std::vector<ReduceOp> TransformReduceLoopRange(ReduceOp upstream, ReduceOp downstream) {
   VLOG(4) << "RRTransform begin";
 
-  const auto& replaced_tensor = upstream.GetOutputTensor();
-  const auto& replaced_vars = upstream.GetOutputIters();
-
-  const auto& down_out_iter = downstream.GetOutputIters();
-  const auto& up_reduce_iter = upstream.GetReduceIters();
-  const auto& down_reduce_iter = downstream.GetReduceIters();
-
-  // we just support fuse reduce when reduce iter eq
-  CHECK(ComposeUtils::CheckIterEq(up_reduce_iter, down_reduce_iter));
-
-  const std::vector<ir::Expr> load_upstream_expr = downstream.GetEachTensorLoadExpr(replaced_tensor);
+  CHECK(ComposeUtils::CheckIterEq(upstream.GetReduceIters(), downstream.GetReduceIters()));
+  const auto& load_upstream_expr = downstream.GetEachTensorLoadExpr(upstream.GetOutputTensor());
   std::vector<ReduceOp> results;
+  for (const auto& load_tensor : load_upstream_expr){
+    ir::Expr new_reduce = CreateReduceExpr(
+                        downstream,
+                        ComposeUtils::CopyedReplaceExpr(upstream.GetFuncBody(), upstream.GetOutputIters(), load_tensor.As<ir::Load>()->indices),
+                        upstream.GetInitExpr(),
+                        new_tensor);
+    ComposeUtils::MappingTargetExprToDestExprMutator(load_tensor.As<ir::Load>()->tensor, new_tensor)(downstream.GetFuncBody());
+    results.emplace_back(new_reduce);
+  }
 
-  for ()
-
-
-  // TODO modify up_expr, replace out iter of up_expr i => f(i)
-  ir::Expr new_reduce_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
-
-  
-  ir::Expr reduce_op_expr = ComposeUtils::TransformComputeExpr(
-      new_reduce_body.GetComputeExpr(), down);
-
-  ir::Expr result = ComposeUtils::CreateReduceExpr(downstream, reduce_op_expr);
-
-  VLOG(4) << "RRTransform end" << result;
-  return ReduceOp(result);
+  return results;
 }
 
 FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
@@ -575,11 +547,11 @@ FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
 std::vector<FusibleOp> ReduceTransform(FusionNode* upstream, FusionNode* downstream) {
   if (downstream->IsTrivial()) {
     CHECK(CheckAllLoopRangeEq(std::get<ReduceOp>(upstream->fusible_op),
-                              std::get<TrivialOp>(upstream->fusible_op)));
+                              std::get<TrivialOp>(downstream->fusible_op)));
     return {upstream->fusible_op};
   } else {
     return TransformReduceLoopRange(std::get<ReduceOp>(upstream->fusible_op),
-                                    std::get<ReduceOp>(upstream->fusible_op));
+                                    std::get<ReduceOp>(downstream->fusible_op));
   }
 }
 
