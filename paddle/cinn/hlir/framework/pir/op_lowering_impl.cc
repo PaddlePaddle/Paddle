@@ -625,6 +625,9 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
     if (it == align_info.end()) {
       continue;
     }
+    if (op1->name() == "cinn_op.generate_shape") {
+      continue;
+    }
 
     if (it->second.size() > 1) {
       for (size_t i = 0; i < it->second.size(); ++i) {
