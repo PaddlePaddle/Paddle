@@ -17,6 +17,10 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Arange)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Data)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Empty)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Full)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(FullIntArray)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Gaussian)
 }  // namespace paddle::dialect
