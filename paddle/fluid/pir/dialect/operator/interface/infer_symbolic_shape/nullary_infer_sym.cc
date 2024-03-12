@@ -129,6 +129,26 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
   }
 }
 
+bool FeedOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const common::DDim &result_dims =
+      op->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
+  std::vector<symbol::DimExpr> out_dims;
+  for (int i = 0; i < result_dims.size(); i++) {
+    if (result_dims[i] == -1) {
+      out_dims.emplace_back(shape_analysis->GetNextSymName());
+    } else {
+      out_dims.emplace_back(result_dims[i]);
+    }
+  }
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
 bool FullOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto &attributes = op->attributes();
@@ -225,6 +245,32 @@ bool GaussianOpInferSymbolicShape(
         " 's InferSymbolicShape interface is NOT implemented now."));
     return true;
   }
+}
+
+bool RandintOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  return true;
+}
+
+bool TrilIndicesOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  return true;
+}
+bool TriuIndicesOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  return true;
+}
+bool UniformOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  return true;
 }
 
 }  // namespace paddle::dialect
