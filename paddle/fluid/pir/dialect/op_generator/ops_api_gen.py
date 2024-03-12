@@ -70,6 +70,7 @@ OPS_API_TEMPLATE = """
 
 NEED_GEN_STATIC_ONLY_APIS = [
     'distributed_fused_lamb',
+    'distributed_fused_lamb_',
     'distributed_fused_lamb_init',
     'distributed_fused_lamb_init_',
     'fetch',
