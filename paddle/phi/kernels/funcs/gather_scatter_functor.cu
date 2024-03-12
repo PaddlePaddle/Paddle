@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 namespace funcs {
@@ -368,12 +369,13 @@ struct gpu_gather_scatter_functor {
     int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
     int64_t grid = (n + block - 1) / block;
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+    DenseTensor shared_mem_tensor;
     if (method_name == "scatter_assign_gpu") {
-      int shared_mem_size = sizeof(int) * self_size;
-      int* shared_mem;
-      cudaMallocAsync(
-          reinterpret_cast<void**>(&shared_mem), shared_mem_size, stream);
-      cudaMemsetAsync(shared_mem, 0, shared_mem_size, stream);
+      shared_mem_tensor.Resize({self_size});
+      ctx.Alloc<int>(&shared_mem_tensor);
+      phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
+
+      int* shared_mem = shared_mem_tensor.data<int>();
       ScatterAssignGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
           <<<grid, block, 0, stream>>>(self_data,
                                        dim,
@@ -389,20 +391,17 @@ struct gpu_gather_scatter_functor {
                                        self_size,
                                        reduce_op,
                                        shared_mem);
-      cudaFreeAsync(shared_mem, stream);
     } else if (method_name == "scatter_mean_gpu") {
-      int shared_mem_size = sizeof(int) * self_size * 2;
-      int* shared_mem;
-      cudaMallocAsync(
-          reinterpret_cast<void**>(&shared_mem), shared_mem_size, stream);
-      cudaMemsetAsync(shared_mem, 0, sizeof(int) * self_size, stream);
+      shared_mem_tensor.Resize({self_size * 2});
+      ctx.Alloc<int>(&shared_mem_tensor);
       if (include_self) {
         int64_t grid_memset = (self_size * 2 + block - 1) / block;
-        CudaMemsetAsync<<<grid_memset, block, 0, stream>>>(
-            shared_mem, 1, shared_mem_size);
+        phi::funcs::set_constant(ctx, &shared_mem_tensor, 1);
       } else {
-        cudaMemsetAsync(shared_mem, 0, shared_mem_size, stream);
+        phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
       }
+
+      int* shared_mem = shared_mem_tensor.data<int>();
       ScatterMeanGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
           <<<grid, block, 0, stream>>>(self_data,
                                        dim,
@@ -419,37 +418,31 @@ struct gpu_gather_scatter_functor {
                                        include_self,
                                        reduce_op,
                                        shared_mem);
-      cudaFreeAsync(shared_mem, stream);
     } else {
-      int shared_mem_size = 0;
       int* shared_mem = nullptr;
       if (include_self == false) {
-        shared_mem_size = sizeof(int) * self_size;
-        cudaMallocAsync(
-            reinterpret_cast<void**>(&shared_mem), shared_mem_size, stream);
-        int64_t grid_memset = (self_size + block - 1) / block;
-        CudaMemsetAsync<<<grid_memset, block, 0, stream>>>(
-            shared_mem, index_size + 1, shared_mem_size);
+        shared_mem_tensor.Resize({self_size});
+        ctx.Alloc<int>(&shared_mem_tensor);
+        phi::funcs::set_constant(ctx, &shared_mem_tensor, index_size + 1);
+
+        shared_mem = shared_mem_tensor.data<int>();
       }
       GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
-          <<<grid, block, shared_mem_size, stream>>>(self_data,
-                                                     dim,
-                                                     index_data,
-                                                     src_data,
-                                                     select_dim_size,
-                                                     self_select_dim_size,
-                                                     src_select_dim_size,
-                                                     outer_dim_size,
-                                                     outer_dim_size_self,
-                                                     outer_dim_size_src,
-                                                     index_size,
-                                                     self_size,
-                                                     include_self,
-                                                     reduce_op,
-                                                     shared_mem);
-      if (include_self == false) {
-        cudaFreeAsync(shared_mem, stream);
-      }
+          <<<grid, block, 0, stream>>>(self_data,
+                                       dim,
+                                       index_data,
+                                       src_data,
+                                       select_dim_size,
+                                       self_select_dim_size,
+                                       src_select_dim_size,
+                                       outer_dim_size,
+                                       outer_dim_size_self,
+                                       outer_dim_size_src,
+                                       index_size,
+                                       self_size,
+                                       include_self,
+                                       reduce_op,
+                                       shared_mem);
     }
   }
 };  // struct gpu_gather_scatter_functor
@@ -745,12 +738,12 @@ void gpu_scatter_mul_min_max_input_grad_kernel(phi::DenseTensor self,
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+  DenseTensor shared_mem_tensor;
+  shared_mem_tensor.Resize({grad_size});
+  ctx.Alloc<int>(&shared_mem_tensor);
+  int* shared_mem = shared_mem_tensor.data<int>();
   if (reduce == "mul" || reduce == "multiply") {
-    int shared_mem_size = sizeof(int) * grad_size;
-    int* shared_mem;
-    cudaMallocAsync(
-        reinterpret_cast<void**>(&shared_mem), shared_mem_size, stream);
-    cudaMemsetAsync(shared_mem, 0, shared_mem_size, stream);
+    phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
     ScatterMulInputGradGPUKernel<tensor_t, index_t>
         <<<grid, block, 0, stream>>>(grad_data,
                                      dim,
@@ -764,15 +757,8 @@ void gpu_scatter_mul_min_max_input_grad_kernel(phi::DenseTensor self,
                                      index_size,
                                      grad_size,
                                      shared_mem);
-    cudaFreeAsync(shared_mem, stream);
   } else if (reduce == "amin" || reduce == "amax") {
-    int shared_mem_size = sizeof(int) * grad_size;
-    int* shared_mem;
-    cudaMallocAsync(
-        reinterpret_cast<void**>(&shared_mem), shared_mem_size, stream);
-    int64_t grid_memset = (grad_size + block - 1) / block;
-    CudaMemsetAsync<<<grid_memset, block, 0, stream>>>(
-        shared_mem, 1, shared_mem_size);
+    phi::funcs::set_constant(ctx, &shared_mem_tensor, 1);
     ScatterMinMaxInputGradGPUKernel<tensor_t, index_t>
         <<<grid, block, 0, stream>>>(grad_data,
                                      dim,
@@ -791,7 +777,6 @@ void gpu_scatter_mul_min_max_input_grad_kernel(phi::DenseTensor self,
                                      grad_size,
                                      reduce,
                                      shared_mem);
-    cudaFreeAsync(shared_mem, stream);
   }
 }
 
@@ -856,18 +841,20 @@ void gpu_scatter_mean_input_grad_kernel(phi::DenseTensor self,
     outer_dim_size_grad *= grad_dims[i];
   }
 
+  DenseTensor shared_mem_tensor;
+  shared_mem_tensor.Resize({grad_size * 2});
+  ctx.Alloc<int>(&shared_mem_tensor);
+  phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
+  int* shared_mem = shared_mem_tensor.data<int>();
+
   int block = 512;
-  int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
-  int64_t grid = (n + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-  int shared_mem_size = sizeof(int) * grad_size * 2;
-  int* shared_mem;
-  cudaMallocAsync(
-      reinterpret_cast<void**>(&shared_mem), shared_mem_size, stream);
-  cudaMemsetAsync(shared_mem, 0, sizeof(int) * grad_size, stream);
   int64_t grid_memset = (grad_size + block - 1) / block;
+  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
   CudaMemsetAsync<<<grid_memset, block, 0, stream>>>(
       shared_mem + grad_size, 1, sizeof(int) * grad_size);
+
+  int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
+  int64_t grid = (n + block - 1) / block;
   ScatterMeanInputGradGPUKernel<tensor_t, index_t>
       <<<grid, block, 0, stream>>>(grad_data,
                                    dim,
@@ -879,7 +866,6 @@ void gpu_scatter_mean_input_grad_kernel(phi::DenseTensor self,
                                    index_size,
                                    grad_size,
                                    shared_mem);
-  cudaFreeAsync(shared_mem, stream);
 }
 
 template <typename tensor_t, typename index_t>
@@ -950,15 +936,16 @@ void gpu_scatter_value_grad_kernel(phi::DenseTensor self,
     outer_dim_size_grad *= grad_dims[i];
   }
 
+  DenseTensor shared_mem_tensor;
+  shared_mem_tensor.Resize({self_size});
+  ctx.Alloc<int>(&shared_mem_tensor);
+  phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
+  int* shared_mem = shared_mem_tensor.data<int>();
+
   int block = 512;
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-  int shared_mem_size = sizeof(int) * self_size;
-  int* shared_mem;
-  cudaMallocAsync(
-      reinterpret_cast<void**>(&shared_mem), shared_mem_size, stream);
-  cudaMemsetAsync(shared_mem, 0, shared_mem_size, stream);
   ScatterValueGradGPUKernel<tensor_t, index_t>
       <<<grid, block, 0, stream>>>(grad_data,
                                    dim,
@@ -973,7 +960,6 @@ void gpu_scatter_value_grad_kernel(phi::DenseTensor self,
                                    index_size,
                                    self_size,
                                    shared_mem);
-  cudaFreeAsync(shared_mem, stream);
 }
 
 template <typename tensor_t, typename index_t>
@@ -1084,17 +1070,15 @@ void gpu_scatter_add_mean_value_grad_kernel(
   int64_t grid = (n + block - 1) / block;
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
   if (reduce == "mean") {
-    int shared_mem_size = sizeof(int) * self_size;
-    int* shared_mem;
-    cudaMallocAsync(
-        reinterpret_cast<void**>(&shared_mem), shared_mem_size, stream);
+    DenseTensor shared_mem_tensor;
+    shared_mem_tensor.Resize({self_size});
+    ctx.Alloc<int>(&shared_mem_tensor);
     if (include_self) {
-      int64_t grid_memset = (self_size + block - 1) / block;
-      CudaMemsetAsync<<<grid_memset, block, 0, stream>>>(
-          shared_mem, 1, shared_mem_size);
+      phi::funcs::set_constant(ctx, &shared_mem_tensor, 1);
     } else {
-      cudaMemsetAsync(shared_mem, 0, shared_mem_size, stream);
+      phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
     }
+    int* shared_mem = shared_mem_tensor.data<int>();
     ScatterMeanValueGradGPUKernel<tensor_t, index_t>
         <<<grid, block, 0, stream>>>(grad_data,
                                      dim,
@@ -1109,7 +1093,6 @@ void gpu_scatter_add_mean_value_grad_kernel(
                                      index_size,
                                      self_size,
                                      shared_mem);
-    cudaFreeAsync(shared_mem, stream);
   } else if (reduce == "add") {
     ScatterAddValueGradGPUKernel<tensor_t, index_t>
         <<<grid, block, 0, stream>>>(grad_data,
@@ -1268,10 +1251,11 @@ void gpu_scatter_mul_min_max_value_grad_kernel(phi::DenseTensor self,
                                      outer_dim_size_grad,
                                      index_size);
   } else if (reduce == "amin" || reduce == "amax") {
-    int shared_mem_size = sizeof(int) * self_size;
-    int* shared_mem;
-    cudaMallocAsync(
-        reinterpret_cast<void**>(&shared_mem), shared_mem_size, stream);
+    DenseTensor shared_mem_tensor;
+    shared_mem_tensor.Resize({self_size});
+    ctx.Alloc<int>(&shared_mem_tensor);
+
+    int* shared_mem = shared_mem_tensor.data<int>();
     ScatterMinMaxValueGradGPUKernel<tensor_t, index_t>
         <<<grid, block, 0, stream>>>(grad_data,
                                      dim,
@@ -1290,7 +1274,6 @@ void gpu_scatter_mul_min_max_value_grad_kernel(phi::DenseTensor self,
                                      self_size,
                                      include_self,
                                      shared_mem);
-    cudaFreeAsync(shared_mem, stream);
   }
 }
 

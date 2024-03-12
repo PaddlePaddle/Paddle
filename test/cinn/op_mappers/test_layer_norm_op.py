@@ -28,7 +28,7 @@ class TestLayerNormOp(OpMapperTest):
             'scale': self.random([60], 'float32', 1.0, 2.0),
             'bias': self.random([60], 'float32', -10.0, 10.0),
         }
-        self.beigin_norm_axis = 1
+        self.begin_norm_axis = 1
 
     def set_op_type(self):
         return "layer_norm"
@@ -52,7 +52,7 @@ class TestLayerNormOp(OpMapperTest):
         return {'X': [x], 'Scale': [scale], "Bias": [bias]}
 
     def set_op_attrs(self):
-        return {"epsilon": 1e-5, "begin_norm_axis": self.beigin_norm_axis}
+        return {"epsilon": 1e-5, "begin_norm_axis": self.begin_norm_axis}
 
     def set_op_outputs(self):
         return {
@@ -72,7 +72,7 @@ class TestLayerNormFp16(TestLayerNormOp):
             'scale': self.random([60], 'float32', 1.0, 2.0),
             'bias': self.random([60], 'float32', -10.0, 10.0),
         }
-        self.beigin_norm_axis = 1
+        self.begin_norm_axis = 1
 
     def test_check_results(self):
         self.check_outputs_and_grads(max_relative_error=1e-3)

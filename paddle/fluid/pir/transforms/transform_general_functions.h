@@ -14,18 +14,17 @@
 
 #pragma once
 
-#include "paddle/common/ddim.h"
 #include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace pir {
 
 /**
- * @brief Get the name of pararmeter from a value.
+ * @brief Get the name of parameter from a value.
  *
  * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *
@@ -41,9 +40,9 @@ std::string GetParameterNameFromValue(pir::Value value);
  *
  * @param pir::Value
  *
- * @return const phi::DDim&
+ * @return std::vector<int64_t>
  */
-const common::DDim& GetShapeFromValue(pir::Value value);
+std::vector<int64_t> GetShapeFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's data type from a value.
@@ -62,13 +61,13 @@ pir::Type GetDataTypeFromValue(pir::Value value);
  *
  * @return Operation*
  */
-Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
+TEST_API Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
 
 /**
  * @brief Get operations and the index of designative op operand (op result)
  that use the specific output of the operation.
  *
- * @param const Operation* cosnt pointer to an operation
+ * @param const Operation* const pointer to an operation
  * @param uint32_t index of result of the operation
 
  * @return std::vector<std::pair<Operation*, int32_t>>
@@ -95,5 +94,15 @@ std::vector<Value> GetUsedExternalValue(const Operation& op);
  * @return std::vector<Value>
  */
 std::vector<Value> GetUsedExternalValue(const Block& block);
+
+/**
+ * @brief Determine whether a value comes from a weight or has no input op. That
+ is to say, it is permissible.
+ *
+ * @param pir::Value
+
+ * @return bool
+ */
+bool ValueIsPersitable(pir::Value value);
 
 }  // namespace pir

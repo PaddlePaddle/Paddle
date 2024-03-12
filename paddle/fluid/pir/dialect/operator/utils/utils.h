@@ -19,9 +19,9 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace dialect {
@@ -136,11 +136,9 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
 
 VariantType GetAttributeData(const pir::Attribute& attr);
 
-bool IsLegacyOp(const std::string& name);
+paddle::any TransAttrToAny(const pir::Attribute& attr);
 
-#ifdef PADDLE_WITH_DNNL
-bool IsOneDNNLegacyOp(const std::string& name);
-#endif
+bool IsLegacyOp(const std::string& name);
 
 bool IsEmptyValue(const pir::Value& value);
 
@@ -163,5 +161,11 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
                           const pir::Value& value,
                           const std::string& value_name,
                           const std::string& op_name);
+
+phi::DataType GetValueDataType(const pir::Value& value);
+
+std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
+                                     bool* is_from_tensor);
+
 }  // namespace dialect
 }  // namespace paddle

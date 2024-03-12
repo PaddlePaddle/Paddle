@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
-#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/common/axis.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
@@ -31,6 +31,8 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
+
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace ir {
@@ -227,12 +229,28 @@ isl::set _Tensor_::GenerateIslDomain() const {
     auto _axis_with_reduce = axis_with_reduce();
     for (int i = 0; i < domain.size(); i++) {
       auto dim = domain[i];
-      if (dim.is_constant()) {
-        dims.emplace_back(_axis_with_reduce[i]->name, 0, dim.as_int32() - 1);
+      if (dim.type() == type_of<int64_t>()) {
+        if (dim.is_constant()) {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            static_cast<int64_t>(0),
+                            static_cast<int64_t>(dim.as_int64() - 1));
+        } else {
+          dims.emplace_back(
+              _axis_with_reduce[i]->name,
+              Expr(static_cast<int64_t>(0)),
+              Sub::Make(dim,
+                        cinn::common::make_const(static_cast<int64_t>(1))));
+        }
       } else {
-        dims.emplace_back(_axis_with_reduce[i]->name,
-                          Expr(0),
-                          Sub::Make(dim, cinn::common::make_const(1)));
+        if (dim.is_constant()) {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            static_cast<uint32_t>(0),
+                            dim.as_int32() - 1);
+        } else {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            Expr(0),
+                            Sub::Make(dim, cinn::common::make_const(1)));
+        }
       }
     }
   }
@@ -320,7 +338,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
                                    const Target &target) const {
   CHECK(contains_reduce_axis())
       << "InitReduction only works on a reduce tensor";
-  // return if already rexists.
+  // return if already exists.
   std::string init_reduce_tensor_name = GenReduceInitTensorNameOf(name);
   if (stages->Lookup(init_reduce_tensor_name))
     return stages[this]->LookupCtrlDepend(init_reduce_tensor_name);
@@ -343,7 +361,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
   std::vector<std::string> reduce_axis_input =
       stages[this]->origin_reduce_axis_names();
   auto origin_domain = stages[this]->domain();
-  auto reduce_axis_output = poly::GetRelatedOutputAxies(
+  auto reduce_axis_output = poly::GetRelatedOutputAxes(
       temp_transform, origin_domain, reduce_axis_input);
   std::set<std::string> reduce_axis_output_set;
   for (auto &i : reduce_axis_output) {
@@ -358,7 +376,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
     }
   }
 
-  temp_transform = poly::RemoveAxiesByOutputNames(
+  temp_transform = poly::RemoveAxesByOutputNames(
       temp_transform, origin_domain, reduce_axis_output);
 
   //! When the first axis is not reduce axis, do ComputeAt.
@@ -370,7 +388,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
     init_tensor->shape = shape;
     return init_tensor;
   }
-  //! When reduce axies are reordered to front, ComputeAt is illegal.
+  //! When reduce axes are reordered to front, ComputeAt is illegal.
   //! So we just copy transform and forloopInfo.
   isl_map_set_tuple_name(
       temp_transform.get(), isl_dim_in, init_reduce_tensor_name.c_str());
@@ -455,7 +473,7 @@ void _Tensor_::Bind(lang::Buffer &buffer) {
     if (this->buffer == buffer.buffer()) return;
     this->buffer->Unbind(this);
   }
-  // Extract the tensors thouse has binded to this buffer.
+  // Extract the tensors those has binded to this buffer.
   buffer_depended_tensor_names_ = buffer.buffer()->binded_tensor_names();
 
   buffer.buffer()->BindTo(this);
@@ -541,7 +559,9 @@ std::vector<Expr> _Tensor_::domain_with_reduce_axis() const {
   if (reduce_axis.empty()) return domain;
   auto res = domain;
   for (const Var &axis : reduce_axis) {
-    CHECK(axis->upper_bound.type().is_int(32)) << axis->upper_bound;
+    CHECK(axis->upper_bound.type().is_int(32) ||
+          axis->upper_bound.type().is_int(64))
+        << axis->upper_bound;
     res.push_back(axis->upper_bound);
   }
   return res;
@@ -671,7 +691,18 @@ ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape,
 }
 
 Shared<poly::Stage> CreateStage(Tensor tensor) {
-  auto isl_domain = tensor->GenerateIslDomain();
+  isl::set isl_domain;
+  // We will remove isl, and the subsequent compilation process will no longer
+  // use it. But it has not been completely removed in the process. it cannot be
+  // supported here under dynamic shape. Therefore, we temporarily use fake
+  // domain.
+  if (FLAGS_cinn_bucket_compile) {
+    poly::Domain fake_domain(Context::isl_ctx(), "fake_domain", {});
+    isl_domain = fake_domain.to_isl();
+  } else {
+    isl_domain = tensor->GenerateIslDomain();
+  }
+
   return poly::Stage::New(isl_domain, tensor->body(), tensor.self());
 }
 

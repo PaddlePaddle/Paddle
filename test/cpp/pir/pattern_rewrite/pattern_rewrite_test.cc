@@ -20,6 +20,7 @@
 #include <sstream>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -31,30 +32,28 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
-
-#include "paddle/common/enforce.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/cast_utils.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/op_info.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/cast_utils.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/op_info.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "test/cpp/pir/tools/macros_utils.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
@@ -85,11 +84,13 @@ void Operation1::VerifySig() {
   auto &attributes = this->attributes();
   if (attributes.count("op2_attr1") == 0 ||
       (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op2_attr2") == 0 ||
       (!attributes.at("op2_attr2").isa<pir::StrAttribute>())) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Type of attribute: parameter_name is not right."));
   }
 }
 const char *Operation1::attributes_name[attributes_num] = {  // NOLINT
@@ -218,7 +219,7 @@ class RedundantTransposeFusePattern
     if (prev_trans_op) {
       std::vector<int> axis_first = GetAxis(prev_trans_op);
       IR_ENFORCE(axis_first.size() == axis_last.size(),
-                 "tranpose op's perm rank should be same.");
+                 "transpose op's perm rank should be same.");
       auto new_perm = GetPerm(axis_first, axis_last);
       rewriter.set_insertion_point(op);
       auto new_transpose_op = rewriter.Build<paddle::dialect::TransposeOp>(
@@ -412,15 +413,15 @@ TEST(pattern_rewrite, Patterns) {
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
-  //   pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       true,
-  //       true));
+  // pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     true,
+  //     true));
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 17u);
@@ -445,10 +446,8 @@ void BuildConstantFoldingProgram(pir::Program *program,
       paddle::platform::DeviceContextPool::Instance().Get(
           paddle::platform::CPUPlace());
 
-  auto op1 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("a"),
-                                                  dense_tensor_dtype);
-  auto op2 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("b"),
-                                                  dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ConstantTensorOp>("a", dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ConstantTensorOp>("b", dense_tensor_dtype);
 
   auto op3 =
       builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
@@ -585,7 +584,7 @@ TEST(constant_folding, ConstantFolding_Combine) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 12u);
+  EXPECT_EQ(program.block()->size(), 2u);
 }
 
 void BuildMultiOutputProgram(pir::Program *program, pir::IrContext *ctx) {

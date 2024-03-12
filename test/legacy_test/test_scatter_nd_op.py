@@ -29,16 +29,16 @@ def numpy_scatter_nd(ref, index, updates, fun):
     index_shape = index.shape
 
     end_size = index_shape[-1]
-    remain_numl = 1
+    remain_numel = 1
     for i in range(len(index_shape) - 1):
-        remain_numl *= index_shape[i]
+        remain_numel *= index_shape[i]
 
     slice_size = 1
     for i in range(end_size, len(ref_shape)):
         slice_size *= ref_shape[i]
 
-    flat_index = index.reshape([remain_numl] + list(index_shape[-1:]))
-    flat_updates = updates.reshape((remain_numl, slice_size))
+    flat_index = index.reshape([remain_numel] + list(index_shape[-1:]))
+    flat_updates = updates.reshape((remain_numel, slice_size))
     flat_output = ref.reshape(list(ref_shape[:end_size]) + [slice_size])
 
     for i_up, i_out in enumerate(flat_index):
@@ -118,7 +118,7 @@ class TestScatterNdAddSimpleFP16Op(TestScatterNdAddSimpleOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
     """
@@ -205,7 +205,7 @@ class TestScatterNdAddWithEmptyIndexFP16(TestScatterNdAddWithEmptyIndex):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
     """
@@ -291,7 +291,7 @@ class TestScatterNdAddWithHighRankSameFP16(TestScatterNdAddWithHighRankSame):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
     """
@@ -350,6 +350,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
     test scatter_nd_add api and scatter_nd api
     """
 
+    @test_with_pir_api
     def testcase1(self):
         with static_guard():
             ref1 = paddle.static.data(
@@ -369,6 +370,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
             output1 = paddle.scatter_nd_add(ref1, index1, updates1)
 
+    @test_with_pir_api
     def testcase2(self):
         with static_guard():
             ref2 = paddle.static.data(
@@ -390,6 +392,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
                 ref2, index2, updates2, name="scatter_nd_add"
             )
 
+    @test_with_pir_api
     def testcase3(self):
         with static_guard():
             shape3 = [10, 9, 8, 1, 3]
@@ -405,6 +408,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
             output3 = paddle.scatter_nd(index3, updates3, shape3)
 
+    @test_with_pir_api
     def testcase4(self):
         with static_guard():
             shape4 = [10, 9, 8, 1, 3]
@@ -486,6 +490,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
 
 # Test Raise Error
 class TestScatterNdOpRaise(unittest.TestCase):
+    @test_with_pir_api
     def test_check_raise(self):
         def check_raise_is_test():
             with static_guard():
@@ -527,6 +532,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 )
                 output6 = paddle.scatter_nd_add(ref6, index6, updates6)
 
+    @test_with_pir_api
     def test_check_raise3(self):
         def check_raise_is_test():
             with static_guard():
@@ -546,14 +552,14 @@ class TestScatterNdOpRaise(unittest.TestCase):
                     if t in str(e):
                         raise ValueError
 
-            self.assertRaises(ValueError, check_raise_is_test)
+        self.assertRaises(ValueError, check_raise_is_test)
 
 
 class TestDygraph(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard(base.CPUPlace()):
             index_data = np.array([[1, 1], [0, 1], [1, 3]]).astype(np.int64)
-            index = base.dygraph.to_variable(index_data)
+            index = paddle.to_tensor(index_data)
             updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
             shape = [3, 5, 9, 10]
             output = paddle.scatter_nd(index, updates, shape)
@@ -563,7 +569,7 @@ class TestDygraph(unittest.TestCase):
             x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
             updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
             index_data = np.array([[1, 1], [0, 1], [1, 3]]).astype(np.int64)
-            index = base.dygraph.to_variable(index_data)
+            index = paddle.to_tensor(index_data)
             output = paddle.scatter_nd_add(x, index, updates)
 
 

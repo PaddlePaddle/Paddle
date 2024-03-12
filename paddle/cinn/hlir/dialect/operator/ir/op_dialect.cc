@@ -53,8 +53,11 @@ void OperatorDialect::initialize() {
       >();
 #endif
   RegisterOp<GroupOp>();
+  RegisterOp<FusionOp>();
   RegisterOp<ConcatOp>();
   RegisterOp<SplitOp>();
+  RegisterOp<YieldStoreOp>();
+  RegisterOp<GenerateShapeOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CINNKernelInfoAttribute>();
 }
@@ -83,13 +86,19 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
   }
 }
 
-void OperatorDialect::PrintOperation(pir::Operation *op,
-                                     pir::IrPrinter &printer) const {
+pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation *op) const {
   if (auto group_op = op->dyn_cast<GroupOp>()) {
-    group_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto group_op = op->dyn_cast<GroupOp>();
+      group_op.Print(printer);
+    };
+  } else if (auto fusion_op = op->dyn_cast<FusionOp>()) {
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto fusion_op = op->dyn_cast<FusionOp>();
+      fusion_op.Print(printer);
+    };
   }
+  return nullptr;
 }
 
 }  // namespace dialect

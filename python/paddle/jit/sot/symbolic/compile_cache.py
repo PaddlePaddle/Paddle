@@ -65,6 +65,7 @@ class FallbackWrapper:
         self.concrete_program = None
         self.SIR = SIR  # for debug
         self.is_training = is_training
+        self.exported = False
 
     def amp_cast_inputs(self, args, kwargs):
         """Prepare inputs for amp, cast float16 into float32 if needed."""
@@ -145,8 +146,9 @@ class FallbackWrapper:
                 4,
                 lambda: print("[CompileCache] run sir forward success."),
             )
-            if ENV_SOT_EXPORT.get() != "":
+            if ENV_SOT_EXPORT.get() != "" and not self.exported:
                 export(self.SIR, ENV_SOT_EXPORT.get())
+                self.exported = True
 
             return outputs
 
@@ -173,7 +175,7 @@ class CompileSIRCache(Cache):
             The hash key of the SIR
         """
         sir = context.get_sir(sir_name)
-        # NOTE(dev): Is str(sir) a heavy opearation ?
+        # NOTE(dev): Is str(sir) a heavy operation ?
         hash_key = hash((str(sir), kwargs['training']))
         return hash_key
 

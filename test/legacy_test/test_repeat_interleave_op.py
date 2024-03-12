@@ -236,8 +236,8 @@ class TestIndexSelectAPI(unittest.TestCase):
         index_x = np.array([1, 1, 2, 1, 2, 2]).astype('int32')
 
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(input_x)
-            index = base.dygraph.to_variable(index_x)
+            x = paddle.to_tensor(input_x)
+            index = paddle.to_tensor(index_x)
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
         expect_out = np.repeat(input_x, index_x, axis=None)
@@ -245,7 +245,26 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case repeats int
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(input_x)
+            x = paddle.to_tensor(input_x)
+            index = 2
+            z = paddle.repeat_interleave(x, index, None)
+            np_z = z.numpy()
+        expect_out = np.repeat(input_x, index, axis=None)
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        # case input dtype is bfloat16
+        input_x = np.array([[1, 2, 1], [1, 2, 3]]).astype('uint16')
+
+        with base.dygraph.guard():
+            x = paddle.to_tensor(input_x)
+            index = paddle.to_tensor(index_x)
+            z = paddle.repeat_interleave(x, index, None)
+            np_z = z.numpy()
+        expect_out = np.repeat(input_x, index_x, axis=None)
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        with base.dygraph.guard():
+            x = paddle.to_tensor(input_x)
             index = 2
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
@@ -254,16 +273,16 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 1:
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            index = base.dygraph.to_variable(self.data_index)
+            x = paddle.to_tensor(self.data_x)
+            index = paddle.to_tensor(self.data_index)
             z = paddle.repeat_interleave(x, index, -1)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            index = base.dygraph.to_variable(self.data_index)
+            x = paddle.to_tensor(self.data_x)
+            index = paddle.to_tensor(self.data_index)
             z = paddle.repeat_interleave(x, index, 1)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, self.data_index, axis=1)
@@ -272,8 +291,8 @@ class TestIndexSelectAPI(unittest.TestCase):
         # case 2:
         index_x = np.array([1, 2, 1]).astype('int32')
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            index = base.dygraph.to_variable(index_x)
+            x = paddle.to_tensor(self.data_x)
+            index = paddle.to_tensor(index_x)
             z = paddle.repeat_interleave(x, index, axis=0)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, index, axis=0)
@@ -281,7 +300,7 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 3 zero_dim:
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_zero_dim_x)
+            x = paddle.to_tensor(self.data_zero_dim_x)
             index = 2
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
@@ -290,8 +309,8 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 4 zero_dim_index
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_zero_dim_x)
-            index = base.dygraph.to_variable(self.data_zero_dim_index)
+            x = paddle.to_tensor(self.data_zero_dim_x)
+            index = paddle.to_tensor(self.data_zero_dim_index)
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
         expect_out = np.repeat(

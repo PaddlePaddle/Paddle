@@ -123,7 +123,7 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Select post_nms_topN RoIs from"
                  " all images and all fpn layers");
     AddComment(R"DOC(
-This operator concats all proposals from different images
+This operator concatenates all proposals from different images
  and different FPN levels. Then sort all of those proposals
 by objectness confidence. Select the post_nms_topN RoIs in
  total. Finally, re-sort the RoIs in the order of batch index.

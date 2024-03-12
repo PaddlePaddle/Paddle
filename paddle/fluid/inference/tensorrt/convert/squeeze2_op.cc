@@ -85,7 +85,7 @@ class Squeeze2OpConverter : public OpConverter {
     } else {
       layer->setReshapeDimensions(trt_out_dims);
     }
-    RreplenishLayerAndOutput(layer, "squeeze2", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "squeeze2", {output_name}, test_mode);
   }
 };
 

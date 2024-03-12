@@ -24,22 +24,22 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/pir/core/block_argument.h"
+#include "paddle/pir/include/core/block_argument.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -91,13 +91,13 @@ platform::DeviceContext* ParseDeviceContext(
       return dev_ctx;
     }
 
-    if (op_name == interpreter::kMemcpyD2H) {
+    if (op_name.compare(paddle::dialect::MemcpyD2hOp::name()) == 0) {
       dev_ctx = ctx_manager.Get(std::string(kD2HStream), place, stream_priority)
                     .get()
                     .get();
       interpreter::SetDeviceCommContext(op, dev_ctx);
       return dev_ctx;
-    } else if (op_name == interpreter::kMemcpyH2D) {
+    } else if (op_name.compare(paddle::dialect::MemcpyH2dOp::name()) == 0) {
       dev_ctx = ctx_manager.Get(std::string(kH2DStream), place, stream_priority)
                     .get()
                     .get();
@@ -114,9 +114,11 @@ platform::DeviceContext* ParseDeviceContext(
     // DeviceContext passed from executor (see CAllReduceOpCUDAKernel in
     // c_allreduce_op.h). Now it is just a temporary solution for ONLY
     // c_allreduce_sum which is used in ResNet50 distributed training.
-    if (op_name == "c_allreduce_sum" && op_attributes.at("use_calc_stream")
-                                                .dyn_cast<pir::BoolAttribute>()
-                                                .data() == false) {
+    if ((op_name.compare(paddle::dialect::CAllreduceSumOp::name()) == 0 ||
+         op_name.compare(paddle::dialect::CAllreduceSum_Op::name()) == 0) &&
+        op_attributes.at("use_calc_stream")
+                .dyn_cast<pir::BoolAttribute>()
+                .data() == false) {
       int ring_id =
           op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
       if (FLAGS_dynamic_static_unified_comm) {
@@ -181,7 +183,9 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
       return OpFuncType::kGpuSync;
     }
 
-    if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
+    if (platform::is_gpu_place(place) &&
+        (op_name == "pd_op.memcpy_d2h" ||
+         op_name == "pd_op.memcpy_d2h_multi_io")) {
       return OpFuncType::kGpuSync;
     }
 
@@ -412,6 +416,28 @@ bool GetCondData(const phi::DenseTensor& cond) {
       "WITH_XPU option."));
 #endif
   return cpu_cond->data<bool>()[0];
+}
+
+void CopyBranchOutput(const std::vector<std::string>& var_names,
+                      const std::vector<Variable*>& output_vars,
+                      Scope* inner_scope) {
+  for (size_t i = 0; i < var_names.size(); ++i) {
+    auto* inner_var = inner_scope->GetVar(var_names[i]);
+
+    if (inner_var->IsType<phi::DenseTensor>()) {
+      output_vars[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          inner_var->Get<phi::DenseTensor>());
+
+    } else if (inner_var->IsType<phi::TensorArray>()) {
+      const auto& inner_array = inner_var->Get<phi::TensorArray>();
+      auto* output_array = output_vars[i]->GetMutable<phi::TensorArray>();
+      // output_array->clear();
+      *output_array = inner_array;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
+  }
 }
 
 }  // namespace framework

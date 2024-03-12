@@ -315,7 +315,7 @@ def parameterize(fields, values=None):
     test cases.
 
     Args:
-        fields (Sequence): The feild name sequence of test cases.
+        fields (Sequence): The field name sequence of test cases.
         values (Sequence, optional): The test cases sequence. Defaults to None.
 
     """

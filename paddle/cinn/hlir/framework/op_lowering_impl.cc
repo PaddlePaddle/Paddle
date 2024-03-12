@@ -547,7 +547,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
               << ir_sch.GetModule().GetExprs().at(0);
       continue;
     }
-    // find master to computeat.
+    // find master to compute at.
     auto master = GetMasterToComputeAt(node,
                                        nodes_in_order,
                                        nodes_inline,
@@ -599,7 +599,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
           auto master_loops = ir_sch.GetLoops(GetNodeData(master)->id());
           std::vector<int> splits;
           for (auto loop : master_loops) {
-            splits.push_back(loop.As<ir::For>()->extent.as_int32());
+            splits.push_back(loop.As<ir::For>()->extent.as_int64());
           }
           loops = ir_sch.GetLoops(GetNodeData(node)->id());
           ir_sch.Split(loops[0], splits);

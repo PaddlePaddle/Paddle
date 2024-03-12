@@ -17,20 +17,20 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/parameter.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/parameter.h"
 namespace paddle {
 namespace dialect {
 
-pir::OpResult builtin_combine(const std::vector<pir::Value>& x) {
+pir::Value builtin_combine(const std::vector<pir::Value>& x) {
   auto combine_op =
       ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(x);
   return combine_op.out();
 }
 
-std::vector<pir::OpResult> add_n_grad(const std::vector<pir::Value>& inputs,
-                                      const pir::Value& out_grad) {
-  std::vector<pir::OpResult> inputs_grad;
+std::vector<pir::Value> add_n_grad(const std::vector<pir::Value>& inputs,
+                                   const pir::Value& out_grad) {
+  std::vector<pir::Value> inputs_grad;
   for (size_t i = 0; i < inputs.size(); i++) {
     paddle::dialect::ScaleOp scale_op =
         ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ScaleOp>(
@@ -40,13 +40,13 @@ std::vector<pir::OpResult> add_n_grad(const std::vector<pir::Value>& inputs,
   return inputs_grad;
 }
 
-pir::OpResult zeros_like(const pir::Value& x,
-                         const phi::DataType dtype,
-                         const Place& place) {
+pir::Value zeros_like(const pir::Value& x,
+                      const phi::DataType dtype,
+                      const Place& place) {
   return paddle::dialect::full_like(x, 0, dtype, place);
 }
 
-pir::OpResult parameter(const std::string& name) {
+pir::Value parameter(const std::string& name) {
   pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
   pir::ParameterOp parameter_op =
       ApiBuilder::Instance().GetBuilder()->Build<pir::ParameterOp>(
@@ -62,11 +62,16 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
                                                                   name);
 }
 
-pir::OpResult embedding_grad(const pir::Value& x,
-                             const pir::Value& weight,
-                             const pir::Value& out_grad,
-                             int64_t padding_idx,
-                             bool sparse) {
+void shadow_output(const pir::Value& persist_value, const std::string& name) {
+  ApiBuilder::Instance().GetBuilder()->Build<pir::ShadowOutputOp>(persist_value,
+                                                                  name);
+}
+
+pir::Value embedding_grad(const pir::Value& x,
+                          const pir::Value& weight,
+                          const pir::Value& out_grad,
+                          int64_t padding_idx,
+                          bool sparse) {
   if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
     if (sparse) {
       auto embedding_grad_op =
@@ -88,8 +93,8 @@ pir::OpResult embedding_grad(const pir::Value& x,
   }
 }
 
-pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
-                                  int axis) {
+pir::Value split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                               int axis) {
   auto out_grad_combine_op =
       ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
   paddle::dialect::SplitGradOp split_grad_op =
@@ -98,8 +103,8 @@ pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
   return split_grad_op.result(0);
 }
 
-pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
-                                  const pir::Value& axis) {
+pir::Value split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                               const pir::Value& axis) {
   auto out_grad_combine_op =
       ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
   paddle::dialect::SplitGradOp split_grad_op =
@@ -108,32 +113,30 @@ pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
   return split_grad_op.result(0);
 }
 
-pir::OpResult ones(const std::vector<int64_t>& shape,
-                   phi::DataType dtype,
-                   const Place& place) {
+pir::Value ones(const std::vector<int64_t>& shape,
+                phi::DataType dtype,
+                const Place& place) {
   return paddle::dialect::full(shape, 1, dtype, place);
 }
 
-pir::OpResult ones_like(pir::Value x_,
-                        phi::DataType dtype,
-                        const Place& place) {
+pir::Value ones_like(pir::Value x_, phi::DataType dtype, const Place& place) {
   return paddle::dialect::full_like(x_, 1, dtype, place);
 }
 
-pir::OpResult zeros(const std::vector<int64_t>& shape,
-                    phi::DataType dtype,
-                    const Place& place) {
+pir::Value zeros(const std::vector<int64_t>& shape,
+                 phi::DataType dtype,
+                 const Place& place) {
   return paddle::dialect::full(shape, 0, dtype, place);
 }
 
-pir::OpResult create_array(phi::DataType dtype) {
+pir::Value create_array(phi::DataType dtype) {
   auto create_array_op = ApiBuilder::Instance()
                              .GetBuilder()
                              ->Build<paddle::dialect::CreateArrayOp>(dtype);
   return create_array_op.out();
 }
 
-pir::OpResult create_array_like(pir::Value input, float value) {
+pir::Value create_array_like(pir::Value input, float value) {
   auto create_array_like_op =
       ApiBuilder::Instance()
           .GetBuilder()
@@ -141,21 +144,21 @@ pir::OpResult create_array_like(pir::Value input, float value) {
   return create_array_like_op.out();
 }
 
-pir::OpResult array_length(pir::Value x) {
+pir::Value array_length(pir::Value x) {
   auto array_length_op = ApiBuilder::Instance()
                              .GetBuilder()
                              ->Build<paddle::dialect::ArrayLengthOp>(x);
   return array_length_op.out();
 }
 
-pir::OpResult array_read(pir::Value array, pir::Value i) {
+pir::Value array_read(pir::Value array, pir::Value i) {
   auto array_read_op =
       ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ArrayReadOp>(
           array, i);
   return array_read_op.out();
 }
 
-pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i) {
+pir::Value array_write_(pir::Value array, pir::Value x, pir::Value i) {
   auto array_write_op =
       ApiBuilder::Instance()
           .GetBuilder()
@@ -163,9 +166,9 @@ pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i) {
   return array_write_op.out();
 }
 
-std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
-                                                         int axis,
-                                                         bool use_stack) {
+std::tuple<pir::Value, pir::Value> array_to_tensor(pir::Value x,
+                                                   int axis,
+                                                   bool use_stack) {
   auto array_to_tensor =
       ApiBuilder::Instance()
           .GetBuilder()
@@ -173,7 +176,18 @@ std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
   return std::make_tuple(array_to_tensor.result(0), array_to_tensor.result(1));
 }
 
-pir::OpResult add_n_array(const std::vector<pir::Value>& inputs) {
+pir::Value tensor_to_array(pir::Value x,
+                           pir::Value out_grad,
+                           int axis,
+                           bool use_stack) {
+  auto tensor_to_array = ApiBuilder::Instance()
+                             .GetBuilder()
+                             ->Build<paddle::dialect::TensorToArrayOp>(
+                                 x, out_grad, axis, use_stack);
+  return tensor_to_array.result(0);
+}
+
+pir::Value add_n_array(const std::vector<pir::Value>& inputs) {
   auto inputs_combine_op =
       ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs);
   paddle::dialect::AddNArrayOp add_n_array_op =
@@ -182,11 +196,70 @@ pir::OpResult add_n_array(const std::vector<pir::Value>& inputs) {
   return add_n_array_op.result(0);
 }
 
-pir::OpResult slice_array_dense(pir::Value input, pir::Value starts) {
+pir::Value slice_array(pir::Value input, pir::Value starts, pir::Value ends) {
+  auto op =
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::SliceArrayOp>(
+          input, starts, ends);
+  return op.result(0);
+}
+
+pir::Value slice_array_dense(pir::Value input, pir::Value starts) {
   auto op = ApiBuilder::Instance()
                 .GetBuilder()
                 ->Build<paddle::dialect::SliceArrayDenseOp>(input, starts);
   return op.result(0);
+}
+
+pir::Value assign(const pir::Value& x) {
+  CheckValueDataType(x, "x", "assign");
+  if (x.type().isa<paddle::dialect::DenseTensorType>()) {
+    paddle::dialect::AssignOp assign_op =
+        ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::AssignOp>(
+            x);
+    return assign_op.result(0);
+  } else if (x.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    paddle::dialect::AssignArrayOp assign_array_op =
+        ApiBuilder::Instance()
+            .GetBuilder()
+            ->Build<paddle::dialect::AssignArrayOp>(x);
+    return assign_array_op.result(0);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently, assign only supports DenseTensorType and "
+        "DenseTensorArrayType."));
+  }
+}
+
+std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
+                                                       pir::Value y,
+                                                       pir::Value bias,
+                                                       bool trans_x,
+                                                       bool trans_y,
+                                                       std::string activation) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::AttributeMap attribute_map = {
+      {"trans_x", pir::BoolAttribute::get(ctx, trans_x)},
+      {"trans_y", pir::BoolAttribute::get(ctx, trans_y)},
+      {"activation", pir::StrAttribute::get(ctx, activation)}};
+  auto fused_gemm_epilogue_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::FusedGemmEpilogueOp>(
+              x, y, bias, attribute_map);
+  return std::make_tuple(fused_gemm_epilogue_op.result(0),
+                         fused_gemm_epilogue_op.result(1));
+}
+
+pir::Value array_pop(pir::Value input, int index) {
+  if (input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    paddle::dialect::ArrayPopOp array_pop_op =
+        ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ArrayPopOp>(
+            input, index);
+    return array_pop_op.result(1);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "pop only supports DenseTensorArrayType."));
+  }
 }
 
 }  // namespace dialect

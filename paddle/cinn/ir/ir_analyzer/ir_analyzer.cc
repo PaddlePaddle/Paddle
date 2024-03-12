@@ -23,6 +23,8 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
@@ -438,6 +440,74 @@ bool IsBroadcastSBlock(ir::Expr block) {
     }
   }
   return load->indices.size() < store->indices.size();
+}
+
+std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
+  std::vector<ir::Var> result;
+  for (const ir::Expr& e : indices) {
+    if (e.is_constant()) {
+      std::string var_name =
+          cinn::UniqName("constant" + static_cast<int>(e.get_constant()));
+      result.emplace_back(e, e, var_name, /* is_reduce = */ false);
+    } else if (e.As<ir::_Var_>() != nullptr) {
+      ir::Expr copy_e = ir::ir_utils::IRCopy(e);
+      ir::_Var_* var_ref = copy_e.As<ir::_Var_>();
+      result.emplace_back(ir::Var(var_ref));
+    } else {
+      std::string var_name = cinn::UniqName("expr");
+      common::cas_intervals_t var_intervals;
+      bool is_reduce = false;
+      ir::ir_utils::CollectIRNodes(e, [&](const ir::Expr* x) {
+        if (x->As<ir::_Var_>() != nullptr) {
+          ir::Var var = x->as_var_ref();
+          var_intervals.insert(
+              {var->name,
+               common::CasInterval{var->lower_bound, var->upper_bound}});
+          if (var->is_reduce_axis) is_reduce = true;
+        }
+        return false;
+      });
+      common::SymbolicExprAnalyzer analyzer(var_intervals);
+      result.emplace_back(
+          analyzer.LowerBound(e), analyzer.UpperBound(e), var_name, is_reduce);
+    }
+  }
+  return result;
+}
+
+void AnalyzeScheduleBlockReadWriteBuffer(ir::ScheduleBlock* sche_block) {
+  if (!sche_block->read_buffers.empty() || !sche_block->write_buffers.empty()) {
+    return;
+  }
+
+  ir::ir_utils::CollectIRNodesWithoutTensor(
+      sche_block->body, [&](const Expr* x) {
+        const ir::Load* load_expr = x->As<ir::Load>();
+        if (load_expr != nullptr) {
+          const ir::Tensor t = load_expr->tensor.as_tensor_ref();
+          sche_block->read_buffers.emplace_back(
+              ir::BufferRange(t->buffer, IndicesToVars(load_expr->indices)));
+          return false;
+        }
+        const ir::Store* store_expr = x->As<ir::Store>();
+        if (store_expr != nullptr) {
+          const ir::Tensor t = store_expr->tensor.as_tensor_ref();
+          sche_block->write_buffers.emplace_back(
+              ir::BufferRange(t->buffer, IndicesToVars(store_expr->indices)));
+          return false;
+        }
+        return false;
+      });
+}
+
+std::string GetBlockName(const ir::Expr block) {
+  const ir::ScheduleBlockRealize* block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(block_realize);
+  const ir::ScheduleBlock* block_node =
+      block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(block_node);
+  return block_node->name;
 }
 
 }  // namespace analyzer

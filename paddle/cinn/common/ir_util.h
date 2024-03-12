@@ -82,7 +82,7 @@ inline Expr make_bool(bool x, int lanes) {
 void CheckTensorUniqueInExpr(Expr expr);
 
 /**
- * \brief Check all the buffers are uniuqe in an expression.
+ * \brief Check all the buffers are unique in an expression.
  */
 void CheckBufferUniqueInExpr(Expr expr);
 

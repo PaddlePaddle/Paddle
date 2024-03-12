@@ -18,6 +18,7 @@ namespace framework {
 
 void save_paddle2cinn_varmap(
     std::unordered_map<std::string, std::string> paddle2cinn_var_map,
+    int64_t graph_compilation_key,
     std::string save_path);
 
 }

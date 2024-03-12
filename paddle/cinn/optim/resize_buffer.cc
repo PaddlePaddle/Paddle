@@ -16,6 +16,7 @@
 #include <unordered_map>
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -40,8 +41,8 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       std::stringstream oss;
       oss << less_than_ir->a();
       std::string var_name = oss.str();
-      if (utils::Startswith(var_name, "blockIdx") ||
-          utils::Startswith(var_name, "threadIdx")) {
+      if (utils::StartsWith(var_name, "blockIdx") ||
+          utils::StartsWith(var_name, "threadIdx")) {
         var_name_to_extent_[var_name] = less_than_ir->b();
       }
     }
@@ -125,10 +126,11 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
         for (int i = 0; i < indice_extent.size(); ++i) {
           if (stored_indice_extent[i].is_constant() &&
               indice_extent[i].is_constant()) {
-            int stored_extent = stored_indice_extent[i].as_int32();
-            int cur_extent = indice_extent[i].as_int32();
+            int64_t stored_extent = stored_indice_extent[i].as_int64();
+            int64_t cur_extent = indice_extent[i].as_int64();
             if (cur_extent > stored_extent) {
               stored_indice_extent[i] = ir::Expr(cur_extent);
+              stored_indice_extent[i]->set_type(indice_extent[i].type());
             }
           }
           // if there indice extent is not constant, which means dynamic shape
@@ -152,7 +154,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
 
     // We only use the maximal of var, maximal of Mod operation,
     // which may not be the maximal of index
-    // mathmetically, but it works for current CINN.
+    // mathematically, but it works for current CINN.
     //
     // We may add better computation of MaxIndexRange if we need
     for (int i = 0; i < vars.size(); ++i) {
@@ -167,8 +169,20 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       }
     }
     ir::Expr tmp = ir::Add::Make(copy, ir::Expr(1));
-    ir::Expr simplify = common::AutoSimplify(tmp);
-    return simplify;
+    ir::Expr simplified = common::AutoSimplify(tmp);
+    if (simplified.As<ir::Min>()) {
+      ir::Expr lhs = simplified.As<ir::Min>()->a();
+      ir::Expr rhs = simplified.As<ir::Min>()->b();
+      common::cas_intervals_t var_intervals =
+          common::CollectVarIntervalsOfExprs({lhs, rhs});
+      common::SymbolicExprAnalyzer analyzer(var_intervals);
+      if (analyzer.ProveLE(lhs, rhs)) {
+        return lhs;
+      } else if (analyzer.ProveGE(lhs, rhs)) {
+        return rhs;
+      }
+    }
+    return simplified;
   }
 
  public:

@@ -129,6 +129,13 @@ void GetOutputShape(const std::vector<int>& real_axes,
   if (output_shape->empty()) {
     output_shape->push_back(cinn::common::make_one());
   }
+
+  CHECK(!tensor->shape.empty());
+  if (tensor->shape[0]->type() == Int(64)) {
+    for (auto& shape_item : *output_shape) {
+      shape_item->convert_int32_to_int64();
+    }
+  }
 }
 
 /*!
@@ -165,6 +172,14 @@ Tensor DoReduce(const Tensor& tensor,
     std::vector<Expr> eval_indice;
     int indice_cnt = 0;
     int reduce_cnt = 0;
+
+    // Set keepdim flags of indices.
+    if (tensor->shape.size() == indices.size()) {
+      for (const auto& i : real_axes) {
+        VLOG(4) << "Set is_keepdim = true for var(" << i << ")";
+        indices[i].as_var_ref()->is_keepdim = true;
+      }
+    }
 
     for (size_t i = 0; i < tensor->shape.size(); ++i) {
       bool squeeze_i = std::find(squeeze_axes.begin(), squeeze_axes.end(), i) !=
@@ -287,7 +302,7 @@ std::vector<Tensor> WarpReduce(const ir::Tensor& A,
     reduce_width = reduce_width * A->shape[idx].as_int32();
   }
 
-  // comput tmp output shape.
+  // compute tmp output shape.
   std::vector<Expr> tmp_shape(A->shape.begin(),
                               A->shape.begin() + shape_size_without_reduce_dim);
   tmp_shape.push_back(Expr(32));
@@ -390,7 +405,7 @@ std::vector<ir::Tensor> BlockReduceInternal(const ir::Tensor& A,
   auto tmp_out = Compute(
       tmp_shape,
       [=](const std::vector<Expr>& indexs) -> Expr {
-        // comput index map from output to input.
+        // compute index map from output to input.
         auto last_index = indexs.back();
         std::vector<Expr> input_indexs(indexs.begin(),
                                        indexs.begin() + indexs.size() - 1);

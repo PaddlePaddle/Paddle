@@ -17,9 +17,9 @@
 #include <stack>
 
 #include "paddle/common/macros.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace dialect {
@@ -43,7 +43,7 @@ class ApiBuilder {
   void SetParameter(const std::string& name,
                     std::unique_ptr<pir::Parameter>&& parameter);
 
-  std::shared_ptr<pir::Builder> GetBuilder() { return builder_; }
+  const std::shared_ptr<pir::Builder>& GetBuilder() const { return builder_; }
 
   const pir::InsertionPoint& GetCurrentInsertionPoint() const {
     return builder_->insertion_point();

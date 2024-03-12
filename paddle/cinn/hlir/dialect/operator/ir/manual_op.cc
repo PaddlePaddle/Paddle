@@ -16,20 +16,27 @@
 
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn {
 namespace dialect {
 
+using DenseTensorType = paddle::dialect::DenseTensorType;
+
 const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
+const char* FusionOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
 const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};
@@ -43,10 +50,23 @@ void GroupOp::Build(pir::Builder& builder,
 
 void GroupOp::Build(pir::Builder& builder,             // NOLINT
                     pir::OperationArgument& argument,  // NOLINT
+                    const std::vector<pir::Type>& output_types,
+                    const cinn::dialect::GroupInfo& group_info) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+
+  argument.AddAttribute("group_info",
+                        cinn::dialect::GroupInfoAttribute::get(
+                            pir::IrContext::Instance(), group_info));
+}
+
+void GroupOp::Build(pir::Builder& builder,             // NOLINT
+                    pir::OperationArgument& argument,  // NOLINT
                     std::unique_ptr<pir::Block>&& block) {
   VLOG(4) << "Start build GroupOp";
   if (block && !block->empty()) {
-    IR_ENFORCE(block->back().isa<pir::YieldOp>());
+    // IR_ENFORCE(block->back().isa<pir::YieldOp>());
+    PADDLE_ENFORCE_EQ(block->back().isa<pir::YieldOp>(), true);
     auto& op = block->back();
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
@@ -61,7 +81,13 @@ pir::Block* GroupOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> GroupOp::ops() {
+pir::Block* GroupOp::block() const {
+  pir::Region& region = (*this)->region(0);
+  CHECK(!region.empty());
+  return &region.front();
+}
+
+std::vector<pir::Operation*> GroupOp::GetOperators() const {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -80,11 +106,92 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto& sub_op : ops()) {
-    os << "\n";
+  for (auto& sub_op : GetOperators()) {
+    os << "\n  ";
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
+}
+
+bool GroupOp::InferSymbolicShape(
+    ::pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  ::pir::InferSymExprForBlock(*block(), shape_analysis);
+
+  for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+    auto inner_yield_value = block()->back().operand_source(rst_idx);
+    const auto& shape =
+        shape_analysis->GetShapeOrDataForValue(inner_yield_value);
+    shape_analysis->SetShapeOrDataForValue(result(rst_idx), shape);
+  }
+
+  return true;
+}
+
+void FusionOp::Build(pir::Builder& builder,
+                     pir::OperationArgument& argument,
+                     const std::vector<pir::Type>& output_types) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+}
+
+void FusionOp::Build(pir::Builder& builder,             // NOLINT
+                     pir::OperationArgument& argument,  // NOLINT
+                     const std::vector<pir::Type>& output_types,
+                     const cinn::dialect::GroupInfo& group_info) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+
+  argument.AddAttribute("group_info",
+                        cinn::dialect::GroupInfoAttribute::get(
+                            pir::IrContext::Instance(), group_info));
+}
+
+pir::Block* FusionOp::block() {
+  pir::Region& region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return &region.front();
+}
+
+std::vector<pir::Operation*> FusionOp::GetOperators() {
+  std::vector<pir::Operation*> rt_ops;
+  for (auto& op : *block()) {
+    rt_ops.push_back(&op);
+  }
+  return rt_ops;
+}
+
+void FusionOp::VerifySig() {}
+
+void FusionOp::Print(pir::IrPrinter& printer) {
+  auto& os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = " << name();
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  os << " {";
+  for (auto& sub_op : GetOperators()) {
+    os << "\n  ";
+    printer.PrintOperation(sub_op);
+  }
+  os << " \n }";
+}
+
+void YieldStoreOp::Build(pir::Builder& builder,
+                         pir::OperationArgument& argument,
+                         pir::Value x,
+                         pir::Type output_type) {
+  argument.inputs = {x};
+  argument.output_types = {output_type};
+}
+
+void YieldStoreOp::VerifySig() {}
+
+bool ConcatOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  VLOG(4) << "Infer symbolic shape for cinn_op.concat";
+  return ConcatOpInferSymbolicShape(this->operation(), shape_analysis);
 }
 
 void ConcatOp::Build(pir::Builder& builder,             // NOLINT
@@ -96,41 +203,36 @@ void ConcatOp::Build(pir::Builder& builder,             // NOLINT
   argument.inputs = inputs;
   std::vector<pir::Type> inputs_type(inputs.size());
 
-  IR_ENFORCE(inputs.size() > 0);
+  PADDLE_ENFORCE_GT(inputs.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "input size [%d] is less than 0", inputs.size()));
 
-  auto first_ele =
-      inputs[0].type().dyn_cast<paddle::dialect::DenseTensorType>();
-  phi::DDim out_dims = first_ele.dims();
+  const pir::Type out_type = [&]() {
+    auto first_ele = inputs[0].type().dyn_cast<DenseTensorType>();
+    phi::DDim out_dims = first_ele.dims();
+    if (axis < 0) axis += out_dims.size();
 
-  if (axis < 0) {
-    axis += out_dims.size();
-  }
+    for (size_t idx = 1; idx < inputs.size(); ++idx) {
+      inputs_type[idx] = inputs[idx].type();
+      auto dim_i = inputs[idx].type().dyn_cast<DenseTensorType>().dims();
 
-  for (size_t idx = 0; idx < inputs.size(); ++idx) {
-    inputs_type[idx] = inputs[idx].type();
-
-    if (idx > 0) {
-      auto dim_i = inputs[idx]
-                       .type()
-                       .dyn_cast<paddle::dialect::DenseTensorType>()
-                       .dims();
-
-      out_dims[axis] += dim_i[axis];
+      if (out_dims[axis] > 0 && dim_i[axis] > 0) {
+        out_dims[axis] += dim_i[axis];
+      } else {
+        out_dims[axis] = -1;
+        break;
+      }
     }
-  }
-
-  auto out_type =
-      paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
-                                            first_ele.dtype(),
-                                            out_dims,
-                                            first_ele.data_layout(),
-                                            first_ele.lod(),
-                                            first_ele.offset());
-
+    return DenseTensorType::get(pir::IrContext::Instance(),
+                                first_ele.dtype(),
+                                out_dims,
+                                first_ele.data_layout(),
+                                first_ele.lod(),
+                                first_ele.offset());
+  }();
   argument.output_types.emplace_back(out_type);
-
   PassStopGradientsDefaultly(argument);
-
   argument.AddAttribute(
       "axis", pir::Int32Attribute::get(pir::IrContext::Instance(), axis));
 }
@@ -146,7 +248,7 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
 
   std::vector<pir::Type> output_type(sections.size());
 
-  auto input_ele = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto input_ele = input.type().dyn_cast<DenseTensorType>();
 
   if (axis < 0) {
     axis += input_ele.dims().size();
@@ -155,13 +257,12 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
   for (size_t idx = 0; idx < sections.size(); ++idx) {
     auto out_dims = input_ele.dims();
     out_dims[axis] = sections[idx];
-    auto out_type =
-        paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
-                                              input_ele.dtype(),
-                                              out_dims,
-                                              input_ele.data_layout(),
-                                              input_ele.lod(),
-                                              input_ele.offset());
+    auto out_type = DenseTensorType::get(pir::IrContext::Instance(),
+                                         input_ele.dtype(),
+                                         out_dims,
+                                         input_ele.data_layout(),
+                                         input_ele.lod(),
+                                         input_ele.offset());
 
     argument.output_types.emplace_back(out_type);
 
@@ -190,7 +291,12 @@ void GenerateShapeOp::Build(
     const std::vector<pir::Value>& inputs,
     const std::vector<pir::Attribute>& output_dim_exprs,
     const GenerateShapeOp::SymbolBindings& symbol_bindings) {
-  CHECK(!inputs.empty());
+  if (inputs.empty()) {
+    VLOG(3) << "GenerateShapeOp inputs is empty";
+    for (const auto& attr : output_dim_exprs) {
+      CHECK(attr.isa<pir::Int64Attribute>());
+    }
+  }
   argument.AddInputs(inputs);
   argument.AddAttribute("output_dim_exprs",
                         builder.array_attr(output_dim_exprs));
@@ -202,7 +308,7 @@ void GenerateShapeOp::Build(
     auto type = pir::Int64Type::get(ctx);
     auto dim =
         ::common::make_ddim({static_cast<int64_t>(output_dim_exprs.size())});
-    return paddle::dialect::DenseTensorType::get(ctx, type, dim);
+    return DenseTensorType::get(ctx, type, dim);
   }()});
   ::pir::PassStopGradientsDefaultly(argument);
 }
@@ -345,10 +451,63 @@ GenerateShapeOp::ConvertAttributeToSymbolBindings(
   return std::move(ret);
 }
 
+bool GenerateShapeOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  const auto attr_dim_exprs = [&] {
+    std::vector<symbol::DimExpr> dim_exprs{};
+    pir::Attribute dim_expr_attr = this->attributes().at("output_dim_exprs");
+    CHECK(dim_expr_attr.isa<pir::ArrayAttribute>());
+    auto array = dim_expr_attr.dyn_cast<pir::ArrayAttribute>();
+    for (int i = 0; i < array.size(); ++i) {
+      const auto& dim_expr = ConvertAttributeToDimExpr(array.at(i));
+      CHECK(dim_expr.has_value());
+      dim_exprs.push_back(dim_expr.value());
+    }
+    return dim_exprs;
+  }();
+  const auto symbol_bindings = [&] {
+    pir::Attribute symbol_bindings_attr =
+        this->attributes().at("symbol_bindings");
+    auto symbol_bindings =
+        ConvertAttributeToSymbolBindings(symbol_bindings_attr);
+    CHECK(symbol_bindings.has_value());
+    return symbol_bindings.value();
+  }();
+  auto DimExprs4InputDim =
+      [&](int input_idx) -> const symbol::ShapeOrDataDimExprs& {
+    return shape_analysis->GetShapeOrDataForValue(
+        this->operand_source(input_idx));
+  };
+  auto DimExprs4SymbolName =
+      MakeGetterDimExpr4SymbolName(symbol_bindings, DimExprs4InputDim);
+  const auto substituted_dim_exprs = [&] {
+    std::vector<symbol::DimExpr> dim_exprs{};
+    dim_exprs.reserve(attr_dim_exprs.size());
+    for (const auto& attr_dim_expr : attr_dim_exprs) {
+      const auto& substituted =
+          SubstituteDimExpr(attr_dim_expr, DimExprs4SymbolName);
+      const auto& simplified = symbol::SimplifyDimExpr(substituted);
+      dim_exprs.push_back(simplified);
+    }
+    return dim_exprs;
+  }();
+
+  std::vector<symbol::DimExpr> shape{
+      std::int64_t(substituted_dim_exprs.size())};
+  symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{
+      symbol::TensorShapeOrDataDimExprs(shape, substituted_dim_exprs)};
+
+  shape_analysis->SetShapeOrDataForValue(this->out(), shape_or_data_dim_exprs);
+
+  return true;
+}
+
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::YieldStoreOp);

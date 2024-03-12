@@ -20,6 +20,10 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import (
+    convert_float_to_uint16,
+    skip_check_grad_ci,
+)
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -69,15 +73,23 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.config()
             self.op_type = "matmul_v2"
-            if self.dtype == np.float16 or self.dtype == "float16":
-                self.__class__.no_need_check_grad = True
-            x = np.random.random(self.x_shape).astype(self.dtype)
-            y = np.random.random(self.y_shape).astype(self.dtype)
+
+            x = np.random.random(self.x_shape)
+            y = np.random.random(self.y_shape)
+
             # -0.1 ~ 0.1
             x = -0.1 + 0.2 * x
             y = -0.1 + 0.2 * y
             result = reference_matmul(x, y, self.trans_x, self.trans_y)
+            if self.dtype == np.uint16:
+                x = convert_float_to_uint16(x)
+                y = convert_float_to_uint16(y)
+            else:
+                x = x.astype(self.dtype)
+                y = y.astype(self.dtype)
+
             result = result.astype(self.dtype)
+
             self.inputs = {
                 'X': x,
                 'Y': y,
@@ -263,6 +275,9 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_x = False
             self.trans_y = False
 
+    @skip_check_grad_ci(
+        reason="[skip shape check] Use y_shape(17) to test case in ppyoloe."
+    )
     class TestMatMulOp18(TestMatMulV2Op):
         """
         case 18 : for ppyoloe model

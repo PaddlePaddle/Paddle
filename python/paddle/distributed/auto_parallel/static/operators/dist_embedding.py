@@ -81,14 +81,14 @@ class DistributedEmbedding(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("embedding")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(x_spec, w_spec, padding_idx, is_sparse)
         bw_results = rule.infer_backward(
             x_spec, w_spec, output_spec, padding_idx, is_sparse
         )
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op, [x_name, w_name], [out_name], fw_results, bw_results
         )
@@ -473,7 +473,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 ctx, op_dist_attr.process_mesh, rank_id
             )
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to calculate embedding offset using cartesian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,
@@ -632,7 +632,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         process_mesh_shape = dist_attr.process_mesh.shape
         process_mesh_group = dist_attr.process_mesh.process_ids
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to calculate embedding offset using cartesian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,

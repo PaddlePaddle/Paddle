@@ -71,7 +71,7 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(len(matmul_op.get_input_names()), 2)
         self.assertEqual(len(matmul_op.get_attr_names()), 2)
         self.assertEqual(len(matmul_op.get_output_names()), 1)
-        # test oprand.index
+        # test operand.index
         self.assertEqual(matmul_op.operand(0).index(), 0)
         self.assertEqual(matmul_op.operand(1).index(), 1)
         self.assertEqual(add_op.operand(0).index(), 0)
@@ -115,7 +115,7 @@ class TestPybind(unittest.TestCase):
         )
         # test opresult print
         self.assertTrue(
-            'dtype=pd_op.tensor<4x4xf32>'
+            'dtype=builtin.tensor<4x4xf32>'
             in add_op.operands_source()[0].__str__()
         )
         # test opresult == value
@@ -132,7 +132,8 @@ class TestPybind(unittest.TestCase):
             tanh_op.operands()[0].source().get_defining_op().name(), "pd_op.add"
         )
         self.assertTrue(
-            'pd_op.tensor<4x4xf32>' in tanh_op.operands()[0].source().__str__()
+            'builtin.tensor<4x4xf32>'
+            in tanh_op.operands()[0].source().__str__()
         )
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(
@@ -144,8 +145,8 @@ class TestPybind(unittest.TestCase):
 
         self.assertEqual(add_op.result(0).initialized(), True)
 
-        uninit_op_result = paddle.pir.OpResult()
-        self.assertEqual(uninit_op_result.initialized(), False)
+        uninit_value = paddle.pir.Value()
+        self.assertEqual(uninit_value.initialized(), False)
 
     def test_type(self):
         pir_program = get_ir_program()

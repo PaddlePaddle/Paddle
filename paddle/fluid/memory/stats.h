@@ -33,6 +33,18 @@ using phi::ThreadDataRegistry;
 struct ThreadLocalStatBase {
   int64_t current{0};
   int64_t peak{0};
+
+  ThreadLocalStatBase operator+=(const ThreadLocalStatBase& other) {
+    current += other.current;
+    peak = std::max({current, peak, other.peak});
+    return *this;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const ThreadLocalStatBase& stat) {
+    os << "{current : " << stat.current << ", peak : " << stat.peak << "}";
+    return os;
+  }
 };
 
 class StatBase {
@@ -124,7 +136,7 @@ void HostMemoryStatUpdate(const std::string& stat_type,
 void LogDeviceMemoryStats(const platform::Place& place,
                           const std::string& op_name);
 
-#define DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)              \
+#define DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, id)               \
   case id:                                                          \
     stat = paddle::memory::Stat<                                    \
         paddle::memory::DeviceMemoryStat##item##id>::GetInstance(); \
@@ -134,22 +146,22 @@ void LogDeviceMemoryStats(const platform::Place& place,
   [&] {                                                                       \
     paddle::memory::StatBase* stat = nullptr;                                 \
     switch (id) {                                                             \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 0);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 1);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 2);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 3);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 4);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 5);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 6);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 7);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 8);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 9);                          \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 10);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 11);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 12);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 13);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 14);                         \
-      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 15);                         \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 0);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 1);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 2);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 3);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 4);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 5);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 6);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 7);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 8);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 9);                           \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 10);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 11);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 12);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 13);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 14);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, 15);                          \
       default:                                                                \
         PADDLE_THROW(paddle::platform::errors::OutOfRange(                    \
             "Only support device id between [0, 15] for device memory stats," \

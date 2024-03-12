@@ -39,7 +39,7 @@ def load(path, **configs):
             DO NOT use them. Default None.
             The following options are currently supported:
                 (1) place: where to place the loaded state dict.
-                     If the state dict is too large, the palce should be set 'cpu'.
+                     If the state dict is too large, the place should be set 'cpu'.
             Note:
                 Other config value may cause some error.Please don't use any more config options.
     Returns:
@@ -61,7 +61,7 @@ def load(path, **configs):
         model_state_dict = paddle.incubate.distributed.utils.io.load(path="path/to/load.pdparams")
         dist_model.set_state_dict(model_state_dict)
 
-        # load optimizer satte dict
+        # load optimizer state dict
         optimizer_state_dict = paddle.incubate.distributed.utils.io.load(path="path/to/load.pdopt")
         dist_optimizer.set_state_dict(optimizer_state_dict)
 
@@ -100,7 +100,7 @@ def load_with_place(path, **configs):
     origin_place = paddle.get_device()
     paddle.set_device(place)
 
-    configs = _remove_not_supported_itmes(configs)
+    configs = _remove_not_supported_items(configs)
     state_dict = paddle.load(path, **configs)
 
     paddle.set_device(origin_place)
@@ -108,7 +108,7 @@ def load_with_place(path, **configs):
     return state_dict
 
 
-def _remove_not_supported_itmes(configs):
+def _remove_not_supported_items(configs):
     __supported_by_load__ = [
         "model_filename",
         "params_filename",

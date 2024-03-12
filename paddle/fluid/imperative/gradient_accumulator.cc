@@ -138,7 +138,7 @@ TType& GetInnerTensor(const paddle::Tensor& src) {
       src.initialized(),
       true,
       platform::errors::Fatal("We only add tensor with value if a tensor is "
-                              "NOT INITILIZED, it should just move instead of "
+                              "NOT INITIALIZED, it should just move instead of "
                               "calling this method."));
   auto* src_tensor = static_cast<TType*>(src.impl().get());
   return *src_tensor;
@@ -198,13 +198,13 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 
   // AddKernel already support inputs of different dtype. For AMP master_grad,
-  // the dtype of source tensor and destination tensor will be diferent. So the
+  // the dtype of source tensor and destination tensor will be different. So the
   // check requiring input dtypes to be the same have been removed.
 #define PADDLE_TENSOR_ADD(T, CONTEXT)                                          \
   if (data_type == framework::DataTypeTrait<T>::DataType()) {                  \
     auto cpu_ctx = static_cast<CONTEXT*>(                                      \
         platform::DeviceContextPool::Instance().Get(place));                   \
-    phi::AddKernel<T, CONTEXT>(*cpu_ctx, src_tensor, *dst_tensor, dst_tensor); \
+    phi::AddKernel<T, CONTEXT>(*cpu_ctx, *dst_tensor, src_tensor, dst_tensor); \
     return;                                                                    \
   }
 
@@ -518,7 +518,7 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
 static platform::Place GetPlaceOfVar(
     const std::shared_ptr<VariableWrapper>& var) {
   platform::Place place;
-  if (var->Var().IsType<phi::DenseTensor>()) {
+  if (var->Var().IsType<phi::DenseTensor>()) {  // NOLINT
     place = var->Var().Get<phi::DenseTensor>().place();
   } else if (var->Var().IsType<phi::SelectedRows>()) {
     place = var->Var().Get<phi::SelectedRows>().place();
@@ -550,7 +550,7 @@ void GradientAccumulator::AccumulateGrad() {
   auto* dst = var_->MutableVar();
   if (!var_->IsEmpty()) {
     VLOG(6) << "Leaf Var(" << var_->Name()
-            << ")'s Gradient has been initizlized, will accumulate on "
+            << ")'s Gradient has been initialized, will accumulate on "
                "previous gradient.";
     if (dst->IsType<phi::DenseTensor>()) {
       if (src->IsType<phi::DenseTensor>()) {
@@ -635,7 +635,7 @@ void GradientAccumulator::CallReduceHooks() {
                     platform::errors::PreconditionNotMet(
                         "Only can call reduce hooks after the "
                         "gradient accumulation is completed in "
-                        "current batch or across batchs."));
+                        "current batch or across batches."));
   if (var_->HasVoidHook()) {
     for (const auto& hook : var_->GetVoidHooks()) {
       VLOG(3) << "call gradient accumulator backward hooks.";
@@ -657,7 +657,7 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
 
   auto* dst_var = Var();
   platform::Place place = GetPlaceOfVar(var);
-  if (!dst_var->OverridedStopGradient()) {
+  if (!dst_var->OverriddenStopGradient()) {
     if (CurCnt() == 0) {
       MoveOrCopyVar(dst_var->MutableVar(), var->MutableVar(), unchange_input);
     } else {
@@ -704,7 +704,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
                                         bool unchange_input) {
   auto* dst_var = Var();
   platform::Place place = GetPlaceOfVar(var);
-  if (!dst_var->OverridedStopGradient()) {
+  if (!dst_var->OverriddenStopGradient()) {
     if (ref_cnt_ == 1) {
       MoveOrCopyVar(dst_var->MutableVar(),
                     var->MutableVar(),
@@ -735,7 +735,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
       }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (paddle::platform::is_gpu_place(place)) {
+      if (paddle::platform::is_gpu_place(place)) {  // NOLINT
         // sum selected rows firstly
         for (auto& var_info : tmp_grad_vars_) {
           if (!var_info.var->Var().IsType<phi::SelectedRows>()) {

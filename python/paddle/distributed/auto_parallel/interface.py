@@ -237,9 +237,9 @@ def recompute(op):
 
 def exclude_ops_in_recompute(run_function):
     """
-    Exclude some operators in recompute segements.
+    Exclude some operators in recompute segments.
         Args:
-        run_function (callabe): The callabe function to be excluded.
+        run_function (callable): The callable function to be excluded.
 
     Returns:
         ExcludeOperator: The callable object.

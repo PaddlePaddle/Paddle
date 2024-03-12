@@ -80,7 +80,7 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
 
   // For Inplace src and dst should be the same memory object.
   // So x should share buffer with z. But UT mechanics is testing inplace
-  // execution for this op not checking that x can be bradcasted to match in
+  // execution for this op not checking that x can be broadcasted to match in
   // shape y tensor.
   // This is wrong as when x is to be broadcasted then z(out) will match the
   // shape of y which is bigger than x. Hence if x is smaller in shape than z

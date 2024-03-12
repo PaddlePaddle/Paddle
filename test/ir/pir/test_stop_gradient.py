@@ -41,7 +41,7 @@ class TestAPI(unittest.TestCase):
     # TODO(Aurelius84): Add more test cases after API is migrated.
 
 
-class TestParametes(unittest.TestCase):
+class TestParameters(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 

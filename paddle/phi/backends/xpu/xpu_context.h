@@ -17,6 +17,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <memory>
+#include <vector>
 
 #include "paddle/phi/backends/xpu/forwards.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
@@ -45,15 +46,15 @@ class XPUContext : public DeviceContext,
 
   backends::xpu::XPUVersion xpu_version() const;
 
-  xpu::Context* x_context() const;
+  xpu::Context* x_context(int i = 0) const;
 
   // Return bkcl context.
   xpu::BKCLContext_t bkcl_context() const;
   void SetBkclContext(xpu::BKCLContext_t context);
-  void CreateStream();
+  void CreateStream(int i = 0);
 
   // For share external stream.
-  void SetStream(void* stream);
+  void SetStream(void* stream, int i = 0);
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
@@ -80,13 +81,13 @@ class XPUContext : public DeviceContext,
 
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
 
-  XPUStream stream() const;
+  XPUStream stream(int i = 0) const;
 
   static const char* name() { return "XPUContext"; }
 
  private:
   struct Impl;
-  std::unique_ptr<Impl> impl_;
+  std::vector<std::unique_ptr<Impl>> impls_;
 };
 
 // KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,

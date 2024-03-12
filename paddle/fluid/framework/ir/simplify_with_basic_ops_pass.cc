@@ -25,8 +25,8 @@ namespace framework {
 namespace ir {
 
 /*
- * This pass is to simplify the Grpah, it may contains:
- * - replace comlicated op with basic op
+ * This pass is to simplify the Graph, it may contains:
+ * - replace complicated op with basic op
  * - remove some unnecessary op
  *
  * In the current implementation, it supports:

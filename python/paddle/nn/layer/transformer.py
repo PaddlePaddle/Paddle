@@ -205,7 +205,7 @@ class MultiHeadAttention(Layer):
 
     def _prepare_qkv(self, query, key, value, cache=None):
         r"""
-        Prapares linear projected queries, keys and values for usage of subsequnt
+        Prepares linear projected queries, keys and values for usage of subsequent
         multiple parallel attention. If `cache` is not None, using cached results
         to reduce redundant calculations.
 
@@ -292,7 +292,7 @@ class MultiHeadAttention(Layer):
 
     def gen_cache(self, key, value=None, type=Cache):
         """
-        Generates cache for `forward` usage in inference accroding to arguments.
+        Generates cache for `forward` usage in inference according to arguments.
         The generated cache is an instance of `MultiHeadAttention.Cache` or an
         instance of `MultiHeadAttention.StaticCache`.
 
@@ -401,7 +401,7 @@ class MultiHeadAttention(Layer):
             If `cache` is not None, the tuple then includes the new cache
             having the same type as `cache`, and if it is `StaticCache`, it
             is same as the input `cache`, if it is `Cache`, the new cache
-            reserves tensors concatanating raw tensors with intermediate
+            reserves tensors concatenating raw tensors with intermediate
             results of current query.
         """
         key = query if key is None else key
@@ -467,7 +467,7 @@ class TransformerEncoderLayer(Layer):
             in MHA to drop some attention target. If None, use the value of
             `dropout`. Default None
         act_dropout (float, optional): The dropout probability used after FFN
-            activition.  If None, use the value of `dropout`. Default None
+            activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
             normalization and post-precess includes dropout, residual connection.
@@ -783,7 +783,7 @@ class TransformerDecoderLayer(Layer):
             in MHA to drop some attention target. If None, use the value of
             `dropout`. Default None
         act_dropout (float, optional): The dropout probability used after FFN
-            activition.  If None, use the value of `dropout`. Default None
+            activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
             normalization and post-precess includes dropout, residual connection.
@@ -1182,7 +1182,7 @@ class Transformer(Layer):
     Please refer to `Attention is all you need <http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf>`_ ,
     and see `TransformerEncoder` and `TransformerDecoder` for more details.
 
-    Users can configurate the model architecture with corresponding parameters.
+    Users can configure the model architecture with corresponding parameters.
     Note the usage of `normalize_before` representing where to apply layer
     normalization (in pre-process or post-precess of multi-head attention or FFN),
     and some transformer like models are different on this, such as
@@ -1205,7 +1205,7 @@ class Transformer(Layer):
             in MHA to drop some attention target. If None, use the value of
             `dropout`. Default None
         act_dropout (float, optional): The dropout probability used after FFN
-            activition.  If None, use the value of `dropout`. Default None
+            activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
             normalization and post-precess includes dropout, residual connection.
@@ -1217,7 +1217,7 @@ class Transformer(Layer):
             would be used as `weight_attr` for cross attention of `TransformerDecoder`,
             and `weight_attr[2]` would be used as `weight_attr` for linear in FFN.
             If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention
-            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for
+            and cross attention and `weight_attr[1]` would be used as `weight_attr` for
             linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr`
             for self attention, cross attention and linear in FFN. Otherwise,
             the three sub-layers all uses it as `weight_attr` to create parameters.
@@ -1230,7 +1230,7 @@ class Transformer(Layer):
             would be used as `bias_attr` for cross attention of `TransformerDecoder`,
             and `bias_attr[2]` would be used as `bias_attr` for linear in FFN.
             If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention
-            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for
+            and cross attention and `bias_attr[1]` would be used as `bias_attr` for
             linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr`
             for self attention, cross attention and linear in FFN. Otherwise,
             the three sub-layers all uses it as `bias_attr` to create parameters.

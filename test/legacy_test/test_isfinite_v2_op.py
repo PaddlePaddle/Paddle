@@ -157,6 +157,7 @@ class TestCUDANormal(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
+    @test_with_pir_api
     def test_bad_input(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

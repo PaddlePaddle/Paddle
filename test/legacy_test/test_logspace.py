@@ -36,7 +36,7 @@ class TestLogspaceOpCommonCase(OpTest):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([2]).astype(dtype),
         }
-        self.attrs = {'dtype': int(paddle.float32)}
+        self.attrs = {'dtype': paddle.float32}
         self.outputs = {'Out': np.power(2, np.arange(0, 11)).astype(dtype)}
 
     def test_check_output(self):
@@ -52,7 +52,7 @@ class TestLogspaceFP16Op(TestLogspaceOpCommonCase):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([2]).astype(self.dtype),
         }
-        self.attrs = {'dtype': int(paddle.float16)}
+        self.attrs = {'dtype': paddle.float16}
         self.outputs = {'Out': np.power(2, np.arange(0, 11)).astype(self.dtype)}
 
 
@@ -76,7 +76,7 @@ class TestLogspaceBF16Op(OpTest):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([2]).astype(self.np_dtype),
         }
-        self.attrs = {'dtype': int(paddle.bfloat16)}
+        self.attrs = {'dtype': paddle.bfloat16}
         self.outputs = {
             'Out': np.power(2, np.arange(0, 11)).astype(self.np_dtype)
         }
@@ -100,7 +100,7 @@ class TestLogspaceOpReverseCase(TestLogspaceOpCommonCase):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([2]).astype(dtype),
         }
-        self.attrs = {'dtype': int(paddle.float32)}
+        self.attrs = {'dtype': paddle.float32}
         self.outputs = {'Out': np.power(2, np.arange(10, -1, -1)).astype(dtype)}
 
 
@@ -113,7 +113,7 @@ class TestLogspaceOpNumOneCase(TestLogspaceOpCommonCase):
             'Num': np.array([1]).astype('int32'),
             'Base': np.array([2]).astype(dtype),
         }
-        self.attrs = {'dtype': int(paddle.float32)}
+        self.attrs = {'dtype': paddle.float32}
         self.outputs = {'Out': np.power(2, np.array([10])).astype(dtype)}
 
 
@@ -126,7 +126,7 @@ class TestLogspaceOpMinusBaseCase(TestLogspaceOpCommonCase):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([-2]).astype(dtype),
         }
-        self.attrs = {'dtype': int(paddle.float32)}
+        self.attrs = {'dtype': paddle.float32}
         self.outputs = {'Out': np.power(-2, np.arange(0, 11)).astype(dtype)}
 
 
@@ -139,7 +139,7 @@ class TestLogspaceOpZeroBaseCase(TestLogspaceOpCommonCase):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([0]).astype(dtype),
         }
-        self.attrs = {'dtype': int(paddle.float32)}
+        self.attrs = {'dtype': paddle.float32}
         self.outputs = {'Out': np.power(0, np.arange(0, 11)).astype(dtype)}
 
 

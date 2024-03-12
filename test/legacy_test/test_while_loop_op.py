@@ -295,7 +295,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             feed_i = np.ones(1).astype('float32')
             feed_x = np.ones(1).astype('float32')
             data = np.asarray([100]).astype('float32')
-            i_grad = np.asarray([0]).astype('float32')
+            i_grad = np.asarray([20]).astype('float32')
             x_grad = np.asarray([0]).astype('float32')
 
             for p, g in grad_list:
@@ -308,6 +308,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                 feed={'i': feed_i, 'x': feed_x},
                 fetch_list=[mean, di, dx],
             )
+
             np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
             np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
             np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
@@ -372,7 +373,8 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
     # TODO(zhangbo): Support while grad exe for pir
-    # @test_with_pir_api
+
+    @test_with_pir_api
     def test_nested_net_with_backward_and_lodtensor(self):
         def external_cond(i, j, x, mem_array):
             return paddle.less_than(i, array_len)
@@ -456,7 +458,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
             d = []
             for i in range(3):
-                d.append(np.random.random(size=[10]).astype('float32'))
+                d.append(np.ones(10).astype('float32'))
             feed_x = np.ones(10).astype('float32')
             data_sum = d[0] + d[1] + d[2] + 3 * feed_x
             x_grad = [0.3] * 10
@@ -478,7 +480,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             np.testing.assert_allclose(res[0], data_sum, rtol=1e-05)
             np.testing.assert_allclose(res[1], x_grad, rtol=1e-05)
 
-    def _test_while_with_inplace(self):
+    def test_while_backward_with_inplace(self):
         with paddle.pir_utils.IrGuard():
 
             def internal_cond(i, x, mem_array):
@@ -519,9 +521,9 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                 j = paddle.increment(j)
                 dmem1 = paddle.tensor.array_read(dmem_array, j)
                 j = paddle.increment(j)
-                dmem2 = paddle.tensor.array_read(mem_array, j)
+                dmem2 = paddle.tensor.array_read(dmem_array, j)
                 j = paddle.increment(j)
-                dmem3 = paddle.tensor.array_read(mem_array, j)
+                dmem3 = paddle.tensor.array_read(dmem_array, j)
                 place = (
                     base.CUDAPlace(0)
                     if core.is_compiled_with_cuda()
@@ -531,29 +533,23 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
                 feed_x = np.ones(10).astype('float32')
 
-                if paddle.framework.in_pir_mode():
-                    res = exe.run(
-                        main_program,
-                        feed={"x": feed_x},
-                        fetch_list=[out, dx],  # dmem0, dmem1, dmem2, dmem3],
-                    )
-                else:
-                    res = exe.run(
-                        main_program,
-                        feed={"x": feed_x},
-                        fetch_list=[out, dx],  # dmem0, dmem1, dmem2, dmem3],
-                    )
+                res = exe.run(
+                    main_program,
+                    feed={"x": feed_x},
+                    fetch_list=[out, dx, dmem0, dmem1, dmem2, dmem3],
+                )
 
-                # print("out = ", res[0], [3] * 10)
-                # print("dx = ", res[1], [0.3] * 10)
-                # print("dmem0 = ", res[2], [0.0] * 10)
-                # print("dmem1 = ", res[3], [0.0] * 10)
-                # print("dmem2 = ", res[4], [0.0] * 10)
-                # print("dmem3 = ", res[5], [0.0] * 10)
+                np.testing.assert_allclose(res[0], [3] * 10, rtol=1e-05)
+                np.testing.assert_allclose(res[1], [0.3] * 10, rtol=1e-05)
+                np.testing.assert_allclose(res[2], [0.0] * 10, rtol=1e-05)
+                np.testing.assert_allclose(res[3], [0.0] * 10, rtol=1e-05)
+                np.testing.assert_allclose(res[4], [0.0] * 10, rtol=1e-05)
+                np.testing.assert_allclose(res[5], [0.0] * 10, rtol=1e-05)
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_with_switch_case(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -688,7 +684,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
             self.assertRaises(TypeError, type_error_cond_returns_not_variable)
 
-            # The type of `cond` returns in Op(while_loop) must be a bollean variable
+            # The type of `cond` returns in Op(while_loop) must be a boolean variable
             def type_error_cond_returns_not_boolean():
                 out = paddle.static.nn.while_loop(
                     cond_returns_not_bool_tensor, body, [data_1d]

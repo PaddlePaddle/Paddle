@@ -88,20 +88,20 @@ def get_metric(results):
     assert isinstance(
         results, dict
     ), f"results should be type of dictionary, but got {type(results)}."
-    if 'Throughtput' in results and isinstance(results['Throughtput'], float):
-        return float(results['Throughtput'])
+    if 'Throughput' in results and isinstance(results['Throughput'], float):
+        return float(results['Throughput'])
     else:
         return -1.0
 
 
 def parse_results(results):
-    if results['Throughtput'] > 0:
-        return "Throughtput: {} step / s.".format(results['Throughtput'])
+    if results['Throughput'] > 0:
+        return "Throughput: {} step / s.".format(results['Throughput'])
     et = results.get("ErrorType", None)
     if et == "ResourceExhaustedError":
         return "Fail with OOM"
     else:
-        return "Fail with UNKWON ERROR"
+        return "Fail with UNKNOWN ERROR"
 
 
 # TODO only dependent on dist context
@@ -241,7 +241,7 @@ class OptimizationTuner:
     def device_id(self):
         return paddle.distributed.ParallelEnv().device_id
 
-    # TODO Generate compelet program with all parts like forward, backward, update
+    # TODO Generate complete program with all parts like forward, backward, update
     # as well as parallelism transformation.
     def _build_programs_without_optimization(self):
         serial_main_program = self._baseline_dist_context.serial_main_program
@@ -512,7 +512,7 @@ class OptimizationTuner:
                 results = json.load(fp)
             return results
         except FileNotFoundError:
-            Error_results = {"Throughtput": -1, "ErrorType": 'FatalError'}
+            Error_results = {"Throughput": -1, "ErrorType": 'FatalError'}
             return Error_results
 
     def _evaluate_trial(self, trial):
@@ -539,9 +539,9 @@ class OptimizationTuner:
     def _update(self, i, trial, results):
         self._finished_trials.append(trial)
 
-        cur_mertic = get_metric(results)
-        if self._best_metric is None or cur_mertic > self._best_metric:
-            self._best_metric = cur_mertic
+        cur_metric = get_metric(results)
+        if self._best_metric is None or cur_metric > self._best_metric:
+            self._best_metric = cur_metric
             self._best_iter = i
 
     def _get_trial_dir(self, trial):

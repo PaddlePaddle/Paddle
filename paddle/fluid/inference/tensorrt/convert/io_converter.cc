@@ -45,7 +45,7 @@ class DefaultIOConverter : public EngineIOConverter {
         size,
         max_size,
         platform::errors::InvalidArgument(
-            "The input Tensor in's memory_size shoule be less than or equal to "
+            "The input Tensor in's memory_size should be less than or equal to "
             "the input max_size. But in's memory_size = %u, max_size = %u.",
             size,
             max_size));
@@ -81,7 +81,7 @@ class DefaultIOConverter : public EngineIOConverter {
         size,
         max_size,
         platform::errors::InvalidArgument(
-            "The input Tensor out's memory_size shoule be less than or equal "
+            "The input Tensor out's memory_size should be less than or equal "
             "to the input max_size. "
             "But out's memory_size = %u, max_size = %u.",
             size,

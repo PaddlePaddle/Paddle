@@ -115,7 +115,7 @@ class LRNOneDNNHandler
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
@@ -162,7 +162,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
@@ -211,8 +211,6 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(lrn, MKLDNN, phi::CPUPlace, ops::LRNMKLDNNOpKernel<float>);
-REGISTER_OP_KERNEL(lrn_grad,
-                   MKLDNN,
-                   phi::CPUPlace,
-                   ops::LRNMKLDNNGradOpKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(lrn, OneDNN, ONEDNN, ops::LRNMKLDNNOpKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lrn_grad, OneDNN, ONEDNN, ops::LRNMKLDNNGradOpKernel, float) {}

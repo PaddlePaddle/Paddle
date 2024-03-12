@@ -95,7 +95,7 @@ def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
 
     assert (
         rank_num < 2
-    ) is False, "rank_num should greater than or equal to 2 for parallel environment initialzation."
+    ) is False, "rank_num should greater than or equal to 2 for parallel environment initialization."
 
     # init gloo context
     manager = Manager()
@@ -189,7 +189,7 @@ def gloo_barrier():
             ...     test_gloo_barrier_with_multiprocess(2)
     """
 
-    assert _global_gloo_ctx is not None, "gloo context is not initialzed."
+    assert _global_gloo_ctx is not None, "gloo context is not initialized."
     _global_gloo_ctx.barrier()
 
 

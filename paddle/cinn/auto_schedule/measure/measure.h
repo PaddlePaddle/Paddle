@@ -70,7 +70,7 @@ class ScheduleBuilder {
 };
 
 // This interface defines how to run the built result. Like above
-// ScheduleBuilder, a runner shoule be implemented with not bound to a specific
+// ScheduleBuilder, a runner should be implemented with not bound to a specific
 // task.
 class ScheduleRunner {
  public:

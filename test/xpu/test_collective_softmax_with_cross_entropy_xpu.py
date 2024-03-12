@@ -21,6 +21,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_uint16_to_float
 from test_collective_base_xpu import DataTypeCast, TestDistBase
 
 import paddle
@@ -154,15 +155,30 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             # get real result
             loss0, softmax0, logits_grad0 = tr0_out
             loss1, softmax1, logits_grad1 = tr1_out
+            if dtype == "bfloat16":
+                loss0 = convert_uint16_to_float(loss0)
+                softmax0 = convert_uint16_to_float(softmax0)
+                logits_grad0 = convert_uint16_to_float(logits_grad0)
+                loss1 = convert_uint16_to_float(loss1)
+                softmax1 = convert_uint16_to_float(softmax1)
+                logits_grad1 = convert_uint16_to_float(logits_grad1)
             softmax = np.concatenate((softmax0, softmax1), axis=1)
             logits_grad = np.concatenate((logits_grad0, logits_grad1), axis=1)
 
             # compare results
             rtol = 1e-6
-            np.testing.assert_allclose(loss0, need_loss, rtol=rtol)
-            np.testing.assert_allclose(loss1, need_loss, rtol=rtol)
-            np.testing.assert_allclose(softmax, need_softmax, rtol=rtol)
-            np.testing.assert_allclose(logits_grad, need_logits_grad, rtol=rtol)
+            atol = 0
+            if dtype == "bfloat16":
+                rtol = 0.1
+                atol = 0.1
+            np.testing.assert_allclose(loss0, need_loss, rtol=rtol, atol=atol)
+            np.testing.assert_allclose(loss1, need_loss, rtol=rtol, atol=atol)
+            np.testing.assert_allclose(
+                softmax, need_softmax, rtol=rtol, atol=atol
+            )
+            np.testing.assert_allclose(
+                logits_grad, need_logits_grad, rtol=rtol, atol=atol
+            )
 
 
 support_types = get_xpu_op_support_types('c_softmax_with_cross_entropy')
@@ -171,7 +187,7 @@ for stype in support_types:
         globals(),
         XPUTestCSoftmaxWithCEOP,
         stype,
-        ignore_device_version=[core.XPUVersion.XPU1],
+        ignore_device_version=[core.XPUVersion.XPU1, core.XPUVersion.XPU3],
     )
 
 if __name__ == '__main__':

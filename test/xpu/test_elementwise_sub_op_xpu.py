@@ -66,7 +66,8 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
             if self.dtype == np.uint16:
                 tmp_x = self.reshape_data(self.x, self.y)
                 tmp_y = self.reshape_data(self.y, self.x)
-                self.outputs = {'Out': tmp_x - tmp_y}
+                tmp_out = tmp_x - tmp_y
+                self.outputs = {'Out': convert_float_to_uint16(tmp_out)}
                 self.x = convert_float_to_uint16(self.x)
                 self.y = convert_float_to_uint16(self.y)
             else:
@@ -74,8 +75,8 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
                 tmp_y = self.reshape_data(self.y, self.x).astype(self.dtype)
                 self.outputs = {'Out': tmp_x - tmp_y}
             self.inputs = {
-                'X': self.x,
-                'Y': self.y,
+                'X': self.x.astype(self.dtype),
+                'Y': self.y.astype(self.dtype),
             }
 
         def init_shape(self):
@@ -92,7 +93,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
-        def test_check_grad_ingore_x(self):
+        def test_check_grad_ignore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
@@ -103,7 +104,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
                     no_grad_set=set("X"),
                 )
 
-        def test_check_grad_ingore_y(self):
+        def test_check_grad_ignore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(

@@ -178,8 +178,8 @@ Variable Program::fused_meta_batchnorm_inference(
   CHECK(!scale->shape.empty()) << "scale's shape is empty.";
   auto broadcast_eps = primitive_broadcast_to(eps_var, scale->shape, {0});
   auto var_add_eps = add(variance, broadcast_eps);
-  auto rsrqt_var = primitive_rsqrt(var_add_eps);
-  auto new_scale = multiply(rsrqt_var, scale);
+  auto rsqrt_var = primitive_rsqrt(var_add_eps);
+  auto new_scale = multiply(rsqrt_var, scale);
   auto neg_mean = primitive_negative(mean);
   auto new_shift = multiply(new_scale, neg_mean);
   auto shift_bias = add(new_shift, bias);
@@ -207,8 +207,8 @@ Variable Program::fused_batchnorm_inference(
       primitive_const_scalar<float>(epsilon, cinn::common::UniqName("epsilon"));
   CHECK(!scale->shape.empty()) << "scale's shape is empty.";
   auto var_add_eps = elementwise_add(variance, eps_var);
-  auto rsrqt_var = primitive_rsqrt(var_add_eps);
-  auto new_scale = elementwise_mul(rsrqt_var, scale);
+  auto rsqrt_var = primitive_rsqrt(var_add_eps);
+  auto new_scale = elementwise_mul(rsqrt_var, scale);
   auto neg_mean = primitive_negative(mean);
   auto new_shift = elementwise_mul(new_scale, neg_mean);
   auto shift_bias = elementwise_add(new_shift, bias);

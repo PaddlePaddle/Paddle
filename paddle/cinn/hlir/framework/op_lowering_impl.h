@@ -28,9 +28,9 @@
 #include "paddle/cinn/lang/packed_func.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
-// Elementwise/Broadcast/Injective,Reduce,OutEWiseFusable,NonFusible.
-// Elementwise/Broadcast/Injective Ops is with same shcedule.
-// Reduce,OutEWiseFusable,NonFusible are using different schedule.
+// Elementwise/Broadcast/Injective,Reduce,OutEWiseFusible,NonFusible.
+// Elementwise/Broadcast/Injective Ops is with same schedule.
+// Reduce,OutEWiseFusible,NonFusible are using different schedule.
 
 namespace cinn {
 namespace hlir {
@@ -183,7 +183,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   const absl::flat_hash_map<std::string, Type>& type_dict_;
   const absl::flat_hash_map<std::string, shape_t>& shape_dict_;
 
-  // fucntion name prefix
+  // function name prefix
   const std::string func_name_prefix = "fn_";
 };
 

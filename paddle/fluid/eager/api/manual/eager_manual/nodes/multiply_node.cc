@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
@@ -29,9 +30,8 @@
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_custom_impl.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 MultiplyGradNode::operator()(
@@ -167,11 +167,11 @@ MultiplyGradNode::operator()(
       auto grad_node = std::shared_ptr<MultiplyDoubleGradNode>(  // NOLINT
           new MultiplyDoubleGradNode(2, 3));
       // SetAttributes if needed
-      grad_node->SetAttributeaxis(axis);
+      grad_node->SetAttribute_axis(axis);
       // Set TensorWrappers for Forward Inputs if needed
-      grad_node->SetTensorWrapperx(x);
-      grad_node->SetTensorWrappery(y);
-      grad_node->SetTensorWrappergrad_out(grad_out);
+      grad_node->SetTensorWrapper_x(x);
+      grad_node->SetTensorWrapper_y(y);
+      grad_node->SetTensorWrapper_grad_out(grad_out);
       // SetGradOutMeta & SetEdges
       grad_node->SetGradOutMeta(x, 0);
       grad_node->SetGradOutMeta(y, 1);

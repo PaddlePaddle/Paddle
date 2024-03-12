@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle import base
 
 
 def add_fn(x):
@@ -406,7 +405,7 @@ def if_with_class_var(x, y=None):
 
 
 def if_tensor_case(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.assign(x)
     mean = paddle.mean(x)
     # It is equivalent to `if mean != 0`
     if mean:

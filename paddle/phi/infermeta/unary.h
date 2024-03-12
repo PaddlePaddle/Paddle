@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -67,6 +66,12 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
+
+void TensorToArrayInferMeta(const MetaTensor& x,
+                            const MetaTensor& out_grad,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* x_grad);
 
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
@@ -131,6 +136,8 @@ void CropInferMeta(const MetaTensor& x,
                    const IntArray& offsets,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
+
+void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void CumInferMeta(const MetaTensor& x,
                   int axis,
@@ -269,6 +276,15 @@ void FoldInferMeta(const MetaTensor& x,
                    const std::vector<int>& dilations,
                    MetaTensor* out);
 
+void FractionalMaxPoolInferMeta(const MetaTensor& x,
+                                const std::vector<int>& output_size,
+                                const std::vector<int>& kernel_size,
+                                float random_u,
+                                bool return_mask,
+                                MetaTensor* out,
+                                MetaTensor* mask,
+                                MetaConfig config = MetaConfig());
+
 void FrameInferMeta(const MetaTensor& x,
                     int frame_length,
                     int hop_length,
@@ -314,7 +330,7 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaTensor* indices,
                        MetaConfig = MetaConfig());
 
-void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out);
+void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void LogsumexpInferMeta(const MetaTensor& input,
                         const std::vector<int64_t>& axis,
@@ -419,6 +435,13 @@ void Pad3dInferMeta(const MetaTensor& x,
                     const std::string& data_format,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
+
+void PartialSendInferMeta(const MetaTensor& x,
+                          int ring_id,
+                          int peer,
+                          bool use_calc_stream,
+                          int num,
+                          int id);
 
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
@@ -566,7 +589,7 @@ void RReluGradInferMeta(const MetaTensor& out_grad,
 
 void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  const Scalar& max_len,
-                                 int out_dtype,
+                                 DataType out_dtype,
                                  MetaTensor* y);
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
@@ -729,7 +752,7 @@ void UnbindInferMeta(const MetaTensor& x,
                      std::vector<MetaTensor*> outs);
 
 void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
-
+void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -808,5 +831,16 @@ void NumberCountInferMeta(const MetaTensor& x,
                           MetaTensor* out);
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void LrnInferMeta(const MetaTensor& x,
+                  int n,
+                  MetaTensor* out,
+                  MetaTensor* mid_out);
+
+void ArrayPopInferMeta(const MetaTensor& array,
+                       int index,
+                       MetaTensor* array_out,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
 
 }  // namespace phi

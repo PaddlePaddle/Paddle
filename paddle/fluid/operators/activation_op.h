@@ -371,7 +371,7 @@ struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
 
 // TODO(dengkaipeng): double gradient calculation for Square/Sqrt need
 // DOut(dy) as input(not output), tensor extraction is different from
-// others. Impliment extraction kernel separately here.
+// others. Implement extraction kernel separately here.
 inline void ExtractDoubleGradTensorWithInputDOut(
     const framework::ExecutionContext& ctx,
     const phi::DenseTensor** X,

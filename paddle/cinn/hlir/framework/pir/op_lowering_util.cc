@@ -61,7 +61,7 @@ std::vector<::pir::Operation*> GetConsumersInSet(
 std::vector<::pir::Operation*> GetProducers(::pir::Operation* op) {
   std::vector<::pir::Operation*> producers;
   for (auto& source : op->operands_source()) {
-    auto* producer_op = source.dyn_cast<::pir::OpResult>().owner();
+    auto* producer_op = source.defining_op();
     CHECK(producer_op);
     producers.push_back(producer_op);
   }
@@ -448,7 +448,7 @@ bool CanbeInline(::pir::Operation* op,
         done_schedule.insert(tmp);
       }
     }
-    // remove all consuemr reducer node of node from done_schedule.
+    // remove all consumer reducer node of node from done_schedule.
     std::unordered_set<::pir::Operation*> visited;
     std::queue<::pir::Operation*> candidates;
     candidates.push(op);
@@ -727,7 +727,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
           // the loop size at axis is 1, need remove
           axes_shift_num[j] = -1;
         } else if (axes[j] > idx) {
-          // the axies value need left shift
+          // the axes value need left shift
           axes_shift_num[j]++;
         }
       }
@@ -1565,7 +1565,7 @@ void SyncThreadWithShared(
       continue;
     }
     auto op_data = op_out_set.find(block->name)->second;
-    auto* op = op_data.dyn_cast<::pir::OpResult>().owner();
+    auto* op = op_data.defining_op();
     auto op_shape = CompatibleInfo::ValueShape(op_data);
 
     auto masters = GetMasters(op, pretty_name, ops_inline, ops_set);

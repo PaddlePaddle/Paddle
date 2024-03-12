@@ -76,6 +76,12 @@ void CastKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DataType out_dtype,
                 DenseTensor* out) {
+  if (x.dtype() == out_dtype) {
+    if (!out->IsSharedWith(x)) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
   switch (out_dtype) {
     case DataType::INT32:
       CastXPUKernelImpl<T, int, Context>(dev_ctx, x, out);

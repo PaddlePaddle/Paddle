@@ -147,7 +147,7 @@ void TopkKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
-  // axis < 0, cacluate the real axis
+  // axis < 0, calculate the real axis
   if (axis < 0) {
     axis += in_dims.size();
   }
@@ -161,7 +161,7 @@ void TopkKernel(const Context& dev_ctx,
 
   if (k_scalar.FromTensor()) {
     auto out_dims = out->dims();
-    // accroding to axis to set K value in the dim
+    // according to axis to set K value in the dim
     out_dims[axis] = k;
     out->Resize(out_dims);
     indices->Resize(out_dims);
@@ -184,7 +184,7 @@ void TopkKernel(const Context& dev_ctx,
                          largest,
                          sorted);
   } else {
-    // if the topk dims is not last dim, will tranpose and do topk
+    // if the topk dims is not last dim, will transpose and do topk
     std::vector<int> trans;
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);

@@ -23,6 +23,10 @@ from paddle import framework
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
+from paddle.distributed.communication.reduce import (
+    ReduceOp,
+    is_avg_reduce_op_supported,
+)
 
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
@@ -56,10 +60,10 @@ class DygraphShardingOptimizer:
     """
 
     # TODO (JZ-LIANG)
-    # TO support following featrues in future:
+    # TO support following features in future:
     # 1. fused update parameter sync
     # 2. parameters_groups
-    # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
+    # 3. dynamic trainable params, which is the case between pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
     def __init__(self, optimizer, hcg):
@@ -73,9 +77,9 @@ class DygraphShardingOptimizer:
             optimizer._apply_optimize
         ):
             raise ValueError(
-                "the optimzier object should have _apply_optimize function"
+                "the optimizer object should have _apply_optimize function"
             )
-        # the self._parameter_list holds the whole model paramters
+        # the self._parameter_list holds the whole model parameters
         self._parameter_list = optimizer._parameter_list
         self._origin_parameter_list = self._parameter_list
         self._inner_opt = optimizer
@@ -97,6 +101,15 @@ class DygraphShardingOptimizer:
         self.fuse_optimizer = strategy.hybrid_configs[
             'sharding_configs'
         ].fuse_optimizer
+        self.use_reduce_avg = strategy.hybrid_configs[
+            'sharding_configs'
+        ].use_reduce_avg
+        if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
+            self.use_reduce_avg = False
+            warnings.warn(
+                "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
+            )
+
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
@@ -161,12 +174,12 @@ class DygraphShardingOptimizer:
                     '_apply_decay_param_fun', apply_decay_param_fun
                 )
             # Note: during the tensor fusion for parameters, the allocator will apply for
-            # some extra GPU memory for the fused big paramters. This extra GPU memory will
+            # some extra GPU memory for the fused big parameters. This extra GPU memory will
             # be useless at once the fusion has done. But the Paddle's allocator won't
             # release those memory, it will hold that part in the memory poll. So after
             # tensor fusion, the 'reserved' memory will increase but the 'allocate' memory
             # won't change. To avoid failure on some other applications (such as some nvtx
-            # operations), here we manulay let the allocator release the cached memory.
+            # operations), here we manually let the allocator release the cached memory.
             paddle.device.cuda.empty_cache()
 
     def clear_grad(self, set_to_zero=True):
@@ -207,6 +220,7 @@ class DygraphShardingOptimizer:
                 acc_step=self.accumulate_steps,
                 scale_after_comm=False,
                 apply_decay_param_fun=self.origin_decay_param_fun,
+                use_reduce_avg=self.use_reduce_avg,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer
@@ -224,7 +238,7 @@ class DygraphShardingOptimizer:
         """
         # TODO(JZ-LIANG) support multiple partition methods
         # method1: greedy even but unorder
-        # method2: roughly even with oreder
+        # method2: roughly even with order
 
         mapping = {}
         for rank_ in range(self._sharding_world_size):
@@ -281,7 +295,6 @@ class DygraphShardingOptimizer:
                 buffer.scale_grads()
             return
         with framework.no_grad():
-            sharding_nrank = hcg.get_sharding_parallel_group().nranks
             for param in parameter_list:
                 g_var = None
                 if param.trainable and (param._grad_ivar() is not None):
@@ -292,11 +305,14 @@ class DygraphShardingOptimizer:
                     ), "param.grad should be None when using main_grad"
                     g_var = param.main_grad
                 if g_var is not None:
-                    g_var.scale_(1.0 / sharding_nrank)
+                    reduce_op = (
+                        ReduceOp.AVG if self.use_reduce_avg else ReduceOp.SUM
+                    )
                     param_rank = self._param2rank[param.name]
                     if not g_shard_use_reduce:
                         paddle.distributed.all_reduce(
                             g_var,
+                            op=reduce_op,
                             group=hcg.get_sharding_parallel_group(),
                             sync_op=True,
                         )
@@ -307,6 +323,7 @@ class DygraphShardingOptimizer:
                             dst=hcg.get_sharding_parallel_group().ranks[
                                 param_rank
                             ],
+                            op=reduce_op,
                             group=hcg.get_sharding_parallel_group(),
                             sync_op=True,
                         )
@@ -478,10 +495,10 @@ class DygraphShardingOptimizerV2:
     """
 
     # TODO (JZ-LIANG)
-    # TO support following featrues in future:
+    # TO support following features in future:
     # 1. fused update parameter sync
     # 2. parameters_groups
-    # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
+    # 3. dynamic trainable params, which is the case between pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
     # 5. do not shard small params
 
@@ -500,7 +517,7 @@ class DygraphShardingOptimizerV2:
             optimizer._apply_optimize
         ):
             raise ValueError(
-                "the optimzier object should have _apply_optimize function"
+                "the optimizer object should have _apply_optimize function"
             )
 
         self._inner_opt = optimizer
@@ -560,7 +577,7 @@ class DygraphShardingOptimizerV2:
         # Determine the use of pipeline parallelism
         self._use_pipeline_parallel = strategy.hybrid_configs["pp_degree"] > 1
 
-        # Ensure pipelie parallel and comm_overlap are not used together
+        # Ensure pipeline parallel and comm_overlap are not used together
         if self._use_pipeline_parallel:
             assert (
                 not self.comm_overlap

@@ -19,7 +19,7 @@ from paddle.base import core
 from paddle.base.framework import Program
 from paddle.utils import gast
 
-from .utils import ORIGI_INFO
+from .utils import ORIGIN_INFO
 
 __all__ = []
 
@@ -69,7 +69,7 @@ class OriginInfo:
             self.location, self.source_code, self.function_name
         )
 
-    def formated_message(self):
+    def formatted_message(self):
         flag_for_origin_info = "(* user code *)"
         return '    File "{}", line {}, in {} {}\n\t{}'.format(
             self.location.filepath,
@@ -130,7 +130,7 @@ class OriginInfoAttacher(gast.NodeTransformer):
         code_line = self.source_lines[node.lineno - 1]
 
         origin_info = OriginInfo(loc, func_name, code_line)
-        setattr(node, ORIGI_INFO, origin_info)
+        setattr(node, ORIGIN_INFO, origin_info)
 
     def _abs_lineno(self, node):
         return self.lineno_offset + node.lineno
@@ -167,8 +167,8 @@ def create_and_update_origin_info_map(
         ), "The node types should be the same, but received type(t_node) is {}, and type(s_node) is {}.".format(
             type(t_node), type(s_node)
         )
-        dygraph_info = getattr(t_node, ORIGI_INFO, None)
-        static_info = getattr(s_node, ORIGI_INFO, None)
+        dygraph_info = getattr(t_node, ORIGIN_INFO, None)
+        static_info = getattr(s_node, ORIGIN_INFO, None)
 
         if dygraph_info is None or static_info is None:
             continue

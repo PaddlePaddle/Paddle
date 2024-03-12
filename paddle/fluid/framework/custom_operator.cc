@@ -45,11 +45,14 @@ limitations under the License. */
 #include "paddle/phi/capi/include/c_meta_tensor.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_string(tensor_operants_mode);
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+
+COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace framework {
@@ -542,7 +545,7 @@ static void RunInferShapeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutputs(out_name)) {
         auto in_name = inplace_reverse_map.at(out_name);
@@ -793,7 +796,7 @@ static void RunInferDtypeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       auto in_name = inplace_reverse_map.at(out_name);
       // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutput(out_name)) {
@@ -1275,8 +1278,27 @@ void RegisterOperatorWithMetaInfoMap(
   VLOG(3) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
   // pair: {op_type, OpMetaInfo}
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  auto* custom_dialect =
+      ctx->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();
   for (auto& pair : meta_info_map) {
     VLOG(3) << "Custom Operator: pair first -> op name: " << pair.first;
+
+    // Register PIR op
+
+    if (custom_dialect->HasRegistered(pair.first)) {
+      LOG(INFO) << "The operator `" << pair.first
+                << "` has been registered. "
+                   "Therefore, we will not repeat the registration here.";
+      continue;
+    }
+    for (const auto& meta_info : pair.second) {
+      LOG(INFO) << "register pir custom op :"
+                << OpMetaInfoHelper::GetOpName(meta_info);
+      custom_dialect->RegisterCustomOp(meta_info);
+    }
+
+    // Register Fluid op
     RegisterOperatorWithMetaInfo(pair.second, dso_handle);
   }
 }

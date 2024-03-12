@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 import paddle
+from paddle.framework import use_pir_api
+from paddle.pir.core import vartype_to_datatype
 
 from ....infer_meta import MetaInfo
 from ....symbolic.statement_ir import Symbol
@@ -207,7 +209,7 @@ class PrintStmtVariable(VariableBase):
             self.graph.add_global_guarded_variable(var)
         for var in self.kwargs.values():
             self.graph.add_global_guarded_variable(var)
-        # currently dont' consider kwargs
+        # currently don't consider kwargs
         codegen.gen_load_global("print", push_null=True)
         for var in self.args:
             var.reconstruct(codegen)
@@ -230,7 +232,7 @@ class DataVariable(VariableBase):
     """
     A value only object.
     If it's all magic method don't change the function_graph state, [tensor op, guard, side_effect]
-    we will call it a ValueObjectVariable, we directy call python operator on it.
+    we will call it a ValueObjectVariable, we directly call python operator on it.
     """
 
     def __init__(
@@ -267,6 +269,34 @@ class TensorDtypeVariable(DataVariable):
             ]
         else:
             return object_equal_stringify_guard(self)
+
+    def get_py_value(self, allow_tensor=False):
+        if use_pir_api() and isinstance(
+            self.value, paddle.base.core.VarDesc.VarType
+        ):
+            return vartype_to_datatype[self.value]
+        return super().get_py_value(allow_tensor)
+
+    def get_py_type(self):
+        if use_pir_api() and isinstance(
+            self.value, paddle.base.core.VarDesc.VarType
+        ):
+            return paddle.pir.core.DataType
+        return super().get_py_type()
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        # dtype of paddle.Tensor is hashable, we can just load it as const var
+        if use_pir_api() and isinstance(
+            self.value, paddle.base.core.VarDesc.VarType
+        ):
+            assert (
+                self.value in paddle.pir.core.vartype_to_datatype
+            ), f"Unknow dtype {self.value}"
+            codegen.gen_load_const(
+                paddle.pir.core.vartype_to_datatype[self.value]
+            )
+        else:
+            codegen.gen_load_const(self.value)
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -869,18 +899,18 @@ class GlobalVariable(VariableBase):
     def get(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {key} to get value."
+                f"[{self.__class__.__name__}]: received {key} to get value."
             )
         return self.proxy.get(key)
 
     def set(self, key, value):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {key} as key."
+                f"[{self.__class__.__name__}]: received {key} as key."
             )
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {value} to set value."
+                f"[{self.__class__.__name__}]: received {value} to set value."
             )
         self.proxy.set(key, value)
         self.graph.side_effects.record_proxy_variable(self)

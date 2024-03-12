@@ -18,15 +18,36 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace framework {
 
 void CustomKernelInstruction::BuildCustomContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
+  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
+  // check inplace
+  for (auto const& pair : op_inplace_map) {
+    pir::Value output_value =
+        op_->result(op_yaml_info.OutputName2Id().at(pair.second));
+    if (paddle::framework::detail::IsDuplicableVar(pair.first) &&
+        !IsInvalid(output_value)) {
+      // make sure ctx has valid inplace optional outputs
+      PADDLE_ENFORCE(
+          paddle::framework::detail::IsOptionalVar(pair.second),
+          phi::errors::InvalidArgument(
+              "Custom operator couldn't find custom output name for %s. If "
+              "you are using inplace optional inputs & outputs, please "
+              "check "
+              "your InplaceMap and `Outputs` again and make sure %s is "
+              "wrapped by `paddle::Optional`",
+              pair.second,
+              pair.second));
+    }
+  }
+
   Scope* inner_scope = value_exec_info_.GetScope();
   VLOG(6) << "Build custom op infermeta param inner_scope[" << inner_scope
           << "]";
@@ -36,6 +57,9 @@ void CustomKernelInstruction::BuildCustomContext(
   // EmplaceBackInputs
   auto& vec_input_tensor_params = op_yaml_info.TensorParams(true);
   auto& name2id = op_yaml_info.InputName2Id();
+  auto inplace_id_map = op_yaml_info.GetInplaceIdMap();
+  int input_index = 0;
+  int vec_input_index = 0;
   for (auto& t : vec_input_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(t),
@@ -43,12 +67,12 @@ void CustomKernelInstruction::BuildCustomContext(
         phi::errors::NotFound("param [%s] MUST in name2id map", t));
 
     pir::Value ptr = op_->operand_source(op_yaml_info.InputName2Id().at(t));
-
     if (!IsInvalid(ptr)) {
       if (op_yaml_info.GetInputType(op_yaml_info.InputName2Id().at(t)) ==
           "pir::VectorType<paddle::dialect::DenseTensorType>") {
-        vec_input_shapes_.emplace_back();
-        vec_input_dtypes_.emplace_back();
+        vec_input_name2id_map_[t] = vec_input_index;
+        vec_input_index++;
+        vec_input_ptrs_.emplace_back();
         // NOTE(YuanRisheng): In dygraph mode, we can not distinguish Tensor and
         // vector<Tensor> when user inputs None, so dygraph mode appends one
         // un-initialized Tensor to CustomOpKernelContext. To be compatible with
@@ -58,15 +82,16 @@ void CustomKernelInstruction::BuildCustomContext(
         custom_vec_in.emplace_back(paddle::Tensor());
         custom_kernel_ctx_.EmplaceBackInputs(std::move(custom_vec_in));
       } else {
-        input_shapes_.emplace_back();
-        input_dtypes_.emplace_back();
+        input_name2id_map_[t] = input_index;
+        input_index++;
+        input_ptrs_.emplace_back(nullptr);
         custom_kernel_ctx_.EmplaceBackInput(std::move(paddle::Tensor()));
       }
-      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
+      VLOG(8) << "ctx->EmplaceBackInput : an optional input " << t;
       continue;
     }
-
     auto in_var_name = value_exec_info_.GetVarName(ptr);
+
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
@@ -75,18 +100,19 @@ void CustomKernelInstruction::BuildCustomContext(
     auto var = inner_scope->FindVar(in_var_name);
     if (var->IsType<phi::DenseTensor>()) {
       auto dense_tensor_in = var->GetMutable<phi::DenseTensor>();
+
       std::shared_ptr<phi::DenseTensor> tensor_in(
           dense_tensor_in, [](phi::DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });
-      input_shapes_.push_back(phi::vectorize(tensor_in->dims()));
-      input_dtypes_.push_back(tensor_in->dtype());
+      input_name2id_map_[t] = input_index;
+      input_index++;
+      input_ptrs_.push_back(dense_tensor_in);
       paddle::Tensor custom_in;
       custom_in.set_impl(tensor_in);
       custom_kernel_ctx_.EmplaceBackInput(std::move(custom_in));
     } else if (var->IsType<VariableRefArray>()) {
-      std::vector<std::vector<int64_t>> vec_input_shape;
-      std::vector<phi::DataType> vec_input_dtype;
+      std::vector<phi::DenseTensor*> vec_input_ptrs;
       std::vector<paddle::Tensor> vec_custom_in;
       auto& variable_array = var->Get<VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
@@ -97,8 +123,7 @@ void CustomKernelInstruction::BuildCustomContext(
               dense_tensor_in, [](phi::DenseTensor* ptr) {
                 VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
               });
-          vec_input_shape.push_back(phi::vectorize(tensor_in->dims()));
-          vec_input_dtype.push_back(tensor_in->dtype());
+          vec_input_ptrs.push_back(dense_tensor_in);
           paddle::Tensor custom_in;
           custom_in.set_impl(tensor_in);
           vec_custom_in.push_back(std::move(custom_in));
@@ -109,15 +134,15 @@ void CustomKernelInstruction::BuildCustomContext(
               variable_array[i]->Type()));
         }
       }
-      vec_input_shapes_.push_back(vec_input_shape);
-      vec_input_dtypes_.push_back(vec_input_dtype);
+      vec_input_name2id_map_[t] = vec_input_index;
+      vec_input_index++;
+      vec_input_ptrs_.push_back(vec_input_ptrs);
       custom_kernel_ctx_.EmplaceBackInputs(vec_custom_in);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented("Not support var type [%d] ",
                                               var->Type()));
     }
   }
-
   // EmplaceBackAttributes
   auto& vec_attr_params = op_yaml_info.AttrParams(true);
   for (auto& t : vec_attr_params) {
@@ -239,18 +264,25 @@ void CustomKernelInstruction::BuildCustomContext(
   VLOG(8) << "ctx->EmplaceBackOutput: ";
   for (size_t i = 0; i < op_->num_results(); ++i) {
     pir::Value out_ptr = op_->result(i);
+    auto out_name = op_yaml_info.OutputNames()[i];
     if (!IsInvalid(out_ptr)) {
-      if (op_yaml_info.GetOutputType(i) ==
-          "pir::VectorType<paddle::dialect::DenseTensorType>") {
-        std::vector<paddle::Tensor> custom_vec_out;
-        custom_vec_out.emplace_back();
-        cache_out_ptrs_.emplace_back(nullptr);
-        custom_kernel_ctx_.EmplaceBackOutputs(std::move(custom_vec_out));
-      } else {
-        cache_out_ptrs_.emplace_back(nullptr);
-        custom_kernel_ctx_.EmplaceBackOutput(std::move(paddle::Tensor()));
-      }
-      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
+      PADDLE_ENFORCE(
+          paddle::framework::detail::IsOptionalVar(out_name) &&
+              !inplace_id_map.empty(),
+          phi::errors::InvalidArgument(
+              "Custom operator couldn't find custom output for name %s. If "
+              "you "
+              "are using inplace optional inputs & outputs, please check "
+              "your "
+              "InplaceMap and `Outputs` again and make sure %s is wrapped by "
+              "`paddle::Optional`",
+              out_name,
+              out_name));
+      VLOG(3) << "Custom Operator: BuildContext - inplace optional outputs : "
+              << out_name << " is None.";
+      custom_kernel_ctx_.EmplaceBackOutput(std::move(paddle::Tensor()));
+
+      VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;
     }
 
@@ -276,10 +308,15 @@ void CustomKernelInstruction::BuildCustomContext(
           inner_scope->FindVar(value_exec_info_.GetVarName(out_ptr))
               ->Get<VariableRefArray>();
       std::vector<paddle::Tensor> custom_vec_out;
-      for (size_t i = 0; i < variable_array.size(); ++i) {
-        if (variable_array[i]->IsType<phi::DenseTensor>()) {
+      PADDLE_ENFORCE(
+          !inplace_id_map.empty() || (i == 0UL && op_->num_results() == 1UL),
+          phi::errors::PreconditionNotMet(
+              "If custom operator's outputs contains `paddle::Vec()` type "
+              "without setting InplaceMap, it only can hold one output."));
+      for (size_t j = 0; j < variable_array.size(); ++j) {
+        if (variable_array[j]->IsType<phi::DenseTensor>()) {
           auto dense_tensor_out = const_cast<phi::DenseTensor*>(
-              &(variable_array[i]->Get<phi::DenseTensor>()));
+              &(variable_array[j]->Get<phi::DenseTensor>()));
           cache_out_ptrs_.emplace_back(dense_tensor_out);
           std::shared_ptr<phi::DenseTensor> tensor_out(
               dense_tensor_out, [](phi::DenseTensor* ptr) {
@@ -290,9 +327,9 @@ void CustomKernelInstruction::BuildCustomContext(
           custom_vec_out.push_back(std::move(custom_out));
         } else {
           PADDLE_THROW(phi::errors::Unimplemented(
-              "Only support Vector<DenseTensor> and vector<SelectedRows> now, "
+              "Only support Vector<DenseTensor> now, "
               "not support vector<%d>.",
-              variable_array[i]->Type()));
+              variable_array[j]->Type()));
         }
       }
       VLOG(8) << "ctx->EmplaceBackOutput VariableRefArray: "
@@ -303,9 +340,10 @@ void CustomKernelInstruction::BuildCustomContext(
           phi::errors::Unimplemented("only support DenseTensor and vector "));
     }
   }
+
   auto& op_inputs = OpMetaInfoHelper::GetInputs(*custom_op_meta_);
   auto& op_outputs = OpMetaInfoHelper::GetOutputs(*custom_op_meta_);
-  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
+
   // handle inplace map
   custom_kernel_ctx_.UpdatePlainOutputs(op_inputs, op_outputs, op_inplace_map);
   VLOG(6) << "Done build custom context";
@@ -408,92 +446,57 @@ void CustomKernelInstruction::UpdateOutputMeta(
   }
 }
 
+void CustomKernelInstruction::BuildShapeDtype() {
+  input_shapes_.clear();
+  input_dtypes_.clear();
+  vec_input_shapes_.clear();
+  vec_input_dtypes_.clear();
+  for (auto in_tensor : input_ptrs_) {
+    if (in_tensor) {
+      input_shapes_.push_back(phi::vectorize(in_tensor->dims()));
+      input_dtypes_.push_back(in_tensor->dtype());
+    } else {
+      input_shapes_.emplace_back();
+      input_dtypes_.emplace_back();
+    }
+  }
+  for (auto in_tensors : vec_input_ptrs_) {
+    std::vector<std::vector<int64_t>> input_shapes;
+    std::vector<phi::DataType> input_dtypes;
+    if (in_tensors.size() > 0) {
+      for (auto in_tensor : in_tensors) {
+        input_shapes.push_back(phi::vectorize(in_tensor->dims()));
+        input_dtypes.push_back(in_tensor->dtype());
+      }
+    }
+    vec_input_shapes_.push_back(input_shapes);
+    vec_input_dtypes_.push_back(input_dtypes);
+  }
+}
+
 void CustomKernelInstruction::Run() {
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
-  std::vector<std::vector<int64_t>> output_shapes;
-  std::vector<phi::DataType> output_dtypes;
-  if (infershape_func_) {
-    output_shapes =
-        infershape_func_(input_shapes_, vec_input_shapes_, custom_attrs_);
-  } else {
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetInputs(*custom_op_meta_).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple inputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the InferShapeFn. "
-            "At this time, the input shape will be directly set to "
-            "the output shape.\n"
-            "Please set the InferShapeFn of custom "
-            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetOutputs(*custom_op_meta_).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple outputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the InferShapeFn. "
-            "At this time, the input shape will be directly set to "
-            "the output shape.\n"
-            "Please set the InferShapeFn of custom "
-            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
-
-    VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
-    if (input_shapes_.size() == 1) {
-      output_shapes = input_shapes_;
-    } else if (vec_input_shapes_.size() == 1) {
-      output_shapes = vec_input_shapes_[0];
-    } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "We only allow a custom operator that contains only one input "
-          "and only one output without setting the InferShapeFn. "));
-    }
-  }
-
-  if (inferdtype_func_) {
-    output_dtypes =
-        inferdtype_func_(input_dtypes_, vec_input_dtypes_, custom_attrs_);
-  } else {
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetInputs(*custom_op_meta_).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple inputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the InferDtypeFn. "
-            "At this time, the input dtype will be directly set to "
-            "the output dtype.\n"
-            "Please set the InferDtypeFn of custom "
-            "operator by `.SetInferDtypeFn(PD_INFER_DTYPE(...))`"));
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetOutputs(*custom_op_meta_).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple outputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the InferDtypeFn. "
-            "At this time, the input dtype will be directly set to "
-            "the output dtype.\n"
-            "Please set the InferDtypeFn of custom "
-            "operator by `.SetInferDtypeFn(PD_INFER_DTYPE(...))`"));
-
-    VLOG(3) << "Custom Operator: InferDtype - share dtype.";
-    if (input_dtypes_.size() == 1) {
-      output_dtypes = input_dtypes_;
-    } else if (vec_input_dtypes_.size() == 1) {
-      output_dtypes = vec_input_dtypes_[0];
-    } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "We only allow a custom operator that contains only one input "
-          "and only one output without setting the InferDtypeFn. "));
-    }
-  }
+  BuildShapeDtype();
+  std::vector<std::vector<int64_t>> output_shapes =
+      RunInferShape(infershape_func_,
+                    *custom_op_meta_,
+                    input_shapes_,
+                    input_name2id_map_,
+                    vec_input_shapes_,
+                    vec_input_name2id_map_,
+                    custom_attrs_);
+  std::vector<phi::DataType> output_dtypes =
+      RunInferDtype(inferdtype_func_,
+                    *custom_op_meta_,
+                    input_dtypes_,
+                    input_name2id_map_,
+                    vec_input_dtypes_,
+                    vec_input_name2id_map_,
+                    custom_attrs_);
   UpdateOutputMeta(output_shapes, output_dtypes);
 
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
-  custom_kernel_ctx_.AssignInplaceOutputs();
 }
 }  // namespace framework
 }  // namespace paddle

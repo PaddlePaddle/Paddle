@@ -20,7 +20,6 @@
 
 #include <cstring>
 #include <functional>
-#include <iostream>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -51,7 +50,7 @@
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
 
-namespace py = pybind11;
+namespace py = pybind11;  // NOLINT
 
 namespace pybind11 {
 namespace detail {
@@ -861,12 +860,17 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchIrOptim,
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
+      .def("use_optimized_model",
+           &AnalysisConfig::UseOptimizedModel,
+           py::arg("x") = true)
       .def("enable_memory_optim",
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)
       .def("enable_new_executor",
            &AnalysisConfig::EnableNewExecutor,
            py::arg("x") = true)
+      .def("enable_new_ir", &AnalysisConfig::EnableNewIR, py::arg("x") = true)
+      .def("new_ir_enabled", &AnalysisConfig::new_ir_enabled)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
@@ -924,12 +928,19 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::EnableTunedTensorRtDynamicShape,
            py::arg("shape_range_info_path") = "",
+
            py::arg("allow_build_at_runtime") = true)
       .def("tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::tuned_tensorrt_dynamic_shape)
       .def("trt_allow_build_at_runtime",
            &AnalysisConfig::trt_allow_build_at_runtime)
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
+      .def("exp_disable_tensorrt_subgraph",
+           &AnalysisConfig::Exp_DisableTensorRtSubgraph)
+      .def("exp_specify_tensorrt_subgraph_precision",
+           &AnalysisConfig::Exp_SpecifyTensorRTSubgraphPrecision)
+      .def("exp_disable_tensorrt_dynamic_shape_ops",
+           &AnalysisConfig::Exp_DisableTensorRTDynamicShapeOPs)
       .def("enable_tensorrt_dla",
            &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)
@@ -974,6 +985,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
       .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
+      .def("enable_cinn", &AnalysisConfig::EnableCINN)
       .def("set_cpu_math_library_num_threads",
            &AnalysisConfig::SetCpuMathLibraryNumThreads)
       .def("cpu_math_library_num_threads",
@@ -1268,8 +1280,8 @@ void BindPaddleInferTensor(py::module *m) {
 void BindPredictorPool(py::module *m) {
   py::class_<paddle_infer::services::PredictorPool>(*m, "PredictorPool")
       .def(py::init<const paddle_infer::Config &, size_t>())
-      .def("retrive",
-           &paddle_infer::services::PredictorPool::Retrive,
+      .def("retrieve",
+           &paddle_infer::services::PredictorPool::Retrieve,
            py::return_value_policy::reference);
 }
 

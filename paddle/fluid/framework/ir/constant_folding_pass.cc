@@ -13,17 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/constant_folding_pass.h"
+
 #include <string>
 #include <vector>
 #include "glog/logging.h"
+
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -51,6 +53,37 @@ struct ConstantFolding : public PatternBase {
 };
 }  // namespace patterns
 
+namespace {
+std::unordered_set<std::string> GetControlFlowVarNames(ir::Graph *graph) {
+  std::unordered_set<std::string> control_flow_ops{"while",
+                                                   "conditional_block"};
+  std::unordered_set<std::string> control_flow_var_names;
+  for (auto *node : graph->Nodes()) {
+    if (!node->IsOp() || control_flow_ops.count(node->Op()->Type()) == 0)
+      continue;
+    for (auto const &in_names : node->Op()->Inputs()) {
+      auto var_names = in_names.second;
+      control_flow_var_names.insert(var_names.begin(), var_names.end());
+    }
+    for (auto const &out_names : node->Op()->Outputs()) {
+      auto var_names = out_names.second;
+      control_flow_var_names.insert(var_names.begin(), var_names.end());
+    }
+  }
+  return control_flow_var_names;
+}
+
+bool OutputUsedByControlFlow(ir::Node *node,
+                             const std::unordered_set<std::string> &cf_vars) {
+  for (auto out_node : node->outputs) {
+    if (cf_vars.count(out_node->Name())) {
+      return true;
+    }
+  }
+  return false;
+}
+}  // namespace
+
 ConstantFoldingPass::ConstantFoldingPass() = default;
 
 void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
@@ -69,28 +102,35 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
                                      "save",
                                      "quantize_linear",
                                      "dequantize_linear"};
+  const auto cf_vars = GetControlFlowVarNames(graph);
   int folded_op_num = 0;
 
-  auto op_node_sorted = framework::ir::TopologyVarientSort(
+  auto op_node_sorted = framework::ir::TopologyVariantSort(
       *graph, static_cast<framework::ir::SortKind>(0));
   for (auto *op_node : op_node_sorted) {
     if (!op_node->IsOp()) continue;
     if (std::find(blacklist.begin(), blacklist.end(), op_node->Name()) !=
         blacklist.end())
       continue;
-
+    if (OutputUsedByControlFlow(op_node, cf_vars)) {
+      continue;
+    }
     bool input_persis = true;
     // map is used to record how many time a name string occurs in the whole
     // graph's nodes
     std::unordered_map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
-      if (!in_node->Var()->Persistable() || !in_node->inputs.empty()) {
+      if (in_node->Var() == nullptr || !in_node->Var()->Persistable() ||
+          !in_node->inputs.empty()) {
         input_persis = false;
       }
     }
     for (auto out_node : op_node->outputs) {
       map[out_node->Name()] = 0;
+      if (out_node->Var() == nullptr) {
+        input_persis = false;
+      }
     }
     // Forbid other node in graph having the same name with nodes in map
     for (auto const &iter : map) {
