@@ -155,7 +155,7 @@ class PADDLE_API DeviceContext {
   template <typename T>
   __declspec(dllimport) T* Alloc(TensorBase* tensor,
                                  size_t requested_size = 0,
-                                 bool pinned = false) const;
+                                 bool pinned = false) ;
 #else
   template <typename T>
   T* Alloc(TensorBase* tensor,
