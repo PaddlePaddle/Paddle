@@ -51,11 +51,20 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
 
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
+#ifdef PADDLE_WITH_XPU
+    PADDLE_ENFORCE(
+        paddle::platform::is_xpu_place(place_) ||
+            paddle::platform::is_cpu_place(place_),
+        phi::errors::PreconditionNotMet(
+            "params_sync_among_devices_pass should run on cpu or gpu."));
+#endif
+#ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE(
         paddle::platform::is_gpu_place(place_) ||
             paddle::platform::is_cpu_place(place_),
         phi::errors::PreconditionNotMet(
             "params_sync_among_devices_pass should run on cpu or gpu."));
+#endif
     return true;
   }
 

@@ -397,6 +397,26 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
         {"kernel_name", pir::StrAttribute::get(ctx, copy_kernel_name)},
         {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
         {"dst_place_type", pir::Int32Attribute::get(ctx, 0)}};
+  } else if ((src_place.GetType() == phi::AllocationType::CPU) &&
+             (dst_place.GetType() == phi::AllocationType::XPU)) {
+    copy_kernel_key.set_backend(phi::Backend::XPU);
+    op_attribute = {
+        {"op_name", pir::StrAttribute::get(ctx, "pd_op.memcpy_h2d")},
+        {"kernel_name", pir::StrAttribute::get(ctx, "memcpy_h2d")},
+        {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
+        {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
+  } else if ((src_place.GetType() == phi::AllocationType::XPU) &&
+             (dst_place.GetType() == phi::AllocationType::CPU)) {
+    copy_kernel_key.set_backend(phi::Backend::XPU);
+    std::string copy_kernel_name = "memcpy_d2h";
+    if (in.type().isa<AllocatedDenseTensorArrayType>()) {
+      copy_kernel_name = "memcpy_d2h_multi_io";
+    }
+    op_attribute = {
+        {"op_name", pir::StrAttribute::get(ctx, "pd_op." + copy_kernel_name)},
+        {"kernel_name", pir::StrAttribute::get(ctx, copy_kernel_name)},
+        {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
+        {"dst_place_type", pir::Int32Attribute::get(ctx, 0)}};
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Only support cpu to gpu and gpu to cpu"));

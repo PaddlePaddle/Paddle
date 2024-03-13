@@ -991,6 +991,29 @@ bool AnalysisPredictor::PrepareExecutor() {
           gpu_pm.EnableIRPrinting();
         }
         gpu_pm.Run(pir_program_.get());
+#ifdef PADDLE_WITH_XPU
+      } else if (config_.use_xpu()) {
+        ::pir::PassManager xpu_pm(::pir::IrContext::Instance(), 2);
+        auto params_sync_among_devices_pass =
+            ::pir::CreateParamsSyncAmongDevicesPass();
+        params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
+                                                    sub_scope_);
+        xpu_pm.AddPass(std::move(params_sync_among_devices_pass));
+        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+        xpu_pm.AddPass(std::move(constant_folding_pass));
+        xpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+        xpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+        if (!config_.glog_info_disabled()) {
+          xpu_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          xpu_pm.EnableIRPrinting();
+        }
+        xpu_pm.Run(pir_program_.get());
+#endif
 #ifdef PADDLE_WITH_DNNL
       } else if (config_.mkldnn_enabled()) {
         ::pir::PassManager mkldnn_pm(::pir::IrContext::Instance(), 2);
