@@ -569,7 +569,7 @@ struct ReduceOp {
     ir::Expr compute_schedule_block_realize =
         (SearchUtils::ChildScheduleBlock * SearchUtils::ScheduleBlockIsNotInit *
          SearchUtils::FindFather(GetFuncBody()) *
-         FilterMaker([](const ir::Expr& e) -> bool {
+         SearchUtils::FilterMaker([](const ir::Expr& e) -> bool {
            return e.As<ir::ScheduleBlockRealize>()
          })).GetSingle(GetFuncBody());
 
@@ -590,7 +590,7 @@ struct ReduceOp {
     ir::Expr init_schedule_block_realize =
         (SearchUtils::ChildScheduleBlock * SearchUtils::ScheduleBlockIsInit *
          SearchUtils::FindFather(GetFuncBody()) *
-         FilterMaker([](const ir::Expr& e) -> bool {
+         SearchUtils::FilterMaker([](const ir::Expr& e) -> bool {
            return e.As<ir::ScheduleBlockRealize>()
          })).GetSingle(GetFuncBody());
 
