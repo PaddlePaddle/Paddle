@@ -82,7 +82,6 @@ paddle_api_list = get_paddle_api()
 # considered as paddle module？
 paddle_api_module_prefix = {
     "paddle.nn.functional",
-    "paddle.nn.layer.activation",
 }
 
 break_graph_set = set()

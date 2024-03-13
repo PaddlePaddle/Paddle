@@ -18,12 +18,13 @@
 namespace pir {
 
 Type ShapedTypeInterface::GetElementType() const {
-  return impl_->get_element_type(*this);
+  return impl_->get_element_type(*this);  // NOLINT
 }
 
 pir::DDim ShapedTypeInterface::GetShape() const {
-  return impl_->get_shape(*this);
+  return impl_->get_shape(*this);  // NOLINT
 }
 
 }  // namespace pir
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::WrapTypeInterface)

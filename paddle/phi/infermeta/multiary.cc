@@ -4706,8 +4706,8 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   int v_num_head = k_num_head;
   int dim_head = static_cast<int>(cache_kv.dims()[4]);
   // below's num_head is q's head actually.
-  int num_head =
-      x.dims()[x.dims().size() - 1] / dim_head - k_num_head - v_num_head;
+  int num_head = x.dims()[x.dims().size() - 1] / dim_head - k_num_head -
+                 v_num_head;  // NOLINT
 
   PADDLE_ENFORCE_EQ(
       num_head % k_num_head,

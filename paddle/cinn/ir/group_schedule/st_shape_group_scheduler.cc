@@ -24,33 +24,10 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/utils/external_func_names.h"
 
 namespace cinn {
 namespace ir {
-
-static const std::unordered_set<std::string>
-    kProhibitScheduleExternalFuncNames = {
-#define CINN_NVGPU_FUNC2STRING(str) #str
-#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE) \
-  CINN_NVGPU_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE)
-
-#define GEN_FUNC_NAME(_, impl) \
-  _(impl, gt_num)              \
-  _(impl, lt_num)              \
-  _(impl, index_add)           \
-  _(impl, next_smallest)
-
-#define GEN_FUNC_NAME_WITH_TYPE(_, ...)                                     \
-  _(__VA_ARGS__, _bool), _(__VA_ARGS__, _fp16), _(__VA_ARGS__, _fp32),      \
-      _(__VA_ARGS__, _fp64), _(__VA_ARGS__, _uint8), _(__VA_ARGS__, _int8), \
-      _(__VA_ARGS__, _int16), _(__VA_ARGS__, _int32), _(__VA_ARGS__, _int64),
-
-        GEN_FUNC_NAME(GEN_FUNC_NAME_WITH_TYPE, CINN_NVGPU_FUNC_TYPE)
-#undef GEN_FUNC_NAME
-#undef GEN_FUNC_NAME_WITH_TYPE
-#undef CINN_NVGPU_FUNC_TYPE
-#undef CINN_NVGPU_FUNC2STRING
-};
 
 static bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
   ir::ScheduleBlockRealize* sch_block_realize =
@@ -64,7 +41,8 @@ static bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
       sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
   for (ir::Expr call : find_call) {
     ir::Call* call_node = call.As<ir::Call>();
-    if (kProhibitScheduleExternalFuncNames.count(call_node->name) != 0) {
+    if (cinn::utils::GetProhibitScheduleExternalFuncNames().count(
+            call_node->name) != 0) {
       return true;
     }
   }

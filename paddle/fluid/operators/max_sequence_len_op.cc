@@ -31,12 +31,12 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-class MaxSeqenceLenOp : public framework::OperatorBase {
+class MaxSequenceLenOp : public framework::OperatorBase {
  public:
-  MaxSeqenceLenOp(const std::string &type,
-                  const framework::VariableNameMap &inputs,
-                  const framework::VariableNameMap &outputs,
-                  const framework::AttributeMap &attrs)
+  MaxSequenceLenOp(const std::string &type,
+                   const framework::VariableNameMap &inputs,
+                   const framework::VariableNameMap &outputs,
+                   const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
@@ -50,7 +50,7 @@ class MaxSeqenceLenOp : public framework::OperatorBase {
   }
 };
 
-class MaxSeqenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+class MaxSequenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("RankTable", "Input variable which is a LoDRankTable object");
@@ -65,11 +65,11 @@ class MaxSeqenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class MaxSeqenceLenInferShape : public framework::InferShapeBase {
+class MaxSequenceLenInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(
-        context->HasInput("RankTable"), "Input", "RankTable", "MaxSeqenceLen");
+        context->HasInput("RankTable"), "Input", "RankTable", "MaxSequenceLen");
     context->SetOutputDim("Out", {1});
   }
 };
@@ -78,8 +78,8 @@ class MaxSeqenceLenInferShape : public framework::InferShapeBase {
 
 REGISTER_OPERATOR(
     max_sequence_len,
-    paddle::operators::MaxSeqenceLenOp,
-    paddle::operators::MaxSeqenceLenOpProtoMaker,
-    paddle::operators::MaxSeqenceLenInferShape,
+    paddle::operators::MaxSequenceLenOp,
+    paddle::operators::MaxSequenceLenOpProtoMaker,
+    paddle::operators::MaxSequenceLenInferShape,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

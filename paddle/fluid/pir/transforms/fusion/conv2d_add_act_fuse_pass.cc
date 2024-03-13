@@ -17,7 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -45,7 +45,7 @@ class Conv2dAddActFusePattern
     pir::Value add_input = op.x();
     IR_ENFORCE(add_input == conv2d_out);
 
-    if (!pir::ValueIsPersitable(op.y())) return false;
+    if (!pir::ValueIsPersistable(op.y())) return false;
 
     pir::Value add_out = op.out();
     if (!add_out.HasOneUse()) return false;
@@ -119,7 +119,7 @@ class Conv2dAdd2ActFusePattern
                                          ->dyn_cast<paddle::dialect::AddOp>();
     if (!add1_op) return false;
 
-    if (!pir::ValueIsPersitable(add1_op.y())) return false;
+    if (!pir::ValueIsPersistable(add1_op.y())) return false;
 
     pir::Value add1_out = add1_op.out();
     if (!add1_out.HasOneUse()) return false;
@@ -207,7 +207,7 @@ class Conv2dAddActFusePass : public pir::PatternRewritePass {
             1,
             std::vector<std::string>{
                 paddle::dialect::FusedConv2dAddActOp::name()});
-    auto conv2d_doublue_add_act_fuse_pattern =
+    auto conv2d_double_add_act_fuse_pattern =
         std::make_unique<Conv2dAdd2ActFusePattern>(
             context,
             1,
@@ -215,7 +215,7 @@ class Conv2dAddActFusePass : public pir::PatternRewritePass {
                 paddle::dialect::FusedConv2dAddActOp::name()});
 
     // conv2d+add+add+act->fused_conv2d_add_act
-    ps.Add(std::move(conv2d_doublue_add_act_fuse_pattern));
+    ps.Add(std::move(conv2d_double_add_act_fuse_pattern));
     // conv2d+add+act->fused_conv2d_add_act
     ps.Add(std::move(conv2d_add_act_fuse_pattern));
     return ps;
