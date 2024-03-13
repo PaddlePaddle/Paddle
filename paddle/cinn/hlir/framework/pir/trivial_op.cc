@@ -233,9 +233,8 @@ Mapping ScheduleBlockIsInit = FilterMaker([](const ir::Expr& e) -> bool {
 });
 
 Mapping ScheduleBlockIsNotInit = FilterMaker([](const ir::Expr& e) -> bool {
-  return !(e.As<ir::ScheduleBlock>() &&
-           e.As<ir::ScheduleBlock>()->name.find("_reduce_init") ==
-               std::string::npos);
+  return e.As<ir::ScheduleBlock>() && e.As<ir::ScheduleBlock>()->name.find(
+                                          "_reduce_init") != std::string::npos;
 });
 
 Mapping ChildScheduleBlocks =
@@ -266,11 +265,15 @@ void FindAndReplace(ir::Expr* body,
 Mapping ChildFors =
     Collector([](const ir::Expr* e) { return e->As<ir::For>(); });
 
-Mapping FindFather(const ir::Expr& child) {
-  Mapping find_child =
-      Collector([child](const ir::Expr* e) { return *e == child; });
-  return Collector(
-      [&](const ir::Expr* parent) { return !find_child(*parent).empty(); });
+Mapping FindFather(const ir::Expr& root) {
+  const auto& f = [&](const auto& child) -> ExprSet {
+    Mapping find_child =
+        Collector([child](const ir::Expr* e) { return *e == child; });
+    const auto& father_collector = Collector(
+        [&](const ir::Expr* current) { return !find_child(*current).empty(); });
+    return father_collector(root);
+  };
+  return Mapping(f);
 }
 
 }  // namespace SearchUtils
@@ -784,7 +787,7 @@ ir::Expr ExtendFor(ir::Expr target, std::vector<ir::Expr> extended_fors) {
 FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
   ir::Expr new_trivial_body = ir::ir_utils::IRCopy(trivial_op.GetFuncBody());
 
-  ir::Expr reduce_init = reduce_op.GetInitExpr();
+  ir::Expr reduce_init = reduce_op.GetInitExpr();  // Mapping.
   std::vector<ir::Expr> reduce_for =
       (SearchUtils::ChildFors *
        SearchUtils::FindFather(reduce_init))(reduce_op.GetFuncBody());
