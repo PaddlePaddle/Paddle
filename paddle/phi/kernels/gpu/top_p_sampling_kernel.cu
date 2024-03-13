@@ -347,7 +347,8 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
                                      const uint64_t seed_offset,
                                      int* count_iter,
                                      int* count_iter_begin,
-                                     const int k) {
+                                     const int k,
+                                     const bool need_batch_random) {
   const int tid = threadIdx.x;
   const int wid = tid / 32;
   const int lane = tid % 32;
@@ -360,14 +361,22 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
   if constexpr (INFER_SEEDS) {
     hiprand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    hiprand_init(seed_num, tid, seed_offset, &state);
+    if (need_batch_random) {
+      hiprand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    } else {
+      hiprand_init(seed_num, tid, seed_offset, &state);
+    }
   }
 #else
   curandState_t state;
   if constexpr (INFER_SEEDS) {
     curand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    curand_init(seed_num, tid, seed_offset, &state);
+    if (need_batch_random) {
+      curand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    } else {
+      curand_init(seed_num, tid, seed_offset, &state);
+    }
   }
 #endif
   int top_num = TopPBeamTopK;
@@ -474,7 +483,8 @@ __global__ void KeMatrixTopPBeamTopKTruncated(const T* src,
                                               const uint64_t seed_offset,
                                               int* count_iter,
                                               int* count_iter_begin,
-                                              const int k) {
+                                              const int k,
+                                              const bool need_batch_random) {
   const int tid = threadIdx.x;
   const int wid = tid / 32;
   const int lane = tid % 32;
@@ -487,14 +497,22 @@ __global__ void KeMatrixTopPBeamTopKTruncated(const T* src,
   if constexpr (INFER_SEEDS) {
     hiprand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    hiprand_init(seed_num, tid, seed_offset, &state);
+    if (need_batch_random) {
+      hiprand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    } else {
+      hiprand_init(seed_num, tid, seed_offset, &state);
+    }
   }
 #else
   curandState_t state;
   if constexpr (INFER_SEEDS) {
     curand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    curand_init(seed_num, tid, seed_offset, &state);
+    if (need_batch_random) {
+      curand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    } else {
+      curand_init(seed_num, tid, seed_offset, &state);
+    }
   }
 #endif
   int top_num = TopPBeamTopK;
@@ -623,7 +641,8 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
                                   int* count_iter_begin,
                                   const int k,
                                   const int bs,
-                                  const std::string& mode) {
+                                  const std::string& mode,
+                                  const bool need_batch_random) {
   int BlockSize = GetBlockSize(vocab_size);
   if (mode == "truncated") {
     if (seed) {
@@ -647,7 +666,8 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
                                                      0,
                                                      count_iter,
                                                      count_iter_begin,
-                                                     k));
+                                                     k,
+                                                     need_batch_random));
         default:
           PD_THROW(
               "the input data shape has error in the topp_beam_topk kernel.");
@@ -673,7 +693,8 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
                                                      seed_offset,
                                                      count_iter,
                                                      count_iter_begin,
-                                                     k));
+                                                     k,
+                                                     need_batch_random));
         default:
           PD_THROW(
               "the input data shape has error in the topp_beam_topk kernel.");
@@ -701,7 +722,8 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
                                                      0,
                                                      count_iter,
                                                      count_iter_begin,
-                                                     k));
+                                                     k,
+                                                     need_batch_random));
         default:
           PD_THROW(
               "the input data shape has error in the topp_beam_topk kernel.");
@@ -727,7 +749,8 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
                                                      seed_offset,
                                                      count_iter,
                                                      count_iter_begin,
-                                                     k));
+                                                     k,
+                                                     need_batch_random));
         default:
           PD_THROW(
               "the input data shape has error in the topp_beam_topk kernel.");
@@ -776,6 +799,7 @@ __global__ void topp_sampling(T* sorted_probs,
                               const uint64_t seed_offset,
                               const int p_num,
                               const int vocab_size,
+                              const bool need_batch_random,
                               int* count_iter,
                               int* count_iter_begin) {
   __shared__ int stop_shared;
@@ -810,14 +834,22 @@ __global__ void topp_sampling(T* sorted_probs,
   if constexpr (INFER_SEEDS) {
     hiprand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    hiprand_init(seed_num, tid, seed_offset, &state);
+    if (need_batch_random) {
+      hiprand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    } else {
+      hiprand_init(seed_num, tid, seed_offset, &state);
+    }
   }
 #else
   curandState_t state;
   if constexpr (INFER_SEEDS) {
     curand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &state);
   } else {
-    curand_init(seed_num, tid, seed_offset, &state);
+    if (need_batch_random) {
+      curand_init(seed_num, bid * blockDim.x + tid, seed_offset, &state);
+    } else {
+      curand_init(seed_num, tid, seed_offset, &state);
+    }
   }
 #endif
 #ifdef DEBUG_TOPP
@@ -916,6 +948,7 @@ __global__ void topp_sampling_truncated(T* sorted_probs,
                                         const uint64_t seed_offset,
                                         const int p_num,
                                         const int vocab_size,
+                                        const bool need_batch_random,
                                         int* count_iter,
                                         int* count_iter_begin) {
   __shared__ int stop_shared;
@@ -1057,7 +1090,11 @@ __global__ void topp_sampling_truncated(T* sorted_probs,
           hiprand_init(
               static_cast<uint64_t>(seed[bid]), tid, seed_offset, &rng);
         } else {
-          hiprand_init(seed_num, tid, seed_offset, &rng);
+          if (need_batch_random) {
+            hiprand_init(seed_num, bid * blockDim.x + tid, seed_offset, &rng);
+          } else {
+            hiprand_init(seed_num, tid, seed_offset, &rng);
+          }
         }
         int random_id = hiprand(&rng) % (max_id + 1);
 #else
@@ -1065,7 +1102,11 @@ __global__ void topp_sampling_truncated(T* sorted_probs,
         if constexpr (INFER_SEEDS) {
           curand_init(static_cast<uint64_t>(seed[bid]), tid, seed_offset, &rng);
         } else {
-          curand_init(seed_num, tid, seed_offset, &rng);
+          if (need_batch_random) {
+            curand_init(seed_num, bid * blockDim.x + tid, seed_offset, &rng);
+          } else {
+            curand_init(seed_num, tid, seed_offset, &rng);
+          }
         }
         int random_id = curand(&rng) % (max_id + 1);
 #endif
@@ -1095,7 +1136,8 @@ void DispatchTopPSampling(const Context& dev_ctx,
                           const int bs,
                           int* count_iter,
                           int* count_iter_begin,
-                          const std::string& mode) {
+                          const std::string& mode,
+                          const bool need_batch_random) {
   int BlockSize = GetBlockSize(vocab_size);
   if (mode == "truncated") {
     if (seed) {
@@ -1113,6 +1155,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
                                                      0,
                                                      p_num,
                                                      vocab_size,
+                                                     need_batch_random,
                                                      count_iter,
                                                      count_iter_begin));
         default:
@@ -1134,6 +1177,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
                                                      seed_offset,
                                                      p_num,
                                                      vocab_size,
+                                                     need_batch_random,
                                                      count_iter,
                                                      count_iter_begin));
         default:
@@ -1157,6 +1201,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
                                                      0,
                                                      p_num,
                                                      vocab_size,
+                                                     need_batch_random,
                                                      count_iter,
                                                      count_iter_begin));
         default:
@@ -1178,6 +1223,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
                                                      seed_offset,
                                                      p_num,
                                                      vocab_size,
+                                                     need_batch_random,
                                                      count_iter,
                                                      count_iter_begin));
         default:
@@ -1290,8 +1336,10 @@ void TopPSamplingKernel(const Context& dev_ctx,
   int64_t* infer_seed = SafeGetTensorPtr<int64_t>(topp_seed);
   uint64_t seed = random_seed;
   uint64_t offset = 0;
+  bool need_batch_random = false;
   if (seed == -1) {
     VLOG(1) << "use paddle seed gen";
+    need_batch_random = true;
     auto gen_cuda = dev_ctx.GetGenerator();
     uint64_t increment = x.numel() * 4;
     auto seed_offset = gen_cuda->IncrementOffset(increment);
@@ -1329,7 +1377,8 @@ void TopPSamplingKernel(const Context& dev_ctx,
       count_iter_begin.data<int>(),
       k,
       bs,
-      mode);
+      mode,
+      need_batch_random);
 
   size_t temp_storage_bytes = 0;
 
@@ -1392,7 +1441,8 @@ void TopPSamplingKernel(const Context& dev_ctx,
                           bs,
                           count_iter.data<int>(),
                           count_iter_begin.data<int>(),
-                          mode);
+                          mode,
+                          need_batch_random);
   return;
 }
 
