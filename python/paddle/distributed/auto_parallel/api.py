@@ -1416,15 +1416,14 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._mp_optimization = auto_strategy.MPOptimizationConfig(config_dict)
 
-        # config_dict = self._config_dict.get(
-        #     auto_strategy.constants.SP_OPTIMIZATION, None
-        # )
-        # self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
-
         config_dict = self._config_dict.get(
             auto_strategy.constants.DP_OPTIMIZATION, None
         )
-        self._dp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
+        self._dp_optimization = auto_strategy.DPOptimizationConfig(config_dict)
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.SP_OPTIMIZATION, None
+        )
+        self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
 
     def _convert_to_unify_strategy(self, auto_stragety):
         import copy
@@ -1445,11 +1444,11 @@ class Strategy(auto_strategy.BaseConfig):
         self._sharding = copy.deepcopy(auto_stragety.sharding)
         self._gradient_merge = copy.deepcopy(auto_stragety.gradient_merge)
         self._pipeline = copy.deepcopy(auto_stragety.pipeline)
-        # template interface
+        # The below are template interfaces
         self._recompute = copy.deepcopy(auto_stragety.recompute)
         self._mp_optimization = copy.deepcopy(auto_stragety.mp_optimization)
-        # self._sp_optimization = copy.deepcopy(auto_stragety.sp_optimization)
         self._dp_optimization = copy.deepcopy(auto_stragety.dp_optimization)
+        self._sp_optimization = copy.deepcopy(auto_stragety.sp_optimization)
 
     @property
     def sharding(self):
@@ -1880,14 +1879,16 @@ class DistModel:
         inner_strategy.sharding = copy.deepcopy(strategy.sharding)
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
-        # template interface
+        # The below are template interfaces
         inner_strategy.recompute = copy.deepcopy(strategy._recompute)
         inner_strategy.mp_optimization = copy.deepcopy(
             strategy._mp_optimization
         )
-        # inner_strategy.sp_optimization = copy.deepcopy(strategy._sp_optimization)
         inner_strategy.dp_optimization = copy.deepcopy(
             strategy._dp_optimization
+        )
+        inner_strategy.sp_optimization = copy.deepcopy(
+            strategy._sp_optimization
         )
 
         return inner_strategy
