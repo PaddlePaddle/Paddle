@@ -86,7 +86,7 @@ Func Collector(Teller t) {
 }
 
 template <typename FilterFunc>
-Func Filter(FilterFunc t) {
+Func FilterMaker(FilterFunc t) {
   return [=](const ir::Expr& x) -> ExprSet {
     if (t(x)) {
       return {x};
@@ -109,12 +109,12 @@ Mapping ScheduleBlock2Body = Mapping([](const ir::Expr& e) -> ExprSet {
   return {};
 });
 
-Mapping ScheduleBlockIsInit = Filter([](const ir::Expr& e) -> bool {
+Mapping ScheduleBlockIsInit = FilterMaker([](const ir::Expr& e) -> bool {
   return e.As<ir::ScheduleBlock>() && e.As<ir::ScheduleBlock>()->name.find(
                                           "_reduce_init") == std::string::npos;
 });
 
-Mapping ScheduleBlockIsNotInit = Filter([](const ir::Expr& e) -> bool {
+Mapping ScheduleBlockIsNotInit = FilterMaker([](const ir::Expr& e) -> bool {
   return !(e.As<ir::ScheduleBlock>() &&
            e.As<ir::ScheduleBlock>()->name.find("_reduce_init") ==
                std::string::npos);
@@ -144,6 +144,17 @@ void FindAndReplace(ir::Expr* body,
     MappingTargetExprToDestExprMutator(expr, transformer(expr))(body);
   }
 }
+
+Mapping ChildFors =
+    Collector([](const ir::Expr* e) { return e->As<ir::For>(); });
+
+Mapping FindFather(const ir::Expr& child) {
+  Mapping find_child =
+      Collector([child](const ir::Expr* e) { return *e == child; });
+  return Collector(
+      [&](const ir::Expr* parent) { return !find_child(*parent).empty(); });
+}
+
 }  // namespace SearchUtils
 
 namespace TransformerUtils {
@@ -763,8 +774,17 @@ FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
   }
 }
 
-FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op) {
-  // TODO
+FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
+  ir::Expr reduce_init = reduce_op.GetInitExpr();
+  std::vector<ir::Expr> reduce_for =
+      (SearchUtils::ChildFors *
+       SearchUtils::FindFather(reduce_init))(reduce_op.GetFuncBody());
+  ir::Expr trivial_last_for =
+      SearchUtils::ChildFors(trivial_op.GetFuncBody()).back();
+
+  for (auto const& for_expr : reduce_for) {
+  }
+
   return trivial_op;
 }
 
@@ -780,9 +800,13 @@ std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
       result.insert(result.end(), child_flatten.begin(), child_flatten.end());
     }
   }
-  result.push_back(std::holds_alternative<TrivialOp>(root_op)
-                       ? SinkTrivialLoopAlign(std::get<TrivialOp>(root_op))
-                       : root_op);
+  result.push_back(
+      std::holds_alternative<TrivialOp>(root_op)
+          ? SinkTrivialLoopAlign(
+                std::get<TrivialOp>(root_op),
+                std::get<ReduceOp>(
+                    fusion_tree->upstream.begin()->first->fusible_op))
+          : root_op);
   return result;
 }
 
