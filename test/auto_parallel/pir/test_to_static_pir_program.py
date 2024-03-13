@@ -93,6 +93,7 @@ class TestToStaticPirProgram(unittest.TestCase):
 
         dist_model.train()
         main_program = dist_model._engine._fwd_main_progs["train"]
+        print(main_program, flush=1)
         for op in main_program.global_block().ops:
             tensor = op.result(0)
             if op.name() == 'pd_op.data':
@@ -101,9 +102,22 @@ class TestToStaticPirProgram(unittest.TestCase):
                 self.assertEqual(tensor.process_mesh.process_ids, [0, 1])
                 self.assertEqual(tensor.dims_mapping, [-1, -1])
                 self.assertEqual(tensor.partial_dims, set())
-            else:
+            elif op.name() == 'builtin.parameter':
                 self.assertTrue(tensor.is_dense_tensor_type())
                 self.assertFalse(tensor.is_dist_dense_tensor_type())
+                self.assertTrue(tensor.has_one_use())
+
+                use_op = tensor.all_used_ops()[0]
+                if use_op.name() == 'dist_op.shard_tensor':
+                    tensor = use_op.result(0)
+                    self.assertTrue(tensor.is_dist_dense_tensor_type())
+                    self.assertEqual(tensor.process_mesh.shape, [2])
+                    self.assertEqual(tensor.process_mesh.process_ids, [0, 1])
+                    if tensor.shape == [IMAGE_SIZE, IMAGE_SIZE]:
+                        self.assertEqual(tensor.dims_mapping, [-1, 0])
+                    elif tensor.shape == [IMAGE_SIZE, CLASS_NUM]:
+                        self.assertEqual(tensor.dims_mapping, [0, -1])
+                    self.assertEqual(tensor.partial_dims, set())
 
         # training
         # dist_model.train()
