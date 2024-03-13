@@ -196,21 +196,21 @@ Mapping Identity =
     Mapping([](const ir::Expr& e) { return std::vector<ir::Expr>{e}; });
 
 template <typename Teller>
-Func Collector(Teller t) {
-  return [=](const ir::Expr& x) -> ExprSet {
+Mapping Collector(Teller t) {
+  return Mapping([=](const ir::Expr& x) -> ExprSet {
     const auto& rs = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(x, t);
     return std::vector(rs.begin(), rs.end());
-  };
+  });
 }
 
 template <typename FilterFunc>
-Func FilterMaker(FilterFunc t) {
-  return [=](const ir::Expr& x) -> ExprSet {
+Mapping FilterMaker(FilterFunc t) {
+  return Mapping([=](const ir::Expr& x) -> ExprSet {
     if (t(x)) {
       return {x};
     }
     return {};
-  };
+  });
 }
 
 Mapping Store2Value = Mapping([](const ir::Expr& e) -> ExprSet {
@@ -570,10 +570,11 @@ struct ReduceOp {
 
   std::vector<ir::Var> GetAllIterVars() const {
     ir::Expr compute_schedule_block_realize =
-        (SearchUtils::ChildScheduleBlock * SearchUtils::ScheduleBlockIsNotInit *
+        (SearchUtils::ChildScheduleBlocks *
+         SearchUtils::ScheduleBlockIsNotInit *
          SearchUtils::FindFather(GetFuncBody()) *
          SearchUtils::FilterMaker([](const ir::Expr& e) -> bool {
-           return e.As<ir::ScheduleBlockRealize>()
+           return e.As<ir::ScheduleBlockRealize>();
          })).GetSingle(GetFuncBody());
 
     const std::vector<Expr>& all_iter_expr =
@@ -591,10 +592,10 @@ struct ReduceOp {
 
   std::vector<ir::Var> GetOuterIterVars() const {
     ir::Expr init_schedule_block_realize =
-        (SearchUtils::ChildScheduleBlock * SearchUtils::ScheduleBlockIsInit *
+        (SearchUtils::ChildScheduleBlocks * SearchUtils::ScheduleBlockIsInit *
          SearchUtils::FindFather(GetFuncBody()) *
          SearchUtils::FilterMaker([](const ir::Expr& e) -> bool {
-           return e.As<ir::ScheduleBlockRealize>()
+           return e.As<ir::ScheduleBlockRealize>();
          })).GetSingle(GetFuncBody());
 
     const std::vector<Expr>& outer_iter_expr =
@@ -808,7 +809,7 @@ std::vector<FusibleOp> TransformReduceLoopRange(ReduceOp upstream,
     VLOG(4) << "step 1";
     ir::Expr new_reduce = CreateReduceExpr(
         GetOutputIters(downstream),
-        upstream.GetReduceIters(),
+        upstream.GetReduceIterVars(),
         upstream.GetInitExpr(),
         ComposeUtils::CopyedReplaceExpr(upstream.GetComputeExpr(),
                                         upstream.GetOutputIters(),
