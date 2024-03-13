@@ -41,6 +41,124 @@ namespace framework {
 namespace pir {
 namespace trivial_fusion_detail {
 
+namespace ComposeUtils {
+
+struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
+  explicit MappingTargetExprToDestExprMutator(const ir::Expr& source,
+                                              const ir::Expr& dest)
+      : source_(source), dest_(dest) {}
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::Load* load, Expr* op) override {
+    if (load == source_.ptr()) {
+      VLOG(4) << "substitude find!";
+      *op = dest_;
+    } else {
+      IRMutator::Visit(load, op);
+    }
+  }
+  void Visit(const ir::Store* store, Expr* op) override {
+    if (store == source_.ptr()) {
+      VLOG(4) << "substitude find!";
+      *op = dest_;
+    } else {
+      IRMutator::Visit(store, op);
+    }
+  }
+  void Visit(const ir::Reduce* reduce, Expr* op) override {
+    if (reduce == source_.ptr()) {
+      VLOG(4) << "substitude find!";
+      *op = dest_;
+    } else {
+      IRMutator::Visit(reduce, op);
+    }
+  }
+
+ private:
+  ir::Expr source_;
+  ir::Expr dest_;
+};
+
+std::set<Expr> GetStoreFromBody(const ir::Expr& body) {
+  std::set<Expr> store_tensor_exprs =
+      cinn::ir::ir_utils::CollectIRNodesWithoutTensor(
+          body, [](const Expr* expr) {
+            return expr->As<ir::Store>() &&
+                   expr->As<ir::Store>()->is_addr_tensor();
+          });
+
+  return store_tensor_exprs;
+}
+
+std::vector<ir::Var> GetOutputIters(const std::vector<ir::Expr>& indices) {
+  std::vector<ir::Var> vars;
+  std::transform(indices.begin(),
+                 indices.end(),
+                 std::back_inserter(vars),
+                 [](const ir::Expr& expr) { return expr.as_var_ref(); });
+  return vars;
+}
+
+bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
+  ;
+}
+
+static ir::Expr CopyedReplaceExpr(const Expr& source,
+                                  const std::vector<Var>& replaced,
+                                  const std::vector<Expr>& candidates) {
+  VLOG(4) << "Copyed Replace Expr Start";
+  CHECK_EQ(replaced.size(), candidates.size())
+      << "In ReplaceExpr, the size of Vars to be replaced must be equal to "
+         "the "
+         "size of cadidate Exprs! Please check.";
+  auto copyed_source = ir::ir_utils::IRCopy(source);
+  if (replaced.empty()) return copyed_source;
+  std::map<Var, Expr, ir::CompVar> replacing_map;
+  for (int i = 0; i < replaced.size(); ++i) {
+    // If the Var to be replaced is equal to the candidate, we skip it.
+    if (candidates[i].is_var() && candidates[i].as_var_ref() == replaced[i])
+      continue;
+    replacing_map[replaced[i]] = candidates[i];
+  }
+  ir::MappingVarToExprMutator mapper(replacing_map);
+  mapper(&copyed_source);
+  VLOG(4) << "Copyed Replace Expr End";
+  return copyed_source;
+}
+
+static void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
+                                             const ir::Expr& dest,
+                                             ir::Expr* body) {
+  VLOG(4) << "Start SubstitudeTargetExprWithDestExpr";
+  MappingTargetExprToDestExprMutator mapper(source, dest);
+  mapper(body);
+  VLOG(4) << "End SubstitudeTargetExprWithDestExpr";
+}
+
+static ir::Expr SubstitudeIndexVector(const Expr& source,
+                                      const std::vector<Var>& load_vars,
+                                      const std::vector<ir::Expr>& indices) {
+  return CopyedReplaceExpr(source, load_vars, indices);
+}
+
+template <typename FusionOp>
+static void ReplaceDownstreamLoadExprWithUpstreamComputeBody(
+    const FusionOp& upstream,
+    const ir::Expr& downstream_load_expr,
+    ir::Expr* downstream_body) {
+  ComposeUtils::SubstitudeTargetExprWithDestExpr(
+      downstream_load_expr,
+      ComposeUtils::SubstitudeIndexVector(
+          upstream.GetStoreValue(),
+          upstream.GetOutputIters(),
+          downstream_load_expr.As<ir::Load>()->indices),
+      downstream_body);
+}
+
+}  // namespace ComposeUtils
+
 namespace SearchUtils {
 
 // 1. search by type. DONE
@@ -194,17 +312,37 @@ std::vector<ir::Var> CreateInnerBlockVars(
   int i = 0;
   std::vector<ir::Var> vars;
   for (const auto& v : block_vars) {
-    vars.emplace_back(ir::Var("inner_block_" + std::to_string(i++)));
+    vars.emplace_back("inner_block_" + std::to_string(i++));
   }
   return vars;
 }
 
-Transformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars) {
+Transformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
+                                 const std::vector<ir::Var>& dest_vars) {
+  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+    return ComposeUtils::CopyedReplaceExpr(
+        e,
+        target_vars,
+        std::vector<ir::Expr>(dest_vars.begin(), dest_vars.end()));
+  };
+  return Transformer(f);
+}
+
+Transformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
+                                 const ir::Tensor& tensor) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     if (e.As<ir::ScheduleBlock>()) {
       PADDLE_THROW("please input a non-schedule block expr.");
     }
-    block = ir::ScheduleBlock::Make(block_vars, e);
+    const auto& inner_block_var = CreateInnerBlockVars(block_vars);
+    const auto& replaced_e =
+        ChangeVarTransformer(block_vars, inner_block_var)(e);
+    const auto& schedule_block =
+        ir::ScheduleBlock::Make(block_vars, {}, {}, tensor->name, replaced_e);
+    const auto& schedule_realizer = ir::ScheduleBlockRealize::Make(
+        std::vector<ir::Expr>(block_vars.begin(), block_vars.end()),
+        schedule_block);
+    return schedule_realizer;
   };
   return Transformer(f);
 }
@@ -288,124 +426,6 @@ void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
   PADDLE_ENFORCE_EQ(
       op_patterns.size(), op_compute_bodies.size(), "ops and  size not equal");
 }
-
-namespace ComposeUtils {
-
-struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
-  explicit MappingTargetExprToDestExprMutator(const ir::Expr& source,
-                                              const ir::Expr& dest)
-      : source_(source), dest_(dest) {}
-
-  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
-
- private:
-  void Visit(const ir::Load* load, Expr* op) override {
-    if (load == source_.ptr()) {
-      VLOG(4) << "substitude find!";
-      *op = dest_;
-    } else {
-      IRMutator::Visit(load, op);
-    }
-  }
-  void Visit(const ir::Store* store, Expr* op) override {
-    if (store == source_.ptr()) {
-      VLOG(4) << "substitude find!";
-      *op = dest_;
-    } else {
-      IRMutator::Visit(store, op);
-    }
-  }
-  void Visit(const ir::Reduce* reduce, Expr* op) override {
-    if (reduce == source_.ptr()) {
-      VLOG(4) << "substitude find!";
-      *op = dest_;
-    } else {
-      IRMutator::Visit(reduce, op);
-    }
-  }
-
- private:
-  ir::Expr source_;
-  ir::Expr dest_;
-};
-
-static ir::Expr CopyedReplaceExpr(const Expr& source,
-                                  const std::vector<Var>& replaced,
-                                  const std::vector<Expr>& candidates) {
-  VLOG(4) << "Copyed Replace Expr Start";
-  CHECK_EQ(replaced.size(), candidates.size())
-      << "In ReplaceExpr, the size of Vars to be replaced must be equal to "
-         "the "
-         "size of cadidate Exprs! Please check.";
-  auto copyed_source = ir::ir_utils::IRCopy(source);
-  if (replaced.empty()) return copyed_source;
-  std::map<Var, Expr, ir::CompVar> replacing_map;
-  for (int i = 0; i < replaced.size(); ++i) {
-    // If the Var to be replaced is equal to the candidate, we skip it.
-    if (candidates[i].is_var() && candidates[i].as_var_ref() == replaced[i])
-      continue;
-    replacing_map[replaced[i]] = candidates[i];
-  }
-  ir::MappingVarToExprMutator mapper(replacing_map);
-  mapper(&copyed_source);
-  VLOG(4) << "Copyed Replace Expr End";
-  return copyed_source;
-}
-
-static void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
-                                             const ir::Expr& dest,
-                                             ir::Expr* body) {
-  VLOG(4) << "Start SubstitudeTargetExprWithDestExpr";
-  MappingTargetExprToDestExprMutator mapper(source, dest);
-  mapper(body);
-  VLOG(4) << "End SubstitudeTargetExprWithDestExpr";
-}
-
-static ir::Expr SubstitudeIndexVector(const Expr& source,
-                                      const std::vector<Var>& load_vars,
-                                      const std::vector<ir::Expr>& indices) {
-  return CopyedReplaceExpr(source, load_vars, indices);
-}
-
-template <typename FusionOp>
-static void ReplaceDownstreamLoadExprWithUpstreamComputeBody(
-    const FusionOp& upstream,
-    const ir::Expr& downstream_load_expr,
-    ir::Expr* downstream_body) {
-  ComposeUtils::SubstitudeTargetExprWithDestExpr(
-      downstream_load_expr,
-      ComposeUtils::SubstitudeIndexVector(
-          upstream.GetStoreValue(),
-          upstream.GetOutputIters(),
-          downstream_load_expr.As<ir::Load>()->indices),
-      downstream_body);
-}
-
-std::set<Expr> GetStoreFromBody(const ir::Expr& body) {
-  std::set<Expr> store_tensor_exprs =
-      cinn::ir::ir_utils::CollectIRNodesWithoutTensor(
-          body, [](const Expr* expr) {
-            return expr->As<ir::Store>() &&
-                   expr->As<ir::Store>()->is_addr_tensor();
-          });
-
-  return store_tensor_exprs;
-}
-
-std::vector<ir::Var> GetOutputIters(const std::vector<ir::Expr>& indices) {
-  std::vector<ir::Var> vars;
-  std::transform(indices.begin(),
-                 indices.end(),
-                 std::back_inserter(vars),
-                 [](const ir::Expr& expr) { return expr.as_var_ref(); });
-  return vars;
-}
-
-bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
-  ;
-}
-
-}  // namespace ComposeUtils
 
 struct TrivialOp {
  public:
@@ -581,7 +601,13 @@ ir::Expr CreateReduceExpr(
     const std::vector<ir::Var> reduce_iters,
     const ir::Expr& init_body,    // relay on output_iters
     const ir::Expr& reduce_body,  // relay on output_iters + reduce_iters
-    const ir::Tensor& new_write_tensor) {}
+    const ir::Tensor& new_write_tensor) {
+  const auto& init_schedule_block =
+      TransformerUtils::WrapScheduleRealizer(output_iters, new_write_tensor);
+  const auto& reduce_schedule_block =
+      (TransformerUtils::WrapScheduleRealizer(output_iters, new_write_tensor) *
+       TransformerUtils::WrapForTransformer(reduce_iters))
+}
 
 ir::Expr CreateReduceExpr(const FusibleOp& downstream,
                           const ReduceOp& upstream,
