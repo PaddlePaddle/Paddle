@@ -38,6 +38,10 @@
 #include "paddle/cinn/backends/sycl/compiler_sycl.h"
 #endif
 
+#ifdef CINN_WITH_ROCM
+#include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#endif
+
 PD_DECLARE_int32(cinn_parallel_compile_thread);
 
 namespace cinn {
@@ -344,7 +348,22 @@ void ParallelCompiler::Task::CodegenAndJit() {
     auto splited_module = backends::SplitDeviceAndHostModule(ir_module, context->target);
     auto host_module        = std::get<0>(splited_module);
     auto device_module      = std::get<1>(splited_module);
-    LOG(FATAL) << "hip codegen and jit not implementation!";
+    VLOG(4) << "Host Code:\n" << host_module;
+    VLOG(4) << "Device Code:\n" << device_module;
+    std::string hip_c;
+    if (context->attached_source_code.empty()) {
+      backends::CodeGenHIP_Dev codegen(context->target);
+      hip_c = codegen.Compile(device_module);
+    } else {
+      VLOG(4) << "Codegen and jit with attached source code.";
+      hip_c = context->attached_source_code;
+    }
+    CHECK(!hip_c.empty()) << "Compile HIP C code failed from device module:\n"
+                           << device_module;
+
+    cinn::backends::SourceCodePrint::GetInstance()->write(hip_c);
+    VLOG(4) << "[HIP]:\n" << hip_c;
+    
 #endif
   } else {
     engine = backends::ExecutionEngine::Create(backends::ExecutionOptions());

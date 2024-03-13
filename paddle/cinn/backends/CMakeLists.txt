@@ -28,6 +28,10 @@ if(WITH_CUDA OR CINN_WITH_SYCL OR CINN_WITH_ROCM)
   list(APPEND srcs codegen_cuda_util.cc)
 endif()
 
+if (CINN_WITH_ROCM)
+  add_subdirectory(hip)
+endif()
+
 if(WITH_OPENMP)
   cinn_cc_library(__x86_source_fake_lib SRCS _x86_builtin_source.cc)
 endif()
