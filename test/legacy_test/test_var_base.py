@@ -1249,7 +1249,7 @@ class TestVarBase(unittest.TestCase):
         a = paddle.rand([1])
         a_str = str(a.dtype)
 
-        expected = str(paddle.float32)
+        expected = "paddle.float32"
 
         self.assertEqual(a_str, expected)
 

@@ -25,7 +25,6 @@ from paddle.base.data_feeder import (
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
     convert_uint16_to_float,
 )
-from paddle.base.framework import paddle_type_to_proto_type
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
@@ -595,9 +594,7 @@ def monkey_patch_tensor():
             if dtype is None:
                 dtype = t.dtype
             if isinstance(dtype, str):
-                dtype = framework.convert_np_dtype_to_dtype_(dtype)
-            if isinstance(dtype, core.DataType):
-                dtype = paddle_type_to_proto_type[dtype]
+                dtype = framework.convert_np_dtype_to_proto_type(dtype)
             # 1. gpu place need to determine whether the memory is sufficient for allocation.
             if t.place.is_gpu_place():
                 size_dtype = core.size_of_dtype(dtype)
