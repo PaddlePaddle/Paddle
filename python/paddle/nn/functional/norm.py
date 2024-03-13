@@ -673,7 +673,7 @@ def group_norm(
             >>> import paddle
             >>> paddle.seed(100)
             >>> x = paddle.arange(48, dtype="float32").reshape((2, 6, 2, 2))
-            >>> group_norm_out = paddle.nn.functional.group_norm(x, num_channels=6, num_groups=6)
+            >>> group_norm_out = paddle.nn.functional.group_norm(x, num_groups=6)
 
             >>> print(group_norm_out)
             Tensor(shape=[2, 6, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
