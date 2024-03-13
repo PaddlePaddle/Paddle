@@ -295,22 +295,6 @@ def default_candidates(tuner_cfg):
         raise ValueError(
             f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
         )
-
-    # add refine recompute default values
-    refined_recompute = tuner_cfg.get("refined_recompute", None)
-    if refined_recompute is not None:
-        candidates["refined_recompute"] = {}
-        assert isinstance(refined_recompute, list)
-        for op_type in refined_recompute:
-            assert isinstance(op_type, str)
-            if schedule_mode == "performance":
-                candidates["refined_recompute"][op_type] = list(
-                    range(tuner_cfg["model_cfg"]["num_layers"] + 1, -1, -1)
-                )
-            else:
-                candidates["refined_recompute"][op_type] = list(
-                    range(tuner_cfg["model_cfg"]["num_layers"] + 1)
-                )
     return candidates
 
 
@@ -327,7 +311,6 @@ def search_all(tuner_cfg):
     sharding_degree_candidates = candidates["sharding_degree"]
     use_recompute_candidates = candidates["use_recompute"]
     recompute_granularity_candidates = candidates["recompute_granularity"]
-    refine_recompute_candidates = candidates.get("refined_recompute", None)
 
     num_gpus = (
         tuner_cfg["num_gpus"]
@@ -376,15 +359,8 @@ def search_all(tuner_cfg):
         )
     )
 
-    rr_dim_cfgs = None
-    if refine_recompute_candidates is not None:
-        rr = tuner_cfg["refined_recompute"]
-        rr_list = []
-        for op_type in rr:
-            rr_list.append(refine_recompute_candidates[op_type])
-        rr_dim_cfgs = list(itertools.product(*rr_list))
-
     all_cfgs = []
+    refined_recompute = tuner_cfg.get("refined_recompute", None)
     for valid_degree in valid_degrees:
         for other_dim_cfg in other_dim_cfgs:
             mp_degree, sharding_degree, pp_degree, dp_degree = valid_degree
@@ -404,45 +380,66 @@ def search_all(tuner_cfg):
             if tuner_cfg["model_cfg"]["num_layers"] % (pp_degree * vpp) != 0:
                 continue
 
-            if rr_dim_cfgs:
-                for rr_dim_cfg in rr_dim_cfgs:
-                    skip = False
-                    if (
-                        (pp_degree == 1)
-                        or (not use_recompute)
-                        or (use_recompute and recompute_granularity != "full")
-                    ):
-                        if list(rr_dim_cfg).count(0) != len(rr_dim_cfg):
-                            skip = True
+            if refined_recompute is not None:
+                # if refine recompute is not valid, set 0 for all rr op.
+                if (
+                    (pp_degree == 1)
+                    or (not use_recompute)
+                    or (use_recompute and recompute_granularity != "full")
+                ):
+                    cfg = (
+                        list(valid_degree)
+                        + list(other_dim_cfg)
+                        + [0 for i in range(len(refined_recompute))]
+                    )
+                    if cfg not in all_cfgs:
+                        all_cfgs.append(cfg)
+                else:
+                    max_value = (
+                        tuner_cfg["model_cfg"]["num_layers"] // pp_degree
+                    )
+                    rr_valid_values = list(range(0, max_value + 1))
+                    # The previous operator has reached its maximum value, and the current operator can only be turned on
+                    op_count = len(refined_recompute)
 
-                    max_value = tuner_cfg["model_cfg"]["num_layers"] / pp_degree
-                    if rr_dim_cfg[0] > max_value:
-                        skip = True
+                    # first op values
+                    rr_dim_cfgs = []
+                    for value in rr_valid_values:
+                        cfg = [value]
+                        cfg.extend([0 for _ in range(op_count - 1)])
+                        if cfg not in rr_dim_cfgs:
+                            rr_dim_cfgs.append(cfg)
+                    # other ops values
                     i = 1
-                    while i < len(rr_dim_cfg):
-                        if (
-                            rr_dim_cfg[i - 1] != max_value
-                            and rr_dim_cfg[i] != 0
-                        ) or rr_dim_cfg[i] > max_value:
-                            skip = True
-                            break
+                    while i < op_count:
+                        for value in rr_valid_values:
+                            cfg = [max_value for _ in range(i)]
+                            cfg.extend([value])
+                            cfg.extend([0 for _ in range(op_count - i - 1)])
+                            if cfg not in rr_dim_cfgs:
+                                rr_dim_cfgs.append(cfg)
                         i += 1
-                    if skip:
-                        cfg = (
-                            list(valid_degree)
-                            + list(other_dim_cfg)
-                            + [0 for i in range(len(rr_dim_cfg))]
-                        )
-                        if cfg not in all_cfgs:
-                            all_cfgs.append(cfg)
+
+                    if tuner_cfg.get("schedule_mode") != "performance":
+                        # momory sort
+                        for rr_dim_cfg in rr_dim_cfgs:
+                            cfg = (
+                                list(valid_degree)
+                                + list(other_dim_cfg)
+                                + list(rr_dim_cfg)
+                            )
+                            if cfg not in all_cfgs:
+                                all_cfgs.append(cfg)
                     else:
-                        cfg = (
-                            list(valid_degree)
-                            + list(other_dim_cfg)
-                            + list(rr_dim_cfg)
-                        )
-                        if cfg not in all_cfgs:
-                            all_cfgs.append(cfg)
+                        rr_dim_cfgs.sort(reverse=True)
+                        for rr_dim_cfg in rr_dim_cfgs:
+                            cfg = (
+                                list(valid_degree)
+                                + list(other_dim_cfg)
+                                + list(rr_dim_cfg)
+                            )
+                            if cfg not in all_cfgs:
+                                all_cfgs.append(cfg)
             else:
                 cfg = list(valid_degree) + list(other_dim_cfg)
                 all_cfgs.append(cfg)
@@ -459,9 +456,8 @@ def search_all(tuner_cfg):
         8: "recompute_granularity",
     }
 
-    if refine_recompute_candidates is not None:
-        rr = tuner_cfg["refined_recompute"]
-        for dim in rr:
+    if refined_recompute is not None:
+        for dim in refined_recompute:
             mapping[len(mapping)] = dim
     new_all_cfgs = []
     for cfg in all_cfgs:
