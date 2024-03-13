@@ -800,18 +800,29 @@ FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
   }
 }
 
-FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
-  ir::Expr reduce_init = reduce_op.GetInitExpr();
-  std::vector<ir::Expr> reduce_for =
-      (SearchUtils::ChildFors *
-       SearchUtils::FindFather(reduce_init))(reduce_op.GetFuncBody());
-  ir::Expr trivial_last_for =
-      SearchUtils::ChildFors(trivial_op.GetFuncBody()).back();
 
-  for (auto const& for_expr : reduce_for) {
+ir::Expr ExtendFor(ir::Expr target, std::vector<ir::Expr> extended_fors){
+  ir::Expr loop_body = target.As<ir::For>()->body;
+  for (auto for_expr=extended_fors.rbegin(); for_expr != extended_fors.rend(); for_expr++){
+    loop_body = TransformerUtils::WrapForTransformer((*for_expr).As<ir::For>()->loop_var)(loop_body);
   }
+  return TransformerUtils::WrapForTransformer(target.As<ir::For>()->loop_var)(loop_body);
+}
 
-  return trivial_op;
+FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
+  ir::Expr new_trivial_body = ir::ir_utils::IRCopy(trivial_op.GetFuncBody());
+
+  ir::Expr reduce_init = reduce_op.GetInitExpr();
+  std::vector<ir::Expr> reduce_for = (SearchUtils::ChildFors * SearchUtils::FindFather(reduce_init))(reduce_op.GetFuncBody());
+  ir::Expr trivial_last_for = SearchUtils::ChildFors(new_trivial_body).back();
+
+  ComposeUtils::SubstitudeTargetExprWithDestExpr(
+    trivial_last_for, 
+    ExtendFor(trivial_last_for, reduce_for),
+    &new_trivial_body
+  );
+
+  return TrivialOp(new_trivial_body);
 }
 
 std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
