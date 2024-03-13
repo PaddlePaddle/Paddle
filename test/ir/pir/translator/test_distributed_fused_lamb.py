@@ -126,7 +126,6 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         assert (
             not paddle.in_dynamic_mode()
         ), "DistributedFusedLamb does not support dygraph mode"
-        super().__init__(learning_rate=learning_rate, grad_clip=None, name=name)
 
         self._beta1 = beta1
         self._beta2 = beta2
