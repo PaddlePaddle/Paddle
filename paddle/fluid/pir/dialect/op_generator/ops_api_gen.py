@@ -121,6 +121,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'all_reduce',
+    'all_reduce_',
     'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_avg_',
