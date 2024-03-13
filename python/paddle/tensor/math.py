@@ -6009,6 +6009,7 @@ def lcm_(x, y, name=None):
     return out
 
 
+@paddle.utils.print_utils.print_args
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
     Computes the n-th forward difference along the given axis.

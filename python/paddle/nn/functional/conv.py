@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import paddle
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
@@ -107,6 +107,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
     return padding, padding_algorithm
 
 
+@paddle.utils.print_utils.print_args
 def _conv_nd(
     x,
     weight,

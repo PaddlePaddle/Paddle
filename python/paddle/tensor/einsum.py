@@ -20,7 +20,6 @@ import string
 import numpy as np
 import opt_einsum
 
-import paddle
 from paddle import _C_ops
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -835,7 +834,6 @@ def gen_equation_for_opteinsum(lhs, rhs):
     return lhs + "->" + rhs, broadcast_label
 
 
-@paddle.utils.print_utils.print_args
 def einsum_v2(equation, *operands):
     """
     einsum v2 implementation.
@@ -867,7 +865,6 @@ def einsum_v2(equation, *operands):
     return var_list[0]
 
 
-@paddle.utils.print_utils.print_args
 def gen_einsum_op(equation, *operands):
     """
     EinsumOp Python Interface:
@@ -903,7 +900,6 @@ def gen_einsum_op(equation, *operands):
         return out
 
 
-@paddle.utils.print_utils.print_args
 def einsum(equation, *operands):
     r"""
 
@@ -1060,6 +1056,15 @@ def einsum(equation, *operands):
                      [0.08053084, 0.80583858, 0.56031936]]])
 
     """
+    t_info = ""
+    for i in range(len(operands)):
+        t_info += "in_{id}_shape: {shape}, in_{id}_dtype: {dtype},".format(
+            id=i, shape=operands[i].shape, dtype=operands[i].dtype
+        )
+    log_msg = "function_name: {function_name}, equation: {equation}, operands: {operands}".format(
+        function_name="einsum", equation=equation, operands=t_info
+    )
+    print(log_msg)
     import os
 
     if int(os.environ.get('FLAGS_new_einsum', "1")):

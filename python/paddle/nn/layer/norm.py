@@ -411,10 +411,6 @@ class InstanceNorm3D(_InstanceNormBase):
             )
 
 
-import paddle
-
-
-@paddle.utils.print_utils.print_args
 class GroupNorm(Layer):
     """
 
@@ -544,6 +540,60 @@ class GroupNorm(Layer):
             self.weight,
             self.bias,
             self._data_format,
+        log_msg = "{function_name}, in_shape: {in_shape}, in_dtype: {in_dtype}, weight_shape: {w_shape}, weight_dtype: {w_dtype}, bias_shape: {b_shape}, bias_dtype: {b_dtype}, epsilon: {eps}, num_groups: {groups}, data_format: {format}".format(
+            function_name='group_norm',
+            in_shape=input.shape,
+            in_dtype=input.dtype,
+            w_shape=self.weight.shape,
+            w_dtype=self.weight.dtype,
+            b_shape=self.bias.shape,
+            b_dtype=self.bias.dtype,
+            eps=self._epsilon,
+            groups=self._num_groups,
+            format=self._data_format,
+        )
+        print(log_msg)
+        if in_dynamic_or_pir_mode():
+            return _C_ops.group_norm(
+                input,
+                self.weight,
+                self.bias,
+                self._epsilon,
+                self._num_groups,
+                self._data_format,
+            )
+
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True
+        )
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True
+        )
+
+        inputs = {'X': input}
+        if self.bias is not None:
+            inputs['Bias'] = self.bias
+        if self.weight is not None:
+            inputs['Scale'] = self.weight
+
+        # create output
+        group_norm_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype
+        )
+
+        self._helper.append_op(
+            type="group_norm",
+            inputs=inputs,
+            outputs={
+                "Y": group_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={
+                "epsilon": self._epsilon,
+                "groups": self._num_groups,
+                "data_layout": self._data_format,
+            },
         )
 
     def extra_repr(self):
