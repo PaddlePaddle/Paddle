@@ -30,8 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
-#include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
