@@ -42,10 +42,11 @@ namespace pir {
 namespace trivial_fusion_detail {
 
 namespace SearchUtils {
+
 // 1. search by type. DONE
 // 2. search by value. DONE
-// 3. search by father.
-//
+// 3. search by father. TODO
+
 using ExprSet = std::vector<ir::Expr>;
 using Func = std::function<ExprSet(const ir::Expr& x)>;
 struct Mapping {
@@ -128,17 +129,87 @@ Mapping ChildStores =
 Mapping ChildLoads =
     Collector([](const ir::Expr* e) { return e->As<ir::Load>(); });
 
-Mapping ChildFors = 
+template <class Transformer>
+void FindAndReplace(ir::Expr* body,
+                    const SearchUtils::Mapping& map,
+                    const Transformer& transformer,
+                    bool force_single_target = true) {
+  ExprSet found_targets;
+  if (force_single_target && found_targets.size() != 1) {
+    found_targets = {map.GetSingle(*body)};
+  } else {
+    found_targets = map(*body);
+  }
+  for (const auto& expr : found_targets) {
+    MappingTargetExprToDestExprMutator(expr, transformer(expr))(body);
+  }
+}
+
+Mapping ChildFors =
     Collector([](const ir::Expr* e) { return e->As<ir::For>(); });
 
-Mapping FindFather(const ir::Expr& child){
-  Mapping find_child = Collector([child](const ir:: Expr* e) { return *e == child;});
+Mapping FindFather(const ir::Expr& child) {
+  Mapping find_child =
+      Collector([child](const ir::Expr* e) { return *e == child; });
   return Collector(
-    [&](const ir::Expr* parent) { return !find_child(*parent).empty();}
-  );
+      [&](const ir::Expr* parent) { return !find_child(*parent).empty(); });
 }
 
 }  // namespace SearchUtils
+
+namespace TransformerUtils {
+using TransformFunc = std::function<ir::Expr(ir::Expr)>;
+struct Transformer {
+  TransformFunc f_;
+  Transformer(TransformFunc f) { f_ = f; }
+  ir::Expr operator()(const ir::Expr& x) const { return f_(x); }
+  Transformer operator*(const Transformer& x) {
+    auto new_f = [=](const ir::Expr& e) -> ir::Expr {
+      const auto& rs = this->f_(e);
+      return x.f_(rs);
+    };
+    return Transformer(std::function(new_f));
+  };
+};
+
+Transformer Identity = Transformer([](const ir::Expr& e) { return e; });
+Transformer WrapForTransformer(const ir::Var& v) {
+  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+    auto block = e;
+    if (!block.As<ir::Block>()) {
+      block = ir::Block::Make({e});
+    }
+    return ir::For::Make(v,
+                         v->lower_bound,
+                         v->upper_bound,
+                         ir::ForType::Serial,
+                         ir::DeviceAPI::Host,
+                         block);
+  };
+  return Transformer(f);
+}
+
+std::vector<ir::Var> CreateInnerBlockVars(
+    const std::vector<ir::Var>& block_vars) {
+  int i = 0;
+  std::vector<ir::Var> vars;
+  for (const auto& v : block_vars) {
+    vars.emplace_back(ir::Var("inner_block_" + std::to_string(i++)));
+  }
+  return vars;
+}
+
+Transformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars) {
+  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+    if (e.As<ir::ScheduleBlock>()) {
+      PADDLE_THROW("please input a non-schedule block expr.");
+    }
+    block = ir::ScheduleBlock::Make(block_vars, e);
+  };
+  return Transformer(f);
+}
+
+}  // namespace TransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(
     const std::vector<::pir::Operation*>& ops) {
@@ -336,26 +407,6 @@ bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
 
 }  // namespace ComposeUtils
 
-// Teller to find the father expr.
-// Getter to get the target expr from father
-// Transformer to trans the target to replaced.
-template <class C, class Teller, class Getter, class Transformer>
-void FindAndReplace(C* body,
-                    const Teller& teller,
-                    const Getter& getter,
-                    const Transformer& transformer,
-                    bool force_single_target = true) {
-  std::set<Expr> found_targets =
-      cinn::ir::ir_utils::CollectIRNodesWithoutTensor(*body, teller);
-  if (force_single_target && found_targets.size() != 1) {
-    PADDLE_THROW("The expr found should have only one target.");
-  }
-  for (const auto& expr : found_targets) {
-    ComposeUtils::MappingTargetExprToDestExprMutator(
-        getter(expr), transformer(getter(expr)))(body);
-  }
-}
-
 struct TrivialOp {
  public:
   explicit TrivialOp(const ir::Expr& origin_func_body) {
@@ -525,6 +576,13 @@ ir::Expr CopyReduceBody(const FusibleOp& downstream, const ReduceOp& upstream) {
   return std::visit(Visitor(), downstream);
 }
 
+ir::Expr CreateReduceExpr(
+    const std::vector<ir::Var> output_iters,
+    const std::vector<ir::Var> reduce_iters,
+    const ir::Expr& init_body,    // relay on output_iters
+    const ir::Expr& reduce_body,  // relay on output_iters + reduce_iters
+    const ir::Tensor& new_write_tensor) {}
+
 ir::Expr CreateReduceExpr(const FusibleOp& downstream,
                           const ReduceOp& upstream,
                           const ir::Expr& reduce_body,
@@ -535,7 +593,9 @@ ir::Expr CreateReduceExpr(const FusibleOp& downstream,
   VLOG(4) << "downstream: " << *GetFuncBodyPointer(downstream);
   VLOG(4) << "to replace reduce_body: " << reduce_body;
   VLOG(4) << "new tensor name: " << new_tensor;
+
   // copy downstream and replace reduce_body and init_body
+
   ir::Expr copied_body = CopyReduceBody(downstream, upstream);
   // STEP1: replace reduce_body.
   FindAndReplace(
@@ -716,10 +776,13 @@ FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
 
 FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
   ir::Expr reduce_init = reduce_op.GetInitExpr();
-  std::vector<ir::Expr> reduce_for = (SearchUtils::ChildFors * SearchUtils::FindFather(reduce_init))(reduce_op.GetFuncBody());
-  ir::Expr trivial_last_for = SearchUtils::ChildFors(trivial_op.GetFuncBody()).back();
+  std::vector<ir::Expr> reduce_for =
+      (SearchUtils::ChildFors *
+       SearchUtils::FindFather(reduce_init))(reduce_op.GetFuncBody());
+  ir::Expr trivial_last_for =
+      SearchUtils::ChildFors(trivial_op.GetFuncBody()).back();
 
-  for (auto const& for_expr : reduce_for){
+  for (auto const& for_expr : reduce_for) {
   }
 
   return trivial_op;
@@ -737,9 +800,13 @@ std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
       result.insert(result.end(), child_flatten.begin(), child_flatten.end());
     }
   }
-  result.push_back(std::holds_alternative<TrivialOp>(root_op)
-                       ? SinkTrivialLoopAlign(std::get<TrivialOp>(root_op), std::get<ReduceOp>(fusion_tree->upstream.begin()->first->fusible_op))
-                       : root_op);
+  result.push_back(
+      std::holds_alternative<TrivialOp>(root_op)
+          ? SinkTrivialLoopAlign(
+                std::get<TrivialOp>(root_op),
+                std::get<ReduceOp>(
+                    fusion_tree->upstream.begin()->first->fusible_op))
+          : root_op);
   return result;
 }
 
