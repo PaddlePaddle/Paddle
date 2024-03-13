@@ -192,12 +192,12 @@ void GroupNormalizeSiluXPUFusePass::FuseGroupNormalizeSilu(ir::Graph* graph) con
 
     fused_op_desc.SetType("gn_silu_xpu");
     // set attrs for fused op
-    fused_op_desc.SetInput("X", {gn_x->Name()});
-    fused_op_desc.SetInput("Bias", {gn_bias->Name()});
-    fused_op_desc.SetInput("Scale", {gn_scale->Name()});
+    fused_op_desc.SetInput("x", {gn_x->Name()});
+    fused_op_desc.SetInput("bias", {gn_bias->Name()});
+    fused_op_desc.SetInput("scale", {gn_scale->Name()});
     fused_op_desc.SetAttr("epsilon", eps);
     fused_op_desc.SetAttr("groups", groups);
-    fused_op_desc.SetOutput("Out", {fused_op_out_name});
+    fused_op_desc.SetOutput("out", {fused_op_out_name});
     // relink fused op
     auto* fused_op = graph->CreateOpNode(&fused_op_desc);
     IR_NODE_LINK_TO(gn_x, fused_op);
