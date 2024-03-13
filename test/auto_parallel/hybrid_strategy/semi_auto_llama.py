@@ -268,6 +268,10 @@ class TestLlamaAuto:
                 recompute = strategy._recompute
                 recompute.enable = self.config.recompute
 
+            if self.config.sequence_parallel:
+                sp_optimization = strategy._sp_optimization
+                sp_optimization.enable = self.config.sequence_parallel
+
             dist_model = dist.to_static(
                 model,
                 dist_loader,
