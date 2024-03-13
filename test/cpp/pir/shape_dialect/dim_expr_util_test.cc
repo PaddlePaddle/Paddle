@@ -29,6 +29,18 @@ DimExpr CreateExampleDimExpr() {
 }
 }  // namespace
 
+TEST(DimExprUtil, Substitute) {
+  DimExpr dim_expr = CreateExampleDimExpr();
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> naive_to_full_name{
+      {DimExpr("S0"), DimExpr("symbol0")}, {DimExpr("S1"), DimExpr("symbol1")}};
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> full_name_to_naive{
+      {DimExpr("symbol0"), DimExpr("S0")}, {DimExpr("symbol1"), DimExpr("S1")}};
+
+  const auto& mid_expr = SubstituteDimExpr(dim_expr, naive_to_full_name);
+  const auto& ret_expr = SubstituteDimExpr(mid_expr, full_name_to_naive);
+  ASSERT_EQ(ret_expr, dim_expr);
+}
+
 TEST(DimExprUtil, Calculate) {
   // (S0 - S1) * 2 / S0
   DimExpr dim_expr = CreateExampleDimExpr();
