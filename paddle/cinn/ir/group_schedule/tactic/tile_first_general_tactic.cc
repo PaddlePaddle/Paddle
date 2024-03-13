@@ -19,6 +19,8 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
+PD_DECLARE_bool(support_reduce_stride_read);
+
 namespace cinn {
 namespace ir {
 
@@ -39,6 +41,15 @@ bool IsReduceBlock(const std::shared_ptr<GroupTileInfo>& tile_info,
 
 bool HasReduceAxis(const std::shared_ptr<GroupTileInfo>& tile_info) {
   return tile_info->reduce_axis_.size() > 0;
+}
+
+bool IsWarpReduce(const std::shared_ptr<GroupTileInfo>& tile_info) {
+  const auto& MatchWarpReduce = cinn::adt::match{
+      [&](const ir::NoneReduceMethod&) { return false; },
+      [&](const ir::WarpReduceMethod&) { return true; },
+      [&](const ir::BlockReduceMethod&) { return false; },
+  };
+  return std::visit(MatchWarpReduce, tile_info->reduce_method);
 }
 
 class TileFirstGeneralTactic final : public ScheduleTactic {
@@ -192,11 +203,54 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
     split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
   }
 
-  auto split_loops = sch->Split(loops[reduce_current_axis_], split_factors);
+  if (FLAGS_support_reduce_stride_read) {
+    if (context_->group_tile_info->reduce_block <= 256) {
+      split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
+      split_factors.emplace_back(
+          std::ceil(context_->group_tile_info->reduce_block * 1.0 /
+                    context_->group_tile_info->reduce_inner_num));
+      auto split_loops = sch->Split(loops[reduce_current_axis_], split_factors);
+      loops = sch->GetLoops(block_id);
 
-  if (IsReduceBlock(context_->group_tile_info, block_id)) {
-    sch->FactorizeReduction(
-        split_loops[0], 0, /* with_write_back_block_init = */ false);
+      sch->Reorder(
+          {loops[reduce_current_axis_ + 1], loops[reduce_current_axis_]});
+
+      loops = sch->GetLoops(block_id);
+
+      if (IsReduceBlock(context_->group_tile_info, block_id)) {
+        sch->FactorizeReduction(loops[reduce_current_axis_],
+                                0,
+                                /* with_write_back_block_init = */ false);
+      }
+    } else {
+      // split warp num first
+      split_factors.clear();
+      split_factors.emplace_back(context_->group_tile_info->warp_num);
+      split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
+      split_factors.emplace_back(32);
+
+      auto split_loops = sch->Split(loops[reduce_current_axis_], split_factors);
+      loops = sch->GetLoops(block_id);
+      sch->Reorder(
+          {loops[reduce_current_axis_ + 2], loops[reduce_current_axis_ + 1]});
+
+      loops = sch->GetLoops(block_id);
+      sch->Fuse({loops[reduce_current_axis_], loops[reduce_current_axis_ + 1]});
+
+      loops = sch->GetLoops(block_id);
+
+      if (IsReduceBlock(context_->group_tile_info, block_id)) {
+        sch->FactorizeReduction(loops[reduce_current_axis_],
+                                0,
+                                /* with_write_back_block_init = */ false);
+      }
+    }
+  } else {
+    auto split_loops = sch->Split(loops[reduce_current_axis_], split_factors);
+    if (IsReduceBlock(context_->group_tile_info, block_id)) {
+      sch->FactorizeReduction(
+          split_loops[0], 0, /* with_write_back_block_init = */ false);
+    }
   }
 }
 
@@ -243,7 +297,7 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
     sch->Split(loops[0],
                std::vector<int>({context_->group_tile_info->block_num,
                                  context_->group_tile_info->warp_num * 32}));
-  } else if (IsInnerThreadSpatialLoopGT(context_->group_tile_info, 1)) {
+  } else if (IsWarpReduce(context_->group_tile_info)) {
     // get num warp from flatten num
     auto loops = sch->GetLoops(block_id);
     LimitWarpNum(context_->group_tile_info, loops[0]);
@@ -251,7 +305,6 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
                std::vector<int>({-1, context_->group_tile_info->warp_num}));
 
     loops = sch->GetLoops(block_id);
-    sch->Fuse({loops[1], loops[2]});
 
     if (IsReduceBlock(context_->group_tile_info, block_id)) {
       auto loops = sch->GetLoops(block_id + "_rf");
@@ -259,7 +312,6 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
                  std::vector<int>({-1, context_->group_tile_info->warp_num}));
 
       loops = sch->GetLoops(block_id + "_rf");
-      sch->Fuse({loops[1], loops[2]});
     }
   } else {
     return;
@@ -268,30 +320,26 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::Unroll(ir::IRSchedule* sch,
                                     const std::string& block_id) {
-  auto loops = sch->GetLoops(block_id);
-  if (loops.size() > 2) {
-    if (loops[2].As<ir::For>()->extent.is_constant()) {
-      sch->Unroll(loops[2]);
+  std::vector<size_t> unroll_loops_idx = [&] {
+    if (IsWarpReduce(context_->group_tile_info)) {
+      return std::vector<size_t>{3, 4};
+    } else {
+      return std::vector<size_t>{2, 3};
     }
-  }
-  if (loops.size() > 3) {
-    if (loops[3].As<ir::For>()->extent.is_constant()) {
-      sch->Unroll(loops[3]);
-    }
-  }
+  }();
 
+  const auto DoUnroll = [&](const std::vector<ir::Expr>& loops) {
+    for (size_t loop_idx : unroll_loops_idx) {
+      if (loops.size() > loop_idx &&
+          loops[loop_idx].As<ir::For>()->extent.is_constant()) {
+        sch->Unroll(loops[loop_idx]);
+      }
+    }
+  };
+
+  DoUnroll(sch->GetLoops(block_id));
   if (IsReduceBlock(context_->group_tile_info, block_id)) {
-    auto loops = sch->GetLoops(block_id + "_rf");
-    if (loops.size() > 2) {
-      if (loops[2].As<ir::For>()->extent.is_constant()) {
-        sch->Unroll(loops[2]);
-      }
-    }
-    if (loops.size() > 3) {
-      if (loops[3].As<ir::For>()->extent.is_constant()) {
-        sch->Unroll(loops[3]);
-      }
-    }
+    DoUnroll(sch->GetLoops(block_id + "_rf"));
   }
 }
 
@@ -330,19 +378,24 @@ void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
     sch->Split(loops[0], std::vector<int>({1, -1}));
   }
 
-  loops = sch->GetLoops(block_id);
-  sch->Bind(loops[0], "blockIdx.x");
-  sch->Bind(loops[1], "threadIdx.x");
+  const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
+    sch->Bind(loops[0], "blockIdx.x");
+    if (IsWarpReduce(context_->group_tile_info)) {
+      sch->Bind(loops[1], "threadIdx.y");
+      sch->Bind(loops[2], "threadIdx.x");
+    } else {
+      sch->Bind(loops[1], "threadIdx.x");
+    }
+  };
+
+  DoBind(sch->GetLoops(block_id));
 
   if (IsReduceBlock(context_->group_tile_info, block_id)) {
     auto loops = sch->GetLoops(block_id + "_rf");
     if (context_->group_tile_info->is_reduce_all) {
       sch->Split(loops[0], std::vector<int>({1, -1}));
     }
-
-    loops = sch->GetLoops(block_id + "_rf");
-    sch->Bind(loops[0], "blockIdx.x");
-    sch->Bind(loops[1], "threadIdx.x");
+    DoBind(sch->GetLoops(block_id + "_rf"));
   }
 }
 

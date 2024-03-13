@@ -31,6 +31,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
+#include "paddle/cinn/optim/if_fusion.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -191,9 +192,9 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     reduce_inner_num = 8;
   } else if (reduce_numel > 2048) {
     spatial_block = 1;
-    reduce_block = 2048;
-    warp_num = 8;
-    reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 256.0));
+    reduce_block = int64_t(std::ceil(reduce_numel * 1.0 / 1024.0)) * 1024;
+    warp_num = 32;
+    reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 1024.0));
     spatial_inner_num = 1;
   }
 
@@ -621,6 +622,9 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
     if (it == align_info.end()) {
       continue;
     }
+    if (op1->name() == "cinn_op.generate_shape") {
+      continue;
+    }
 
     PADDLE_ENFORCE_EQ(
         it->second.size(),
@@ -722,6 +726,10 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
       if (op_out.use_count() == 1 &&
           op_out.first_use().owner()->name() == "cf.yield") {
+        info.with_constrain = true;
+      }
+
+      if (erase_reshape.count(op_out.first_use().owner())) {
         info.with_constrain = true;
       }
 

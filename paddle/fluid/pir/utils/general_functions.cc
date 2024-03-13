@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 
 #include <unordered_set>
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/op_operand.h"
-#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
@@ -61,7 +63,7 @@ void GetUsedExternalValueImpl(
 
 namespace pir {
 
-std::string GetParameterNameFromValue(pir::Value value) {
+std::string GetParameterNameFromValue(const pir::Value& value) {
   pir::Operation* owner = value.defining_op();
   std::string name;
   if (owner->isa<ParameterOp>()) {
@@ -78,7 +80,7 @@ std::string GetParameterNameFromValue(pir::Value value) {
   return name;
 }
 
-std::vector<int64_t> GetShapeFromValue(pir::Value value) {
+std::vector<int64_t> GetShapeFromValue(const pir::Value& value) {
   if (value.type().isa<paddle::dialect::DenseTensorType>()) {
     return phi::vectorize(
         value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
@@ -91,7 +93,7 @@ std::vector<int64_t> GetShapeFromValue(pir::Value value) {
   }
 }
 
-pir::Type GetDataTypeFromValue(pir::Value value) {
+pir::Type GetDataTypeFromValue(const pir::Value& value) {
   // TODO(dev): Support other types like DenseTensor.
   PADDLE_ENFORCE_EQ(
       value.type().isa<paddle::dialect::DenseTensorType>(),
@@ -139,13 +141,13 @@ std::vector<pir::Value> GetUsedExternalValue(const pir::Block& block) {
   return used_values;
 }
 
-bool ValueIsPersitable(pir::Value value) {
+bool ValueIsPersistable(const pir::Value& value) {
   if (!value.defining_op()) {
     return false;
   }
   if (value.defining_op()->num_operands() > 0) {
     for (const auto& source_value : value.defining_op()->operands_source()) {
-      if (!ValueIsPersitable(source_value)) {
+      if (!ValueIsPersistable(source_value)) {
         return false;
       }
     }

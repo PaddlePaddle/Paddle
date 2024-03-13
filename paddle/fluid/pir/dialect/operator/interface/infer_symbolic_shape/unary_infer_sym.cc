@@ -367,6 +367,16 @@ bool ReshapeOpInferSymbolicShape(
       symbol::TensorShapeOrDataDimExprs(out_dims)};
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+
+  const auto &x_shape = [&] {
+    std::vector<symbol::DimExpr> x_shape{symbol::DimExpr(0)};
+    const auto &original_shape =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+    for (const auto &dim : original_shape) {
+      x_shape.push_back(dim);
+    }
+    return x_shape;
+  }();
   shape_analysis->SetShapeOrDataForValue(
       op->result(1),
       CreateShapeOrDataForXShape(

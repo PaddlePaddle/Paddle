@@ -109,7 +109,7 @@ class Array<T, 0> {
     static T obj{};
     return obj;
 #else
-    COMMON_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
+    PADDLE_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
 #endif
   }
 
@@ -120,7 +120,7 @@ class Array<T, 0> {
     static const T obj{};
     return obj;
 #else
-    COMMON_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
+    PADDLE_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
 #endif
   }
 
