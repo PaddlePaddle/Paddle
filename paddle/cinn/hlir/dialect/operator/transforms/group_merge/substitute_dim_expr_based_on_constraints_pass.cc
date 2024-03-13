@@ -16,16 +16,74 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraints_pass.h"
 
+#include <regex>
+
 #include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/cinn/common/union_find.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+
+PD_DECLARE_string(cinn_symbol_dim_constraints);
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
 namespace {
+
+namespace detail {
+
+void Trim(std::string* str) {
+  str->erase(0, str->find_first_not_of(' '));
+  str->erase(str->find_last_not_of(' ') + 1);
+}
+
+std::vector<std::string> Split(const std::string& str,
+                               const std::string& delimiter) {
+  std::vector<std::string> result;
+  std::regex reg(delimiter);
+  std::sregex_token_iterator pos(str.begin(), str.end(), reg, -1);
+  decltype(pos) end;
+  for (; pos != end; ++pos) {
+    std::string tmp = pos->str();
+    Trim(&tmp);
+    if (!tmp.empty()) {
+      result.emplace_back(tmp);
+    }
+  }
+  return result;
+}
+
+std::vector<symbol::DimExprConstraint> ParseDimExprConstraintsFLAGS() {
+  const auto& CreateConstrain = [&](const std::string& constraint,
+                                    symbol::DimExprBuilder* builder) {
+    std::vector<std::string> expr_pair = Split(constraint, "==");
+    PADDLE_ENFORCE_EQ(expr_pair.size(),
+                      2UL,
+                      ::common::errors::InvalidArgument(
+                          "The constraint is invalid. the result size of "
+                          "constraint after split by '==' should be 2, but now "
+                          "is %d, original constrain is '%s'",
+                          expr_pair.size(),
+                          constraint));
+    const std::string& lhs_expr = expr_pair[0];
+    const std::string& rhs_expr = expr_pair[1];
+    builder->CstrEq(symbol::DimExpr{lhs_expr}, symbol::DimExpr{rhs_expr});
+  };
+  std::vector<symbol::DimExprConstraint> dim_expr_constraints = [&] {
+    const std::string& constraints = FLAGS_cinn_symbol_dim_constraints;
+    std::vector<symbol::DimExprConstraint> dim_expr_constraints;
+    symbol::DimExprBuilder builder(&dim_expr_constraints);
+    for (const std::string& constraint : Split(constraints, ",")) {
+      CreateConstrain(constraint, &builder);
+    }
+    return dim_expr_constraints;
+  }();
+  return dim_expr_constraints;
+}
+
+}  // namespace detail
 
 template <typename DoEachT>
 void VisitEachOp(pir::Operation* op, const DoEachT& DoEach) {
@@ -47,6 +105,12 @@ void VisitEachValue(const pir::Operation* op, const DoEachT& DoEach) {
   for (std::size_t i = 0; i < op->num_results(); ++i) {
     DoEach(op->result(i));
   }
+}
+
+const std::vector<symbol::DimExprConstraint>& ParseDimExprConstraintsFLAGS() {
+  static std::vector<symbol::DimExprConstraint> dim_expr_constraints{
+      detail::ParseDimExprConstraintsFLAGS()};
+  return dim_expr_constraints;
 }
 
 symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
@@ -117,17 +181,26 @@ int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
 
 std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
-      shape_analysis->CreateDimExprBuilder().constraints();
   const cinn::common::UnionFindSet<symbol::DimExpr>& union_find_set = [&]() {
     cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
-    for (const auto& constraint : dim_expr_constraints) {
-      CHECK(std::holds_alternative<symbol::Equal<symbol::DimExpr>>(constraint))
-          << "The DimExprConstraint type is no Equal<DimExpr>, this part is to "
-             "be completed.";
+    auto AddEqualCstr = [&](const symbol::DimExprConstraint& constraint) {
+      if (!std::holds_alternative<symbol::Equal<symbol::DimExpr>>(constraint)) {
+        VLOG(0) << "The DimExprConstraint type is no Equal<DimExpr>, this part "
+                   "is to be completed.";
+        return;
+      }
       const auto& data =
           std::get<symbol::Equal<symbol::DimExpr>>(constraint).data;
       union_find_set.Union(data->lhs, data->rhs);
+    };
+    const auto& shape_analysis_constraints =
+        shape_analysis->CreateDimExprBuilder().constraints();
+    for (const auto& constraint : shape_analysis_constraints) {
+      AddEqualCstr(constraint);
+    }
+    const auto& dim_expr_constraints = ParseDimExprConstraintsFLAGS();
+    for (const auto& constraint : dim_expr_constraints) {
+      AddEqualCstr(constraint);
     }
     return union_find_set;
   }();
