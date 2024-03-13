@@ -108,15 +108,6 @@ size_t SizeOfType(proto::VarType::Type type) {
                                                DataTypeToString(type)));
 }
 
-size_t SizeOfDataType(DataType type) {
-  auto it = gDataTypeMap().proto_to_size_.find(static_cast<int>(type));
-  if (it != gDataTypeMap().proto_to_size_.end()) {
-    return it->second;
-  }
-  PADDLE_THROW(platform::errors::Unimplemented("Not support %s as tensor type.",
-                                               DataTypeToString(type)));
-}
-
 // Now only supports promotion of complex type
 inline bool NeedPromoteTypes(const proto::VarType::Type& a,
                              const proto::VarType::Type& b) {
