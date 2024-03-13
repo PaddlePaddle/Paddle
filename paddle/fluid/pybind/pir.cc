@@ -1055,31 +1055,6 @@ void BindAttribute(py::module *m) {
     print_stream << self;
     return print_stream.str();
   });
-#ifdef PADDLE_WITH_DISTRIBUTE
-  ir_attr
-      .def_property_readonly(
-          "process_mesh",
-          [](Attribute &self) {
-            if (self.isa<TensorDistAttribute>()) {
-              return self.dyn_cast<TensorDistAttribute>()
-                  .process_mesh_attr()
-                  .process_mesh();
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "process_mesh is only for OperationDistAttribute and "
-                  "TensorDistAttribute."));
-            }
-          })
-      .def_property_readonly("dims_mapping", [](Attribute &self) {
-        if (self.isa<TensorDistAttribute>()) {
-          return self.dyn_cast<TensorDistAttribute>().dims_mapping();
-        } else {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "process_mesh is only for OperationDistAttribute and "
-              "TensorDistAttribute."));
-        }
-      });
-#endif
 }
 
 struct PyInsertionPoint {
