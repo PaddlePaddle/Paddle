@@ -28,10 +28,6 @@ namespace dialect {
 
 using VariantType = phi::Attribute;
 
-#define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \
-  bool name##OpInferSymbolicShape(            \
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis);
-
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
 static inline phi::DataType TransToPhiDataType(pir::Type dtype) {
@@ -170,6 +166,8 @@ phi::DataType GetValueDataType(const pir::Value& value);
 
 std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
                                      bool* is_from_tensor);
+
+const std::unordered_map<std::string, std::string>& AttrTypeMap();
 
 }  // namespace dialect
 }  // namespace paddle

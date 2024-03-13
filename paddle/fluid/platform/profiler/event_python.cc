@@ -63,20 +63,18 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
     runtime_python_node->correlation_id = runtimenode->CorrelationId();
     host_python_node->runtime_node_ptrs.push_back(runtime_python_node);
     // copy DeviceTraceEventNode
-    for (auto devicenode = runtimenode->GetDeviceTraceEventNodes().begin();
-         devicenode != runtimenode->GetDeviceTraceEventNodes().end();
-         ++devicenode) {
+    for (auto devicenode : runtimenode->GetDeviceTraceEventNodes()) {
       DevicePythonNode* device_python_node = new DevicePythonNode();
-      device_python_node->name = (*devicenode)->Name();
-      device_python_node->type = (*devicenode)->Type();
-      device_python_node->start_ns = (*devicenode)->StartNs();
-      device_python_node->end_ns = (*devicenode)->EndNs();
-      device_python_node->device_id = (*devicenode)->DeviceId();
-      device_python_node->context_id = (*devicenode)->ContextId();
-      device_python_node->stream_id = (*devicenode)->StreamId();
-      device_python_node->correlation_id = (*devicenode)->CorrelationId();
+      device_python_node->name = devicenode->Name();
+      device_python_node->type = devicenode->Type();
+      device_python_node->start_ns = devicenode->StartNs();
+      device_python_node->end_ns = devicenode->EndNs();
+      device_python_node->device_id = devicenode->DeviceId();
+      device_python_node->context_id = devicenode->ContextId();
+      device_python_node->stream_id = devicenode->StreamId();
+      device_python_node->correlation_id = devicenode->CorrelationId();
       if (device_python_node->type == TracerEventType::Kernel) {
-        KernelEventInfo kernel_info = (*devicenode)->KernelInfo();
+        KernelEventInfo kernel_info = devicenode->KernelInfo();
         device_python_node->block_x = kernel_info.block_x;
         device_python_node->block_y = kernel_info.block_y;
         device_python_node->block_z = kernel_info.block_z;
@@ -91,10 +89,10 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
         device_python_node->warps_per_sm = kernel_info.warps_per_sm;
         device_python_node->occupancy = kernel_info.occupancy;
       } else if (device_python_node->type == TracerEventType::Memcpy) {
-        MemcpyEventInfo memcpy_info = (*devicenode)->MemcpyInfo();
+        MemcpyEventInfo memcpy_info = devicenode->MemcpyInfo();
         device_python_node->num_bytes = memcpy_info.num_bytes;
       } else if (device_python_node->type == TracerEventType::Memset) {
-        MemsetEventInfo memset_info = (*devicenode)->MemsetInfo();
+        MemsetEventInfo memset_info = devicenode->MemsetInfo();
         device_python_node->num_bytes = memset_info.num_bytes;
         device_python_node->value = memset_info.value;
       }

@@ -200,7 +200,7 @@ std::vector<cinn::common::CINNValue> IRCudaScheduleMatMul(
   ir_sch.MergeExprs();
   // Generally, there are 2 ScheduleBlocks in the lowered function,
   // the first is for reduce_init and the second is the real compute block,
-  // here we use loops of the first block to Bind GPU index in top spatial axies
+  // here we use loops of the first block to Bind GPU index in top spatial axes
   auto init_block = ir_sch.GetAllBlocks().front();
   VLOG(3) << "Matmul lowered expr:\n" << ir_sch.GetModule().GetExprs().front();
 
