@@ -333,16 +333,6 @@ bool ConcatOpInferSymbolicShape(
   size_t rank = shape_data_list[0].shape().size();
   axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
 
-  std::cerr << "data rank " << rank << std::endl;
-  auto combine_op = operand_source.defining_op()->dyn_cast<::pir::CombineOp>();
-
-  std::cerr << "combine input " << combine_op.num_operands() << std::endl;
-  for (size_t i = 0; i < combine_op.num_operands(); ++i) {
-    std::cerr << "op name  "
-              << combine_op.operand_source(i).defining_op()->name()
-              << std::endl;
-  }
-
   if (shape_data_list[0].data().has_value()) {
     if (rank == 1) {
       ExprVec data = details::GetExprVecFromData(
@@ -382,14 +372,16 @@ bool ConcatOpInferSymbolicShape(
         continue;
       }
       for (size_t j = 1; j < shape_data_list.size(); ++j) {
-        // if( shape_data_list[j].shape()[axis].isa<int64_t>() &&
-        // shape_data_list[j].shape()[axis].Get<int64_t>() == 1)
-        // {
-        //   out_dims[axis] = shape_analysis->GetNextSymName();
-        // }
-        // else{
-        out_dims[axis] = out_dims[axis] + shape_data_list[j].shape()[axis];
-        // }
+        if ((!(out_dims[axis].isa<int64_t>())) &&
+            (shape_data_list[j].shape()[axis].isa<int64_t>() &&
+             shape_data_list[j].shape()[axis].Get<int64_t>() == 1)) {
+          std::cerr << "origin " << out_dims[axis] << std::endl;
+          out_dims[axis] = shape_analysis->GetNextSymName();
+
+          std::cerr << "concat out shape " << out_dims[axis] << std::endl;
+        } else {
+          out_dims[axis] = out_dims[axis] + shape_data_list[j].shape()[axis];
+        }
       }
     }
     return out_dims;
@@ -430,6 +422,7 @@ bool GatherNdOpInferSymbolicShape(
     result_sym_dims.emplace_back(index_sym_shape[i]);
   }
 
+  std::cerr << "dim info " << index_sym_shape[index_dims_size - 1] << std::endl;
   PADDLE_ENFORCE_EQ(
       index_sym_shape[index_dims_size - 1].Has<std::int64_t>(),
       true,
