@@ -16,6 +16,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/fill_kernel.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
@@ -83,6 +84,36 @@ inline void StridedTensorFill(const phi::DataType input_dtype,
 
   PD_VISIT_KERNEL(
       "fill", fill_key, fill_signature, false, dev_ctx, x, value, out);
+#endif
+}
+
+template <typename Context>
+inline void StridedTensorContiguous(const phi::DataType input_dtype,
+                                    std::string kernel_name,
+                                    const Context& dev_ctx,
+                                    const phi::DenseTensor& input,
+                                    phi::DenseTensor* out) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+  PD_VISIT_ALL_TYPES(input_dtype, kernel_name, ([&] {
+                       phi::ContiguousKernel<data_t, Context>(
+                           dev_ctx, input, out);
+                     }));
+#else
+  (void)kernel_name;
+  const phi::KernelKey& contiguous_key = {
+      phi::TransToPhiBackend(dev_ctx.GetPlace()),
+      phi::DataLayout::ALL_LAYOUT,
+      input_dtype};
+  using contiguous_signature = void (*)(
+      const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
+
+  PD_VISIT_KERNEL("contiguous",
+                  contiguous_key,
+                  contiguous_signature,
+                  false,
+                  dev_ctx,
+                  input,
+                  out);
 #endif
 }
 }  // namespace phi

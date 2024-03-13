@@ -57,5 +57,12 @@ void IndexSelectStridedKernel(const Context& ctx,
 }
 
 }  // namespace phi
+
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
     index_select_strided, STRIDED, phi::IndexSelectStridedKernel) {}
+#else
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(index_select_strided,
+                                         STRIDED,
+                                         phi::IndexSelectStridedKernel) {}
+#endif

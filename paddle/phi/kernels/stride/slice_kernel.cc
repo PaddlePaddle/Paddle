@@ -95,6 +95,12 @@ void SliceStridedKernel(const Context& ctx,
 }
 
 }  // namespace phi
+
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
+    slice, STRIDED, phi::SliceStridedKernel) {}
+#else
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(slice,
                                          STRIDED,
                                          phi::SliceStridedKernel) {}
+#endif

@@ -46,5 +46,11 @@ void TransposeStridedKernel(const Context& ctx,
 
 }  // namespace phi
 
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
     transpose, STRIDED, phi::TransposeStridedKernel) {}
+#else
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(transpose,
+                                         STRIDED,
+                                         phi::TransposeStridedKernel) {}
+#endif

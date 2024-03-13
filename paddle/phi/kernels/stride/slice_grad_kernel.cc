@@ -14,11 +14,9 @@
 
 #include "paddle/phi/kernels/slice_grad_kernel.h"
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/fill_kernel.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/slice_kernel.h"
-#include "paddle/phi/kernels/stride_funcs.h"
 
 namespace phi {
 
