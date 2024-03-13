@@ -535,6 +535,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "cast_embedding_trans_ids_to_int32_pass",
       "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
+      "gn_silu_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
@@ -549,7 +550,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "conv2d_bias_fuse_pass",
       "redundant_unsqueeze_squeeze_elimination_pass",
       "reduce_ops_fuse_pass",
-      "delete_cast_op_pass",
+      // "delete_cast_op_pass", // error [Hint: Expected input_data_type == filter_data_type, but received input_data_type:6 != filter_data_type:5.]
       "xpu_delete_cast_op_pass",
       "conv2d_trans_filter_dilations_nxn_to_1x1_pass",
       "stack_fuse_pass",

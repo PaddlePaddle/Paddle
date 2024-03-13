@@ -26,6 +26,7 @@ XPUOpMap& get_kl1_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
       {"add_layernorm_xpu", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"gn_silu_xpu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"accuracy", XPUKernelSet({phi::DataType::FLOAT32})},
       {"adam", XPUKernelSet({phi::DataType::FLOAT32})},
       {"adamw", XPUKernelSet({phi::DataType::FLOAT32})},

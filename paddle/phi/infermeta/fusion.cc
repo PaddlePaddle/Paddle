@@ -116,6 +116,21 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int groups,
+                              float epsilon,
+                              MetaTensor* out) {
+  int axis = -1;
+  auto x_dims = x.dims();
+  auto out_dims = x_dims;
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& key_cache,
                                       const MetaTensor& value_cache,
