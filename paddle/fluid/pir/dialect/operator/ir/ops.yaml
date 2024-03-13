@@ -1222,7 +1222,7 @@
     func : PruneGateByCapacityInferMeta
   kernel :
     func : prune_gate_by_capacity
-    data_type : dtype
+    data_type : gate_idx
 
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
