@@ -1317,6 +1317,26 @@ def convert_np_dtype_to_dtype_(np_dtype):
     return convert_np_dtype_to_proto_type(np_dtype)
 
 
+def convert_to_proto_type(dtype):
+    """
+    Convert the data type in numpy to the data type in Paddle.
+
+    Args:
+        dtype (np.dtype|str|core.DataType|core.VarDesc.VarType): The data type in numpy, valid data type
+            string or paddle dtype.
+
+    Returns:
+        core.VarDesc.VarType : The data type in Paddle.
+
+    """
+    if isinstance(dtype, core.VarDesc.VarType):
+        return dtype
+    elif isinstance(dtype, core.DataType):
+        return paddle_type_to_proto_type[dtype]
+    else:
+        return convert_np_dtype_to_proto_type(dtype)
+
+
 def dtype_is_floating(dtype):
     """
     Check the data type is floating or not.
@@ -1366,8 +1386,7 @@ def _create_tensor(
     **kwargs,
 ):
     if dtype is not None:
-        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_proto_type(dtype)
+        dtype = convert_to_proto_type(dtype)
     else:
         dtype = core.VarDesc.VarType.FP32
 
@@ -1579,8 +1598,7 @@ class Variable(metaclass=VariableMetaClass):
             name = self.block.program._name_generator("_generated_var")
 
         if dtype is not None:
-            if not isinstance(dtype, paddle.dtype):
-                dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_to_proto_type(dtype)
 
         if dtype == core.VarDesc.VarType.STRINGS:
             type = core.VarDesc.VarType.STRINGS
@@ -7606,8 +7624,7 @@ class EagerParamBase(core.eager.Tensor):
                 )
 
         if dtype is not None:
-            if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-                dtype = convert_np_dtype_to_proto_type(dtype)
+            dtype = convert_to_proto_type(dtype)
         else:
             dtype = core.VarDesc.VarType.FP32
 
