@@ -1732,6 +1732,7 @@ TEST(GatherGradInferSpmd, Ctor) {
 
   std::vector<int64_t> mesh_shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+
   std::vector<std::string> dim_names = {"x", "y"};
   ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 
@@ -1793,6 +1794,62 @@ TEST(GatherGradInferSpmd, Ctor) {
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({0, 1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
             std::vector<int64_t>({0, -1, 1}));
+}
+
+TEST(CumSumGradInferSpmd, Ctor) {
+  std::vector<int64_t> x_shape = {64, 32, 48};
+  std::vector<int64_t> out_grad_shape = {64, 32, 48};
+
+  std::vector<int64_t> mesh_shape = {2, 4};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
+
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  TensorDistAttr out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+
+  // axis = 1
+  // [0, 1, -1], [0, 1, -1] -->
+  // inputs: [0, 1, -1], [0, -1, -1]
+  // x_grad: [0, -1, -1]
+  x_dist_attr.set_dims_mapping({0, 1, -1});
+  out_grad_dist_attr.set_dims_mapping({0, 1, -1});
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor out_grad(phi::make_ddim(out_grad_shape),
+                                            out_grad_dist_attr);
+  auto spmdinfo = CumSumGradInferSpmd(x, out_grad, 1, false, false, false);
+  EXPECT_EQ(spmdinfo.first.size(), 2UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, -1, -1}));
+
+  // axis = -1
+  // flatten = true
+  // [0, 1, -1], [-1] -->
+  // inputs: [0, 1, -1], [-1]
+  // x_grad: [-1, -1, -1]
+  x_dist_attr.set_dims_mapping({0, 1, -1});
+  out_grad_dist_attr.set_dims_mapping({-1});
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim({64 * 32 * 48}),
+                                              out_grad_dist_attr);
+  spmdinfo = CumSumGradInferSpmd(x, out_grad, -1, true, false, false);
+  EXPECT_EQ(spmdinfo.first.size(), 2UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({-1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, -1, -1}));
 }
 
 }  // namespace auto_parallel

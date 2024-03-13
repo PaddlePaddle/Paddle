@@ -188,13 +188,12 @@ def monkey_patch_tensor():
                 ...     linear.weight.set_value(custom_weight)  # change existing weight
                 ...     out = linear(t)  # call with different weight
         """
-        base_tensor = core.eager.Tensor
         assert isinstance(
-            value, (np.ndarray, base_tensor, dict, str)
+            value, (np.ndarray, paddle.Tensor, dict, str)
         ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
         if self.is_dist():
             assert isinstance(
-                value, (np.ndarray, base_tensor)
+                value, (np.ndarray, paddle.Tensor)
             ), "For set_value function of dist tensor, arguments type only support numpy or Tensor."
 
         if isinstance(value, (dict, str)):
@@ -214,8 +213,10 @@ def monkey_patch_tensor():
                 self.name, self.shape, value.shape
             )
 
-            if isinstance(value, base_tensor):
+            if isinstance(value, paddle.Tensor):
                 dtype = value.dtype
+            elif paddle.framework.use_pir_api():
+                dtype = paddle.pir.core.convert_np_dtype_to_dtype_(value.dtype)
             else:
                 dtype = convert_np_dtype_to_dtype_(value.dtype)
 

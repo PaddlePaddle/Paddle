@@ -299,6 +299,14 @@ bool PrintOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return SameOperandsAndResultShape(op, shape_analysis);
 }
+bool PutAlongAxisOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+bool PutAlongAxis_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
 bool RealOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return SameOperandsAndResultShape(op, shape_analysis);
@@ -409,6 +417,16 @@ bool TruncOpInferSymbolicShape(pir::Operation *op,
   return SameOperandsAndResultShape(op, shape_analysis);
 }
 bool Trunc_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+bool SoftmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+bool Softmax_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return SameOperandsAndResultShape(op, shape_analysis);
 }

@@ -74,6 +74,24 @@ struct SimplifyUnitOneOperand {
   }
 };
 
+/*
+ * Simplify Example:
+ * Negative(Negative(dim_expr)) => dim_expr
+ */
+struct SimplifyDoubleNeg {
+  using dim_expr_type = Negative<DimExpr>;
+
+  DimExpr Rewrite(const DimExpr& expr) {
+    const auto& inner_expr = expr.Get<Negative<DimExpr>>()->data;
+    if (inner_expr.Has<Negative<DimExpr>>()) {
+      const auto& ret_expr = inner_expr.Get<Negative<DimExpr>>()->data;
+      return ret_expr;
+    } else {
+      return expr;
+    }
+  }
+};
+
 template <>
 struct SimplifyOneOperandTrait<Negative> {
   static constexpr std::int64_t unit = 0;
@@ -849,6 +867,7 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<SimplifyOneOperand<Reciprocal>>(&keep_rewrite, &ret);
     DoPass<SimplifyUnitOneOperand<Negative>>(&keep_rewrite, &ret);
     DoPass<SimplifyUnitOneOperand<Reciprocal>>(&keep_rewrite, &ret);
+    DoPass<SimplifyDoubleNeg>(&keep_rewrite, &ret);
     DoPass<SimplifyOperands<Add>>(&keep_rewrite, &ret);
     DoPass<SimplifyOperands<Mul>>(&keep_rewrite, &ret);
     DoPass<SimplifyOperands<Broadcast>>(&keep_rewrite, &ret);

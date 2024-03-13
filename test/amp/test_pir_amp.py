@@ -94,6 +94,11 @@ class TestPirAMPProgram(unittest.TestCase):
                     loss = paddle.mean(out)
                 scaled = scaler.scale(loss)
                 scaler.minimize(optimizer, scaled, startup_program=startup)
+            cast_op_count = 0
+            for op in main.global_block().ops:
+                if op.name() == 'pd_op.cast':
+                    cast_op_count += 1
+            np.testing.assert_equal(cast_op_count, 5)
             place = paddle.CUDAPlace(0)
             exe = paddle.static.Executor(place)
             exe.run(startup)

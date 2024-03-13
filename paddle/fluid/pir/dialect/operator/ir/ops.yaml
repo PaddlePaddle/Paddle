@@ -1142,6 +1142,15 @@
   backward : pad_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : partial_recv
+  args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
+  output : Tensor(out)
+  infer_meta :
+    func: PartialRecvInferMeta
+  kernel :
+    func : partial_recv
+    data_type : dtype
+
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
@@ -1221,6 +1230,15 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : random_routing
+  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomRoutingInferMeta
+  kernel :
+    func : random_routing
+    data_type : dtype
 
 - op : randperm
   args : (int n, DataType dtype, Place place={})
@@ -1397,6 +1415,16 @@
     func: shadow_feed
     param: [x]
 
+- op : shadow_feed_tensors
+  args : (Tensor[] x)
+  output : Tensor[](out){x.size()}
+  infer_meta:
+    func: UnchangedVectorInferMeta
+    param: [x]
+  kernel:
+    func: shadow_feed_tensors
+    param: [x]
+
 - op : share_data
   args : (Tensor x)
   output : Tensor(out)
@@ -1447,6 +1475,7 @@
     func : softmax
   inplace : (x -> out)
   backward : softmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)

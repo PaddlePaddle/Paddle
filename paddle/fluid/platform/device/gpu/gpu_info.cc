@@ -370,8 +370,12 @@ class RecordedGpuMallocHelper {
 #ifdef PADDLE_WITH_TESTING
     gpu_ptrs.erase(ptr);
 #endif
-  }
 
+#else
+    PADDLE_THROW(phi::errors::Unavailable(
+        "FreeAsync is not supported in this version of CUDA."));
+#endif
+  }
   void *GetBasePtr(void *ptr) {
 #ifdef PADDLE_WITH_TESTING
     auto it = gpu_ptrs.upper_bound(ptr);
@@ -384,11 +388,6 @@ class RecordedGpuMallocHelper {
         "The RecordedGpuMallocHelper::GetBasePtr is only implemented with "
         "testing, should not use for release."));
     return nullptr;
-#endif
-
-#else
-    PADDLE_THROW(phi::errors::Unavailable(
-        "FreeAsync is not supported in this version of CUDA."));
 #endif
   }
 

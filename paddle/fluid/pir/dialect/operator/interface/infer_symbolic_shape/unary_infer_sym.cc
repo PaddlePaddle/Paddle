@@ -282,6 +282,19 @@ bool KthvalueOpInferSymbolicShape(
   return true;
 }
 
+symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
+    const symbol::ShapeOrDataDimExprs &x_shape) {
+  const std::vector<symbol::DimExpr> result = [&] {
+    std::vector<symbol::DimExpr> new_x_dims;
+    new_x_dims.reserve(x_shape.shape().size() + 1);
+    new_x_dims.push_back(symbol::DimExpr{0});
+    new_x_dims.insert(
+        new_x_dims.end(), x_shape.shape().begin(), x_shape.shape().end());
+    return new_x_dims;
+  }();
+  return symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(result)};
+}
+
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
@@ -354,15 +367,194 @@ bool ReshapeOpInferSymbolicShape(
       symbol::TensorShapeOrDataDimExprs(out_dims)};
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+
+  const auto &x_shape = [&] {
+    std::vector<symbol::DimExpr> x_shape{symbol::DimExpr(0)};
+    const auto &original_shape =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+    for (const auto &dim : original_shape) {
+      x_shape.push_back(dim);
+    }
+    return x_shape;
+  }();
   shape_analysis->SetShapeOrDataForValue(
       op->result(1),
-      shape_analysis->GetShapeOrDataForValue(operand_source_shape));
+      CreateShapeOrDataForXShape(
+          shape_analysis->GetShapeOrDataForValue(operand_source)));
   return true;
 }
 
 bool Reshape_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReshapeOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool SqueezeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  IR_ENFORCE(op->num_operands() == 2,
+             "SqueezeOpInferSymbolicShape ONLY support num_operands() == 2 "
+             "now, but got %d operands",
+             op->num_operands());
+
+  auto x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  auto axes_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+
+  std::vector<symbol::DimExpr> in_dims_sym;
+  if (x_shape_or_data.data().has_value()) {
+    in_dims_sym = x_shape_or_data.data().value();
+  } else {
+    in_dims_sym = x_shape_or_data.shape();
+  }
+
+  std::vector<symbol::DimExpr> squeeze_dims_sym;
+  if (axes_shape_or_data.data().has_value()) {
+    squeeze_dims_sym = axes_shape_or_data.data().value();
+  } else {
+    squeeze_dims_sym = axes_shape_or_data.shape();
+  }
+
+  std::vector<int> squeeze_dims;
+  for (auto squeeze_dim : squeeze_dims_sym) {
+    IR_ENFORCE(squeeze_dim.Has<std::int64_t>(),
+               "in SqueezeOpInferSymbolicShape, axes must be known int type, "
+               "but got: %s",
+               symbol::ToString(squeeze_dim));
+    squeeze_dims.emplace_back(
+        static_cast<int>(squeeze_dim.Get<std::int64_t>()));
+  }
+
+  // GetOutputSqueezeShape
+  size_t num_squeeze_dims = squeeze_dims.size();
+  std::vector<bool> should_squeeze(in_dims_sym.size(), false);
+  // Mark dimensions need to be squeezed.
+  if (num_squeeze_dims == 0) {
+    for (size_t i = 0; i < in_dims_sym.size(); ++i) {
+      // TODO(lanxianghit): if symbol here, maybe we need the result of dim expr
+      // simplification
+      if (in_dims_sym[i] == 1) {
+        should_squeeze[i] = true;
+      }
+    }
+  } else {
+    for (size_t i = 0; i < num_squeeze_dims; ++i) {
+      if (in_dims_sym.size() == 0) {
+        continue;
+      }
+      int current = squeeze_dims[i] < 0 ? squeeze_dims[i] + in_dims_sym.size()
+                                        : squeeze_dims[i];
+
+      if (!should_squeeze[current]) {
+        // At compile time, dim of SYMBOL is allowed to squeeze?
+        if (in_dims_sym[current] == 1) {
+          should_squeeze[current] = true;
+        } else if (!in_dims_sym[current].Has<std::int64_t>()) {
+          should_squeeze[current] = true;
+        } else {
+          should_squeeze[current] = true;
+        }
+      }
+    }
+  }
+
+  // Make output dimensions
+  std::vector<symbol::DimExpr> output_shape_sym;
+  for (size_t i = 0; i < in_dims_sym.size(); ++i) {
+    if (!should_squeeze[i]) {
+      output_shape_sym.emplace_back(in_dims_sym[i]);
+    }
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(output_shape_sym)};
+
+  pir::Value res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(1), CreateShapeOrDataForXShape(x_shape_or_data));
+
+  return true;
+}
+bool Squeeze_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SqueezeOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool UnsqueezeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  IR_ENFORCE(op->num_operands() == 2,
+             "UnsqueezeOp InferSymbolicShape ONLY support num_operands() == 2 "
+             "now, but got %d operands",
+             op->num_operands());
+
+  auto x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  auto axes_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+
+  std::vector<symbol::DimExpr> x_sym_shape;
+  if (x_shape_or_data.data().has_value()) {
+    x_sym_shape = x_shape_or_data.data().value();
+  } else {
+    x_sym_shape = x_shape_or_data.shape();
+  }
+  int x_dims_size = x_sym_shape.size();
+
+  std::vector<symbol::DimExpr> axes_sym;
+  if (axes_shape_or_data.data().has_value()) {
+    axes_sym = axes_shape_or_data.data().value();
+  } else {
+    axes_sym = axes_shape_or_data.shape();
+  }
+  int axes_sym_size = axes_sym.size();
+
+  // GetUnsqueezeShape
+  int output_rank = x_dims_size + axes_sym_size;
+  std::vector<symbol::DimExpr> result_sym_dims(output_rank, 0);
+
+  int cur_output_rank = x_dims_size;
+  for (auto axis_expr : axes_sym) {
+    IR_ENFORCE(axis_expr.Has<std::int64_t>(),
+               "in UnsqueezeOpInferSymbolicShape, axes must be known int type, "
+               "but got: %s",
+               symbol::ToString(axis_expr));
+    int axis = static_cast<int>(axis_expr.Get<std::int64_t>());
+    int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
+
+    // Move old axis, and insert new axis
+    for (int i = cur_output_rank; i >= cur; --i) {
+      if (result_sym_dims[i] == 1) {
+        // Move axis
+        result_sym_dims[i + 1] = 1;
+        result_sym_dims[i] = 0;
+      }
+    }
+    result_sym_dims[cur] = 1;
+    // Add the output size.
+    cur_output_rank++;
+  }
+
+  // Make output shape
+  for (int in_idx = 0, out_idx = 0; out_idx < output_rank; ++out_idx) {
+    if (result_sym_dims[out_idx] == 0) {
+      result_sym_dims[out_idx] = x_sym_shape[in_idx++];
+    }
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(result_sym_dims)};
+
+  pir::Value res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(1), CreateShapeOrDataForXShape(x_shape_or_data));
+
+  return true;
+}
+bool Unsqueeze_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return UnsqueezeOpInferSymbolicShape(op, shape_analysis);
 }
 
 }  // namespace paddle::dialect
