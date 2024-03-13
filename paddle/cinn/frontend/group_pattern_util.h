@@ -19,18 +19,9 @@
 
 namespace cinn::frontend {
 
-struct OpsClusteringSpec {
-  // shardable_dim_size(reduce_op) = size(reduce_op.result(0)).
-  // The infered_shardable_dim_size(reduce_op) may be less than shardable_dim_size(reduce_op) because:
-  //   infered_shardable_dim_size(reduce_op) =
-  //     min(shardable_dim_size(reduce_op), infered_shardable_dim_size(downstreams(reduce_op)))
-  const size_t reduce_op_minimal_infered_shardable_dim_size;
-};
-
-std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
+ClusteringResult ClusterIntoGroupPatternsFromOpList(
     const pir::ShapeConstraintIRAnalysis* shape_analysis,
-    const std::vector<const pir::Operation*>& ops,
-    const OpsClusteringSpec& clustering_spec);
+    const std::vector<const pir::Operation*>& ops);
 
 GroupPattern GenerateGroupPatternFromOpList(
     const std::vector<const pir::Operation*>& ops);

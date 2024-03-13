@@ -52,7 +52,8 @@ struct OpTopo {
     };
   }
 
-  void VisitInputOp(const pir::Operation* op, const OpVisitor& DoEach) const {
+  template <typename OpVisitorT>
+  void VisitInputOp(const pir::Operation* op, const OpVisitorT& DoEach) const {
     if (this->ops->count(op) == 0) return;
     for (int i = 0; i < op->num_operands(); ++i) {
       const auto* input_op = op->operand_source(i).defining_op();
@@ -61,7 +62,8 @@ struct OpTopo {
     }
   }
 
-  void VisitOutputOp(const pir::Operation* op, const OpVisitor& DoEach) const {
+  template <typename OpVisitorT>
+  void VisitOutputOp(const pir::Operation* op, const OpVisitorT& DoEach) const {
     for (int i = 0; i < op->num_results(); ++i) {
       pir::Value output = op->result(i);
       for (auto consumer_it = output.use_begin(); consumer_it != output.use_end();
@@ -338,6 +340,12 @@ std::list<const pir::Operation*> GetSinks(
   return sinks;
 }
 
+const pir::Operation* GetSoleSink(const OpSet& ops) {
+  const auto& sinks = GetSinks(ops);
+  CHECK_EQ(sinks.size(), 1);
+  return *sinks.begin();
+}
+
 std::unordered_map<const pir::Operation*, ShardableAxesSignature>
 GetOp2ShardableAxesSignature(const OpSetPtr& ops) {
   std::unordered_map<const pir::Operation*, ShardableAxesSignature> ret;
@@ -484,6 +492,31 @@ std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
   return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
 }
 
+
+pir::Value GetStmtBigestShapeValueImpl(const IS& injective_source) {
+  const auto* sink_op = injective_source.sole_sink;
+  CHECK_EQ(sink_op->num_results(), 1);
+  return sink_op->result(0);
+}
+
+pir::Value GetStmtBigestShapeValueImpl(const R& reduce_pattern) {
+  const auto* sink_op = reduce_pattern.reduce_op_pattern.reduce_op;
+  CHECK_EQ(sink_op->num_operands(), 1);
+  return sink_op->operand(0);
+}
+
+pir::Value GetStmtBigestShapeValueImpl(const PS& partial_shardable) {
+  const auto* sink_op = partial_shardable.sole_sink;
+  CHECK_EQ(sink_op->num_results(), 1);
+  return sink_op->result(0);
+}
+
+pir::Value GetStmtBigestShapeValue(const StmtPattern& stmt) {
+  return std::visit([&](const auto& impl){
+    return GetStmtBigestShapeValueImpl(impl);
+  }, stmt);
+}
+
 class StmtFusionHelper {
  public:
   StmtFusionHelper(
@@ -559,7 +592,12 @@ class StmtFusionHelper {
 
   std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(
       std::vector<StmtPattern>* stmt_patterns) {
-    const auto ConstructISPattern = [&](const auto& ops) { return IS{ops}; };
+    const auto ConstructISPattern = [&](const auto& ops) {
+      return IS{
+        .ops=ops,
+        .sole_sink=GetSoleSink(OpSet(ops.begin(), ops.end())),
+      };
+    };
     return MultiFuse(IsISPattern, ConstructISPattern, stmt_patterns);
   }
 
@@ -570,6 +608,7 @@ class StmtFusionHelper {
       const auto shardable_axes_signature = GetShardableAxesSignature(op_topo);
       return PS{
           .ops = ops,
+          .sole_sink = GetSoleSink(OpSet(ops.begin(), ops.end())),
           .shardable_axes_signature = shardable_axes_signature,
       };
     };
@@ -598,6 +637,7 @@ class StmtFusionHelper {
           MergeShardableAxesSignature(upstream, downstream);
       return StmtPattern(PS{
           .ops = ops,
+          .sole_sink = downstream.sole_sink,
           .shardable_axes_signature = shardable_axes_signature,
       });
     }
@@ -687,7 +727,12 @@ class StmtFusionHelper {
     LOG(FATAL) << "Dead code";
   }
 
-  IS ConvertToIS(const pir::Operation* op) { return IS{{op}}; }
+  IS ConvertToIS(const pir::Operation* op) {
+    return IS{
+      .ops={op},
+      .sole_sink=op,
+    };
+  }
 
   R ConvertReductionOpToReductionPattern(const pir::Operation* op) {
     return R{{}, {op}};
@@ -697,6 +742,7 @@ class StmtFusionHelper {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
     return PS{
         .ops = {op},
+        .sole_sink = op,
         .shardable_axes_signature = MakeShardableAxesSignature4Op(op),
     };
   }
@@ -945,28 +991,543 @@ class ClusteringHelper {
  public:
   ClusteringHelper(
       const pir::ShapeConstraintIRAnalysis* shape_analysis,
-      const std::vector<const pir::Operation*>& ops,
-      const OpsClusteringSpec& clustering_spec)
-    : shape_analysis_(shape_analysis), ops_(ops), clustering_spec_(clustering_spec) {
+      const std::vector<const pir::Operation*>& ops)
+    : shape_analysis_(shape_analysis),
+      ops_(ops),
+      op_topo_(OpTopo::Make(ops)) {
   }
 
-  std::vector<ConditionalGroupPattern> ClusterIntoGroupPatterns() {
-    LOG(FATAL) << "TODO(tianchao)";
+  ClusteringResult ClusterIntoGroupPatterns() {
+    const std::vector<StmtPattern> stmt_patterns = [&]{
+      GroupPattern raw_parsed = FuseToGroupPattern(ops_);
+      CHECK(!std::holds_alternative<ErrorGroupPattern>(raw_parsed)) 
+        << std::get<ErrorGroupPattern>(raw_parsed).error_string;
+      CHECK(std::holds_alternative<std::vector<StmtPattern>>(raw_parsed));
+      return std::get<std::vector<StmtPattern>>(raw_parsed);
+    }();
+    common::BfsWalker<const StmtPattern*> walker =
+        MakeAcyclicLoopAlignableBfsWalker(stmt_patterns);
+    std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
+    VisitConnectedComponent(walker, stmt_patterns, [&](const auto& stmt_ptrs) {
+      loop_alignable_list.emplace_back(MakeLoopAlignableStmtsPattern(stmt_ptrs));
+    });
+    return ClusteringResult{
+      .loop_alignable_list=std::move(loop_alignable_list),
+    };
   }
 
  private:
+  LoopAlignableStmtsPattern MakeLoopAlignableStmtsPattern(
+      const std::vector<const StmtPattern*>& stmt_ptrs) {
+    LoopAlignableStmtsPattern loop_alignable;
+    loop_alignable.stmts.reserve(stmt_ptrs.size());
+    for (const auto* stmt : stmt_ptrs) {
+      loop_alignable.stmts.push_back(*stmt);
+    }
+    return loop_alignable;
+  }
+
+  template <typename DoEachComponentT>
+  void VisitConnectedComponent(
+      const common::BfsWalker<const StmtPattern*>& walker,
+      const std::vector<StmtPattern>& stmt_patterns,
+      const DoEachComponentT& DoEachComponent) {
+    std::unordered_set<const StmtPattern*> visited;
+    for (const auto& start : stmt_patterns) {
+      if (visited.count(&start)) continue;
+      std::vector<const StmtPattern*> component;
+      walker(&start, [&](const auto* stmt){
+        component.push_back(stmt);
+        CHECK(visited.emplace(stmt).second);
+      });
+      DoEachComponent(component);
+    }
+  }
+
+  common::BfsWalker<const StmtPattern*> MakeAcyclicLoopAlignableBfsWalker(
+      const std::vector<StmtPattern>& stmt_patterns) {
+    const auto entire_topo_walk = MakeTopoWalker(op_topo_, stmt_patterns);
+    const auto LoopAlignableRoot4Stmt =
+        MakeLoopAlignableRoot4Stmt(stmt_patterns, entire_topo_walk);
+    const auto IsLoopAlignable = [=](const auto* lhs, const auto* rhs) {
+      return LoopAlignableRoot4Stmt(lhs) == LoopAlignableRoot4Stmt(rhs);
+    }
+    const auto IsAcyclicConnected =
+        MakePredicatorIsAcyclicConnected(entire_topo_walk, stmt_patterns, LoopAlignableRoot4Stmt);
+    using NodeVisitor = std::function<void(const StmtPattern*)>;
+    const auto VisitAcyclicLoopAlignableNext =
+      [=](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+        entire_topo_walk.VisitPrevNodes(stmt, [&](const StmtPattern* input){
+          if (!IsLoopAlignable(input, stmt)) return;
+          if (!IsAcyclicConnected(input, stmt)) return;
+          DoEach(input);
+        });
+        entire_topo_walk.VisitNextNodes(stmt, [&](const StmtPattern* output){
+          if (!IsLoopAlignable(stmt, output)) return;
+          if (!IsAcyclicConnected(stmt, output)) return;
+          DoEach(output);
+        });
+      };
+    return comm::BfsWalker<const StmtPattern*>(VisitAcyclicLoopAlignableNext);
+  }
+
+  using IsAcyclicConnectedT = std::function<bool(const StmtPattern* src, const StmtPattern* dst)>;
+  using ClusterRoot4StmtT = std::function<const StmtPattern*(const StmtPattern*)>;
+
+  IsAcyclicConnectedT
+  MakePredicatorIsAcyclicConnected(
+      const common::TopoWalker<const StmtPattern*>& walker,
+      const std::vector<StmtPattern>& stmt_patterns,
+      const ClusterRoot4StmtT& ClusterRoot4Stmt) {
+    const auto Upstreams4Stmt = MakeUpstreams4Stmt(walker, stmt_patterns);
+    const auto IsSrcAcyclicConnectedToDst = [&](const auto* src, const auto* dst) {
+      // return true if there exists an other clusters's node in upstreams(dst) - upstreams(src)
+      const auto* src_upstreams = Upstreams4Stmt(src);
+      const auto* dst_upstreams = Upstreams4Stmt(dst);
+      std::vector<const StmtPattern*> diff_stmts;
+      std::set_difference(dst_upstream->begin(), dst_upstreams->end(),
+                          src_upstreams->begin(), src_upstreams->end(),
+                          std::back_inserter(diff_stmts));
+      const auto* cluster_root = ClusterRoot4Stmt(src);
+      CHECK_EQ(cluster_root, ClusterRoot4Stmt(dst));
+      for (const auto* diff_stmt : diff_stmts) {
+        if (ClusterRoot4Stmt(diff_stmt) != cluster_root) return false;
+      }
+      return true;
+    };
+    using Src2AcyclicConnectedDst =
+        std::map<const StmtPattern*, std::set<const StmtPattern*>>;
+    Src2AcyclicConnectedDst src2acyclic_connected_dst;
+    for (const auto& stmt : stmt_patterns) {
+      const auto* src = &stmt;
+      auto* acyclic_connected_dst = &src2acyclic_connected_dst[stmt];
+      walker.VisitNextNodes(src, [&](const auto* dst){
+        if (!(acyclic_connected_dst->count(dst) == 0)) return;
+        if (!(ClusterRoot4Stmt(src) == ClusterRoot4Stmt(dst))) return;
+        if (IsSrcAcyclicConnectedToDst(src, dst)) {
+          acyclic_connected_dst->insert(dst);
+        }
+      });
+    }
+    return [map=std::move(src2acyclic_connected_dst)](const StmtPattern* src, const StmtPattern* dst) {
+      const auto& iter = map.find(src);
+      if (iter == map.end()) return false;
+      return iter->second.count(dst) > 0;
+    };
+  }
+
+  using Upstreams4StmtT =
+      std::function<const std::set<const StmtPattern*>*(const StmtPattern*)>;
+  Upstreams4StmtT  MakeUpstreams4Stmt(
+      const common::TopoWalker<const StmtPattern*>& walker,
+      const std::vector<StmtPattern>& stmt_patterns) {
+    const auto& sources = [&]{
+      std::list<const StmtPattern*> sources;
+      const auto IsSource = [&](const auto* stmt) {
+        size_t num_upstreams = 0;
+        walker.VisitPrevNodes(stmt, [&](const auto*) {
+          ++num_upstreams;
+        });
+        return num_upstreams == 0;
+      };
+      for (const auto& stmt : stmt_patterns) {
+        if (IsSource(&stmt)) {
+          sources.push_back(&stmt);
+        }
+      }
+      return sources;
+    }();
+
+    std::unordered_map<const StmtPattern*, std::set<const StmtPattern*>> stmt2upstreams;
+    walker(sources.begin(), sources.end(), [&](const auto* stmt){
+      (void)stmt2upstreams[stmt];
+      walker.VisitPrevNodes(stmt, [&](const auto* upstream){
+        stmt2upstreams[stmt].insert(upstream);
+      });
+    });
+    return [map=std::move(stmt2upstreams)](const StmtPattern* stmt) {
+      const auto iter = map.find(stmt);
+      if (iter == map.end()) {
+        static const std::set<const StmtPattern*> empty;
+        return &empty;
+      }
+      return &iter->second;
+    };
+  }
+
+  std::function<const StmtPattern*(const StmtPattern*)>
+  MakeLoopAlignableRoot4Stmt(
+      const common::TopoWalker<const StmtPattern*>& topo_walker,
+      const std::vector<StmtPattern>& stmt_patterns) {
+    std::unordered_map<const StmtPattern*, const StmtPattern*> stmt2same_shardability_root;
+    VisitLoopAlignableStmts(topo_walker, stmt_patterns, [&](const auto& stmt_ptrs){
+      CHECK(!stmt_ptrs.empty());
+      const auto* root = *stmt_ptrs.begin();
+      for (const auto* stmt_ptr : stmt_ptrs) {
+        CHECK(stmt2same_shardability_root.emplace(stmt_ptr, root).second);
+      }
+    });
+    return [map=std::move(stmt2same_shardability_root)](const StmtPattern* stmt) {
+      const auto& iter = map.find(stmt);
+      CHECK(iter != map.end());
+      return iter->second;
+    };
+  }
+
+  template <typename DoEachComponentT>
+  VisitLoopAlignableStmts(
+      const common::TopoWalker<const StmtPattern*>& walker,
+      const std::vector<StmtPattern>& stmt_patterns,
+      const DoEachComponentT& DoEachComponent) {
+    std::vector<const StmtPattern*> stmt_ptrs = [&]{
+      std::vector<const StmtPattern*> stmt_ptrs;
+      stmt_ptrs.reserve(stmt_patterns.size());
+      for (const auto& stmt : stmt_patterns) {
+        stmt_ptrs.push_back(&stmt);
+      }
+      return stmt_ptrs;
+    }();
+    std::unordered_set<const StmtPattern*> visited;
+    while (!stmt_ptrs.empty()) {
+      VisitInferedLoopAlignableStmts(walker, stmt_ptrs, [&](const auto& component) {
+        for (const auto* stmt_ptr : component) {
+          CHECK(visited.emplace(stmt_ptr).second);
+        }
+        DoEachComponent(component);
+      });
+      stmt_ptrs = [&]{
+        std::vector<const StmtPattern*> remainders;
+        remainders.reserve(stmt_ptrs.size());
+        for (const auto* stmt_ptr : stmt_ptrs) {
+          if (visited.count(stmt_ptr)) continue;
+          remainders.push_back(stmt_ptr);
+        }
+        return remainders;
+      }();
+    }
+  }
+
+  template <typename DoEachComponentT>
+  VisitInferedLoopAlignableStmts(
+      const common::TopoWalker<const StmtPattern*>& walker,
+      const std::vector<const StmtPattern*>& stmt_ptrs,
+      const DoEachComponentT& DoEachComponent) {
+    const auto ShardableAxes4Value = MakeInferedShardableAxes4Value(stmt_ptrs);
+    const auto ReduceOpsSameFullyShardable = [&](const auto* src, const auto* dst) {
+      if (!IsSinkOpOutputFullyShardable(ShardableAxes4Value, src)) return false;
+      if (!IsSinkOpOutputFullyShardable(ShardableAxes4Value, dst)) return false;
+      if (!ReduceOpsSameShardable(ShardableAxes4Value, src, dst)) return false;
+      if (!IsTotalLoopSizeEqual(src, dst)) return false;
+      return true;
+    };
+    using NodeVisitor = std::function<void(const StmtPattern*)>;
+    const auto VisitNext = [&](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+      walker.VisitPrevNodes(stmt, [&](const auto* prev){
+        if (ReduceOpsSameFullyShardable(prev, stmt)) {
+          DoEach(prev);
+        }
+      });
+      walker.VisitNextNodes(stmt, [&](const auto* next){
+        if (ReduceOpsSameFullyShardable(stmt, next)) {
+          DoEach(next);
+        }
+      });
+    };
+    common::BfsWalker<const StmtPattern*> walker(VisitNext);
+    std::unordered_set<const StmtPattern*> visited;
+    for (const auto* start : stmt_ptrs) {
+      if (visited.count(start)) continue;
+      std::vector<const StmtPattern*> collected_component;
+      walker(start, [&](const auto* stmt_ptr){
+        collected_component.push_back(stmt_ptr);
+        CHECK(visited.emplace(stmt_ptr).second);
+      });
+      DoEachComponent(collected_component);
+    }
+  }
+
+  using ShardableAxes4ValueT = std::function<std::optional<const ShardableAxes*>(pir::Value)>;
+  ShardableAxes4ValueT MakeInferedShardableAxes4Value(
+      const std::vector<const StmtPattern*>& stmt_ptrs) {
+    const OpSetPtr ops = [&]{
+      auto ops = std::make_shared<OpSet>();
+      for (const auto* stmt_ptr : stmt_ptrs) {
+        VisitStmtOp(*stmt_ptr, [&](const auto* op){
+          ops.insert(op);
+        });
+      }
+    }();
+    auto value2shardable_axes = InferShardableAxes(ops);
+    return [map=std::move(value2shardable_axes)](pir::Value value) -> std::optional<const ShardableAxes*> {
+      const auto& iter = map.find(value);
+      if (iter == map.end()) return std::nullopt;
+      return iter->second;
+    };
+  }
+
+  bool IsTotalLoopSizeEqual(const StmtPattern* src, const StmtPattern* dst) {
+    pir::Value src_value = GetStmtBigestShapeValue(*src);
+    pir::Value dst_value = GetStmtBigestShapeValue(*dst);
+    return shape_analysis_->IsProductEqual(
+      src_value, 0, GetRank(src_value),
+      dst_value, 0, GetRank(dst_value));
+  }
+
+  bool ReduceOpsSameShardable(
+      const ShardableAxes4ValueT& ShardableAxes4Value,
+      const StmtPattern* src,
+      const StmtPattern* dst) {
+    return std::visit([&](const auto& src_impl, const auto& dst_impl){
+      return ReduceOpsSameShardableImpl(ShardableAxes4Value, src_impl, dst_impl);
+    }, *src, *dst);
+  }
+
+  template <typename SrcPatternT, typename DstPatternT>
+  bool ReduceOpsSameShardableImpl(
+      const ShardableAxes4ValueT& ShardableAxes4Value,
+      const SrcPatternT& src,
+      const DstPatternT& dst) {
+    LOG(FATAL) << "Unimplemented. src_type: " << typeid(SrcPatternT).name()
+      << ", dst_type: " << typeid(DstPatternT).name();
+  }
+
+  bool ReduceOpsSameShardableImpl(
+      const ShardableAxes4ValueT& ShardableAxes4Value,
+      const R& src,
+      const PS& dst) {
+    const auto* sink_op = src.reduce_op_pattern.reduce_op;
+    CHECK_EQ(sink_op->num_results(), 1);
+    pir::Value value = sink_op->result(0);
+    const auto& shardable_axes = ShardableAxes4Value(value);
+    CHECK(shardable_axes.has_value());
+    return IsStmtSinkOpOutputFullyShardableImpl(src, *shardable_axes.value());
+  }
+
+  bool ReduceOpsSameShardableImpl(
+      const ShardableAxes4ValueT& ShardableAxes4Value,
+      const R& src,
+      const R& dst) {
+    const auto GetSoleOutputValue = [&](const R& reduce_pattern) {
+      const auto* sink_op = src.reduce_op_pattern.reduce_op;
+      CHECK_EQ(sink_op->num_results(), 1);
+      pir::Value value = sink_op->result(0);
+      return value;
+    };
+    const auto GetShardableAxes = [&](const R& reduce_pattern) {
+      pir::Value value = GetSoleOutputValue(reduce_pattern);
+      const auto& shardable_axes = ShardableAxes4Value(value);
+      CHECK(shardable_axes.has_value());
+      return shardable_axes.value();
+    };
+    const auto GetShardableAxesNames = [&](const R& reduce_pattern) {
+      std::set<std::string> axis_names;
+      for (const auto& shardable_axis : *GetShardableAxes(reduce_pattern)) {
+        axis_names.insert(shardable_axis.axis_name);
+      }
+      return axis_names;
+    };
+    struct ShardibleAxisPair {
+      std::optional<int> src_axis;
+      std::optional<int> dst_axis;
+    };
+    const auto GetMatchedAxisPairs = [&](){
+      std::unordered_map<std::string, ShardibleAxisPair> matched_axis_pairs;
+      for (const auto& src_sa : *GetShardableAxes(src)) {
+        matched_axis_pairs[src_sa.axis_name].src_axis = src_sa.axis;
+      }
+      for (const auto& dst_sa : *GetShardableAxes(dst)) {
+        matched_axis_pairs[dst_sa.axis_name].dst_axis = dst_sa.axis;
+      }
+      return matched_axis_pairs;
+    };
+    bool same_shardibility = (GetShardableAxesNames(src) == GetShardableAxesNames(dst));
+    if (same_shardibility) {
+      for (const auto& [src_axis, dst_axis] : GetMatchedAxisPairs()) {
+        CHECK(src_axis.has_value());
+        CHECK(dst_axis.has_value());
+        pir::Value src_value = GetSoleOutputValue(src);
+        pir::Value dst_value = GetSoleOutputValue(dst);
+        CHECK(shape_analysis_->IsProductEqual(
+          src_value, {src_axis.value()},
+          dst_value, {dst_axis.value()}));
+      }
+    }
+    return same_shardibility;
+  }
+
+  bool IsSinkOpOutputFullyShardable(
+      const ShardableAxes4ValueT& ShardableAxes4Value,
+      const StmtPattern* stmt_ptr) {
+    const auto* sink_op = GetStmtSinkOp(*stmt_ptr);
+    CHECK_EQ(sink_op->num_results(), 1);
+    pir::Value value = sink_op->result(0);
+    const auto& shardable_axes = ShardableAxes4Value(value);
+    CHECK(shardable_axes.has_value());
+    return IsStmtSinkOpOutputFullyShardable(stmt_ptr, *shardable_axes.value());
+  }
+
+  bool IsStmtSinkOpOutputFullyShardable(
+      const StmtPattern* stmt_ptr,
+      const ShardableAxes& shardable_axes) {
+    return std::visit([&](const auto& impl){
+      return IsStmtSinkOpOutputFullyShardableImpl(impl, shardable_axes);
+    }, *stmt_ptr);
+  }
+
+  bool IsStmtSinkOpOutputFullyShardableImpl(
+      const IS& injective_source,
+      const ShardableAxes& shardable_axes) {
+    return true;
+  }
+
+  bool IsStmtSinkOpOutputFullyShardableImpl(
+      const PS& partial_shardable,
+      const ShardableAxes& shardable_axes) {
+    return true;
+  }
+
+  bool IsStmtSinkOpOutputFullyShardableImpl(
+      const R& reduce_pattern,
+      const ShardableAxes& shardable_axes) {
+    const auto* reduce_op = reduce_pattern.reduction_op_pattern.reduce_op;
+    if (reduce_op->isa<cinn::dialect::ReduceSumOp>()) {
+      return IsCinnReduceSumOpOutputFullyShardable(
+        reduce_op->dyn_cast<cinn::dialect::ReduceSumOp>(), shardable_axes);
+    }
+    LOG(FATAL) << "TODO(xiongkun). reduce_op name: " << reduce_op->name();
+  }
+
+  bool IsStmtSinkOpOutputFullyShardableImpl(
+      const cinn::dialect::ReduceSumOp& reduce_op,
+      const ShardableAxes& shardable_axes) {
+    const size_t input_rank = GetRank(reduce_op.operand_source(0));
+    const auto& reduce_axes = [&]{
+      const auto& attr_val = reduce_op.attributes().at("dim");
+      CHECK(attr_val.isa<::pir::ArrayAttribute>());
+      const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
+      std::vector<int64_t> reduce_axes;
+      for (int i = 0; i < axis_attr.size(); ++i) {
+        int64_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
+        if (axis < 0) {
+          axis += input_rank;
+        }
+        CHECK_GE(axis, 0);
+        CHECK_LT(axis, input_rank);
+        reduce_axes.push_back(axis);
+      }
+      return reduce_axes;
+    }();
+
+    // no shardability if input reduced into one element.
+    if (reduce_axes.empty()) return false;
+
+    const auto& IsReduceAxis = [&](int axis) {
+      return std::find(reduce_axes.begin(), reduce_axes.end(), axis) != reduce_axes.end();
+    };
+    const auto& IsAxisSharded = [&](int axis) {
+      const auto& Condition = [&](const auto& shardable_axis) {
+        return shardable_axis.axis == axis;
+      };
+      return std::find_if(shardable_axes.begin(), shardable_axes.end(), Condition) != shardable_axes.end();
+    };
+    const bool keepdims = [&]{
+      const auto& attr_val = reduce_op.attributes().at("keep_dim");
+      CHECK(attr_val.isa<::pir::BoolAttribute>());
+      return attr_val.dyn_cast<::pir::BoolAttribute>();
+    }();
+    if (keepdims) {
+      const size_t output_rank = input_rank;
+      CHECK(!reduce_axis.empty());
+      for (int axis = 0; axis < output_rank; ++axis) {
+        if (IsReduceAxis(i)) continue;
+        if (!IsAxisSharded(i)) return false;
+      }
+      return true;
+    } else {
+      return GetRank(reduce_op.result(0)) == shardable_axes.size();
+    }
+  }
+
+  common::TopoWalker<const StmtPattern*> MakeTopoWalker(
+      const OpTopo& op_topo,
+      const std::vector<StmtPattern>& stmt_patterns) {
+    using StmtPtrs = std::unordered_set<const StmtPattern*>;
+    using Op2OwnerStmtPtrs = std::unordered_map<const pir::Operation*, StmtPtrs>;
+    auto op2owner_stmt_ptr = std::make_shared<Op2OwnerStmtPtrs>();
+    for (const auto& stmt : stmt_patterns) {
+      VisitStmtOp(stmt, [&](const pir::Operation* op){
+        (*op2owner_stmt_ptr)[op].insert(&stmt);
+      });
+    }
+    using NodeVisitor = std::function<void(const StmtPattern*)>;
+    const auto VisitInput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+      VisitStmtInputOpOperand(*stmt, [&](const auto* op, int input_idx){
+        pir::Value input_value = op->operand_source(input_idx);
+        const auto* owner_op = input_value.defining_op();
+        const auto& owners_iter = op2owner_stmt_ptr->find(owner_op);
+        if (owners_iter == op2owner_stmt_ptr->end()) return;
+        CHECK_EQ(owners_iter->second.size(), 1);
+        const StmtPattern* owner_stmt = *owners_iter->second.begin();
+        DoEach(owner_stmt);
+      });
+    };
+    const VisitOutput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach){
+      VisitStmtSinkOpResult(*stmt, [&](const auto* sink) {
+        op_topo.VisitOutputOp(sink, [&](const pir::Operation* op){
+          const auto& owners_iter = op2owner_stmt_ptr->find(op);
+          if (owners_iter == op2owner_stmt_ptr->end()) return;
+          for (const StmtPattern* stmt : owners_iter->second) {
+            DoEach(stmt);
+          }
+        });
+      });
+    };
+    const auto& TryPushBack = [](const auto* stmt, const auto* stmts) {
+      if (std::find(stmts->begin(), stmts->end(), stmt) == stmts->end()) {
+        stmts->push_back(stmt);
+      }
+    };
+    std::unordered_map<const StmtPattern*, std::vector<const StmtPattern*>> stmt2inputs;
+    std::unordered_map<const StmtPattern*, std::vector<const StmtPattern*>> stmt2outputs;
+    for (const auto& stmt : stmt_patterns) {
+      (void)stmt2inputs[&stmt];
+      VisitInput(&stmt, [&](const auto* input) {
+        TryPushBack(input, &stmt2inputs[&stmt]);
+      });
+      (void)stmt2outputs[&stmt];
+      VisitOutput(&stmt, [&](const auto* output){
+        TryPushBack(output, &stmt2outputs[&stmt]);
+      });
+    }
+    using NodeVisitor = std::function<void(const StmtPattern*)>;
+    VisitCachedInput = [map = std::move(stmt2inputs)](const auto* stmt, const NodeVisitor& DoEach) {
+      const auto& iter = map.find(stmt);
+      if (iter == map.end()) return;
+      for (const auto* input : iter->second) {
+        DoEach(input);
+      }
+    };
+    VisitCachedOutput = [map = std::move(stmt2outputs)](const auto* stmt, const NodeVisitor& DoEach) {
+      const auto& iter = map.find(stmt);
+      if (iter == map.end()) return;
+      for (const auto* output : iter->second) {
+        DoEach(output);
+      }
+    };
+    return common::TopoWalker<const StmtPattern*>(VisitCachedInput, VisitCachedOutput);
+  }
+
   const pir::ShapeConstraintIRAnalysis* shape_analysis_;
   const std::vector<const pir::Operation*> ops_;
-  const OpsClusteringSpec clustering_spec_;
+  const OpTopo op_topo_;
 };
 
 }  // namespace
 
-std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
+ClusteringResult ClusterIntoGroupPatternsFromOpList(
     const pir::ShapeConstraintIRAnalysis* shape_analysis,
-    const std::vector<const pir::Operation*>& ops,
-    const OpsClusteringSpec& clustering_spec) {
-  ClusteringHelper helper(shape_analysis, ops, clustering_spec);
+    const std::vector<const pir::Operation*>& ops) {
+  ClusteringHelper helper(shape_analysis, ops);
   return helper.ClusterIntoGroupPatterns();
 }
 
