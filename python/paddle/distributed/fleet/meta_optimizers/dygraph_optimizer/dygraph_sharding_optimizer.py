@@ -297,7 +297,7 @@ class DygraphShardingOptimizer:
             ), "param.grad should be None when using main_grad"
             return param.main_grad
 
-        return param._grad_ivar() if param._grad_ivar() is not None else None
+        return param._grad_ivar()
 
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
