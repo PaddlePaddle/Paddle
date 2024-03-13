@@ -20,11 +20,13 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_default_and_pir,
+    test_default_mode_only,
 )
 from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
 from paddle import base
+from paddle.base import core
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
@@ -136,21 +138,21 @@ class TestResnet(Dy2StTestBase):
                 err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
             )
 
-    # @test_default_mode_only
-    # def test_resnet_composite(self):
-    #     if base.is_compiled_with_cuda():
-    #         core._set_prim_backward_enabled(True)
-    #         static_loss = self.train(to_static=True)
-    #         core._set_prim_backward_enabled(False)
-    #         dygraph_loss = self.train(to_static=False)
-    #         # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
-    #         np.testing.assert_allclose(
-    #             static_loss,
-    #             dygraph_loss,
-    #             rtol=1e-05,
-    #             atol=0.001,
-    #             err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
-    #         )
+    @test_default_mode_only
+    def test_resnet_composite(self):
+        if base.is_compiled_with_cuda():
+            core._set_prim_backward_enabled(True)
+            static_loss = self.train(to_static=True)
+            core._set_prim_backward_enabled(False)
+            dygraph_loss = self.train(to_static=False)
+            # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
+            np.testing.assert_allclose(
+                static_loss,
+                dygraph_loss,
+                rtol=1e-05,
+                atol=0.001,
+                err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
+            )
 
 
 if __name__ == '__main__':
