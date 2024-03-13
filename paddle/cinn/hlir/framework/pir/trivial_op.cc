@@ -464,8 +464,24 @@ struct TrivialOp {
   }
 
   std::vector<ir::Var> GetOutputIters() const {
-    return ComposeUtils::GetOutputIters(
-        GetSingleStoreExpr(func_body).As<ir::Store>()->indices);
+    const ir::Expr& output_schedule_block_realize =
+        (SearchUtils::ChildScheduleBlocks *
+         SearchUtils::FindFather(GetFuncBody()) *
+         SearchUtils::FilterMaker([](const ir::Expr& e) -> bool {
+           return e.As<ir::ScheduleBlockRealize>();
+         })).GetSingle(GetFuncBody());
+
+    const std::vector<Expr>& output_iter_expr =
+        output_schedule_block_realize.As<ir::ScheduleBlockRealize>()
+            ->iter_values;
+    std::vector<ir::Var> output_iter_vars;
+
+    std::transform(output_iter_expr.begin(),
+                   output_iter_expr.end(),
+                   output_iter_vars.begin(),
+                   [](const Expr& expr) { return expr.as_var_ref(); });
+
+    return output_iter_vars;
   }
 
   ir::Expr* GetStoreValuePointer() const {
@@ -569,7 +585,7 @@ struct ReduceOp {
   }
 
   std::vector<ir::Var> GetAllIterVars() const {
-    ir::Expr compute_schedule_block_realize =
+    const ir::Expr& compute_schedule_block_realize =
         (SearchUtils::ChildScheduleBlocks *
          SearchUtils::ScheduleBlockIsNotInit *
          SearchUtils::FindFather(GetFuncBody()) *
@@ -591,7 +607,7 @@ struct ReduceOp {
   }
 
   std::vector<ir::Var> GetOuterIterVars() const {
-    ir::Expr init_schedule_block_realize =
+    const ir::Expr& init_schedule_block_realize =
         (SearchUtils::ChildScheduleBlocks * SearchUtils::ScheduleBlockIsInit *
          SearchUtils::FindFather(GetFuncBody()) *
          SearchUtils::FilterMaker([](const ir::Expr& e) -> bool {
