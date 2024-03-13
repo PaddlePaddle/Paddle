@@ -102,10 +102,8 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   bool spatial_is_dynamic = false;
   bool reduce_is_dynamic = false;
-  std::cerr << "data rank " << group_tile_info->data_rank << std::endl;
   for (int64_t i = 0; i < group_tile_info->data_rank; ++i) {
     if (reduce_set.count(i)) {
-      std::cerr << "index i   " << i << std::endl;
       reduce_numel *= data_dim[i];
       if (data_dim[i] < 0) {
         reduce_is_dynamic = true;
@@ -159,7 +157,6 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
       group_tile_info->block_num = -1;
     } else {
       spatial_block = Next2Power(spatial_numel);
-      std::cerr << "spatial block " << spatial_block << std::endl;
       if (spatial_block > 1024) {
         spatial_block = 1024;
       }
@@ -701,7 +698,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         } else {
           for (size_t i = 0; i < broadcast_axes.size(); ++i) {
             if (in_dim[i] < 0 || output_shape[broadcast_axes[i]] < 0) {
-              std::cerr << "skip negative broadcast\n";
               continue;
             }
             if (in_dim[i] != output_shape[broadcast_axes[i]]) {
@@ -726,10 +722,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           info.output_shape.push_back(output_shape[broadcast_axes[i]]);
         }
       }
-      // PADDLE_ENFORCE_NE(
-      //     info.broadcast_axes.size(),
-      //     0,
-      //     phi::errors::PreconditionNotMet("broadcast axes can not be zero"));
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {
         if (!align_info.count(it->first->operand_source(i).defining_op())) {
@@ -1029,11 +1021,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     remain_ops.push_back(op);
   }
 
-  std::cerr << "func body size " << func_bodies.size() << std::endl;
-  for (size_t i = 0; i < func_bodies.size(); ++i) {
-    std::cerr << "body i " << i << "\n" << func_bodies[i] << std::endl;
-  }
-
   VLOG(4) << "group_func_arg_tensors.size(): "
           << group_func_arg_tensors->size();
 
@@ -1168,7 +1155,6 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
                                /* is_dy_shape = */ true,
                                group_tile_info);
   group_scheduler->Schedule();
-  std::cerr << "finish schedule \n";
   return ir_sch.GetModule().GetExprs().at(0);
 }
 

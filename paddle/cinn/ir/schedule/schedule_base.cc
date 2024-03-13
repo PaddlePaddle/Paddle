@@ -132,7 +132,6 @@ void ScheduleBase::Broadcast(const std::string& block_name,
       int extent = factors[i];
       loop_temp->extent = Expr(extent);
       if (extent < 0) {
-        std::cerr << "extent  " << extent << std::endl;
         ir::Dim dim("var_00", info.output_dim_expr[i]);
         loop_temp->extent = Expr(dim->dim_expr);
       }
@@ -193,7 +192,6 @@ void ScheduleBase::Broadcast(const std::string& block_name,
     int extent = factors[i];
     loop_temp->extent = Expr(extent);
     if (extent < 0) {
-      std::cerr << "extent  " << extent << std::endl;
       ir::Dim dim("var_00", info.output_dim_expr[i]);
       loop_temp->extent = Expr(dim->dim_expr);
     }
