@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <unordered_map>
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace symbol {
