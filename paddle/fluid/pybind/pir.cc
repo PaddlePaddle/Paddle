@@ -535,7 +535,8 @@ void BindOperation(py::module *m) {
                // SymbolAttribute is only used in PIR, no need to pass to Python
                if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
                if (pair.first == kAttrOpDistAttr) {
-                 attrs_dict[pair.first.c_str()] = pair.second;
+                 attrs_dict[pair.first.c_str()] =
+                     pair.second.dyn_cast<OperationDistAttribute>();
                } else {
                  attrs_dict[pair.first.c_str()] =
                      paddle::dialect::GetAttributeData(pair.second);

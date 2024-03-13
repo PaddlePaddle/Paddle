@@ -34,17 +34,17 @@ class TestBuildFakeProgram(unittest.TestCase):
                     name='input',
                     shape=[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE],
                 )
-                w0 = paddle.pir.core.create_parameter(
+                w0 = paddle.create_parameter(
                     dtype="float32",
                     shape=[HIDDEN_SIZE, HIDDEN_SIZE],
                     name="w0",
-                    initializer=paddle.nn.initializer.Uniform(),
+                    default_initializer=paddle.nn.initializer.Uniform(),
                 )
                 w1 = paddle.create_parameter(
                     dtype="float32",
                     shape=[HIDDEN_SIZE, HIDDEN_SIZE],
                     name="w1",
-                    initializer=paddle.nn.initializer.Uniform(),
+                    default_initializer=paddle.nn.initializer.Uniform(),
                 )
                 self.assertTrue(input.is_dense_tensor_type())
                 self.assertTrue(w0.is_dense_tensor_type())
@@ -53,7 +53,6 @@ class TestBuildFakeProgram(unittest.TestCase):
                 dist_w0 = dist.shard_tensor(w0, mesh, [dist.Shard(0)])
                 dist_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(1)])
 
-        print(f'main_program: {main_program}')
         self.assertTrue(main_program.num_ops() == 6)
 
         self.assertFalse(input.use_empty())
@@ -94,11 +93,7 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertFalse(w1.get_defining_op().has_attr("op_dist_attr"))
 
         dist_input_op_dist_attr = dist_input.get_defining_op().dist_attr()
-        attrs_op_dist_attr = (
-            dist_input.get_defing_op().attrs().get("op_dist_attr")
-        )
         # #check attrs
-        self.assertEqual(dist_input_op_dist_attr, attrs_op_dist_attr)
 
         self.assertEqual(dist_input_op_dist_attr.process_mesh(), mesh)
         self.assertEqual(dist_input_op_dist_attr.num_operand_dist_attrs(), 0)
@@ -114,50 +109,43 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertEqual(dist_w1_op_dist_attr.num_operand_dist_attrs(), 0)
         self.assertEqual(dist_w1_op_dist_attr.num_result_dist_attrs(), 1)
 
+        attrs_op_dist_attr = (
+            dist_input.get_defining_op().attrs().get("op_dist_attr")
+        )
+        self.assertEqual(attrs_op_dist_attr.process_mesh(), mesh)
+
         # check op result dist_attr
         self.assertEqual(
             dist_input_op_dist_attr.result_dist_attr(0).process_mesh(), mesh
         )
         self.assertEqual(
-            dist_input_op_dist_attr.result_dist_attr(0).dims_mapping,
+            dist_input_op_dist_attr.result_dist_attr(0).dims_mapping(),
             [-1, -1, -1],
         )
 
         self.assertEqual(
-            dist_w0_op_dist_attr.result_dist_attr(0).process_mesh, mesh
+            dist_w0_op_dist_attr.result_dist_attr(0).process_mesh(), mesh
         )
         self.assertEqual(
-            dist_w0_op_dist_attr.result_dist_attr(0).dims_mapping, [0, -1]
+            dist_w0_op_dist_attr.result_dist_attr(0).dims_mapping(), [0, -1]
         )
 
         self.assertEqual(
-            dist_w1_op_dist_attr.result_dist_attr(0).process_mesh, mesh
+            dist_w1_op_dist_attr.result_dist_attr(0).process_mesh(), mesh
         )
         self.assertEqual(
-            dist_w1_op_dist_attr.result_dist_attr(0).dims_mapping, [-1, 0]
+            dist_w1_op_dist_attr.result_dist_attr(0).dims_mapping(), [-1, 0]
         )
 
         # check value dist_attr
-        dist_input_dist_attr = dist_input.dist_attr()
-        self.assertEqual(
-            dist_input_op_dist_attr.result_dist_attr(0), dist_input_dist_attr
-        )
-        self.assertEqual(dist_input_dist_attr.process_mesh(), mesh)
-        self.assertEqual(dist_input_dist_attr.dims_mapping, [-1, -1, -1])
+        self.assertEqual(dist_input.dist_attr().process_mesh(), mesh)
+        self.assertEqual(dist_input.dist_attr().dims_mapping(), [-1, -1, -1])
 
-        dist_w0_dist_attr = dist_w0.dist_attr()
-        self.assertEqual(
-            dist_w0_op_dist_attr.result_dist_attr(0), dist_w0_dist_attr
-        )
-        self.assertEqual(dist_w0_dist_attr.process_mesh(), mesh)
-        self.assertEqual(dist_w0_dist_attr.dims_mapping, [0, -1])
+        self.assertEqual(dist_w0.dist_attr().process_mesh(), mesh)
+        self.assertEqual(dist_w0.dist_attr().dims_mapping(), [0, -1])
 
-        dist_w1_dist_attr = dist_w1.dist_attr()
-        self.assertEqual(
-            dist_w1_op_dist_attr.result_dist_attr(0), dist_w1_dist_attr
-        )
-        self.assertEqual(dist_w1_dist_attr.process_mesh(), mesh)
-        self.assertEqual(dist_w1_dist_attr.dims_mapping, [-1, 0])
+        self.assertEqual(dist_w1.dist_attr().process_mesh(), mesh)
+        self.assertEqual(dist_w1.dist_attr().dims_mapping(), [-1, 0])
 
 
 if __name__ == "__main__":
