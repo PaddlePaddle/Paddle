@@ -225,10 +225,14 @@ class HybridParallelClipGrad:
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
-        # if not isinstance(
-        #     paddle.framework._current_expected_place(), paddle.CustomPlace
-        # ):
-        clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
+        if (
+            not isinstance(
+                paddle.framework._current_expected_place(), paddle.CustomPlace
+            )
+            or paddle.framework._current_expected_place().get_device_type()
+            == 'npu'
+        ):
+            clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
             if g is None:
                 continue
