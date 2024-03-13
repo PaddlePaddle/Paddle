@@ -269,13 +269,19 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
         x, weight, bias, input_parallel = ctx.saved_tensor()
         parallelism = ctx.model_parallel_group.nranks
 
-        dinput_parallel = paddle.matmul(
-            dy.reshape([-1, dy.shape[-1]]), weight, transpose_y=True
-        )
+        if dy.dtype == weight.dtype:
+            dinput_parallel = paddle.matmul(dy, weight, transpose_y=True)
+        else:
+            dinput_parallel = paddle.matmul(
+                dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
+            )
 
         assert (
             dinput_parallel.shape[0] % parallelism == 0
-        ), f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+        ), "Input sequence length {} can't be divided exactly by sequence parallelism {}".format(
+            dinput_parallel.shape[0], parallelism
+        )
+
         dx_shape = dinput_parallel.shape
         dx_shape[0] = dx_shape[0] // parallelism
         dx = paddle.empty(shape=dx_shape, dtype=dinput_parallel.dtype)
@@ -288,7 +294,6 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
             group=group,
             sync_op=False,
         )
-        # dx = reduce_scatter(dinput_parallel)
 
         if ctx.sp_fused_linear_param_grad_add:
             if not is_fused_linear_param_grad_add_supported():
@@ -306,27 +311,27 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
                     ) = paddle._C_ops.fused_linear_param_grad_add(
                         input_parallel, dy, weight.main_grad, None, True, False
                     )
-                task.wait()
-                return dx, None
-            else:
-                if weight.grad is not None:
-                    (
-                        weight.grad,
-                        _,
-                    ) = paddle._C_ops.fused_linear_param_grad_add(
-                        input_parallel, dy, weight.grad, None, False, False
-                    )
                     task.wait()
                     return dx, None
                 else:
-                    (
-                        dw,
-                        _,
-                    ) = paddle._C_ops.fused_linear_param_grad_add(
-                        input_parallel, dy, None, None, False, False
-                    )
-                    task.wait()
-                    return dx, dw
+                    if weight.grad is not None:
+                        (
+                            weight.grad,
+                            _,
+                        ) = paddle._C_ops.fused_linear_param_grad_add(
+                            input_parallel, dy, weight.grad, None, False, False
+                        )
+                        task.wait()
+                        return dx, None
+                    else:
+                        (
+                            dw,
+                            _,
+                        ) = paddle._C_ops.fused_linear_param_grad_add(
+                            input_parallel, dy, None, None, False, False
+                        )
+                        task.wait()
+                        return dx, dw
 
             if hasattr(weight, "main_grad") and hasattr(bias, "main_grad"):
                 (
@@ -363,6 +368,7 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
                     task.wait()
                     return dx, dw, dbias
         else:
+            dy = dy.reshape([-1, dy.shape[-1]])
             dw = paddle.matmul(
                 input_parallel.reshape([-1, input_parallel.shape[-1]]),
                 dy,
@@ -476,15 +482,7 @@ class ColumnSequenceParallelLinear(Layer):
         self.sp_fused_linear_param_grad_add = True
 
     def forward(self, x):
-        # sequence parallelism is same as model parallelism
-        # if sequence parallel is true, input shape is [s, b, h]
-        # else input shape is [b, s, h]
-        # if self.is_mp:
-        #     input_parallel = AllGatherOp.apply(x)
-        # else:
-        #     input_parallel = x
-        # output = self.linear(input_parallel, self.weight, self.bias, name=self._name)
-        # return output
+        # sequence parallelism is same as model parallelis, if sequence parallel is true, input shape is [s, b, h],else input shape is [b, s, h]
         return SPInnerOverlapLinear.apply(
             x,
             self.weight,
