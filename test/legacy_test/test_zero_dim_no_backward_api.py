@@ -452,6 +452,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_embedding(self):
         ids = paddle.full(shape=[], fill_value=1, dtype='int64')
         w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
