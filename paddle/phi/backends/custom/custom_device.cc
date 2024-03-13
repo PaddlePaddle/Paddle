@@ -651,6 +651,12 @@ class CustomDevice : public DeviceInterface {
         pimpl_->xccl_destroy_comm(reinterpret_cast<C_CCLComm>(comm)));
   }
 
+  void CCLCommName(ccl::CCLComm comm, char* comm_name) {
+    CHECK_PTR(pimpl_->xccl_get_comm_name);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_get_comm_name(
+        reinterpret_cast<C_CCLComm>(comm), comm_name));
+  }
+
   void CCLAllReduce(void* send_buf,
                     void* recv_buf,
                     size_t count,

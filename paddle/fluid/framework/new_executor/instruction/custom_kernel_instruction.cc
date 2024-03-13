@@ -280,7 +280,6 @@ void CustomKernelInstruction::BuildCustomContext(
               out_name));
       VLOG(3) << "Custom Operator: BuildContext - inplace optional outputs : "
               << out_name << " is None.";
-      cache_out_ptrs_.emplace_back(nullptr);
       custom_kernel_ctx_.EmplaceBackOutput(std::move(paddle::Tensor()));
 
       VLOG(8) << "ctx->EmplaceBackOutput : an optional output";

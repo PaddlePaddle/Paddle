@@ -2465,6 +2465,10 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : partial_recv
+  outputs :
+    out : Out
+
 - op : partial_sum
   backward : partial_sum_grad
   extra :
@@ -3788,6 +3792,12 @@
 - op: partial_send
   inputs :
     x : X
+
+- op: random_routing
+  inputs:
+    {prob : Prob, topk_value : TopK_Value, topk_idx : TopK_Idx}
+  outputs:
+    out : Out
 
 - op: read_from_array
   inputs:

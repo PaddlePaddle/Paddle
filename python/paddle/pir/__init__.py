@@ -14,6 +14,8 @@
 
 from paddle.base.libpaddle.pir import (  # noqa: F401
     Block,
+    CloneOptions,
+    IrMapping,
     Operation,
     OpOperand,
     PassManager,

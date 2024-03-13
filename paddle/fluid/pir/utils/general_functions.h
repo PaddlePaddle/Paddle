@@ -14,44 +14,46 @@
 
 #pragma once
 
-#include "paddle/common/errors.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/pir/include/core/operation.h"
-#include "paddle/pir/include/core/parameter.h"
+#include <string>
+#include <vector>
+
 #include "paddle/pir/include/core/type.h"
-#include "paddle/pir/include/core/value.h"
 
 namespace pir {
+
+class Operation;
+class Block;
+class Value;
 
 /**
  * @brief Get the name of parameter from a value.
  *
  * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *
- * @param pir::Value
+ * @param const pir::Value&
  *
  * @return std::string
  */
 
-std::string GetParameterNameFromValue(pir::Value value);
+std::string GetParameterNameFromValue(const pir::Value& value);
 
 /**
  * @brief Get tensor's shape from a value.
  *
- * @param pir::Value
+ * @param const pir::Value&
  *
  * @return std::vector<int64_t>
  */
-std::vector<int64_t> GetShapeFromValue(pir::Value value);
+std::vector<int64_t> GetShapeFromValue(const pir::Value& value);
 
 /**
  * @brief Get tensor's data type from a value.
  *
- * @param pir::Value
+ * @param const pir::Value&
  *
  * @return pir::Type
  */
-pir::Type GetDataTypeFromValue(pir::Value value);
+pir::Type GetDataTypeFromValue(const pir::Value& value);
 
 /**
  * @brief Get an operation that defines the specific input of the operation.
@@ -99,10 +101,10 @@ std::vector<Value> GetUsedExternalValue(const Block& block);
  * @brief Determine whether a value comes from a weight or has no input op. That
  is to say, it is permissible.
  *
- * @param pir::Value
+ * @param const pir::Value&
 
  * @return bool
  */
-bool ValueIsPersitable(pir::Value value);
+bool ValueIsPersistable(const pir::Value& value);
 
 }  // namespace pir
