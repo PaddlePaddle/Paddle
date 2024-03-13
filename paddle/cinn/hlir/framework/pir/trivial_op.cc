@@ -76,6 +76,8 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
 
  private:
   void Visit(const ir::Load* load, Expr* op) override {
+    VLOG(4) << "SubstitudeTargetExprWithDestExpr: " << load << " vs "
+            << source_.ptr();
     if (load == source_.ptr()) {
       VLOG(4) << "substitude find!";
       *op = dest_;
@@ -84,6 +86,8 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
     }
   }
   void Visit(const ir::Store* store, Expr* op) override {
+    VLOG(4) << "SubstitudeTargetExprWithDestExpr: " << store << " vs "
+            << source_.ptr();
     if (store == source_.ptr()) {
       VLOG(4) << "substitude find!";
       *op = dest_;
@@ -92,6 +96,8 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
     }
   }
   void Visit(const ir::Reduce* reduce, Expr* op) override {
+    VLOG(4) << "SubstitudeTargetExprWithDestExpr: " << reduce << " vs "
+            << source_.ptr();
     if (reduce == source_.ptr()) {
       VLOG(4) << "substitude find!";
       *op = dest_;
@@ -172,106 +178,176 @@ using ExprSet = std::vector<ir::Expr>;
 using Func = std::function<ExprSet(const ir::Expr& x)>;
 struct Mapping {
   Func f_;
-  explicit Mapping(Func f) { f_ = f; }
+  std::string name;
+  explicit Mapping(Func f, std::string s = "") {
+    f_ = f;
+    name = s;
+  }
   ExprSet operator()(const ir::Expr& x) const { return f_(x); }
-  ir::Expr GetSingle(const ir::Expr& x) const {
-    const auto& o = this->operator()(x);
+  ir::Expr GetSingle(const ir::Expr& x) {
+    Mapping call = (*this) * Mapping::GetIdentity();
+    const auto& o = call.operator()(x);
     if (o.size() != 1) {
       PADDLE_THROW("Try to get single result, but we get %d.", o.size());
     }
     return *o.begin();
   }
   Mapping operator*(Mapping x) {
-    auto new_f = [=](const ir::Expr& e) -> ExprSet {
-      const auto& rs = this->f_(e);
-      ExprSet res;
+    auto new_f = [self = *this, x = x](const ir::Expr& e) -> ExprSet {
+      const auto& rs = self.f_(e);
+      VLOG(4) << "Mapping Info : " << self.name;
+      VLOG(4) << "        Inputs  :" << e;
+      for (const auto& r : rs) {
+        VLOG(4) << "      Outputs : \n" << r;
+      }
+      std::vector<ir::Expr> res;
       for (const auto& r : rs) {
         const auto& x_res = x.f_(r);
         res.insert(res.begin(), x_res.begin(), x_res.end());
       }
       return res;
     };
-    return Mapping(std::function(new_f));
+    return Mapping(std::function(new_f), x.name + "*" + this->name);
+  }
+  static Mapping GetIdentity() {
+    return Mapping([](const ir::Expr& e) { return std::vector<ir::Expr>{e}; },
+                   "identity");
   }
 };
 
-Mapping Identity =
-    Mapping([](const ir::Expr& e) { return std::vector<ir::Expr>{e}; });
+Mapping Identity = Mapping::GetIdentity();
 
 template <typename Teller>
-Mapping Collector(Teller t) {
-  return Mapping([=](const ir::Expr& x) -> ExprSet {
-    const auto& rs = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(x, t);
-    return std::vector(rs.begin(), rs.end());
-  });
+Mapping Collector(Teller t, std::string name = "") {
+  return Mapping(
+      [=](const ir::Expr& x) -> ExprSet {
+        const auto& rs = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(x, t);
+        return std::vector(rs.begin(), rs.end());
+      },
+      name);
 }
 
 template <typename FilterFunc>
-Mapping FilterMaker(FilterFunc t) {
-  return Mapping([=](const ir::Expr& x) -> ExprSet {
-    if (t(x)) {
-      return {x};
-    }
-    return {};
-  });
+Mapping FilterMaker(FilterFunc t, std::string name = "SomeFilter") {
+  return Mapping(
+      [=](const ir::Expr& x) -> ExprSet {
+        if (t(x)) {
+          return {x};
+        }
+        return {};
+      },
+      name);
 }
 
-Mapping Store2Value = Mapping([](const ir::Expr& e) -> ExprSet {
-  if (e.As<ir::Store>()) {
-    return {e.As<ir::Store>()->value};
-  }
-  return {};
-});
-Mapping Realizer2ScheduleBlock = Mapping([](const ir::Expr& e) -> ExprSet {
-  if (e.As<ir::ScheduleBlockRealize>()) {
-    return {e.As<ir::ScheduleBlockRealize>()->schedule_block};
-  }
-  return {};
-});
+Mapping Store2Value = Mapping(
+    [](const ir::Expr& e) -> ExprSet {
+      if (e.As<ir::Store>()) {
+        return {e.As<ir::Store>()->value};
+      }
+      return {};
+    },
+    "Store2Value");
 
-Mapping ScheduleBlock2Body = Mapping([](const ir::Expr& e) -> ExprSet {
-  if (e.As<ir::ScheduleBlock>()) {
-    return {e.As<ir::ScheduleBlock>()->body};
-  }
-  return {};
-});
+Mapping Realizer2ScheduleBlock = Mapping(
+    [](const ir::Expr& e) -> ExprSet {
+      if (e.As<ir::ScheduleBlockRealize>()) {
+        return {e.As<ir::ScheduleBlockRealize>()->schedule_block};
+      }
+      return {};
+    },
+    "Realizer2ScheduleBlock");
 
-Mapping ScheduleBlockRealizeIsNotInit =
-    FilterMaker([](const ir::Expr& e) -> bool {
+Mapping ScheduleBlock2Body = Mapping(
+    [](const ir::Expr& e) -> ExprSet {
+      if (e.As<ir::ScheduleBlock>()) {
+        return {e.As<ir::ScheduleBlock>()->body};
+      }
+      return {};
+    },
+    "ScheduleBlock2Body");
+
+Mapping ScheduleBlockRealizeNotRoot = FilterMaker(
+    [](const ir::Expr& e) -> bool {
+      return (e.As<ir::ScheduleBlockRealize>() &&
+              e.As<ir::ScheduleBlockRealize>()
+                      ->schedule_block.As<ir::ScheduleBlock>()
+                      ->name.find("root") == std::string::npos);
+    },
+    "ScheduleBlockRealizeNotRoot");
+
+Mapping ScheduleBlockRealizeIsNotInit = FilterMaker(
+    [](const ir::Expr& e) -> bool {
       return (e.As<ir::ScheduleBlockRealize>() &&
               e.As<ir::ScheduleBlockRealize>()
                       ->schedule_block.As<ir::ScheduleBlock>()
                       ->name.find("_reduce_init") == std::string::npos);
-    });
+    },
+    "ScheduleBlockRealizeIsNotInit");
 
-Mapping ScheduleBlockRealizeIsInit = FilterMaker([](const ir::Expr& e) -> bool {
-  return (e.As<ir::ScheduleBlockRealize>() &&
-          e.As<ir::ScheduleBlockRealize>()
-                  ->schedule_block.As<ir::ScheduleBlock>()
-                  ->name.find("_reduce_init") != std::string::npos);
-});
+Mapping ScheduleBlockRealizeIsInit = FilterMaker(
+    [](const ir::Expr& e) -> bool {
+      return (e.As<ir::ScheduleBlockRealize>() &&
+              e.As<ir::ScheduleBlockRealize>()
+                      ->schedule_block.As<ir::ScheduleBlock>()
+                      ->name.find("_reduce_init") != std::string::npos);
+    },
+    "ScheduleBlockRealizeIsInit");
 
-Mapping IsFor =
-    FilterMaker([](const ir::Expr& e) -> bool { return e.As<ir::For>(); });
+Mapping IsFor = FilterMaker(
+    [](const ir::Expr& e) -> bool { return e.As<ir::For>(); }, "IsFor");
 
 Mapping ChildScheduleBlocks =
-    Collector([](const ir::Expr* e) { return e->As<ir::ScheduleBlock>(); });
+    Collector([](const ir::Expr* e) { return e->As<ir::ScheduleBlock>(); },
+              "ChildScheduleBlocks");
 
-Mapping ChildScheduleBlockRealizes = Collector(
-    [](const ir::Expr* e) { return e->As<ir::ScheduleBlockRealize>(); });
+Mapping ChildScheduleBlockRealizes =
+    Collector(
+        [](const ir::Expr* e) { return e->As<ir::ScheduleBlockRealize>(); },
+        "ChildScheduleBlockRealizes") *
+    ScheduleBlockRealizeNotRoot;
 
-Mapping ChildStores =
-    Collector([](const ir::Expr* e) { return e->As<ir::Store>(); });
+Mapping IsForIterVar(const ir::Var& var) {
+  return FilterMaker(
+      [var = var](const ir::Expr& e) -> bool {
+        return e.As<ir::For>() && e.As<ir::For>()->loop_var == var;
+      },
+      "IsForIterVar");
+}
 
-Mapping ChildLoads =
-    Collector([](const ir::Expr* e) { return e->As<ir::Load>(); });
+Mapping For2Min =
+    Mapping([](const ir::Expr& e) -> ExprSet { return {e.As<ir::For>()->min}; },
+            "For2Min");
 
-Mapping ChildTensorStores = Collector([](const ir::Expr* e) {
-  return e->As<ir::Load>() && e->As<ir::Store>()->is_addr_tensor();
-});
+Mapping For2Max = Mapping(
+    [](const ir::Expr& e) -> ExprSet { return {e.As<ir::For>()->extent}; },
+    "For2Max");
+
+Mapping ChildStores = Collector(
+    [](const ir::Expr* e) { return e->As<ir::Store>(); }, "ChildStores");
+
+Mapping ChildTensorLoads = Collector(
+    [](const ir::Expr* e) {
+      return e->As<ir::Load>() && e->As<ir::Load>()->is_addr_tensor();
+    },
+    "ChildLoads");
+
+Mapping ChildTensorStores = Collector(
+    [](const ir::Expr* e) {
+      return e->As<ir::Load>() && e->As<ir::Store>()->is_addr_tensor();
+    },
+    "ChildTensorStores");
+
+Mapping FilterLoadByTensor(const ir::Tensor& tensor) {
+  return FilterMaker(
+      [tensor = tensor](const ir::Expr& e) -> bool {
+        return e.As<ir::Load>() &&
+               e.As<ir::Load>()->tensor.as_tensor_ref()->name == tensor->name;
+      },
+      "FilterLoadByTensor(" + tensor->name + ")");
+}
 
 Mapping ChildFors =
-    Collector([](const ir::Expr* e) { return e->As<ir::For>(); });
+    Collector([](const ir::Expr* e) { return e->As<ir::For>(); }, "ChildFors");
 
 Mapping FindFather(const ir::Expr& root) {
   const auto& f = [&](const auto& child) -> ExprSet {
@@ -281,7 +357,16 @@ Mapping FindFather(const ir::Expr& root) {
         [&](const ir::Expr* current) { return !find_child(*current).empty(); });
     return father_collector(root);
   };
-  return Mapping(f);
+  return Mapping(f, "FindFather");
+}
+
+template <class T, class M>
+std::vector<T> MapVector(const std::vector<T>& as, M func) {
+  std::vector<T> res;
+  for (const auto& a : as) {
+    res.push_back(func(a));
+  }
+  return res;
 }
 
 }  // namespace SearchUtils
@@ -293,8 +378,8 @@ struct Transformer {
   explicit Transformer(TransformFunc f) { f_ = f; }
   ir::Expr operator()(const ir::Expr& x) const { return f_(x); }
   Transformer operator*(const Transformer& x) {
-    auto new_f = [=](const ir::Expr& e) -> ir::Expr {
-      const auto& rs = this->f_(e);
+    auto new_f = [self = *this, x = x](const ir::Expr& e) -> ir::Expr {
+      const auto& rs = self.f_(e);
       return x.f_(rs);
     };
     return Transformer(std::function(new_f));
@@ -321,10 +406,31 @@ Transformer WrapForTransformer(const ir::Var& v) {
 Transformer WrapForsTransformer(const std::vector<ir::Var>& vs) {
   const auto& f = [&](const ir::Expr& e) -> ir::Expr {
     Transformer t = Identity;
-    for (auto v = vs.rbegin(); v != vs.rend(); v++) {
-      t = WrapForTransformer(*v) * t;
+    for (const auto& v : vs) {
+      t = WrapForTransformer(v) * t;
     }
     return t(e);
+  };
+  return Transformer(f);
+}
+
+Transformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
+                                        const ir::Expr dst_load) {
+  const auto& f = [&](const ir::Expr& e) -> ir::Expr {
+    auto copied_e = ir::ir_utils::IRCopy(e);
+    const auto& load = (SearchUtils::ChildTensorLoads *
+                        SearchUtils::FilterLoadByTensor(tensor))
+                           .GetSingle(copied_e);
+    ComposeUtils::MappingTargetExprToDestExprMutator(load, dst_load)(&copied_e);
+    return copied_e;
+  };
+  return Transformer(f);
+}
+
+Transformer WrapStoreTransformer(const ir::Tensor& tensor,
+                                 const std::vector<ir::Expr>& indices) {
+  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+    return ir::Store::Make(tensor, e, indices);
   };
   return Transformer(f);
 }
@@ -372,8 +478,8 @@ Transformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
     const auto& inner_block_var = CreateInnerBlockVars(block_vars);
     const auto& replaced_e =
         ChangeVarTransformer(block_vars, inner_block_var)(e);
-    const auto& schedule_block =
-        ir::ScheduleBlock::Make(block_vars, {}, {}, tensor->name, replaced_e);
+    const auto& schedule_block = ir::ScheduleBlock::Make(
+        inner_block_var, {}, {}, tensor->name, replaced_e);
     const auto& schedule_realizer = ir::ScheduleBlockRealize::Make(
         std::vector<ir::Expr>(block_vars.begin(), block_vars.end()),
         schedule_block);
@@ -494,8 +600,7 @@ struct ReduceOp {
 
   ir::Expr GetInitExpr() const {
     return (SearchUtils::ChildScheduleBlockRealizes *
-            SearchUtils::ScheduleBlockRealizeIsInit *
-            SearchUtils::ScheduleBlock2Body * SearchUtils::ChildStores *
+            SearchUtils::ScheduleBlockRealizeIsInit * SearchUtils::ChildStores *
             SearchUtils::Store2Value)
         .GetSingle(GetFuncBody());
   }
@@ -532,6 +637,7 @@ ir::Expr GetComputeBody(const FusibleOp& op) {
           compute_realize)(compute_body);
     }
   };
+  VLOG(4) << "GetComputeBody";
   return std::visit(Visitor(), op);
 }
 
@@ -545,12 +651,17 @@ ir::Tensor GetOutputTensor(const FusibleOp& op) {
       return compute_body.As<ir::Store>()->tensor.as_tensor_ref();
     }
     ir::Tensor operator()(const TrivialOp& op) {
+      VLOG(4) << "Root is :" << GetRootExpr(op);
+      VLOG(4) << "Searched is:"
+              << SearchUtils::ChildScheduleBlockRealizes.GetSingle(
+                     GetRootExpr(op));
       const auto& compute_body =
           (SearchUtils::ChildScheduleBlockRealizes * SearchUtils::ChildStores)
               .GetSingle(GetRootExpr(op));
       return compute_body.As<ir::Store>()->tensor.as_tensor_ref();
     }
   };
+  VLOG(4) << "GetOutputTensor";
   return std::visit(Visitor(), op);
 }
 
@@ -569,6 +680,21 @@ ir::Expr GetOriginalStoreValuePointer(const FusibleOp& op) {
     }
   };
   return std::visit(Visitor(), op);
+}
+
+std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
+                                 const ir::Expr& root) {
+  using namespace SearchUtils;
+  return MapVector<ir::Var>(vars, [&](const auto& v) -> ir::Var {
+    VLOG(4) << "AppendBound for " << v;
+    VLOG(4) << "lower: "
+            << (ChildFors * IsForIterVar(v) * For2Min).GetSingle(root);
+    VLOG(4) << "upper: "
+            << (ChildFors * IsForIterVar(v) * For2Max).GetSingle(root);
+    return ir::Var((ChildFors * IsForIterVar(v) * For2Min).GetSingle(root),
+                   (ChildFors * IsForIterVar(v) * For2Max).GetSingle(root),
+                   v->name);
+  });
 }
 
 std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
@@ -591,7 +717,7 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
           outer_iter_expr);
     }
   };
-  return std::visit(Visitor(), op);
+  return AppendBound(std::visit(Visitor(), op), GetRootExpr(op));
 }
 
 std::vector<ir::Var> GetAllIterVars(const ReduceOp& op) {
@@ -603,17 +729,10 @@ std::vector<ir::Var> GetAllIterVars(const ReduceOp& op) {
   const std::vector<Expr>& all_iter_expr =
       compute_schedule_block_realize.As<ir::ScheduleBlockRealize>()
           ->iter_values;
-  std::vector<ir::Var> all_iter_vars;
-
-  std::transform(all_iter_expr.begin(),
-                 all_iter_expr.end(),
-                 all_iter_vars.begin(),
-                 [](const Expr& expr) { return expr.as_var_ref(); });
-
-  return all_iter_vars;
+  return ComposeUtils::ExprVec2VarVec(all_iter_expr);
 }
 
-std::vector<ir::Var> GetReduceIterVars(const ReduceOp& op) {
+std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
   // Iter Vars not appearing in outer_iter_vars are pushed into
   // reduce_iter_vars
   std::vector<ir::Var> all_iter_vars = GetAllIterVars(op);
@@ -626,8 +745,7 @@ std::vector<ir::Var> GetReduceIterVars(const ReduceOp& op) {
       reduce_iter_vars.push_back(iter_var);
     }
   }
-
-  return reduce_iter_vars;
+  return AppendBound(reduce_iter_vars, GetRootExpr(op));
 }
 
 ir::Expr* GetFuncBodyPointer(FusibleOp op) {
@@ -651,14 +769,26 @@ ir::Expr CreateReduceExpr(
     const std::vector<ir::Var>& reduce_iters,
     const ir::Expr& init_body,    // relay on output_iters
     const ir::Expr& reduce_body,  // relay on output_iters + reduce_iters
-    const ir::Tensor& new_write_tensor) {
-  const auto& init_schedule_block = TransformerUtils::WrapScheduleRealizer(
-      output_iters, new_write_tensor)(init_body);
+    const ir::Tensor& new_write_tensor,
+    const ir::Tensor& origin_write_tensor) {
+  VLOG(4) << "CreateReduceExpr Start.";
+  const std::vector<ir::Expr> indice_expr =
+      std::vector<ir::Expr>(output_iters.begin(), output_iters.end());
+  const auto& init_schedule_block =
+      (TransformerUtils::ChangeTensorLoadTransformer(
+           origin_write_tensor, new_write_tensor(indice_expr)) *
+       TransformerUtils::WrapStoreTransformer(new_write_tensor, indice_expr) *
+       TransformerUtils::WrapScheduleRealizer(output_iters, new_write_tensor))(
+          init_body);
   const auto& reduce_schedule_block =
-      (TransformerUtils::WrapScheduleRealizer(output_iters, new_write_tensor) *
+      (TransformerUtils::ChangeTensorLoadTransformer(
+           origin_write_tensor, new_write_tensor(indice_expr)) *
+       TransformerUtils::WrapStoreTransformer(new_write_tensor, indice_expr) *
+       TransformerUtils::WrapScheduleRealizer(output_iters, new_write_tensor) *
        TransformerUtils::WrapForsTransformer(reduce_iters))(reduce_body);
   const auto& gather_body = ir::Block::Make(
       std::vector<ir::Expr>({init_schedule_block, reduce_schedule_block}));
+  VLOG(4) << "CreateReduceExpr End.";
   return TransformerUtils::WrapForsTransformer(output_iters)(gather_body);
 }
 
@@ -735,17 +865,16 @@ DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
   VLOG(4) << "downstream is " << downstream.GetFuncBody();
 
   DownStreamOp fused(ir::ir_utils::IRCopy(downstream.GetFuncBody()));
-  ir::Expr origin_store_value = GetOriginalStoreValuePointer(fused);
+  ir::Expr origin_compute_body = GetOriginalStoreValuePointer(fused);
   SequenceMutator(
-      ComposeUtils::GetEachTensorLoadExpr(downstream.GetFuncBody(),
-                                          replaced_tensor),
-      &origin_store_value,
+      ComposeUtils::GetEachTensorLoadExpr(origin_compute_body, replaced_tensor),
+      &origin_compute_body,
       [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
         ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
             upstream, downstream_load_expr, downstream_body);
       });
 
-  VLOG(4) << "After mutate, store_value is: " << fused.GetFuncBody();
+  VLOG(4) << "After mutate, compute body: " << origin_compute_body;
   VLOG(4) << "TTFusion end:\n" << fused.GetFuncBody();
   return fused;
 }
@@ -780,14 +909,26 @@ std::vector<FusibleOp> TransformReduceLoopRange(ReduceOp upstream,
     const auto& new_tensor =
         create_new_tensor(load_tensor.As<ir::Load>()->tensor.as_tensor_ref());
     VLOG(4) << "step 1";
+    VLOG(4) << "GetInit: " << upstream.GetInitExpr();
+    VLOG(4) << "GetNewTensor: " << new_tensor;
+    VLOG(4) << "GetOutputIter: "
+            << utils::Join(GetOutputIters(downstream), "  ");
+    VLOG(4) << "GetReduceIter: " << utils::Join(GetReduceIters(upstream), "  ");
+    VLOG(4) << "GetCompute: "
+            << ComposeUtils::CopyedReplaceExpr(
+                   GetComputeBody(upstream),
+                   GetOutputIters(upstream),
+                   load_tensor.As<ir::Load>()->indices);
     ir::Expr new_reduce = CreateReduceExpr(
         GetOutputIters(downstream),
-        GetReduceIterVars(upstream),
+        GetReduceIters(upstream),
         upstream.GetInitExpr(),
         ComposeUtils::CopyedReplaceExpr(GetComputeBody(upstream),
                                         GetOutputIters(upstream),
                                         load_tensor.As<ir::Load>()->indices),
-        new_tensor);
+        new_tensor,
+        GetOutputTensor(upstream));
+    VLOG(4) << "After CreateReduceExpr: " << new_reduce;
     ComposeUtils::MappingTargetExprToDestExprMutator(
         load_tensor.As<ir::Load>()->tensor,
         Expr(new_tensor))(GetFuncBodyPointer(downstream));
