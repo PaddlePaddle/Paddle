@@ -125,25 +125,10 @@ class OpTransInfo {
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
   std::unordered_set<std::string> default_deny_ops_{
-      "feed",
-      "fetch",
-      "conv2d",
-      "conv2d_grad",
-      "dropout",
-      "slice",
-      "concat",
-      "gather_nd",
-      "pool2d",
-      "split",
-      "matmul",
-      "matmul_grad",
-      "transpose",
-      "embedding_grad",
-      "embedding",
-      "gather",
-      "arange",
-      "softmax",
-  };
+      "feed",   "fetch",       "conv2d",    "conv2d_grad",    "dropout",
+      "slice",  "concat",      "gather_nd", "pool2d",         "split",
+      "matmul", "matmul_grad", "transpose", "embedding_grad", "embedding",
+      "gather", "arange",      "softmax",   "unsqueeze",      "squeeze"};
 };
 
 std::string OpNameAfterStripDialect(const ::pir::Operation& op) {
@@ -369,6 +354,9 @@ bool HasHandledInPass(const ::pir::Operation& op) {
 // 2. it should be registered in OpRegistry;
 // 3. it should be handled in pd_to_cinn_pass;
 bool IsSupportInCinn(const ::pir::Operation& op) {
+  if (op.name() == "pd_op.reshape") {
+    return false;
+  }
   const bool is_denied = IsDeniedInCinn(op);
   const bool is_registered = IsRegisteredInCINN(op);
   const bool is_handled = HasHandledInPass(op);

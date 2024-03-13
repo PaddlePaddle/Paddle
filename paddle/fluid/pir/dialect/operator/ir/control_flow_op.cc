@@ -347,21 +347,21 @@ bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
       // [1, S0]        [1, S0]       [1, S0]
 
       std::vector<symbol::DimExpr> out_dims = true_dims;
-      if (false_dims.size() != 0) {
-        // now only support results of true and false block have same rank.
-        PADDLE_ENFORCE_EQ(true_dims.size(),
-                          false_dims.size(),
-                          phi::errors::PreconditionNotMet(
-                              "The true and false block should have same rank, "
-                              "but got true_rank(%d) and false_rank(%d)",
-                              true_dims.size(),
-                              false_dims.size()));
-        for (size_t i = 0; i < true_dims.size(); i++) {
-          if (true_dims[i] != false_dims[i]) {
-            out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};
-          }
-        }
-      }
+      // if (false_dims.size() != 0) {
+      //   // now only support results of true and false block have same rank.
+      //   PADDLE_ENFORCE_EQ(true_dims.size(),
+      //                     false_dims.size(),
+      //                     phi::errors::PreconditionNotMet(
+      //                         "The true and false block should have same
+      //                         rank, " "but got true_rank(%d) and
+      //                         false_rank(%d)", true_dims.size(),
+      //                         false_dims.size()));
+      //   for (size_t i = 0; i < true_dims.size(); i++) {
+      //     if (true_dims[i] != false_dims[i]) {
+      //       out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};
+      //     }
+      //   }
+      // }
 
       shape_analysis->SetShapeOrDataForValue(
           result(rst_idx),

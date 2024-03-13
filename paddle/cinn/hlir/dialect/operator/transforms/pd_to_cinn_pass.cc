@@ -82,19 +82,19 @@ class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
     auto keep_dim =
         op.attribute("keepdim").dyn_cast<pir::BoolAttribute>().data();
 
-    // if(
-    // op->operand_source(0).type().dyn_cast<paddle::dialect::DenseTensorType>().dtype().isa<pir::BoolType>())
-    // {
-    //   auto cast_1 = rewriter.Build<paddle::dialect::CastOp>(
-    //       op->operand_source(0), phi::DataType::FLOAT32);
-    //    auto cinn_reduce_sum = rewriter.Build<cinn::dialect::ReduceSumOp>(
-    //       cast_1->result(0),  reduce_axis, keep_dim);
-    //   auto cast_2 = rewriter.Build<paddle::dialect::CastOp>(
-    //       cinn_reduce_sum->result(0), phi::DataType::BOOL);
-    //    rewriter.ReplaceAllUsesWith(op.result(0), cast_2.result(0));
-    // }
-    // else
-    {
+    if (op->operand_source(0)
+            .type()
+            .dyn_cast<paddle::dialect::DenseTensorType>()
+            .dtype()
+            .isa<pir::BoolType>()) {
+      auto cast_1 = rewriter.Build<paddle::dialect::CastOp>(
+          op->operand_source(0), phi::DataType::FLOAT32);
+      auto cinn_reduce_sum = rewriter.Build<cinn::dialect::ReduceSumOp>(
+          cast_1->result(0), reduce_axis, keep_dim);
+      auto cast_2 = rewriter.Build<paddle::dialect::CastOp>(
+          cinn_reduce_sum->result(0), phi::DataType::BOOL);
+      rewriter.ReplaceAllUsesWith(op.result(0), cast_2.result(0));
+    } else {
       auto cinn_reduce_sum = rewriter.Build<cinn::dialect::ReduceSumOp>(
           op->operand_source(0), reduce_axis, keep_dim);
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce_sum.result(0));

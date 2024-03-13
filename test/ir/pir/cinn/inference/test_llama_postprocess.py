@@ -69,6 +69,22 @@ class LlamaPostProcess(nn.Layer):
 
         return input_ids, scores
 
+    # def _post_process_(
+    #     self, logits, input_ids, cur_len, origin_len, scores, unfinished_flag     ):
+    #     # [batch_size, vocab_size]
+    #     logits = logits[:, -1, :]
+    #     top_p = paddle.full([1], 0)
+
+    #     top_ps_tensor = paddle.full(
+    #         shape=[paddle.shape(logits)[0], 1],
+    #         fill_value=top_p,
+    #         dtype=logits.dtype,
+    #     )
+    #     _, next_tokens = paddle.tensor.top_p_sampling(logits, top_ps_tensor)
+
+    #     next_scores = paddle.index_sample(logits, next_tokens)  # bs, 1
+    #     return next_scores, next_scores
+
     def forward(self, logits, input_ids):
         batch_size, cur_len = paddle.shape(input_ids)
         origin_len = paddle.shape(input_ids)[1]
