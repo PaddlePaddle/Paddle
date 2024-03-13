@@ -586,7 +586,7 @@ struct ReduceOp {
     return all_iter_vars;
   }
 
-  std::vector<ir::Var> GetReduceIterVars() const {
+  std::vector<ir::Var> GetOuterIterVars() const {
     ir::Expr init_schedule_block_realize =
         (SearchUtils::ChildScheduleBlock * SearchUtils::ScheduleBlockIsInit *
          SearchUtils::FindFather(GetFuncBody()) *
@@ -594,22 +594,29 @@ struct ReduceOp {
            return e.As<ir::ScheduleBlockRealize>()
          })).GetSingle(GetFuncBody());
 
-    // Get Iter Vars from initial schedule block
-    const std::vector<Expr>& init_iter_expr =
+    const std::vector<Expr>& outer_iter_expr =
         init_schedule_block_realize.As<ir::ScheduleBlockRealize>()->iter_values;
-    std::vector<ir::Var> init_iter_vars;
-    std::transform(init_iter_expr.begin(),
-                   init_iter_expr.end(),
-                   init_iter_vars.begin(),
+    std::vector<ir::Var> outer_iter_vars;
+
+    std::transform(outer_iter_expr.begin(),
+                   outer_iter_expr.end(),
+                   outer_iter_vars.begin(),
                    [](const Expr& expr) { return expr.as_var_ref(); });
 
-    // Iter Vars not appearing in init_iter_vars are pushed into
+    return outer_iter_vars;
+  }
+
+  std::vector<ir::Var> GetReduceIterVars() const {
+    // Iter Vars not appearing in outer_iter_vars are pushed into
     // reduce_iter_vars
     std::vector<ir::Var> all_iter_vars = GetAllIterVars();
+    std::vector<ir::Var> outer_iter_vars = GetOuterIterVars();
     std::vector<ir::Var> reduce_iter_vars;
+
     for (auto& iter_var : all_iter_vars) {
-      if (!(std::find(init_iter_vars.begin(), init_iter_vars.end(), iter_var) !=
-            init_iter_vars.end())) {
+      if (!(std::find(outer_iter_vars.begin(),
+                      outer_iter_vars.end(),
+                      iter_var) != outer_iter_vars.end())) {
         reduce_iter_vars.push_back(iter_var);
       }
     }
