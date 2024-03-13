@@ -28,7 +28,7 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace cinn {
 namespace dialect {

@@ -19,8 +19,7 @@
 #include "paddle/cinn/common/union_find.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_substitute.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace cinn {
 namespace dialect {

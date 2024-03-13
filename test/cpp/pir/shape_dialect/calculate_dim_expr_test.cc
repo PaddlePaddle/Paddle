@@ -14,8 +14,7 @@
 
 #include "gtest/gtest.h"
 
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_substitute.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace symbol::test {
 
