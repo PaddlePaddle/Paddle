@@ -21,6 +21,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
+from paddle.base.framework import paddle_type_to_proto_type
 
 
 class TestVarBase(unittest.TestCase):
@@ -1105,7 +1106,16 @@ class TestVarBase(unittest.TestCase):
 
         attr_keys = ["block", "dtype", "type", "name"]
         for attr in attr_keys:
-            self.assertEqual(getattr(var_base, attr), getattr(static_var, attr))
+            if isinstance(getattr(var_base, attr), core.DataType):
+                self.assertEqual(
+                    paddle_type_to_proto_type[getattr(var_base, attr)],
+                    getattr(static_var, attr),
+                )
+            else:
+                self.assertEqual(
+                    getattr(var_base, attr),
+                    getattr(static_var, attr),
+                )
 
         self.assertListEqual(list(var_base.shape), list(static_var.shape))
 
