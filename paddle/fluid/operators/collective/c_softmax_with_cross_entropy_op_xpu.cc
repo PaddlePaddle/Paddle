@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -26,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/common/flags.h"
