@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import copy
+import multiprocessing
+import os
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
@@ -117,8 +119,14 @@ def _reduce_tensor(tensor):
         )
 
 
-def _rebuild_lodtensor_filename(cls, ipc_name, size, type_idx, dims, lod):
-    lodtensor = cls._new_shared_filename((ipc_name, size, type_idx, dims, lod))
+def _rebuild_lodtensor_filename(
+    cls, ipc_name, shared_fd, size, type_idx, dims, lod, use_file_descripor
+):
+    if use_file_descripor:
+        shared_fd = shared_fd.detach()
+    lodtensor = cls._new_shared_filename(
+        (ipc_name, shared_fd, size, type_idx, dims, lod, use_file_descripor)
+    )
     lodtensor._shared_decref()
     return lodtensor
 
@@ -161,11 +169,31 @@ def _reduce_lodtensor(lodtensor):
             if dim == 0:
                 # Empty tensors have nothing be mapped.
                 return (_rebuild_lodtensor_empty, (type(lodtensor),))
+        inmeta = False
+        if os.environ.get('FLAGS_use_file_descripor', True) in [
+            1,
+            '1',
+            True,
+            'True',
+            'true',
+        ]:
+            inmeta = True
 
         # Default use share filename strategy
-        metadata = (
-            lodtensor._share_filename()
-        )  # ipc_name, size, type_idx, dims, lod
+        metadata = lodtensor._share_filename(
+            inmeta
+        )  # ipc_name, fd, size, type_idx, dims, lod
+
+        if os.environ.get('FLAGS_use_file_descripor', True) in [
+            1,
+            '1',
+            True,
+            'True',
+            'true',
+        ]:
+            metalist = list(metadata)
+            metalist[1] = multiprocessing.reduction.DupFd(metalist[1])
+            metadata = tuple(metalist)
         rebuild = _rebuild_lodtensor_filename
         lodtensor._shared_incref()
         # TODO, maintain reference for lodtensor

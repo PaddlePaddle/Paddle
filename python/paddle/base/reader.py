@@ -14,6 +14,7 @@
 
 import logging
 import multiprocessing
+import os
 import queue
 import sys
 import threading
@@ -409,6 +410,7 @@ class DataLoader:
                 ...
                 >>> # doctest: -SKIP
         """
+        os.environ["FLAGS_use_file_descripor"] = "0"
         if in_dygraph_mode():
             return DygraphGeneratorLoader(
                 feed_list,
