@@ -2537,6 +2537,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
 
   m.def("size_of_dtype", framework::SizeOfType);
+  m.def("size_of_dtype", framework::SizeOfDataType);
   py::class_<paddle::platform::ProfilerResult>(m, "_ProfilerResult")
       .def(py::init<>())
       .def("get_data",

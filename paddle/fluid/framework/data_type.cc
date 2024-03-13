@@ -108,7 +108,7 @@ size_t SizeOfType(proto::VarType::Type type) {
                                                DataTypeToString(type)));
 }
 
-size_t SizeOfType(DataType type) {
+size_t SizeOfDataType(DataType type) {
   auto it = gDataTypeMap().proto_to_size_.find(static_cast<int>(type));
   if (it != gDataTypeMap().proto_to_size_.end()) {
     return it->second;
