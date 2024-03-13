@@ -1020,7 +1020,7 @@
   composite: gelu_grad(x, out_grad, approximate, x_grad)
 
 - backward_op : global_scatter_grad
-  forward : (Tensor x, Tensor local_count, Tensor global_count, int ring_id=0, bool use_calc_stream=false) -> Tensor(out)
+  forward : global_scatter(Tensor x, Tensor local_count, Tensor global_count, int ring_id=0, bool use_calc_stream=false) -> Tensor(out)
   args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id=0, bool use_calc_stream=false)
   output : Tensor(x_grad), Tensor(local_count), Tensor(global_count)
   infer_meta :

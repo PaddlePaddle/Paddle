@@ -1606,7 +1606,7 @@
 
 - op : global_scatter
   inputs :
-    {x : X, local_count : local_count, global_count : global_count, ring_id : ring_id, use_calc_stream : use_calc_stream}
+    {x : X}
   outputs :
     out : Out
 
@@ -3737,8 +3737,6 @@
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
 
 - op: limit_by_capacity
-    inputs:
-    {expert_count : expert_count, capacity : capacity}
   outputs :
     out : Out
 
