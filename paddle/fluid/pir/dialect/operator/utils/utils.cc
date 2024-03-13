@@ -312,7 +312,9 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
       data_type.insert(phi::DataTypeToString(info_pair.first.dtype()));
     }
   }
-
+  if (data_type.empty()) {
+    VLOG(6) << "No data type is registered for " << op_name;
+  }
   return data_type;
 }
 

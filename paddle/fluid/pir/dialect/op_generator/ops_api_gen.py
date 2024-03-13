@@ -69,6 +69,15 @@ OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
 NEED_GEN_STATIC_ONLY_APIS = [
+    'c_allgather',
+    'c_allreduce_avg',
+    'c_allreduce_avg_',
+    'c_allreduce_max',
+    'c_allreduce_min',
+    'c_allreduce_min_',
+    'c_allreduce_sum',
+    'c_allreduce_prod',
+    'c_allreduce_prod_',
     'distributed_fused_lamb_init',
     'distributed_fused_lamb_init_',
     'fetch',
@@ -120,15 +129,6 @@ NEED_GEN_STATIC_ONLY_APIS = [
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
-    'c_allgather',
-    'c_allreduce_avg',
-    'c_allreduce_avg_',
-    'c_allreduce_max',
-    'c_allreduce_min',
-    'c_allreduce_min_',
-    'c_allreduce_sum',
-    'c_allreduce_prod',
-    'c_allreduce_prod_',
     'c_embedding',
     'c_identity',
     'c_reduce_sum',
