@@ -14,6 +14,8 @@
 
 #include "paddle/cinn/hlir/framework/pir/trivial_op.h"
 
+#include <variant>
+
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -32,7 +34,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
-#include <variant>
 // #include "paddle/cinn/frontend/group_pattern_util.h"
 
 namespace cinn {
@@ -102,7 +103,6 @@ std::vector<ir::Var> GetOutputIters(const std::vector<ir::Expr>& indices) {
 }
 
 bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
-  ;
 }
 
 static ir::Expr CopyedReplaceExpr(const Expr& source,
@@ -169,7 +169,7 @@ using ExprSet = std::vector<ir::Expr>;
 using Func = std::function<ExprSet(const ir::Expr& x)>;
 struct Mapping {
   Func f_;
-  Mapping(Func f) { f_ = f; }
+  explicit Mapping(Func f) { f_ = f; }
   ExprSet operator()(const ir::Expr& x) const { return f_(x); }
   ir::Expr GetSingle(const ir::Expr& x) const {
     const auto& o = this->operator()(x);
@@ -189,7 +189,7 @@ struct Mapping {
       return res;
     };
     return Mapping(std::function(new_f));
-  };
+  }
 };
 
 Mapping Identity =
@@ -240,6 +240,9 @@ Mapping ScheduleBlockIsNotInit = FilterMaker([](const ir::Expr& e) -> bool {
 Mapping ChildScheduleBlocks =
     Collector([](const ir::Expr* e) { return e->As<ir::ScheduleBlock>(); });
 
+Mapping ChildScheduleBlockRealizes = Collector(
+    [](const ir::Expr* e) { return e->As<ir::ScheduleBlockRealize>(); });
+
 Mapping ChildStores =
     Collector([](const ir::Expr* e) { return e->As<ir::Store>(); });
 
@@ -282,7 +285,7 @@ namespace TransformerUtils {
 using TransformFunc = std::function<ir::Expr(ir::Expr)>;
 struct Transformer {
   TransformFunc f_;
-  Transformer(TransformFunc f) { f_ = f; }
+  explicit Transformer(TransformFunc f) { f_ = f; }
   ir::Expr operator()(const ir::Expr& x) const { return f_(x); }
   Transformer operator*(const Transformer& x) {
     auto new_f = [=](const ir::Expr& e) -> ir::Expr {
@@ -290,7 +293,7 @@ struct Transformer {
       return x.f_(rs);
     };
     return Transformer(std::function(new_f));
-  };
+  }
 };
 
 Transformer Identity = Transformer([](const ir::Expr& e) { return e; });
@@ -462,8 +465,6 @@ struct TrivialOp {
         GetSingleStoreExpr(func_body).As<ir::Store>()->indices);
   }
 
-  // std::vector<ir::Var> GetAllIterVar() const { return GetOutputIters(); }
-
   ir::Expr* GetStoreValuePointer() const {
     return &GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
@@ -516,8 +517,6 @@ struct ReduceOp {
     return GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
 
-  // std::vector<ir::Var> GetAllIterVar() const {TODO}
-
   ir::Expr* GetStoreValuePointer() const {
     return &GetSingleStoreExpr(func_body).As<ir::Store>()->value;
   }
@@ -552,19 +551,77 @@ struct ReduceOp {
     return std::vector(load_exprs.begin(), load_exprs.end());
   }
 
-  std::vector<ir::Var> GetReduceIters() const {}
   ir::Expr GetComputeExpr() const {
+    VLOG(4) << "GetComputeExpr";
     return (SearchUtils::ChildScheduleBlocks *
             SearchUtils::ScheduleBlockIsNotInit * SearchUtils::ChildStores *
             SearchUtils::Store2Value)
         .GetSingle(GetFuncBody());
   }
   ir::Expr GetInitExpr() const {
-    VLOG(4) << "GetComputeExpr";
     return (SearchUtils::ChildScheduleBlocks *
             SearchUtils::ScheduleBlockIsInit * SearchUtils::ChildStores *
             SearchUtils::Store2Value)
         .GetSingle(GetFuncBody());
+  }
+
+  std::vector<ir::Var> GetAllIterVars() const {
+    ir::Expr compute_schedule_block_realize =
+        (SearchUtils::ChildScheduleBlock * SearchUtils::ScheduleBlockIsNotInit *
+         SearchUtils::FindFather(GetFuncBody()) *
+         SearchUtils::FilterMaker([](const ir::Expr& e) -> bool {
+           return e.As<ir::ScheduleBlockRealize>()
+         })).GetSingle(GetFuncBody());
+
+    const std::vector<Expr>& all_iter_expr =
+        compute_schedule_block_realize.As<ir::ScheduleBlockRealize>()
+            ->iter_values;
+    std::vector<ir::Var> all_iter_vars;
+
+    std::transform(all_iter_expr.begin(),
+                   all_iter_expr.end(),
+                   all_iter_vars.begin(),
+                   [](const Expr& expr) { return expr.as_var_ref(); });
+
+    return all_iter_vars;
+  }
+
+  std::vector<ir::Var> GetOuterIterVars() const {
+    ir::Expr init_schedule_block_realize =
+        (SearchUtils::ChildScheduleBlock * SearchUtils::ScheduleBlockIsInit *
+         SearchUtils::FindFather(GetFuncBody()) *
+         SearchUtils::FilterMaker([](const ir::Expr& e) -> bool {
+           return e.As<ir::ScheduleBlockRealize>()
+         })).GetSingle(GetFuncBody());
+
+    const std::vector<Expr>& outer_iter_expr =
+        init_schedule_block_realize.As<ir::ScheduleBlockRealize>()->iter_values;
+    std::vector<ir::Var> outer_iter_vars;
+
+    std::transform(outer_iter_expr.begin(),
+                   outer_iter_expr.end(),
+                   outer_iter_vars.begin(),
+                   [](const Expr& expr) { return expr.as_var_ref(); });
+
+    return outer_iter_vars;
+  }
+
+  std::vector<ir::Var> GetReduceIterVars() const {
+    // Iter Vars not appearing in outer_iter_vars are pushed into
+    // reduce_iter_vars
+    std::vector<ir::Var> all_iter_vars = GetAllIterVars();
+    std::vector<ir::Var> outer_iter_vars = GetOuterIterVars();
+    std::vector<ir::Var> reduce_iter_vars;
+
+    for (auto& iter_var : all_iter_vars) {
+      if (!(std::find(outer_iter_vars.begin(),
+                      outer_iter_vars.end(),
+                      iter_var) != outer_iter_vars.end())) {
+        reduce_iter_vars.push_back(iter_var);
+      }
+    }
+
+    return reduce_iter_vars;
   }
 
  private:
