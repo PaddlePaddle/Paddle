@@ -34,7 +34,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 namespace pir {
-std::vector<ir::Expr> TrivialOpFusion(
+std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies);
 }
