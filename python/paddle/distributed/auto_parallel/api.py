@@ -1416,10 +1416,10 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._mp_optimization = auto_strategy.MPOptimizationConfig(config_dict)
 
-        config_dict = self._config_dict.get(
-            auto_strategy.constants.SP_OPTIMIZATION, None
-        )
-        self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
+        # config_dict = self._config_dict.get(
+        #     auto_strategy.constants.SP_OPTIMIZATION, None
+        # )
+        # self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
 
         config_dict = self._config_dict.get(
             auto_strategy.constants.DP_OPTIMIZATION, None
