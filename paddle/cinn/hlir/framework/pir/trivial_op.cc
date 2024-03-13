@@ -307,6 +307,17 @@ Transformer WrapForTransformer(const ir::Var& v) {
   return Transformer(f);
 }
 
+Transformer WrapForsTransformer(const std::vector<ir::Var>& vs) {
+  const auto& f = [&](const ir::Expr& e) -> ir::Expr {
+    Transformer t = Identity;
+    for (auto v = vs.rbegin(); v != vs.rend(); v++) {
+      t = WrapForTransformer(*v) * t;
+    }
+    return t(e);
+  };
+  return Transformer(f);
+}
+
 std::vector<ir::Var> CreateInnerBlockVars(
     const std::vector<ir::Var>& block_vars) {
   int i = 0;
@@ -538,7 +549,7 @@ struct ReduceOp {
     return std::vector(load_exprs.begin(), load_exprs.end());
   }
 
-  // std::vector<ir::Var> GetReduceIters() const { TODO(@baizhou) }
+  std::vector<ir::Var> GetReduceIters() const {}
   ir::Expr GetComputeExpr() const {
     return (SearchUtils::ChildScheduleBlocks *
             SearchUtils::ScheduleBlockIsNotInit * SearchUtils::ChildStores *
@@ -580,6 +591,10 @@ ir::Tensor GetOutputTensor(const FusibleOp& op) {
   return std::visit([&](auto&& arg) { return arg.GetOutputTensor(); }, op);
 }
 
+std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
+  return std::visit([&](auto&& arg) { return arg.GetOutputIters(); }, op);
+}
+
 ir::Expr* GetFuncBodyPointer(FusibleOp op) {
   return std::visit([&](auto&& arg) { return arg.GetFuncBodyPointer(); }, op);
 }
@@ -597,64 +612,19 @@ ir::Expr CopyReduceBody(const FusibleOp& downstream, const ReduceOp& upstream) {
 }
 
 ir::Expr CreateReduceExpr(
-    const std::vector<ir::Var> output_iters,
-    const std::vector<ir::Var> reduce_iters,
+    const std::vector<ir::Var>& output_iters,
+    const std::vector<ir::Var>& reduce_iters,
     const ir::Expr& init_body,    // relay on output_iters
     const ir::Expr& reduce_body,  // relay on output_iters + reduce_iters
     const ir::Tensor& new_write_tensor) {
-  const auto& init_schedule_block =
-      TransformerUtils::WrapScheduleRealizer(output_iters, new_write_tensor);
+  const auto& init_schedule_block = TransformerUtils::WrapScheduleRealizer(
+      output_iters, new_write_tensor)(init_body);
   const auto& reduce_schedule_block =
       (TransformerUtils::WrapScheduleRealizer(output_iters, new_write_tensor) *
-       TransformerUtils::WrapForTransformer(reduce_iters))
-}
-
-ir::Expr CreateReduceExpr(const FusibleOp& downstream,
-                          const ReduceOp& upstream,
-                          const ir::Expr& reduce_body,
-                          const ir::Expr& init_body,
-                          const ir::Tensor& new_tensor) {
-  VLOG(4) << "start CreateReduceExpr: ";
-  VLOG(4) << "upstream reduce op: " << upstream.GetFuncBody();
-  VLOG(4) << "downstream: " << *GetFuncBodyPointer(downstream);
-  VLOG(4) << "to replace reduce_body: " << reduce_body;
-  VLOG(4) << "new tensor name: " << new_tensor;
-
-  // copy downstream and replace reduce_body and init_body
-
-  ir::Expr copied_body = CopyReduceBody(downstream, upstream);
-  // STEP1: replace reduce_body.
-  FindAndReplace(
-      &copied_body,
-      [](const Expr* expr) { return expr->As<ir::Reduce>(); },
-      [](const Expr& expr) { return expr.As<ir::Reduce>()->body; },
-      [&reduce_body](const Expr& body) { return reduce_body; });
-
-  // STEP2: replace reduce_init.
-  FindAndReplace(
-      &copied_body,
-      [](const Expr* expr) { return expr->As<ir::Reduce>(); },
-      [](const Expr& expr) { return expr.As<ir::Reduce>()->init; },
-      [&init_body](const Expr& body) { return init_body; });
-
-  // STEP3: change the tensor of store.
-  FindAndReplace(
-      &copied_body,
-      [](const Expr* expr) { return expr->As<ir::Store>(); },
-      [](const Expr& expr) { return expr.As<ir::Store>()->tensor; },
-      [&](const Expr& body) { return new_tensor; });
-
-  // STEP4: change the name of ir::ScheduleBlock
-  FindAndReplace(
-      &copied_body,
-      [](const Expr* expr) { return expr->As<ir::ScheduleBlock>(); },
-      [](const Expr& expr) { return expr; },
-      [&](const Expr& scheduleblock) {
-        auto copied = ir::ir_utils::IRCopy(scheduleblock);
-        copied.As<ir::ScheduleBlock>()->name = new_tensor->name;
-        return copied;
-      });
-  return copied_body;
+       TransformerUtils::WrapForsTransformer(reduce_iters))(reduce_body);
+  const auto& gather_body = ir::Block::Make(
+      std::vector<ir::Expr>({init_schedule_block, reduce_schedule_block}));
+  return TransformerUtils::WrapForsTransformer(output_iters)(gather_body);
 }
 
 struct FusionNode {
@@ -774,12 +744,12 @@ std::vector<FusibleOp> TransformReduceLoopRange(ReduceOp upstream,
         create_new_tensor(load_tensor.As<ir::Load>()->tensor.as_tensor_ref());
     VLOG(4) << "step 1";
     ir::Expr new_reduce = CreateReduceExpr(
-        downstream,
-        upstream,
+        GetOutputIters(downstream),
+        upstream.GetReduceIters(),
+        upstream.GetInitExpr(),
         ComposeUtils::CopyedReplaceExpr(upstream.GetComputeExpr(),
                                         upstream.GetOutputIters(),
                                         load_tensor.As<ir::Load>()->indices),
-        upstream.GetInitExpr(),
         new_tensor);
     ComposeUtils::MappingTargetExprToDestExprMutator(
         load_tensor.As<ir::Load>()->tensor,
@@ -800,27 +770,30 @@ FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
   }
 }
 
-
-ir::Expr ExtendFor(ir::Expr target, std::vector<ir::Expr> extended_fors){
+ir::Expr ExtendFor(ir::Expr target, std::vector<ir::Expr> extended_fors) {
   ir::Expr loop_body = target.As<ir::For>()->body;
-  for (auto for_expr=extended_fors.rbegin(); for_expr != extended_fors.rend(); for_expr++){
-    loop_body = TransformerUtils::WrapForTransformer((*for_expr).As<ir::For>()->loop_var)(loop_body);
+  for (auto for_expr = extended_fors.rbegin(); for_expr != extended_fors.rend();
+       for_expr++) {
+    loop_body = TransformerUtils::WrapForTransformer(
+        (*for_expr).As<ir::For>()->loop_var)(loop_body);
   }
-  return TransformerUtils::WrapForTransformer(target.As<ir::For>()->loop_var)(loop_body);
+  return TransformerUtils::WrapForTransformer(target.As<ir::For>()->loop_var)(
+      loop_body);
 }
 
 FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
   ir::Expr new_trivial_body = ir::ir_utils::IRCopy(trivial_op.GetFuncBody());
 
   ir::Expr reduce_init = reduce_op.GetInitExpr();
-  std::vector<ir::Expr> reduce_for = (SearchUtils::ChildFors * SearchUtils::FindFather(reduce_init))(reduce_op.GetFuncBody());
+  std::vector<ir::Expr> reduce_for =
+      (SearchUtils::ChildFors *
+       SearchUtils::FindFather(reduce_init))(reduce_op.GetFuncBody());
   ir::Expr trivial_last_for = SearchUtils::ChildFors(new_trivial_body).back();
 
   ComposeUtils::SubstitudeTargetExprWithDestExpr(
-    trivial_last_for, 
-    ExtendFor(trivial_last_for, reduce_for),
-    &new_trivial_body
-  );
+      trivial_last_for,
+      ExtendFor(trivial_last_for, reduce_for),
+      &new_trivial_body);
 
   return TrivialOp(new_trivial_body);
 }
