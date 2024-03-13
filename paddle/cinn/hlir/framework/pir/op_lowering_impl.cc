@@ -30,6 +30,8 @@
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
+#include "paddle/cinn/optim/if_fusion.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -114,6 +116,13 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
   }
 
+  bool is_reduce_all =
+      (group_tile_info->reduce_axis_.size() == group_tile_info->data_rank);
+
+  if (is_reduce_all) {
+    reduce_is_dynamic = false;
+  }
+
   PADDLE_ENFORCE_EQ(
       reduce_is_dynamic,
       false,
@@ -125,8 +134,17 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   int64_t reduce_inner_num = 1;
   int64_t spatial_inner_num = 1;
   int warp_num = 1;
+  group_tile_info->is_reduce_all = is_reduce_all;
 
-  if (reduce_numel == 1) {
+  if (is_reduce_all) {
+    // warp reduce
+    reduce_block = 1024;
+    spatial_block = 1;
+    spatial_inner_num = 1;
+    reduce_inner_num = 4;
+    warp_num = 8;
+
+  } else if (reduce_numel == 1) {
     reduce_block = 1;
     if (spatial_is_dynamic) {
       spatial_block = 1024;
@@ -865,7 +883,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
-        VLOG(4) << "device kernel func's " << non_tensor_arg_idx << " is from "
+        VLOG(4) << "device kernel func's " << symbol_name << " is from "
                 << tensor_arg_idx << ".shape(" << tensor_arg_dim_idx << ")";
       }
     }
@@ -874,6 +892,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names);
 #ifdef CINN_WITH_CUDA
+    optim::EliminateCommonGlobalMemoryRead(&(func_body));
     optim::OptimizeExprGPU(&(func_body));
 #endif
 

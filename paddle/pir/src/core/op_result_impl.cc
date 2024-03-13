@@ -14,6 +14,7 @@
 
 #include <glog/logging.h>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/src/core/op_result_impl.h"
@@ -30,8 +31,9 @@ uint32_t OpResultImpl::index() const {
 
 OpResultImpl::~OpResultImpl() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destroyed a op_result that is still in use. \n"
-               << "The owner op type is:" << owner()->name();
+    PADDLE_FATAL(
+        "Destroyed a op_result that is still in use. The owner op type is : %s",
+        owner()->name());
   }
 }
 
@@ -73,11 +75,12 @@ Attribute OpResultImpl::attribute(const std::string &key) const {
 void OpResultImpl::set_attribute(const std::string &key, Attribute value) {
   auto owner = this->owner();
   auto attr = owner->attribute(key);
-  if (attr && !attr.isa<ArrayAttribute>()) {
-    IR_THROW(
-        "The %s attribute has existed as operation attribute. Can't set it as "
-        "value attribute. ");
-  }
+  PADDLE_ENFORCE_EQ(attr && !attr.isa<ArrayAttribute>(),
+                    false,
+                    common::errors::PreconditionNotMet(
+                        "The %s attribute has existed as operation attribute. "
+                        "Can't set it as value attribute. ",
+                        key));
   auto array_attr = attr.dyn_cast<ArrayAttribute>();
   auto index = this->index();
   std::vector<Attribute> vec;
@@ -85,6 +88,16 @@ void OpResultImpl::set_attribute(const std::string &key, Attribute value) {
   vec.resize(owner->num_results());
   vec[index] = value;
   owner->set_attribute(key, ArrayAttribute::get(owner->ir_context(), vec));
+}
+
+OpInlineResultImpl::OpInlineResultImpl(Type type, uint32_t result_index)
+    : OpResultImpl(type, result_index) {
+  PADDLE_ENFORCE_LE(
+      result_index,
+      MAX_INLINE_RESULT_IDX,
+      common::errors::PreconditionNotMet(
+          "Inline result index [%u] should not exceed MaxInlineResultIndex(5)",
+          result_index));
 }
 
 }  // namespace detail

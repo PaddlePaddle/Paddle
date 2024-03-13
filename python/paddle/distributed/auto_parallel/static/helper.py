@@ -260,11 +260,18 @@ class ProgramHelper:
         concrete_program = getattr(
             self.proxy_layer, func_name
         ).concrete_program  # noqa: B018
-        prepare_op_amp_options(
-            concrete_program.main_program,
-            ProgramTranslator.get_instance()._amp_records,
-            DEFAULT_AMP_OPTIONS,
-        )
+
+        # TODO(zhiqiu): prepare_op_amp_options is not supported for PIR program
+        # It will to use dynamic-static unified amp in pir program, and there is
+        # no need to fit for prepare_op_amp_options
+        if not paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
+            "FLAGS_enable_pir_api"
+        ]:
+            prepare_op_amp_options(
+                concrete_program.main_program,
+                ProgramTranslator.get_instance()._amp_records,
+                DEFAULT_AMP_OPTIONS,
+            )
         self._build_startup_program()
 
     def _build_startup_program(self):
