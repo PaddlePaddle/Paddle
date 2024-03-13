@@ -23,6 +23,15 @@
     func : add_layernorm_xpu
     data_type : x
 
+- op : gn_silu_xpu
+  args : (Tensor x, Tensor scale, Tensor bias, int groups, float epsilon)
+  output : Tensor(out)
+  infer_meta :
+    func : GroupNormalizeSiluXPUInferMeta
+  kernel :
+    func : gn_silu_xpu
+    data_type : x
+
 - op : addcmul_xpu
   args : (Tensor x, Tensor y, Tensor w)
   output : Tensor(out)

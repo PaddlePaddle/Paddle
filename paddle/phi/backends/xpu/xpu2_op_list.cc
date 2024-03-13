@@ -26,6 +26,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"add_layernorm_xpu",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"gn_silu_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"abs",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
