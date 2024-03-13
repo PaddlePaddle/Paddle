@@ -237,6 +237,9 @@ Mapping ScheduleBlockIsNotInit = FilterMaker([](const ir::Expr& e) -> bool {
                                           "_reduce_init") != std::string::npos;
 });
 
+Mapping IsFor =
+    FilterMaker([](const ir::Expr& e) -> bool { return e.As<ir::For>(); });
+
 Mapping ChildScheduleBlocks =
     Collector([](const ir::Expr* e) { return e->As<ir::ScheduleBlock>(); });
 
@@ -789,8 +792,8 @@ FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
 
   ir::Expr reduce_init = reduce_op.GetInitExpr();  // Mapping.
   std::vector<ir::Expr> reduce_for =
-      (SearchUtils::ChildFors *
-       SearchUtils::FindFather(reduce_init))(reduce_op.GetFuncBody());
+      (SearchUtils::FindFather(reduce_op.GetFuncBody()) *
+       SearchUtils::IsFor)(reduce_init);
   ir::Expr trivial_last_for = SearchUtils::ChildFors(new_trivial_body).back();
 
   ComposeUtils::SubstitudeTargetExprWithDestExpr(
