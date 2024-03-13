@@ -32,6 +32,12 @@ void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  std::cout << "{function_name : sub, inputs: { { x, type: <class "
+               "'paddle.Tensor'>, shape: "
+            << x.dims() << " }, ";
+  std::cout << "{ y, type: <class 'paddle.Tensor'>, shape: " << y.dims()
+            << "}, }"
+            << ", params: [ ]}" << std::endl;
   phi::SubtractRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -40,6 +46,12 @@ void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  std::cout << "{function_name : multiply, inputs: { { x, type: <class "
+               "'paddle.Tensor'>, shape: "
+            << x.dims() << " }, ";
+  std::cout << "{ y, type: <class 'paddle.Tensor'>, shape: " << y.dims()
+            << "}, }"
+            << ", params: [ ]}" << std::endl;
   phi::MultiplyRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -48,6 +60,12 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* out) {
+  std::cout << "{function_name : divide, inputs: { { x, type: <class "
+               "'paddle.Tensor'>, shape: "
+            << x.dims() << " }, ";
+  std::cout << "{ y, type: <class 'paddle.Tensor'>, shape: " << y.dims()
+            << "}, }"
+            << ", params: [ ]}" << std::endl;
   phi::DivideRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -83,6 +101,12 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  std::cout << "{function_name : add, inputs: { { x, type: <class "
+               "'paddle.Tensor'>, shape: "
+            << x.dims() << " }, ";
+  std::cout << "{ y, type: <class 'paddle.Tensor'>, shape: " << y.dims()
+            << "}, }"
+            << ", params: [ ]}" << std::endl;
 #ifdef PADDLE_WITH_CUDA
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||
@@ -101,6 +125,12 @@ void GradAddKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
+  std::cout << "{function_name : grad_add, inputs: { { x, type: <class "
+               "'paddle.Tensor'>, shape: "
+            << x.dims() << " }, ";
+  std::cout << "{ y, type: <class 'paddle.Tensor'>, shape: " << y.dims()
+            << "}, }"
+            << ", params: [ ]}" << std::endl;
   phi::AddRawKernel<T>(dev_ctx, x, y, -1, out);
 }
 
@@ -158,6 +188,12 @@ void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
+  std::cout << "{function_name : pow, inputs: { { x, type: <class "
+               "'paddle.Tensor'>, shape: "
+            << x.dims() << " }, ";
+  std::cout << "{ y, type: <class 'paddle.Tensor'>, shape: " << y.dims()
+            << "}, }"
+            << ", params: [ ]}" << std::endl;
   int axis = -1;
   ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
 }
