@@ -635,5 +635,16 @@ PD_REGISTER_SPMD_RULE(cumsum,
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmd),
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmdReverse));
 
+// argmax
+PD_REGISTER_SPMD_RULE(
+    argmax,
+    PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdReverseBase));
+
+// unbind
+PD_REGISTER_SPMD_RULE(unbind,
+                      PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::UnbindInferSpmdReverse));
+
 }  // namespace distributed
 }  // namespace phi
