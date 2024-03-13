@@ -990,3 +990,55 @@ DimExpr SubstituteDimExpr(
 }
 
 }  // namespace symbol
+
+namespace symbol {
+namespace {
+
+void CollectUnaryDimExprSymbolsImpl(const DimExpr& dim_expr,
+                                    std::unordered_set<std::string>* ret) {
+  std::unordered_set<std::string> symbols = CollectDimExprSymbols(dim_expr);
+  ret->insert(symbols.begin(), symbols.end());
+}
+
+void CollectListDimExprSymbolsImpl(const List<DimExpr>& dim_exprs,
+                                   std::unordered_set<std::string>* ret) {
+  for (const auto& dim_expr : *dim_exprs) {
+    std::unordered_set<std::string> symbols = CollectDimExprSymbols(dim_expr);
+    ret->insert(symbols.begin(), symbols.end());
+  }
+}
+}  // namespace
+
+std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
+  std::unordered_set<std::string> symbols;
+  // clang-format off
+  auto lambdas = Overloaded{
+      [&](std::int64_t dim_expr) { return; },
+      [&](const std::string& dim_expr) { symbols.insert(dim_expr); },
+      [&](const Negative<DimExpr>& dim_expr) {
+        CollectUnaryDimExprSymbolsImpl(dim_expr->data, &symbols);
+      },
+      [&](const Reciprocal<DimExpr>& dim_expr) {
+        CollectUnaryDimExprSymbolsImpl(dim_expr->data, &symbols);
+      },
+      [&](const Add<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Mul<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Max<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Min<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Broadcast<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      }};
+  // clang-format on
+  std::visit(lambdas, dim_expr.variant());
+  return symbols;
+}
+
+}  // namespace symbol
