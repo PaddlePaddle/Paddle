@@ -253,4 +253,5 @@ __all__ = [  # noqa
     'soft_margin_loss',
     'gaussian_nll_loss',
     'flash_attention_with_mask',
+    'flash_attention_with_sparse_mask',
 ]

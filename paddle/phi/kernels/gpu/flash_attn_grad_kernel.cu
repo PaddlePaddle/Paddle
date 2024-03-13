@@ -90,8 +90,10 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                            dropout,
                            scale,
                            causal,
+                           0,  // attn_mask_start_row
                            q.dtype(),
                            attn_mask,
+                           nullptr,  // attn_mask_start_row_indices
                            seed_offset.data<int64_t>());
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
@@ -192,8 +194,10 @@ void FlashAttnGradKernel(const Context& ctx,
                            dropout,
                            scale,
                            causal,
+                           0,  // attn_mask_start_row
                            q.dtype(),
                            attn_mask,
+                           nullptr,  // attn_mask_start_row_indices
                            seed_offset.data<int64_t>());
 
   ctx.template Alloc<T>(dq);
@@ -254,7 +258,149 @@ void FlashAttnGradKernel(const Context& ctx,
       params.seed,
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data());
+      params.mask_dims.data(),
+      params.attn_mask_start_row_indices_tensor
+          ? params.attn_mask_start_row_indices_tensor->data()
+          : nullptr,
+      params.attn_mask_start_row_indices_dims.data(),
+      params.attn_mask_start_row);
+  CheckFlashAttnStatus(succ);
+
+  if (!is_mha) {
+    phi::SumKernel<T, Context>(ctx, dk_expanded, {3}, dk->type(), false, dk);
+    phi::SumKernel<T, Context>(ctx, dv_expanded, {3}, dv->type(), false, dv);
+  }
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "FlashAttention is unsupported, please set use_flash_attn to false."));
+#endif
+}
+
+template <typename T, typename Context>
+void FlashAttnWithSparseGradKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const DenseTensor& attn_mask_start_row_indices,
+    const DenseTensor& out,
+    const DenseTensor& softmax_lse,
+    const DenseTensor& seed_offset,
+    const DenseTensor& dout,
+    float dropout,
+    bool causal,
+    int attn_mask_start_row,
+    DenseTensor* dq,
+    DenseTensor* dk,
+    DenseTensor* dv) {
+#ifdef PADDLE_WITH_FLASHATTN
+  // q,k,v [batch_size, seq_len, num_heads, head_dim]
+
+  const auto& dims = q.dims();
+  const int64_t batch_size = dims[0];
+  const int64_t seqlen_q = dims[1];
+  const int64_t num_heads = dims[2];
+  const int64_t head_size_og = dout.dims()[3];
+  const int64_t head_size = dims[3];
+  const int64_t seqlen_k = k.dims()[1];
+  const int64_t num_heads_k = k.dims()[2];
+
+  const int64_t total_q = batch_size * seqlen_q;
+  const int64_t total_k = batch_size * seqlen_k;
+
+  // TODO(umiswing): add shape check
+  PADDLE_ENFORCE_EQ(
+      head_size_og,
+      head_size,
+      phi::errors::InvalidArgument(
+          "flash_attn_bwd receive input with head_size_og == head_size"));
+
+  VLOG(10) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
+           << "], v[" << v.dims() << "]";
+
+  const float scale = 1.0f / std::sqrt(head_size);
+
+  FlashAttnBwdParamsV2 params =
+      FlashAttnBwdParamsV2(ctx,
+                           batch_size,
+                           seqlen_q,
+                           seqlen_k,
+                           num_heads,
+                           num_heads_k,
+                           head_size,
+                           dropout,
+                           scale,
+                           causal,
+                           attn_mask_start_row,
+                           q.dtype(),
+                           nullptr,  // attn_mask
+                           attn_mask_start_row_indices,
+                           seed_offset.data<int64_t>());
+
+  ctx.template Alloc<T>(dq);
+
+  bool is_mha = (num_heads == num_heads_k);
+
+  void* dk_data = nullptr;
+  void* dv_data = nullptr;
+  phi::DenseTensor dk_expanded, dv_expanded;
+  if (is_mha) {
+    dk_data = ctx.template Alloc<T>(dk);
+    dv_data = ctx.template Alloc<T>(dv);
+  } else {
+    std::initializer_list<int64_t> dk_dv_shape = {
+        batch_size, seqlen_k, num_heads_k, num_heads / num_heads_k, head_size};
+    dk_expanded.Resize(dk_dv_shape);
+    dv_expanded.Resize(dk_dv_shape);
+    dk_data = ctx.template Alloc<T>(&dk_expanded);
+    dv_data = ctx.template Alloc<T>(&dv_expanded);
+  }
+
+  cudaStream_t stream = ctx.stream();
+
+  VLOG(10) << "FlashAttn bwd seed: " << params.seed
+           << ", offset: " << params.offset;
+
+  int num_splits = get_num_split();
+
+  bool succ = phi::dynload::flash_attn_bwd(
+      dout.data(),
+      q.data(),
+      k.data(),
+      v.data(),
+      out.data(),
+      params.softmax_d.data(),
+      softmax_lse.data(),
+      params.rng_state.data(),
+      dq->data(),
+      dk_data,
+      dv_data,
+      params.dq_accum.data(),
+      params.batch_size,
+      params.max_seqlen_q,
+      params.max_seqlen_k,
+      params.seqlen_q_rounded,
+      params.seqlen_k_rounded,
+      params.num_heads,
+      params.num_heads_k,
+      params.head_size,
+      params.head_size_rounded,
+      params.dropout,
+      params.scale,
+      std::sqrt(head_size),  // for unscale
+      params.causal,
+      params.is_bf16,
+      num_splits,
+      stream,
+      params.seed,
+      params.offset,
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.mask_dims.data(),
+      params.attn_mask_start_row_indices_tensor
+          ? params.attn_mask_start_row_indices_tensor->data()
+          : nullptr,
+      params.attn_mask_start_row_indices_dims.data(),
+      params.attn_mask_start_row);
   CheckFlashAttnStatus(succ);
 
   if (!is_mha) {
@@ -285,4 +431,13 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
+}
+
+PD_REGISTER_KERNEL(flash_attn_with_sparse_mask_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnWithSparseGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }
