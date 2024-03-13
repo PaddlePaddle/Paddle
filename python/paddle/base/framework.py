@@ -1565,7 +1565,7 @@ class Variable(metaclass=VariableMetaClass):
             name = self.block.program._name_generator('_generated_var')
 
         if dtype is not None:
-            if not isinstance(dtype, core.VarDesc.VarType):
+            if not isinstance(dtype, paddle.dtype):
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
         if dtype == core.VarDesc.VarType.STRINGS:
@@ -1609,6 +1609,8 @@ class Variable(metaclass=VariableMetaClass):
                     )
         if dtype is not None:
             if is_new_var:
+                if isinstance(dtype, core.DataType):
+                    dtype = paddle_type_to_proto_type[dtype]
                 self.desc.set_dtype(dtype)
             else:
                 old_dtype = self.dtype
