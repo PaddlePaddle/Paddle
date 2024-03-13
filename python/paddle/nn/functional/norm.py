@@ -676,7 +676,7 @@ def group_norm(
             >>> group_norm_out = paddle.nn.functional.group_norm(x, num_groups=6)
 
             >>> print(group_norm_out)
-            Tensor(shape=[2, 6, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            Tensor(shape=[2, 6, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[-1.34163547, -0.44721183],
                [ 0.44721183,  1.34163547]],
               [[-1.34163547, -0.44721183],
