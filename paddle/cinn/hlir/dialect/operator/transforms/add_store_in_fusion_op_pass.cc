@@ -49,7 +49,9 @@ class AddYieldStoreInFusionOpPattern
               op->operand_source(i).type());
 
           op->operand(i).set_source(new_full.result(0));
-
+          if (reshape_op->result(0).use_count() == 0) {
+            rewriter.EraseOp(reshape_op);
+          }
           continue;
         }
       }

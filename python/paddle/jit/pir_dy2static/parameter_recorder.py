@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.autograd.backward_utils import ValueDict
+from paddle.framework import core
 
 from ..dy2static.program_translator import _program_hash, synchronized
 
@@ -37,8 +38,11 @@ class ParametersRecorder:
         mappings = self.tensor2value[key]
         if id(tensor) not in mappings:
             non_used_initializer = paddle.nn.initializer.Constant(0.0)
+            dtype = tensor.dtype
+            if isinstance(dtype, core.VarDesc.VarType):
+                vartype_to_datatype[dtype]
             value = create_parameter(
-                dtype=vartype_to_datatype[tensor.dtype],
+                dtype=dtype,
                 shape=tensor.shape,
                 type=tensor.type,
                 initializer=non_used_initializer,
