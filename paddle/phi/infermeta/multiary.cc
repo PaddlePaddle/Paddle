@@ -4597,22 +4597,22 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
   auto x_dim = x.dims();
   auto new_mask_dim = new_mask.dims();
 
-  PADDLE_ENFORCE_EQ(mask_dim.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "The input mask must be 4-dimension"));
-  PADDLE_ENFORCE_EQ(attn_dim.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "The input attn must be 4-dimension"));
-  PADDLE_ENFORCE_EQ(x_dim.size(),
-                    3,
-                    phi::errors::InvalidArgument(
-                        "The input x must be 4-dimension"));
-  PADDLE_ENFORCE_EQ(new_mask_dim.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "The input attn must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      mask_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The input mask must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      attn_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The input attn must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      3,
+      phi::errors::InvalidArgument("The input x must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      new_mask_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The input attn must be 4-dimension"));
   PADDLE_ENFORCE_EQ(mask_dim[0],
                     attn_dim[0],
                     phi::errors::InvalidArgument(
@@ -4628,16 +4628,18 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
                     phi::errors::InvalidArgument(
                         "The first dim of mask and x should be the same"
                         "which is batch size"));
-  PADDLE_ENFORCE_EQ(mask_dim[2],
-                    mask_dim[3],
-                    phi::errors::InvalidArgument(
-                        "The third dim and the fourth dim of mask should be the same"
-                        "which is max seq len"));
-  PADDLE_ENFORCE_EQ(attn_dim[2],
-                    attn_dim[3],
-                    phi::errors::InvalidArgument(
-                        "The third dim and the fourth dim of mask should be the same"
-                        "which is max seq len"));
+  PADDLE_ENFORCE_EQ(
+      mask_dim[2],
+      mask_dim[3],
+      phi::errors::InvalidArgument(
+          "The third dim and the fourth dim of mask should be the same"
+          "which is max seq len"));
+  PADDLE_ENFORCE_EQ(
+      attn_dim[2],
+      attn_dim[3],
+      phi::errors::InvalidArgument(
+          "The third dim and the fourth dim of mask should be the same"
+          "which is max seq len"));
   PADDLE_ENFORCE_EQ(attn_dim[2],
                     mask_dim[2],
                     phi::errors::InvalidArgument(
