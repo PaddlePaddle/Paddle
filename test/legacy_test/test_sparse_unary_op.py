@@ -27,16 +27,32 @@ class TestSparseUnary(unittest.TestCase):
         elif format == 'csr':
             return x.detach().to_sparse_csr()
 
-    def check_result(self, dense_func, sparse_func, format, *args):
-        origin_x = paddle.rand([8, 16, 32], dtype='float32')
-        mask = paddle.randint(0, 2, [8, 16, 32]).astype('float32')
-        while paddle.sum(mask) == 0:
+    def check_result(
+        self, dense_func, sparse_func, format, dtype='float32', *args
+    ):
+        if dtype == 'float32' or dtype == 'float64':
+            origin_x = paddle.rand([8, 16, 32], dtype)
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+        if dtype == 'complex64':
+            origin_x_real = paddle.rand([8, 16, 32], 'float32')
+            origin_x_com = paddle.rand([8, 16, 32], 'float32')
+            origin_x = (origin_x_real + 1j * origin_x_com).astype('complex64')
             mask = paddle.randint(0, 2, [8, 16, 32]).astype("float32")
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype("float32")
+        if dtype == 'complex128':
+            origin_x_real = paddle.rand([8, 16, 32], 'float64')
+            origin_x_com = paddle.rand([8, 16, 32], 'float64')
+            origin_x = (origin_x_real + 1j * origin_x_com).astype('complex128')
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
 
         # --- check sparse coo with dense --- #
         dense_x = origin_x * mask
         sp_x = self.to_sparse(dense_x, format)
-
         sp_x.stop_gradient = False
         if len(args) == 0:
             sp_out = sparse_func(sp_x)
@@ -79,19 +95,45 @@ class TestSparseUnary(unittest.TestCase):
             sp_x.grad.to_dense().numpy(), expect_grad, rtol=1e-05
         )
 
-    def compare_with_dense(self, dense_func, sparse_func):
-        self.check_result(dense_func, sparse_func, 'coo')
-        self.check_result(dense_func, sparse_func, 'csr')
+    def compare_with_dense(self, dense_func, sparse_func, dtype='float32'):
+        paddle.set_device('cpu')
+        self.check_result(dense_func, sparse_func, 'coo', dtype)
+        self.check_result(dense_func, sparse_func, 'csr', dtype)
+        paddle.set_device('gpu')
+        self.check_result(dense_func, sparse_func, 'coo', dtype)
+        self.check_result(dense_func, sparse_func, 'csr', dtype)
 
     def compare_with_dense_one_attr(self, dense_func, sparse_func, attr1):
-        self.check_result(dense_func, sparse_func, 'coo', attr1)
-        self.check_result(dense_func, sparse_func, 'csr', attr1)
+        paddle.set_device('cpu')
+        self.check_result(dense_func, sparse_func, 'coo', 'float32', attr1)
+        self.check_result(dense_func, sparse_func, 'csr', 'float32', attr1)
+        paddle.set_device('gpu')
+        self.check_result(dense_func, sparse_func, 'coo', 'float32', attr1)
+        self.check_result(dense_func, sparse_func, 'csr', 'float32', attr1)
 
     def compare_with_dense_two_attr(
         self, dense_func, sparse_func, attr1, attr2
     ):
-        self.check_result(dense_func, sparse_func, 'coo', attr1, attr2)
-        self.check_result(dense_func, sparse_func, 'csr', attr1, attr2)
+        paddle.set_device('cpu')
+        self.check_result(
+            dense_func, sparse_func, 'coo', 'float32', attr1, attr2
+        )
+        self.check_result(
+            dense_func, sparse_func, 'csr', 'float32', attr1, attr2
+        )
+        paddle.set_device('gpu')
+        self.check_result(
+            dense_func, sparse_func, 'coo', 'float32', attr1, attr2
+        )
+        self.check_result(
+            dense_func, sparse_func, 'csr', 'float32', attr1, attr2
+        )
+
+    def test_sparse_abs(self):
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float32')
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float64')
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'complex64')
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'complex128')
 
     def test_sparse_sin(self):
         self.compare_with_dense(paddle.sin, paddle.sparse.sin)
@@ -104,9 +146,6 @@ class TestSparseUnary(unittest.TestCase):
 
     def test_sparse_atan(self):
         self.compare_with_dense(paddle.atan, paddle.sparse.atan)
-
-    def test_sparse_sinh(self):
-        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh)
 
     def test_sparse_tanh(self):
         self.compare_with_dense(paddle.tanh, paddle.sparse.tanh)
@@ -136,6 +175,9 @@ class TestSparseUnary(unittest.TestCase):
         self.compare_with_dense(
             paddle.nn.LeakyReLU(0.1), paddle.sparse.nn.LeakyReLU(0.1)
         )
+
+    def test_sparse_sinh(self):
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh)
 
     def test_sparse_expm1(self):
         self.compare_with_dense(paddle.expm1, paddle.sparse.expm1)
