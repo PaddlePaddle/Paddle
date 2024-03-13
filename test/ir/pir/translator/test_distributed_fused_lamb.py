@@ -213,14 +213,10 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
 
     def append_op(self):
         self.op_type = "distributed_fused_lamb"
-        self.helper = LayerHelper(self.op_type)
-
         params = [paddle.ones(shape=(1, 1), dtype='float32')]
         grads = [paddle.ones(shape=(1, 1), dtype='float32')]
-
         rank = paddle.distributed.get_rank()
         nranks = paddle.distributed.get_world_size()
-
         fp32_fused_param = self._create_persistable_var('fp32_fused_param')
         fp32_fused_grad = self._create_persistable_var('fp32_fused_grad')
         fp16_fused_param = self._create_persistable_var(
@@ -331,8 +327,6 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
                 )
                 ring_ids.append(ring_id)
 
-        rank = paddle.distributed.get_rank()
-        nranks = paddle.distributed.get_world_size()
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
