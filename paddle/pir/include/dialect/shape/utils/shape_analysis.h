@@ -73,6 +73,9 @@ class IR_API ShapeConstraintIRAnalysis {
   // Returns true if the two value have the same number elements.
   bool IsSameNumel(Value lhs, Value rhs) const;
 
+  symbol::DimExpr GetProductDimExpr(Value value,
+                                    const std::vector<int>& dim_idxs) const;
+
   pir::PrintHooks PrintHook() const;
 
  private:

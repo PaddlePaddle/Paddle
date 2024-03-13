@@ -120,23 +120,11 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
     const std::vector<int>& rhs_dim_idxs) const {
   if (lhs == rhs) return true;
 
-  if (!HasShapeOrDataForValue(lhs) || !HasShapeOrDataForValue(rhs)) {
-    return false;
-  }
-
   auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
   auto rhs_type = rhs.type().dyn_cast<ShapedTypeInterface>();
 
   if (!lhs_type || !rhs_type || !lhs_type.HasRank() || !rhs_type.HasRank())
     return false;
-
-  auto lhs_shape_data = GetShapeOrDataForValue(lhs);
-  auto rhs_shape_data = GetShapeOrDataForValue(rhs);
-
-  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
-                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
-             "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
-             "but not TensorListShapeOrDataDimExprs.");
 
   // For static shape
   if (lhs_type.IsStaticShape() && rhs_type.IsStaticShape()) {
@@ -152,6 +140,17 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
   }
 
   // For dynamic shape
+  if (!HasShapeOrDataForValue(lhs) || !HasShapeOrDataForValue(rhs)) {
+    return false;
+  }
+  auto lhs_shape_data = GetShapeOrDataForValue(lhs);
+  auto rhs_shape_data = GetShapeOrDataForValue(rhs);
+
+  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
+             "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
+             "but not TensorListShapeOrDataDimExprs.");
+
   symbol::DimExpr lhs_product(1);
   symbol::DimExpr rhs_product(1);
   for (int i : lhs_dim_idxs) {
@@ -206,6 +205,27 @@ bool ShapeConstraintIRAnalysis::IsSameNumel(Value lhs, Value rhs) const {
                         rhs,
                         0,
                         static_cast<int>(rhs_type.GetRank()));
+}
+
+symbol::DimExpr ShapeConstraintIRAnalysis::GetProductDimExpr(
+    Value value, const std::vector<int>& dim_idxs) const {
+  // For static shape
+  auto value_type = value.type().dyn_cast<ShapedTypeInterface>();
+  if (value_type.IsStaticShape()) {
+    int64_t product = 1;
+    for (int i : dim_idxs) {
+      product *= value_type.GetShape()[i];
+    }
+    return symbol::DimExpr{product};
+  }
+
+  // For dynamic shape
+  const auto& shape_data = GetShapeOrDataForValue(value);
+  symbol::DimExpr product{1};
+  for (int i : dim_idxs) {
+    product = product * shape_data.shape()[i];
+  }
+  return symbol::SimplifyDimExpr(product);
 }
 
 pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
