@@ -14,10 +14,15 @@
 
 #pragma once
 
+#include <unordered_map>
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace symbol {
 
 IR_API DimExpr SimplifyDimExpr(const DimExpr& dim_expr);
+
+IR_API DimExpr SubstituteDimExpr(
+    const DimExpr& dim_expr,
+    const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement);
 
 }  // namespace symbol

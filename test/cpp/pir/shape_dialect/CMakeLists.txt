@@ -17,9 +17,8 @@ if(WITH_CINN)
     infer_symbolic_shape_test PROPERTIES ENVIRONMENT
                                          "FLAGS_enable_pir_in_executor=true")
 
-  paddle_test(calculate_dim_expr_test SRCS calculate_dim_expr_test.cc)
-  set_tests_properties(calculate_dim_expr_test PROPERTIES LABELS
-                                                          "RUN_TYPE=CINN")
+  paddle_test(dim_expr_util_test SRCS dim_expr_util_test.cc)
+  set_tests_properties(dim_expr_util_test PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)
