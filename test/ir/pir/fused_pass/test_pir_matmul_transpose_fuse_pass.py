@@ -23,39 +23,8 @@ from paddle.base import core
 paddle.enable_static()
 
 
-class TestMatmulScaleFusePattern(PassTest):
+class TestMatmulOutTransposeFusePattern(PassTest):
     r"""
-case1:
-    x_var        y_var
-      \           /
-    transpose   /
-        \     /
-        matmul
-          |
-         out
-
-    x_var   y_var
-      \       /
-     matmul(tans)
-          |
-         out
-
-case2:
-    x_var        y_var
-      \           /
-       \    transpose
-        \     /
-        matmul
-          |
-         out
-
-    x_var   y_var
-      \       /
-     matmul(tans)
-          |
-         out
-
-case3:
     x_var     y_var
        \       /
         \     /
@@ -78,7 +47,7 @@ case3:
 
     def sample_program(self):
         for x_shape in [[10, 2, 3]]:
-            for y_shape in [[10, 2, 3]]:
+            for y_shape in [[10, 3, 2]]:
                 for perm in [[0, 2, 1]]:
                     with paddle.pir_utils.IrGuard():
                         main_prog = paddle.static.Program()
@@ -96,22 +65,22 @@ case3:
                                 paddle.matmul(x, y),
                                 perm=perm
                             )
-                        out = paddle.assign(out)
-                        self.pass_list = ['matmul_scale_fuse_pass']
-                        self.feeds = {
-                            "x": np.random.random(x_shape).astype(
-                                "float32"
-                            ),
-                            "y": np.random.random(y_shape).astype(
-                                "float32"
-                            ),
-                        }
-                        self.fetch_list = [out]
-                        self.valid_op_map = {
-                            "pd_op.matmul": 1,
-                            "pd_op.transpose": 1,
-                        }
-                        yield [main_prog, start_prog], False
+                            out = paddle.assign(out)
+                            self.pass_list = ['matmul_transpose_fuse_pass']
+                            self.feeds = {
+                                "x": np.random.random(x_shape).astype(
+                                    "float32"
+                                ),
+                                "y": np.random.random(y_shape).astype(
+                                    "float32"
+                                ),
+                            }
+                            self.fetch_list = [out]
+                            self.valid_op_map = {
+                                "pd_op.matmul": 1,
+                                "pd_op.transpose": 0,
+                            }
+                            yield [main_prog, start_prog], False
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
@@ -121,6 +90,131 @@ case3:
     def test_check_output(self):
         self.check_pass_correct()
 
+class TestMatmulYTransposeFusePattern(PassTest):
+    r"""
+    x_var        y_var
+      \           /
+       \    transpose
+        \     /
+        matmul
+          |
+         out
+
+    x_var   y_var
+      \       /
+     matmul(tans)
+          |
+         out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def sample_program(self):
+        for x_shape in [[10, 2, 3]]:
+            for y_shape in [[10, 2, 3]]:
+                for perm in [[0, 2, 1]]:
+                    with paddle.pir_utils.IrGuard():
+                        main_prog = paddle.static.Program()
+                        start_prog = paddle.static.Program()
+                        with paddle.static.program_guard(
+                            main_prog, start_prog
+                        ):
+                            x = paddle.static.data(
+                                name='x', shape=x_shape, dtype='float32'
+                            )
+                            y = paddle.static.data(
+                                name='y', shape=y_shape, dtype='float32'
+                            )
+                            y_t = paddle.transpose(y, perm)
+                            out = paddle.matmul(x, y_t)
+                            out = paddle.assign(out)
+                            self.pass_list = ['matmul_transpose_fuse_pass']
+                            self.feeds = {
+                                "x": np.random.random(x_shape).astype(
+                                    "float32"
+                                ),
+                                "y": np.random.random(y_shape).astype(
+                                    "float32"
+                                ),
+                            }
+                            self.fetch_list = [out]
+                            self.valid_op_map = {
+                                "pd_op.matmul": 1,
+                                "pd_op.transpose": 0,
+                            }
+                            yield [main_prog, start_prog], False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+class TestMatmulXTransposeFusePattern(PassTest):
+    r"""
+    x_var        y_var
+      \           /
+    transpose   /
+        \     /
+        matmul
+          |
+         out
+
+    x_var   y_var
+      \       /
+     matmul(tans)
+          |
+         out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def sample_program(self):
+        for x_shape in [[10, 2, 3]]:
+            for y_shape in [[10, 2, 3]]:
+                for perm in [[0, 2, 1]]:
+                    with paddle.pir_utils.IrGuard():
+                        main_prog = paddle.static.Program()
+                        start_prog = paddle.static.Program()
+                        with paddle.static.program_guard(
+                            main_prog, start_prog
+                        ):
+                            x = paddle.static.data(
+                                name='x', shape=x_shape, dtype='float32'
+                            )
+                            y = paddle.static.data(
+                                name='y', shape=y_shape, dtype='float32'
+                            )
+                            x_t = paddle.transpose(x, perm)
+                            out = paddle.matmul(x_t, y)
+                            out = paddle.assign(out)
+                            self.pass_list = ['matmul_transpose_fuse_pass']
+                            self.feeds = {
+                                "x": np.random.random(x_shape).astype(
+                                    "float32"
+                                ),
+                                "y": np.random.random(y_shape).astype(
+                                    "float32"
+                                ),
+                            }
+                            self.fetch_list = [out]
+                            self.valid_op_map = {
+                                "pd_op.matmul": 1,
+                                "pd_op.transpose": 0,
+                            }
+                            yield [main_prog, start_prog], False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct()
 
 if __name__ == "__main__":
     unittest.main()
