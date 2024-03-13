@@ -631,10 +631,8 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
     if (it->second.size() > 1) {
       for (size_t i = 0; i < it->second.size(); ++i) {
-        std::cerr << "align info" << it->second[i].DebugStr() << std::endl;
       }
-      // try to merge them
-
+      // TODO(phlran): merge to factor info here
       it->second.front().factor_info = it->second.back().factor_info;
       it->second.resize(1);
     }
@@ -677,18 +675,10 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       cinn::ir::BroadcastInfo info;
       if (in_dim.size() == 1u && in_dim[0] == 1u) {
         info.full_broadcast = true;
-        std::cerr << "full broadcast !!!!!!!!!!!!\n";
-
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
-          info.output_shape.push_back(output_shape[i]);
-
-          ::pir::ShapeConstraintIRAnalysis& shape_analysis =
-              ::pir::ShapeAnalysisManager::Instance().Get(
-                  it->first->GetParentProgram());
-          const auto& x_shape =
-              shape_analysis.GetShapeOrDataForValue(it->first->result(0));
-          info.output_dim_expr.push_back(x_shape.shape()[i]);
+          info.output_shape.push_back(-1);
+          info.output_dim_expr.push_back(group->loop_ranges_expr[i]);
         }
       } else if (in_dim.size() == broadcast_axes.size()) {
         if (in_dim.size() != output_shape.size()) {
