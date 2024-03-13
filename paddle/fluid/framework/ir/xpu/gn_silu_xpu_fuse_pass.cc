@@ -63,8 +63,8 @@ After the pass is applied:
                       |          
                      Out
 */
-struct GroupNormlizeSiluXPUPattern : public PatternBase {
-  GroupNormlizeSiluXPUPattern(PDPattern* pattern, const std::string& name_scope);
+struct GroupNormalizeSiluXPUPattern : public PatternBase {
+  GroupNormalizeSiluXPUPattern(PDPattern* pattern, const std::string& name_scope);
   // declare operator node's name
   PATTERN_DECL_NODE(gn);
   PATTERN_DECL_NODE(silu);
@@ -78,7 +78,7 @@ struct GroupNormlizeSiluXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(silu_out);
 };
 
-GroupNormlizeSiluXPUPattern::GroupNormlizeSiluXPUPattern(PDPattern* pattern,
+GroupNormalizeSiluXPUPattern::GroupNormalizeSiluXPUPattern(PDPattern* pattern,
                                                const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto gn =
@@ -156,7 +156,7 @@ void GroupNormalizeSiluXPUFusePass::ApplyImpl(ir::Graph* graph) const {
 
 void GroupNormalizeSiluXPUFusePass::FuseGroupNormalizeSilu(ir::Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::GroupNormlizeSiluXPUPattern pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::GroupNormalizeSiluXPUPattern pattern(gpd.mutable_pattern(), name_scope_);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
