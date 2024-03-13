@@ -656,18 +656,20 @@ void BindOperation(py::module *m) {
             pir::Attribute op_callstack = self.attribute<pir::Attribute>(
                 paddle::framework::OpProtoAndCheckerMaker::
                     OpCreationCallstackAttrName());
-            PADDLE_ENFORCE(
-                op_callstack.isa<pir::ArrayAttribute>(),
-                "The callstack of operation `%s` should be an array attribute.",
-                self.name());
+            PADDLE_ENFORCE(op_callstack.isa<pir::ArrayAttribute>(),
+                           phi::errors::PreconditionNotMet(
+                               "The callstack of operation `%s` should be an "
+                               "array attribute.",
+                               self.name()));
             auto op_callstack_array_attr =
                 op_callstack.dyn_cast<pir::ArrayAttribute>();
             for (size_t i = 0; i < op_callstack_array_attr.size(); ++i) {
               PADDLE_ENFORCE(
                   op_callstack_array_attr.at(i).isa<pir::StrAttribute>(),
-                  "The callstack info of operation `%s` should be array of "
-                  "string attribute.",
-                  self.name());
+                  phi::errors::PreconditionNotMet(
+                      "The callstack info of operation `%s` should be array of "
+                      "string attribute.",
+                      self.name()));
               callstack_list.append(op_callstack_array_attr.at(i)
                                         .dyn_cast<pir::StrAttribute>()
                                         .AsString());
