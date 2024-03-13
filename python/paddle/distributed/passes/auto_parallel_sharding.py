@@ -652,13 +652,8 @@ class ShardingPass(PassBase):
                         op_dist_attr = (
                             self._dist_context.get_op_dist_attr_for_program(op)
                         )
-                        input_dist_attr = op_dist_attr.get_input_dist_attr(
-                            input_name
-                        )
                         op._rename_input(input_name, broadcast_varname)
-                        op_dist_attr.set_input_dist_attr(
-                            broadcast_varname, input_dist_attr
-                        )
+                        op_dist_attr.rename_input(input_name, broadcast_varname)
 
                     _insert_init_and_broadcast_op(
                         main_block,
