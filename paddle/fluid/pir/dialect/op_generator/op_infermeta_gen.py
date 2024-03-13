@@ -44,15 +44,6 @@ GET_INPUT_TYPE_TEMPLATE = """
   {type} {name};
   if ({name}_.type().isa<{type}>()) {{
     {name} = {name}_.type().dyn_cast<{type}>(); (void){name};
-  }} else if ({name}_.type().isa<{allocated_type}>()) {{
-    {allocated_type} allocated_{name} = {name}_.type().dyn_cast<{allocated_type}>();
-    {name} = {type}::get(pir::IrContext::Instance(),
-                                            allocated_{name}.dtype(),
-                                            allocated_{name}.dims(),
-                                            allocated_{name}.data_layout(),
-                                            allocated_{name}.lod(),
-                                            allocated_{name}.offset());
-    (void){name};
   }} else {{
     PADDLE_THROW(phi::errors::Unimplemented("Only support {type} or {allocated_type}"));
   }}
@@ -158,20 +149,11 @@ def GenBuildOutputsPart2(
   paddle::dialect::IrMetaTensor meta_{name};
   paddle::dialect::IrTensor ir_tensor_{name};
 
-
   if ({name}_.impl() != nullptr) {{
     VLOG(4) << "Builder construction  dense_{name}";
     {type} {name};
     if ({name}_.type().isa<{type}>()) {{
       {name} = {name}_.type().dyn_cast<{type}>();
-    }} else if ({name}_.type().isa<{allocated_type}>()) {{
-      {allocated_type} allocated_{name} = {name}_.type().dyn_cast<{allocated_type}>();
-      {name} = {type}::get(pir::IrContext::Instance(),
-                            allocated_{name}.dtype(),
-                            allocated_{name}.dims(),
-                            allocated_{name}.data_layout(),
-                            allocated_{name}.lod(),
-                            allocated_{name}.offset());
     }} else {{
       PADDLE_THROW(phi::errors::Unimplemented("Only support {type} or {allocated_type}"));
     }}
@@ -190,13 +172,6 @@ def GenBuildOutputsPart2(
   for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
     if({name}[i].isa<paddle::dialect::DenseTensorType>()) {{
         auto {name}_type = {name}[i].dyn_cast<paddle::dialect::DenseTensorType>();
-        vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
-                                                                    {name}_type.dims(),
-                                                                    {name}_type.data_layout(),
-                                                                    {name}_type.lod(),
-                                                                    {name}_type.offset()));
-    }} else if({name}[i].isa<paddle::dialect::AllocatedDenseTensorType>()){{
-        auto {name}_type = {name}[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
         vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
                                                                     {name}_type.dims(),
                                                                     {name}_type.data_layout(),
@@ -228,13 +203,6 @@ def GenBuildOutputsPart2(
                                                                         {name}_type.data_layout(),
                                                                         {name}_type.lod(),
                                                                         {name}_type.offset()));
-        }} else if({name}[i].isa<paddle::dialect::AllocatedDenseTensorType>()){{
-          auto {name}_type = {name}[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-          vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
-                                                                        {name}_type.dims(),
-                                                                        {name}_type.data_layout(),
-                                                                        {name}_type.lod(),
-                                                                        {name}_type.offset()));
         }} else {{
             PADDLE_THROW(phi::errors::Unimplemented("Only support DenseTensorType or AllocatedDenseTensorType"));
         }}
@@ -253,11 +221,11 @@ def GenBuildOutputsPart2(
 
 """
 
-    CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  is_from_tensor = false;
+    CREATE_INTARRAY_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  is_from_tensor = false;
   phi::IntArray {name} = std::move(phi::IntArray(paddle::dialect::ParseValueShape({name}_, &is_from_tensor)));
   if (is_from_tensor) {name}.SetFromTensor(true);\n"""
 
-    CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
+    CREATE_VECTOR_INT_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  std::vector<int64_t> {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = paddle::dialect::GetInt64Vector(
                     {name}_.defining_op()
@@ -273,18 +241,11 @@ def GenBuildOutputsPart2(
       {name}_size = 1;
     }}
     {name} = std::vector<int64_t>({name}_size, -1);
-  }} else if ({name}_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {{
-    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>().dims();
-    size_t {name}_size = common::product({name}_dim);
-    if (common::contain_unknown_dim({name}_dim)) {{
-      {name}_size = 1;
-    }}
-    {name} = std::vector<int64_t>({name}_size, -1);
   }} else {{
     PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType or AllocatedDenseTensorType"));
   }}\n"""
 
-    CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
+    CREATE_SCALAR_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  phi::Scalar {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
     {name} = std::move(phi::Scalar({name}_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
@@ -327,16 +288,16 @@ def GenBuildOutputsPart2(
                     op_class_name
                     in _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE
                 ):
-                    build_output_str += CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                    build_output_str += CREATE_VECTOR_INT_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE.format(
                         name=op_mutable_attribute_name_list[idx]
                     )
                 else:
-                    build_output_str += CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                    build_output_str += CREATE_INTARRAY_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE.format(
                         name=op_mutable_attribute_name_list[idx]
                     )
             # scalar
             elif attr_dtype[0] == "paddle::dialect::ScalarAttribute":
-                build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE.format(
                     name=op_mutable_attribute_name_list[idx],
                     dtype=attr_dtype[1],
                 )
@@ -436,12 +397,12 @@ def GenBuildOutputsPart2(
     CREATE_INFER_META_FUNC_TEMPLATE = """
   phi::{func}({args});
 """
-    CREATE_INFER_META_FUNC_WITH_METACINFIG_TEMPLATE = """
+    CREATE_INFER_META_FUNC_WITH_META_CONFIG_TEMPLATE = """
   phi::{func}({args}, phi::MetaConfig(false, false));
 """
     if op_infer_meta_map['func'] in _INFERMETA_NEED_META_CONFIG:
         build_output_str += (
-            CREATE_INFER_META_FUNC_WITH_METACINFIG_TEMPLATE.format(
+            CREATE_INFER_META_FUNC_WITH_META_CONFIG_TEMPLATE.format(
                 func=op_infer_meta_map['func'], args=", ".join(infer_meta_args)
             )
         )
@@ -509,7 +470,7 @@ def GenBuildOutputsPart2(
 
 def GetAttributes(
     op_class_name,
-    muta_attr_is_input,
+    mutable_attr_is_input,
     inuse_infer_meta_args,
     op_attribute_name_list,
     op_attribute_type_list,
@@ -559,7 +520,7 @@ def GetAttributes(
     attr_names = []
     attr_types = []
     attr_build_arg_types = []
-    if not muta_attr_is_input:
+    if not mutable_attr_is_input:
         attr_names = op_attribute_name_list
         attr_types = op_attribute_type_list
         attr_build_arg_types = op_attribute_build_arg_type_list
@@ -645,7 +606,7 @@ def gen_infermeta_func_str(
     op_non_mutable_attribute_name_list,
     op_non_mutable_attribute_type_list,
     op_non_mutable_attribute_build_arg_type_list,
-    muta_attr_is_input=False,
+    mutable_attr_is_input=False,
     attr_args_is_map=True,
 ):
     inuse_infer_meta_args = []
@@ -666,12 +627,12 @@ def gen_infermeta_func_str(
         op_input_type_list,
         op_input_optional_list,
         op_mutable_attribute_name_list,
-        muta_attr_is_input,
+        mutable_attr_is_input,
     )
 
     get_attributes_str = GetAttributes(
         op_class_name,
-        muta_attr_is_input,
+        mutable_attr_is_input,
         inuse_infer_meta_args,
         op_attribute_name_list,
         op_attribute_type_list,
@@ -696,7 +657,7 @@ def gen_infermeta_func_str(
         op_output_optional_list,
         op_infer_meta_map,
         op_inplace_map,
-        muta_attr_is_input,
+        mutable_attr_is_input,
     )
 
     infermeta_func = OP_INFERMETA_TEMPLATE.format(
@@ -713,3 +674,13 @@ def gen_infermeta_by_invoke_func_str(op_class_name, invoke_class_name):
     return OP_INFERMETA_BY_INVOKE_TEMPLATE.format(
         op_name=op_class_name, invoke_class=invoke_class_name
     )
+
+
+def gen_op_infermeta_func(args, op_info, op_info_items):
+    interface = []
+    if op_info.infer_meta_func:
+        interface = ["paddle::dialect::InferMetaInterface"]
+    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
+        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
+            interface = ["paddle::dialect::InferMetaInterface"]
+    return interface, None, None

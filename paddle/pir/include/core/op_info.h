@@ -32,7 +32,7 @@ typedef void (*VerifyPtr)(Operation *op);
 
 class IR_API OpInfo {
  public:
-  OpInfo() = default;
+  OpInfo(std::nullptr_t ptr = nullptr){};  // NOLINT
 
   OpInfo(const OpInfo &other) = default;
 

@@ -71,6 +71,11 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     size_t hash_value = std::hash<std::string>{}(key.group_id);
 
+    for (auto op : key.ops) {
+      hash_value =
+          pir::detail::hash_combine(hash_value, std::hash<void*>()(op));
+    }
+
     for (auto d : key.loop_ranges) {
       hash_value =
           pir::detail::hash_combine(hash_value, std::hash<int64_t>()(d));

@@ -54,6 +54,24 @@ void tanh_double_grad(const Tensor& out,
 }
 
 template <typename T>
+void sin_double_grad(const Tensor& x,
+                     const Tensor& grad_out,
+                     const Tensor& grad_x_grad,
+                     Tensor* x_grad,
+                     Tensor* grad_out_grad) {
+  // sin grad grad : ddout = cosx * ddx, dx = -dy * sinx * ddx
+  if (x_grad) {
+    auto x_grad_tmp = -(grad_out * sin<T>(x) * grad_x_grad);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = cos<T>(x) * grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
 void cos_double_grad(const Tensor& x,
                      const Tensor& grad_out,
                      const Tensor& grad_x_grad,
@@ -461,12 +479,13 @@ void silu_double_grad(const Tensor& x,
   auto sigmoid = 1 / (1 + exp<T>(-x));
   auto tmp1 = 1 - sigmoid;
   auto tmp2 = 1 + tmp1 * x;
+  auto grad_x_grad_mul_sigmoid = grad_x_grad * sigmoid;
   if (grad_out_grad) {
-    auto ddout = grad_x_grad * sigmoid * tmp2;
+    auto ddout = grad_x_grad_mul_sigmoid * tmp2;
     set_output<T>(ddout, grad_out_grad);
   }
   if (grad_x) {
-    auto dx = sigmoid * grad_x_grad * out_grad * (1 + (tmp2 - out)) * tmp1;
+    auto dx = grad_x_grad_mul_sigmoid * out_grad * (1 + (tmp2 - out)) * tmp1;
     set_output<T>(dx, grad_x);
   }
 }
