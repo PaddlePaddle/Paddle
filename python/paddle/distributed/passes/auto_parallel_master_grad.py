@@ -159,6 +159,9 @@ class MasterGradPass(PassBase):
                     chunk_id=ref_chunk_id,
                 )
                 producer_op._rename_output(grad_name, grad_half_precision.name)
+                producer_op_dist_attr.rename_output(
+                    grad_name, grad_half_precision.name
+                )
                 grad_var.desc.set_dtype(core.VarDesc.VarType.FP32)
                 cast_op = cur_block._insert_op_without_sync(
                     idx + 1,
