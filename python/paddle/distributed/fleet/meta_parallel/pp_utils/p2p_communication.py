@@ -67,14 +67,14 @@ class SendRecvMeta:
         self.send_pack_type = None
         self.send_shape_message = None
         self.send_dtype_message = None
-        self.send_keys_names = None  # valid in transmission of dict. Only contains keys of Tensor with `stop_gradient == False`
-        self.send_all_keys_names = None  # valid in transmission of dict. Contains keys of all Tensor whose `stop_gradient` is True or False
+        self.send_keys_names = None  # valid in transmission of dict. Only contains keys of the Tensor with `stop_gradient == False`
+        self.send_all_keys_names = None  # valid in transmission of dict. Contains the keys for all Tensors, regardless of whether the Tensor's `stop_gradient` property is True or False.
 
         self.recv_pack_type = None
         self.recv_shape_message = None
         self.recv_dtype_message = None
         self.recv_stop_gradient = None
-        self.recv_keys_names = None  # valid in transmission of dict
+        self.recv_keys_names = None  # valid in transmission of dict. Contains keys of all received Tensors
 
         self.has_send_meta = False
         self.has_recv_meta = False
@@ -188,9 +188,9 @@ class SendRecvMeta:
         stop_grad = paddle.to_tensor([int(tensor.stop_gradient)])
         paddle.distributed.send(stop_grad, dst=dst_rank, group=group)
 
-    # NOTE: Only support key is instance of `str`
+    # NOTE: Only support the key is the `str` type
     def _send_key(self, key, group):
-        # encode string and serialize into buffer
+        # encode string and serialize it into buffer
         buf = self._serialize_from_string(key)
 
         dst_rank = _hcg._get_p2p_next_rank()
@@ -237,7 +237,7 @@ class SendRecvMeta:
             keys_nums = paddle.to_tensor([len(self.send_all_keys_names)])
             assert set(self.send_all_keys_names) == set(tensor.keys())
             paddle.distributed.send(keys_nums, dst=dst_rank, group=group)
-            # for k, v in tensor.items():
+
             for k in self.send_all_keys_names:
                 assert isinstance(k, str)
                 assert isinstance(
@@ -737,14 +737,12 @@ def _p2p_ops(
     return reqs
 
 
-def _p2p_ops_wrapper(_p2p_ops):
-    '''
-    tensor_send_prev : dict -> dict
-    tensor_recv_prev : dict -> dict
-    tensor_send_next : dict -> dict
-    tensor_recv_next : dict -> dict
-    '''
+'''
+NOTE(MarioLulab): This wrapper is used to convert Dict[str, Tensor] into tuple[Tensor] before calling `Send` and `Recv` ops
+'''
 
+
+def _p2p_ops_wrapper(_p2p_ops):
     def wrapper(
         send_recv_meta,
         tensor_send_prev,
@@ -753,7 +751,6 @@ def _p2p_ops_wrapper(_p2p_ops):
         tensor_recv_next,
         _hcg,
     ):
-        # Adapt Dict[str, Tensor] -> tuple[Tensor] before `Send` and `Recv`
         if (
             send_recv_meta.recv_pack_type
             == SendRecvPackType.DICT_WITH_STR_TENSOR_PAIR
@@ -782,7 +779,7 @@ def _p2p_ops_wrapper(_p2p_ops):
                 assert set(send_recv_meta.recv_keys_names) == set(
                     tensor_recv_prev.keys()
                 ), "`tensor_recv_prev.keys()` should be equal to `send_recv_meta.recv_keys_names`"
-                # NOTE: `recv` operation is a in-place operation, so recv data will write into original tensor_recv_prev
+                # NOTE: `recv` operation is an in-place operation, so the received data will be written into original `tensor_recv_prev`
                 tensor_recv_prev = tuple(
                     [
                         tensor_recv_prev[key]
@@ -819,7 +816,7 @@ def _p2p_ops_wrapper(_p2p_ops):
                 assert set(send_recv_meta.send_keys_names) == set(
                     tensor_recv_next.keys()
                 ), "`tensor_recv_next.keys()` should be equal to `send_recv_meta.send_keys_names`"
-                # NOTE: `recv` operation is a in-place operation, so recv data will write into original tensor_recv_prev
+                # NOTE: `recv` operation is an in-place operation, so the received data will be written into original `tensor_recv_next`
                 tensor_recv_next = tuple(
                     [
                         tensor_recv_next[key]
