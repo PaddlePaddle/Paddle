@@ -629,6 +629,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
         return values, indices
 
 
+@paddle.utils.print_utils.print_args
 def where(condition, x=None, y=None, name=None):
     r"""
     Return a Tensor of elements selected from either :attr:`x` or :attr:`y` according to corresponding elements of :attr:`condition`. Concretely,
@@ -739,6 +740,7 @@ def where(condition, x=None, y=None, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def where_(condition, x=None, y=None, name=None):
     r"""

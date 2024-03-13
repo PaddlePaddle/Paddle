@@ -411,6 +411,10 @@ class InstanceNorm3D(_InstanceNormBase):
             )
 
 
+import paddle
+
+
+@paddle.utils.print_utils.print_args
 class GroupNorm(Layer):
     """
 

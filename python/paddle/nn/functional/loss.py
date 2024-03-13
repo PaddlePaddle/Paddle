@@ -583,6 +583,7 @@ def edit_distance(
     return edit_distance_out, sequence_num
 
 
+@paddle.utils.print_utils.print_args
 def binary_cross_entropy(
     input, label, weight=None, reduction='mean', name=None
 ):
@@ -714,6 +715,7 @@ def binary_cross_entropy(
             return out
 
 
+@paddle.utils.print_utils.print_args
 def binary_cross_entropy_with_logits(
     logit, label, weight=None, reduction='mean', pos_weight=None, name=None
 ):
@@ -1159,6 +1161,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
         return paddle.sum(out)
 
 
+@paddle.utils.print_utils.print_args
 def margin_ranking_loss(
     input, other, label, margin=0.0, reduction='mean', name=None
 ):
@@ -2505,6 +2508,7 @@ def softmax_with_cross_entropy(
     )
 
 
+@paddle.utils.print_utils.print_args
 def cross_entropy(
     input,
     label,
@@ -3087,6 +3091,7 @@ def cross_entropy(
             return out
 
 
+@paddle.utils.print_utils.print_args
 def sigmoid_focal_loss(
     logit,
     label,

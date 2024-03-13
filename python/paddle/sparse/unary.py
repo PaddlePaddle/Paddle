@@ -944,6 +944,7 @@ def isnan(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def slice(x, axes, starts, ends, name=None):
     """
     This operator produces a slice of ``x`` along multiple axes for sparse tensors.

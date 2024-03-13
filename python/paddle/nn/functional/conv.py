@@ -1336,6 +1336,10 @@ def conv2d_transpose(
     return out
 
 
+import paddle
+
+
+@paddle.utils.print_utils.print_args
 def conv3d(
     x,
     weight,
