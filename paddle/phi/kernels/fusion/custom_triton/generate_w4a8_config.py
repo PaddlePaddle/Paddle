@@ -31,12 +31,12 @@ def SubstituteTemplate(template, values):
 
 template = '''
 python3.8  ${compile_file}     \
-/zhoukangkang/triton/python/paddle_tutorials/weight-only-int8.py    \
--n wint8_kernel   \
--o ${wint8_dir}/wint8     \
---out-name wint8_kernel     \
+/zhoukangkang/triton/python/paddle_tutorials/w4a8.py    \
+-n w4a8_kernel   \
+-o ${w4a8_dir}/w4a8     \
+--out-name w4a8_kernel     \
 -w ${num_warps}   -ns ${num_stages} \
--s   "*fp16:16, *u8:16, *fp16:16, *fp16:16, *fp16:16, i32,i32:16,i32:16,  i32:16,i32:1,  i32:16,i32:1, i32:16,i32:1, ${block_m}, ${block_n}, ${block_k}, 1, ${split_k}"\
+-s   "*i8:16, *i32:16, *i32:16, i32,i32:16,i32:16,  i32:16,i32:1,  i32:16,i32:1, i32:16,i32:1, ${block_m}, ${block_n}, ${block_k}, 1, ${split_k}"\
  -g   "((M+${block_m}-1)/${block_m}) * ((N+${block_n}-1)/${block_n}), ${split_k}, 1" \
 '''
 
@@ -65,3 +65,4 @@ for num_stages in [2, 3, 4, 5, 6]:
                         result += "\nwait"
                     print(result)
 print("wait")
+

@@ -7,8 +7,8 @@ from triton_ops import triton_wint8
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
-M = 128
-N = 4096
+M = 16
+N = 4096*3
 K = 4096
 
 activation = paddle.randn((M, K), dtype=paddle.float16)
@@ -44,7 +44,10 @@ print("paddle cutlass The whoel end to end time : ", time_ms, "ms")
 
 
 # 下面是triton的计算代码
-no_perm_qweight = no_perm_qweight.transpose([1,0]).contiguous()
+bool_trans_w_triton = False
+
+if bool_trans_w_triton:
+    no_perm_qweight = no_perm_qweight.transpose([1,0]).contiguous()
 
 assert activation.is_contiguous()
 assert no_perm_qweight.is_contiguous()
@@ -58,7 +61,7 @@ for i in range(100):
         activation,
         no_perum_uint_qweight,
         scale,
-        bias, bool_trans_w=True, with_bias = True)
+        bias, bool_trans_w=bool_trans_w_triton, with_bias = True)
 
 paddle.device.cuda.synchronize()
 starttime = datetime.datetime.now()
@@ -69,7 +72,7 @@ for i in range(100):
         no_perum_uint_qweight,
         scale,
         bias, 
-        bool_trans_w = True, with_bias = True)
+        bool_trans_w = bool_trans_w_triton, with_bias = True)
 
 paddle.device.cuda.synchronize()
 endtime = datetime.datetime.now()
@@ -77,7 +80,8 @@ duringtime = endtime - starttime
 time_ms = duringtime.seconds * 1000 + duringtime.microseconds / 1000.0
 print("triton The whoel end to end time : ", time_ms, "ms")
 
-no_perm_qweight = no_perm_qweight.transpose([1,0]).contiguous()
+if bool_trans_w_triton:
+    no_perm_qweight = no_perm_qweight.transpose([1,0]).contiguous()
 
 a = no_perm_qweight.astype("float16") * scale.reshape([1, N])
 baseline = paddle.matmul(activation, a)
