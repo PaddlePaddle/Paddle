@@ -60,11 +60,6 @@ class TestHybridPipeParallel(TestMultipleAccelerators):
             'hybrid_parallel_pp_transformer_unbalanced_data.py'
         )
 
-    def test_hybrid_parallel_communicate_with_dict(self):
-        self.run_mnist_2accelerators(
-            'hybrid_parallel_pp_communicate_with_dict.py'
-        )
-
 
 class TestFakeMicroDataSet(unittest.TestCase):
     def test_fake_micro_data_set(self):

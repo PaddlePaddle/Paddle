@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
-import unittest
 
 import numpy as np
 
@@ -191,7 +191,6 @@ class MatmulNet(Layer):
         )
 
     def forward(self, kwargs):
-        # x1, x2 = args
         x1, x2 = kwargs["x1"], kwargs["x2"]
         fc = paddle.matmul(x1, self.softmax_weight)
         ret = {"fc": fc, "x2": x2}
@@ -273,8 +272,15 @@ class ModelPipeWithInterleave(PipelineLayer):
         )
 
 
-class TestDistPPTraining(unittest.TestCase):
-    def setUp(self):
+class TestDistPPTraining:
+    def __init__(self):
+        self._backend = os.getenv("backend")
+        if self._backend not in ["nccl", "gloo"]:
+            raise NotImplementedError(
+                "Only support nccl and gloo as the backend for now."
+            )
+        os.environ["PADDLE_DISTRI_BACKEND"] = self._backend
+
         self.model_parallel_size = 1
         self.data_parallel_size = 1
         self.pipeline_parallel_size = 3
@@ -290,6 +296,11 @@ class TestDistPPTraining(unittest.TestCase):
             "micro_batch_size": micro_batch_size,
         }
         fleet.init(is_collective=True, strategy=strategy)
+
+    def run_test_cases(self):
+        self.test_pp_model()
+        self.test_pp_model_with_interleaved()
+        self.test_pp_model_backward()
 
     def test_pp_model(self):
         hcg = fleet.get_hybrid_communicate_group()
@@ -436,4 +447,5 @@ class TestDistPPTraining(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    testcases = TestDistPPTraining()
+    testcases.run_test_cases()
