@@ -347,7 +347,6 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(ProdOp),
     PD_OP_NAME(PowOp),
     PD_OP_NAME(ScaleOp),
-    PD_OP_NAME(ReshapeOp),
     PD_OP_NAME(Pool2dOp),
     PD_OP_NAME(IscloseOp),
     PD_OP_NAME(SliceOp),
@@ -355,7 +354,6 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(SplitOp),
     PD_OP_NAME(SplitWithNumOp),
     PD_OP_NAME(AddNOp),
-    PD_OP_NAME(ExpandOp),
     PD_OP_NAME(UniformOp),
 };
 #undef PD_OP_NAME
@@ -465,9 +463,16 @@ static utils::Attribute ConvertArrayAttribute(
         CASE_ATTRIBUTE(float, FloatAttribute)
       } else if (attr_vec[0].isa<::pir::DoubleAttribute>()) {
         CASE_ATTRIBUTE(double, DoubleAttribute)
+      } else if (attr_vec[0].isa<::pir::StrAttribute>()) {
+        std::vector<std::string> dst_attr;
+        for (auto element : attr_vec) {
+          dst_attr.push_back(
+              element.dyn_cast<::pir::StrAttribute>().AsString());
+        }
       } else {
-        LOG(FATAL) << "only support bool/int32/int64/float/double attribute in "
-                      "ArrayAttribute";
+        LOG(FATAL)
+            << "only support bool/int32/int64/float/double/string attribute in "
+               "ArrayAttribute";
       }
     }
   } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
@@ -505,7 +510,9 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   utils::AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.first == ::pir::kStopGradientAttrName) {
+    if (item.first == ::pir::kStopGradientAttrName ||
+        item.first == ::pir::kOutputDimExprs ||
+        item.first == ::pir::kSymbolBindings) {
       continue;
     } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =

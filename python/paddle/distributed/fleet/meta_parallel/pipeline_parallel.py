@@ -48,11 +48,9 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 
 __all__ = []
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
-
 
 def get_action(is_dp, shard_split_param=False):
-    if is_dp or not g_shard_use_reduce:
+    if is_dp:
         return HOOK_ACTION.ALL_REDUCE
     if shard_split_param:
         return HOOK_ACTION.REDUCE_SCATTER
@@ -219,6 +217,10 @@ class PipelineParallel(MetaParallelBase):
         self._overlap_p2p_comm = self._strategy.hybrid_configs[
             "pp_configs"
         ].overlap_p2p_comm
+
+        self._clear_every_step_cache = self._strategy.hybrid_configs[
+            "pp_configs"
+        ].clear_every_step_cache
 
         self._batch_p2p_comm = not self._overlap_p2p_comm
 
@@ -602,6 +604,10 @@ class PipelineParallel(MetaParallelBase):
             train_loss = self._broadcast_final_loss()
         if self._enable_timer:
             self.timers("broadcast_final_loss").stop()
+
+        if self._clear_every_step_cache:
+            self._p2p_helper.clear_meta_cache()
+
         self.timer_printer()
         return train_loss
 
@@ -1674,6 +1680,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
             # else just return all intermediate output tensor for all micro steps
             train_loss = self.output_tensors
 
+        if self._clear_every_step_cache:
+            self._p2p_helper.clear_meta_cache()
+
         self.timer_printer()
         return train_loss
 
@@ -1916,6 +1925,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         else:
             # else just return all intermediate output tensor for all micro steps
             train_loss = self.output_tensors
+
+        if self._clear_every_step_cache:
+            self._p2p_helper.clear_meta_cache()
 
         self.timer_printer()
         return train_loss

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
@@ -29,7 +28,15 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumprod)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumprod_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumsum)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumsum_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(DiagEmbed)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Diagonal)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Einsum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Kthvalue)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reshape)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reshape_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Squeeze)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Squeeze_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze_)
 
 }  // namespace paddle::dialect
