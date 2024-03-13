@@ -116,6 +116,7 @@ class TransformerNetPipe(TransformerNet):
         output = super().forward(x, mask)
         output = output + p_emb
         mask.stop_gradient = True
+        p_emb.stop_gradient = True
 
         ret = {'x': output, 'mask': mask, 'no_used': no_used, 'p_emb': p_emb}
         return ret
@@ -128,6 +129,111 @@ class CriterionPipe(Layer):
     def forward(self, out, label):
         loss = out.mean()
         return loss
+
+
+class SimpleNet(Layer):
+    def __init__(self):
+        super().__init__()
+        self.word_embeddings = nn.Embedding(
+            vocab_size, hidden_size, name="simple_net_word_embeddings"
+        )
+
+        self.softmax_weight = self.create_parameter(
+            shape=[hidden_size, vocab_size],
+            attr=paddle.ParamAttr(name="simple_net_softmax_weight"),
+        )
+        self.softmax_bias = self.create_parameter(
+            shape=[vocab_size],
+            is_bias=False,
+            attr=paddle.ParamAttr(name="simple_net_softmax_bias"),
+        )
+
+    def forward(self, x1, x2, y1):
+        x_emb = self.word_embeddings(x1)
+        fc = paddle.matmul(x_emb, self.softmax_weight)
+        fc = paddle.add(fc, self.softmax_bias)
+        projection = paddle.reshape(fc, shape=[-1, vocab_size])
+
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=projection, label=y1, soft_label=False
+        )
+        return loss.mean()
+
+
+class EmbeddingNet_V2(Layer):
+    def __init__(self):
+        super().__init__()
+        self.word_embeddings = nn.Embedding(
+            vocab_size, hidden_size, name="single_word_embeddings"
+        )
+
+    @property
+    def embedding_weight(self):
+        return self.word_embeddings.weight
+
+    def forward(self, args):
+        x1, x2 = args
+        x_emb = self.word_embeddings(x1)
+        x2.stop_gradient = True
+        ret = {
+            "x1": x_emb,
+            "x2": x2,
+        }
+        return ret
+
+
+class MatmulNet(Layer):
+    def __init__(self):
+        super().__init__()
+        self.softmax_weight = self.create_parameter(
+            shape=[hidden_size, vocab_size],
+            attr=paddle.ParamAttr(name="single_softmax_weight"),
+        )
+
+    def forward(self, kwargs):
+        # x1, x2 = args
+        x1, x2 = kwargs["x1"], kwargs["x2"]
+        fc = paddle.matmul(x1, self.softmax_weight)
+        ret = {"fc": fc, "x2": x2}
+        return ret
+
+
+class BiasNet(Layer):
+    def __init__(self):
+        super().__init__()
+        self.softmax_bias = self.create_parameter(
+            shape=[vocab_size],
+            is_bias=False,
+            attr=paddle.ParamAttr(name="single_softmax_bias"),
+        )
+
+    def forward(self, kwargs):
+        fc, x2 = kwargs["fc"], kwargs["x2"]
+        fc = paddle.add(fc, self.softmax_bias)
+        projection = paddle.reshape(fc, shape=[-1, vocab_size])
+        return projection, x2
+
+
+class LossNet(Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, args, y1):
+        projection, x2 = args
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=projection, label=y1[0], soft_label=False
+        )
+        return loss.mean()
+
+
+class SimpleNetPipe(PipelineLayer):
+    def __init__(self, **kwargs):
+        self.descs = []
+        self.descs.append(LayerDesc(EmbeddingNet_V2))
+        self.descs.append(LayerDesc(MatmulNet))
+        self.descs.append(LayerDesc(BiasNet))
+
+        super().__init__(layers=self.descs, loss_fn=LossNet(), **kwargs)
 
 
 class ModelPipe(PipelineLayer):
@@ -216,8 +322,7 @@ class TestDistPPTraining(unittest.TestCase):
             if pp_id != 0:
                 np.testing.assert_allclose(loss.numpy(), e_loss.numpy())
 
-    # TODO(MarioLulab): Some bugs here. FIX IT SONN...
-    def _test_pp_model_with_interleaved(self):
+    def test_pp_model_with_interleaved(self):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         dp_id = hcg.get_data_parallel_rank()
@@ -248,9 +353,86 @@ class TestDistPPTraining(unittest.TestCase):
             if pp_id != 0:
                 np.testing.assert_allclose(loss.numpy(), e_loss.numpy())
 
-    # TODO(MarioLulab): Add more strict testcases, referenced from `test/collective/fleet/hybrid_parallel_pp_embedding.py`
-    def _strict_testcases(self):
-        pass
+    def test_pp_model_backward(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        word_size = hcg.get_model_parallel_world_size()
+        dp_id = hcg.get_data_parallel_rank()
+        pp_id = hcg.get_stage_id()
+        rank_id = dist.get_rank()
+        set_random_seed(1024, dp_id, rank_id)
+
+        # construct model a
+        model_a = SimpleNet()
+        scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True
+        )
+        optimizer_a = paddle.optimizer.SGD(
+            learning_rate=scheduler_a, parameters=model_a.parameters()
+        )
+
+        model_b = SimpleNetPipe(topology=hcg.topology())
+
+        scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True
+        )
+        optimizer_b = paddle.optimizer.SGD(
+            learning_rate=scheduler_b, parameters=model_b.parameters()
+        )
+        model_b = fleet.distributed_model(model_b)
+        optimizer_b = fleet.distributed_optimizer(optimizer_b)
+
+        param_len = len(model_a.parameters())
+
+        parameters = []
+        for param in model_a.parameters():
+            parameters.append(param.numpy())
+
+        model_b_params = model_b.parameters()
+
+        def _get_matched_parameters(model_params, substr):
+            for param in model_params:
+                if substr in param.name:
+                    return param.numpy()
+
+        if pp_id == 0:
+            model_b_params[0].set_value(
+                _get_matched_parameters(model_a.parameters(), "embedding")
+            )
+        elif pp_id == 1:
+            # single_softmax_weight <----> simple_net_softmax_weight
+            model_b_params[0].set_value(
+                _get_matched_parameters(model_a.parameters(), "softmax_weight")
+            )
+        else:
+            # single_softmax_bias <----> simple_net_softmax_bias
+            model_b_params[0].set_value(
+                _get_matched_parameters(model_a.parameters(), "softmax_bias")
+            )
+
+        for step in range(5):
+            x1_data = np.random.randint(0, vocab_size, size=[batch_size, 1])
+            x2_data = np.random.randint(0, vocab_size, size=[batch_size, 1])
+            y1_data = np.random.randint(0, hidden_size, size=[batch_size, 1])
+
+            x1 = paddle.to_tensor(x1_data)
+            x2 = paddle.to_tensor(x2_data)
+            y1 = paddle.to_tensor(y1_data)
+
+            x1.stop_gradient = True
+            x2.stop_gradient = True
+            y1.stop_gradient = True
+
+            loss_a = model_a(x1, x2, y1)
+            loss_a.backward()
+
+            optimizer_a.step()
+            optimizer_a.clear_grad()
+            scheduler_a.step()
+
+            loss_b = model_b.train_batch(
+                [(x1, x2), (y1,)], optimizer_b, scheduler_b
+            )
+            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
 
 
 if __name__ == "__main__":

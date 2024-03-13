@@ -918,9 +918,9 @@ class PipelineParallel(MetaParallelBase):
                     t._clear_dataptr()
 
         elif isinstance(output, (dict, OrderedDict)):
-            for key_name in self._p2p_helper._send_recv_meta.send_keys_names:
-                if key_name in output and can_free(output[key_name]):
-                    output[key_name]._clear_dataptr()
+            for key in output.keys():
+                if can_free(output[key]):
+                    output[key]._clear_dataptr()
 
         elif can_free(output):
             output._clear_dataptr()
