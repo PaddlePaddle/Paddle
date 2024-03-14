@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import unittest
-import sys
-sys.path.append("../")
 import numpy as np
 from pass_test import PassTest
 
@@ -129,6 +127,7 @@ class TestConv2dAddFusePassAsY(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 if __name__ == "__main__":
     unittest.main()

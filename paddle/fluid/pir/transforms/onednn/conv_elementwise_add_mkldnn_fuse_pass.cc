@@ -17,7 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -58,6 +58,9 @@ class ConvElementwiseAddPattern : public paddle::drr::DrrPatternBase {
         add(pat.Tensor("conv2d_out"), pat.Tensor("residual_param"));
     pat.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          if (!pir::ValueIsPersistable(match_ctx.Tensor("residual_param"))) {
+            return false;
+          }
           auto padding_algorithm =
               match_ctx.Attr<std::string>("padding_algorithm");
           if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
@@ -139,6 +142,9 @@ class ConvElementwiseAddYPattern : public paddle::drr::DrrPatternBase {
 
     pat.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          if (!pir::ValueIsPersistable(match_ctx.Tensor("residual_param"))) {
+            return false;
+          }
           auto padding_algorithm =
               match_ctx.Attr<std::string>("padding_algorithm");
           if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
