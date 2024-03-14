@@ -52,6 +52,10 @@ std::vector<ir::Var> ExprVec2VarVec(const std::vector<ir::Expr>& in) {
   return out;
 }
 
+std::vector<ir::Expr> VarVec2ExprVec(const std::vector<ir::Var>& in) {
+  return std::vector<ir::Expr>(in.begin(), in.end());
+}
+
 std::vector<ir::Expr> GetEachTensorLoadExpr(const ir::Expr& body,
                                             const ir::Tensor& tensor) {
   VLOG(4) << "Start GetEachTensorLoadExpr: " << tensor;
@@ -184,7 +188,7 @@ struct Mapping {
     name = s;
   }
   ExprSet operator()(const ir::Expr& x) const { return f_(x); }
-  ir::Expr GetSingle(const ir::Expr& x) {
+  ir::Expr GetSingle(const ir::Expr& x) const {
     Mapping call = (*this) * Mapping::GetIdentity();
     const auto& o = call.operator()(x);
     if (o.size() != 1) {
@@ -192,13 +196,13 @@ struct Mapping {
     }
     return *o.begin();
   }
-  Mapping operator*(Mapping x) {
+  Mapping operator*(Mapping x) const {
     auto new_f = [self = *this, x = x](const ir::Expr& e) -> ExprSet {
       const auto& rs = self.f_(e);
-      VLOG(4) << "Mapping Info : " << self.name;
-      VLOG(4) << "        Inputs  :" << e;
+      VLOG(6) << "Mapping Info : " << self.name;
+      VLOG(6) << "        Inputs  :" << e;
       for (const auto& r : rs) {
-        VLOG(4) << "      Outputs : \n" << r;
+        VLOG(6) << "      Outputs : \n" << r;
       }
       std::vector<ir::Expr> res;
       for (const auto& r : rs) {
@@ -377,7 +381,7 @@ struct Transformer {
   TransformFunc f_;
   explicit Transformer(TransformFunc f) { f_ = f; }
   ir::Expr operator()(const ir::Expr& x) const { return f_(x); }
-  Transformer operator*(const Transformer& x) {
+  Transformer operator*(const Transformer& x) const {
     auto new_f = [self = *this, x = x](const ir::Expr& e) -> ir::Expr {
       const auto& rs = self.f_(e);
       return x.f_(rs);
@@ -425,6 +429,10 @@ Transformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
     return copied_e;
   };
   return Transformer(f);
+}
+
+void ReplaceTarget(ir::Expr* e, const ir::Expr& t, const ir::Expr dst) {
+  ComposeUtils::MappingTargetExprToDestExprMutator(t, dst)(e);
 }
 
 Transformer WrapStoreTransformer(const ir::Tensor& tensor,
@@ -514,37 +522,6 @@ void SequenceMutator(const std::vector<A>& as, C* acc, const Func& mutator) {
     mutator(as[i], acc);
     VLOG(4) << "SequenceTransform Iter: " << acc;
   }
-}
-
-static bool IsAdjecent(const ir::Expr& upstream, const ir::Expr& downstream) {
-  // 1. Get inputs / output from Expr, then we can tell whether they are
-  // adjecent.
-  std::set<Expr> upstream_stores =
-      cinn::ir::ir_utils::CollectIRNodesWithoutTensor(
-          upstream, [](const Expr* expr) {
-            return expr->As<ir::Store>() &&
-                   expr->As<ir::Store>()->is_addr_tensor();
-          });
-  // don't support multi-output yet.
-  PADDLE_ENFORCE(upstream_stores.size() == 1,
-                 "The expr of injective should have only one store");
-
-  std::set<Expr> downstream_loads =
-      cinn::ir::ir_utils::CollectIRNodesWithoutTensor(
-          downstream, [](const Expr* expr) {
-            return expr->As<ir::Load>() &&
-                   expr->As<ir::Load>()->is_addr_tensor();
-          });
-
-  for (const auto& upstream_store : upstream_stores) {
-    for (const auto& downstream_load : downstream_loads) {
-      if (upstream_store.As<ir::Store>()->tensor.As<ir::_Tensor_>()->name ==
-          downstream_load.As<ir::Load>()->tensor.As<ir::_Tensor_>()->name) {
-        return true;
-      }
-    }
-  }
-  return false;
 }
 
 inline bool IsTrivialKind(OpPatternKind kind) {
@@ -879,16 +856,15 @@ DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
 
 bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down) {}
 
-std::vector<FusibleOp> TransformReduceLoopRange(ReduceOp upstream,
-                                                FusibleOp downstream) {
+std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
+                                                FusibleOp* downstream) {
+  // downstream will be mutated by this transform.
   VLOG(4) << "RRTransform begin";
   VLOG(4) << "Upstream is " << upstream.GetFuncBody();
-  // CHECK(ComposeUtils::CheckIterEq(upstream.GetReduceIters(),
-  // downstream.GetReduceIters()));
   const auto& load_upstream_expr = ComposeUtils::GetEachTensorLoadExpr(
-      GetComputeBody(downstream), GetOutputTensor(upstream));
+      GetComputeBody(*downstream), GetOutputTensor(upstream));
   std::vector<FusibleOp> results;
-  ir::Tensor downstream_output_tensor = GetOutputTensor(downstream);
+  ir::Tensor downstream_output_tensor = GetOutputTensor(*downstream);
   const auto create_new_tensor = [&](const ir::Tensor& downstream_load_tensor) {
     VLOG(4) << "downstream output tensor: " << downstream_output_tensor;
     VLOG(4) << "downstream_load_tensor  : " << downstream_load_tensor;
@@ -906,7 +882,7 @@ std::vector<FusibleOp> TransformReduceLoopRange(ReduceOp upstream,
     VLOG(4) << "GetInit: " << upstream.GetInitExpr();
     VLOG(4) << "GetNewTensor: " << new_tensor;
     VLOG(4) << "GetOutputIter: "
-            << utils::Join(GetOutputIters(downstream), "  ");
+            << utils::Join(GetOutputIters(*downstream), "  ");
     VLOG(4) << "GetReduceIter: " << utils::Join(GetReduceIters(upstream), "  ");
     VLOG(4) << "GetCompute: "
             << ComposeUtils::CopyedReplaceExpr(
@@ -914,7 +890,7 @@ std::vector<FusibleOp> TransformReduceLoopRange(ReduceOp upstream,
                    GetOutputIters(upstream),
                    load_tensor.As<ir::Load>()->indices);
     ir::Expr new_reduce = CreateReduceExpr(
-        GetOutputIters(downstream),
+        GetOutputIters(*downstream),
         GetReduceIters(upstream),
         upstream.GetInitExpr(),
         ComposeUtils::CopyedReplaceExpr(GetComputeBody(upstream),
@@ -923,11 +899,13 @@ std::vector<FusibleOp> TransformReduceLoopRange(ReduceOp upstream,
         new_tensor,
         GetOutputTensor(upstream));
     VLOG(4) << "After CreateReduceExpr: " << new_reduce;
-    ComposeUtils::MappingTargetExprToDestExprMutator(
-        load_tensor.As<ir::Load>()->tensor,
-        Expr(new_tensor))(GetFuncBodyPointer(downstream));
     results.emplace_back(ReduceOp(new_reduce));
+    TransformerUtils::ReplaceTarget(
+        GetFuncBodyPointer(*downstream),
+        load_tensor,
+        new_tensor(ComposeUtils::VarVec2ExprVec(GetOutputIters(*downstream))));
   }
+  VLOG(4) << "After Replace Downstream Load: " << GetRootExpr(*downstream);
   return results;
 }
 
@@ -976,7 +954,7 @@ std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
   std::vector<FusibleOp> result;
   for (auto& pair : fusion_tree->upstream) {
     auto transformed_nodes = TransformReduceLoopRange(
-        std::get<ReduceOp>(pair.first->fusible_op), root_op);
+        std::get<ReduceOp>(pair.first->fusible_op), &root_op);
     for (auto& node : transformed_nodes) {
       auto child_flatten = ReduceTransformRecursive(node, pair.first);
       result.insert(result.end(), child_flatten.begin(), child_flatten.end());
