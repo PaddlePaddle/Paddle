@@ -8,6 +8,7 @@ if(NOT CINN_ONLY)
     op_lowering_impl.cc
     op_mapper.cc
     op_lowering_util.cc
-    trivial_op.cc
+    trivial_op_impl.cc
+    trivial_op_util.cc
     compilation_task.cc)
 endif()
