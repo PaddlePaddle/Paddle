@@ -665,6 +665,50 @@ std::vector<ir::Expr> OperationFusion(
   return output;
 }
 
+GroupInfo GetGroupInfo(const std::vector<ir::Expr>& op_compute_bodies) {
+  using namespace trivial_fusion_detail;
+
+  GroupInfo group_info = GroupInfo();
+
+  const auto IsReduceBody = [](const ir::Expr& expr_body) {
+    return !(SearchUtils::ChildScheduleBlockRealizes *
+             SearchUtils::ScheduleBlockRealizeIsInit)(expr_body)
+                .empty();
+  };
+
+  for (const auto& body : op_compute_bodies) {
+    if (IsReduceBody(body)) {
+      ReduceOp op = ReduceOp(body);
+      if (group_info.reduce_var_name.empty()) {
+        std::vector<ir::Var> iters = GetAllIterVars(op);
+        std::transform(
+            iters.begin(),
+            iters.end(),
+            std::back_inserter(group_info.loop_ranges),
+            [](const ir::Var var) { return var->upper_bound.as_int64(); });
+        std::vector<ir::Var> reduce_iters = GetReduceIters(op);
+        for (int64_t i = iters.size() - reduce_iters.size(); i < iters.size();
+             i++) {
+          group_info.reduce_axis.emplace_back(i);
+        }
+      }
+      group_info.reduce_var_name.emplace_back(GetOutputTensor(op)->name);
+    }
+  }
+
+  if (group_info.reduce_var_name.empty()) {
+    TrivialOp op = TrivialOp(*(op_compute_bodies.begin()));
+    std::vector<ir::Var> iters = GetOutputIters(op);
+    std::transform(
+        iters.begin(),
+        iters.end(),
+        std::back_inserter(group_info.loop_ranges),
+        [](const ir::Var var) { return var->upper_bound.as_int64(); });
+  }
+  VLOG(4) << group_info.DebugPrint();
+  return group_info;
+}
+
 }  // namespace pir
 }  // namespace framework
 }  // namespace hlir
