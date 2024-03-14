@@ -308,7 +308,7 @@ Mapping ScheduleBlockRealizeIsNotInit = FilterMaker(
       return (e.As<ir::ScheduleBlockRealize>() &&
               e.As<ir::ScheduleBlockRealize>()
                       ->schedule_block.As<ir::ScheduleBlock>()
-                      ->name.find("_reduce_init") == std::string::npos);
+                      ->name.find("__reduce_init") == std::string::npos);
     },
     "ScheduleBlockRealizeIsNotInit");
 
@@ -317,7 +317,7 @@ Mapping ScheduleBlockRealizeIsInit = FilterMaker(
       return (e.As<ir::ScheduleBlockRealize>() &&
               e.As<ir::ScheduleBlockRealize>()
                       ->schedule_block.As<ir::ScheduleBlock>()
-                      ->name.find("_reduce_init") != std::string::npos);
+                      ->name.find("__reduce_init") != std::string::npos);
     },
     "ScheduleBlockRealizeIsInit");
 
@@ -783,10 +783,17 @@ ir::Expr CreateReduceExpr(
   VLOG(4) << "CreateReduceExpr Start.";
   const std::vector<ir::Expr> indice_expr =
       std::vector<ir::Expr>(output_iters.begin(), output_iters.end());
+  const auto& new_init_tensor = ir::Tensor(new_write_tensor->name + "__init",
+                                           new_write_tensor->type(),
+                                           new_write_tensor->shape,
+                                           new_write_tensor->domain,
+                                           new_write_tensor->operation);
+
   const auto& init_schedule_block =
-      (TransformerUtils::WrapStoreTransformer(new_write_tensor, indice_expr) *
+      (TransformerUtils::WrapStoreTransformer(new_init_tensor, indice_expr) *
        TransformerUtils::WrapScheduleRealizer(
-           output_iters, new_write_tensor->name + "__reduce_init"))(init_body);
+           output_iters, new_init_tensor->name))(init_body);
+
   const auto& reduce_schedule_block =
       (TransformerUtils::ChangeTensorLoadTransformer(
            origin_write_tensor, new_write_tensor(indice_expr)) *
@@ -795,6 +802,7 @@ ir::Expr CreateReduceExpr(
            ComposeUtils::ConcatVector(output_iters, reduce_iters),
            new_write_tensor->name) *
        TransformerUtils::WrapForsTransformer(reduce_iters))(reduce_body);
+
   const auto& gather_body = ir::Block::Make(
       std::vector<ir::Expr>({init_schedule_block, reduce_schedule_block}));
   return ir::Block::Make(
