@@ -308,11 +308,12 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
     return ret_sa;
   }
 
+  using InputSignature = std::unordered_map<OpAndOperandIndex, ShardableAxes>;
+
   ShardableAxesSignature MakeEmptyShardableAxesSignature(const pir::Operation* op) {
     const int result_idx = GetOutputShardableAxesResultIdx(op);
     pir::Value output = op->result(result_idx);
     ShardableAxes output_sa = ShardableAxesUtil::MakeFullyShardableAxes(GetRank(output));
-    using InputSignature = std::unordered_map<OpAndOperandIndex, ShardableAxes>;
     InputSignature empty_input_sig;
     for (int i = 0; i < op->num_operands(); ++i) {
       empty_input_sig[OpAndOperandIndex{op, i}] = ShardableAxes{};
@@ -389,8 +390,56 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
 
   ShardableAxesSignature MakeShardableAxesSignature4BroadcastOp(
       const pir::Operation* op) {
-    LOG(ERROR) << "[ShardableAxesSignature] no shardable axes signature found. op_name : " << op->name();
-    return MakeEmptyShardableAxesSignature(op);
+    const auto& input_output_pair = GetGetBroadcastOpInputOuputValue(op);
+    if (!input_output_pair.has_value()) {
+      LOG(ERROR) << "[ShardableAxesSignature] no shardable axes signature found. op_name : " << op->name();
+      return MakeEmptyShardableAxesSignature(op);
+    }
+    const auto& [input, input_idx, output] = input_output_pair.value();
+    const int input_rank = GetRank(input);
+    const int rank_diff = GetRank(output) - input_rank;
+    CHECK_GE(rank_diff, 0);
+    const auto& broadcast_axes = [&]{
+      std::vector<int64_t> broadcast_axes;
+      for (int i = 0; i < input_rank; ++i) {
+        int o = i + rank_diff;
+        if (!shape_analysis_->IsProductEqual(input, {i}, output, {o})) {
+          broadcast_axes.push_back(i);
+        }
+      }
+      return broadcast_axes;
+    }();
+    const ShardableAxes input_sa =
+      ShardableAxesUtil::MakeBroadcastOpInputShardableAxes(input_rank, broadcast_axes);
+    const ShardableAxes output_sa = [&]{
+      ShardableAxes output_sa(input_sa);
+      for (auto& shardable_axis : output_sa) {
+        shardable_axis.axis += rank_diff;
+      }
+      return output_sa;
+    }();
+    return ShardableAxesSignature{
+        .sole_output_sa = SoleOutputShardableAxes{
+          .shardable_axes=output_sa,
+        },
+        .input_shardable_axes = InputSignature{
+          {OpAndOperandIndex{op, input_idx}, input_sa},
+        },
+    }; 
+  }
+
+  std::optional<std::tuple<pir::Value, /*input_dix*/int, pir::Value>>
+  GetGetBroadcastOpInputOuputValue(const pir::Operation* op) {
+    auto* mut_op = const_cast<pir::Operation*>(op);
+    if (op->isa<paddle::dialect::ExpandOp>()) {
+      auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
+      return std::tuple{expand_op.x(), 0, expand_op.out()};
+    }
+    if (op->isa<cinn::dialect::BroadcastOp>()) {
+      auto broadcast_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
+      return std::tuple{broadcast_op.x(), 0, broadcast_op.out()};
+    }
+    return std::nullopt;
   }
 
   const pir::ShapeConstraintIRAnalysis* shape_analysis_;
