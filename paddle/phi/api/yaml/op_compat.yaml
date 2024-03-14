@@ -3615,6 +3615,12 @@
   outputs :
     out: Out
 
+- op: c_scatter
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_sync_calc_stream
   inputs :
     x : X
