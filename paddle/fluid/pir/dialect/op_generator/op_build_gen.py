@@ -248,7 +248,7 @@ mutable_attribute_phi_type_maps = {
 }
 
 
-def GenBuildInserFullForMutableAttribute(
+def GenBuildInsertFullForMutableAttribute(
     op_class_name,
     op_attribute_name_list,
     op_attribute_build_arg_type_list,
@@ -480,7 +480,7 @@ def GenBuildOutputs(
 
 """
 
-    CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
+    CREATE_INTARRAY_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  phi::IntArray {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
                           {name}_.defining_op()
@@ -502,7 +502,7 @@ def GenBuildOutputs(
     PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
   }}\n"""
 
-    CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
+    CREATE_VECTOR_INT_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  std::vector<int64_t> {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = paddle::dialect::GetInt64Vector(
                     {name}_.defining_op()
@@ -522,7 +522,7 @@ def GenBuildOutputs(
     PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
   }}\n"""
 
-    CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
+    CREATE_SCALAR_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  phi::Scalar {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
     {name} = std::move(phi::Scalar({name}_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
@@ -577,16 +577,16 @@ def GenBuildOutputs(
                     op_class_name
                     in _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE
                 ):
-                    build_output_str += CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                    build_output_str += CREATE_VECTOR_INT_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE.format(
                         name=op_mutable_attribute_name_list[idx]
                     )
                 else:
-                    build_output_str += CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                    build_output_str += CREATE_INTARRAY_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE.format(
                         name=op_mutable_attribute_name_list[idx]
                     )
             # scalar
             elif attr_dtype[0] == "paddle::dialect::ScalarAttribute":
-                build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE.format(
                     name=op_mutable_attribute_name_list[idx],
                     dtype=attr_dtype[1],
                 )
@@ -594,7 +594,7 @@ def GenBuildOutputs(
             elif attr_dtype[0] == "pir::StrAttribute":
                 build_output_str += ""
             else:
-                assert "mutable attribtue type is not right."
+                assert "mutable attribute type is not right."
         build_output_str += "\n"
 
     # Prepare inputs_meta_tensor & attributes for infer meta
@@ -679,12 +679,12 @@ def GenBuildOutputs(
     CREATE_INFER_META_FUNC_TEMPLATE = """
   phi::{func}({args});
 """
-    CREATE_INFER_META_FUNC_WITH_METACINFIG_TEMPLATE = """
+    CREATE_INFER_META_FUNC_WITH_META_CONFIG_TEMPLATE = """
   phi::{func}({args}, phi::MetaConfig(false, false));
 """
     if op_infer_meta_map['func'] in _INFERMETA_NEED_META_CONFIG:
         build_output_str += (
-            CREATE_INFER_META_FUNC_WITH_METACINFIG_TEMPLATE.format(
+            CREATE_INFER_META_FUNC_WITH_META_CONFIG_TEMPLATE.format(
                 func=op_infer_meta_map['func'], args=", ".join(infer_meta_args)
             )
         )
@@ -813,7 +813,7 @@ def gen_build_func_str(
     inset_full_for_mutable_attributes_str = ""
     if not muta_attr_is_input:
         inset_full_for_mutable_attributes_str = (
-            GenBuildInserFullForMutableAttribute(
+            GenBuildInsertFullForMutableAttribute(
                 op_class_name,
                 op_attribute_name_list,
                 op_attribute_build_arg_type_list,

@@ -110,6 +110,7 @@ pir::CINNKernelInfo CompilationTask::BuildPirCINNKernelInfo() {
       context_->backend_compiler_->Lookup(fn_name + "_infer_shape");
   CHECK(infer_shape_fn_ptr);
   pir::CINNKernelInfo cinn_kernel_info;
+  cinn_kernel_info.fn_name = fn_name;
   cinn_kernel_info.fn_ptr = fn_ptr;
   cinn_kernel_info.infer_shape_fn_ptr = infer_shape_fn_ptr;
   cinn_kernel_info.int_args_map = context_->group_->int_args_map;

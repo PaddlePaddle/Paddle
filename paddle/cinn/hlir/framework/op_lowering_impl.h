@@ -28,9 +28,9 @@
 #include "paddle/cinn/lang/packed_func.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
-// Elementwise/Broadcast/Injective,Reduce,OutEWiseFusable,NonFusible.
+// Elementwise/Broadcast/Injective,Reduce,OutEWiseFusible,NonFusible.
 // Elementwise/Broadcast/Injective Ops is with same schedule.
-// Reduce,OutEWiseFusable,NonFusible are using different schedule.
+// Reduce,OutEWiseFusible,NonFusible are using different schedule.
 
 namespace cinn {
 namespace hlir {

@@ -128,4 +128,4 @@ endif()
 cc_library(
   drr
   SRCS ${DRR_SRCS}
-  DEPS op_dialect_vjp ${CINN_DEPS} pir)
+  DEPS op_dialect_vjp ${CINN_DEPS} pir pir_general_functions)

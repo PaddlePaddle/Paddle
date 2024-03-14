@@ -183,18 +183,13 @@ void TestCustomCCL(const paddle::platform::Place& place) {
   phi::DeviceManager::CCLDestroyComm(dev_type, nullptr);
   phi::DeviceManager::CCLGetUniqueId(dev_type, &root_id);
   phi::DeviceManager::CCLCommInitRank(dev_type, 0, &root_id, 0, nullptr);
-  phi::DeviceManager::CCLBroadcast(dev_type,
-                                   nullptr,
-                                   0,
-                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-                                   0,
-                                   comm,
-                                   stream);
+  phi::DeviceManager::CCLBroadcast(
+      dev_type, nullptr, 0, phi::DataType::FLOAT32, 0, comm, stream);
   phi::DeviceManager::CCLAllReduce(dev_type,
                                    nullptr,
                                    nullptr,
                                    0,
-                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                   phi::DataType::FLOAT32,
                                    phi::ccl::CCLReduceOp::SUM,
                                    comm,
                                    stream);
@@ -202,43 +197,27 @@ void TestCustomCCL(const paddle::platform::Place& place) {
                                 nullptr,
                                 nullptr,
                                 0,
-                                phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                phi::DataType::FLOAT32,
                                 phi::ccl::CCLReduceOp::SUM,
                                 0,
                                 comm,
                                 stream);
-  phi::DeviceManager::CCLAllGather(dev_type,
-                                   nullptr,
-                                   nullptr,
-                                   0,
-                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-                                   comm,
-                                   stream);
-  phi::DeviceManager::CCLReduceScatter(
-      dev_type,
-      nullptr,
-      nullptr,
-      0,
-      phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-      phi::ccl::CCLReduceOp::SUM,
-      comm,
-      stream);
+  phi::DeviceManager::CCLAllGather(
+      dev_type, nullptr, nullptr, 0, phi::DataType::FLOAT32, comm, stream);
+  phi::DeviceManager::CCLReduceScatter(dev_type,
+                                       nullptr,
+                                       nullptr,
+                                       0,
+                                       phi::DataType::FLOAT32,
+                                       phi::ccl::CCLReduceOp::SUM,
+                                       comm,
+                                       stream);
   phi::DeviceManager::CCLGroupStart(dev_type);
   phi::DeviceManager::CCLGroupEnd(dev_type);
-  phi::DeviceManager::CCLSend(dev_type,
-                              nullptr,
-                              0,
-                              phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-                              0,
-                              comm,
-                              stream);
-  phi::DeviceManager::CCLRecv(dev_type,
-                              nullptr,
-                              0,
-                              phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-                              0,
-                              comm,
-                              stream);
+  phi::DeviceManager::CCLSend(
+      dev_type, nullptr, 0, phi::DataType::FLOAT32, 0, comm, stream);
+  phi::DeviceManager::CCLRecv(
+      dev_type, nullptr, 0, phi::DataType::FLOAT32, 0, comm, stream);
 }
 
 TEST(CustomDevice, Tensor) {

@@ -20,17 +20,7 @@
 namespace cinn {
 namespace ir {
 
-class TileTactic final : public ScheduleTactic {
- public:
-  void Init(ScheduleContext* context) override;
-
-  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
-
-  std::string TacticName() const override { return "TileTactic"; }
-
- private:
-  ScheduleContext* context_;
-};
+std::unique_ptr<ScheduleTactic> CreateTileTactic();
 
 }  // namespace ir
 }  // namespace cinn

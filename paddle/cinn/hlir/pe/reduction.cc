@@ -129,6 +129,13 @@ void GetOutputShape(const std::vector<int>& real_axes,
   if (output_shape->empty()) {
     output_shape->push_back(cinn::common::make_one());
   }
+
+  CHECK(!tensor->shape.empty());
+  if (tensor->shape[0]->type() == Int(64)) {
+    for (auto& shape_item : *output_shape) {
+      shape_item->convert_int32_to_int64();
+    }
+  }
 }
 
 /*!
@@ -1089,9 +1096,15 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
                                               const ir::Expr& tensor) {
   CHECK_NOTNULL(tensor.as_tensor());
   if (op.As<ir::Add>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_block_reduce_any_internal_shm";
+    }
     return "cinn_block_reduce_sum" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Mul>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_block_reduce_all_internal_shm";
+    }
     return "cinn_block_reduce_prod" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Max>()) {

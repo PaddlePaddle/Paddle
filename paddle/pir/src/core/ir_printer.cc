@@ -279,6 +279,10 @@ void IrPrinter::PrintAttributeMap(Operation* op) {
   AttributeMap attributes = op->attributes();
   std::map<std::string, Attribute, std::less<>> order_attributes(
       attributes.begin(), attributes.end());
+
+  // Filter out the callstack attribute
+  order_attributes.erase("op_callstack");
+
   os << " {";
 
   pir::detail::PrintInterleave(

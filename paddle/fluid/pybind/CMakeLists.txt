@@ -151,7 +151,12 @@ set(PYBIND_SRCS
     auto_parallel_py.cc
     eval_frame_tools.cc
     cpython_internals.c
-    eval_frame.c)
+    eval_frame.c
+    op_callstack_utils.cc)
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+#endif
 
 if(NOT WITH_SHARED_IR)
   # Note: We want to compile pir source into paddle.so directly, because

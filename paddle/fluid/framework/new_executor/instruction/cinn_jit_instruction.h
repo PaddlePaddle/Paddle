@@ -52,6 +52,7 @@ class CinnJitInstruction : public InstructionBase {
   int32_t input_tensor_size;
   int32_t output_tensor_size;
 
+  bool need_update_shape{false};
   std::vector<phi::DenseTensor*> tensor_args_;
 
   ::pir::Operation* op_{nullptr};  // not owned

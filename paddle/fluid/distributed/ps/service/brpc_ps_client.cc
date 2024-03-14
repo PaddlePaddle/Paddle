@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/distributed/ps/service/coordinator_client.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/string/split.h"
+#include "paddle/utils/string/split.h"
 
 static const int max_port = 65535;
 

@@ -147,6 +147,7 @@ static void GetInfoFromTheTmpOp(ir::Graph* graph,
 inline void ConvertToFusedOp(OpDesc* op) {
   const std::map<std::string, std::string> fused_ops = {
       {"conv2d", "fused_conv2d"},
+      {"conv2d_transpose", "conv2d_transpose_bias"},
       {"depthwise_conv2d", "fused_conv2d"},
       {"elementwise_add", "fused_elementwise_add"},
       {"elementwise_sub", "fused_elementwise_sub"},

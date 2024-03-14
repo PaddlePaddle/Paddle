@@ -356,15 +356,13 @@ template <typename T, typename T_out>
 void Execute(const OneDNNContext& dev_ctx,
              const DenseTensor* x,
              const DenseTensor* filter,
+             const DenseTensor* bias,
              const std::vector<int>& strides,
              const std::vector<int>& paddings,
              const std::string& padding_algorithm,
              int groups,
              const std::vector<int>& dilations,
              DenseTensor* out) {
-  const auto* bias =
-      dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
-
   std::shared_ptr<dnnl::deconvolution_forward> conv_p;
   std::shared_ptr<dnnl::memory> src_memory_p;
   std::shared_ptr<dnnl::memory> weights_memory_p;
@@ -407,6 +405,23 @@ void Execute(const OneDNNContext& dev_ctx,
       args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }
   } else {
+    // Check if bias obey the rules
+    if (bias) {
+      PADDLE_ENFORCE_EQ(
+          bias->layout(),
+          DataLayout::ONEDNN,
+          phi::errors::InvalidArgument(
+              "The Bias tensor's layout should be %d, but got %d.",
+              DataLayout::ONEDNN,
+              bias->layout()));
+
+      PADDLE_ENFORCE_EQ(
+          bias->dims().size(),
+          1,
+          phi::errors::InvalidArgument("Bias must only have 1 dimension, "
+                                       "i.e. X, but got dimension = %d .",
+                                       bias->dims().size()));
+    }
     // Caching Key for weights is needed
     std::string key =
         funcs::CreateKey(dev_ctx,
@@ -494,6 +509,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
     Execute<T, dtype::bfloat16>(dev_ctx,
                                 &x,
                                 &filter,
+                                nullptr,
                                 strides,
                                 paddings,
                                 padding_algorithm,
@@ -504,6 +520,63 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
     Execute<T, float>(dev_ctx,
                       &x,
                       &filter,
+                      nullptr,
+                      strides,
+                      paddings,
+                      padding_algorithm,
+                      groups,
+                      dilations,
+                      out);
+  }
+}
+
+template <typename T, typename Context>
+void Conv2dTransposeBiasKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& filter,
+                               const paddle::optional<DenseTensor>& bias,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               const std::vector<int>& output_padding UNUSED,
+                               const IntArray& output_size UNUSED,
+                               const std::string& padding_algorithm,
+                               int groups,
+                               const std::vector<int>& dilations,
+                               const std::string& data_format UNUSED,
+                               DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
+                    AllocationType::CPU,
+                    phi::errors::PreconditionNotMet(
+                        "Operator oneDNN Conv must use CPUPlace"));
+
+  const bool is_BFLOAT16 =
+      dev_ctx.HasDnnAttr("mkldnn_data_type")
+          ? PADDLE_GET_CONST(std::string,
+                             dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
+                "bfloat16"
+          : false;
+  const bool force_fp32_output =
+      dev_ctx.HasDnnAttr("force_fp32_output")
+          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
+          : false;
+  const bool use_bfloat16 = (!force_fp32_output && is_BFLOAT16);
+
+  if (use_bfloat16) {
+    Execute<T, dtype::bfloat16>(dev_ctx,
+                                &x,
+                                &filter,
+                                bias.get_ptr(),
+                                strides,
+                                paddings,
+                                padding_algorithm,
+                                groups,
+                                dilations,
+                                out);
+  } else {
+    Execute<T, float>(dev_ctx,
+                      &x,
+                      &filter,
+                      bias.get_ptr(),
                       strides,
                       paddings,
                       padding_algorithm,
@@ -543,6 +616,15 @@ PD_REGISTER_KERNEL(conv2d_transpose,
                    OneDNN,
                    ONEDNN,
                    phi::Conv2dTransposeKernel,
+                   float,
+                   phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ConvTransposeGetKernelTypeForVar;
+}
+
+PD_REGISTER_KERNEL(conv2d_transpose_bias,
+                   OneDNN,
+                   ONEDNN,
+                   phi::Conv2dTransposeBiasKernel,
                    float,
                    phi::dtype::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::ConvTransposeGetKernelTypeForVar;

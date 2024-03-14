@@ -40,7 +40,7 @@ void DyScheduleImpl::MergeExprs() {
   std::string primitive = "MergeExprs";
   std::ostringstream os;
   auto exprs = this->GetModule().GetExprs();
-  if (exprs.size() == 1U) return;
+  if (exprs.size() <= 1U) return;
   if (!exprs[0].As<ir::Block>()) {
     os << "Expr[0] of module_expr should be a Block!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);

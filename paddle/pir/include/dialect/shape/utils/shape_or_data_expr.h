@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace symbol {
 
@@ -60,7 +60,7 @@ class ShapeOrData {
   bool operator==(const ShapeOrData<T>& other) const {
     if (data_.has_value() && !other.data_.has_value()) return false;
     if (!data_.has_value() && other.data_.has_value()) return false;
-    if (shape_.size() != shape_.size()) return false;
+    if (shape_.size() != other.shape_.size()) return false;
 
     if (data_.has_value() && other.data_.has_value()) {
       if (data_.value().size() != other.data_.value().size()) return false;

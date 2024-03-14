@@ -2115,7 +2115,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 next_grad_node_creation_str = "\n".join(
                     next_grad_node_creation_str
                 )
-                next_grad_node_creation_str = f"""
+                if self.backward_api_name in prim_white_list:
+                    next_grad_node_creation_str = ""
+                else:
+                    next_grad_node_creation_str = f"""
   if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {{
 {next_grad_node_creation_str}
   }}
@@ -2584,7 +2587,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             def _gen_api_call_code_block(
                 in_prim_white_list: bool,
                 has_kernel_impl: bool,
-                has_higher_order_node: bool,
                 indention: int,
             ):
                 """This function will generate code block for calling composite or
@@ -2602,7 +2604,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 Args:
                     in_prim_white_list (bool): Whether current op in `prim_white_list`.
                     has_kernel_impl (bool): Whether current op has kernel implementation.
-                    has_higher_order_node (bool): Whether current op has next grad op.
                     indention (int): Number of single space for whole code block indention.
                 """
                 if in_prim_white_list:
@@ -2617,8 +2618,6 @@ if (!create_graph) {{
 {indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
 }}
 """
-                    if has_higher_order_node:
-                        code = f"auto need_skip = false;{code}"
                 else:
                     code = f"""
 std::string grad_op_name = "{composite_grad_api_name}";
@@ -2670,14 +2669,12 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
                 grad_function_call_str = _gen_api_call_code_block(
                     self.backward_api_name in prim_white_list,
                     has_kernel_impl,
-                    has_higher_order_node,
                     0,
                 )
             else:
                 grad_function_call_str = _gen_api_call_code_block(
                     self.backward_api_name in prim_white_list,
                     has_kernel_impl,
-                    has_higher_order_node,
                     2,
                 )
         else:

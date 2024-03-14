@@ -55,7 +55,7 @@ class FusionMergePassHelper : public FusionHelperBase {
   }
 
   GroupList operator()() {
-    // run fusion merge untill no update.
+    // run fusion merge until no update.
     DoFusionMerge();
     for (auto& group : fusion_groups_) {
       VLOG(3) << "Fusion Group -> " << group->group_id;
@@ -199,13 +199,13 @@ class FusionMergePassHelper : public FusionHelperBase {
       // check dependency
       if (IsDependencySimplify(producer, candidate, candidates)) {
         VLOG(4) << "IsDependencySimplify, Can't fuse " << candidate->group_id
-                << ", As it depency others!";
+                << ", As it dependency others!";
         continue;
       }
 
       if (IsDependency(producer, candidate, candidates)) {
         VLOG(4) << "IsDependency, Can't fuse " << candidate->group_id
-                << ", As it depency others!";
+                << ", As it dependency others!";
         continue;
       }
 
@@ -698,7 +698,7 @@ class FusionMergePassHelper : public FusionHelperBase {
           sub_group->nodes.insert(sub_group->nodes.begin(),
                                   producer->CollectNodes()[0]);
           sub_group->nodes_set.insert(producer->CollectNodes()[0]);
-          // remove depency.
+          // remove dependency.
           consumer->input_nodes.erase(producer->CollectNodes()[0]);
           consumer->mut_producer_groups()->erase(producer);
           producer->mut_consumer_groups()->erase(consumer);

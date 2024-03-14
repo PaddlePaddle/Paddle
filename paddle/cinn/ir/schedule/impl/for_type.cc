@@ -53,7 +53,7 @@ void DyScheduleImpl::MutateForType(const Expr& loop,
        << static_cast<int>(for_type) << "!\n";
   }
 
-  auto loop_copy = ir::ir_utils::IRCopy(loop);
+  auto loop_copy = ir::ir_utils::IRCopy(loop, /* copy_buffer_node = */ false);
   auto* new_for_node = loop_copy.As<ir::For>();
   CHECK(new_for_node);
   new_for_node->set_for_type(for_type);

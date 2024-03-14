@@ -33,12 +33,6 @@ class DynamicExpandOpPattern
 
   bool MatchAndRewrite(paddle::dialect::ExpandOp op,
                        pir::PatternRewriter& rewriter) const override {
-    if (!op->operand_source(1)
-             .defining_op()
-             ->isa<cinn::dialect::GenerateShapeOp>()) {
-      return false;
-    }
-
     const ::pir::Operation* broadcast = [&] {
       int x_rank = op->operand_source(0)
                        .type()
@@ -56,7 +50,7 @@ class DynamicExpandOpPattern
       pir::ShapeConstraintIRAnalysis& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-      const auto& UpdateOutputShapeByDimExpr = [&]() -> std::vector<int64_t> {
+      const auto& GetOutputShapeByDimExpr = [&]() -> std::vector<int64_t> {
         std::vector<int64_t> out_shape(out_rank, -1);
         if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
           VLOG(3) << "found shape dialect";
@@ -72,7 +66,7 @@ class DynamicExpandOpPattern
         return out_shape;
       };
 
-      auto out_shape = UpdateOutputShapeByDimExpr();
+      auto out_shape = GetOutputShapeByDimExpr();
 
       return rewriter.Build<cinn::dialect::BroadcastOp>(
           op->operand_source(0), broadcast_axes, out_shape);

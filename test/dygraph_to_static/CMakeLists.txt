@@ -80,3 +80,12 @@ foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
       STATUS "PT Disabled OpTest: not found ${ITEST} in dygraph_to_static")
   endif()
 endforeach()
+
+# PIR only tests for dygraph_to_static
+set(PIR_ONLY_TEST_FILES test_error)
+foreach(ITEST ${PIR_ONLY_TEST_FILES})
+  if(TEST ${ITEST})
+    set_tests_properties(${ITEST} PROPERTIES ENVIRONMENT
+                                             "FLAGS_enable_pir_api=True")
+  endif()
+endforeach()

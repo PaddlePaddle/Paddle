@@ -144,5 +144,14 @@ std::string GetExternFuncName(const cinn::common::Target& target,
   return func_proto_name;
 }
 
+std::vector<Expr> ToCinnExprs(const std::vector<ir::Dim>& args) {
+  std::vector<Expr> exprs;
+  std::transform(args.begin(),
+                 args.end(),
+                 std::back_inserter(exprs),
+                 [](const ir::Dim& arg) { return arg->dim_expr; });
+  return exprs;
+}
+
 }  // namespace hlir
 }  // namespace cinn

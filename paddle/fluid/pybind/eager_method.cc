@@ -1449,10 +1449,41 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
                                              PyObject* kwargs) {
   EAGER_TRY
   phi::DenseTensor* ptr = nullptr;
+  phi::DenseTensor tensor_after_reshard;
   if (self->tensor.is_selected_rows()) {
     auto* selected_rows =
         static_cast<phi::SelectedRows*>(self->tensor.impl().get());
     ptr = static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
+  } else if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    auto* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    PADDLE_ENFORCE(
+        dist_tensor->initialized(),
+        paddle::platform::errors::Fatal(
+            "The input dist tensor can't be uninitialized for we don't "
+            "know the correct mesh to be reshard."));
+    const auto& placements = dist_tensor->placements();
+    bool need_reshard = false;
+    for (const auto& placement : placements) {
+      if (!placement->is_replicated()) {
+        need_reshard = true;
+        break;
+      }
+    }
+    if (need_reshard) {
+      tensor_after_reshard = ReshardXToReplicated(dist_tensor);
+      ptr = &tensor_after_reshard;
+    } else {
+      ptr = dist_tensor->unsafe_mutable_value();
+    }
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `_getitem_from_offset` method of (Dist)Tensor is not supported "
+        "in the current PaddlePaddle, please recompile and install "
+        "PaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
+#endif
   } else {
     ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   }

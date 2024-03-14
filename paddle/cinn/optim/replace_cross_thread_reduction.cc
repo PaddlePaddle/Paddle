@@ -19,6 +19,7 @@
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
 #include <vector>
 
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/hlir/pe/reduction.h"
 #include "paddle/cinn/ir/ir.h"
@@ -46,6 +47,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
   bool CanReplace(const ir::ScheduleBlockRealize* block_realize) {
     const ir::ScheduleBlock* schedule_block =
         block_realize->schedule_block.As<ir::ScheduleBlock>();
+
     CHECK_NOTNULL(schedule_block);
 
     if (block_realize->schedule_block.As<ir::ScheduleBlock>()->name.substr(
@@ -67,20 +69,27 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
             if (x->as_var()) {
               reduce_var_names.insert(x->as_var()->name);
             }
+
             return false;
           });
     }
 
+    auto IsThreadBindOnReduceAxis = [&](const ir::For* for_node) {
+      return reduce_var_names.count(for_node->loop_var->name) > 0 &&
+             for_node->is_gpu_thread_binded();
+    };
+
     std::vector<int> thread_binded_reduce_loop_indices;
+    bool is_thread_binded_inner_loop = false;
     for (int i = 0; i < cur_loops_.size(); ++i) {
-      if (reduce_var_names.count(cur_loops_[i].As<ir::For>()->loop_var->name) >
-          0) {
-        if (cur_loops_[i].As<ir::For>()->is_gpu_thread_binded()) {
-          if (ir::GetLoopExtent(cur_loops_[i]) > 1024) {
-            return false;
-          }
-          thread_binded_reduce_loop_indices.push_back(i);
+      if (is_thread_binded_inner_loop ||
+          IsThreadBindOnReduceAxis(cur_loops_[i].As<ir::For>())) {
+        if (ir::GetLoopExtent(cur_loops_[i]) > 1024) {
+          return false;
         }
+
+        is_thread_binded_inner_loop = true;
+        thread_binded_reduce_loop_indices.push_back(i);
       }
     }
     if (thread_binded_reduce_loop_indices.size() == 0 ||
@@ -138,6 +147,14 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
       original_update_stmt = original_update_body;
     }
 
+    const auto& IsWarpReduce = cinn::adt::match{
+        [&](const ir::NoneReduceMethod&) { return ir::Expr(false); },
+        [&](const ir::WarpReduceMethod&) { return ir::Expr(true); },
+        [&](const ir::BlockReduceMethod&) { return ir::Expr(false); },
+    };
+    ir::Expr return_warp =
+        std::visit(IsWarpReduce, schedule_block->reduce_method);
+
 #define REPLACE_TO_EXTERNAL_CALL(Op)                                     \
   if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {            \
     auto* node = original_update_stmt.As<ir::Store>()->value.As<Op>();   \
@@ -154,8 +171,8 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     tmp_buffer->dtype = tmp_dtype;                                       \
     tmp_buffer->memory_type = ir::MemoryType::GPUShared;                 \
     shm_buffer_.insert(tmp_buffer);                                      \
-    original_update_stmt.As<ir::Store>()->value =                        \
-        lang::CallExtern(reduce_func_name, {node->b(), tmp_buffer});     \
+    original_update_stmt.As<ir::Store>()->value = lang::CallExtern(      \
+        reduce_func_name, {node->b(), tmp_buffer, return_warp});         \
   }
 
     REPLACE_TO_EXTERNAL_CALL(ir::Add)

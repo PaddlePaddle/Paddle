@@ -65,7 +65,8 @@ option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_ONLY "Compile CINN only in Paddle" OFF)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
-
+option(WITH_PIP_CUDA_LIBRARIES
+       "Paddle uses the CUDA library provided by NVIDIA" OFF)
 find_package(Git REQUIRED)
 
 # config GIT_URL with github mirrors to speed up dependent repos clone
@@ -97,11 +98,16 @@ endif()
 
 if(WITH_GPU AND NOT APPLE)
   #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
-  if(LINUX)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL
+                                            "x86_64")
     set(CUDA_USE_STATIC_CUDA_RUNTIME
         OFF
         CACHE BOOL "" FORCE)
     set(CMAKE_CUDA_FLAGS "--cudart shared")
+    if(WITH_PIP_CUDA_LIBRARIES)
+      #(Note risemeup1): Flag 'WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
+      add_definitions(-DWITH_PIP_CUDA_LIBRARIES)
+    endif()
   endif()
   enable_language(CUDA)
   message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "

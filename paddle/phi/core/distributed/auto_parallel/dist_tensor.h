@@ -178,6 +178,8 @@ class DistTensor final
                      size_t requested_size = 0,
                      bool fake_alloc = false) override;
 
+  void clear();
+
  private:
   friend class ReshardFunction;
 

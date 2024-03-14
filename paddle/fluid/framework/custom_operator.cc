@@ -32,11 +32,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
+#include "paddle/utils/string/string_helper.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/backends/device_manager.h"

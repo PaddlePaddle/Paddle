@@ -251,8 +251,19 @@ struct Argument {
   DECL_ARGUMENT_FIELD(trt_exclude_var_names,
                       TRTExcludeVarNames,
                       std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_forbid_dynamic_op, TRTForbidDynamicOp, bool);
+
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_fp16,
+                      TRTParameterRunFp16,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_int8,
+                      TRTParameterRunInt8,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_bfp16,
+                      TRTParameterRunBfp16,
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode, int);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine,

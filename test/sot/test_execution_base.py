@@ -33,7 +33,7 @@ def simple(x):
     return ret
 
 
-class TestExecutor(TestCaseBase):
+class TestExecutionBase(TestCaseBase):
     def test_simple(self):
         x = paddle.to_tensor([1.0])
         y = paddle.to_tensor([2.0])

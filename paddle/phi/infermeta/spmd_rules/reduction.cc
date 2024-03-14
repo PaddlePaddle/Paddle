@@ -238,9 +238,9 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
     auto dims_mapping = x_dist_attr.dims_mapping();
     auto axis_value = axis.GetData();
 
-    for (size_t i = 0; i < axis_value.size(); ++i) {
-      if (axis_value[i] < 0) {
-        axis_value[i] += x_dim.size();  // NOLINT
+    for (auto& i : axis_value) {
+      if (i < 0) {
+        i += x_dim.size();
       }
     }
     std::sort(axis_value.begin(), axis_value.end());

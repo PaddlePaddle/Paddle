@@ -34,6 +34,43 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+// Check if it is a dynamic shape. If it is a dynamic shape, return true;
+// otherwise, return false
+bool IsDynamicShapeOp(const framework::OpDesc& desc) {
+  VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
+  auto* block = desc.Block();
+  auto inputs = desc.Inputs();
+  for (auto iter : inputs) {
+    for (auto var_name : iter.second) {
+      if (block) {
+        auto* var_desc = block->FindVar(var_name);
+        const auto shape = var_desc->GetShape();
+        for (auto ele : shape) {
+          if (ele < 0) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  auto outputs = desc.Outputs();
+  for (auto iter : outputs) {
+    for (auto var_name : iter.second) {
+      if (block) {
+        auto* var_desc = block->FindVar(var_name);
+        const auto shape = var_desc->GetShape();
+        for (auto ele : shape) {
+          if (ele < 0) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {  // NOLINT
@@ -89,6 +126,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
+                  bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
@@ -100,6 +138,9 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
+      return false;
+    }
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
       return false;
     }
 
@@ -3200,8 +3241,10 @@ struct GenericPluginTeller : public Teller {
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
+                  bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
+
     // only consider dynamic_shape mode
     if (!with_dynamic_shape) {
       return false;
@@ -3259,6 +3302,9 @@ struct GenericPluginTeller : public Teller {
         VLOG(3) << op_type << " has no DynamicMetaFn.";
         return false;
       }
+      if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+        return false;
+      }
       return true;
     }
   }
@@ -3270,6 +3316,7 @@ struct CustomPluginTeller : public Teller {
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
+                  bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     std::string expect_plugin_name;
@@ -3288,6 +3335,9 @@ struct CustomPluginTeller : public Teller {
         return true;
     }
     return false;
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+      return false;
+    }
   }
 };
 
@@ -3296,8 +3346,10 @@ struct CustomGenericPluginTeller : public Teller {
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
+                  bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
+
     auto& op_meta_info_map = OpMetaInfoMap::Instance();
     const auto& meta_info_map = op_meta_info_map.GetMap();
     if (meta_info_map.count(op_type) > 0) {
@@ -3322,15 +3374,20 @@ struct CustomGenericPluginTeller : public Teller {
     }
     VLOG(3) << op_type << " has no meta info";
     return false;
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+      return false;
+    }
   }
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
                     bool with_dynamic_shape,
+                    bool forbid_dynamic_op_enter_into_trt,
                     bool use_explicit_quantization) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
+
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
        PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
@@ -3341,6 +3398,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   if ((*default_teller)(desc,
                         use_no_calib_int8,
                         with_dynamic_shape,
+                        forbid_dynamic_op_enter_into_trt,
                         use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::Default);
     return true;
@@ -3349,6 +3407,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   if ((*generic_plugin_teller)(desc,
                                use_no_calib_int8,
                                with_dynamic_shape,
+                               forbid_dynamic_op_enter_into_trt,
                                use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::GenericPluginCreater);
     return true;
@@ -3357,6 +3416,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   if ((*custom_plugin_teller)(desc,
                               use_no_calib_int8,
                               with_dynamic_shape,
+                              forbid_dynamic_op_enter_into_trt,
                               use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
@@ -3365,6 +3425,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   if ((*custom_generic_plugin_teller)(desc,
                                       use_no_calib_int8,
                                       with_dynamic_shape,
+                                      forbid_dynamic_op_enter_into_trt,
                                       use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::CustomGenericPluginCreater);
     return true;

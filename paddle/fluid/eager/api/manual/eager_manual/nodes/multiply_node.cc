@@ -110,7 +110,11 @@ MultiplyGradNode::operator()(
 
   // Call grad_api function
 
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {
+  std::string grad_op_name = "multiply_grad";
+  auto need_skip =
+      paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
+          grad_op_name);
+  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {
     bool original_global_grad = egr::Controller::Instance().HasGrad();
     if (!create_graph) {
       egr::Controller::Instance().SetHasGrad(create_graph);
@@ -156,7 +160,7 @@ MultiplyGradNode::operator()(
 
   // Create Grad Node
 
-  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {
+  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {
     if (trace_backward) {
       paddle::platform::RecordEvent node_creation_record_event(
           "multiply_grad node_creation",
@@ -196,6 +200,7 @@ MultiplyGradNode::operator()(
   }
 
   VLOG(4) << "Finish AD API GRAD: multiply_grad";
+  VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
@@ -356,22 +361,39 @@ MultiplyDoubleGradNode::operator()(
 
   // Call grad_api function
 
-  bool original_global_grad = egr::Controller::Instance().HasGrad();
-  if (!create_graph) {
-    egr::Controller::Instance().SetHasGrad(create_graph);
-  }
-  paddle::prim::multiply_double_grad<paddle::Tensor>(x,
-                                                     y,
-                                                     fwd_grad_out,
-                                                     fwd_grad_grad_x_optional,
-                                                     fwd_grad_grad_y_optional,
-                                                     axis,
-                                                     api_output_0,
-                                                     api_output_1,
-                                                     api_output_2);
-  VLOG(4) << "Composite api multiply_double_grad is called ";
-  if (!create_graph) {
-    egr::Controller::Instance().SetHasGrad(original_global_grad);
+  std::string grad_op_name = "multiply_double_grad";
+  auto need_skip =
+      paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
+          grad_op_name);
+  if (!need_skip) {
+    bool original_global_grad = egr::Controller::Instance().HasGrad();
+    if (!create_graph) {
+      egr::Controller::Instance().SetHasGrad(create_graph);
+    }
+    paddle::prim::multiply_double_grad<paddle::Tensor>(x,
+                                                       y,
+                                                       fwd_grad_out,
+                                                       fwd_grad_grad_x_optional,
+                                                       fwd_grad_grad_y_optional,
+                                                       axis,
+                                                       api_output_0,
+                                                       api_output_1,
+                                                       api_output_2);
+    VLOG(4) << "Composite api multiply_double_grad is called ";
+    if (!create_graph) {
+      egr::Controller::Instance().SetHasGrad(original_global_grad);
+    }
+  } else {
+    paddle::experimental::multiply_double_grad(x,
+                                               y,
+                                               fwd_grad_out,
+                                               fwd_grad_grad_x_optional,
+                                               fwd_grad_grad_y_optional,
+                                               axis,
+                                               api_output_0,
+                                               api_output_1,
+                                               api_output_2);
+    VLOG(4) << "Fused api multiply_double_grad is called";
   }
 
   // Check NaN and Inf id needed
@@ -411,7 +433,16 @@ MultiplyDoubleGradNode::operator()(
 
   // Create Grad Node
 
+  if (need_skip) {
+    if (trace_backward) {
+      PADDLE_THROW(phi::errors::Unavailable(
+          "The Op multiply_double_grad doesn't have any grad"
+          "op. If you don't intend calculating higher order"
+          "derivatives, please set `create_graph`to False."));
+    }
+  }
   VLOG(4) << "Finish AD API GRAD: multiply_double_grad";
+  VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
@@ -573,6 +604,7 @@ MultiplyGradNode::operator()(
         "derivatives, please set `create_graph`to False."));
   }
   VLOG(4) << "Finish AD API GRAD: multiply_grad";
+  VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {

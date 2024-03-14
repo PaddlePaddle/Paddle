@@ -366,6 +366,9 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     PyObject *result = PyObject_CallObject(callback, args);
     Py_DECREF(args);
     if (result == NULL) {
+#if PY_VERSION_HEX >= 0x030C0000
+      Internal_PyEvalFrameClearAndPop(tstate, frame);
+#endif
       return NULL;
     }
     code = PyObject_GetAttrString(result, "code");

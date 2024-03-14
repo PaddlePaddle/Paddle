@@ -14,10 +14,11 @@
 
 #include "paddle/phi/kernels/slice_grad_kernel.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fill_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
-#include "paddle/phi/kernels/strided_copy_kernel.h"
+#include "paddle/phi/kernels/stride_funcs.h"
 
 namespace phi {
 
@@ -33,10 +34,12 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                             DenseTensor* input_grad) {
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
-  PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
-                       phi::FillKernel<data_t, Context>(
-                           dev_ctx, *input_grad, 0, input_grad);
-                     }));
+  phi::StridedTensorFill<Context>(input.dtype(),
+                                  "SliceGradStridedKernel",
+                                  dev_ctx,
+                                  *input_grad,
+                                  0,
+                                  input_grad);
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   SliceStridedKernel<Context>(dev_ctx,
@@ -47,17 +50,22 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                               infer_flags,
                               decrease_axis,
                               &tmp);
-  PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx,
-                           out_grad,
-                           common::vectorize<int64_t>(tmp.dims()),
-                           common::vectorize<int64_t>(tmp.strides()),
-                           tmp.offset(),
-                           &tmp);
-                     }));
+  phi::StridedTensorCopy<Context>(input.dtype(),
+                                  "SliceGradStridedKernel",
+                                  dev_ctx,
+                                  out_grad,
+                                  common::vectorize<int64_t>(tmp.dims()),
+                                  common::vectorize<int64_t>(tmp.strides()),
+                                  tmp.offset(),
+                                  &tmp);
 }
-
 }  // namespace phi
+
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
     slice_grad, STRIDED, phi::SliceGradStridedKernel) {}
+#else
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(slice_grad,
+                                         STRIDED,
+                                         phi::SliceGradStridedKernel) {}
+#endif

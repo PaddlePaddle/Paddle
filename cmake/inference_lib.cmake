@@ -392,8 +392,8 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/drr/)
 copy(
   inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/transforms/transform_general_functions.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/transforms/)
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/utils/general_functions.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/utils/)
 
 # the include path of paddle needs to be changed to adapt to inference api path
 add_custom_command(

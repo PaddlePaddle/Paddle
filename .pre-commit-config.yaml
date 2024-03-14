@@ -36,7 +36,7 @@ repos:
         # Exclude some unit test files that require tabs.
         exclude: |
             (?x)^(
-                test/dygraph_to_static/test_legacy_error.py
+                test/dygraph_to_static/test_error.py
             )$
 -   repo: local
     hooks:

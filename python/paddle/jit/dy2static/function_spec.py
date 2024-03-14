@@ -194,6 +194,20 @@ class FunctionSpec:
                         dtype=convert_dtype(var_spec.dtype),
                     )
                     feed_value.stop_gradient = stop_gradient
+
+                    # warp dist tensor
+                    from paddle.distributed.auto_parallel.static.dist_input_spec import (
+                        DistributedInputSpec,
+                    )
+
+                    if isinstance(var_spec, DistributedInputSpec):
+                        dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
+                            feed_value.type(),
+                            var_spec.local_shape,
+                            var_spec.mesh,
+                            var_spec.dims_mapping,
+                        )
+                        feed_value.set_type(dist_dense_tensor_type)
                 else:
                     feed_value = var_spec
                 inputs.append(feed_value)
@@ -225,8 +239,29 @@ class FunctionSpec:
                     need_check_feed=False,
                     stop_gradient=stop_gradient,
                 )
+                # warp dist tensor
+                from paddle.distributed.auto_parallel.static.dist_input_spec import (
+                    DistributedInputSpec,
+                )
+                from paddle.distributed.auto_parallel.static.dist_tensor import (
+                    DistributedTensor,
+                )
+
+                if isinstance(var_spec, DistributedInputSpec):
+                    from paddle.distributed.auto_parallel.static.dist_context import (
+                        get_default_distributed_context,
+                    )
+
+                    default_dist_ctx = get_default_distributed_context()
+                    dist_tensor = DistributedTensor(feed_layer)
+                    dist_tensor.dist_attr.process_mesh = var_spec.mesh
+                    dist_tensor.dist_attr.dims_mapping = var_spec.dims_mapping
+                    dist_tensor.dist_attr.mark_annotated("process_mesh")
+                    dist_tensor.dist_attr.mark_annotated("dims_mapping")
+                    default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
             else:
                 feed_layer = var_spec
+
             inputs.append(feed_layer)
 
         return paddle.utils.pack_sequence_as(input_with_spec, inputs)

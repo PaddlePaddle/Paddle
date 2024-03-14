@@ -30,6 +30,7 @@ namespace framework {
 namespace pir {
 
 struct CINNKernelInfo {
+  std::string fn_name;
   void* fn_ptr;
   void* infer_shape_fn_ptr;
 
@@ -54,16 +55,17 @@ struct CINNKernelInfo {
 
 struct CompatibleInfo {
   static constexpr char* kNamePrefix = "var";
-  // TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP
-  // macros or attempt to unify Op name with Paddle and CINN.
-  static const std::unordered_map<std::string, std::string> OP_NAMES;
   // NOTE(Aurelius): Some ops in CINN register different
   // name between OpMapper and Compute/Schedule, such as
   // 'subtract': 1. OpMapper: 'elementwise_sub'; 2. Compute/Schedule:
   // 'subtract'.
-  static const std::unordered_set<std::string> CINN_WHITE_OPS;
+  static const std::unordered_map<std::string, std::string> OP_NAMES;
 
-  static bool IsSupportCinn(const ::pir::Operation& op);
+  static const std::unordered_set<std::string> TOCINN_OPS;
+
+  static bool IsDeniedForCinn(const ::pir::Operation& op);
+
+  static bool IsSupportForCinn(const ::pir::Operation& op);
 
   static std::string OpName(const ::pir::Operation& op);
 

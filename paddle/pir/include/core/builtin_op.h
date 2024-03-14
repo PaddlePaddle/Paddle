@@ -23,6 +23,8 @@ namespace pir {
 class Program;
 class Block;
 constexpr char kStopGradientAttrName[] = "stop_gradient";
+constexpr char kOutputDimExprs[] = "output_dim_exprs";
+constexpr char kSymbolBindings[] = "symbol_bindings";
 ///
 /// \brief ModuleOp
 ///

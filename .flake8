@@ -22,7 +22,7 @@ ignore =
     E741
 per-file-ignores =
     # These files need tabs for testing.
-    test/dygraph_to_static/test_legacy_error.py:E101
+    test/dygraph_to_static/test_error.py:E101
 
     # Ignore compare with True in sot unittest
     test/sot/test_dup_top.py:E712

@@ -54,7 +54,7 @@ void ThreadPool::Init() {
 ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
-    // TODO(Yancey1989): binding the thread on the specify CPU numberw
+    // TODO(Yancey1989): binding the thread on the specify CPU number
     thread = std::make_unique<std::thread>([this] { ThreadPool::TaskLoop(); });
   }
 }

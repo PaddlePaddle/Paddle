@@ -153,8 +153,8 @@ std::unordered_map<uint32_t, uint32_t> OpYamlInfoParser::GetInplaceIdMap()
 
 bool OpYamlInfoParser::HasView(const std::string& out_name) const {
   auto& view_info = std::get<3>(op_info_tuple_).view;
-  for (size_t i = 0; i < view_info.size(); i++) {
-    if (out_name == view_info[i].first) {
+  for (const auto& i : view_info) {
+    if (out_name == i.first) {
       return true;
     }
   }
@@ -164,9 +164,9 @@ bool OpYamlInfoParser::HasView(const std::string& out_name) const {
 const std::string& OpYamlInfoParser::ViewName(
     const std::string& out_name) const {
   auto& view_info = std::get<3>(op_info_tuple_).view;
-  for (size_t i = 0; i < view_info.size(); i++) {
-    if (out_name == view_info[i].first) {
-      return view_info[i].second;
+  for (const auto& i : view_info) {
+    if (out_name == i.first) {
+      return i.second;
     }
   }
   PADDLE_THROW(phi::errors::PreconditionNotMet(

@@ -114,13 +114,13 @@ TEST(DimExpr, Equal) {
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
   ASSERT_EQ(sym0 + sym1, sym0 + sym1);
-  ASSERT_NE(sym0 + sym1, sym1 + sym0);
+  ASSERT_EQ(sym0 + sym1, sym1 + sym0);
   ASSERT_EQ(sym0 + constant1, DimExpr("S0") + constant1);
   ASSERT_EQ(sym0 - sym1, sym0 - sym1);
   ASSERT_NE(sym0 - sym1, sym1 - sym0);
   ASSERT_EQ(sym0 - constant1, DimExpr("S0") - constant1);
   ASSERT_EQ(sym0 * sym1, sym0 * sym1);
-  ASSERT_NE(sym0 * sym1, sym1 * sym0);
+  ASSERT_EQ(sym0 * sym1, sym1 * sym0);
   ASSERT_EQ(sym0 * constant1, DimExpr("S0") * constant1);
   ASSERT_EQ(sym0 / sym1, sym0 / sym1);
   ASSERT_NE(sym0 / sym1, sym1 / sym0);
@@ -134,7 +134,7 @@ TEST(DimExpr, Equal) {
   ASSERT_EQ(builder.Min(sym0, constant1),
             builder.Min(DimExpr("S0"), constant1));
   ASSERT_EQ(builder.Broadcast(sym0, sym1), builder.Broadcast(sym0, sym1));
-  ASSERT_NE(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
+  ASSERT_EQ(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
   ASSERT_EQ(builder.Broadcast(sym0, constant1),
             builder.Broadcast(DimExpr("S0"), constant1));
 }
@@ -158,7 +158,7 @@ TEST(DimExpr, Hash) {
   DimExpr sym1 = DimExpr("S1");
   ASSERT_EQ((std::hash<DimExpr>()(sym0 + sym1)),
             (std::hash<DimExpr>()(sym0 + sym1)));
-  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+  ASSERT_EQ((std::hash<DimExpr>()(sym0 + sym1)),
             (std::hash<DimExpr>()(sym1 + sym0)));
   ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
             (std::hash<DimExpr>()(sym0 - sym1)));

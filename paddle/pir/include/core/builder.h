@@ -126,6 +126,8 @@ class Builder {
                           const std::vector<Type> &output_types,
                           pir::OpInfo op_info);
 
+  Operation *Insert(Operation *op);
+
   /// Create an operation of specific op type at the current insertion point.
   template <typename OpTy, typename... Args>
   OpTy Build(Args &&...args);
@@ -157,8 +159,6 @@ class Builder {
   IR_API Complex128Attribute complex128_attr(phi::dtype::complex<double> value);
 
  private:
-  Operation *Insert(Operation *op);
-
   IrContext *context_;
 
   InsertionPoint insertion_point_;

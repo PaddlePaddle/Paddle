@@ -230,9 +230,9 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           coeff_,
           lr_ratio_,
           beta1_pow.data<MPDType>(),
-          beta1_pow_out_ptr,
+          nullptr,  // beta1_pow_out_ptr,
           beta2_pow.data<MPDType>(),
-          beta2_pow_out_ptr,
+          nullptr,  // beta2_pow_out_ptr,
           moment1.data<MPDType>(),
           dev_ctx.template Alloc<MPDType>(moment1_out),
           moment2.data<MPDType>(),
@@ -254,9 +254,9 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           coeff_,
           lr_ratio_,
           beta1_pow.data<MPDType>(),
-          beta1_pow_out_ptr,
+          nullptr,  // beta1_pow_out_ptr,
           beta2_pow.data<MPDType>(),
-          beta2_pow_out_ptr,
+          nullptr,  // beta2_pow_out_ptr,
           moment1.data<MPDType>(),
           dev_ctx.template Alloc<MPDType>(moment1_out),
           moment2.data<MPDType>(),
@@ -269,6 +269,25 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           master_out_data,
           param.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+    }
+    if (!use_global_beta_pow) {
+      // update beta1_pow and beta2_pow
+      int r = xpu::scale(dev_ctx.x_context(),
+                         beta1_pow.data<MPDType>(),
+                         beta1_pow_out_ptr,
+                         beta1_pow.numel(),
+                         false,
+                         beta1_,
+                         0.0f);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+      r = xpu::scale(dev_ctx.x_context(),
+                     beta2_pow.data<MPDType>(),
+                     beta2_pow_out_ptr,
+                     beta2_pow.numel(),
+                     false,
+                     beta2_,
+                     0.0f);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
   return;

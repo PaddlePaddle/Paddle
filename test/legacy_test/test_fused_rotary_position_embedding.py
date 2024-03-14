@@ -461,7 +461,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         for x, out in zip([q, k, v], [out_q, out_k, out_v]):
             # The reason why fetch `out` based on `x` is that
             # if input is None, the output of static function might be not NoneType
-            # but pir.Value with type pd_op.tensor<0xf32> in pir mode.
+            # but pir.Value with type builtin.tensor<0xf32> in pir mode.
             if x is not None:
                 fetch_list.append(out)
 
@@ -575,7 +575,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         for x, out in zip([q, k, v], [out_q, out_k, out_v]):
             # The reason why fetch `out` based on `x` is that
             # if input is None, the output of static function might be not NoneType
-            # but pir.Value with type pd_op.tensor<0xf32> in pir mode.
+            # but pir.Value with type builtin.tensor<0xf32> in pir mode.
             if x is not None:
                 fetch_list.append(out)
 

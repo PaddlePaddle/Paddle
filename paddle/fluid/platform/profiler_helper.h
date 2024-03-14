@@ -132,7 +132,7 @@ static double ToMegaBytes(size_t bytes) {
 
 // Print results
 void PrintMemProfiler(
-    const std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>
+    const std::map<Place, std::unordered_map<std::string, MemoryProfilerReport>>
         &annotation_report,
     const size_t name_width,
     const size_t data_width) {
@@ -200,7 +200,7 @@ void PrintMemProfiler(
 void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
   if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   // place, annotation, alloc times,  alloc size
-  std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>
+  std::map<Place, std::unordered_map<std::string, MemoryProfilerReport>>
       annotation_report;
 
   for (auto &tmp : events) {

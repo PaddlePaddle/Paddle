@@ -1555,6 +1555,11 @@ class RNNBase(LayerList):
             )
             if in_dynamic_mode():
                 with paddle.no_grad():
+                    dtype = params[0].dtype
+                    if isinstance(dtype, core.DataType):
+                        dtype = paddle.base.framework.paddle_type_to_proto_type[
+                            dtype
+                        ]
                     _legacy_C_ops.coalesce_tensor(
                         self._all_weights,
                         self._all_weights,
@@ -1564,7 +1569,7 @@ class RNNBase(LayerList):
                         "use_align",
                         False,
                         "dtype",
-                        params[0].dtype,
+                        dtype,
                     )
                     return
             # for static-graph, append coalesce_tensor into startup program

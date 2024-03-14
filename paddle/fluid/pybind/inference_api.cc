@@ -803,7 +803,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableXpu,
            py::arg("l3_size") = 16 * 1024 * 1024,
            py::arg("l3_locked") = false,
-           py::arg("conv_autotune") = true,
+           py::arg("conv_autotune") = false,
            py::arg("conv_autotune_file") = "",
            py::arg("transformer_encoder_precision") = "int16",
            py::arg("transformer_encoder_adaptive_seqlen") = false,
@@ -928,6 +928,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::EnableTunedTensorRtDynamicShape,
            py::arg("shape_range_info_path") = "",
+
            py::arg("allow_build_at_runtime") = true)
       .def("tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::tuned_tensorrt_dynamic_shape)
@@ -936,6 +937,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
       .def("exp_disable_tensorrt_subgraph",
            &AnalysisConfig::Exp_DisableTensorRtSubgraph)
+      .def("exp_specify_tensorrt_subgraph_precision",
+           &AnalysisConfig::Exp_SpecifyTensorRTSubgraphPrecision)
+      .def("exp_disable_tensorrt_dynamic_shape_ops",
+           &AnalysisConfig::Exp_DisableTensorRTDynamicShapeOPs)
       .def("enable_tensorrt_dla",
            &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)
@@ -1031,6 +1036,7 @@ void BindAnalysisConfig(py::module *m) {
             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
           },
           py::return_value_policy::reference)
+      .def("enable_custom_passes", &AnalysisConfig::EnableCustomPasses)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);

@@ -422,14 +422,14 @@ isl::set isl_set_dim_name_if_null(
   return isl::manage(set);
 }
 
-isl::map RemoveAxiesByInputNames(const isl::map &x,
-                                 const isl::set &origin_domain,
-                                 const std::vector<std::string> &dim_in_names) {
+isl::map RemoveAxesByInputNames(const isl::map &x,
+                                const isl::set &origin_domain,
+                                const std::vector<std::string> &dim_in_names) {
   std::string map_str = isl_map_to_str(x.get());
   isl::ctx this_ctx = x.ctx();
   isl::map temp_transform(this_ctx, map_str);
   auto related_output_names =
-      GetRelatedOutputAxies(x, origin_domain, dim_in_names);
+      GetRelatedOutputAxes(x, origin_domain, dim_in_names);
   if (dim_in_names.empty()) return temp_transform;
   for (auto &i : dim_in_names) {
     temp_transform = isl::manage(isl_remove_axis_by_name(
@@ -442,7 +442,7 @@ isl::map RemoveAxiesByInputNames(const isl::map &x,
   return temp_transform;
 }
 
-isl::map RemoveAxiesByOutputNames(
+isl::map RemoveAxesByOutputNames(
     const isl::map &x,
     const isl::set &origin_domain,
     const std::vector<std::string> &dim_out_names) {
@@ -450,7 +450,7 @@ isl::map RemoveAxiesByOutputNames(
   isl::ctx this_ctx = x.ctx();
   isl::map temp_transform(this_ctx, map_str);
   auto related_input_names =
-      GetRelatedInputAxies(x, origin_domain, dim_out_names);
+      GetRelatedInputAxes(x, origin_domain, dim_out_names);
   if (dim_out_names.empty()) return temp_transform;
   for (auto &i : dim_out_names) {
     temp_transform = isl::manage(isl_remove_axis_by_name(
@@ -463,24 +463,24 @@ isl::map RemoveAxiesByOutputNames(
   return temp_transform;
 }
 
-std::vector<std::string> GetRelatedOutputAxies(
+std::vector<std::string> GetRelatedOutputAxes(
     const isl::map &x,
     const isl::set &origin_domain,
     const std::vector<std::string> &dim_in_names) {
   std::string map_str = isl_map_to_str(x.get());
-  VLOG(1) << "GetRelatedOutputAxies map_str is : " << map_str;
+  VLOG(1) << "GetRelatedOutputAxes map_str is : " << map_str;
   isl::ctx this_ctx = x.ctx();
   isl::map temp_transform(this_ctx, map_str);
   auto dim_out_names = isl_get_dim_names(temp_transform, isl_dim_out);
   std::set<std::string> dim_in_set;
   for (auto &i : dim_in_names) {
-    VLOG(1) << "GetRelatedOutputAxies dim_in_names is : " << i;
+    VLOG(1) << "GetRelatedOutputAxes dim_in_names is : " << i;
     dim_in_set.insert(i);
   }
   std::set<std::string> res_set;
   for (auto &i : dim_out_names) {
     auto related_in_dim =
-        GetRelatedInputAxies(temp_transform, origin_domain, {i});
+        GetRelatedInputAxes(temp_transform, origin_domain, {i});
     for (auto &j : related_in_dim) {
       if (dim_in_set.count(j) > 0) {
         res_set.insert(i);
@@ -489,24 +489,24 @@ std::vector<std::string> GetRelatedOutputAxies(
   }
   std::vector<std::string> res;
   for (auto &i : res_set) {
-    VLOG(1) << "GetRelatedOutputAxies res is : " << i;
+    VLOG(1) << "GetRelatedOutputAxes res is : " << i;
     res.push_back(i);
   }
   return res;
 }
 
-std::vector<std::string> GetRelatedInputAxies(
+std::vector<std::string> GetRelatedInputAxes(
     const isl::map &x,
     const isl::set &origin_domain,
     const std::vector<std::string> &dim_out_names,
     bool strict) {
   std::string map_str = isl_map_to_str(x.get());
-  VLOG(1) << "GetRelatedInputAxies map_str is : " << map_str;
+  VLOG(1) << "GetRelatedInputAxes map_str is : " << map_str;
   isl::ctx this_ctx = x.ctx();
   isl::map temp_transform(this_ctx, map_str);
   auto dim_in_names = isl_get_dim_names(temp_transform, isl_dim_in);
   for (auto &i : dim_out_names) {
-    VLOG(1) << "GetRelatedInputAxies dim_out_names is : " << i;
+    VLOG(1) << "GetRelatedInputAxes dim_out_names is : " << i;
     temp_transform = isl::manage(isl_remove_axis_by_name(
         temp_transform.release(), isl_dim_out, i.c_str()));
   }
@@ -526,10 +526,10 @@ std::vector<std::string> GetRelatedInputAxies(
   }
   for (auto &i : dim_in_names) {
     if (utils::Count(&map_str, i) != utils::Count(&deleted_map, i)) {
-      VLOG(1) << "GetRelatedInputAxies res is : " << i;
+      VLOG(1) << "GetRelatedInputAxes res is : " << i;
       res.push_back(i);
     } else if (out_set_without_suffix.count(i) > 0 && !strict) {
-      VLOG(1) << "GetRelatedInputAxies res is : " << i;
+      VLOG(1) << "GetRelatedInputAxes res is : " << i;
       res.push_back(i);
     } else if (out_set.count(i) > 0) {
       auto range1 = isl_set_get_axis_range_by_name(origin_domain.get(), i);

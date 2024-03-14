@@ -65,9 +65,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/to_string.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"

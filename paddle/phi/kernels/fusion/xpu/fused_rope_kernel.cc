@@ -33,7 +33,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   if (q.numel() <= 0) {
     return;
   }
@@ -54,8 +54,8 @@ void FusedRopeKernel(const Context& dev_ctx,
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   int64_t sin_cos_len = batch_size * seq_len * head_dim;
-  auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUT>(sin_cos_len);
-  auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUT>(sin_cos_len);
+  auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
+  auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
 
   if (sin.get_ptr() && cos.get_ptr()) {
     PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
@@ -67,9 +67,9 @@ void FusedRopeKernel(const Context& dev_ctx,
                           cos.get_ptr()->dims()));
   }
 
-  XPUGetSinCosData<XPUT, Context>(
+  XPUGetSinCosData<XPUType, Context>(
       dev_ctx, sin, position_ids, sin_data, batch_size, seq_len, head_dim);
-  XPUGetSinCosData<XPUT, Context>(
+  XPUGetSinCosData<XPUType, Context>(
       dev_ctx, cos, position_ids, cos_data, batch_size, seq_len, head_dim);
 
   if (use_neox_rotary_style) {
@@ -77,10 +77,11 @@ void FusedRopeKernel(const Context& dev_ctx,
     PADDLE_THROW(phi::errors::Unimplemented(
         "XPU do not support rotary_embedding with use_neox_rotary_style set."));
   } else {
-    auto* outq_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out_q));
-    XPUFusedRotaryHalf<XPUT, Context>(
+    auto* outq_data =
+        reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_q));
+    XPUFusedRotaryHalf<XPUType, Context>(
         dev_ctx,
-        reinterpret_cast<const XPUT*>(q.data<T>()),
+        reinterpret_cast<const XPUType*>(q.data<T>()),
         sin_data,
         cos_data,
         outq_data,
@@ -91,10 +92,10 @@ void FusedRopeKernel(const Context& dev_ctx,
 
     if (k) {
       auto* outk_data =
-          reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out_k));
-      XPUFusedRotaryHalf<XPUT, Context>(
+          reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_k));
+      XPUFusedRotaryHalf<XPUType, Context>(
           dev_ctx,
-          reinterpret_cast<const XPUT*>(k->data<T>()),
+          reinterpret_cast<const XPUType*>(k->data<T>()),
           sin_data,
           cos_data,
           outk_data,
@@ -106,10 +107,10 @@ void FusedRopeKernel(const Context& dev_ctx,
 
     if (v) {
       auto* outv_data =
-          reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out_v));
-      XPUFusedRotaryHalf<XPUT, Context>(
+          reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_v));
+      XPUFusedRotaryHalf<XPUType, Context>(
           dev_ctx,
-          reinterpret_cast<const XPUT*>(v->data<T>()),
+          reinterpret_cast<const XPUType*>(v->data<T>()),
           sin_data,
           cos_data,
           outv_data,

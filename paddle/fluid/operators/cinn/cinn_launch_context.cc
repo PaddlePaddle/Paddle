@@ -44,9 +44,9 @@
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
+#include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_string(static_runtime_data_save_path);

@@ -282,7 +282,7 @@ void ConvertAssignValueOp(OpDesc* op) {
     }
     op->RemoveAttr("int64_values");
   }
-  op->SetAttr("values", values);
+  if (!values.empty()) op->SetAttr("values", values);
 }
 
 void ConvertProgram(ProgramDesc* program) {

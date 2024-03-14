@@ -86,7 +86,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
     gpuError_t err = cudaEventQuery(event);
     if (err == cudaErrorNotReady) {
       VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
-      // Erase the completded event before "it"
+      // Erase the completed event before "it"
       outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
       return false;
     }
@@ -96,7 +96,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
     gpuError_t err = hipEventQuery(event);
     if (err == hipErrorNotReady) {
       VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
-      // Erase the completded event before "it"
+      // Erase the completed event before "it"
       outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
       return false;
     }
@@ -234,7 +234,7 @@ void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
 
 uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
   if (UNLIKELY(in_cuda_graph_capturing_)) {
-    VLOG(7) << "Memory release forbidden in CUDA Graph Captruing";
+    VLOG(7) << "Memory release forbidden in CUDA Graph Capturing";
     return 0;
   }
 
@@ -249,8 +249,8 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
 }
 
 void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
-  // NOTE(Ruibiao): This condition is to reduce lock competion. It does not need
-  // to be thread-safe since here occasional misjudgments are permissible.
+  // NOTE(Ruibiao): This condition is to reduce lock completion. It does not
+  // need to be thread-safe since here occasional misjudgments are permissible.
   if (unfreed_allocations_.empty()) {
     return;
   }

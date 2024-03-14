@@ -356,9 +356,9 @@ void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst) {
 }
 
 using Scalar = paddle::experimental::ScalarBase<Tensor>;
-bool operator==(const Scalar& lhs, const Scalar& rhs);
+TEST_API bool operator==(const Scalar& lhs, const Scalar& rhs);
 
-std::ostream& operator<<(std::ostream& os, const Scalar& s);
+TEST_API std::ostream& operator<<(std::ostream& os, const Scalar& s);
 
 template <typename T>
 std::vector<T> ExtractPlainVector(

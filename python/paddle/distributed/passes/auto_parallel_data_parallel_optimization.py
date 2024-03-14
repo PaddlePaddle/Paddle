@@ -440,7 +440,12 @@ class DataParallelOptimizationPass(PassBase):
     def _update_program(self, grad_groups):
         block = default_main_program().global_block()
 
-        remove_op_types = ['scale', 'c_allreduce_sum', 'c_wait_compute']
+        remove_op_types = [
+            'scale',
+            'c_allreduce_avg',
+            'c_allreduce_sum',
+            'c_wait_compute',
+        ]
 
         for i, group in enumerate(grad_groups[::-1]):
             # skip unfused big tensor
@@ -492,9 +497,10 @@ class DataParallelOptimizationPass(PassBase):
                 )
 
             allreduce_op = block.ops[group.allreduce_op_idx]
-            assert (
-                allreduce_op.type == 'c_allreduce_sum'
-            ), f"should found c_allreduce_sum op but found {str(allreduce_op)}"
+            assert allreduce_op.type in [
+                'c_allreduce_avg',
+                'c_allreduce_sum',
+            ], f"should found c_allreduce_avg or c_allreduce_sum op but found {str(allreduce_op)}"
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
             )

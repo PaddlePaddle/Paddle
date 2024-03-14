@@ -27,3 +27,4 @@ pir::DDim ShapedTypeInterface::GetShape() const {
 
 }  // namespace pir
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::WrapTypeInterface)

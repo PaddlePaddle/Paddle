@@ -480,18 +480,9 @@ void HandleForSpecialOp(pir::Operation* op,
         auto shape = op->attribute<dialect::IntArrayAttribute>("shape");
         auto dim = phi::make_ddim(shape.data().GetData());
         auto dtype = op->attribute<dialect::DataTypeAttribute>("dtype");
-        auto place = op->attribute<dialect::PlaceAttribute>("place").data();
-        if (place.GetType() == phi::AllocationType::UNDEFINED) {
-          place = phi::CPUPlace();
-        }
         if (!common::contain_unknown_dim(dim)) {
           phi::DenseTensorMeta meta(dtype.data(), dim);
           t->set_meta(meta);
-          auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-          dev_ctx->Alloc(t, dtype.data());
-          VLOG(10) << "[Alloc var]: "
-                   << op->attribute<pir::StrAttribute>("name") << " "
-                   << t->initialized();
         }
       }
     }

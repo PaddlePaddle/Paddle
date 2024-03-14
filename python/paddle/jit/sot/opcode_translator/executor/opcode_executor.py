@@ -27,6 +27,8 @@ from typing import Any, Callable
 
 import opcode
 
+from paddle.jit.utils import OrderedSet
+
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_BREAKGRAPH_CODES
 from ...utils import (
@@ -1748,7 +1750,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             end_idx: instruction index where simulation get break.
             stack: current stack
         """
-        store_vars = list(stack)
+        store_vars = list(OrderedSet(stack))
         store_var_info = {var.id: None for var in stack}
 
         for name in restore_names:
@@ -1789,8 +1791,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
         stack_size_after_if = len(self.stack) - 1
 
         # 2. create true_fn and false_fn
-        def create_if_branch_fn(start_idx, input_var_names):
-            if self._instructions[start_idx].opname == "RETURN_VALUE":
+        def create_if_branch_fn(start_idx, input_var_names, is_pop_jump_branch):
+            # JUMP_IF_* maybe jump to the RETURN_VALUE, we should skip this case
+            # We shouldn't skip POP_JUMP_* case, because it will cause the stack size to be incorrect
+            if (
+                self._instructions[start_idx].opname == "RETURN_VALUE"
+                and not is_pop_jump_branch
+            ):
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
@@ -1813,6 +1820,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         true_fn = create_if_branch_fn(
             start_idx=true_fn_start_index,
             input_var_names=true_fn_input_var_names,
+            is_pop_jump_branch=False,
         )
 
         false_fn_read_names, _ = analysis_used_names(
@@ -1825,6 +1833,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         false_fn = create_if_branch_fn(
             start_idx=false_fn_start_index,
             input_var_names=false_fn_input_var_names,
+            is_pop_jump_branch=instr.opname.startswith("POP_JUMP"),
         )
 
         # 4. setup vars which is created in loop as Undefind
@@ -1879,6 +1888,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         else:
             false_start_code = self._graph.pycode_gen.gen_return()
 
+        # Replace the jump instruction with the new if structure
         if_code.jump_to = false_start_code
 
         self.new_code = self._graph.pycode_gen.gen_pycode()

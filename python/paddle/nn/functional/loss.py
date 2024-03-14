@@ -2945,7 +2945,7 @@ def cross_entropy(
         check_variable_and_dtype(
             input,
             'input',
-            ['float16', 'float32', 'float64'],
+            ['uint16', 'float16', 'float32', 'float64'],
             'softmax_cross_entropy',
         )
         check_variable_and_dtype(

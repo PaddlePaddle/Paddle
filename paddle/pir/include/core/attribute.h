@@ -20,6 +20,7 @@
 
 constexpr char kAttrStopGradients[] = "stop_gradient";
 constexpr char kAttrIsPersistable[] = "is_persistable";
+constexpr char kAttrOpDistAttrs[] = "op_dist_attrs";
 
 namespace pir {
 class AttributeStorage;

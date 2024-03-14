@@ -40,6 +40,7 @@ class CinnJitInstruction::FnPtrImpl {
       : cinn_kernel_info_(cinn_kernel_info) {}
 
   void Run(const std::vector<phi::DenseTensor*>& kernel_args, void* stream) {
+    VLOG(6) << "Start Run: " << cinn_kernel_info_.fn_name;
     func_args_.clear();
 
     // 1. Convert the phi::DenseTensor type to cinn_pod_value_t
@@ -65,11 +66,13 @@ class CinnJitInstruction::FnPtrImpl {
     // 3. Launch host kernel
     ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
         static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+    VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
 
   void InferShape(const std::vector<phi::DenseTensor*>& kernel_args,
                   int32_t input_tensor_size,
                   int32_t output_tensor_size) {
+    VLOG(6) << "Start InferShape: " << cinn_kernel_info_.fn_name;
     func_args_.clear();
 
     // 1. Convert the phi::DenseTensor type to cinn_pod_value_t
@@ -113,6 +116,7 @@ class CinnJitInstruction::FnPtrImpl {
       kernel_args[input_tensor_size + i]->Resize(dim);
       free(output_tensor_shapes[i]);
     }
+    VLOG(6) << "End InferShape: " << cinn_kernel_info_.fn_name;
   }
 
  private:
@@ -163,6 +167,12 @@ CinnJitInstruction::CinnJitInstruction(
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     tensor->set_type(
         paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
+    for (size_t j = 0; j < alloc_tensor_type.dims().size(); ++j) {
+      if (alloc_tensor_type.dims()[j] < 0) {
+        need_update_shape = true;
+        continue;
+      }
+    }
     tensor->Resize(alloc_tensor_type.dims());
   }
 }
@@ -173,7 +183,7 @@ void CinnJitInstruction::Run() {
 
   auto stream = gpu_ctx->stream();
 
-  if (FLAGS_cinn_bucket_compile) {
+  if (FLAGS_cinn_bucket_compile && need_update_shape) {
     fn_ptr_impl_->InferShape(
         tensor_args_, input_tensor_size, output_tensor_size);
   }
@@ -184,8 +194,8 @@ void CinnJitInstruction::Run() {
   // 2. exexute kernel
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
 #else
-  VLOG(phi::FATAL) << "Not Supported: cinn jit instruction currently does not "
-                      "support non-CUDA kernel";
+  VLOG(0) << "Not Supported: cinn jit instruction currently does not "
+             "support non-CUDA kernel";
 #endif
 }
 

@@ -2193,12 +2193,13 @@ def insert_dependencies_for_vars(
     sync=False,
     op_namescope=None,
     use_nop=False,
+    skip_insert_when_sequential_run=True,
 ):
     """
     dependency: op that generates prior_vars should be run before op that generates post_vars
     """
 
-    if is_sequential_run():
+    if skip_insert_when_sequential_run and is_sequential_run():
         return
 
     if isinstance(prior_vars, Variable):

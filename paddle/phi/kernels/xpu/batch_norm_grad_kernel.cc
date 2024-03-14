@@ -96,7 +96,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
                     true,
                     phi::errors::InvalidArgument(
                         "The 'data_layout' attribute must be NCHW or NHWC. "
-                        "But recevived 'data_layout' is [%s].",
+                        "But received 'data_layout' is [%s].",
                         data_layout));
 
   const auto data_layout_val = common::StringToDataLayout(data_layout);
@@ -120,7 +120,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
       x_dims.size() >= 2 && x_dims.size() <= 5,
       true,
       phi::errors::InvalidArgument(
-          "The size of input's dimensions should be between 2 and 5"
+          "The size of input's dimensions should be between 2 and 5. "
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
 
@@ -192,7 +192,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
   const auto *global_mean = mean.get_ptr();
   const auto *global_var = variance.get_ptr();
 
-  // TODO(guozibin): hadle the situation case of N * H * W = 1
+  // TODO(guozibin): handle the situation case of N * H * W = 1
   int r = 0;
   if (is_inplace) {
     float *global_inv_std_data = nullptr;

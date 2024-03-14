@@ -16,7 +16,7 @@ from paddle.base import unique_name
 from paddle.utils import gast
 
 from ..utils import (
-    ORIGI_INFO,
+    ORIGIN_INFO,
     Dygraph2StaticException,
     ast_to_source_code,
 )
@@ -374,8 +374,8 @@ class SingleReturnTransformer(BaseTransformer):
                     value=return_node.value,
                 )
             )
-            return_origin_info = getattr(return_node, ORIGI_INFO, None)
-            setattr(assign_nodes[-1], ORIGI_INFO, return_origin_info)
+            return_origin_info = getattr(return_node, ORIGIN_INFO, None)
+            setattr(assign_nodes[-1], ORIGIN_INFO, return_origin_info)
 
         # If there is a return in the body or else of if, the remaining statements
         # will not be executed, so they can be properly replaced.

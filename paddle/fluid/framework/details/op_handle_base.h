@@ -64,7 +64,9 @@ class OpHandleBase {
 
   virtual bool GetSkipRunning() const { return skip_running_; }
 
-  virtual void SetSkipRunning(bool skip_runing) { skip_running_ = skip_runing; }
+  virtual void SetSkipRunning(bool skip_running) {
+    skip_running_ = skip_running;
+  }
 
   virtual std::string Name() const = 0;
 

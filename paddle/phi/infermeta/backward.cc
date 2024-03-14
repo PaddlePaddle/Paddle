@@ -1180,16 +1180,16 @@ void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out) {
   size_t x_rank = x.dims().size();
-  std::vector<int> formated_axis = axis;
+  std::vector<int> formatted_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = static_cast<int>(axis[i] + x_rank);
+      formatted_axis[i] = static_cast<int>(axis[i] + x_rank);
     }
   }
 
   std::vector<int> reversed_axis(axis);
-  for (int i = 0; i < static_cast<int>(formated_axis.size()); i++) {
-    reversed_axis[formated_axis[i]] = i;
+  for (int i = 0; i < static_cast<int>(formatted_axis.size()); i++) {
+    reversed_axis[formatted_axis[i]] = i;
   }
 
   TransposeInferMeta(x, reversed_axis, out);

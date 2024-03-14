@@ -40,9 +40,11 @@ ProcessMesh GetSubProcessMesh(const ProcessMesh& mesh, int64_t axis) {
   std::vector<int64_t> process_ids;
   for (int64_t i = 0; i < shape_of_axis; ++i) {
     coord[axis] = i;
-    int64_t rank = coord.back();
-    for (int64_t j = static_cast<int64_t>(coord.size() - 2); j >= 0; --j) {
-      rank += coord[j] * mesh.dim_size(j + 1);
+    int64_t rank = 0;
+    int64_t degree = 1;
+    for (int64_t j = static_cast<int64_t>(coord.size() - 1); j >= 0; --j) {
+      rank += coord[j] * degree;
+      degree *= mesh.dim_size(j);
     }
     process_ids.emplace_back(mesh.process_ids()[rank]);
   }

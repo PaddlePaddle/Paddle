@@ -286,8 +286,8 @@ std::vector<paddle::Tensor> RunBackward(
             node_input_buffer->Buffers(), create_graph, is_general_grad);
 
     if (!inputs.empty() && is_general_grad) {
-      GeneralGrad::Instance().SetResultForEnddingNodes(grad_output_tensors,
-                                                       node);
+      GeneralGrad::Instance().SetResultForEndingNodes(grad_output_tensors,
+                                                      node);
     }
 
     // retain_grad or not

@@ -85,7 +85,7 @@ def test_enumerate_10(layer_list, x):
     return sum
 
 
-class TestExecutor(TestCaseBase):
+class TestEnumerate(TestCaseBase):
     def test_cases(self):
         x = 8
         y = 5

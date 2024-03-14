@@ -24,6 +24,18 @@
 namespace cinn {
 namespace ir {
 
+class ArrangeStorageTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "ArrangeStorageTactic"; }
+
+ private:
+  std::unordered_set<std::string> output_names_;
+};
+
 // [block_name, [var, for_node]]
 using VarToForMap =
     std::unordered_map<std::string, std::unordered_map<ir::Var, ir::Expr>>;
@@ -418,6 +430,10 @@ void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
     VLOG(6) << "Set store tensor of block " << block_id << " to register";
     sch->SetBuffer(store_block, "local");
   }
+}
+
+std::unique_ptr<ScheduleTactic> CreateArrangeStorageTactic() {
+  return std::make_unique<ArrangeStorageTactic>();
 }
 
 }  // namespace ir

@@ -66,6 +66,15 @@ class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
   DataLayout data_layout() const;
   const LoD &lod() const;
   size_t offset() const;
+
+  ///
+  /// \brief Implementation of 'classof' that compares the type id of
+  /// the provided value with the concrete type id.
+  ///
+  static bool classof(Type type);
+
+  static DenseTensorType dyn_cast_impl(Type type);
+
   static DenseTensorType get(IrContext *ctx,
                              Type dtype,
                              const Dim &dims,

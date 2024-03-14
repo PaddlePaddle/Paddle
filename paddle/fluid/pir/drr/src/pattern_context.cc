@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/src/pattern_graph.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {

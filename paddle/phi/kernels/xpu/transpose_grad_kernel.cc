@@ -36,16 +36,16 @@ void TransposeGradKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int> formated_axis = axis;
+  std::vector<int> formatted_axis = axis;
   for (size_t i = 0; i < axis_size; i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + axis_size;
+      formatted_axis[i] = axis[i] + axis_size;
     }
   }
 
   std::vector<int> reversed_axis(axis);
   for (size_t i = 0; i < axis_size; i++) {
-    reversed_axis[formated_axis[i]] = i;
+    reversed_axis[formatted_axis[i]] = i;
   }
 
   std::vector<int> out_grad_dim_vec = common::vectorize<int>(out_grad.dims());

@@ -48,8 +48,8 @@ PADDLE_MODULE_PREFIX = 'paddle.'
 
 ALREADY_D2S = '__already_d2s'
 
-# NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
-ORIGI_INFO = "Original information of source code for ast node."
+# NOTE(liym27): Please use `getattr(ast_node, ORIGIN_INFO)` instead of . operation to get the original information of ast node.
+ORIGIN_INFO = "Original information of source code for ast node."
 
 DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
 
@@ -218,7 +218,7 @@ AS_NOT_INNER_FUNC_LIST = {"paddle.nn.layer.container.Sequential"}
 def as_not_paddle_func(path):
     """
     Append API or class as ignored case for is_paddle_func, and they
-    will be retured False while calling is_paddle_func(func).
+    will be returned False while calling is_paddle_func(func).
     """
     global INNER_FUNC_WHITE_LIST
     AS_NOT_INNER_FUNC_LIST.add(path)

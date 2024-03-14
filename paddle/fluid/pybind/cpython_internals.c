@@ -109,7 +109,7 @@ static void Internal_clear_thread_frame(PyThreadState *tstate,
          tstate->datastack_top);
   tstate->c_recursion_remaining--;
   assert(frame->frame_obj == NULL || frame->frame_obj->f_frame == frame);
-  Internal_PyFrame_Clear(frame);  // see _PyFrame_ClearExceptCode
+  Internal_PyFrame_ClearExceptCode(frame);
   Py_DECREF(frame->f_code);
   tstate->c_recursion_remaining++;
   Internal_PyThreadState_PopFrame(tstate, frame);
@@ -125,7 +125,7 @@ static void Internal_clear_gen_frame(PyThreadState *tstate,
   gen->gi_exc_state.previous_item = NULL;
   tstate->c_recursion_remaining--;
   assert(frame->frame_obj == NULL || frame->frame_obj->f_frame == frame);
-  Internal_PyFrame_Clear(frame);  // see _PyFrame_ClearExceptCode
+  Internal_PyFrame_ClearExceptCode(frame);
   tstate->c_recursion_remaining++;
   frame->previous = NULL;
 }
@@ -584,7 +584,11 @@ static void Internal_take_ownership(PyFrameObject *f,
 }
 
 // Call on 3.11 _PyFrame_Clear is called on 3.12+ _PyFrame_ClearExceptCode
+#if PY_VERSION_HEX >= 0x030c0000
+void Internal_PyFrame_ClearExceptCode(_PyInterpreterFrame *frame) {
+#else
 void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
+#endif
   /* It is the responsibility of the owning generator/coroutine
    * to have cleared the enclosing generator, if any. */
   assert(frame->owner != FRAME_OWNED_BY_GENERATOR ||

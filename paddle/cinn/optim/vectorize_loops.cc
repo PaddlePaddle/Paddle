@@ -810,7 +810,8 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
         cuda_vectorizer.Visit(&new_forloop->body);
         // unroll the new forloop to compute each element of the vector
         // iteratively
-        auto copied_loop = ir::ir_utils::IRCopy(_new_forloop);
+        auto copied_loop =
+            ir::ir_utils::IRCopy(_new_forloop, /* copy_buffer_node = */ false);
         copied_loop.As<ir::For>()->set_unrolled();
         optim::UnrollLoop(&copied_loop);
         // add cast exprs of vector type in the front of vectorized forloop,
@@ -893,13 +894,14 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
           Var new_iterator_outer(
               cinn::common::UniqName(outer_for->loop_var->name + "_s"));
 
-          Expr inner_for_b =
-              Block::Make({For::Make(new_iterator_inner,
-                                     inner_for->min,
-                                     b,
-                                     ForType::Serial,
-                                     DeviceAPI::UNK,
-                                     ir::ir_utils::IRCopy(inner_for->body))});
+          Expr inner_for_b = Block::Make({For::Make(
+              new_iterator_inner,
+              inner_for->min,
+              b,
+              ForType::Serial,
+              DeviceAPI::UNK,
+              ir::ir_utils::IRCopy(inner_for->body,
+                                   /* copy_buffer_node = */ false))});
           cinn::ir::ir_utils::IrReplaceVarBroadcast(
               &inner_for_b, inner_for->loop_var, Expr(new_iterator_inner));
 

@@ -26,8 +26,8 @@ TensorDistAttribute DistDenseTensorType::tensor_dist_attr() const {
   return storage()->tensor_dist_attr;
 }
 
-const common::DDim& DistDenseTensorType::global_ddim() const {
-  return storage()->global_ddim;
+const common::DDim& DistDenseTensorType::local_ddim() const {
+  return storage()->local_ddim;
 }
 
 DistDenseTensorType DistDenseTensorType::get(

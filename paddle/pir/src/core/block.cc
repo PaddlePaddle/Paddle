@@ -24,7 +24,10 @@
 namespace pir {
 Block::~Block() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destroyed a block that is still in use.";
+    auto parent_op = GetParentOp();
+    PADDLE_FATAL(
+        "Destroyed a block that is still in use.. The parent op is : %s",
+        parent_op ? parent_op->name() : std::string("nullptr"));
   }
   ClearOps();
   ClearKwargs();

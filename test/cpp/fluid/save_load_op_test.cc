@@ -58,7 +58,7 @@ TEST(SaveLoadOp, CPU) {
   }
   auto& actual_lod = target->lod();
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
-  for (size_t i = 0; i < expect_lod.size(); ++i) {
+  for (size_t i = 0; i < expect_lod.size(); ++i) {  // NOLINT
     for (size_t j = 0; j < expect_lod[i].size(); ++j) {
       EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
     }
@@ -141,7 +141,7 @@ TEST(SaveFP16Op, CPU) {
   }
   auto& actual_lod = target->lod();
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
-  for (size_t i = 0; i < expect_lod.size(); ++i) {
+  for (size_t i = 0; i < expect_lod.size(); ++i) {  // NOLINT
     for (size_t j = 0; j < expect_lod[i].size(); ++j) {
       EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
     }
@@ -191,7 +191,7 @@ TEST(LoadFP16Op, CPU) {
 
   auto& actual_lod = target.lod();
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
-  for (size_t i = 0; i < expect_lod.size(); ++i) {
+  for (size_t i = 0; i < expect_lod.size(); ++i) {  // NOLINT
     for (size_t j = 0; j < expect_lod[i].size(); ++j) {
       EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
     }

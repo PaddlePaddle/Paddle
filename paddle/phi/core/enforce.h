@@ -79,41 +79,6 @@ limitations under the License. */
 namespace phi {
 namespace enforce {
 
-namespace details {
-template <typename T>
-inline constexpr bool IsArithmetic() {
-  return std::is_arithmetic<T>::value;
-}
-
-template <typename T1, typename T2, bool kIsArithmetic /* = true */>
-struct TypeConverterImpl {
-  using Type1 = typename std::common_type<T1, T2>::type;
-  using Type2 = Type1;
-};
-
-template <typename T1, typename T2>
-struct TypeConverterImpl<T1, T2, false> {
-  using Type1 = T1;
-  using Type2 = T2;
-};
-
-template <typename T1, typename T2>
-struct TypeConverter {
-  static constexpr bool kIsArithmetic =
-      IsArithmetic<T1>() && IsArithmetic<T2>();
-  using Type1 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type1;
-  using Type2 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type2;
-};
-
-template <typename T1, typename T2>
-using CommonType1 = typename std::add_lvalue_reference<
-    typename std::add_const<typename TypeConverter<T1, T2>::Type1>::type>::type;
-
-template <typename T1, typename T2>
-using CommonType2 = typename std::add_lvalue_reference<
-    typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
-}  // namespace details
-
 template <typename StrType>
 std::string GetCompleteTraceBackString(StrType&& what,
                                        const char* file,
@@ -130,14 +95,6 @@ std::string GetCompleteTraceBackString(StrType&& what,
 inline bool is_error(bool stat) { return !stat; }
 
 void ThrowWarnInternal(const std::string& message);
-
-#define PADDLE_THROW(...)                                         \
-  do {                                                            \
-    HANDLE_THE_ERROR                                              \
-    throw ::common::enforce::EnforceNotMet(                       \
-        ::common::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                          \
-  } while (0)
 
 #if defined(__CUDA_ARCH__)
 // For cuda, the assertions can affect performance and it is therefore

@@ -20,6 +20,7 @@
 
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/utils/type_defs.h"
@@ -59,6 +60,8 @@ std::vector<Expr> ToCinnExprs(const std::vector<T> &args) {
       });
   return exprs;
 }
+
+std::vector<Expr> ToCinnExprs(const std::vector<ir::Dim> &args);
 
 template <typename T>
 std::vector<T> ToPodVector(const std::vector<Expr> &args) {

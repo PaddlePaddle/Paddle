@@ -56,7 +56,7 @@ class ThreadPool {
       std::packaged_task<std::unique_ptr<common::enforce::EnforceNotMet>()>;
 
   // Returns the singleton of ThreadPool.
-  static ThreadPool* GetInstance();
+  TEST_API static ThreadPool* GetInstance();
 
   ~ThreadPool();
 
@@ -80,7 +80,7 @@ class ThreadPool {
             new common::enforce::EnforceNotMet(ex));
       } catch (const std::exception& e) {
         PADDLE_THROW(phi::errors::Fatal(
-            "Unexpected exception is catched in thread pool. All "
+            "Unexpected exception is caught in thread pool. All "
             "throwable exception in Paddle should be an EnforceNotMet."
             "The exception is:\n %s.",
             e.what()));
@@ -129,7 +129,7 @@ class ThreadPoolIO : ThreadPool {
   static void InitIO();
 
  private:
-  // NOTE: threadpool in base will be inhereted here.
+  // NOTE: threadpool in base will be inherited here.
   static std::unique_ptr<ThreadPool> io_threadpool_;
   static std::once_flag io_init_flag_;
 };
