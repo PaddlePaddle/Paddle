@@ -44,6 +44,14 @@ namespace trivial_fusion_detail {
 
 namespace ComposeUtils {
 
+template <typename T>
+std::vector<T> ConcatVector(const std::vector<T>& first,
+                            const std::vector<T>& second) {
+  std::vector<T> result = first;
+  result.insert(result.end(), second.begin(), second.end());
+  return result;
+}
+
 std::vector<ir::Var> ExprVec2VarVec(const std::vector<ir::Expr>& in) {
   std::vector<ir::Var> out;
   for (auto& expr : in) {
@@ -783,8 +791,9 @@ ir::Expr CreateReduceExpr(
       (TransformerUtils::ChangeTensorLoadTransformer(
            origin_write_tensor, new_write_tensor(indice_expr)) *
        TransformerUtils::WrapStoreTransformer(new_write_tensor, indice_expr) *
-       TransformerUtils::WrapScheduleRealizer(output_iters,
-                                              new_write_tensor->name) *
+       TransformerUtils::WrapScheduleRealizer(
+           ComposeUtils::ConcatVector(output_iters, reduce_iters),
+           new_write_tensor->name) *
        TransformerUtils::WrapForsTransformer(reduce_iters))(reduce_body);
   const auto& gather_body = ir::Block::Make(
       std::vector<ir::Expr>({init_schedule_block, reduce_schedule_block}));
