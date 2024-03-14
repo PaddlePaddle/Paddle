@@ -489,11 +489,7 @@ def amp_guard(
                 warnings.warn('XPUPlace only support float16 amp.')
                 enable = False
             # For custom device:
-            if tracer._expected_place.is_custom_place() and (
-                dtype == 'bfloat16'
-            ):
-                warnings.warn('CustomPlace only support float16 amp.')
-                enable = False
+            # TODO(@gexiao): add device support check.
             # For gpu float16: Compute Capability should >= 7.
             # For gpu bfloat16: Compute Capability should >= 8 & CUDA Version should >= 11.
             if tracer._expected_place.is_gpu_place():
@@ -753,11 +749,7 @@ def amp_decorate(
         else:
             return models, optimizers
     # For custom device:
-    if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):
-        if optimizers is None:
-            return models
-        else:
-            return models, optimizers
+    # TODO(@gexiao): add device support check.
     # For gpu float16: Compute Capability should >= 7.
     # For gpu bfloat16: Compute Capability should >= 8 & CUDA Version should >= 11.
     if tracer._expected_place.is_gpu_place():
