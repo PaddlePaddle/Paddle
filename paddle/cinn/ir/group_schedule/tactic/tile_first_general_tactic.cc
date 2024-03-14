@@ -34,6 +34,8 @@ bool IsInnerThreadReduceLoopGT(const std::shared_ptr<GroupTileInfo>& tile_info,
 
 bool IsReduceBlock(const std::shared_ptr<GroupTileInfo>& tile_info,
                    const std::string& block_id) {
+  VLOG(4) << "IsReduceBlock block_id: " << block_id
+          << " count: " << tile_info->reduce_tensor_names.count(block_id);
   return tile_info->reduce_tensor_names.count(block_id) > 0;
 }
 
