@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 
@@ -216,7 +215,6 @@ class TestDistSPSyncTraining(unittest.TestCase):
                 "sync_moment": False,
             },
         }
-        os.environ["FLAGS_pre_alloc_memory"] = "1"
         fleet.init(is_collective=True, strategy=strategy)
 
     def build_model_optimizer_train(
