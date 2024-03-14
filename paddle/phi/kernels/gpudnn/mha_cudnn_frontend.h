@@ -17,13 +17,13 @@
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 
-#define CUDNN_CALL(func)                                       \
-  {                                                            \
-    auto status = func;                                        \
-    if (status != CUDNN_STATUS_SUCCESS) {                      \
-      LOG(FATAL) << "CUDNN Error : "                           \
-                 << phi::dynload::cudnnGetErrorString(status); \
-    }                                                          \
+#define CUDNN_CALL(func)                                                  \
+  {                                                                       \
+    auto status = func;                                                   \
+    if (status != CUDNN_STATUS_SUCCESS) {                                 \
+      PADDLE_THROW(phi::errors::Fatal(                                    \
+          "CUDNN Error : " + phi::dynload::cudnnGetErrorString(status))); \
+    }                                                                     \
   }
 
 enum class MHA_Layout {
