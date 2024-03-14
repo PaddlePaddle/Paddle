@@ -40,6 +40,12 @@ def log_pruned_info(cur_cfg, pruned_reason, tuner_cfg):
             strategy += str(cur_cfg[key])
             pruned_strategy = pruned_strategy + "_" + strategy
 
+    if "custom_search_dim" in tuner_cfg:
+        for key in tuner_cfg["custom_search_dim"]:
+            strategy = "".join(i.capitalize() for i in key.split("_"))
+            strategy += str(cur_cfg[key])
+            pruned_strategy = pruned_strategy + "_" + strategy
+
     try:
         from paddle.distributed.launch.main import ctx
 
@@ -204,7 +210,7 @@ def prune_by_mp_pp_history(tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs):
 
     if mp_degree is None or pp_degree is None or use_recompute is None:
         return False
-
+    history_cfgs = copy.deepcopy(history_cfgs)
     history_cfgs.extend(pruned_cfgs)
     cfgs = same_cfgs_beside(["mp_degree", "pp_degree"], cur_cfg, history_cfgs)
     if cur_cfg.get("sharding_degree") == 1:
@@ -281,7 +287,7 @@ def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
     vpp_degree = cur_cfg.get("vpp_degree", None)
     if vpp_degree is None:
         return False
-
+    history_cfgs = copy.deepcopy(history_cfgs)
     history_cfgs.extend(pruned_cfgs)
 
     cfgs = same_cfgs_beside("vpp_degree", cur_cfg, history_cfgs)
@@ -364,7 +370,7 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
     micro_batch_size = cur_cfg.get("micro_batch_size", None)
     if micro_batch_size is None:
         return False
-
+    history_cfgs = copy.deepcopy(history_cfgs)
     history_cfgs.extend(pruned_cfgs)
 
     cfgs = same_cfgs_beside(
@@ -457,7 +463,7 @@ def prune_by_sharding_history(
     sharding_stage = cur_cfg.get("sharding_stage", None)
     if sharding_stage is None:
         return False
-
+    history_cfgs = copy.deepcopy(history_cfgs)
     history_cfgs.extend(pruned_cfgs)
 
     cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
@@ -555,6 +561,7 @@ def prune_by_recompute_history(
     if recompute_level is None:
         return False
 
+    history_cfgs = copy.deepcopy(history_cfgs)
     history_cfgs.extend(pruned_cfgs)
 
     cfgs = same_cfgs_beside(
@@ -862,6 +869,7 @@ def prune_by_refined_recompute_history(
     tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]
 ):
     if tuner_cfg.get("refined_recompute", None):
+        history_cfgs = copy.deepcopy(history_cfgs)
         history_cfgs.extend(pruned_cfgs)
         rr = tuner_cfg.get("refined_recompute")
         compare = copy.deepcopy(rr)
@@ -897,4 +905,60 @@ def prune_by_refined_recompute_history(
                         cur_cfg["max_mem_usage"] = "OOM"
                         return True
 
+    return False
+
+
+@register_prune_history
+def prune_by_custom_search_dim_history(
+    tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]
+):
+    history_cfgs = copy.deepcopy(history_cfgs)
+    custom_search_dim = tuner_cfg.get("custom_search_dim", None)
+    prune_custom_search_dim = []
+    custom_dim_level = {}
+    if custom_search_dim is not None:
+        for key, value in custom_search_dim.items():
+            if value["prune"]:
+                prune_custom_search_dim.append(key)
+                custom_dim_level[key] = {
+                    key: value for value, key in enumerate(value["value"])
+                }
+
+    for key in prune_custom_search_dim:
+        history_cfgs.extend(pruned_cfgs)
+        cfgs = same_cfgs_beside(key, cur_cfg, history_cfgs)
+        if cur_cfg.get("sharding_degree") == 1:
+            cfgs = same_cfgs_beside(
+                [key, "sharding_satge"],
+                cur_cfg,
+                history_cfgs,
+            )
+
+        cur_value = cur_cfg.get(key, None)
+        if cur_value is None:
+            return False
+
+        if cfgs:
+            for cfg in cfgs:
+                cfg_value = cfg[key]
+                if (
+                    custom_dim_level[key][cfg_value]
+                    > custom_dim_level[key][cur_value]
+                    and cfg.get("time", -1) > 0
+                ):
+                    pruned_reason = f"{key}{cfg_value} may be slower because {key}{cur_value} has been already runnable."
+                    log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
+                    cur_cfg["time"] = cfg["time"]
+                    return True
+
+                # memory prune
+                if (
+                    custom_dim_level[key][cfg_value]
+                    < custom_dim_level[key][cur_value]
+                    and cfg.get("max_mem_usage") == "OOM"
+                ):
+                    pruned_reason = f"{key}{cfg_value} may cause oom because {key}{cur_value} has been already oom."
+                    log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
+                    cur_cfg["max_mem_usage"] = "OOM"
+                    return True
     return False
