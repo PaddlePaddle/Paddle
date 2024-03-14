@@ -46,6 +46,7 @@ set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
 set_tests_properties(test_loop PROPERTIES TIMEOUT 180)
+set_tests_properties(test_mnist_amp PROPERTIES TIMEOUT 240)
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)

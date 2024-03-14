@@ -154,6 +154,10 @@ set(PYBIND_SRCS
     eval_frame.c
     op_callstack_utils.cc)
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+#endif
+
 if(NOT WITH_SHARED_IR)
   # Note: We want to compile pir source into paddle.so directly, because
   # we can't get all pir symbols when link pir static lib

@@ -30,6 +30,7 @@ namespace framework {
 namespace pir {
 
 struct CINNKernelInfo {
+  std::string fn_name;
   void* fn_ptr;
   void* infer_shape_fn_ptr;
 

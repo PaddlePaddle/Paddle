@@ -111,6 +111,10 @@ void PrintOpInfo(pir::Operation* op) {
                      << ", num_results=" << op->num_results() << ")"
                      << " has InferSymbolicShapeInterface.\n\t"
                      << PrintOperationWithNoRegion(op);
+    if (op->name() == "cinn_op.group") {
+      std::cerr << "<<<<<<<<<<<<<<<<<<<< " << op->name() << "(op_id: op_"
+                << op->id() << ") START..." << std::endl;
+    }
   }
 }
 

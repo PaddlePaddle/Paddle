@@ -803,7 +803,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableXpu,
            py::arg("l3_size") = 16 * 1024 * 1024,
            py::arg("l3_locked") = false,
-           py::arg("conv_autotune") = true,
+           py::arg("conv_autotune") = false,
            py::arg("conv_autotune_file") = "",
            py::arg("transformer_encoder_precision") = "int16",
            py::arg("transformer_encoder_adaptive_seqlen") = false,

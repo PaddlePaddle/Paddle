@@ -18,6 +18,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/random_engine.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 PD_DECLARE_int32(cinn_error_message_level);
 
@@ -27,6 +28,7 @@ namespace ir {
 struct BroadcastInfo {
   std::vector<int64_t> broadcast_axes;
   std::vector<int64_t> output_shape;
+  std::vector<symbol::DimExpr> output_dim_expr;
 
   bool with_constrain{false};
   bool first_broadcast{false};
