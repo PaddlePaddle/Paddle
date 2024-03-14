@@ -97,7 +97,7 @@ from .fuse_all_reduce import (  # noqa: F401
     insert_fuse_all_reduce_by_memory_size,
     FuseAllReducePass,
 )
-from paddle.distributed.passes.pipeline_scheduler_pass import (  # noqa: F401
+from .pipeline_scheduler_pass import (  # noqa: F401
     PipelineFThenBPass,
     Pipeline1F1BPass,
     PipelineEager1F1BPass,
