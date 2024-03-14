@@ -379,7 +379,7 @@ struct StaticDimToDynamicConverter {
             symbol::TensorShapeOrDataDimExprs(old)};
       }
     }
-    LOG(FATAL) << "Dead code";
+    CINN_THROW("Dead code");
   }
 
   template <typename ConverterT>

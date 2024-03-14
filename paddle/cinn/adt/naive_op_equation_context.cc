@@ -240,7 +240,7 @@ std::optional<std::int64_t> GetArgDimSizeImpl(
     const Undefined&,
     const GetArgStaticDimT& GetInDim,
     const GetArgStaticDimT& GetOutDim) {
-  LOG(FATAL) << "position not found";
+  CINN_THROW("position not found");
 }
 
 std::optional<std::int64_t> GetArgDimSize(const OpArgDimPos& arg_dim_pos,

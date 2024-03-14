@@ -82,8 +82,10 @@ class IRContext {
     CHECK(data_.get()) << "IrContext holds null";
     auto* ctx_node = data_.get()->safe_as<TIRContextNode>();
     if (!ctx_node) {
-      LOG(FATAL) << "TypeConvertError: convert " << data_.get()->type_info()
-                 << " to " << TIRContextNode::__type_info__;
+      std::stringstream ss;
+      ss << "TypeConvertError: convert " << data_.get()->type_info() << " to "
+         << TIRContextNode::__type_info__;
+      CINN_THROW(ss.str());
     }
     return ctx_node;
   }
@@ -235,8 +237,10 @@ void LinkToParentContext(ir::Expr);
 template <typename TIRContextNode>
 IRContext IRBuilderNode::GetLastContext() const {
   if (!(contexts.back().As<TIRContextNode>())) {
-    LOG(FATAL) << "TypeError: The last context is not "
-               << TIRContextNode::__type_info__;
+    std::stringstream ss;
+    ss << "TypeError: The last context is not "
+       << TIRContextNode::__type_info__;
+    CINN_THROW(ss.str());
   }
   return contexts.back();
 }

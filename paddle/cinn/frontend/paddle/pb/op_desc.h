@@ -106,7 +106,7 @@ class OpDesc : public cpp::OpDescAPI {
       DEF_ONE(BLOCKS);
       DEF_ONE(LONGS);
       default:
-        LOG(FATAL) << "Unknown attribute type";
+        CINN_THROW("Unknown attribute type");
         return static_cast<AttrType>(-1);
     }
 #undef DEF_ONE

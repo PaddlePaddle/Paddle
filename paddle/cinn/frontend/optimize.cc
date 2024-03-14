@@ -172,8 +172,9 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
           enable_fusion = true;
         }
       } else {
-        LOG(FATAL) << "Pass " << pass
-                   << " unsupported in CINN! Please check.\n";
+        std::stringstream ss;
+        ss << "Pass " << pass << " unsupported in CINN! Please check.\n";
+        CINN_THROW(ss.str());
       }
     }
 

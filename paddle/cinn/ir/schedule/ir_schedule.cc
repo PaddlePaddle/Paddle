@@ -663,7 +663,9 @@ void IRSchedule::Annotate(const Expr& block,
   TRACE_ANNOTATE_ITEM(std::string, AnnotateStringAttr)
 #undef TRACE_ANNOTATE_ITEM
 
-  LOG(FATAL) << "Value of attribute:" << key << " input unsupported data type";
+  std::stringstream ss;
+  ss << "Value of attribute:" << key << " input unsupported data type";
+  CINN_THROW(ss.str());
 }
 
 void IRSchedule::Unannotate(Expr& block, const std::string& key) {

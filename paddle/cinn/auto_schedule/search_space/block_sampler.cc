@@ -40,7 +40,9 @@ std::unique_ptr<BlockSampler> BlockSampler::Make(
         all_blocks, default_remove_policy, rand_seed, weights);
   }
 
-  LOG(FATAL) << "Unimplemented strategy:" << strategy;
+  std::stringstream ss;
+  ss << "Unimplemented strategy:" << strategy;
+  CINN_THROW(ss.str());
   return nullptr;
 }
 

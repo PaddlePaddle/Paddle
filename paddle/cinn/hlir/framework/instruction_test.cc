@@ -267,7 +267,7 @@ class TestInstruction : public Instruction {
                                                             args_[18],
                                                             stream_);
     } else {
-      LOG(FATAL) << "Unkown Conv Type!";
+      CINN_THROW("Unkown Conv Type!");
     }
     CUDA_CALL(cudaStreamSynchronize(stream_));
   }

@@ -128,14 +128,16 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(
       const symbol::Negative<symbol::DimExpr>& dim_expr) {
-    LOG(FATAL) << "Dead code. This logical should handled by "
-                  "ConvertToValueImpl(symbol::Add<symbol::DimExpr>)";
+    CINN_THROW(
+        "Dead code. This logical should handled by "
+        "ConvertToValueImpl(symbol::Add<symbol::DimExpr>)");
   }
 
   pir::Value ConvertToValueImpl(
       const symbol::Reciprocal<symbol::DimExpr>& dim_expr) {
-    LOG(FATAL) << "Dead code. This logical should handled by "
-                  "ConvertToValueImpl(symbol::Mul<symbol::DimExpr>)";
+    CINN_THROW(
+        "Dead code. This logical should handled by "
+        "ConvertToValueImpl(symbol::Mul<symbol::DimExpr>)");
   }
 
   pir::Value ConvertToValueImpl(const symbol::Add<symbol::DimExpr>& dim_expr) {

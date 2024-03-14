@@ -600,7 +600,9 @@ std::string Type2Str(const Type &type) {
       return "unk";
 
     default:
-      LOG(FATAL) << "Not support type [" << type << "] ! Please Check.\n";
+      std::stringstream ss;
+      ss << "Not support type [" << type << "] ! Please Check.\n";
+      CINN_THROW(ss.str());
   }
   return "unk";
 }

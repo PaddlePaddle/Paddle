@@ -492,7 +492,7 @@ static std::ostream& operator<<(std::ostream& os, MemoryType t) {
     MEMORY_TYPE_FOR_ALL(__)
 
     default:
-      LOG(FATAL) << "Not supported memory type";
+      CINN_THROW("Not supported memory type");
 #undef __
   }
   return os;
@@ -500,7 +500,7 @@ static std::ostream& operator<<(std::ostream& os, MemoryType t) {
 
 template <typename T>
 Expr ExprNode<T>::Copy() const {
-  LOG(FATAL) << "Not Implemented";
+  CINN_THROW("Not Implemented");
   return Expr();
 }
 

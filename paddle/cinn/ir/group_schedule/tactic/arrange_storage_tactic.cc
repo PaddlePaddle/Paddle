@@ -397,11 +397,12 @@ void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
     } else if (cross_type.value() == CudaAxisType::kCudaThread) {
       memory_type = ir::MemoryType::GPUShared;
     } else if (cross_type.value() == CudaAxisType::kCudaBlock) {
-      LOG(FATAL) << "Fusion requires synchronization across blocks, but "
-                    "currently we do not support it.";
+      CINN_THROW(
+          "Fusion requires synchronization across blocks, but "
+          "currently we do not support it.");
       break;
     } else {
-      LOG(FATAL) << "dead code";
+      CINN_THROW("dead code");
     }
   }
 

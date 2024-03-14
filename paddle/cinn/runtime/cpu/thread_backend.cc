@@ -56,7 +56,7 @@ int cinn_backend_parallel_launch(FCINNParallelLambda flambda,
     (*flambda)(thread_num, num_task, datas);
   }
 #else
-  LOG(FATAL) << "CINN host parallel launch need OpenMP! Please check.";
+  CINN_THROW("CINN host parallel launch need OpenMP! Please check.");
 #endif  // CINN_USE_OPENMP
   return 0;
 }

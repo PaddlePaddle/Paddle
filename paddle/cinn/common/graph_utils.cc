@@ -32,7 +32,7 @@ namespace {
 void DFSSortUtil(const GraphNode *node, std::vector<GraphNode *> *order) {}
 
 std::vector<GraphNode *> DFSSort(const std::vector<GraphNode *> &nodes) {
-  LOG(FATAL) << "not implemented";
+  CINN_THROW("not implemented");
   return {};
 }
 

@@ -174,7 +174,7 @@ std::string Attribute2String(const utils::Attribute &attr) {
     }
     ss << "[" + cinn::utils::Join(attrs, ", ") + "]";
   } else {
-    LOG(FATAL) << "Unkown attribute data type! Please check.";
+    CINN_THROW("Unkown attribute data type! Please check.");
   }
   return ss.str();
 }

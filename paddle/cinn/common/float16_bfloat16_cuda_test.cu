@@ -24,12 +24,14 @@
 namespace cinn {
 namespace common {
 
-#define CUDA_CALL(func)                                            \
-  {                                                                \
-    auto status = func;                                            \
-    if (status != cudaSuccess) {                                   \
-      LOG(FATAL) << "CUDA Error : " << cudaGetErrorString(status); \
-    }                                                              \
+#define CUDA_CALL(func)                                    \
+  {                                                        \
+    auto status = func;                                    \
+    if (status != cudaSuccess) {                           \
+      std::stringstream ss;                                \
+      ss << "CUDA Error : " << cudaGetErrorString(status); \
+      CINN_THROW(ss.str());                                \
+    }                                                      \
   }
 
 class CudaMem {

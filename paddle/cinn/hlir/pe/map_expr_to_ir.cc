@@ -158,8 +158,9 @@ class MapExprToIrTranslator {
         DoEach(expr);
         break;
       default:
-        LOG(FATAL) << "Visit node_type = " << expr.node_type()
-                   << ", not supported!";
+        std::stringstream ss;
+        ss << "Visit node_type = " << expr.node_type() << ", not supported!";
+        CINN_THROW(ss.str());
         break;
     }
   }
@@ -220,7 +221,7 @@ class MapExprToIrTranslator {
     } else {
       return NoInlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
     }
-    LOG(FATAL) << "Dead code";
+    CINN_THROW("Dead code");
   }
 
   std::optional<ir::Expr> TranslateOpExprImpl(
@@ -233,7 +234,7 @@ class MapExprToIrTranslator {
   std::vector<ir::Expr> TranslateTensorIndexImpl(
       const OpCall<OpExpr>& op_call,
       const IterExprs4TensorT& IterExprs4Tensor) const {
-    LOG(FATAL) << "Dead code, no TensorIndexExpr for OpCall";
+    CINN_THROW("Dead code, no TensorIndexExpr for OpCall");
   }
 
   std::vector<ir::Expr> TranslateTensorIndexImpl(
@@ -381,7 +382,7 @@ class MapExprToIrTranslator {
       return (this->*make_store_rvalue_expr)(
           store_rvalue, op_expr_children, IterExprs4Tensor);
     }
-    LOG(FATAL) << "Dead code";
+    CINN_THROW("Dead code");
   }
 
   std::optional<ir::Expr> TranslateOpCallImpl(
@@ -685,13 +686,13 @@ class MapExprToIrTranslator {
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
   GetForTypeAndInfoImpl(const Vectorize& loop_type,
                         const LoopDescriptor& ld) const {
-    LOG(FATAL) << "Vectorize not supported yet";
+    CINN_THROW("Vectorize not supported yet");
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
   GetForTypeAndInfoImpl(const Unroll& loop_type,
                         const LoopDescriptor& ld) const {
-    LOG(FATAL) << "Unroll not supported yet";
+    CINN_THROW("Unroll not supported yet");
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo> GetForTypeAndInfo(
@@ -704,7 +705,7 @@ class MapExprToIrTranslator {
 
   ir::Expr Accumulate(const std::vector<ir::Expr>& ir_exprs) const {
     if (ir_exprs.size() == 0) {
-      LOG(FATAL) << "Dead code";
+      CINN_THROW("Dead code");
     } else if (ir_exprs.size() == 1) {
       return ir_exprs.at(0);
     } else {
@@ -714,12 +715,12 @@ class MapExprToIrTranslator {
       }
       return ret;
     }
-    LOG(FATAL) << "Dead code";
+    CINN_THROW("Dead code");
   }
 
   ir::Expr Multiply(const std::vector<ir::Expr>& ir_exprs) const {
     if (ir_exprs.size() == 0) {
-      LOG(FATAL) << "Dead code";
+      CINN_THROW("Dead code");
     } else if (ir_exprs.size() == 1) {
       return ir_exprs.at(0);
     } else {
@@ -729,7 +730,7 @@ class MapExprToIrTranslator {
       }
       return ret;
     }
-    LOG(FATAL) << "Dead code";
+    CINN_THROW("Dead code");
   }
 
   ir::Expr GetStride(const List<DimExpr>& dims, int start) const {
@@ -820,16 +821,16 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr TranslateDimExprImpl(const ::symbol::Max<DimExpr>& dim_expr) const {
-    LOG(FATAL) << "Not Supported yet";
+    CINN_THROW("Not Supported yet");
   }
 
   ir::Expr TranslateDimExprImpl(const ::symbol::Min<DimExpr>& dim_expr) const {
-    LOG(FATAL) << "Not Supported yet";
+    CINN_THROW("Not Supported yet");
   }
 
   ir::Expr TranslateDimExprImpl(
       const ::symbol::Broadcast<DimExpr>& dim_expr) const {
-    LOG(FATAL) << "Not Supported yet";
+    CINN_THROW("Not Supported yet");
   }
 
   ir::Expr TranslateDimExpr(const Value& value) const {
@@ -859,7 +860,9 @@ class MapExprToIrTranslator {
     } else if (Match<BroadcastedSymbolicIterator>(value)) {
       return TranslateBI(value);
     } else {
-      LOG(FATAL) << "Not supported yet! " << ToTxtString(value);
+      std::stringstream ss;
+      ss << "Not supported yet! " << ToTxtString(value);
+      CINN_THROW(ss.str());
     }
   }
 

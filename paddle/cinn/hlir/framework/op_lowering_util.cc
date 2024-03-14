@@ -86,7 +86,9 @@ ir::Tensor GetTensor(
     return lang::Placeholder<uint64_t>(node_data->id(),
                                        shape_dict.at(node_data->id()));
   } else {
-    LOG(FATAL) << "Unsupport dtype: " << dtype;
+    std::stringstream ss;
+    ss << "Unsupport dtype: " << dtype;
+    CINN_THROW(ss.str());
   }
 }
 
@@ -739,8 +741,8 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
     }
     lane *= inshape[axes[index]];
     if (index == 0 && lane <= max_num_threads) {
-      LOG(FATAL)
-          << "Error! lane is less equal than max_num_threads, Please check!";
+      CINN_THROW(
+          "Error! lane is less equal than max_num_threads, Please check!");
     }
     if (lane >= max_num_threads / 2) {
       if (lane <= max_num_threads) {
@@ -1181,7 +1183,7 @@ void LoopAssignReduce(
       // copy loop info form rloops.
       copy_loop_info(nloops, rloops);
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type!";
+      CINN_THROW("Error! Unkown Reduce Type!");
     }
   }
 }
@@ -1398,7 +1400,7 @@ void MergeReduceToReduce(
                        n_loops.size() - 1);
           }
         } else {
-          LOG(FATAL) << "not support this type fusion!";
+          CINN_THROW("not support this type fusion!");
         }
       }
     } else {
@@ -1502,7 +1504,7 @@ void MergeReduceToReduce(
         ir_sch.SimpleComputeAt(block, loops.back());
       }
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type, Please Check!";
+      CINN_THROW("Error! Unkown Reduce Type, Please Check!");
     }
   }
 }

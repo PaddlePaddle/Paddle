@@ -35,7 +35,9 @@ std::unique_ptr<RuleSampler> RuleSampler::Make(
         potential_rules, default_remove_policy, rand_seed, weights);
   }
 
-  LOG(FATAL) << "Unimplemented strategy:" << strategy;
+  std::stringstream ss;
+  ss << "Unimplemented strategy:" << strategy;
+  CINN_THROW(ss.str());
   return nullptr;
 }
 

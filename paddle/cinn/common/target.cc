@@ -51,7 +51,7 @@ int Target::runtime_arch() const {
     case Arch::ARM:
       return cinn_arm_device;
     default:
-      LOG(FATAL) << "Not supported arch";
+      CINN_THROW("Not supported arch");
   }
   return -1;
 }
@@ -106,7 +106,7 @@ int Target::get_target_bits() const {
     case Bit::Unk:
       return 0;
     default:
-      LOG(FATAL) << "Not supported Bit";
+      CINN_THROW("Not supported Bit");
   }
   return -1;
 }

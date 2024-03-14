@@ -261,7 +261,7 @@ std::vector<SearchState> SearchSpace::GenerateSketches(
     } else if (strategy == "random_prune") {
       sketches = InitSketchWithRandomPrunedStrategy();
     } else {
-      LOG(FATAL) << "Unimplemented init sketch strategy";
+      CINN_THROW("Unimplemented init sketch strategy");
     }
 
     // the more rules are applied, the greater the possibility of good results,

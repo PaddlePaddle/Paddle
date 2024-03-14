@@ -27,62 +27,74 @@
 
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
-#define CUDA_DRIVER_CALL(func)                                                 \
-  {                                                                            \
-    auto status = func;                                                        \
-    if (status != CUDA_SUCCESS) {                                              \
-      const char* msg;                                                         \
-      cuGetErrorString(status, &msg);                                          \
-      LOG(FATAL) << "CUDA Driver Error: " #func " failed with error: " << msg; \
-    }                                                                          \
+#define CUDA_DRIVER_CALL(func)                                         \
+  {                                                                    \
+    auto status = func;                                                \
+    if (status != CUDA_SUCCESS) {                                      \
+      const char* msg;                                                 \
+      cuGetErrorString(status, &msg);                                  \
+      std::stringstream ss;                                            \
+      ss << "CUDA Driver Error: " #func " failed with error: " << msg; \
+      CINN_THROW(ss.str());                                            \
+    }                                                                  \
   }
 
-#define CUDA_CALL(func)                                            \
-  {                                                                \
-    auto status = func;                                            \
-    if (status != cudaSuccess) {                                   \
-      LOG(FATAL) << "CUDA Error : " << cudaGetErrorString(status); \
-    }                                                              \
+#define CUDA_CALL(func)                                    \
+  {                                                        \
+    auto status = func;                                    \
+    if (status != cudaSuccess) {                           \
+      std::stringstream ss;                                \
+      ss << "CUDA Error : " << cudaGetErrorString(status); \
+      CINN_THROW(ss.str());                                \
+    }                                                      \
   }
 
-#define CURAND_CALL(func)                        \
-  {                                              \
-    auto status = func;                          \
-    if (status != CURAND_STATUS_SUCCESS) {       \
-      LOG(FATAL) << "CURAND Error : " << status; \
-    }                                            \
+#define CURAND_CALL(func)                  \
+  {                                        \
+    auto status = func;                    \
+    if (status != CURAND_STATUS_SUCCESS) { \
+      std::stringstream ss;                \
+      ss << "CURAND Error : " << status;   \
+      CINN_THROW(ss.str());                \
+    }                                      \
   }
 
-#define CUSOLVER_CALL(func)                       \
-  {                                               \
-    auto status = func;                           \
-    if (status != CUSOLVER_STATUS_SUCCESS) {      \
-      LOG(FATAL) << "CUSOLVER Error: " << status; \
-    }                                             \
+#define CUSOLVER_CALL(func)                  \
+  {                                          \
+    auto status = func;                      \
+    if (status != CUSOLVER_STATUS_SUCCESS) { \
+      std::stringstream ss;                  \
+      ss << "CUSOLVER Error: " << status;    \
+      CINN_THROW(ss.str());                  \
+    }                                        \
   }
 
 #define CUBLAS_CALL(func)                  \
   {                                        \
     auto status = func;                    \
     if (status != CUBLAS_STATUS_SUCCESS) { \
-      LOG(FATAL) << "CUBLAS Error!";       \
+      CINN_THROW("CUBLAS Error!");         \
     }                                      \
   }
 
-#define CUDNN_CALL(func)                                             \
-  {                                                                  \
-    auto status = func;                                              \
-    if (status != CUDNN_STATUS_SUCCESS) {                            \
-      LOG(FATAL) << "CUDNN Error : " << cudnnGetErrorString(status); \
-    }                                                                \
+#define CUDNN_CALL(func)                                     \
+  {                                                          \
+    auto status = func;                                      \
+    if (status != CUDNN_STATUS_SUCCESS) {                    \
+      std::stringstream ss;                                  \
+      ss << "CUDNN Error : " << cudnnGetErrorString(status); \
+      CINN_THROW(ss.str());                                  \
+    }                                                        \
   }
 
-#define NVRTC_CALL(func)                                             \
-  {                                                                  \
-    auto status = func;                                              \
-    if (status != NVRTC_SUCCESS) {                                   \
-      LOG(FATAL) << "NVRTC Error : " << nvrtcGetErrorString(status); \
-    }                                                                \
+#define NVRTC_CALL(func)                                     \
+  {                                                          \
+    auto status = func;                                      \
+    if (status != NVRTC_SUCCESS) {                           \
+      std::stringstream ss;                                  \
+      ss << "NVRTC Error : " << nvrtcGetErrorString(status); \
+      CINN_THROW(ss.str());                                  \
+    }                                                        \
   }
 
 namespace cinn {

@@ -43,7 +43,7 @@ inline std::string EventTypeToString(const EventType &type) {
     case EventType::kInstruction:
       return "Instruction";
     default:
-      LOG(FATAL) << "Unknown event type";
+      CINN_THROW("Unknown event type");
   }
 }
 

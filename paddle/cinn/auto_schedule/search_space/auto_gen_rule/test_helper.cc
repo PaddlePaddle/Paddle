@@ -145,7 +145,7 @@ void MemoryCopy(const float* src, float* dst, int numel, std::string type) {
       dst[i] = src[i];
     }
   } else {
-    LOG(FATAL) << "Unknown memory copy type";
+    CINN_THROW("Unknown memory copy type");
   }
 }
 

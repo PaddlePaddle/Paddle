@@ -305,7 +305,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                 dilation[1],
                                 tensor_name);
         } else {
-          LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+          CINN_THROW("Only support NCHW and NHWC data layout\n");
         }
         auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
 
@@ -368,7 +368,9 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     } else if (target.arch == Target::Arch::X86) {
       CINN_NOT_IMPLEMENTED
     }
-    LOG(FATAL) << "This target [" << target << "] is not supported yet.";
+    std::stringstream ss;
+    ss << "This target [" << target << "] is not supported yet.";
+    CINN_THROW(ss.str());
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -713,8 +715,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2dNCHWc(
     strategy->AddImpl(
         conv2d_compute, conv2d_schedule, "strategy.conv2d_NCHWc.x86", 1);
   } else {
-    LOG(FATAL)
-        << "conv2d_NCHWc op with dtype != float32 is not implemented yet!";
+    CINN_THROW("conv2d_NCHWc op with dtype != float32 is not implemented yet!");
   }
   return strategy;
 }
@@ -894,7 +895,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                                       stride[1],
                                       tensor_name);
     } else {
-      LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+      CINN_THROW("Only support NCHW and NHWC data layout\n");
     }
 
     auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
@@ -1008,7 +1009,7 @@ std::vector<shape_t> InferShapeForDepthwiseConv2d(
             out_shape_w,
             inputs_shape[1][1] * inputs_shape[0][3]}};
   } else {
-    LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+    CINN_THROW("Only support NCHW and NHWC data layout\n");
   }
   return res;
 }
@@ -1093,7 +1094,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
                       "strategy.batchnorm.x86",
                       1);
   } else {
-    LOG(FATAL) << "BatchNorm op with dtype != float32 is not implemented yet!";
+    CINN_THROW("BatchNorm op with dtype != float32 is not implemented yet!");
   }
   return strategy;
 }
@@ -1303,7 +1304,9 @@ std::vector<std::vector<int>> InferShapeForPool1d(
   } else if (data_format == "NWC") {
     width_axis = 1;
   } else {
-    LOG(FATAL) << "unsupported data_format: " << data_format << std::endl;
+    std::stringstream ss;
+    ss << "unsupported data_format: " << data_format << std::endl;
+    CINN_THROW(ss.str());
   }
 
   if (ceil_mode) {
@@ -1406,8 +1409,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       width_index = 3;
       data_format = "NCHW";
     } else {
-      LOG(FATAL)
-          << "Only support 'NCHW' or 'NHWC' or 'AnyLayout' data_format.\n";
+      CINN_THROW("Only support 'NCHW' or 'NHWC' or 'AnyLayout' data_format.\n");
     }
     kernel_size = {A_tensor->shape[height_index].as_int32(),
                    A_tensor->shape[width_index].as_int32()};
@@ -2206,7 +2208,7 @@ std::vector<framework::shape_t> InferShapeForBatchNormTrain(
   if (attrs.find("data_layout") != attrs.end()) {
     data_layout = absl::get<std::string>(attrs.at("data_layout"));
   } else {
-    LOG(FATAL) << "data_layout is not found, please check!";
+    CINN_THROW("data_layout is not found, please check!");
   }
 
   CHECK_EQ(inputs_shape[0].size(), 4) << "x dimension size is not required!";
@@ -2237,7 +2239,9 @@ std::vector<framework::shape_t> InferShapeForBatchNormTrain(
     CHECK_EQ(inputs_shape[0][3], inputs_shape[4][0])
         << "x and moving_variance dimension size is not equal!";
   } else {
-    LOG(FATAL) << "data_layout " << data_layout << " is not support!";
+    std::stringstream ss;
+    ss << "data_layout " << data_layout << " is not support!";
+    CINN_THROW(ss.str());
   }
 
   return {inputs_shape[0],
@@ -2271,8 +2275,9 @@ std::shared_ptr<OpStrategy> StrategyForGradOp(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  LOG(FATAL) << "Gradient operator will be decomposed into several primitive "
-                "operators. Please Use Decomposer Program Pass.";
+  CINN_THROW(
+      "Gradient operator will be decomposed into several primitive "
+      "operators. Please Use Decomposer Program Pass.");
 }
 
 // batch norm grad
@@ -2285,7 +2290,7 @@ std::vector<framework::shape_t> InferShapeForBatchNormGrad(
   if (attrs.find("data_layout") != attrs.end()) {
     data_layout = absl::get<std::string>(attrs.at("data_layout"));
   } else {
-    LOG(FATAL) << "data_layout is not found, please check!";
+    CINN_THROW("data_layout is not found, please check!");
   }
 
   CHECK_EQ(inputs_shape[0].size(), 4) << "dy dimension size is not required!";
@@ -2313,7 +2318,9 @@ std::vector<framework::shape_t> InferShapeForBatchNormGrad(
     CHECK_EQ(inputs_shape[0][3], inputs_shape[4][0])
         << "dy and moving_variance dimension size is not equal!";
   } else {
-    LOG(FATAL) << "data_layout " << data_layout << " is not support!";
+    std::stringstream ss;
+    ss << "data_layout " << data_layout << " is not support!";
+    CINN_THROW(ss.str());
   }
 
   return {inputs_shape[0], inputs_shape[2], inputs_shape[2]};

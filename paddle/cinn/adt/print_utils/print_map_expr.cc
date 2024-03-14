@@ -71,7 +71,7 @@ std::string ToTxtStringImpl(const adapter::DynamicTensor& tensor) {
 }
 
 std::string ToTxtStringImpl(const TempStorage& tensor) {
-  LOG(FATAL) << "Not supported yet";
+  CINN_THROW("Not supported yet");
 }
 
 }  // namespace

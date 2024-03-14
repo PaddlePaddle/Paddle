@@ -212,7 +212,7 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
         }
       }
       if (is_ring) {
-        LOG(FATAL) << "Exists Ring, Please Check!";
+        CINN_THROW("Exists Ring, Please Check!");
       }
     }
   }

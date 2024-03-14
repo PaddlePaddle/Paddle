@@ -84,7 +84,7 @@ void RunProgram(const Target& target, Program* prog) {
     } else if (inputs[i]->type.is_bool()) {
       RandomInput<bool>(target, tensor, 0, inputs[i]->shape[0]);
     } else {
-      LOG(FATAL) << "Only support float/int/bool! Please check.";
+      CINN_THROW("Only support float/int/bool! Please check.");
     }
   }
 

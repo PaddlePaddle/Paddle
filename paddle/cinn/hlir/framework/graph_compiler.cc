@@ -422,7 +422,7 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
   } else if (funcs.size() == expr_pack.size()) {
     funcs_after_schedule = funcs;
   } else {
-    LOG(FATAL) << "The number of funcs should not less than expr_pack's";
+    CINN_THROW("The number of funcs should not less than expr_pack's");
   }
   CHECK_EQ(funcs_after_schedule.size(), expr_pack.size());
   std::vector<ir::LoweredFunc> res;

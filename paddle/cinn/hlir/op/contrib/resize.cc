@@ -61,7 +61,7 @@ ir::Tensor Resize(const ir::Tensor &input,
   } else if (target.arch == cinn::common::Target::Arch::X86) {
     func_name.assign("cinn_host_resize_");
   } else {
-    LOG(FATAL) << "Resize only supports X86 and NVGPU ! Please Check.\n";
+    CINN_THROW("Resize only supports X86 and NVGPU ! Please Check.\n");
   }
 
   if (mode == "bilinear") {

@@ -59,10 +59,10 @@ void LowerFuncContextNode::ExitWithContext() {
 void IfContextNode::ExitWithContext() {
   IRContextNode::ExitWithContext();
   if (!exprs.empty()) {
-    LOG(FATAL) << "Expr not be either in ThenBlock or ElseBlock in if";
+    CINN_THROW("Expr not be either in ThenBlock or ElseBlock in if");
   }
   if (!true_case.defined()) {
-    LOG(FATAL) << "Expr not be defined in ThenBlock";
+    CINN_THROW("Expr not be defined in ThenBlock");
   }
   LinkToParentContext(ir::IfThenElse::Make(condition, true_case, false_case));
 }

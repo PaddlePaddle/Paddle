@@ -23,7 +23,9 @@ std::unique_ptr<MutateRule> MutateRule::Make(const std::string& name) {
   if (name == "mutate_tile_size") {
     return std::make_unique<MutateTileSize>();
   } else {
-    LOG(FATAL) << "MutateRule " << name << " is not supported.";
+    std::stringstream ss;
+    ss << "MutateRule " << name << " is not supported.";
+    CINN_THROW(ss.str());
   }
   return nullptr;
 }

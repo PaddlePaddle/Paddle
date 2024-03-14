@@ -94,8 +94,7 @@ struct DimExprToIrExprVisitor {
   }
 
   ir::Expr operator()(const Broadcast<DimExpr>& dim_expr) {
-    LOG(FATAL)
-        << "no support for converting from Broadcast<DimExpr> to ir::Expr";
+    CINN_THROW("no support for converting from Broadcast<DimExpr> to ir::Expr");
   }
 };
 

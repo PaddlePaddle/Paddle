@@ -92,7 +92,7 @@ cinn_buffer_t *CreateBufferFromNumpy(
         buffer->memory, data.data(), data.nbytes(), cudaMemcpyHostToDevice));
     return buffer;
 #else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+    CINN_THROW("To use CUDA backends, you need to set WITH_CUDA ON!");
 #endif
   } else {
     CINN_NOT_IMPLEMENTED
@@ -108,7 +108,7 @@ void BufferCopyTo(const cinn_buffer_t &buffer, py::array array) {
     CUDA_CALL(cudaMemcpy(
         array_data, buffer.memory, array.nbytes(), cudaMemcpyDeviceToHost));
 #else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+    CINN_THROW("To use CUDA backends, you need to set WITH_CUDA ON!");
 #endif
 
   } else {
@@ -135,7 +135,7 @@ py::array BufferHostMemoryToNumpy(cinn_buffer_t &buffer) {  // NOLINT
   } else if (buffer.type == cinn_bool_t()) {
     dt = py::dtype::of<bool>();
   } else {
-    LOG(FATAL) << "Not supported type found";
+    CINN_THROW("Not supported type found");
   }
 
   py::array::ShapeContainer shape(buffer.dims, buffer.dims + buffer.dimensions);

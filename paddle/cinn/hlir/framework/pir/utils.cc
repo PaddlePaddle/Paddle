@@ -471,15 +471,17 @@ static utils::Attribute ConvertArrayAttribute(
               element.dyn_cast<::pir::StrAttribute>().AsString());
         }
       } else {
-        LOG(FATAL)
-            << "only support bool/int32/int64/float/double/string attribute in "
-               "ArrayAttribute";
+        CINN_THROW(
+            "only support bool/int32/int64/float/double/string attribute in "
+            "ArrayAttribute");
       }
     }
   } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
     // do nothing for now
   } else {
-    LOG(FATAL) << "unknown Attribute: " << src_attr;
+    std::stringstream ss;
+    ss << "unknown Attribute: " << src_attr;
+    CINN_THROW(ss.str());
   }
   return dst_attr;
 }
@@ -548,7 +550,9 @@ cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
   CASE_TYPE(IndexType, I32)
   CASE_TYPE(BoolType, UI1)
 
-  LOG(FATAL) << "unknown ir::Type " << type;
+  std::stringstream ss;
+  ss << "unknown ir::Type " << type;
+  CINN_THROW(ss.str());
 }
 #undef CASE_TYPE
 

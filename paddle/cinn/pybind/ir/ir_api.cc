@@ -748,8 +748,9 @@ auto PackedFuncCall(lang::PackedFunc &self, py::args args) {  // NOLINT
     } else if (py::isinstance<ir::Expr>(handle)) {
       cinn_args.Append(CINNValue(py::cast<ir::Expr>(handle)));
     } else {
-      LOG(FATAL) << "unsupported type: "
-                 << std::string(py::str(handle.get_type()));
+      std::stringstream ss;
+      ss << "unsupported type: " << std::string(py::str(handle.get_type()));
+      CINN_THROW(ss.str());
     }
   }
   lang::RetValue ret_value;

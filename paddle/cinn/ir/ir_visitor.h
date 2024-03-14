@@ -48,8 +48,10 @@ class IRVisitorRequireReImpl {
       NODETY_FORALL(__)
 
       default:
-        LOG(FATAL) << "not supported NodeTy, the expr->node_type() = "
-                   << expr->node_type();
+        std::stringstream ss;
+        ss << "not supported NodeTy, the expr->node_type() = "
+           << expr->node_type();
+        CINN_THROW(ss.str());
 #undef __
     }
     return RetTy();

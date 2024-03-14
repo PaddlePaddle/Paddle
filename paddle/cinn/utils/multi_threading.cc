@@ -86,7 +86,9 @@ void parallel_run(const WorkerFuncType& fn,
       VLOG(4) << "Thread-" << tid << " process " << counter << " tasks.";
     }
   } catch (const std::exception& e) {
-    LOG(FATAL) << "parallel_run incurs error: " << e.what();
+    std::stringstream ss;
+    ss << "parallel_run incurs error: " << e.what();
+    CINN_THROW(ss.str());
   }
 
   // join threads

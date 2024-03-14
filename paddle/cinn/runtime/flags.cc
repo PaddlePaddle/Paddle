@@ -294,7 +294,7 @@ bool GetCinnCudnnDeterministic() {
 #ifdef CINN_WITH_CUDNN
   return FLAGS_cinn_cudnn_deterministic;
 #else
-  LOG(FATAL) << "CINN is compiled without cuDNN, this api is invalid!";
+  CINN_THROW("CINN is compiled without cuDNN, this api is invalid!");
   return false;
 #endif
 }
@@ -341,8 +341,9 @@ cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
   if (!IsCompiledWithCUDA() &&
       target.arch == cinn::common::Target::Arch::NVGPU) {
-    LOG(FATAL) << "Current CINN version does not support NVGPU, please try to "
-                  "recompile with -DWITH_CUDA.";
+    CINN_THROW(
+        "Current CINN version does not support NVGPU, please try to "
+        "recompile with -DWITH_CUDA.");
   } else {
     target_ = target;
   }

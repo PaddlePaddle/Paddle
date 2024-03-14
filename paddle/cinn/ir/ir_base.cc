@@ -51,7 +51,7 @@ std::ostream &operator<<(std::ostream &os, IrNodeTy type) {
 #undef __m
 
     default:
-      LOG(FATAL) << "unknown IrNodeTy found";
+      CINN_THROW("unknown IrNodeTy found");
   }
 
   return os;

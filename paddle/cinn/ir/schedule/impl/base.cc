@@ -662,11 +662,11 @@ void StScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
     }
   }
 
-  if (new_iter_values.empty())
-    LOG(FATAL) << "Cannot CopyTransformAndLoopInfo since shape[0] of source "
-                  "and target is not equal! "
-               << vars[0]->upper_bound << " v.s "
-               << vars_target[0]->upper_bound;
+  if (new_iter_values.empty()) std::stringstream ss;
+  ss << "Cannot CopyTransformAndLoopInfo since shape[0] of source "
+        "and target is not equal! "
+     << vars[0]->upper_bound << " v.s " << vars_target[0]->upper_bound;
+  CINN_THROW(ss.str());
 
   int changed_loop_num = new_iter_values.size();
   std::set<std::string> used_target_loop_vars;

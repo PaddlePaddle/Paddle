@@ -102,10 +102,10 @@ List<Iterator> IGroup::GetIndexIterators(const Index& index) const {
     } else if (arg_pos.Has<Undefined>()) {
       // do nothing
     } else {
-      LOG(FATAL) << "Dead code";
+      CINN_THROW("Dead code");
     }
   }
-  LOG(FATAL) << "Can not find anchor iterators";
+  CINN_THROW("Can not find anchor iterators");
 }
 
 }  // namespace cinn::adt

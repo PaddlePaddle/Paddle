@@ -59,7 +59,7 @@ struct IrNodesCollector : public IRVisitorRequireReImpl<void> {
       NODETY_FORALL(__)
 
       default:
-        LOG(FATAL) << "not supported NodeTy";
+        CINN_THROW("not supported NodeTy");
 #undef __
     }
   }
