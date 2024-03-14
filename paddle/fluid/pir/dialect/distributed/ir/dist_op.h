@@ -53,3 +53,4 @@ class ReShardOp : public pir::Op<ReShardOp> {
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ReShardOp)

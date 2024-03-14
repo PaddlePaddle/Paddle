@@ -56,8 +56,8 @@ pir::Value reshard(const pir::Value& x,
            ctx, process_mesh, dims_mapping, partial_status)}};
 
   auto reshard_op =
-      ApiBuilder::Instance().GetBuilder()->Build<ReShard>(x, attribute_map);
-  return reshard_op.out();
+      ApiBuilder::Instance().GetBuilder()->Build<ReShardOp>(x, attribute_map);
+  return reshard_op.result(0);
 }
 
 }  // namespace dialect

@@ -35,7 +35,7 @@ void DistDialect::initialize() {
                      TensorDistAttribute,
                      OperationDistAttribute>();
   RegisterTypes<DistDenseTensorType>();
-  RegisterOps<ShardTensorOp>();
+  RegisterOps<ShardTensorOp, ReShardOp>();
 }
 
 void DistDialect::PrintType(pir::Type type, std::ostream &os) const {

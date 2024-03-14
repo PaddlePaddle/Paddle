@@ -27,7 +27,7 @@ namespace paddle {
 namespace dialect {
 
 const char* ShardTensorOp::attributes_name[1] = {"op_dist_attr"};
-const char* ReShardTensor::attributes_name[1] = {"op_dist_attr"};
+const char* ReShardOp::attributes_name[1] = {"op_dist_attr"};
 
 void ShardTensorOp::VerifySig() {
   VLOG(4)
@@ -264,13 +264,13 @@ void ReShardOp::Build(pir::Builder& builder,
   pir::Attribute op_dist_attr = OperationDistAttribute::get(
       pir::IrContext::Instance(),
       input_tensor_type.tensor_dist_attr().process_mesh_attr(),
-      std::vector<TensorDistAttribute>(input_tensor_dist_attr),
+      std::vector<TensorDistAttribute>{input_tensor_type.tensor_dist_attr()},
       std::vector<TensorDistAttribute>{dst_tensor_dist_attr});
   argument.AddAttribute("op_dist_attr", op_dist_attr);
 
   // TODO remove
   VLOG(4) << "Builder construction outputs";
-  auto global_dims = input_tensor_type.dims();
+  auto global_dims = input_tensor_type.global_ddim();
   auto process_mesh_attr = dst_tensor_dist_attr.process_mesh_attr();
   auto dims_mapping = dst_tensor_dist_attr.dims_mapping();
 
@@ -298,8 +298,8 @@ void ReShardOp::Build(pir::Builder& builder,
 
   pir::Type out_dist_tensor_type =
       paddle::dialect::DistDenseTensorType::get(pir::IrContext::Instance(),
-                                                input_tensor_type,
-                                                tensor_dist_attr,
+                                                input_tensor_type.dense_tensor_type(),
+                                                dst_tensor_dist_attr,
                                                 phi::make_ddim(local_shape));
   argument.AddOutput(out_dist_tensor_type);
 }
@@ -308,3 +308,4 @@ void ReShardOp::Build(pir::Builder& builder,
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ReShardOp)
