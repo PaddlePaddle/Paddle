@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,10 +14,18 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include <vector>
 
-namespace symbol {
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/pir/include/core/value.h"
 
-IR_API DimExpr SimplifyDimExpr(const DimExpr& dim_expr);
+namespace paddle {
+namespace dialect {
 
-}  // namespace symbol
+pir::Value shard_tensor(const pir::Value& x,
+                        const phi::distributed::ProcessMesh& process_mesh,
+                        const std::vector<int64_t>& dims_mapping);
+}  // namespace dialect
+}  // namespace paddle

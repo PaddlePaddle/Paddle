@@ -2542,6 +2542,24 @@ def _memcpy(input, place=None, output=None):
              [2.5 2.5]
              [2.5 2.5]]
     """
+    dst_place_type = -1
+    if place is None:
+        dst_place_type = -1
+    else:
+        p = core.Place()
+        p.set_place(place)
+        if p.is_cpu_place():
+            dst_place_type = 0
+        elif p.is_gpu_place():
+            dst_place_type = 1
+        elif p.is_cuda_pinned_place():
+            dst_place_type = 2
+        elif p.is_xpu_place():
+            dst_place_type = 3
+
+    if in_pir_mode():
+        return _C_ops.memcpy(input, dst_place_type)
+
     helper = LayerHelper('memcpy', **locals())
     check_type(input, 'input', (Variable), 'memcpy')
 
@@ -2565,21 +2583,6 @@ def _memcpy(input, place=None, output=None):
         )
     if output is None:
         output = helper.create_variable_for_type_inference(dtype=input.dtype)
-
-    dst_place_type = -1
-    if place is None:
-        dst_place_type = -1
-    else:
-        p = core.Place()
-        p.set_place(place)
-        if p.is_cpu_place():
-            dst_place_type = 0
-        elif p.is_gpu_place():
-            dst_place_type = 1
-        elif p.is_cuda_pinned_place():
-            dst_place_type = 2
-        elif p.is_xpu_place():
-            dst_place_type = 3
 
     attrs = {'dst_place_type': dst_place_type}
     helper.append_op(

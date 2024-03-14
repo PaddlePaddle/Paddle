@@ -249,7 +249,7 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
 
         foo = paddle.jit.to_static(foo_func)
 
-        # [16, 10] + [10] (varbase)
+        # [16, 10] + [10] (Tensor)
         out_1 = foo(paddle.to_tensor(x_data), paddle.to_tensor(y_data))
         np.testing.assert_allclose(x_data + y_data, out_1.numpy(), rtol=1e-05)
         self.assertTrue(len(foo.program_cache) == 1)

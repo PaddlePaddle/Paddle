@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+
 #include <numeric>
 
 namespace symbol {
@@ -894,5 +895,150 @@ DimExpr Simplify(const DimExpr& expr) {
 }  // namespace
 
 DimExpr SimplifyDimExpr(const DimExpr& expr) { return Simplify(expr); }
+
+}  // namespace symbol
+
+namespace symbol {
+
+namespace {
+
+class SubstituteDimExprHelper final {
+ public:
+  explicit SubstituteDimExprHelper(
+      const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement)
+      : pattern_to_replacement_(pattern_to_replacement) {}
+
+  std::optional<DimExpr> Substitute(const DimExpr& dim_expr) {
+    auto iter = pattern_to_replacement_.find(dim_expr);
+    if (iter != pattern_to_replacement_.end()) return iter->second;
+    return std::visit([&](const auto& impl) { return SubstituteImpl(impl); },
+                      dim_expr.variant());
+  }
+
+ private:
+  std::optional<DimExpr> SubstituteImpl(const std::int64_t& value) {
+    // `Substitute` has handled the case that `value` is matched.
+    return std::nullopt;
+  }
+  std::optional<DimExpr> SubstituteImpl(const std::string& value) {
+    // `Substitute` has handled the case that `value` is matched.
+    return std::nullopt;
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Negative<DimExpr>& dim_expr) {
+    return SubstituteUnary(dim_expr);
+  }
+  std::optional<DimExpr> SubstituteImpl(const Reciprocal<DimExpr>& dim_expr) {
+    return SubstituteUnary(dim_expr);
+  }
+
+  template <typename T>
+  std::optional<DimExpr> SubstituteUnary(const T& dim_expr) {
+    const auto& operand = dim_expr->data;
+    const auto& substituted_operand = Substitute(operand);
+    if (!substituted_operand.has_value()) return std::nullopt;
+    return T{substituted_operand.value()};
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Add<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Mul<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Max<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Min<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Broadcast<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  template <typename T>
+  std::optional<DimExpr> SubstituteVariadic(const T& dim_expr) {
+    const auto& operands = *(dim_expr.operands);
+    List<DimExpr> substituted_operands{};
+    size_t replace_cnt = 0;
+    for (const auto& operand : operands) {
+      const auto& substituted_operand = Substitute(operand);
+      replace_cnt += substituted_operand.has_value();
+      substituted_operands->push_back(substituted_operand.has_value()
+                                          ? substituted_operand.value()
+                                          : operand);
+    }
+    if (replace_cnt == 0) return std::nullopt;
+    return T{substituted_operands};
+  }
+
+  std::unordered_map<DimExpr, DimExpr> pattern_to_replacement_;
+};
+
+}  // namespace
+
+DimExpr SubstituteDimExpr(
+    const DimExpr& dim_expr,
+    const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement) {
+  const auto& opt_replaced =
+      SubstituteDimExprHelper(pattern_to_replacement).Substitute(dim_expr);
+  return opt_replaced.has_value() ? opt_replaced.value() : dim_expr;
+}
+
+}  // namespace symbol
+
+namespace symbol {
+namespace {
+
+void CollectUnaryDimExprSymbolsImpl(const DimExpr& dim_expr,
+                                    std::unordered_set<std::string>* ret) {
+  std::unordered_set<std::string> symbols = CollectDimExprSymbols(dim_expr);
+  ret->insert(symbols.begin(), symbols.end());
+}
+
+void CollectListDimExprSymbolsImpl(const List<DimExpr>& dim_exprs,
+                                   std::unordered_set<std::string>* ret) {
+  for (const auto& dim_expr : *dim_exprs) {
+    std::unordered_set<std::string> symbols = CollectDimExprSymbols(dim_expr);
+    ret->insert(symbols.begin(), symbols.end());
+  }
+}
+}  // namespace
+
+std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
+  std::unordered_set<std::string> symbols;
+  // clang-format off
+  auto lambdas = Overloaded{
+      [&](std::int64_t dim_expr) { return; },
+      [&](const std::string& dim_expr) { symbols.insert(dim_expr); },
+      [&](const Negative<DimExpr>& dim_expr) {
+        CollectUnaryDimExprSymbolsImpl(dim_expr->data, &symbols);
+      },
+      [&](const Reciprocal<DimExpr>& dim_expr) {
+        CollectUnaryDimExprSymbolsImpl(dim_expr->data, &symbols);
+      },
+      [&](const Add<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Mul<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Max<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Min<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Broadcast<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      }};
+  // clang-format on
+  std::visit(lambdas, dim_expr.variant());
+  return symbols;
+}
 
 }  // namespace symbol

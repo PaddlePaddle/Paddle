@@ -29,6 +29,8 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/utils/functional.h"
+#include "paddle/common/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -1253,24 +1255,24 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute cast_compute(
+  framework::CINNCompute generate_shape_compute(
       [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input arguments of Cast compute is empty! Please check.\n";
+        PADDLE_ENFORCE(!args.empty(),
+                       ::common::errors::InvalidArgument(
+                           "Invalid argument. The input arguments of "
+                           "generate_shape compute is empty! Please check."));
         CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "at least 1 input tensors for Cast compute\n";
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        CHECK(!output_shapes.empty());
-        auto tensor_A = A.as_tensor_ref();
-        auto stages = CreateStages({tensor_A});
-        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        CHECK_EQ(pack_args.size(), 2U);
-        std::string tensor_name = pack_args[1].operator std::string();
+        PADDLE_ENFORCE_GE(pack_args->size(),
+                          1U,
+                          ::common::errors::InvalidArgument(
+                              "At least 1 input tensors for generate_shape "
+                              "compute, but now get %d.",
+                              pack_args->size()));
+        auto stages = CreateStages({});
+
+        std::string tensor_name = pack_args.back().operator std::string();
         ir::Tensor out(ir::_Tensor_::Make(/*name=*/tensor_name,
-                                          /*dtype=*/tensor_A->type(),
+                                          /*dtype=*/common::type_of<int64_t>(),
                                           /*shape=*/
                                           {
                                               Expr(1),
@@ -1282,14 +1284,18 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
         std::vector<CINNValue> res;
         stages->InsertLazily(out);
         res.push_back(CINNValue(out));
-        CHECK(!out_type.empty())
-            << "Output type of Cast is empty! Please check.\n";
+        PADDLE_ENFORCE(!out_type.empty(),
+                       ::common::errors::InvalidArgument(
+                           "Invalid argument. The output type of "
+                           "generate_shape is empty! Please check."));
+
         res.push_back(CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute, lang::PackedFunc(), "strategy.store.x86", 1);
+  strategy->AddImpl(
+      generate_shape_compute, lang::PackedFunc(), "strategy.store.x86", 1);
   return strategy;
 }
 

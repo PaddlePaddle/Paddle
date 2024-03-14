@@ -656,11 +656,23 @@ void BindOperation(py::module *m) {
             pir::Attribute op_callstack = self.attribute<pir::Attribute>(
                 paddle::framework::OpProtoAndCheckerMaker::
                     OpCreationCallstackAttrName());
-            auto op_callstack_infos = PADDLE_GET_CONST(
-                std::vector<std::string>,
-                paddle::dialect::GetAttributeData(op_callstack));
-            for (auto &op_callstack_info : op_callstack_infos) {
-              callstack_list.append(op_callstack_info);
+            PADDLE_ENFORCE(op_callstack.isa<pir::ArrayAttribute>(),
+                           phi::errors::PreconditionNotMet(
+                               "The callstack of operation `%s` should be an "
+                               "array attribute.",
+                               self.name()));
+            auto op_callstack_array_attr =
+                op_callstack.dyn_cast<pir::ArrayAttribute>();
+            for (size_t i = 0; i < op_callstack_array_attr.size(); ++i) {
+              PADDLE_ENFORCE(
+                  op_callstack_array_attr.at(i).isa<pir::StrAttribute>(),
+                  phi::errors::PreconditionNotMet(
+                      "The callstack info of operation `%s` should be array of "
+                      "string attribute.",
+                      self.name()));
+              callstack_list.append(op_callstack_array_attr.at(i)
+                                        .dyn_cast<pir::StrAttribute>()
+                                        .AsString());
             }
             return callstack_list;
           },
@@ -909,6 +921,7 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<DenseTensorArrayType>(); })
       .def("is_dist_dense_tensor_type",
            [](Value self) { return self.type().isa<DistDenseTensorType>(); })
+      .def("value_assign", [](Value &self, Value value) { self = value; })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
       .def("replace_grad_users_with",

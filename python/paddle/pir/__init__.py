@@ -37,9 +37,21 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     translate_to_pir,
     translate_to_pir_with_param_map,
 )
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 from . import core  # noqa: F401
 from .math_op_patch import monkey_patch_value  # noqa: F401
 from .program_patch import monkey_patch_program  # noqa: F401
+
+
+@signature_safe_contextmanager
+def _optimized_guard(self, param_and_grads):
+    try:
+        yield
+    finally:
+        pass
+
+
+Program._optimized_guard = _optimized_guard
 
 __all__ = []
