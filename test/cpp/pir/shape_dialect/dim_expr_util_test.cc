@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/dim_expr_util.h"
-
 #include "gtest/gtest.h"
 
-namespace cinn::common {
-using namespace symbol;  // NOLINT
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+
+namespace symbol::test {
 
 namespace {
+
+// (S0 - S1) * 2 / S0
 DimExpr CreateExampleDimExpr() {
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
@@ -40,4 +41,14 @@ TEST(DimExprUtil, Substitute) {
   ASSERT_EQ(ret_expr, dim_expr);
 }
 
-}  // namespace cinn::common
+TEST(DimExprUtil, Calculate) {
+  // (S0 - S1) * 2 / S0
+  DimExpr dim_expr = CreateExampleDimExpr();
+  // (4 - 2) * 2 / 4 => 1
+  DimExpr substitute_expr = SubstituteDimExpr(dim_expr, {{"S0", 4}, {"S1", 2}});
+  DimExpr ret = SimplifyDimExpr(substitute_expr);
+  ASSERT_TRUE(ret.Has<std::int64_t>());
+  ASSERT_EQ(ret.Get<std::int64_t>(), 1);
+}
+
+}  // namespace symbol::test

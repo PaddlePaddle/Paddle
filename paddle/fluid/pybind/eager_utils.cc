@@ -1077,6 +1077,12 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const phi::DataType& dtype) {
+  auto obj = ::pybind11::cast(dtype);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const pir::Value& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
@@ -2410,9 +2416,11 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
   if (obj == Py_None) {
     return phi::DataType::UNDEFINED;
   }
-
-  framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
-  return framework::TransToPhiDataType(type);
+  if (PyObject_TypeCheck(obj, g_vartype_pytype)) {
+    framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
+    return framework::TransToPhiDataType(type);
+  }
+  return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
 }
 
 paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
