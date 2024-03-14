@@ -395,7 +395,7 @@ void* DeviceContext::Alloc(TensorBase* tensor,
 }
 
 template <typename T>
-TEST_API T* DeviceContext::Alloc(TensorBase* tensor,
+T* DeviceContext::Alloc(TensorBase* tensor,
                                  size_t requested_size,
                                  bool pinned) const {
   DataType dtype = phi::CppTypeToDataType<T>::Type();
