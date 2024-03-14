@@ -339,6 +339,7 @@ std::vector<pir::Type> BuildOutType(
                                                 group_ops.end());
 
   std::vector<::pir::Value> new_output;
+
   for (size_t i = 0; i < output_value.size(); ++i) {
     new_output.push_back(ir_mapping->Lookup<::pir::Value>(output_value[i]));
   }
@@ -353,6 +354,10 @@ std::vector<pir::Type> BuildOutType(
 bool CanFuse(const GroupClusterNode& first,
              const GroupClusterNode& second,
              ScheduleInfoNode* sch_node) {
+  if (!first.ops.empty() &&
+      (first.ops.front()->name() == "cinn_op.generate_shape")) {
+    return true;
+  }
   if ((second.ops.size() == 1) &&
       (second.ops.front()->name() == "cinn_op.reshape") &&
       (IsLastReshape(second.ops.front()))) {
@@ -522,6 +527,11 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .type()
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
+    if (cluster_node->reduce_axis.size() == 0) {
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        cluster_node->reduce_axis.push_back(i);
+      }
+    }
   } else if (cluster_node->group_kind == cinn::hlir::framework::kElementWise) {
     cluster_node->loop_ranges =
         phi::vectorize(op->result(0)
@@ -530,16 +540,45 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .dims());
 
   } else if (cluster_node->group_kind == cinn::hlir::framework::kBroadcast) {
-    cluster_node->loop_ranges =
-        phi::vectorize(op->result(0)
-                           .type()
-                           .dyn_cast<paddle::dialect::DenseTensorType>()
-                           .dims());
+    const std::vector<int64_t> output_shape = [&] {
+      auto output_shape =
+          phi::vectorize(op->result(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims());
+      pir::ShapeConstraintIRAnalysis& shape_analysis =
+          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
+      if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+        auto shape_info =
+            shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+
+        for (size_t i = 0; i < shape_info.size(); ++i) {
+          if (shape_info[i].isa<int64_t>()) {
+            output_shape[i] = shape_info[i].Get<int64_t>();
+          }
+        }
+      }
+      return output_shape;
+    }();
+    cluster_node->loop_ranges = output_shape;
     sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
-    sch_node->axis_info =
-        cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
-    sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
+    sch_node->axis_info = [&] {
+      int x_rank = op->operand_source(0)
+                       .type()
+                       .dyn_cast<pir::DenseTensorType>()
+                       .dims()
+                       .size();
+      int out_rank =
+          op->result(0).type().dyn_cast<pir::DenseTensorType>().dims().size();
+      std::vector<int64_t> broadcast_axes(x_rank, 0);
+      size_t index_gap = out_rank - x_rank;
+      for (size_t i = 0; i < x_rank; ++i) {
+        broadcast_axes[i] = i + index_gap;
+      }
+      return broadcast_axes;
+    }();
+    sch_node->factor_info = output_shape;
   } else if (op->name() == "cinn_op.generate_shape") {
     // do nothing for now
   } else {
@@ -573,6 +612,19 @@ bool CanOpMergeNode(
     return false;
   }
 
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) ==
+      cinn::hlir::framework::kReduction) {
+    if (cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() == 0 ||
+        cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() ==
+            cur_op->operand_source(0)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size()) {
+      return false;
+    }
+  }
+
   // TODO(phlrain): need update here
   // different loop range can merge, like [128, 128, 1], with [128, 128]
   if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
@@ -592,6 +644,19 @@ bool ShouldOutputPreNode(
   if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
       cinn::hlir::framework::kReduction) {
     return false;
+  }
+
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) ==
+      cinn::hlir::framework::kReduction) {
+    if (cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() == 0 ||
+        cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() ==
+            cur_op->operand_source(0)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size()) {
+      return true;
+    }
   }
 
   // TODO(phlrain): need update here
@@ -837,9 +902,17 @@ class CinnGroupClusterPattern
       auto new_group_op = ReplaceWithGroupOp(
           &rewriter, uniq_ops, node, output_values, &ir_mapping);
 
+      auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+          group_op->GetParentProgram());
       // update ir mapping
       for (size_t i = 0; i < output_values.size(); ++i) {
         ir_mapping.Add(output_values[i], new_group_op->result(i));
+
+        if (shape_analysis.HasShapeOrDataForValue(output_values[i])) {
+          shape_analysis.SetShapeOrDataForValue(
+              new_group_op->result(i),
+              shape_analysis.GetShapeOrDataForValue(output_values[i]));
+        }
       }
 
       for (size_t i = 0; i < output_values.size(); ++i) {

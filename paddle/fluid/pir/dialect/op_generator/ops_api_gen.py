@@ -120,6 +120,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
+    'all_reduce',
+    'all_reduce_',
     'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_avg_',
@@ -151,12 +153,14 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'lars_momentum',
     'lars_momentum_',
     'max_pool2d_v2',
+    'random_routing',
     'recv_v2',
     'rnn_',
     'row_conv',
     'seed',
     'send_v2',
     'shadow_feed',
+    'shadow_feed_tensors',
     'shuffle_batch',
     'sparse_momentum',
     'tdm_sampler',
@@ -174,6 +178,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'push_sparse_v2',
     'push_sparse_v2_',
     'partial_send',
+    'partial_recv',
     'nop',
     'nop_',
 ]

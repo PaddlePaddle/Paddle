@@ -152,6 +152,7 @@
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
+    spmd_rule : ArgMaxInferSpmdDynamic
   kernel :
     func : argmax
     data_type : x

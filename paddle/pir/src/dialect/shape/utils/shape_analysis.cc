@@ -14,7 +14,7 @@
 
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include <string>
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace pir {
 
@@ -224,6 +224,7 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
       }
     }
     printer.os << " }";
+    printer.os << "\t(op_" << op->id() << ")";
   };
   return print_hook;
 }

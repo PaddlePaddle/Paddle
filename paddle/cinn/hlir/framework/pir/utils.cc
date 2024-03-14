@@ -134,6 +134,7 @@ class OpTransInfo {
       "concat",
       "gather_nd",
       "pool2d",
+      "pool2d_grad",
       "split",
       "matmul",
       "matmul_grad",
@@ -347,7 +348,6 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(ProdOp),
     PD_OP_NAME(PowOp),
     PD_OP_NAME(ScaleOp),
-    PD_OP_NAME(ReshapeOp),
     PD_OP_NAME(Pool2dOp),
     PD_OP_NAME(IscloseOp),
     PD_OP_NAME(SliceOp),
@@ -355,7 +355,6 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(SplitOp),
     PD_OP_NAME(SplitWithNumOp),
     PD_OP_NAME(AddNOp),
-    PD_OP_NAME(ExpandOp),
     PD_OP_NAME(UniformOp),
 };
 #undef PD_OP_NAME
@@ -512,7 +511,9 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   utils::AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.first == ::pir::kStopGradientAttrName) {
+    if (item.first == ::pir::kStopGradientAttrName ||
+        item.first == ::pir::kOutputDimExprs ||
+        item.first == ::pir::kSymbolBindings) {
       continue;
     } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =
