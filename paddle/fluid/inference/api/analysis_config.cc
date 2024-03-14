@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
@@ -917,6 +918,11 @@ void AnalysisConfig::Update() {
   auto &&info = SerializeInfoCache();
   if (info == serialized_info_cache_) return;
 
+  std::unordered_set<std::string> deleted_passes;
+  if (pass_builder_) {
+    deleted_passes = pass_builder_->GetAllDeletedPasses();
+  }
+
   // Transfer pass_builder and copy the existing compatible passes.
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
@@ -1129,7 +1135,7 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
-  for (auto &delete_pass : pass_builder()->GetAllDeletedPasses()) {
+  for (const auto &delete_pass : deleted_passes) {
     pass_builder_->DeletePass(delete_pass);
   }
 }
