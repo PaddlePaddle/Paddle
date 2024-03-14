@@ -102,6 +102,7 @@ class TestSparseUnary(unittest.TestCase):
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
+                paddle.set_device(device)
                 self.check_result(dense_func, sparse_func, 'coo', dtype)
                 self.check_result(dense_func, sparse_func, 'csr', dtype)
 
@@ -110,6 +111,7 @@ class TestSparseUnary(unittest.TestCase):
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
+                paddle.set_device(device)
                 self.check_result(
                     dense_func, sparse_func, 'coo', 'float32', attr1
                 )
@@ -124,6 +126,7 @@ class TestSparseUnary(unittest.TestCase):
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
+                paddle.set_device(device)
                 self.check_result(
                     dense_func, sparse_func, 'coo', 'float32', attr1, attr2
                 )
