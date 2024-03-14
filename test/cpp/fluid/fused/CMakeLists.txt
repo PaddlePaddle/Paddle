@@ -39,7 +39,16 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   # resnet_unit needs cudnn 8.0 above
   if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 8000))
-    paddle_test(test_cudnn_norm_conv SRCS cudnn_norm_conv_test.cc)
+    nv_test(
+      test_cudnn_norm_conv
+      SRCS cudnn_norm_conv_test.cc
+      DEPS generated_op
+           depthwise_conv
+           tensor
+           op_registry
+           device_context
+           phi
+           common)
     paddle_test(test_cudnn_bn_add_relu SRCS cudnn_bn_add_relu_test.cc)
   endif()
 endif()
