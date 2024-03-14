@@ -28,6 +28,7 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace cinn {
@@ -1081,23 +1082,34 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
   // check output shape
-  PADDLE_ENFORCE(!output_shapes.empty() && !output_shapes[0].empty(),
-                 "Output shape is empty! Please check.\n");
+  PADDLE_ENFORCE_EQ(output_shapes.empty(),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Output shape is empty! Please check.\n"));
+  PADDLE_ENFORCE_EQ(output_shapes[0].empty(),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Output shape is empty! Please check.\n"));
 
   std::vector<int> axis;
   auto input_shape = inputs[0]->shape;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
     axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
-    PADDLE_ENFORCE_EQ(
-        axis.size(),
-        output_shapes[0].size(),
-        "axis size is not equal output_shapes size! Please check setting.\n");
+    PADDLE_ENFORCE_EQ(axis.size(),
+                      output_shapes[0].size(),
+                      ::common::errors::InvalidArgument(
+                          "axis size is not equal output_shapes size! Please "
+                          "check setting.\n"));
     // check axis and shape
     for (int idx = 0; idx < axis.size(); ++idx) {
       PADDLE_ENFORCE(axis[idx] >= 0 && axis[idx] < axis.size(),
-                     "axis is not in the tensor shape.");
+                     ::common::errors::InvalidArgument(
+                         "axis is not in the tensor shape."));
       for (int idy = idx + 1; idy < axis.size(); ++idy) {
-        PADDLE_ENFORCE_NE(axis[idx], axis[idy], "axis can't repeat!");
+        PADDLE_ENFORCE_NE(
+            axis[idx],
+            axis[idy],
+            ::common::errors::InvalidArgument("axis can't repeat!"));
       }
     }
   } else {
@@ -1108,17 +1120,25 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
                                                lang::RetValue *ret) {
     PADDLE_ENFORCE(
         !args.empty(),
-        "The input argument of transpose compute is empty! Please check.\n");
+        ::common::errors::InvalidArgument("The input argument of transpose "
+                                          "compute is empty! Please check.\n"));
     CINNValuePack input_args = args[0];
     PADDLE_ENFORCE(!input_args.empty(),
-                   "at least one input tensor for transpose compute.\n");
+                   ::common::errors::InvalidArgument(
+                       "at least one input tensor for transpose compute.\n"));
     Expr A = input_args[0];
-    PADDLE_ENFORCE(A.as_tensor(), "The input argument is not Tensor.");
-    PADDLE_ENFORCE_EQ(
-        input_args.size(), 2, "The input args size must be equal to 2.");
-    PADDLE_ENFORCE(input_args[1].is_string(),
-                   "The second argument must be of type string and is the name "
-                   "of the output tensor.");
+    PADDLE_ENFORCE(
+        A.as_tensor(),
+        ::common::errors::InvalidArgument("The input argument is not Tensor."));
+    PADDLE_ENFORCE_EQ(input_args.size(),
+                      2,
+                      ::common::errors::InvalidArgument(
+                          "The input args size must be equal to 2."));
+    PADDLE_ENFORCE(
+        input_args[1].is_string(),
+        ::common::errors::InvalidArgument(
+            "The second argument must be of type string and is the name "
+            "of the output tensor."));
     std::string tensor_name = input_args[1].operator std::string();
 
     auto out = pe::Transpose(A.as_tensor_ref(), axis, tensor_name);
