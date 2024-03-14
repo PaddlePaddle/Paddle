@@ -957,8 +957,8 @@ bool AnalysisPredictor::PrepareExecutor() {
         // Operator fusion pass
         gpu_pm.AddPass(::pir::CreateSiluFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
-        gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
-        gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
+        // gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
+        // gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
         gpu_pm.AddPass(::pir::CreateFusedEmbeddingEltwiseLayerNormPass());
         gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
         gpu_pm.AddPass(::pir::CreateFcFusePass());
