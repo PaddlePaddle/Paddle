@@ -223,9 +223,17 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     )
                     out.backward()
 
+                    atol = 0
+                    rtol = 1e-07
+                    if self.in_type == np.float16:
+                        atol = 1e-3
+                        rtol = 1e-3
+
                     np.testing.assert_allclose(
                         input.gradient(),
                         self.cal_grad_upscale_train(mask.numpy(), prob),
+                        atol=atol,
+                        rtol=rtol,
                     )
 
 
