@@ -72,6 +72,24 @@ void sin_double_grad(const Tensor& x,
 }
 
 template <typename T>
+void cos_double_grad(const Tensor& x,
+                     const Tensor& grad_out,
+                     const Tensor& grad_x_grad,
+                     Tensor* x_grad,
+                     Tensor* grad_out_grad) {
+  // cos grad grad : ddout = -sinx * ddx, dx = -dy * cosx * ddx
+  if (x_grad) {
+    auto x_grad_tmp = -(grad_out * cos<T>(x) * grad_x_grad);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = -sin<T>(x) * grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
 void tanh_triple_grad(const Tensor& out,
                       const Tensor& grad_out_forward,
                       const Tensor& grad_x_grad_forward,
