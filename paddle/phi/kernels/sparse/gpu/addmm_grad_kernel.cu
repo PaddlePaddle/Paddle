@@ -82,7 +82,8 @@ PD_REGISTER_KERNEL(addmm_coo_dense_grad,
                    ALL_LAYOUT,
                    phi::sparse::AddmmCooDenseGradKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -91,6 +92,7 @@ PD_REGISTER_KERNEL(addmm_csr_dense_grad,
                    ALL_LAYOUT,
                    phi::sparse::AddmmCsrDenseGradKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
