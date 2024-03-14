@@ -1,9 +1,16 @@
 # Get the latest git tag.
 set(PADDLE_VERSION $ENV{PADDLE_VERSION})
 if(WITH_NIGHTLY_BUILD)
-  string(TIMESTAMP CURRENT_DATE "dev%Y%m%d")
-  message(STATUS "Current Date: ${CURRENT_DATE}")
-  set(PADDLE_VERSION "${PADDLE_VERSION}.${CURRENT_DATE}")
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} show -s --format=%ci HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_TIME
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  string(REGEX REPLACE " (.*)$" "" DATE_ONLY "${GIT_COMMIT_TIME}")
+  string(REPLACE "-" "" DATE_ONLY "${DATE_ONLY}")
+  # Print the last commit date
+  message(STATUS "Last commit date: ${DATE_ONLY}")
+  set(PADDLE_VERSION "${PADDLE_VERSION}.dev${DATE_ONLY}")
 endif()
 set(tmp_version "HEAD")
 set(TAG_VERSION_REGEX "[0-9]+\\.[0-9]+\\.[0-9]+(\\.(a|b|rc)\\.[0-9]+)?")
