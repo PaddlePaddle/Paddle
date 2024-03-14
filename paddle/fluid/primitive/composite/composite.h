@@ -122,6 +122,10 @@ static bool valid_type(const DataType& dtype) {
 
 template <typename T>
 Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
+  if (y.to<float>() == 2.0) {
+    return x * x;
+  }
+  elif (y.to<float>() == -2.0) { return 1.0 / (x * x); }
   auto org_dtype = x.dtype();
   auto x_cast = x;
 
