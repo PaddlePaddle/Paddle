@@ -137,8 +137,12 @@ DrrRewritePattern::FindCandidateIrOutputOp(
     return output_op_bind_map;
   }
   std::unordered_set<const OpCall*> drr_visited_ops{anchor};
-  DfsVisitor(
-      anchor, op, drr_output_op_set, &drr_visited_ops, &output_op_bind_map);
+  DfsVisitor(anchor,
+             op,
+             drr_output_op_set,
+             source_pattern_graph.input_tensors(),
+             &drr_visited_ops,
+             &output_op_bind_map);
   if (output_op_bind_map.size() != drr_output_op_set.size()) {
     return {};
   }
@@ -149,6 +153,7 @@ void DrrRewritePattern::DfsVisitor(
     const OpCall* drr_op,
     pir::Operation* ir_op,
     const std::unordered_set<const OpCall*>& drr_output_op_set,
+    const std::unordered_set<std::string>& drr_input_tensors,
     std::unordered_set<const OpCall*>* drr_visited_ops,
     std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>*
         output_op_bind_map) const {
@@ -188,6 +193,7 @@ void DrrRewritePattern::DfsVisitor(
             DfsVisitor(drr_bro_op,
                        ir_bro_op,
                        drr_output_op_set,
+                       drr_input_tensors,
                        drr_visited_ops,
                        output_op_bind_map);
             drr_visited_ops->erase(drr_bro_op);
@@ -202,15 +208,17 @@ void DrrRewritePattern::DfsVisitor(
       continue;
     }
     auto ir_operand_value = ir_op->operand(i).source();
-    if (drr_op_input_tensors[i]->consumers().size() !=
-        ir_operand_value.use_count()) {
-      return;
-    }
+    // if (drr_input_tensors.count(drr_op_input_tensors[i]->name()) == 0 &&
+    //     drr_op_input_tensors[i]->consumers().size() !=
+    //         ir_operand_value.use_count()) {
+    //   return;
+    // }
     auto* ir_producer_op = ir_operand_value.defining_op();
     drr_visited_ops->insert(drr_producer_op);
     DfsVisitor(drr_producer_op,
                ir_producer_op,
                drr_output_op_set,
+               drr_input_tensors,
                drr_visited_ops,
                output_op_bind_map);
     drr_visited_ops->erase(drr_producer_op);
@@ -223,9 +231,9 @@ void DrrRewritePattern::DfsVisitor(
   for (size_t i = 0; i < drr_op_output_tensors.size(); ++i) {
     const auto& drr_child_ops = drr_op_output_tensors[i]->consumers();
     auto ir_output_value = ir_op->result(i);
-    if (drr_child_ops.size() != ir_output_value.use_count()) {
-      return;
-    }
+    // if (drr_child_ops.size() != ir_output_value.use_count()) {
+    //   return;
+    // }
     for (auto* drr_child_op : drr_child_ops) {
       for (auto it = ir_output_value.use_begin();
            it != ir_output_value.use_end();
@@ -239,6 +247,7 @@ void DrrRewritePattern::DfsVisitor(
           DfsVisitor(drr_child_op,
                      ir_child_op,
                      drr_output_op_set,
+                     drr_input_tensors,
                      drr_visited_ops,
                      output_op_bind_map);
           drr_visited_ops->erase(drr_child_op);
@@ -360,16 +369,18 @@ bool DrrRewritePattern::MatchFromOutputToInput(
       if (drr_producer_op == nullptr) {
         continue;
       }
-      // Check whether tensor and value have the same use_count.
-      if (drr_input_tensors[i]->consumers().size() !=
-          ir_input_values[i].use_count()) {
-        matched = false;
-        VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
-                << i << "] { " << drr_node->outputs().size()
-                << " } != consumers of pir intput[" << i << "] { "
-                << ir_input_values[i].use_count() << " }.";
-        break;
-      }
+      // // Check whether tensor and value have the same use_count.
+      // if (source_pattern_graph.input_tensors().count(
+      //         drr_input_tensors[i]->name()) == 0 &&
+      //     drr_input_tensors[i]->consumers().size() !=
+      //         ir_input_values[i].use_count()) {
+      //   matched = false;
+      //   VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
+      //           << i << "] { " << drr_node->outputs().size()
+      //           << " } != consumers of pir intput[" << i << "] { "
+      //           << ir_input_values[i].use_count() << " }.";
+      //   break;
+      // }
 
       auto* ir_producer_op = ir_input_values[i].defining_op();
       // Tigger early stop while operand is BlockArgument with
