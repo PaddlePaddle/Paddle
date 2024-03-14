@@ -697,17 +697,15 @@ void BindOperation(py::module *m) {
                     OpCreationCallstackAttrName(),
                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                          op_callstack_infos));
-          });
-#ifdef PADDLE_WITH_DISTRIBUTE
-  op.def("dist_attr", [](Operation &self) {
-    if (self.HasAttribute(kAttrOpDistAttr)) {
-      return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
-    } else {
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("dist_attr is only for dist op."));
-    }
-  });
-#endif
+          })
+      .def("dist_attr", [](Operation &self) {
+        if (self.HasAttribute(kAttrOpDistAttr)) {
+          return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+        } else {
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("dist_attr is only for dist op."));
+        }
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -974,16 +972,14 @@ void BindValue(py::module *m) {
                  BoolAttribute::get(pir::IrContext::Instance(), true));
              return out;
            })
-      .def("__repr__", &Value2String);
-#ifdef PADDLE_WITH_DISTRIBUTE
-  value.def("dist_attr", [](Value &self) {
-    if (!self.type().isa<DistDenseTensorType>()) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "_local_shape is only for distdense tensor."));
-    }
-    return self.type().dyn_cast<DistDenseTensorType>().tensor_dist_attr();
-  });
-#endif
+      .def("__repr__", &Value2String)
+      .def("dist_attr", [](Value &self) {
+        if (!self.type().isa<DistDenseTensorType>()) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "_local_shape is only for distdense tensor."));
+        }
+        return self.type().dyn_cast<DistDenseTensorType>().tensor_dist_attr();
+      });
 }
 
 void BindOpOperand(py::module *m) {
