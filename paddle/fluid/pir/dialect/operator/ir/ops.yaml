@@ -804,7 +804,6 @@
   kernel :
     func : global_scatter
     data_type : dtype
-  backward : global_scatter_grad
 
 - op : greater_equal
   args : (Tensor x, Tensor y)
