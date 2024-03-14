@@ -46,11 +46,9 @@ class TestBuildFakeProgram(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     tmp = input._local_shape
                 with self.assertRaises(ValueError):
-                    tmp = input.dist_attr().dims_mapping
+                    tmp = input.dist_attr()
                 with self.assertRaises(ValueError):
-                    tmp = w0.dist_attr().process_mesh
-                with self.assertRaises(ValueError):
-                    tmp = w0.dist_attr().partial_dims
+                    tmp = w0.dist_attr()
 
                 dist_input = dtensor_from_local(input, mesh, [dist.Replicate()])
                 dist_w0 = dtensor_from_local(w0, mesh, [dist.Replicate()])
