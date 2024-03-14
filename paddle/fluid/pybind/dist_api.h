@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,4 +14,10 @@
 
 #pragma once
 
-#include "paddle/utils/string/string_helper.h"
+#include <pybind11/pybind11.h>
+
+namespace paddle {
+namespace pybind {
+void BindDistApi(pybind11::module *m);
+}  // namespace pybind
+}  // namespace paddle

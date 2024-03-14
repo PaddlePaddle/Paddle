@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,12 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <utility>
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
-#include "paddle/common/flags.h"
-#include "paddle/utils/string/pretty_log.h"
+namespace paddle::dialect {
+
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Concat)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(FullWithTensor)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Linspace)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logspace)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Stack)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where_)
+
+}  // namespace paddle::dialect

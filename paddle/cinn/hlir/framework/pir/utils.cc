@@ -125,10 +125,25 @@ class OpTransInfo {
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
   std::unordered_set<std::string> default_deny_ops_{
-      "feed",   "fetch",       "conv2d",    "conv2d_grad",    "dropout",
-      "slice",  "concat",      "gather_nd", "pool2d",         "split",
-      "matmul", "matmul_grad", "transpose", "embedding_grad", "embedding",
-      "gather", "arange",      "softmax",   "unsqueeze",      "squeeze"};
+      "feed",
+      "fetch",
+      "conv2d",
+      "conv2d_grad",
+      "dropout",
+      "slice",
+      "concat",
+      "gather_nd",
+      "pool2d",
+      "pool2d_grad",
+      "split",
+      "matmul",
+      "matmul_grad",
+      "transpose",
+      "embedding_grad",
+      "embedding",
+      "gather",
+      "arange",
+  };
 };
 
 std::string OpNameAfterStripDialect(const ::pir::Operation& op) {
@@ -340,7 +355,6 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(SplitOp),
     PD_OP_NAME(SplitWithNumOp),
     PD_OP_NAME(AddNOp),
-    PD_OP_NAME(ExpandOp),
     PD_OP_NAME(UniformOp),
 };
 #undef PD_OP_NAME

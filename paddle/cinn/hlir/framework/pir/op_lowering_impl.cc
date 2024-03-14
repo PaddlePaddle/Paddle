@@ -195,9 +195,9 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     reduce_inner_num = 8;
   } else if (reduce_numel > 2048) {
     spatial_block = 1;
-    reduce_block = 2048;
-    warp_num = 8;
-    reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 256.0));
+    reduce_block = int64_t(std::ceil(reduce_numel * 1.0 / 1024.0)) * 1024;
+    warp_num = 32;
+    reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 1024.0));
     spatial_inner_num = 1;
   }
 
@@ -625,6 +625,17 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
     if (it == align_info.end()) {
       continue;
     }
+    if (op1->name() == "cinn_op.generate_shape") {
+      continue;
+    }
+
+    if (it->second.size() > 1) {
+      for (size_t i = 0; i < it->second.size(); ++i) {
+      }
+      // TODO(phlran): merge to factor info here
+      it->second.front().factor_info = it->second.back().factor_info;
+      it->second.resize(1);
+    }
 
     if (it->second.size() > 1) {
       for (size_t i = 0; i < it->second.size(); ++i) {
@@ -678,7 +689,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
-
           info.output_shape.push_back(-1);
           info.output_dim_expr.push_back(group->loop_ranges_expr[i]);
         }
@@ -703,7 +713,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         } else {
           for (size_t i = 0; i < broadcast_axes.size(); ++i) {
             if (in_dim[i] < 0 || output_shape[broadcast_axes[i]] < 0) {
-              std::cerr << "skip negative broadcast\n";
               continue;
             }
             if (in_dim[i] != output_shape[broadcast_axes[i]]) {
@@ -728,10 +737,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           info.output_shape.push_back(output_shape[broadcast_axes[i]]);
         }
       }
-      // PADDLE_ENFORCE_NE(
-      //     info.broadcast_axes.size(),
-      //     0,
-      //     phi::errors::PreconditionNotMet("broadcast axes can not be zero"));
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {
         if (!align_info.count(it->first->operand_source(i).defining_op())) {
@@ -745,6 +750,10 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
       if (op_out.use_count() == 1 &&
           op_out.first_use().owner()->name() == "cf.yield") {
+        info.with_constrain = true;
+      }
+
+      if (erase_reshape.count(op_out.first_use().owner())) {
         info.with_constrain = true;
       }
 

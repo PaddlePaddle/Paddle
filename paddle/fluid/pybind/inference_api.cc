@@ -803,7 +803,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableXpu,
            py::arg("l3_size") = 16 * 1024 * 1024,
            py::arg("l3_locked") = false,
-           py::arg("conv_autotune") = true,
+           py::arg("conv_autotune") = false,
            py::arg("conv_autotune_file") = "",
            py::arg("transformer_encoder_precision") = "int16",
            py::arg("transformer_encoder_adaptive_seqlen") = false,
@@ -1036,6 +1036,7 @@ void BindAnalysisConfig(py::module *m) {
             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
           },
           py::return_value_policy::reference)
+      .def("enable_custom_passes", &AnalysisConfig::EnableCustomPasses)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);

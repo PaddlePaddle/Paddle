@@ -1470,13 +1470,9 @@ PHI_DEFINE_EXPORTED_bool(prim_check_ops,
                          "Whether to check the decomposed program, to ensure "
                          "that only the primitive operator is present.");
 
-/*
- * PIR and prim related FLAG
- * Name: FLAGS_prim_forward_blacklist
- * Value Range: string, default=""
- * Example: FLAGS_prim_forward_blacklist="pd_op.relu;pd_op.mean" would block
- * `relu` and `mean` two ops in decompsition.
- */
+// PIR and prim related FLAG
+// Example: FLAGS_prim_forward_blacklist="pd_op.relu;pd_op.mean" would block
+// `relu` and `mean` two ops in decompsition.
 PHI_DEFINE_EXPORTED_string(
     prim_forward_blacklist,
     "",

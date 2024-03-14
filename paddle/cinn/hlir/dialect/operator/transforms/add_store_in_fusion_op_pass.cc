@@ -48,8 +48,6 @@ class AddYieldStoreInFusionOpPattern
               op->operand_source(i).defining_op()->operand_source(0),
               op->operand_source(i).type());
 
-          op->operand(i).set_source(store_op.result(0));
-
           auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
               reshape_op->GetParentProgram());
 
@@ -59,6 +57,10 @@ class AddYieldStoreInFusionOpPattern
                 shape_analysis.GetShapeOrDataForValue(reshape_op->result(0)));
           }
 
+          op->operand(i).set_source(store_op.result(0));
+          if (reshape_op->result(0).use_count() == 0) {
+            rewriter.EraseOp(reshape_op);
+          }
           continue;
         }
       }

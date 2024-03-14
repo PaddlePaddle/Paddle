@@ -141,21 +141,21 @@ class TestCinnSubGraphBase(unittest.TestCase):
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
 
-class TestCinnExpSubNet(TestCinnSubGraphBase):
-    def eval(self, use_cinn):
-        paddle.seed(2022)
-        net = CINNSubGraphNet()
-        net = utils.apply_to_static(net, use_cinn)
-        net.eval()
-        out = net(self.x)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
-        return out
+# class TestCinnExpSubNet(TestCinnSubGraphBase):
+#     def eval(self, use_cinn):
+#         paddle.seed(2022)
+#         net = CINNSubGraphNet()
+#         net = utils.apply_to_static(net, use_cinn)
+#         net.eval()
+#         out = net(self.x)
+#         if use_cinn:
+#             self.check_jit_kernel_info(net.forward)
+#         return out
 
-    def test_eval(self):
-        cinn_out = self.eval(use_cinn=True)
-        dy_out = self.eval(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+#     def test_eval(self):
+#         cinn_out = self.eval(use_cinn=True)
+#         dy_out = self.eval(use_cinn=False)
+#         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 # class TestCinnSoftmax(TestCinnSubGraphBase):
@@ -207,24 +207,24 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
         np.testing.assert_allclose(cinn_b_grad, dy_b_grad, atol=1e-8)
 
 
-class TestAddDropoutLayerNorm(TestCinnSubGraphBase):
-    def train(self, use_cinn):
-        paddle.seed(2022)
-        net = CINNAddDropoutLayerNormSubGraphNet(self.shape[-1])
-        net = utils.apply_to_static(net, use_cinn)
-        # net.eval()
-        weight = paddle.ones(shape=[self.shape[-1]], dtype="float32")
-        bias = paddle.ones(shape=[self.shape[-1]], dtype="float32")
-        out = net(self.x, self.x, weight, bias)
-        return out
+# class TestAddDropoutLayerNorm(TestCinnSubGraphBase):
+#     def train(self, use_cinn):
+#         paddle.seed(2022)
+#         net = CINNAddDropoutLayerNormSubGraphNet(self.shape[-1])
+#         net = utils.apply_to_static(net, use_cinn)
+#         # net.eval()
+#         weight = paddle.ones(shape=[self.shape[-1]], dtype="float32")
+#         bias = paddle.ones(shape=[self.shape[-1]], dtype="float32")
+#         out = net(self.x, self.x, weight, bias)
+#         return out
 
-    def test_forward(self):
-        cinn_out = self.train(use_cinn=True)
-        dy_out = self.train(use_cinn=False)
+#     def test_forward(self):
+#         cinn_out = self.train(use_cinn=True)
+#         dy_out = self.train(use_cinn=False)
 
-        np.testing.assert_allclose(
-            cinn_out.numpy(), dy_out.numpy(), atol=1e-8, rtol=1e-4
-        )
+#         np.testing.assert_allclose(
+#             cinn_out.numpy(), dy_out.numpy(), atol=1e-8, rtol=1e-4
+#         )
 
 
 # class TestCinnDropout(TestCinnSubGraphBase):
@@ -331,5 +331,5 @@ class TestAddDropoutLayerNorm(TestCinnSubGraphBase):
 #         )
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()

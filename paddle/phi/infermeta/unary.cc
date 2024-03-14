@@ -738,6 +738,14 @@ void CropInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  dim[0] = dim[0] / nranks;
+  if (dim[0] < 0) dim[0] = -1;
+  out->set_dims(dim);
+  out->set_dtype(x.dtype());
+}
+
 void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
   phi::DDim dim = x.dims();
   dim[dim.size() - 1] = dim[dim.size() - 1] / nranks;
