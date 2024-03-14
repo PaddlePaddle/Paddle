@@ -264,10 +264,6 @@ class TestLlamaAuto:
                 if self.amp_master_grad:
                     amp.use_master_grad = True
 
-            if self.config.recompute:
-                recompute = strategy._recompute
-                recompute.enable = self.config.recompute
-
             dist_model = dist.to_static(
                 model,
                 dist_loader,

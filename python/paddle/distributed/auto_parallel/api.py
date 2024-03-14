@@ -1425,7 +1425,10 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
 
-    def _convert_to_unify_strategy(self, auto_stragety):
+    def _from_legacy_strategy(self, auto_stragety):
+        """
+        NOTE(lizhiyu): This is a template function to get `dist.Strategy` from `fleet.auto.Strategy`.
+        """
         import copy
 
         self._fused_passes.enable = auto_stragety.fused_passes.enable
