@@ -19,9 +19,32 @@
 
 namespace cinn::frontend {
 
-ClusteringResult ClusterIntoGroupPatternsFromOpList(
-    const pir::ShapeConstraintIRAnalysis* shape_analysis,
-    const std::vector<const pir::Operation*>& ops);
+class ClusteringPolicy {
+ public:
+  virtual ~ClusteringPolicy() = default;
+
+  using ShardableAxes4ValueT =
+      std::function<std::optional<const ShardableAxes*>(pir::Value)>;
+
+  virtual bool IsEdgeFusible(
+    const ShardableAxes4ValueT& ShardableAxes4Value,
+    const api::StmtPattern<FrontendPattern>& src,
+    const api::StmtPattern<FrontendPattern>& dst) = 0;
+
+  using StmtPatternPtrs = std::vector<const api::StmtPattern<FrontendPattern>*>;
+  virtual ClusteringResult MakeClusteringResult(
+      const std::vector<StmtPatternPtrs>& stmts) = 0;
+
+ protected:
+  ClusteringPolicy() = default;
+};
+
+std::unique_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis);
+
+ClusteringResult ClusterOps(
+    const std::vector<const pir::Operation*>& ops,
+    std::unique_ptr<ClusteringPolicy>&& clustering_policy);
 
 GroupPattern GenerateGroupPatternFromOpList(
     const std::vector<const pir::Operation*>& ops);

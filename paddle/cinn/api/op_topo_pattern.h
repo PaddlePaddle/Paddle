@@ -53,15 +53,7 @@ using StmtsPattern = std::vector<StmtPattern<T>>;
 //  3. Stmts * Stmts -> Stmts
 // OpTopoPattern := Error | Stmts
 
-// LoopAlignableStmtsPattern requirements:
-//  1. consistent shardible axes across difference `stmts`.
-//  2. consistent biggest shapes across difference `stmts`.
 template <typename T>
-struct LoopAlignableStmtsPattern {
-  StmtsPattern<T> stmts;
-};
-
-template <typename T>
-using OpTopoPattern = std::variant<ErrorPattern<T>, LoopAlignableStmtsPattern<T>>;
+using OpTopoPattern = std::variant<ErrorPattern<T>, StmtsPattern<T>>;
 
 }

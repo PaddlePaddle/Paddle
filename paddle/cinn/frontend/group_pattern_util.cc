@@ -517,6 +517,42 @@ pir::Value GetStmtBigestShapeValue(const StmtPattern& stmt) {
   }, stmt);
 }
 
+const pir::Operation* GetStmtSoleSinkImpl(const IS& injective_source) {
+  return injective_source.sole_sink;
+}
+
+const pir::Operation* GetStmtSoleSinkImpl(const PS& partial_shardable) {
+  return partial_shardable.sole_sink;
+}
+
+const pir::Operation* GetStmtSoleSinkImpl(const R& reduce) {
+  return reduce.reduce_op_pattern.reduce_op;
+}
+
+const pir::Operation* GetStmtSoleSink(const StmtPattern& stmt) {
+  return std::visit([](const auto& impl){
+    return GetStmtSoleSinkImpl(impl);
+  }, stmt);
+}
+
+void SortStmtPtrs(
+    std::vector<const StmtPattern*>* stmt_ptrs,
+    const std::function<size_t(const pir::Operation*)>& OrderValue4Op) {
+  auto GetOrderValue4Stmt = [&](const StmtPattern* stmt) {
+    const auto* sink_op = GetStmtSoleSink(*stmt);
+    return OrderValue4Op(sink_op);
+  };
+  const auto Cmp = [&](const auto* lhs, const auto* rhs) {
+    const auto& lhs_order = GetOrderValue4Stmt(lhs);
+    const auto& rhs_order = GetOrderValue4Stmt(rhs);
+    CHECK(lhs_order.has_value());
+    CHECK(rhs_order.has_value());
+    return lhs_order.value() < rhs_order.value();
+  };
+  std::sort(stmt_ptrs->begin(), stmt_ptrs->end(), Cmp);
+}
+
+
 class StmtFusionHelper {
  public:
   StmtFusionHelper(
@@ -538,30 +574,6 @@ class StmtFusionHelper {
     return ret;
   }
 
-  std::function<std::optional<size_t>(const StmtPattern*)>
-  MakeGetOrderValue4Stmt(const std::vector<const StmtPattern*>& stmt_ptr_patterns) {
-    const auto& GetStmtSinks = [&](const StmtPattern* stmt_ptr) {
-      OpSet ops_set;
-      VisitStmtOp(*stmt_ptr, [&](const pir::Operation* op) {
-        ops_set.insert(op);
-      });
-      return GetSinks(ops_set);
-    };
-    std::unordered_map<const StmtPattern*, size_t> stmt2order_value;
-    for (const auto* stmt_ptr : stmt_ptr_patterns) {
-      const auto& sinks = GetStmtSinks(stmt_ptr);
-      CHECK_EQ(sinks.size(), 1);
-      const auto* sink = *sinks.begin();
-      const size_t order_value = this->GetOrderValue4Op(sink);
-      CHECK(stmt2order_value.emplace(stmt_ptr, order_value).second);
-    }
-    return [map=std::move(stmt2order_value)](const StmtPattern* stmt_ptr) -> std::optional<size_t> {
-      const auto& iter = map.find(stmt_ptr);
-      if (iter == map.end()) return std::nullopt;
-      return iter->second;
-    };
-  }
-
   void SortStmtPatterns(std::vector<StmtPattern>* stmt_patterns) {
     std::vector<const StmtPattern*> stmt_ptr_patterns = [&]{
       std::vector<const StmtPattern*> stmt_ptr_patterns;
@@ -571,15 +583,7 @@ class StmtFusionHelper {
       }
       return stmt_ptr_patterns;
     }();
-    const auto& GetOrderValue4Stmt = MakeGetOrderValue4Stmt(stmt_ptr_patterns);
-    const auto Cmp = [&](const auto* lhs, const auto* rhs) {
-      const auto& lhs_order = GetOrderValue4Stmt(lhs);
-      const auto& rhs_order = GetOrderValue4Stmt(rhs);
-      CHECK(lhs_order.has_value());
-      CHECK(rhs_order.has_value());
-      return lhs_order.value() < rhs_order.value();
-    };
-    std::sort(stmt_ptr_patterns.begin(), stmt_ptr_patterns.end(), Cmp);
+    SortStmtPtrs(&stmt_ptr_patterns, this->GetOrderValue4Op);
     *stmt_patterns = [&]{
       std::vector<StmtPattern> sorted_stmts;
       sorted_stmts.reserve(stmt_ptr_patterns.size());
@@ -627,10 +631,12 @@ class StmtFusionHelper {
     static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
         const IS& upstream, const PS& downstream) {
       const auto& ops = [&] {
-        std::vector<const pir::Operation*> ops;
-        ops.insert(ops.end(), upstream.ops.begin(), upstream.ops.end());
-        ops.insert(ops.end(), downstream.ops.begin(), downstream.ops.end());
-        std::unique(ops.begin(), ops.end());
+        std::vector<const pir::Operation*> ops(upstream.ops.begin(), upstream.ops.end());
+        for (const auto* downstream_op : downstream.ops) {
+          if (std::find(ops.begin(), ops.end(), downstream_op) == ops.end()) {
+            ops.push_back(downstream_op);
+          }
+        }
         return ops;
       }();
       const auto& shardable_axes_signature =
@@ -802,9 +808,9 @@ class StmtFusionHelper {
       return this->GetOrderValue4Op(lhs) < this->GetOrderValue4Op(rhs);
     };
     common::BfsWalker<StmtPtr> reverse_walker(VisitInputStmt);
-    const auto& GetUpstreamOps = [&](const auto stmt_ptr) {
+    const auto& GetAllUpstreamOps = [&](const auto* stmt_ptr) {
       std::vector<const pir::Operation*> visited_ops;
-      reverse_walker(stmt_ptr, [&](const auto node) {
+      reverse_walker(stmt_ptr, [&](const auto* node) {
         VisitStmtOp(*node, [&](const auto* op) { visited_ops.push_back(op); });
       });
       std::sort(visited_ops.begin(), visited_ops.end(), Cmp);
@@ -825,7 +831,7 @@ class StmtFusionHelper {
     }();
     for (auto& stmt : *stmts) {
       if (!IsSinkPattern(&stmt)) continue;
-      ret_stmts.emplace_back(ConstructPattern(GetUpstreamOps(&stmt)));
+      ret_stmts.emplace_back(ConstructPattern(GetAllUpstreamOps(&stmt)));
     }
     *stmts = ret_stmts;
     return std::nullopt;
@@ -987,17 +993,17 @@ GroupPattern FuseToGroupPattern(
   return stmt_patterns;
 }
 
-class ClusteringHelper {
+class ClusteringEngine {
  public:
-  ClusteringHelper(
-      const pir::ShapeConstraintIRAnalysis* shape_analysis,
-      const std::vector<const pir::Operation*>& ops)
-    : shape_analysis_(shape_analysis),
-      ops_(ops),
-      op_topo_(OpTopo::Make(ops)) {
+  ClusteringEngine(
+      const std::vector<const pir::Operation*>& ops,
+      std::unique_ptr<ClusteringPolicy>&& clustering_policy)
+    : ops_(ops),
+      op_topo_(OpTopo::Make(ops)),
+      clustering_policy_(std::move(clustering_policy)) {
   }
 
-  ClusteringResult ClusterIntoGroupPatterns() {
+  ClusteringResult ClusterOps() {
     const std::vector<StmtPattern> stmt_patterns = [&]{
       GroupPattern raw_parsed = FuseToGroupPattern(ops_);
       CHECK(!std::holds_alternative<ErrorGroupPattern>(raw_parsed)) 
@@ -1005,26 +1011,30 @@ class ClusteringHelper {
       CHECK(std::holds_alternative<std::vector<StmtPattern>>(raw_parsed));
       return std::get<std::vector<StmtPattern>>(raw_parsed);
     }();
+    auto OrderValue4Op = MakeTopoOrderFinderOfOp(ops_);
     common::BfsWalker<const StmtPattern*> walker =
-        MakeAcyclicLoopAlignableBfsWalker(stmt_patterns);
-    std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
-    VisitConnectedComponent(walker, stmt_patterns, [&](const auto& stmt_ptrs) {
-      loop_alignable_list.emplace_back(MakeLoopAlignableStmtsPattern(stmt_ptrs));
+        MakeAcyclicSameClusterBfsWalker(stmt_patterns);
+    std::vector<std::vector<const StmtPattern*>> stmts_list;
+    VisitConnectedComponent(walker, stmt_patterns, [&](auto stmt_ptrs) {
+      SortStmtPtrs(&stmt_ptrs, OrderValue4Op);
+      stmts_list.push_back(stmt_ptrs);
     });
-    return ClusteringResult{
-      .loop_alignable_list=std::move(loop_alignable_list),
-    };
+    SortStmtsList(&stmts_list, OrderValue4Op);
+    return clustering_policy_.MakeClusteringResult(stmts_list);
   }
 
  private:
-  LoopAlignableStmtsPattern MakeLoopAlignableStmtsPattern(
-      const std::vector<const StmtPattern*>& stmt_ptrs) {
-    LoopAlignableStmtsPattern loop_alignable;
-    loop_alignable.stmts.reserve(stmt_ptrs.size());
-    for (const auto* stmt : stmt_ptrs) {
-      loop_alignable.stmts.push_back(*stmt);
-    }
-    return loop_alignable;
+  void SortStmtsList(
+      std::vector<std::vector<const StmtPattern*>>* stmt_ptrs,
+      const std::function<size_t(const pir::Operation*)>& OrderValue4Op) {
+    auto GetOrderValue = [&](const std::vector<const StmtPattern*>& stmts) {
+      CHECK(!stmts.empty());
+      return OrderValue4Op(GetStmtSoleSink(stmts.back()));
+    };
+    auto Cmp = [&](const auto& lhs, const auto& rhs) {
+      return GetOrderValue(lhs) < GetOrderValue(rhs);
+    };
+    std::sort(stmt_ptrs->begin(), stmt_ptrs->end(), Cmp);
   }
 
   template <typename DoEachComponentT>
@@ -1044,31 +1054,31 @@ class ClusteringHelper {
     }
   }
 
-  common::BfsWalker<const StmtPattern*> MakeAcyclicLoopAlignableBfsWalker(
+  common::BfsWalker<const StmtPattern*> MakeAcyclicSameClusterBfsWalker(
       const std::vector<StmtPattern>& stmt_patterns) {
     const auto entire_topo_walk = MakeTopoWalker(op_topo_, stmt_patterns);
-    const auto LoopAlignableRoot4Stmt =
-        MakeLoopAlignableRoot4Stmt(stmt_patterns, entire_topo_walk);
-    const auto IsLoopAlignable = [=](const auto* lhs, const auto* rhs) {
-      return LoopAlignableRoot4Stmt(lhs) == LoopAlignableRoot4Stmt(rhs);
+    const auto ClusterRoot4Stmt =
+        MakeClusterRoot4Stmt(stmt_patterns, entire_topo_walk);
+    const auto IsInSameCluster = [=](const auto* lhs, const auto* rhs) {
+      return ClusterRoot4Stmt(lhs) == ClusterRoot4Stmt(rhs);
     }
     const auto IsAcyclicConnected =
-        MakePredicatorIsAcyclicConnected(entire_topo_walk, stmt_patterns, LoopAlignableRoot4Stmt);
+        MakePredicatorIsAcyclicConnected(entire_topo_walk, stmt_patterns, ClusterRoot4Stmt);
     using NodeVisitor = std::function<void(const StmtPattern*)>;
-    const auto VisitAcyclicLoopAlignableNext =
+    const auto VisitAcyclicClusterNext =
       [=](const StmtPattern* stmt, const NodeVisitor& DoEach) {
         entire_topo_walk.VisitPrevNodes(stmt, [&](const StmtPattern* input){
-          if (!IsLoopAlignable(input, stmt)) return;
+          if (!IsInSameCluster(input, stmt)) return;
           if (!IsAcyclicConnected(input, stmt)) return;
           DoEach(input);
         });
         entire_topo_walk.VisitNextNodes(stmt, [&](const StmtPattern* output){
-          if (!IsLoopAlignable(stmt, output)) return;
+          if (!IsInSameCluster(stmt, output)) return;
           if (!IsAcyclicConnected(stmt, output)) return;
           DoEach(output);
         });
       };
-    return comm::BfsWalker<const StmtPattern*>(VisitAcyclicLoopAlignableNext);
+    return comm::BfsWalker<const StmtPattern*>(VisitAcyclicClusterNext);
   }
 
   using IsAcyclicConnectedT = std::function<bool(const StmtPattern* src, const StmtPattern* dst)>;
@@ -1079,11 +1089,12 @@ class ClusteringHelper {
       const common::TopoWalker<const StmtPattern*>& walker,
       const std::vector<StmtPattern>& stmt_patterns,
       const ClusterRoot4StmtT& ClusterRoot4Stmt) {
-    const auto Upstreams4Stmt = MakeUpstreams4Stmt(walker, stmt_patterns);
+    const auto AllTopClosureUpstreams4Stmt =
+      MakeAllTopClosureUpstreams4Stmt(walker, stmt_patterns, ClusterRoot4Stmt);
     const auto IsSrcAcyclicConnectedToDst = [&](const auto* src, const auto* dst) {
-      // return true if there exists an other clusters's node in upstreams(dst) - upstreams(src)
-      const auto* src_upstreams = Upstreams4Stmt(src);
-      const auto* dst_upstreams = Upstreams4Stmt(dst);
+      // return true if there exist no other clusters's node in all_topo_closure_upstreams(dst) - all_topo_closure_upstreams(src)
+      const auto* src_upstreams = AllTopClosureUpstreams4Stmt(src);
+      const auto* dst_upstreams = AllTopClosureUpstreams4Stmt(dst);
       std::vector<const StmtPattern*> diff_stmts;
       std::set_difference(dst_upstream->begin(), dst_upstreams->end(),
                           src_upstreams->begin(), src_upstreams->end(),
@@ -1116,9 +1127,191 @@ class ClusteringHelper {
     };
   }
 
-  using Upstreams4StmtT =
+  struct TopoClosure {
+    const std::list<const StmtPattern*> sources;
+    const std::list<const StmtPattern*> sinks;
+    const std::unordered_set<const StmtPattern*> stmts;
+  };
+
+  using TopoClosure4RootStmtT =
+    std::function<std::optional<const TopoClosure*>(const StmtPattern*)>;
+
+  using AllTopClosureUpstreams4StmtT =
       std::function<const std::set<const StmtPattern*>*(const StmtPattern*)>;
-  Upstreams4StmtT  MakeUpstreams4Stmt(
+
+  AllTopClosureUpstreams4StmtT  MakeAllTopClosureUpstreams4Stmt(
+      const common::TopoWalker<const StmtPattern*>& entire_topo_walker,
+      const std::vector<StmtPattern>& stmt_patterns,
+      const ClusterRoot4StmtT& ClusterRoot4Stmt) {
+    const auto TopoClosure4RootStmt =
+        MakeTopoClosure4RootStmt(entire_topo_walker, stmt_patterns, ClusterRoot4Stmt);
+    using NodeVisitor = std::function<void(const StmtPattern*)>;
+    std::unordered_map<const StmtPattern*, std::set<const StmtPattern*>> stmt2all_topo_closure_upstreams;
+    for (const auto& stmt_pattern : stmt_patterns) {
+      if (stmt2all_topo_closure_upstreams.count(&stmt_pattern)) continue;
+      const auto* cluster_root = ClusterRoot4Stmt(&stmt_pattern);
+      const auto& topo_closure = TopoClosure4RootStmt(cluster_root);
+      CHECK(topo_closure.has_value());
+      VisitStmtTopoClosureUpstreams(
+        entire_topo_walker,
+        *topo_closure.value(),
+        [&](const auto* stmt, const auto& all_topo_closure_upstreams){
+          if (ClusterRoot4Stmt(stmt) != cluster_root) return;
+          CHECK(stmt2all_topo_closure_upstreams.emplace(stmt, all_topo_closure_upstreams).second);
+        });
+    }
+    return [map=std::move(stmt2all_topo_closure_upstreams)](const StmtPattern* stmt) {
+      const auto iter = map.find(stmt);
+      if (iter == map.end()) {
+        static const std::set<const StmtPattern*> empty;
+        return &empty;
+      }
+      return &iter->second;
+    };
+  }
+
+  TopoClosure4RootStmtT MakeTopoClosure4RootStmt(
+      const common::TopoWalker<const StmtPattern*>& entire_topo_walker,
+      const std::vector<StmtPattern>& stmt_patterns,
+      const ClusterRoot4StmtT& ClusterRoot4Stmt) {
+    using NodeVisitor = std::function<void(const StmtPattern*)>;
+    auto VisitClusterInput = [&](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+      entire_topo_walker.VisitPrevNodes(stmt, [&](const auto* input){
+        if (ClusterRoot4Stmt(stmt) == ClusterRoot4Stmt(input)) {
+          DoEach(input);
+        }
+      });
+    };
+    auto IsClusterSource = [&](const auto* stmt) {
+      size_t num_inputs = 0;
+      VisitClusterInput(stmt, [&](const auto*) { ++num_inputs});
+      return num_inputs == 0;
+    };
+    auto VisitClusterOutput = [&](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+      entire_topo_walker.VisitNextNodes(stmt, [&](const auto* output){
+        if (ClusterRoot4Stmt(stmt) == ClusterRoot4Stmt(output)) {
+          DoEach(output);
+        }
+      });
+    };
+    auto IsClusterSink = [&](const auto* stmt) {
+      size_t num_outputs = 0;
+      VisitClusterOutput(stmt, [&](const auto*) { ++num_outputs});
+      return num_outputs == 0;
+    };
+    auto VisitClusterNext = [&](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+      VisitClusterInput(stmt, DoEach);
+      VisitClusterOutput(stmt, DoEach);
+    };
+    common::BfsWalker<const StmtPattern*> cluster_bfs_walker(VisitClusterNext);
+    const auto IsReachable = MakeIsReachable(entire_topo_walker, stmt_patterns);
+    std::unordered_map<const StmtPattern*, TopoClosure> root_stmt2topo_closure;
+    for (const auto& stmt_pattern : stmt_patterns) {
+      const auto* cluster_root = ClusterRoot4Stmt(&stmt_pattern);
+      if (cluster_root != &stmt_pattern) continue;
+      CHECK(!(root_stmt2topo_closure.count(cluster_root)));
+      auto* topo_closure = &root_stmt2topo_closure[cluster_root];
+      cluster_bfs_walker(cluster_root, [&](const auto* stmt){
+        if (IsClusterSource(stmt)) {
+          topo_closure->sources.push_back(stmt);
+        }
+        if (IsClusterSink(stmt)) {
+          topo_closure->sinks.push_back(stmt);
+        }
+      });
+      topo_closure->stmts = CollectSubGraphAllStmts(entire_topo_walker, IsReachable, topo_closure->sources, topo_closure->sinks);
+    }
+    return [map=std::move(root_stmt2topo_closure)](const StmtPattern* stmt) -> std::optional<const TopoClosure*> {
+      const auto iter = map.find(stmt);
+      if (iter == map.end()) return std::nullopt;
+      return &iter->second;
+    };
+  }
+
+  using IsReachableT =
+      std::function<bool(const StmtPattern* src, const StmtPattern* dst)>;
+
+  std::unordered_set<const StmtPattern*> CollectSubGraphAllStmts(
+      const common::TopoWalker<const StmtPattern*>& entire_topo_walker,
+      const IsReachableT& IsReachable,
+      const std::list<const StmtPattern*> sources,
+      const std::list<const StmtPattern*> sinks) {
+    auto IsConnectedToOneSource = [&](const auto* stmt) {
+      for (const auto* source : sources) {
+        if (IsReachable(source, stmt)) return true;
+      }
+      return false;
+    };
+    using NodeVisitor = std::function<void(const StmtPattern*)>;
+    auto VisitInput = [&](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+      entire_topo_walker.VisitPrevNodes(stmt, [&](const auto* input){
+        if (IsConnectedToOneSource(input)) {
+          DoEach(input);
+        }
+      });
+    };
+    auto IsConnectedToOneSink = [&](const auto* stmt) {
+      for (const auto* sink : sinks) {
+        if (IsReachable(stmt, sink)) return true;
+      }
+      return false;
+    };
+    auto VisitOutput = [&](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+      entire_topo_walker.VisitNextNodes(stmt, [&](const auto* output){
+        if (IsConnectedToOneSink(output)) {
+          DoEach(output);
+        }
+      });
+    };
+    auto VisitNext = [&](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+      VisitInput(stmt, DoEach);
+      VisitOutput(stmt, DoEach);
+    }
+    std::unordered_set<const StmtPattern*> ret;
+    common::BfsWalker<const StmtPattern*> bfs_walker(VisitNext);
+    bfs_walker(sources.begin(), sources.end(), [&](const auto* stmt){
+      ret.insert(stmt);
+    });
+    return ret;
+  }
+
+  template <typename DoEachStmtAndTopoClosureUpstreamsT>
+  void VisitStmtTopoClosureUpstreams(
+      const common::TopoWalker<const StmtPattern*>& walker,
+      const TopoClosure& topo_closure,
+      const DoEachStmtAndTopoClosureUpstreamsT& DoEachStmtAndTopoClosureUpstreams) {
+    const auto IsInTopoClosure = [&](const auto* stmt) {
+      return topo_closure.value()->stmts.count(stmt) > 0;
+    };
+    auto VisitInput = [&](const auto* stmt, const NodeVisitor& Visit) {
+      entire_topo_walker.VisitPrevNodes(stmt, [&](const auto* input){
+        if (IsInTopoClosure(input)) {
+          Visit(input);
+        }
+      });
+    };
+    auto VisitOutput = [&](const auto* stmt, const NodeVisitor& Visit) {
+      entire_topo_walker.VisitNextNodes(stmt, [&](const auto* output){
+        if (IsInTopoClosure(output)) {
+          Visit(output);
+        }
+      });
+    };
+    common::TopoWalker<const StmtPattern*> closure_walker(VisitInput, VisitOutput);
+    const auto* sources = topo_closure.sources;
+    std::unordered_map<const StmtPattern*, std::unordered_set<const StmtPattern*>> stmt2all_topo_closure_upstreams;
+    closure_walker(sources.begin(), sources.end(), [&](const auto* stmt){
+      auto* stmt_upstreams = &stmt2all_topo_closure_upstreams[stmt];
+      VisitInput(stmt, [&](const auto* input){
+        stmt_upstreams.insert(input);
+        const auto& input_upstreams = &stmt2all_topo_closure_upstreams[input];
+        stmt_upstreams->insert(input_upstreams.begin(), input_upstreams.end());
+      });
+      DoEachStmtAndTopoClosureUpstreams(stmt, *stmt_upstreams);
+    });
+  }
+
+  IsReachableT  MakeIsReachable(
       const common::TopoWalker<const StmtPattern*>& walker,
       const std::vector<StmtPattern>& stmt_patterns) {
     const auto& sources = [&]{
@@ -1145,29 +1338,27 @@ class ClusteringHelper {
         stmt2upstreams[stmt].insert(upstream);
       });
     });
-    return [map=std::move(stmt2upstreams)](const StmtPattern* stmt) {
-      const auto iter = map.find(stmt);
-      if (iter == map.end()) {
-        static const std::set<const StmtPattern*> empty;
-        return &empty;
-      }
-      return &iter->second;
+    return [map=std::move(stmt2upstreams)](const StmtPattern* src, const StmtPattern* dst) {
+      if (src == dst) return true;
+      const auto iter = map.find(dst);
+      if (iter == map.end()) return false;
+      return iter->second.count(src) > 0;
     };
   }
 
   std::function<const StmtPattern*(const StmtPattern*)>
-  MakeLoopAlignableRoot4Stmt(
+  MakeClusterRoot4Stmt(
       const common::TopoWalker<const StmtPattern*>& topo_walker,
       const std::vector<StmtPattern>& stmt_patterns) {
-    std::unordered_map<const StmtPattern*, const StmtPattern*> stmt2same_shardability_root;
-    VisitLoopAlignableStmts(topo_walker, stmt_patterns, [&](const auto& stmt_ptrs){
+    std::unordered_map<const StmtPattern*, const StmtPattern*> stmt2cluster_root;
+    VisitClusterStmts(topo_walker, stmt_patterns, [&](const auto& stmt_ptrs){
       CHECK(!stmt_ptrs.empty());
       const auto* root = *stmt_ptrs.begin();
       for (const auto* stmt_ptr : stmt_ptrs) {
-        CHECK(stmt2same_shardability_root.emplace(stmt_ptr, root).second);
+        CHECK(stmt2cluster_root.emplace(stmt_ptr, root).second);
       }
     });
-    return [map=std::move(stmt2same_shardability_root)](const StmtPattern* stmt) {
+    return [map=std::move(stmt2cluster_root)](const StmtPattern* stmt) {
       const auto& iter = map.find(stmt);
       CHECK(iter != map.end());
       return iter->second;
@@ -1175,7 +1366,7 @@ class ClusteringHelper {
   }
 
   template <typename DoEachComponentT>
-  VisitLoopAlignableStmts(
+  VisitClusterStmts(
       const common::TopoWalker<const StmtPattern*>& walker,
       const std::vector<StmtPattern>& stmt_patterns,
       const DoEachComponentT& DoEachComponent) {
@@ -1189,7 +1380,7 @@ class ClusteringHelper {
     }();
     std::unordered_set<const StmtPattern*> visited;
     while (!stmt_ptrs.empty()) {
-      VisitInferedLoopAlignableStmts(walker, stmt_ptrs, [&](const auto& component) {
+      VisitInferedClusterStmts(walker, stmt_ptrs, [&](const auto& component) {
         for (const auto* stmt_ptr : component) {
           CHECK(visited.emplace(stmt_ptr).second);
         }
@@ -1208,27 +1399,23 @@ class ClusteringHelper {
   }
 
   template <typename DoEachComponentT>
-  VisitInferedLoopAlignableStmts(
+  VisitInferedClusterStmts(
       const common::TopoWalker<const StmtPattern*>& walker,
       const std::vector<const StmtPattern*>& stmt_ptrs,
       const DoEachComponentT& DoEachComponent) {
     const auto ShardableAxes4Value = MakeInferedShardableAxes4Value(stmt_ptrs);
-    const auto ReduceOpsSameFullyShardable = [&](const auto* src, const auto* dst) {
-      if (!IsSinkOpOutputFullyShardable(ShardableAxes4Value, src)) return false;
-      if (!IsSinkOpOutputFullyShardable(ShardableAxes4Value, dst)) return false;
-      if (!ReduceOpsSameShardable(ShardableAxes4Value, src, dst)) return false;
-      if (!IsTotalLoopSizeEqual(src, dst)) return false;
-      return true;
+    const auto Fusible = [&](const auto* src, const auto* dst) {
+      return clustering_policy_->IsEdgeFusible(ShardableAxes4Value, src, dst);
     };
     using NodeVisitor = std::function<void(const StmtPattern*)>;
     const auto VisitNext = [&](const StmtPattern* stmt, const NodeVisitor& DoEach) {
       walker.VisitPrevNodes(stmt, [&](const auto* prev){
-        if (ReduceOpsSameFullyShardable(prev, stmt)) {
+        if (Fusible(prev, stmt)) {
           DoEach(prev);
         }
       });
       walker.VisitNextNodes(stmt, [&](const auto* next){
-        if (ReduceOpsSameFullyShardable(stmt, next)) {
+        if (Fusible(stmt, next)) {
           DoEach(next);
         }
       });
@@ -1263,6 +1450,118 @@ class ClusteringHelper {
       if (iter == map.end()) return std::nullopt;
       return iter->second;
     };
+  }
+
+  common::TopoWalker<const StmtPattern*> MakeTopoWalker(
+      const OpTopo& op_topo,
+      const std::vector<StmtPattern>& stmt_patterns) {
+    using StmtPtrs = std::unordered_set<const StmtPattern*>;
+    using Op2OwnerStmtPtrs = std::unordered_map<const pir::Operation*, StmtPtrs>;
+    auto op2owner_stmt_ptr = std::make_shared<Op2OwnerStmtPtrs>();
+    for (const auto& stmt : stmt_patterns) {
+      VisitStmtOp(stmt, [&](const pir::Operation* op){
+        (*op2owner_stmt_ptr)[op].insert(&stmt);
+      });
+    }
+    using NodeVisitor = std::function<void(const StmtPattern*)>;
+    const auto VisitInput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+      VisitStmtInputOpOperand(*stmt, [&](const auto* op, int input_idx){
+        pir::Value input_value = op->operand_source(input_idx);
+        const auto* owner_op = input_value.defining_op();
+        const auto& owners_iter = op2owner_stmt_ptr->find(owner_op);
+        if (owners_iter == op2owner_stmt_ptr->end()) return;
+        CHECK_EQ(owners_iter->second.size(), 1);
+        const StmtPattern* owner_stmt = *owners_iter->second.begin();
+        DoEach(owner_stmt);
+      });
+    };
+    const VisitOutput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach){
+      VisitStmtSinkOpResult(*stmt, [&](const auto* sink) {
+        op_topo.VisitOutputOp(sink, [&](const pir::Operation* op){
+          const auto& owners_iter = op2owner_stmt_ptr->find(op);
+          if (owners_iter == op2owner_stmt_ptr->end()) return;
+          for (const StmtPattern* stmt : owners_iter->second) {
+            DoEach(stmt);
+          }
+        });
+      });
+    };
+    const auto& TryPushBack = [](const auto* stmt, const auto* stmts) {
+      if (std::find(stmts->begin(), stmts->end(), stmt) == stmts->end()) {
+        stmts->push_back(stmt);
+      }
+    };
+    std::unordered_map<const StmtPattern*, std::vector<const StmtPattern*>> stmt2inputs;
+    std::unordered_map<const StmtPattern*, std::vector<const StmtPattern*>> stmt2outputs;
+    for (const auto& stmt : stmt_patterns) {
+      (void)stmt2inputs[&stmt];
+      VisitInput(&stmt, [&](const auto* input) {
+        TryPushBack(input, &stmt2inputs[&stmt]);
+      });
+      (void)stmt2outputs[&stmt];
+      VisitOutput(&stmt, [&](const auto* output){
+        TryPushBack(output, &stmt2outputs[&stmt]);
+      });
+    }
+    using NodeVisitor = std::function<void(const StmtPattern*)>;
+    VisitCachedInput = [map = std::move(stmt2inputs)](const auto* stmt, const NodeVisitor& DoEach) {
+      const auto& iter = map.find(stmt);
+      if (iter == map.end()) return;
+      for (const auto* input : iter->second) {
+        DoEach(input);
+      }
+    };
+    VisitCachedOutput = [map = std::move(stmt2outputs)](const auto* stmt, const NodeVisitor& DoEach) {
+      const auto& iter = map.find(stmt);
+      if (iter == map.end()) return;
+      for (const auto* output : iter->second) {
+        DoEach(output);
+      }
+    };
+    return common::TopoWalker<const StmtPattern*>(VisitCachedInput, VisitCachedOutput);
+  }
+
+  const std::vector<const pir::Operation*> ops_;
+  const OpTopo op_topo_;
+  std::unique_ptr<ClusteringPolicy> clustering_policy_;
+};
+
+class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
+ public:
+  explicit LoopAlignableClusteringPolicy(
+      const pir::ShapeConstraintIRAnalysis* shape_analysis)
+    : shape_analysis_(shape_analysis) {}
+ 
+  bool IsEdgeFusible(
+      const ShardableAxes4ValueT& ShardableAxes4Value,
+      const api::StmtPattern<FrontendPattern>& src,
+      const api::StmtPattern<FrontendPattern>& dst) {
+    if (!IsSinkOpOutputFullyShardable(ShardableAxes4Value, src)) return false;
+    if (!IsSinkOpOutputFullyShardable(ShardableAxes4Value, dst)) return false;
+    if (!ReduceOpsSameShardable(ShardableAxes4Value, src, dst)) return false;
+    if (!IsTotalLoopSizeEqual(src, dst)) return false;
+    return true;
+  }
+
+  ClusteringResult MakeClusteringResult(const std::vector<StmtPatternPtrs>& stmts_list) {
+    std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
+    for (const auto& stmt_ptrs : stmts_list) {
+      loop_alignable_list.emplace_back(MakeLoopAlignableStmtsPattern(stmt_ptrs));
+    }
+    return ClusteringResult{
+      .loop_alignable_list=std::move(loop_alignable_list),
+    };
+  }
+
+ private:
+  LoopAlignableStmtsPattern MakeLoopAlignableStmtsPattern(
+      const std::vector<const StmtPattern*>& stmt_ptrs) {
+    LoopAlignableStmtsPattern loop_alignable;
+    loop_alignable.stmts.reserve(stmt_ptrs.size());
+    for (const auto* stmt : stmt_ptrs) {
+      loop_alignable.stmts.push_back(*stmt);
+    }
+    return loop_alignable;
   }
 
   bool IsTotalLoopSizeEqual(const StmtPattern* src, const StmtPattern* dst) {
@@ -1397,7 +1696,7 @@ class ClusteringHelper {
     LOG(FATAL) << "TODO(xiongkun). reduce_op name: " << reduce_op->name();
   }
 
-  bool IsStmtSinkOpOutputFullyShardableImpl(
+  bool IsCinnReduceSumOpOutputFullyShardable(
       const cinn::dialect::ReduceSumOp& reduce_op,
       const ShardableAxes& shardable_axes) {
     const size_t input_rank = GetRank(reduce_op.operand_source(0));
@@ -1448,87 +1747,22 @@ class ClusteringHelper {
     }
   }
 
-  common::TopoWalker<const StmtPattern*> MakeTopoWalker(
-      const OpTopo& op_topo,
-      const std::vector<StmtPattern>& stmt_patterns) {
-    using StmtPtrs = std::unordered_set<const StmtPattern*>;
-    using Op2OwnerStmtPtrs = std::unordered_map<const pir::Operation*, StmtPtrs>;
-    auto op2owner_stmt_ptr = std::make_shared<Op2OwnerStmtPtrs>();
-    for (const auto& stmt : stmt_patterns) {
-      VisitStmtOp(stmt, [&](const pir::Operation* op){
-        (*op2owner_stmt_ptr)[op].insert(&stmt);
-      });
-    }
-    using NodeVisitor = std::function<void(const StmtPattern*)>;
-    const auto VisitInput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach) {
-      VisitStmtInputOpOperand(*stmt, [&](const auto* op, int input_idx){
-        pir::Value input_value = op->operand_source(input_idx);
-        const auto* owner_op = input_value.defining_op();
-        const auto& owners_iter = op2owner_stmt_ptr->find(owner_op);
-        if (owners_iter == op2owner_stmt_ptr->end()) return;
-        CHECK_EQ(owners_iter->second.size(), 1);
-        const StmtPattern* owner_stmt = *owners_iter->second.begin();
-        DoEach(owner_stmt);
-      });
-    };
-    const VisitOutput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach){
-      VisitStmtSinkOpResult(*stmt, [&](const auto* sink) {
-        op_topo.VisitOutputOp(sink, [&](const pir::Operation* op){
-          const auto& owners_iter = op2owner_stmt_ptr->find(op);
-          if (owners_iter == op2owner_stmt_ptr->end()) return;
-          for (const StmtPattern* stmt : owners_iter->second) {
-            DoEach(stmt);
-          }
-        });
-      });
-    };
-    const auto& TryPushBack = [](const auto* stmt, const auto* stmts) {
-      if (std::find(stmts->begin(), stmts->end(), stmt) == stmts->end()) {
-        stmts->push_back(stmt);
-      }
-    };
-    std::unordered_map<const StmtPattern*, std::vector<const StmtPattern*>> stmt2inputs;
-    std::unordered_map<const StmtPattern*, std::vector<const StmtPattern*>> stmt2outputs;
-    for (const auto& stmt : stmt_patterns) {
-      (void)stmt2inputs[&stmt];
-      VisitInput(&stmt, [&](const auto* input) {
-        TryPushBack(input, &stmt2inputs[&stmt]);
-      });
-      (void)stmt2outputs[&stmt];
-      VisitOutput(&stmt, [&](const auto* output){
-        TryPushBack(output, &stmt2outputs[&stmt]);
-      });
-    }
-    using NodeVisitor = std::function<void(const StmtPattern*)>;
-    VisitCachedInput = [map = std::move(stmt2inputs)](const auto* stmt, const NodeVisitor& DoEach) {
-      const auto& iter = map.find(stmt);
-      if (iter == map.end()) return;
-      for (const auto* input : iter->second) {
-        DoEach(input);
-      }
-    };
-    VisitCachedOutput = [map = std::move(stmt2outputs)](const auto* stmt, const NodeVisitor& DoEach) {
-      const auto& iter = map.find(stmt);
-      if (iter == map.end()) return;
-      for (const auto* output : iter->second) {
-        DoEach(output);
-      }
-    };
-    return common::TopoWalker<const StmtPattern*>(VisitCachedInput, VisitCachedOutput);
-  }
-
   const pir::ShapeConstraintIRAnalysis* shape_analysis_;
-  const std::vector<const pir::Operation*> ops_;
-  const OpTopo op_topo_;
 };
 
 }  // namespace
 
-ClusteringResult ClusterIntoGroupPatternsFromOpList(
-    const pir::ShapeConstraintIRAnalysis* shape_analysis,
-    const std::vector<const pir::Operation*>& ops) {
-  ClusteringHelper helper(shape_analysis, ops);
-  return helper.ClusterIntoGroupPatterns();
+std::unique_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  return std::make_unique<LoopAlignableClusteringPolicy>(shape_analysis);
+}
+
+
+ClusteringResult ClusterOps(
+    const std::vector<const pir::Operation*>& ops,
+    std::unique_ptr<ClusteringPolicy>&& clustering_policy) {
+  ClusteringEngine engine(ops, std::move(clustering_policy));
+  return engine.ClusterOps();
 }
 
 GroupPattern GenerateGroupPatternFromOpList(
