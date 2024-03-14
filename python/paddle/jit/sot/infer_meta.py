@@ -21,6 +21,7 @@ from paddle.base.unique_name import (
     UniqueNameGenerator,
     guard as UniqueNameGuard,
 )
+from paddle.framework import use_pir_api
 from paddle.utils import flatten, is_sequence
 
 from .utils import Cache, Singleton, map_if_extend, meta_str
@@ -56,7 +57,8 @@ class MetaInfo:
         # We always use float32 in simulation if AMP is enabled.
         current_amp_state = amp_state()
         if (
-            dtype == paddle.float16
+            not use_pir_api()
+            and dtype == paddle.float16
             and current_amp_state is not None
             and current_amp_state["dtype"] == "float16"
         ):
