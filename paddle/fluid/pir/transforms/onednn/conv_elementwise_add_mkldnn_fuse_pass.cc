@@ -207,6 +207,7 @@ class ConvElementwiseAddFusePass : public pir::PatternRewritePass {
         context,
         paddle::dialect::Conv2dOp::name(),
         paddle::onednn::dialect::FusedConv2dOp::name()));
+    return ps;
   }
 };
 
