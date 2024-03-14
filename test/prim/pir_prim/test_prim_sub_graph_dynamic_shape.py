@@ -324,7 +324,7 @@ class TestPrimFlatten1(TestPrimBase):
 class TestPrimFlatten2(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
-        self.dtype = "float16"
+        self.dtype = "float32"
         self.x_shape = [3, 100, 100, 640]
         self.init_x_shape = [None, None, None, 640]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
