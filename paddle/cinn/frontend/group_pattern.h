@@ -97,7 +97,7 @@ struct ShardableAxesUtil {
     return ret;
   }
 
-  static ShardableAxes GetFullyShardableAxes(const size_t rank) {
+  static ShardableAxes MakeFullyShardableAxes(const size_t rank) {
     ShardableAxes ret;
     for (int i = 0; i < rank; ++i) {
       ret.emplace_back(ShardableAxis{
@@ -108,7 +108,7 @@ struct ShardableAxesUtil {
     return ret;
   }
   
-  static ShardableAxes GetReduceOpInputShardableAxes(
+  static ShardableAxes MakeReduceOpInputShardableAxes(
       const size_t input_rank, const std::vector<int64_t>& reduce_axes) {
     if (reduce_axes.empty()) return ShardableAxes{};
     for (int64_t reduce_axis : reduce_axes) {
