@@ -3706,7 +3706,7 @@
   inputs :
     {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
   outputs :
-    {slimmed_x : SlimmedX, clsi_nds : CLSInds}
+    {slimmed_x : SlimmedX, cls_inds : CLSInds}
 
 - op: fusion_squared_mat_sub
   inputs :
