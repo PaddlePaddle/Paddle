@@ -94,7 +94,6 @@ struct ShardableAxesUtil {
         }
       }
     }
-    std::unique(&ret);
     return ret;
   }
 
@@ -148,10 +147,13 @@ namespace cinn::frontend {
 
 using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
 using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
-using LoopAlignableStmtsPattern = api::LoopAlignableStmtsPattern<frontend::FrontendPattern>;
+
+struct LoopAlignableStmtsPattern {
+  std::vector<api::StmtPattern<frontend::FrontendPattern>> stmts;
+};
 
 struct ClusteringResult {
   std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
-}
+};
 
 }

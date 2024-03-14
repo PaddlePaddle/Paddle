@@ -26,7 +26,7 @@ struct ReductionPattern {
 
   using Nothing = std::monostate;
   std::variant<Nothing, InjectiveSourcePattern<T>, PartialShardablePattern<T>> input;
-  SingleReductionOpPattern<T> reduction_op_pattern;
+  SingleReductionOpPattern<T> reduce_op_pattern;
 
   bool HasFusedInput() const {
     return !std::holds_alternative<Nothing>(this->input);
