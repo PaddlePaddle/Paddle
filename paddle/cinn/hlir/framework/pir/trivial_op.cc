@@ -775,9 +775,7 @@ ir::Expr CreateReduceExpr(
   const std::vector<ir::Expr> indice_expr =
       std::vector<ir::Expr>(output_iters.begin(), output_iters.end());
   const auto& init_schedule_block =
-      (TransformerUtils::ChangeTensorLoadTransformer(
-           origin_write_tensor, new_write_tensor(indice_expr)) *
-       TransformerUtils::WrapStoreTransformer(new_write_tensor, indice_expr) *
+      (TransformerUtils::WrapStoreTransformer(new_write_tensor, indice_expr) *
        TransformerUtils::WrapScheduleRealizer(output_iters, new_write_tensor))(
           init_body);
   const auto& reduce_schedule_block =
@@ -889,26 +887,22 @@ std::vector<FusibleOp> TransformReduceLoopRange(ReduceOp upstream,
   // downstream.GetReduceIters()));
   const auto& load_upstream_expr = ComposeUtils::GetEachTensorLoadExpr(
       GetComputeBody(downstream), GetOutputTensor(upstream));
-  VLOG(4) << "step 1";
   std::vector<FusibleOp> results;
   ir::Tensor downstream_output_tensor = GetOutputTensor(downstream);
-  VLOG(4) << "step 1";
   const auto create_new_tensor = [&](const ir::Tensor& downstream_load_tensor) {
+    VLOG(4) << "downstream output tensor: " << downstream_output_tensor;
+    VLOG(4) << "downstream_load_tensor  : " << downstream_load_tensor;
     return ir::Tensor(
-        downstream_load_tensor->name + FusionNode::GetTensorCounter(),
+        downstream_load_tensor->name + "_" + FusionNode::GetTensorCounter(),
         downstream_load_tensor->type(),
-        downstream_output_tensor.self()->sym_shape,
-        downstream_load_tensor.self()->sym_domain,
-        downstream_load_tensor.self()->operation,
-        downstream_output_tensor.self()->reduce_axis);
+        downstream_output_tensor->shape,
+        downstream_output_tensor->domain,
+        downstream_load_tensor->operation);
   };
-  VLOG(4) << "step 1";
 
   for (const auto& load_tensor : load_upstream_expr) {
-    VLOG(4) << "step 1";
     const auto& new_tensor =
         create_new_tensor(load_tensor.As<ir::Load>()->tensor.as_tensor_ref());
-    VLOG(4) << "step 1";
     VLOG(4) << "GetInit: " << upstream.GetInitExpr();
     VLOG(4) << "GetNewTensor: " << new_tensor;
     VLOG(4) << "GetOutputIter: "
