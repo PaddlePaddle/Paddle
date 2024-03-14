@@ -268,11 +268,16 @@ void DistributedPushSparseInferMeta(
     bool is_test,
     bool use_cvm_op,
     std::vector<MetaTensor*> output) {
-  auto ids_dims = ids[0]->dims();
-  PADDLE_ENFORCE_EQ(ids_dims.size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "The dimension of the 'Ids' tensor must be 2."));
+  auto ids_size = ids.size();
+  std::vector<DDim> ids_dims;
+  ids_dims.reserve(ids.size());
+  for (size_t i = 1; i < ids_size; ++i) {
+    PADDLE_ENFORCE_EQ(ids_dims[i].size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The dimension of the 'Ids' tensor must be 2."));
+  }
+
   for (auto& out : output) {
     if (out == nullptr) {
       continue;
