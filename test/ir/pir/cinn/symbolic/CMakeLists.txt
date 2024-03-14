@@ -21,7 +21,8 @@ if(WITH_GPU)
     test_multiple_subgraph_dy.py
     test_llama_mlp_st.py
     test_llama_mlp_dy.py
-    test_while_st.py)
+    test_while_st.py
+    test_infer_sym_shape_utils.py)
 
   foreach(cinn_pir_test_name ${CINN_PIR_SYMBOLIC_TEST})
     string(REGEX REPLACE ".py" "" cinn_pir_test_name ${cinn_pir_test_name})

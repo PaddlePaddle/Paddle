@@ -118,6 +118,7 @@
     param : [shape, dtype, values]
     backend: place>
     data_type : dtype
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : assign_value_
   args : (Tensor output, int[] shape, DataType dtype, Scalar[] values, Place place = {})
@@ -1651,6 +1652,7 @@
     func : triu
   inplace: (x -> out)
   backward : triu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : triu_indices
   args : (int row, int col, int offset, DataType dtype, Place place={})
