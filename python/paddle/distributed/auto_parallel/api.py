@@ -386,6 +386,16 @@ def reshard(dist_tensor, mesh, placements):
             dist_attr._set_partial_dims(partial_dims)
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
+    elif paddle.framework.in_pir_mode():
+        assert isinstance(
+            dist_tensor, (type(None), pir.Value)
+        ), "input tensor is not pir value."
+        assert (
+            dist_tensor.is_dist_dense_tensor_type()
+        ), "reshard() input only supported dist dense tensor type right."
+        sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
+        dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
+        return paddle._pir_ops.reshard(dist_tensor, mesh, dims_mapping)
     else:
         assert isinstance(
             dist_tensor, Variable
