@@ -34,6 +34,19 @@ AddNGradNodeFinal::operator()(
     bool is_new_grad) {
   // Fill Zero For GradIn Tensors
 
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_AddNGradNodeFinal",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Apply Gradient Hooks
   auto hooked_grads = ApplyGradientHooks(grads);
 
