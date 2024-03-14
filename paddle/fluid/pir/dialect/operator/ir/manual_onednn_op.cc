@@ -243,7 +243,7 @@ void ExpandOp::InferMeta(phi::InferMetaContext* infer_meta) {
 
 std::vector<pir::Type> ExpandOp::InferMeta(
     const std::vector<pir::Value>& input_values,
-    const pir::AttributeMap& attributes) {
+    pir::AttributeMap& attributes) {  // NOLINT
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
              input_values.size());
