@@ -109,8 +109,12 @@ struct ShardableAxesUtil {
   }
 };
 
+struct SoleOutputShardableAxes {
+  ShardableAxes shardable_axes;
+};
+
 struct ShardableAxesSignature {
-  ShardableAxes output_shardable_axes;
+  SoleOutputShardableAxes sole_output_sa;
   std::unordered_map<OpAndOperandIndex, ShardableAxes> input_shardable_axes;
 };
 
