@@ -174,6 +174,7 @@ if(NOT WIN32)
         -Wno-error=inconsistent-missing-override # For lots of warnings when not using override for virtual functions, clang
         -Wno-error=bitwise-instead-of-logical # Warning in "unsupported/Eigen/CXX11/Tensor"
         -Wno-error=overloaded-virtual # For some inconsistent virtual function signature, clang
+        -Wno-error=defaulted-function-deleted # header file from GLOO, clang
     )
   endif()
 
