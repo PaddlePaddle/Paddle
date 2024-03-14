@@ -4,4 +4,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                        PROPERTIES ENVIRONMENT "FLAGS_enable_pir_api=1")
   py_test_modules(test_ir_dist_attr MODULES test_ir_dist_attr ENVS
                   FLAGS_enable_pir_api=1)
+  py_test_modules(test_static_pir_program MODULES test_static_pir_program)
+>>>>>>> mv test_ir_dist_attr.py to auto_parallel dir
 endif()
