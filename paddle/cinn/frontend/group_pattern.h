@@ -128,6 +128,26 @@ struct ShardableAxesUtil {
     }
     return ret;
   }
+  
+  static ShardableAxes MakeBroadcastOpInputShardableAxes(
+      const size_t input_rank, const std::vector<int64_t>& broadcast_axes) {
+    for (int64_t axis : broadcast_axes) {
+      CHECK_GE(axis, 0);
+      CHECK_LT(axis, input_rank);
+    }
+    const auto IsBroadcastAxis = [&](int64_t i) {
+      return std::find(broadcast_axes.begin(), broadcast_axes.end(), i) != broadcast_axes.end();
+    };
+    ShardableAxes ret;
+    for (int64_t i = 0; i < input_rank; ++i) {
+      if (IsBroadcastAxis(i)) continue;
+      ret.emplace_back(ShardableAxis{
+        .axis=i,
+        .axis_name=std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo()),
+      });
+    }
+    return ret;
+  }
 };
 
 struct SoleOutputShardableAxes {

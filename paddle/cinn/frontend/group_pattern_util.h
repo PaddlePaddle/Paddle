@@ -19,6 +19,19 @@
 
 namespace cinn::frontend {
 
+class ShardableAxesProvider {
+ public:
+  ~ShardableAxesProvider() = default;
+
+  virtual ShardableAxesSignature MakeShardableAxesSignature4Op(const pir::Operation* op) = 0;
+
+ protected:
+  ShardableAxesProvider() = default;
+};
+
+std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis);
+
 class ClusteringPolicy {
  public:
   virtual ~ClusteringPolicy() = default;
@@ -43,17 +56,16 @@ class ClusteringPolicy {
   ClusteringPolicy() = default;
 };
 
-std::unique_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
+std::shared_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
     const pir::ShapeConstraintIRAnalysis* shape_analysis);
 
 ClusteringResult ClusterOps(
     const std::vector<const pir::Operation*>& ops,
-    std::unique_ptr<ClusteringPolicy>&& clustering_policy);
+    const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider,
+    const std::shared_ptr<ClusteringPolicy>& clustering_policy);
 
 GroupPattern GenerateGroupPatternFromOpList(
-    const std::vector<const pir::Operation*>& ops);
-
-std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(
-    const std::shared_ptr<std::unordered_set<const pir::Operation*>>& ops);
+    const std::vector<const pir::Operation*>& ops,
+    const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider);
 
 }  // namespace cinn::frontend

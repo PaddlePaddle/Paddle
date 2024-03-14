@@ -104,6 +104,36 @@ bool IsRPattern(const StmtPattern& pattern) {
   return std::holds_alternative<R>(pattern);
 }
 
+std::list<const pir::Operation*> GetSinks(
+    const OpSet& ops) {
+  const auto IsSink = [&](const pir::Operation* op) {
+    for (int i = 0; i < op->num_results(); ++i) {
+      pir::Value output = op->result(i);
+      for (auto consumer_it = output.use_begin();
+           consumer_it != output.use_end();
+           ++consumer_it) {
+        const auto* consumer_op = consumer_it->owner();
+        if (consumer_op->isa<pir::YieldOp>()) continue;
+        if (ops.count(consumer_op) > 0) return false;
+      }
+    }
+    return true;
+  };
+  std::list<const pir::Operation*> sinks;
+  for (const auto* op : ops) {
+    if (IsSink(op)) {
+      sinks.push_back(op);
+    }
+  }
+  return sinks;
+}
+
+const pir::Operation* GetSoleSink(const OpSet& ops) {
+  const auto& sinks = GetSinks(ops);
+  CHECK_EQ(sinks.size(), 1);
+  return *sinks.begin();
+}
+
 template <typename DoEachT>
 void VisitStmtOpImpl(const IS& injective_source, const DoEachT& DoEach) {
   for (const auto* op : injective_source.ops) {
@@ -202,6 +232,20 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
   };
 }
 
+common::TopoWalker<const pir::Operation*> GetOpsReversedTopoWalker(const OpTopo& op_topo) {
+  const auto VisitUpStreamInOps = [op_topo](const pir::Operation* op,
+                                            const OpVisitor& DoEach) {
+    op_topo.VisitInputOp(op, DoEach);
+  };
+  const auto VisitDownStreamInOps = [op_topo](const pir::Operation* op,
+                                              const OpVisitor& DoEach) {
+    op_topo.VisitOutputOp(op, DoEach);
+  };
+  common::TopoWalker<const pir::Operation*> reversed_walker(
+      VisitDownStreamInOps, VisitUpStreamInOps);
+  return reversed_walker;
+}
+
 size_t GetRank(pir::Value value) {
   return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
 }
@@ -230,333 +274,387 @@ bool GetReduceOpKeepDims(const pir::Operation* reduce_op) {
   return attr_val.dyn_cast<::pir::BoolAttribute>();
 }
 
-ShardableAxes SequeezeShardableAxes(const ShardableAxes& sa) {
-  ShardableAxes ret_sa(sa);
-  for (int i = 0; i < ret_sa.size(); ++i) {
-    for (int j = i + 1; j < ret_sa.size(); ++j) {
-      CHECK_LT(ret_sa.at(i).axis, ret_sa.at(j).axis);
+class DefaultShardableAxesProvider final : public ShardableAxesProvider {
+ public:
+  explicit DefaultShardableAxesProvider(
+      const pir::ShapeConstraintIRAnalysis* shape_analysis)
+    : shape_analysis_(shape_analysis) {}
+
+  ShardableAxesSignature MakeShardableAxesSignature4Op(const pir::Operation* op) override {
+    const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
+    if (kind == hlir::framework::kReduction) {
+      return MakeShardableAxesSignature4ReduceOp(op);
+    } else if (kind == hlir::framework::kElementWise) {
+      return MakeShardableAxesSignature4ElementWiseOp(op);
+    } else if (kind == hlir::framework::kBroadcast) {
+      return MakeShardableAxesSignature4BroadcastOp(op);
+    } else {
+      LOG(ERROR)
+          << "[ShardableAxesSignature] no shardable axes signature found. op_name:"
+          << op->name();
     }
-    ret_sa.at(i).axis = i;
-  }
-  return ret_sa;
-}
-
-ShardableAxesSignature MakeEmptyShardableAxesSignature(const pir::Operation* op) {
-  const int result_idx = GetOutputShardableAxesResultIdx(op);
-  pir::Value output = op->result(result_idx);
-  ShardableAxes output_sa = ShardableAxesUtil::MakeFullyShardableAxes(GetRank(output));
-  using InputSignature = std::unordered_map<OpAndOperandIndex, ShardableAxes>;
-  InputSignature empty_input_sig;
-  for (int i = 0; i < op->num_operands(); ++i) {
-    empty_input_sig[OpAndOperandIndex{op, i}] = ShardableAxes{};
-  }
-  return ShardableAxesSignature{
-      .sole_output_sa = SoleOutputShardableAxes{
-        .shardable_axes=output_sa,
-      },
-      .input_shardable_axes = empty_input_sig,
-  };
-}
-
-ShardableAxesSignature MakeShardableAxesSignature4ReduceOp(
-    const pir::Operation* reduce_op) {
-  const size_t input_rank = GetRank(reduce_op->operand_source(0));
-  const auto& reduce_axes = GetReduceAxes(reduce_op);
-  const ShardableAxes input_sa =
-      ShardableAxesUtil::MakeReduceOpInputShardableAxes(input_rank, reduce_axes);
-  using InputSignature = std::unordered_map<OpAndOperandIndex, ShardableAxes>;
-  const ShardableAxes output_sa = 
-    (GetReduceOpKeepDims(reduce_op) ? input_sa : SequeezeShardableAxes(input_sa)); 
-  return ShardableAxesSignature{
-      .sole_output_sa = SoleOutputShardableAxes{
-        .shardable_axes=output_sa,
-      },
-      .input_shardable_axes = InputSignature{
-        {OpAndOperandIndex{reduce_op, 0}, input_sa},
-      },
-  };
-}
-
-bool IsDisabledElementwiseOp(const pir::Operation* op) {
-  if (op->isa<cinn::dialect::ReshapeOp>()) return true;
-  return false;
-}
-
-ShardableAxesSignature MakeShardableAxesSignature4ElementWiseOp(
-    const pir::Operation* op) {
-  if (IsDisabledElementwiseOp(op)) {
-    LOG(ERROR) << "[ShardableAxesSignature] no shardable axes signature found. op_name : " << op->name();
     return MakeEmptyShardableAxesSignature(op);
   }
-  const size_t rank = [&] {
-    std::optional<size_t> rank;
-    for (int i = 0; i < op->num_operands(); ++i) {
-      if (rank.has_value()) {
-        CHECK_EQ(rank.value(), GetRank(op->operand_source(i)));
-      } else {
-        rank = GetRank(op->operand_source(i));
+
+ private:
+  ShardableAxes SequeezeShardableAxes(const ShardableAxes& sa) {
+    ShardableAxes ret_sa(sa);
+    for (int i = 0; i < ret_sa.size(); ++i) {
+      for (int j = i + 1; j < ret_sa.size(); ++j) {
+        CHECK_LT(ret_sa.at(i).axis, ret_sa.at(j).axis);
       }
-    }
-    const int result_idx = GetOutputShardableAxesResultIdx(op);
-    if (rank.has_value()) {
-      CHECK_EQ(rank.value(), GetRank(op->result(result_idx)));
-    } else {
-      rank = GetRank(op->result(result_idx));
-    }
-    CHECK(rank.has_value());
-    return rank.value();
-  }();
-  const ShardableAxes output_shardable_axes =
-      ShardableAxesUtil::MakeFullyShardableAxes(rank);
-  std::unordered_map<OpAndOperandIndex, ShardableAxes> input_shardable_axes;
-  for (int i = 0; i < op->num_operands(); ++i) {
-    input_shardable_axes[OpAndOperandIndex{op, i}] = output_shardable_axes;
-  }
-  return ShardableAxesSignature{
-      .sole_output_sa = SoleOutputShardableAxes{
-        .shardable_axes=output_shardable_axes,
-      },
-      .input_shardable_axes = input_shardable_axes,
-  };
-}
-
-ShardableAxesSignature MakeShardableAxesSignature4BroadcastOp(
-    const pir::Operation* op) {
-  LOG(ERROR) << "[ShardableAxesSignature] no shardable axes signature found. op_name : " << op->name();
-  return MakeEmptyShardableAxesSignature(op);
-}
-
-ShardableAxesSignature MakeShardableAxesSignature4Op(const pir::Operation* op) {
-  const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
-  if (kind == hlir::framework::kReduction) {
-    return MakeShardableAxesSignature4ReduceOp(op);
-  } else if (kind == hlir::framework::kElementWise) {
-    return MakeShardableAxesSignature4ElementWiseOp(op);
-  } else if (kind == hlir::framework::kBroadcast) {
-    return MakeShardableAxesSignature4BroadcastOp(op);
-  } else {
-    LOG(ERROR)
-        << "[ShardableAxesSignature] no shardable axes signature found. op_name:"
-        << op->name();
-  }
-  return MakeEmptyShardableAxesSignature(op);
-}
-
-template<typename InputIt>
-std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
-    const common::TopoWalker<const pir::Operation*>& reversed_walker,
-    InputIt sink_and_init_begin, InputIt sink_and_init_end) {
-  std::unordered_map<pir::Value, ShardableAxes> value2shardable_axes;
-  std::list<const pir::Operation*> sinks;
-  for (auto iter = sink_and_init_begin; iter != sink_and_init_end; ++iter) {
-    sinks.push_back(iter->first.defining_op());
-    value2shardable_axes[iter->first] = iter->second;
-  }
-  const auto& UpdateValue2ShardableAxes = [&](pir::Value value, const ShardableAxes& sa) {
-    auto iter = value2shardable_axes.find(value);
-    if (iter != value2shardable_axes.end()) {
-      iter->second =
-          ShardableAxesUtil::GetCommonShardableAxes(iter->second, sa);
-    } else {
-      iter->second = sa;
-    }
-  };
-  reversed_walker(sinks.begin(), sinks.end(), [&](const auto* op) {
-    auto shardable_axes_sig = MakeShardableAxesSignature4Op(op);
-    const auto& sole_output_sa = shardable_axes_sig.sole_output_sa;
-    const int result_idx = GetOutputShardableAxesResultIdx(op);
-    const auto& old2new = ShardableAxesUtil::GetOldName2NewName(
-        sole_output_sa.shardable_axes,
-        value2shardable_axes.at(op->result(result_idx)));
-    for (auto& pair : shardable_axes_sig.input_shardable_axes) {
-      const auto& [my_op, input_idx] = pair.first;
-      CHECK_EQ(my_op, op);
-      auto* input_shardable_axes = &pair.second;
-      ShardableAxesUtil::UpdateShardableAxes(old2new, input_shardable_axes);
-      pir::Value input_value = op->operand_source(input_idx);
-      UpdateValue2ShardableAxes(input_value, *input_shardable_axes);
-    }
-  });
-  return value2shardable_axes;
-}
-
-std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
-    const common::TopoWalker<const pir::Operation*>& reversed_walker,
-    const pir::Operation* sink,
-    const ShardableAxes& init_sa) {
-  using OpAndInitValue = std::pair<pir::Value, ShardableAxes>;
-  const int result_idx = GetOutputShardableAxesResultIdx(sink);
-  std::array<OpAndInitValue, 1> sinks{OpAndInitValue{sink->result(result_idx), init_sa}};
-  return ReversedInferShardableAxes(reversed_walker, sinks.begin(), sinks.end());
-}
-
-common::TopoWalker<const pir::Operation*> GetOpsReversedTopoWalker(const OpTopo& op_topo) {
-  const auto VisitUpStreamInOps = [op_topo](const pir::Operation* op,
-                                            const OpVisitor& DoEach) {
-    op_topo.VisitInputOp(op, DoEach);
-  };
-  const auto VisitDownStreamInOps = [op_topo](const pir::Operation* op,
-                                              const OpVisitor& DoEach) {
-    op_topo.VisitOutputOp(op, DoEach);
-  };
-  common::TopoWalker<const pir::Operation*> reversed_walker(
-      VisitDownStreamInOps, VisitUpStreamInOps);
-  return reversed_walker;
-}
-
-std::list<const pir::Operation*> GetSinks(
-    const OpSet& ops) {
-  const auto IsSink = [&](const pir::Operation* op) {
-    for (int i = 0; i < op->num_results(); ++i) {
-      pir::Value output = op->result(i);
-      for (auto consumer_it = output.use_begin();
-           consumer_it != output.use_end();
-           ++consumer_it) {
-        const auto* consumer_op = consumer_it->owner();
-        if (consumer_op->isa<pir::YieldOp>()) continue;
-        if (ops.count(consumer_op) > 0) return false;
-      }
-    }
-    return true;
-  };
-  std::list<const pir::Operation*> sinks;
-  for (const auto* op : ops) {
-    if (IsSink(op)) {
-      sinks.push_back(op);
-    }
-  }
-  return sinks;
-}
-
-const pir::Operation* GetSoleSink(const OpSet& ops) {
-  const auto& sinks = GetSinks(ops);
-  CHECK_EQ(sinks.size(), 1);
-  return *sinks.begin();
-}
-
-std::unordered_map<const pir::Operation*, ShardableAxesSignature>
-GetOp2ShardableAxesSignature(const OpSetPtr& ops) {
-  std::unordered_map<const pir::Operation*, ShardableAxesSignature> ret;
-  for (const auto* op : *ops) {
-    ret[op] = MakeShardableAxesSignature4Op(op);
-  }
-  return ret;
-}
-
-std::map<std::string, std::vector<std::string>>
-GetAxisName2BoundAxisName(
-    const OpSetPtr& ops,
-    const std::unordered_map<const pir::Operation*, ShardableAxesSignature>& op2shardable_axes_signature) {
-  const auto GetInputShardableAxes = [&](const OpAndOperandIndex& op_and_idx) -> std::optional<const ShardableAxes*> {
-    const auto& [op, idx] = op_and_idx;
-    const auto* input_op = op->operand_source(idx).defining_op();
-    if (ops->count(input_op) == 0) return std::nullopt;
-    const auto& iter = op2shardable_axes_signature.find(input_op);
-    if (iter == op2shardable_axes_signature.end()) return std::nullopt;
-    const auto& output_sa = iter->second.sole_output_sa.shardable_axes;
-    return &output_sa;
-  };
-  std::map<std::string, std::vector<std::string>> axis_name2bound_axis_name;
-  const auto UpdateAxisName2BoundAxisName = [&](const ShardableAxes& input_sa, const ShardableAxes& sa) {
-    for (const auto& [input_axis, input_axis_name] : input_sa) {
-      for (const auto& [axis, axis_name] : sa) {
-        if (input_axis != axis) continue;
-        axis_name2bound_axis_name[axis_name].push_back(input_axis_name);
-        axis_name2bound_axis_name[input_axis_name].push_back(axis_name);
-      }
-    }
-  };
-  for (const auto& [op, signature] : op2shardable_axes_signature) {
-    for (const auto& [op_and_idx, sa] : signature.input_shardable_axes) {
-      const auto& input_sa = GetInputShardableAxes(op_and_idx);
-      if (!input_sa.has_value()) continue;
-      UpdateAxisName2BoundAxisName(*input_sa.value(), sa);
-    }
-  }
-  return axis_name2bound_axis_name;
-}
-
-std::unordered_map<std::string, std::string>
-GetAxisName2UnionFindSetRoot(
-    const OpSetPtr& ops,
-    const std::unordered_map<const pir::Operation*, ShardableAxesSignature>& op2shardable_axes_signature) {
-  const auto axis_name2bound_axis_name = GetAxisName2BoundAxisName(ops, op2shardable_axes_signature);
-  using NodeVisitor = std::function<void(const std::string&)>;
-  const auto VisitNext = [&](const std::string& axis_name, const NodeVisitor& DoEach) {
-    const auto& iter = axis_name2bound_axis_name.find(axis_name);
-    if (iter == axis_name2bound_axis_name.end()) return;
-    for (const auto& input_axis_name : iter->second) {
-      DoEach(input_axis_name);
-    }
-  };
-  common::BfsWalker<std::string> walk(VisitNext);
-  std::unordered_map<std::string, std::string> axis_name2root;
-  for (const auto& [union_find_root, _] : axis_name2bound_axis_name) {
-    if (axis_name2root.count(union_find_root) > 0) continue;
-    walk(union_find_root, [&](const std::string& axis_name){
-      CHECK(axis_name2root.emplace(axis_name, union_find_root).second);
-    });
-  }
-  return axis_name2root;
-}
-
-std::unordered_map<pir::Value, ShardableAxes>
-GetSinkAndInitShardableAxes(
-    const std::list<const pir::Operation*>& sinks,
-    const std::unordered_map<const pir::Operation*, ShardableAxesSignature>& op2shardable_axes_signature,
-    const std::unordered_map<std::string, std::string>& axis_name2union_find_set_root) {
-  const auto& ConvertByBoundAxisName = [&](const ShardableAxes& sa) {
-    ShardableAxes ret_sa;
-    for (const auto& [axis, axis_name] : sa) {
-      const auto& iter = axis_name2union_find_set_root.find(axis_name);
-      CHECK(iter != axis_name2union_find_set_root.end());
-      ret_sa.emplace_back(ShardableAxis{
-        .axis=axis,
-        .axis_name=iter->second,
-      });
+      ret_sa.at(i).axis = i;
     }
     return ret_sa;
-  };
-  std::unordered_map<pir::Value, ShardableAxes> sink2sa;
-  for (const auto* sink : sinks) {
-    const auto& sig_iter = op2shardable_axes_signature.find(sink);
-    CHECK(sig_iter != op2shardable_axes_signature.end());
-    const auto& sole_output_sa = sig_iter->second.sole_output_sa;
-    const auto& output_shardable_axes = sole_output_sa.shardable_axes;
-    const int result_idx = GetOutputShardableAxesResultIdx(sink);
-    sink2sa[sink->result(result_idx)] =
-      ConvertByBoundAxisName(output_shardable_axes);
   }
-  return sink2sa;
-}
 
-void RenameDuplicatedAxisName(std::unordered_map<pir::Value, ShardableAxes>* sink2sa) {
-  const auto& RenameDuplicated = [&](ShardableAxes* sa) {
-    std::set<std::string> existed_axis_name;
-    for (auto& [_, axis_name] : *sa) {
-      if (!existed_axis_name.emplace(axis_name).second) {
-        axis_name = axis_name + "_" + std::to_string(ShardableAxis::UnqiueSeqNo());
+  using InputSignature = std::unordered_map<OpAndOperandIndex, ShardableAxes>;
+
+  ShardableAxesSignature MakeEmptyShardableAxesSignature(const pir::Operation* op) {
+    const int result_idx = GetOutputShardableAxesResultIdx(op);
+    pir::Value output = op->result(result_idx);
+    ShardableAxes output_sa = ShardableAxesUtil::MakeFullyShardableAxes(GetRank(output));
+    InputSignature empty_input_sig;
+    for (int i = 0; i < op->num_operands(); ++i) {
+      empty_input_sig[OpAndOperandIndex{op, i}] = ShardableAxes{};
+    }
+    return ShardableAxesSignature{
+        .sole_output_sa = SoleOutputShardableAxes{
+          .shardable_axes=output_sa,
+        },
+        .input_shardable_axes = empty_input_sig,
+    };
+  }
+
+  ShardableAxesSignature MakeShardableAxesSignature4ReduceOp(
+      const pir::Operation* reduce_op) {
+    const size_t input_rank = GetRank(reduce_op->operand_source(0));
+    const auto& reduce_axes = GetReduceAxes(reduce_op);
+    const ShardableAxes input_sa =
+        ShardableAxesUtil::MakeReduceOpInputShardableAxes(input_rank, reduce_axes);
+    using InputSignature = std::unordered_map<OpAndOperandIndex, ShardableAxes>;
+    const ShardableAxes output_sa = 
+      (GetReduceOpKeepDims(reduce_op) ? input_sa : SequeezeShardableAxes(input_sa)); 
+    return ShardableAxesSignature{
+        .sole_output_sa = SoleOutputShardableAxes{
+          .shardable_axes=output_sa,
+        },
+        .input_shardable_axes = InputSignature{
+          {OpAndOperandIndex{reduce_op, 0}, input_sa},
+        },
+    };
+  }
+
+  bool IsDisabledElementwiseOp(const pir::Operation* op) {
+    if (op->isa<cinn::dialect::ReshapeOp>()) return true;
+    return false;
+  }
+
+  ShardableAxesSignature MakeShardableAxesSignature4ElementWiseOp(
+      const pir::Operation* op) {
+    if (IsDisabledElementwiseOp(op)) {
+      LOG(ERROR) << "[ShardableAxesSignature] no shardable axes signature found. op_name : " << op->name();
+      return MakeEmptyShardableAxesSignature(op);
+    }
+    const size_t rank = [&] {
+      std::optional<size_t> rank;
+      for (int i = 0; i < op->num_operands(); ++i) {
+        if (rank.has_value()) {
+          CHECK_EQ(rank.value(), GetRank(op->operand_source(i)));
+        } else {
+          rank = GetRank(op->operand_source(i));
+        }
+      }
+      const int result_idx = GetOutputShardableAxesResultIdx(op);
+      if (rank.has_value()) {
+        CHECK_EQ(rank.value(), GetRank(op->result(result_idx)));
       } else {
-        // do nothing.
+        rank = GetRank(op->result(result_idx));
+      }
+      CHECK(rank.has_value());
+      return rank.value();
+    }();
+    const ShardableAxes output_shardable_axes =
+        ShardableAxesUtil::MakeFullyShardableAxes(rank);
+    std::unordered_map<OpAndOperandIndex, ShardableAxes> input_shardable_axes;
+    for (int i = 0; i < op->num_operands(); ++i) {
+      input_shardable_axes[OpAndOperandIndex{op, i}] = output_shardable_axes;
+    }
+    return ShardableAxesSignature{
+        .sole_output_sa = SoleOutputShardableAxes{
+          .shardable_axes=output_shardable_axes,
+        },
+        .input_shardable_axes = input_shardable_axes,
+    };
+  }
+
+  ShardableAxesSignature MakeShardableAxesSignature4BroadcastOp(
+      const pir::Operation* op) {
+    const auto& input_output_pair = GetGetBroadcastOpInputOuputValue(op);
+    if (!input_output_pair.has_value()) {
+      LOG(ERROR) << "[ShardableAxesSignature] no shardable axes signature found. op_name : " << op->name();
+      return MakeEmptyShardableAxesSignature(op);
+    }
+    const auto& [input, input_idx, output] = input_output_pair.value();
+    const int input_rank = GetRank(input);
+    const int rank_diff = GetRank(output) - input_rank;
+    CHECK_GE(rank_diff, 0);
+    const auto& broadcast_axes = [&]{
+      std::vector<int64_t> broadcast_axes;
+      for (int i = 0; i < input_rank; ++i) {
+        int o = i + rank_diff;
+        if (!shape_analysis_->IsProductEqual(input, {i}, output, {o})) {
+          broadcast_axes.push_back(i);
+        }
+      }
+      return broadcast_axes;
+    }();
+    const ShardableAxes input_sa =
+      ShardableAxesUtil::MakeBroadcastOpInputShardableAxes(input_rank, broadcast_axes);
+    const ShardableAxes output_sa = [&]{
+      ShardableAxes output_sa(input_sa);
+      for (auto& shardable_axis : output_sa) {
+        shardable_axis.axis += rank_diff;
+      }
+      return output_sa;
+    }();
+    return ShardableAxesSignature{
+        .sole_output_sa = SoleOutputShardableAxes{
+          .shardable_axes=output_sa,
+        },
+        .input_shardable_axes = InputSignature{
+          {OpAndOperandIndex{op, input_idx}, input_sa},
+        },
+    }; 
+  }
+
+  std::optional<std::tuple<pir::Value, /*input_dix*/int, pir::Value>>
+  GetGetBroadcastOpInputOuputValue(const pir::Operation* op) {
+    auto* mut_op = const_cast<pir::Operation*>(op);
+    if (op->isa<paddle::dialect::ExpandOp>()) {
+      auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
+      return std::tuple{expand_op.x(), 0, expand_op.out()};
+    }
+    if (op->isa<cinn::dialect::BroadcastOp>()) {
+      auto broadcast_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
+      return std::tuple{broadcast_op.x(), 0, broadcast_op.out()};
+    }
+    return std::nullopt;
+  }
+
+  const pir::ShapeConstraintIRAnalysis* shape_analysis_;
+};
+
+
+class ShardableAxesInferer {
+ public:
+  explicit ShardableAxesInferer(
+      const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider)
+    : shardable_axes_provider_(shardable_axes_provider) {}
+  
+  ShardableAxesInferer(const ShardableAxesInferer&) = default;
+  ShardableAxesInferer(ShardableAxesInferer&&) = default;
+
+  ShardableAxesSignature MakeShardableAxesSignature4Op(const pir::Operation* op) {
+    return shardable_axes_provider_->MakeShardableAxesSignature4Op(op);
+  }
+
+  std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
+      const pir::Operation* sink,
+      const OpTopo& op_topo) {
+    auto reversed_walker = GetOpsReversedTopoWalker(op_topo);
+    CHECK_GT(op_topo.ops->count(sink), 0);
+    const int result_idx = GetOutputShardableAxesResultIdx(sink);
+    size_t rank = GetRank(sink->result(result_idx));
+    const auto& init_sa = ShardableAxesUtil::MakeFullyShardableAxes(rank);
+    return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
+  }
+
+  std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(
+      const OpSetPtr& ops) {
+    auto reversed_walker = GetOpsReversedTopoWalker(OpTopo{
+      .ops=ops,
+    });
+    const auto& sinks = GetSinks(*ops);
+    const auto& sink_and_init_value = GetSinkAndInitValues(reversed_walker, ops, sinks);
+    return ReversedInferShardableAxes(reversed_walker, sink_and_init_value.begin(), sink_and_init_value.end());
+  }
+
+ private:
+  template<typename InputIt>
+  std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
+      const common::TopoWalker<const pir::Operation*>& reversed_walker,
+      InputIt sink_and_init_begin, InputIt sink_and_init_end) {
+    std::unordered_map<pir::Value, ShardableAxes> value2shardable_axes;
+    std::list<const pir::Operation*> sinks;
+    for (auto iter = sink_and_init_begin; iter != sink_and_init_end; ++iter) {
+      sinks.push_back(iter->first.defining_op());
+      value2shardable_axes[iter->first] = iter->second;
+    }
+    const auto& UpdateValue2ShardableAxes = [&](pir::Value value, const ShardableAxes& sa) {
+      auto iter = value2shardable_axes.find(value);
+      if (iter != value2shardable_axes.end()) {
+        iter->second =
+            ShardableAxesUtil::GetCommonShardableAxes(iter->second, sa);
+      } else {
+        iter->second = sa;
+      }
+    };
+    reversed_walker(sinks.begin(), sinks.end(), [&](const auto* op) {
+      auto shardable_axes_sig = MakeShardableAxesSignature4Op(op);
+      const auto& sole_output_sa = shardable_axes_sig.sole_output_sa;
+      const int result_idx = GetOutputShardableAxesResultIdx(op);
+      const auto& old2new = ShardableAxesUtil::GetOldName2NewName(
+          sole_output_sa.shardable_axes,
+          value2shardable_axes.at(op->result(result_idx)));
+      for (auto& pair : shardable_axes_sig.input_shardable_axes) {
+        const auto& [my_op, input_idx] = pair.first;
+        CHECK_EQ(my_op, op);
+        auto* input_shardable_axes = &pair.second;
+        ShardableAxesUtil::UpdateShardableAxes(old2new, input_shardable_axes);
+        pir::Value input_value = op->operand_source(input_idx);
+        UpdateValue2ShardableAxes(input_value, *input_shardable_axes);
+      }
+    });
+    return value2shardable_axes;
+  }
+
+  std::unordered_map<pir::Value, ShardableAxes> ReversedInferShardableAxes(
+      const common::TopoWalker<const pir::Operation*>& reversed_walker,
+      const pir::Operation* sink,
+      const ShardableAxes& init_sa) {
+    using OpAndInitValue = std::pair<pir::Value, ShardableAxes>;
+    const int result_idx = GetOutputShardableAxesResultIdx(sink);
+    std::array<OpAndInitValue, 1> sinks{OpAndInitValue{sink->result(result_idx), init_sa}};
+    return ReversedInferShardableAxes(reversed_walker, sinks.begin(), sinks.end());
+  }
+
+  std::unordered_map<const pir::Operation*, ShardableAxesSignature>
+  GetOp2ShardableAxesSignature(const OpSetPtr& ops) {
+    std::unordered_map<const pir::Operation*, ShardableAxesSignature> ret;
+    for (const auto* op : *ops) {
+      ret[op] = MakeShardableAxesSignature4Op(op);
+    }
+    return ret;
+  }
+
+  std::map<std::string, std::vector<std::string>>
+  GetAxisName2BoundAxisName(
+      const OpSetPtr& ops,
+      const std::unordered_map<const pir::Operation*, ShardableAxesSignature>& op2shardable_axes_signature) {
+    const auto GetInputShardableAxes = [&](const OpAndOperandIndex& op_and_idx) -> std::optional<const ShardableAxes*> {
+      const auto& [op, idx] = op_and_idx;
+      const auto* input_op = op->operand_source(idx).defining_op();
+      if (ops->count(input_op) == 0) return std::nullopt;
+      const auto& iter = op2shardable_axes_signature.find(input_op);
+      if (iter == op2shardable_axes_signature.end()) return std::nullopt;
+      const auto& output_sa = iter->second.sole_output_sa.shardable_axes;
+      return &output_sa;
+    };
+    std::map<std::string, std::vector<std::string>> axis_name2bound_axis_name;
+    const auto UpdateAxisName2BoundAxisName = [&](const ShardableAxes& input_sa, const ShardableAxes& sa) {
+      for (const auto& [input_axis, input_axis_name] : input_sa) {
+        for (const auto& [axis, axis_name] : sa) {
+          if (input_axis != axis) continue;
+          axis_name2bound_axis_name[axis_name].push_back(input_axis_name);
+          axis_name2bound_axis_name[input_axis_name].push_back(axis_name);
+        }
+      }
+    };
+    for (const auto& [op, signature] : op2shardable_axes_signature) {
+      for (const auto& [op_and_idx, sa] : signature.input_shardable_axes) {
+        const auto& input_sa = GetInputShardableAxes(op_and_idx);
+        if (!input_sa.has_value()) continue;
+        UpdateAxisName2BoundAxisName(*input_sa.value(), sa);
       }
     }
-  };
-  for (auto& [_, sa] : *sink2sa) {
-    RenameDuplicated(&sa);
+    return axis_name2bound_axis_name;
   }
-}
 
-std::unordered_map<pir::Value, ShardableAxes> GetSinkAndInitValues(
-    const common::TopoWalker<const pir::Operation*>& reverse_walker,
-    const OpSetPtr& ops,
-    const std::list<const pir::Operation*>& sinks) {
-  const auto& op2shardable_axes_signature = GetOp2ShardableAxesSignature(ops);
-  const auto& axis_name2union_find_set_root = GetAxisName2UnionFindSetRoot(ops, op2shardable_axes_signature);
-  std::unordered_map<pir::Value, ShardableAxes> sink_and_inits =
-      GetSinkAndInitShardableAxes(sinks, op2shardable_axes_signature, axis_name2union_find_set_root);
-  RenameDuplicatedAxisName(&sink_and_inits);
-  return sink_and_inits;
-}
+  std::unordered_map<std::string, std::string>
+  GetAxisName2UnionFindSetRoot(
+      const OpSetPtr& ops,
+      const std::unordered_map<const pir::Operation*, ShardableAxesSignature>& op2shardable_axes_signature) {
+    const auto axis_name2bound_axis_name = GetAxisName2BoundAxisName(ops, op2shardable_axes_signature);
+    using NodeVisitor = std::function<void(const std::string&)>;
+    const auto VisitNext = [&](const std::string& axis_name, const NodeVisitor& DoEach) {
+      const auto& iter = axis_name2bound_axis_name.find(axis_name);
+      if (iter == axis_name2bound_axis_name.end()) return;
+      for (const auto& input_axis_name : iter->second) {
+        DoEach(input_axis_name);
+      }
+    };
+    common::BfsWalker<std::string> walk(VisitNext);
+    std::unordered_map<std::string, std::string> axis_name2root;
+    for (const auto& [union_find_root, _] : axis_name2bound_axis_name) {
+      if (axis_name2root.count(union_find_root) > 0) continue;
+      walk(union_find_root, [&](const std::string& axis_name){
+        CHECK(axis_name2root.emplace(axis_name, union_find_root).second);
+      });
+    }
+    return axis_name2root;
+  }
+
+  std::unordered_map<pir::Value, ShardableAxes>
+  GetSinkAndInitShardableAxes(
+      const std::list<const pir::Operation*>& sinks,
+      const std::unordered_map<const pir::Operation*, ShardableAxesSignature>& op2shardable_axes_signature,
+      const std::unordered_map<std::string, std::string>& axis_name2union_find_set_root) {
+    const auto& ConvertByBoundAxisName = [&](const ShardableAxes& sa) {
+      ShardableAxes ret_sa;
+      for (const auto& [axis, axis_name] : sa) {
+        const auto& iter = axis_name2union_find_set_root.find(axis_name);
+        CHECK(iter != axis_name2union_find_set_root.end());
+        ret_sa.emplace_back(ShardableAxis{
+          .axis=axis,
+          .axis_name=iter->second,
+        });
+      }
+      return ret_sa;
+    };
+    std::unordered_map<pir::Value, ShardableAxes> sink2sa;
+    for (const auto* sink : sinks) {
+      const auto& sig_iter = op2shardable_axes_signature.find(sink);
+      CHECK(sig_iter != op2shardable_axes_signature.end());
+      const auto& sole_output_sa = sig_iter->second.sole_output_sa;
+      const auto& output_shardable_axes = sole_output_sa.shardable_axes;
+      const int result_idx = GetOutputShardableAxesResultIdx(sink);
+      sink2sa[sink->result(result_idx)] =
+        ConvertByBoundAxisName(output_shardable_axes);
+    }
+    return sink2sa;
+  }
+
+  void RenameDuplicatedAxisName(std::unordered_map<pir::Value, ShardableAxes>* sink2sa) {
+    const auto& RenameDuplicated = [&](ShardableAxes* sa) {
+      std::set<std::string> existed_axis_name;
+      for (auto& [_, axis_name] : *sa) {
+        if (!existed_axis_name.emplace(axis_name).second) {
+          axis_name = axis_name + "_" + std::to_string(ShardableAxis::UnqiueSeqNo());
+        } else {
+          // do nothing.
+        }
+      }
+    };
+    for (auto& [_, sa] : *sink2sa) {
+      RenameDuplicated(&sa);
+    }
+  }
+
+  std::unordered_map<pir::Value, ShardableAxes> GetSinkAndInitValues(
+      const common::TopoWalker<const pir::Operation*>& reverse_walker,
+      const OpSetPtr& ops,
+      const std::list<const pir::Operation*>& sinks) {
+    const auto& op2shardable_axes_signature = GetOp2ShardableAxesSignature(ops);
+    const auto& axis_name2union_find_set_root = GetAxisName2UnionFindSetRoot(ops, op2shardable_axes_signature);
+    std::unordered_map<pir::Value, ShardableAxes> sink_and_inits =
+        GetSinkAndInitShardableAxes(sinks, op2shardable_axes_signature, axis_name2union_find_set_root);
+    RenameDuplicatedAxisName(&sink_and_inits);
+    return sink_and_inits;
+  }
+
+  std::shared_ptr<ShardableAxesProvider> shardable_axes_provider_;
+};
 
 std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
     const std::vector<const pir::Operation*>& ops) {
@@ -571,18 +669,6 @@ std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
     return iter->second;
   };
 }
-
-std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
-    const pir::Operation* sink,
-    const OpTopo& op_topo) {
-  auto reversed_walker = GetOpsReversedTopoWalker(op_topo);
-  CHECK_GT(op_topo.ops->count(sink), 0);
-  const int result_idx = GetOutputShardableAxesResultIdx(sink);
-  size_t rank = GetRank(sink->result(result_idx));
-  const auto& init_sa = ShardableAxesUtil::MakeFullyShardableAxes(rank);
-  return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
-}
-
 
 pir::Value GetStmtBigestShapeValueImpl(const IS& injective_source) {
   const auto* sink_op = injective_source.sole_sink;
@@ -644,14 +730,28 @@ void SortStmtPtrs(
 class StmtFusionHelper {
  public:
   StmtFusionHelper(
-        const std::vector<const pir::Operation*>& ops)
-      : ops_(ops) {
+        const std::vector<const pir::Operation*>& ops,
+        const ShardableAxesInferer& shardable_axes_inferer)
+      : ops_(ops), shardable_axes_inferer_(shardable_axes_inferer) {
     this->op_topo_ = OpTopo::Make(ops);
     this->IsInThisOpList = MakePredicatorIsInThisFusionOp(ops);
     this->IsInjectiveSource =
         MakePredicatorIsInjectiveSource(this->op_topo_);
     this->GetOrderValue4Op = MakeTopoOrderFinderOfOp(ops_);
   }
+
+  GroupPattern FuseToGroupPattern() {
+    std::vector<StmtPattern> stmt_patterns = ConvertToStmtsPattern();
+    if (const auto& error = Fuse_IS_x_IS_2_IS(&stmt_patterns)) return error.value();
+    if (const auto& error = Fuse_PS_x_PS_2_PS(&stmt_patterns)) return error.value();
+    if (const auto& error = Fuse_IS_x_PS_2_PS(&stmt_patterns)) return error.value();
+    if (const auto& error = Fuse_IS_x_R_2_R(&stmt_patterns)) return error.value();
+    if (const auto& error = Fuse_PS_x_R_2_R(&stmt_patterns)) return error.value();
+    SortStmtPatterns(&stmt_patterns);
+    return stmt_patterns;
+  }
+
+ private:
 
   std::vector<StmtPattern> ConvertToStmtsPattern() {
     std::vector<StmtPattern> ret;
@@ -802,7 +902,6 @@ class StmtFusionHelper {
     return FuseFilteredStmtPatterns<FusePolicy_PS_x_R_2_R>(stmt_patterns);
   }
 
- private:
   StmtPattern ConvertToStmtPattern(const pir::Operation* op) {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
     if (IsInjectiveSource(op)) {
@@ -834,10 +933,12 @@ class StmtFusionHelper {
 
   PS ConvertOpToPS(const pir::Operation* op) {
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
+    const auto shardable_axes_signature =
+      shardable_axes_inferer_.MakeShardableAxesSignature4Op(op);
     return PS{
         .ops = {op},
         .sole_sink = op,
-        .shardable_axes_signature = MakeShardableAxesSignature4Op(op),
+        .shardable_axes_signature = shardable_axes_signature,
     };
   }
 
@@ -1026,7 +1127,7 @@ class StmtFusionHelper {
       return *sinks.begin();
     }();
     const auto& value2shardable_axes =
-        InferShardableAxesFromSink(sink, op_topo);
+        shardable_axes_inferer_.InferShardableAxesFromSink(sink, op_topo);
     const auto& IsInputOpOperand = [&](const auto* op, int input_idx) {
       const auto& defining_op = op->operand_source(input_idx).defining_op();
       return IsInThisOpList(defining_op) && op_topo.ops->count(defining_op) == 0;
@@ -1059,43 +1160,30 @@ class StmtFusionHelper {
 
  private:
   std::vector<const pir::Operation*> ops_;
+  ShardableAxesInferer shardable_axes_inferer_;
   OpTopo op_topo_;
   std::function<bool(const pir::Operation*)> IsInThisOpList;
   std::function<bool(const pir::Operation*)> IsInjectiveSource;
   std::function<size_t(const pir::Operation*)> GetOrderValue4Op;
 };
 
-GroupPattern FuseToGroupPattern(
-    const std::vector<const pir::Operation*>& ops) {
-  StmtFusionHelper helper(ops);
-  std::vector<StmtPattern> stmt_patterns = helper.ConvertToStmtsPattern();
-  if (const auto& error = helper.Fuse_IS_x_IS_2_IS(&stmt_patterns))
-    return error.value();
-  if (const auto& error = helper.Fuse_PS_x_PS_2_PS(&stmt_patterns))
-    return error.value();
-  if (const auto& error = helper.Fuse_IS_x_PS_2_PS(&stmt_patterns))
-    return error.value();
-  if (const auto& error = helper.Fuse_IS_x_R_2_R(&stmt_patterns))
-    return error.value();
-  if (const auto& error = helper.Fuse_PS_x_R_2_R(&stmt_patterns))
-    return error.value();
-  helper.SortStmtPatterns(&stmt_patterns);
-  return stmt_patterns;
-}
 
 class ClusteringEngine {
  public:
   ClusteringEngine(
       const std::vector<const pir::Operation*>& ops,
-      std::unique_ptr<ClusteringPolicy>&& clustering_policy)
+      const ShardableAxesInferer& shardable_axes_inferer,
+      const std::shared_ptr<ClusteringPolicy>& clustering_policy)
     : ops_(ops),
       op_topo_(OpTopo::Make(ops)),
-      clustering_policy_(std::move(clustering_policy)) {
+      shardable_axes_inferer_(shardable_axes_inferer),
+      clustering_policy_(clustering_policy) {
   }
 
   ClusteringResult ClusterOps() {
     const std::vector<StmtPattern> stmt_patterns = [&]{
-      GroupPattern raw_parsed = FuseToGroupPattern(ops_);
+      GroupPattern raw_parsed = 
+          StmtFusionHelper(ops_, shardable_axes_inferer_).FuseToGroupPattern();
       CHECK(!std::holds_alternative<ErrorGroupPattern>(raw_parsed)) 
         << std::get<ErrorGroupPattern>(raw_parsed).error_string;
       CHECK(std::holds_alternative<std::vector<StmtPattern>>(raw_parsed));
@@ -1540,7 +1628,7 @@ class ClusteringEngine {
       }
       return ops;
     }();
-    auto value2shardable_axes = InferShardableAxes(ops);
+    auto value2shardable_axes = shardable_axes_inferer_.InferShardableAxes(ops);
     return [map=std::move(value2shardable_axes)](pir::Value value) -> std::optional<const ShardableAxes*> {
       const auto& iter = map.find(value);
       if (iter == map.end()) return std::nullopt;
@@ -1618,8 +1706,9 @@ class ClusteringEngine {
   }
 
   const std::vector<const pir::Operation*> ops_;
+  const std::shared_ptr<ClusteringPolicy> clustering_policy_;
+  ShardableAxesInferer shardable_axes_inferer_;
   const OpTopo op_topo_;
-  std::unique_ptr<ClusteringPolicy> clustering_policy_;
 };
 
 class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
@@ -1833,32 +1922,31 @@ class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
 
 }  // namespace
 
-std::unique_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
+std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
     const pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  return std::make_unique<LoopAlignableClusteringPolicy>(shape_analysis);
+  return std::make_shared<DefaultShardableAxesProvider>(shape_analysis);
+}
+
+std::shared_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  return std::make_shared<LoopAlignableClusteringPolicy>(shape_analysis);
 }
 
 
 ClusteringResult ClusterOps(
     const std::vector<const pir::Operation*>& ops,
-    std::unique_ptr<ClusteringPolicy>&& clustering_policy) {
-  ClusteringEngine engine(ops, std::move(clustering_policy));
+    const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider,
+    const std::shared_ptr<ClusteringPolicy>& clustering_policy) {
+  ShardableAxesInferer inferer(shardable_axes_provider);
+  ClusteringEngine engine(ops, inferer, clustering_policy);
   return engine.ClusterOps();
 }
 
 GroupPattern GenerateGroupPatternFromOpList(
-    const std::vector<const pir::Operation*>& ops) {
-  return FuseToGroupPattern(ops);
-}
-
-std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(
-    const OpSetPtr& ops) {
-  auto reversed_walker = GetOpsReversedTopoWalker(OpTopo{
-    .ops=ops,
-  });
-  const auto& sinks = GetSinks(*ops);
-  const auto& sink_and_init_value = GetSinkAndInitValues(reversed_walker, ops, sinks);
-  return ReversedInferShardableAxes(reversed_walker, sink_and_init_value.begin(), sink_and_init_value.end());
+    const std::vector<const pir::Operation*>& ops,
+    const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider) {
+  ShardableAxesInferer inferer(shardable_axes_provider);
+  return StmtFusionHelper(ops, inferer).FuseToGroupPattern();
 }
 
 }  // namespace cinn::frontend
