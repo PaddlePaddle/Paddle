@@ -438,6 +438,12 @@ void Pad3dInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void PartialAllgatherInferMeta(const MetaTensor& x,
+                               int nranks,
+                               int rank,
+                               bool use_calc_stream,
+                               MetaTensor* out);
+
 void PartialSendInferMeta(const MetaTensor& x,
                           int ring_id,
                           int peer,

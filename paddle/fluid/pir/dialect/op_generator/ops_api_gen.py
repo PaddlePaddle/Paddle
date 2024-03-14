@@ -180,6 +180,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'push_sparse_v2_',
     'partial_send',
     'partial_recv',
+    'partial_allgather',
     'nop',
     'nop_',
 ]
