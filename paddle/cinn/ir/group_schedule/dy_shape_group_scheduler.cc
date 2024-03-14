@@ -47,13 +47,13 @@ void DynamicShapeGroupScheduler::InitBuckets() {
       [](ir::Expr extent, int lower_bound, int upper_bound) -> bool {
     if (!extent.is_constant()) return false;
     int extent_value = static_cast<int>(extent.get_constant());
-    if (extent_value < lower_bound || extent_value >= upper_bound) {
+    if (extent_value < lower_bound || extent_value > upper_bound) {
       return true;
     }
     return false;
   };
 
-  auto InitBucket = [&](BucketInfo&& bucket_info) {
+  auto InitBucket = [&](BucketInfo&& bucket_info, ScheduleConfig&& config) {
     std::unique_ptr<ir::IRSchedule> ir_sch =
         std::make_unique<ir::IRSchedule>(*ir_sch_);
     std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph =
@@ -82,13 +82,11 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     SymbolicPredicate rb_predicate =
         ir::And::Make(rb_lower_bound_predicate, rb_upper_bound_predicate);
     SymbolicPredicate predicate = ir::And::Make(sp_predicate, rb_predicate);
-    std::shared_ptr<GroupTileInfo> group_tile_info =
-        GetGroupTileInfo(group_info_);
     ScheduleContext schedule_context{output_names,
                                      target_,
                                      std::move(iter_space_info),
                                      std::move(bucket_info),
-                                     group_tile_info};
+                                     std::move(config)};
     BucketContext bucket_context{std::move(predicate),
                                  std::move(ir_sch),
                                  std::move(schedule_block_graph),
@@ -96,27 +94,11 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     bucket_contexts_.emplace_back(std::move(bucket_context));
   };
 
-  // naive buckets
-  // 1. {sp_extent[1 - 1024], rb_extent[1 - 256]}
-  InitBucket({/* sp_lower_bound = */ 1,
-              /* sp_upper_bound = */ 1024,
-              /* rb_lower_bound = */ 1,
-              /* rb_upper_bound = */ 256});
-  // 2. {sp_extent[1024 - +oo], rb_extent[1 - 256]}
-  InitBucket({/* sp_lower_bound = */ 1024,
-              /* sp_upper_bound = */ INT_MAX,
-              /* rb_lower_bound = */ 1,
-              /* rb_upper_bound = */ 256});
-  // 3. {sp_extent[1 - 1024], rb_extent[256 - +oo]}
-  InitBucket({/* sp_lower_bound = */ 1,
-              /* sp_upper_bound = */ 1024,
-              /* rb_lower_bound = */ 256,
-              /* rb_upper_bound = */ INT_MAX});
-  // 4. {sp_extent[1024 - +oo], rb_extent[256 - +oo]}
-  InitBucket({/* sp_lower_bound = */ 1024,
-              /* sp_upper_bound = */ INT_MAX,
-              /* rb_lower_bound = */ 256,
-              /* rb_upper_bound = */ INT_MAX});
+  std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash> configs =
+      BuildScheduleConfig(group_info_, target_);
+  for (std::pair<BucketInfo, ScheduleConfig>&& config : configs) {
+    InitBucket(std::move(config.first), std::move(config.second));
+  }
 }
 
 void DynamicShapeGroupScheduler::Schedule() {

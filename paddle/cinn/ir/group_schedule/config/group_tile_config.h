@@ -14,6 +14,8 @@
 
 #pragma once
 #include <memory>
+#include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/schedule/schedule_base.h"
 
 namespace cinn {
@@ -24,36 +26,65 @@ struct GroupInfo;
 
 namespace ir {
 
-struct GroupTileInfo {
-  GroupTileInfo() {}
+struct ScheduleConfig {
+  struct BaseInfo {
+    std::vector<int64_t> reduce_axis;
+    int64_t data_rank;
+    int64_t reduce_numel;
+    int64_t spatial_numel;
+    bool has_dynamic_spatial{false};
+    bool has_dynamic_reduce{false};
+    bool is_reduce_all{false};
 
-  std::vector<int64_t> reduce_axis_;
-  int64_t data_rank;
+    std::set<std::string> reduce_tensor_names;
+    std::set<std::string> temp_var_names;
+    std::set<std::string> shared_var_names;
+    std::set<std::string> direct_output_var_names;
 
-  int64_t block_num{-1};
-  int64_t warp_num;
-  int64_t spatial_inner_num;
-  int64_t reduce_numel;
-  int64_t reduce_inner_num;
-  int64_t reduce_block;
+    std::unordered_map<std::string, BroadcastInfo> broadcast_info;
+    std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
+  };
 
-  bool is_reduce_all{false};
+  struct TileConfig {
+    int64_t warp_num{1};
+    int64_t tree_reduce_num{1};
+    int64_t spatial_inner_num{1};
+    ReduceMethod reduce_method{NoneReduceMethod()};
+  };
 
-  std::set<std::string> reduce_tensor_names;
-  std::set<std::string> temp_var_names;
-
-  std::set<std::string> shared_var_names;
-  std::set<std::string> direct_output_var_names;
-  std::vector<std::string> thread_sync_before_names;
-
-  ReduceMethod reduce_method{NoneReduceMethod()};
-
-  std::unordered_map<std::string, BroadcastInfo> broadcast_info;
-  std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
+  std::shared_ptr<BaseInfo> base_info;
+  TileConfig tile_config;
 };
 
-std::shared_ptr<GroupTileInfo> GetGroupTileInfo(
-    const std::shared_ptr<cinn::hlir::framework::pir::GroupInfo>& group_info);
+struct BucketInfo {
+  int64_t sp_lower_bound = 1;
+  int64_t sp_upper_bound = INT64_MAX;
+  int64_t rb_lower_bound = 1;
+  int64_t rb_upper_bound = INT64_MAX;
+
+  bool operator==(const BucketInfo& other) const {
+    return this->sp_lower_bound == other.sp_lower_bound &&
+           this->sp_upper_bound == other.sp_upper_bound &&
+           this->rb_lower_bound == other.rb_lower_bound &&
+           this->rb_upper_bound == other.rb_upper_bound;
+  }
+};
+
+struct BucketInfoHash {
+  std::size_t operator()(const BucketInfo& bucket_info) const noexcept {
+    std::size_t hash_spl = std::hash<uint64_t>{}(bucket_info.sp_lower_bound);
+    std::size_t hash_spu = std::hash<uint64_t>{}(bucket_info.sp_upper_bound);
+    std::size_t hash_rbl = std::hash<uint64_t>{}(bucket_info.rb_lower_bound);
+    std::size_t hash_rbu = std::hash<uint64_t>{}(bucket_info.rb_upper_bound);
+    return adt::hash_combine(adt::hash_combine(hash_spl, hash_spu),
+                             adt::hash_combine(hash_rbl, hash_rbu));
+  }
+};
+
+std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash>
+BuildScheduleConfig(
+    const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info,
+    const common::Target& target);
 
 }  // namespace ir
 }  // namespace cinn

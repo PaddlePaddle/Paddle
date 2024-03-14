@@ -66,22 +66,13 @@ struct IterativeSpaceInfo {
   }
 };
 
-struct BucketInfo {
-  int sp_lower_bound = 0;
-  int sp_upper_bound = UINT_MAX;
-  int rb_lower_bound = 0;
-  int rb_upper_bound = UINT_MAX;
-};
-
 struct ScheduleContext {
   // TODO(BiynXu): Unify fields with similar meanings
   std::unordered_set<std::string> output_names;
   Target target;
   IterativeSpaceInfo iter_space_info;
   BucketInfo bucket_info;
-  // Will tile information be modified during the schedule process?
-  // If so, it is necessary to store a separate copy for each context
-  std::shared_ptr<GroupTileInfo> group_tile_info;
+  ScheduleConfig config;
 };
 
 class ScheduleTactic {
