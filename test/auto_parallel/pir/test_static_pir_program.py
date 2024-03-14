@@ -93,8 +93,6 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertFalse(w1.get_defining_op().has_attr("op_dist_attr"))
 
         dist_input_op_dist_attr = dist_input.get_defining_op().dist_attr()
-        print(f'op_dist_attr: {dist_input_op_dist_attr}')
-        print(f'tensor_dist_attr: {dist_input.dist_attr()}')
         # #check attrs
 
         self.assertEqual(dist_input_op_dist_attr.process_mesh, mesh)

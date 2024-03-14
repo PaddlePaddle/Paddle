@@ -81,21 +81,24 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
          << phi::distributed::auto_parallel::str_join(partial_status_strs);
     }
   } else if (auto op_dist_attr = attr.dyn_cast<OperationDistAttribute>()) {
-    os << "mesh: " << op_dist_attr.process_mesh_attr().process_mesh();
+    os << " {mesh: " << op_dist_attr.process_mesh_attr().process_mesh();
     auto num_operand_dist_attrs = op_dist_attr.num_operand_dist_attrs();
+    if (num_operand_dist_attrs > 0) {
+      os << ", operands_dist_attrs: {";
+    }
     for (uint32_t i = 0; i < num_operand_dist_attrs; ++i) {
       auto dist_attr = op_dist_attr.operand_dist_attr(i);
-      os << "{operand(" << i << ") mesh shape: ["
+      os << "operand(" << i << "): {mesh shape: ["
          << phi::distributed::auto_parallel::str_join(
                 dist_attr.process_mesh_attr().shape())
          << "]";
       os << ", dims_maping: [" +
                 phi::distributed::auto_parallel::str_join(
-                    tensor_dist_attr.dims_mapping()) +
+                    dist_attr.dims_mapping()) +
                 "]";
-      if (tensor_dist_attr.partial_status().size() > 0) {
+      if (dist_attr.partial_status().size() > 0) {
         std::vector<std::string> partial_status_strs;
-        for (auto &itr : tensor_dist_attr.partial_status()) {
+        for (auto &itr : dist_attr.partial_status()) {
           std::string s = "partial(" + std::to_string(itr.first) + "," +
                           phi::ReduceTypeStrings[static_cast<int>(itr.second)] +
                           ")";
@@ -108,20 +111,26 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
         os << "}";
       }
     }
+    if (num_operand_dist_attrs > 0) {
+      os << "}";
+    }
     auto num_result_dist_attrs = op_dist_attr.num_result_dist_attrs();
+    if (num_result_dist_attrs > 0) {
+      os << ", result_dist_attrs: {";
+    }
     for (uint32_t i = 0; i < num_result_dist_attrs; ++i) {
       auto dist_attr = op_dist_attr.result_dist_attr(i);
-      os << ", {result(" << i << ") mesh shape: ["
+      os << "result(" << i << "): {mesh shape: ["
          << phi::distributed::auto_parallel::str_join(
                 dist_attr.process_mesh_attr().shape())
          << "]";
       os << ", dims_maping: [" +
                 phi::distributed::auto_parallel::str_join(
-                    tensor_dist_attr.dims_mapping()) +
+                    dist_attr.dims_mapping()) +
                 "]";
-      if (tensor_dist_attr.partial_status().size() > 0) {
+      if (dist_attr.partial_status().size() > 0) {
         std::vector<std::string> partial_status_strs;
-        for (auto &itr : tensor_dist_attr.partial_status()) {
+        for (auto &itr : dist_attr.partial_status()) {
           std::string s = "partial(" + std::to_string(itr.first) + "," +
                           phi::ReduceTypeStrings[static_cast<int>(itr.second)] +
                           ")";
@@ -133,6 +142,9 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
       } else {
         os << "}";
       }
+    }
+    if (num_result_dist_attrs > 0) {
+      os << "}";
     }
   } else {
     os << "error_attribute_type";
