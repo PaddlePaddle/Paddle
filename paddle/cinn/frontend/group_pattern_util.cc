@@ -1467,7 +1467,7 @@ class ClusteringEngine {
       });
     }
     using NodeVisitor = std::function<void(const StmtPattern*)>;
-    auto VisitInput = [op_topo](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+    auto VisitInput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach) {
       VisitStmtOp(*stmt, [&](const auto* op){
         op_topo.VisitInputOp(op, [&](const auto* input_op) {
           const auto& owners_iter = op2owner_stmt_ptr->find(input_op);
@@ -1479,7 +1479,7 @@ class ClusteringEngine {
         });
       });
     };
-    auto VisitOutput = [op_topo](const StmtPattern* stmt, const NodeVisitor& DoEach){
+    auto VisitOutput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach){
       const auto* sink = GetStmtSoleSinkOp(*stmt);
       op_topo.VisitOutputOp(sink, [&](const pir::Operation* op){
         const auto& owners_iter = op2owner_stmt_ptr->find(op);

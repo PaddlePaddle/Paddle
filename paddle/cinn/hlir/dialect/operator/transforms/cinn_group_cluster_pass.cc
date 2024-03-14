@@ -734,84 +734,85 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
   return second_stage_output;
 }
 
+// std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
+//   const auto& ops = [&]{
+//     std::vector<const pir::Operation*> ops;
+//     for (const auto& op : *group_op.block()) {
+//       ops.push_back(&op);
+//     }
+//     return ops;
+//   }();
+//   auto cluster_policy = [&]{
+//     auto* program = group_op.GetParentProgram();
+//     const auto* shape_analysis = &pir::ShapeAnalysisManager::Instance().Get(program);
+//     return frontend::MakeLoopAlignableClusteringPolicy(shape_analysis);
+//   }();
+//   const auto cluster_result = frontend::ClusterOps(ops, std::move(cluster_policy));
+// }
+
 std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
-  // using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
-  // using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
-  const auto& ops = [&]{
-    std::vector<const pir::Operation*> ops;
-    for (const auto& op : *group_op.block()) {
-      ops.push_back(&op);
+  // op merge with op
+  auto inner_values = GetInnerGeneValue(group_op.GetOperators());
+
+  std::unordered_map<::pir::Operation*, GroupClusterNode> op_path;
+
+  auto op_list = group_op.GetOperators();
+
+  std::vector<GroupClusterNode> first_stage_output;
+
+  std::unordered_set<::pir::Operation*> yield_output_ops;
+  std::unordered_set<::pir::Operation*> first_output_ops;
+  auto yield_op = op_list.back();
+  for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+    if (yield_op->operand_source(i).defining_op()->result(0).use_count() == 1) {
+      yield_output_ops.insert(yield_op->operand_source(i).defining_op());
     }
-    return ops;
-  }();
-  const auto& pattern_tree =
-      frontend::GenerateGroupPatternFromOpList(ops);
+  }
+
+  // first stage op fuse op
+  for (auto* op : op_list) {
+    if (op->isa<::pir::YieldOp>()) {
+      continue;
+    }
+
+    auto& cluster_node = op_path[op];
+    auto& op_list = cluster_node.ops;
+
+    // process cluster node
+    ScheduleInfoNode sch_node;
+    GetClusterNodeBasicInfo(op, &cluster_node, &sch_node);
+
+    // process current Node and pre Node
+    auto pre_ops = GetPreOps(inner_values, op);
+    for (auto pre_op : pre_ops) {
+      if (!op_path.count(pre_op)) {
+        continue;
+      }
+
+      if (CanOpMergeNode(op_path, pre_op, op)) {
+        cluster_node.MergePreNode(op_path.at(pre_op), sch_node);
+      }
+    }
+
+    op_list.push_back(op);
+
+    if (yield_output_ops.count(op) ||
+        cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
+            cinn::hlir::framework::kReduction) {
+      // TODO(phlrain): yield output no need to push into first stage output,
+      // Update here
+      VLOG(4) << "Split Group by yield output ops: "
+              << yield_output_ops.count(op);
+      if (!first_output_ops.count(op)) {
+        first_stage_output.push_back(op_path[op]);
+        first_output_ops.insert(op);
+      }
+    }
+  }
+
+  VLOG(4) << "first stage output size " << first_stage_output.size();
+  return first_stage_output;
 }
-
-// std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op)
-// {
-//// op merge with op
-// auto inner_values = GetInnerGeneValue(group_op.GetOperators());
-
-// std::unordered_map<::pir::Operation*, GroupClusterNode> op_path;
-
-// auto op_list = group_op.GetOperators();
-
-// std::vector<GroupClusterNode> first_stage_output;
-
-// std::unordered_set<::pir::Operation*> yield_output_ops;
-// std::unordered_set<::pir::Operation*> first_output_ops;
-// auto yield_op = op_list.back();
-// for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-// if (yield_op->operand_source(i).defining_op()->result(0).use_count() == 1) {
-// yield_output_ops.insert(yield_op->operand_source(i).defining_op());
-//}
-//}
-
-//// first stage op fuse op
-// for (auto* op : op_list) {
-// if (op->isa<::pir::YieldOp>()) {
-// continue;
-//}
-
-// auto& cluster_node = op_path[op];
-// auto& op_list = cluster_node.ops;
-
-//// process cluster node
-// ScheduleInfoNode sch_node;
-// GetClusterNodeBasicInfo(op, &cluster_node, &sch_node);
-
-//// process current Node and pre Node
-// auto pre_ops = GetPreOps(inner_values, op);
-// for (auto pre_op : pre_ops) {
-// if (!op_path.count(pre_op)) {
-// continue;
-//}
-
-// if (CanOpMergeNode(op_path, pre_op, op)) {
-// cluster_node.MergePreNode(op_path.at(pre_op), sch_node);
-//}
-//}
-
-// op_list.push_back(op);
-
-// if (yield_output_ops.count(op) ||
-// cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
-// cinn::hlir::framework::kReduction) {
-//// TODO(phlrain): yield output no need to push into first stage output,
-//// Update here
-// VLOG(4) << "Split Group by yield output ops: "
-//<< yield_output_ops.count(op);
-// if (!first_output_ops.count(op)) {
-// first_stage_output.push_back(op_path[op]);
-// first_output_ops.insert(op);
-//}
-//}
-//}
-
-// VLOG(4) << "first stage output size " << first_stage_output.size();
-// return first_stage_output;
-//}
 
 std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   // stage 1
