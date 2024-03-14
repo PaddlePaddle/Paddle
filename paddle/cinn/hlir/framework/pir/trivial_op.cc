@@ -115,7 +115,23 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
   ir::Expr dest_;
 };
 
-bool CheckIterEq(std::vector<ir::Var> up_iter, std::vector<ir::Var> down_iter) {
+bool CheckIterEq(const std::vector<ir::Var>& up_iter,
+                 const std::vector<ir::Var>& down_iter) {
+  if (up_iter.size() != down_iter.size()) return false;
+
+  for (int i = 0; i < up_iter.size(); ++i) {
+    const ir::Var& up_iter_var = up_iter[i];
+    const ir::Var& down_iter_var = down_iter[i];
+
+    if (up_iter_var != down_iter_var) return false;
+    if (up_iter_var->lower_bound.as_int64() !=
+        down_iter_var->lower_bound.as_int64())
+      return false;
+    if (up_iter_var->upper_bound.as_int64() !=
+        down_iter_var->upper_bound.as_int64())
+      return false;
+  }
+  return true;
 }
 
 static ir::Expr CopyedReplaceExpr(const Expr& source,
