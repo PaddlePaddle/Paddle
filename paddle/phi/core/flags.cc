@@ -1501,3 +1501,25 @@ PHI_DEFINE_EXPORTED_bool(
     "When enabling CUDA Graph with CUDAMallocAsyncAllocator, we add "
     "cudaGraphInstantiateFlagAutoFreeOnLaunch so it would automatically "
     "release graph-owned blocks that have not freed before relaunching.");
+
+/*
+ * CUDAMallocAsyncAllocator related FLAG
+ * Name: FLAGS_cuda_malloc_async_pool_memory_throttle_ratio
+ * Since Version: 2.7
+ * Value Range:  double, [0.0, 1.0], default=0.8
+ * Note:memory_throttle_ratio provides a threshold that determines when to
+ * initiate synchronization operations to deallocate memory. This mechanism
+ * helps in ensuring that the system does not exceed its memory capacity while
+ * also attempting to minimize performance degradation caused by frequent memory
+ * synchronization.
+ *
+ * Please see Note [cuda_malloc_async_pool_memory_throttle_ratio]
+ */
+PHI_DEFINE_EXPORTED_double(
+    cuda_malloc_async_pool_memory_throttle_ratio,
+    0.8,
+    "memory_throttle_ratio provides a threshold that determines when to "
+    "initiate synchronization operations to deallocate memory. "
+    "This mechanism helps in ensuring that the system does not exceed its "
+    "memory capacity while also attempting to minimize performance degradation "
+    "caused by frequent memory synchronization.");

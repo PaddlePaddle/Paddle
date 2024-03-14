@@ -67,7 +67,7 @@
  * an OOM condition since more memory can be allocated without
  * immediate deallocation.
  */
-COMMON_DECLARE_double(cuda_malloc_async_pool_memory_throttle_ratio);
+PHI_DECLARE_double(cuda_malloc_async_pool_memory_throttle_ratio);
 
 namespace paddle {
 namespace memory {
