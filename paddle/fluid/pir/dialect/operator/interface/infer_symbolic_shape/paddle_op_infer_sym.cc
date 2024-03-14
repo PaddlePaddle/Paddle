@@ -372,16 +372,16 @@ bool ConcatOpInferSymbolicShape(
         continue;
       }
       for (size_t j = 1; j < shape_data_list.size(); ++j) {
-        if ((!(out_dims[axis].isa<int64_t>())) &&
-            (shape_data_list[j].shape()[axis].isa<int64_t>() &&
-             shape_data_list[j].shape()[axis].Get<int64_t>() == 1)) {
-          std::cerr << "origin " << out_dims[axis] << std::endl;
-          out_dims[axis] = shape_analysis->GetNextSymName();
+        // if ((!(out_dims[axis].isa<int64_t>())) &&
+        //     (shape_data_list[j].shape()[axis].isa<int64_t>() &&
+        //      shape_data_list[j].shape()[axis].Get<int64_t>() == 1)) {
+        //   std::cerr << "origin " << out_dims[axis] << std::endl;
+        //   out_dims[axis] = shape_analysis->GetNextSymName();
 
-          std::cerr << "concat out shape " << out_dims[axis] << std::endl;
-        } else {
-          out_dims[axis] = out_dims[axis] + shape_data_list[j].shape()[axis];
-        }
+        //   std::cerr << "concat out shape " << out_dims[axis] << std::endl;
+        // } else {
+        out_dims[axis] = out_dims[axis] + shape_data_list[j].shape()[axis];
+        //}
       }
     }
     return out_dims;

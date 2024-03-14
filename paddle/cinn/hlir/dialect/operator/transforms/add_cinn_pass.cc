@@ -103,7 +103,7 @@ void ApplyCinnPreprocessPass(
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
 
-  pass_manager->EnableIRPrinting();
+  // pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
@@ -117,7 +117,7 @@ void ApplyBuildGroupOpPass(
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
   }
-  pass_manager->EnableIRPrinting();
+  // pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 

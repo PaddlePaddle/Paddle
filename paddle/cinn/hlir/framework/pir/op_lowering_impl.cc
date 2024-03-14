@@ -678,14 +678,9 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
-          info.output_shape.push_back(output_shape[i]);
 
-          ::pir::ShapeConstraintIRAnalysis& shape_analysis =
-              ::pir::ShapeAnalysisManager::Instance().Get(
-                  it->first->GetParentProgram());
-          const auto& x_shape =
-              shape_analysis.GetShapeOrDataForValue(it->first->result(0));
-          info.output_dim_expr.push_back(x_shape.shape()[i]);
+          info.output_shape.push_back(-1);
+          info.output_dim_expr.push_back(group->loop_ranges_expr[i]);
         }
       } else if (in_dim.size() == broadcast_axes.size()) {
         if (in_dim.size() != output_shape.size()) {
@@ -919,7 +914,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names);
 #ifdef CINN_WITH_CUDA
-    optim::EliminateCommonGlobalMemoryRead(&(func_body));
+    // optim::EliminateCommonGlobalMemoryRead(&(func_body));
     optim::OptimizeExprGPU(&(func_body));
 #endif
 
