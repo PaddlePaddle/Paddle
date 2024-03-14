@@ -976,7 +976,7 @@ void BindValue(py::module *m) {
       .def("dist_attr", [](Value &self) {
         if (!self.type().isa<DistDenseTensorType>()) {
           PADDLE_THROW(phi::errors::InvalidArgument(
-              "_local_shape is only for distdense tensor."));
+              "dist_attr is only for distdense tensor."));
         }
         return self.type().dyn_cast<DistDenseTensorType>().tensor_dist_attr();
       });
