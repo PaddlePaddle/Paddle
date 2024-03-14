@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,15 +17,13 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Arange)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Data)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Empty)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Feed)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Full)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(FullIntArray)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Gaussian)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Randint)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(TrilIndices)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(TriuIndices)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Uniform)
+
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Concat)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(FullWithTensor)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Linspace)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logspace)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Stack)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where_)
+
 }  // namespace paddle::dialect
