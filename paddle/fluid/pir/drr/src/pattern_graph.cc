@@ -109,7 +109,7 @@ OpCall *SourcePatternGraph::AnchorNode() const {
                     }))
       return output_op_candidate;
   }
-  IR_THROW("Unable to find a valid anchor");
+  PADDLE_THROW("Unable to find a valid anchor");
 }
 
 std::unordered_set<const OpCall *> SourcePatternGraph::OutputNodes() const {
