@@ -734,13 +734,21 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
   return second_stage_output;
 }
 
-// std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op)
-// {
-//// using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
-//// using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
-// const auto& patterns =
-// frontend::GenerateGroupPatternFromOpList(group_op.GetOperators());
-//}
+// std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
+//   const auto& ops = [&]{
+//     std::vector<const pir::Operation*> ops;
+//     for (const auto& op : *group_op.block()) {
+//       ops.push_back(&op);
+//     }
+//     return ops;
+//   }();
+//   auto cluster_policy = [&]{
+//     auto* program = group_op.GetParentProgram();
+//     const auto* shape_analysis = &pir::ShapeAnalysisManager::Instance().Get(program);
+//     return frontend::MakeLoopAlignableClusteringPolicy(shape_analysis);
+//   }();
+//   const auto cluster_result = frontend::ClusterOps(ops, std::move(cluster_policy));
+// }
 
 std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
   // op merge with op

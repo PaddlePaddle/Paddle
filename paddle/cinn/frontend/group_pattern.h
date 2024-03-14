@@ -127,6 +127,7 @@ struct ErrorPattern<frontend::FrontendPattern> {
 template<>
 struct InjectiveSourcePattern<frontend::FrontendPattern> {
   std::vector<const pir::Operation*> ops;
+  const pir::Operation* sole_sink;
 };
 
 template<>
@@ -136,6 +137,7 @@ struct SingleReductionOpPattern<frontend::FrontendPattern> {
 template<>
 struct PartialShardablePattern<frontend::FrontendPattern> {
   std::vector<const pir::Operation*> ops;
+  const pir::Operation* sole_sink;
   frontend::ShardableAxesSignature shardable_axes_signature;
 };
 
@@ -146,19 +148,12 @@ namespace cinn::frontend {
 using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
 using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
 
-template <typename T>
-struct PatternBranches {
-  using LhsLessThanRhs = adt::LT<symbol::DimExpr, symbol::DimExpr>;
-  using LhsGreaterEqualRhs = adt::GE<symbol::DimExpr, symbol::DimExpr>;
-  using Condition = std::variant<LhsLessThanRhs, LhsGreaterEqualRhs>;
-
-  Condition condition;
-  adt::List<T> true_branch;
-  adt::List<T> false_branch;
+struct LoopAlignableStmtsPattern {
+  std::vector<api::StmtPattern<frontend::FrontendPattern>> stmts;
 };
 
-// ConditionalGroupPattern = GroupPatternBranches | GroupPattern
-using ConditionalGroupPattern = adt::Tree<PatternBranches, GroupPattern>;
-using GroupPatternBranches = PatternBranches<ConditionalGroupPattern>;
+struct ClusteringResult {
+  std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
+};
 
 }

@@ -75,6 +75,8 @@ class IR_API ShapeConstraintIRAnalysis {
 
   pir::PrintHooks PrintHook() const;
 
+  symbol::DimExpr GetProductDimExpr(Value lhs, const std::vector<int>& lhs_dim_idxs) const;
+
  private:
   ModuleOp m_;
 

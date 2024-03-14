@@ -19,26 +19,41 @@
 
 namespace cinn::frontend {
 
-struct OpsClusteringSpec {
-  // shardable_dim_size(reduce_op) = size(reduce_op.result(0)).
-  // The infered_shardable_dim_size(reduce_op) may be less than shardable_dim_size(reduce_op) because:
-  //   infered_shardable_dim_size(reduce_op) =
-  //     min(shardable_dim_size(reduce_op), infered_shardable_dim_size(downstreams(reduce_op)))
-  const size_t reduce_op_minimal_infered_shardable_dim_size;
+class ClusteringPolicy {
+ public:
+  virtual ~ClusteringPolicy() = default;
+
+  using ShardableAxes4ValueT =
+      std::function<std::optional<const ShardableAxes*>(pir::Value)>;
+ 
+  virtual bool CanActAsSink(
+    const ShardableAxes4ValueT& ShardableAxes4Value,
+    const api::StmtPattern<FrontendPattern>& node) = 0;
+ 
+  virtual bool IsEdgeFusible(
+    const ShardableAxes4ValueT& ShardableAxes4Value,
+    const api::StmtPattern<FrontendPattern>& src,
+    const api::StmtPattern<FrontendPattern>& dst) = 0;
+
+  using StmtPatternPtrs = std::vector<const api::StmtPattern<FrontendPattern>*>;
+  virtual ClusteringResult MakeClusteringResult(
+      const std::vector<StmtPatternPtrs>& stmts) = 0;
+
+ protected:
+  ClusteringPolicy() = default;
 };
 
-std::vector<ConditionalGroupPattern> ClusterIntoGroupPatternsFromOpList(
-    const pir::ShapeConstraintIRAnalysis* shape_analysis,
-    const std::vector<pir::Operation*>& ops,
-    const OpsClusteringSpec& clustering_spec);
+std::unique_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis);
+
+ClusteringResult ClusterOps(
+    const std::vector<const pir::Operation*>& ops,
+    std::unique_ptr<ClusteringPolicy>&& clustering_policy);
 
 GroupPattern GenerateGroupPatternFromOpList(
-    const std::vector<pir::Operation*>& ops);
+    const std::vector<const pir::Operation*>& ops);
 
 std::unordered_map<pir::Value, ShardableAxes> InferShardableAxes(
-    const std::unordered_set<const pir::Operation*>& ops);
+    const std::shared_ptr<std::unordered_set<const pir::Operation*>>& ops);
 
-std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
-    const pir::Operation* sink,
-    const std::unordered_set<const pir::Operation*>& ops);
 }  // namespace cinn::frontend

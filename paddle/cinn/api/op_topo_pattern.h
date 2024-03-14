@@ -26,7 +26,7 @@ struct ReductionPattern {
 
   using Nothing = std::monostate;
   std::variant<Nothing, InjectiveSourcePattern<T>, PartialShardablePattern<T>> input;
-  SingleReductionOpPattern<T> reduction_op_pattern;
+  SingleReductionOpPattern<T> reduce_op_pattern;
 
   bool HasFusedInput() const {
     return !std::holds_alternative<Nothing>(this->input);
@@ -52,6 +52,7 @@ using StmtsPattern = std::vector<StmtPattern<T>>;
 //  2. PS -> Stmts
 //  3. Stmts * Stmts -> Stmts
 // OpTopoPattern := Error | Stmts
+
 template <typename T>
 using OpTopoPattern = std::variant<ErrorPattern<T>, StmtsPattern<T>>;
 
