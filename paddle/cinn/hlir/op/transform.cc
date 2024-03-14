@@ -1106,14 +1106,15 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
                      ::common::errors::InvalidArgument(
                          "axis is not in the tensor shape."));
       for (int idy = idx + 1; idy < axis.size(); ++idy) {
-        PADDLE_ENFORCE_NE(
-            axis[idx],
-            axis[idy],
-            ::common::errors::InvalidArgument("axis can't repeat!"));
+        PADDLE_ENFORCE_NE(axis[idx],
+                          axis[idy],
+                          ::common::errors::InvalidArgument(
+                              "The same axis parameter exists!"));
       }
     }
   } else {
-    PADDLE_THROW("axis is not be set! Please check.");
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("axis is not be set! Please check."));
   }
 
   framework::CINNCompute transpose_compute([=](lang::Args args,
