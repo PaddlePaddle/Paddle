@@ -320,6 +320,7 @@ class TestPrimFlatten1(TestPrimBase):
         self.necessary_ops = "pd_op.flatten"
         self.enable_cinn = False
 
+
 class TestPrimFlatten2(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
