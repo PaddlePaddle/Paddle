@@ -55,7 +55,7 @@ void BindTensorDistAttribute(py::module *m) {
   py::class_<TensorDistAttribute> dist_attr(*m, "TensorDistAttribute");
   dist_attr
       .def("__str__",
-           [](OperationDistAttribute &self) {
+           [](TensorDistAttribute &self) {
              std::ostringstream print_stream;
              print_stream << self;
              return print_stream.str();
