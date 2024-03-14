@@ -254,19 +254,6 @@ std::vector<paddle::Tensor> RunBackward(
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
 
-    // This 'Global_XXXGradNode' record event is different with
-    // 'Local_XXXGradNode' event.
-    // * 'Global_XXXGradNode' will not only cover execution time of this
-    // function, but also include gradient
-    //    accumulation when the output(s) of corresponding forward OP are shared
-    //    by other OP(s), which may have extra accumulation overhead than
-    //    'Local_XXXGradNode'.
-    // * 'Local_XXXGradNode' will only cover execution time of this function.
-    paddle::platform::RecordEvent node_record_event(
-        "Global_" + std::string((*node).name()),
-        paddle::platform::TracerEventType::Operator,
-        1);
-
     if (queue.size() > 1 && node_in_degree_map[node] != 0) {
       queue.pop_front();
       continue;
@@ -289,6 +276,21 @@ std::vector<paddle::Tensor> RunBackward(
     EnforceGradNodeHasInput(node);
 
     VLOG(7) << "Run Backward Kernel with GradTensorHolder.";
+
+    // This 'Global_XXXGradNode' record event is different with
+    // 'Local_XXXGradNode' event.
+    // * 'Global_XXXGradNode' will not only cover execution time of this
+    // function, but also include gradient
+    //    accumulation when the output(s) of corresponding forward OP are shared
+    //    by other OP(s), which may have extra overhead of accumulation than
+    //    'Local_XXXGradNode'.
+    // * 'Local_XXXGradNode' will only cover execution time of GradNode
+    // function.
+    paddle::platform::RecordEvent grad_node_record_event(
+        "Global_" + std::string((*node).name()),
+        paddle::platform::TracerEventType::Operator,
+        1);
+
     // Run Pre Backward Node and get outputs
     paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
         grad_output_tensors = (*node)(
