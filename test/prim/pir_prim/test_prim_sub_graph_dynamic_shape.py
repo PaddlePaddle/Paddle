@@ -309,12 +309,23 @@ class TestPrimSwiglu2(TestPrimBase):
         self.enable_cinn = False
 
 
-class TestPrimFlatten(TestPrimBase):
+class TestPrimFlatten1(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
         self.x_shape = [3, 100, 100, 4]
         self.init_x_shape = [3, None, None, 4]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = flatten_net
+        self.necessary_ops = "pd_op.flatten"
+        self.enable_cinn = False
+
+class TestPrimFlatten2(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float16"
+        self.x_shape = [3, 100, 100, 640]
+        self.init_x_shape = [None, None, None, 640]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = flatten_net
         self.necessary_ops = "pd_op.flatten"
