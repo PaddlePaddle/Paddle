@@ -37,10 +37,10 @@ void BindOperationDistAttribute(py::module *m) {
              print_stream << self;
              return print_stream.str();
            })
-      .def("process_mesh",
-           [](OperationDistAttribute &self) {
-             return self.process_mesh_attr().process_mesh();
-           })
+      .def_property_readonly("process_mesh",
+                             [](OperationDistAttribute &self) {
+                               return self.process_mesh_attr().process_mesh();
+                             })
       .def("num_operand_dist_attrs",
            &OperationDistAttribute::num_operand_dist_attrs)
       .def("operand_dist_attrs", &OperationDistAttribute::operand_dist_attrs)
@@ -60,13 +60,19 @@ void BindTensorDistAttribute(py::module *m) {
              print_stream << self;
              return print_stream.str();
            })
-      .def("process_mesh",
-           [](TensorDistAttribute &self) {
-             return self.process_mesh_attr().process_mesh();
-           })
-      .def("dims_mapping", &TensorDistAttribute::dims_mapping)
-      .def("partial_status", &TensorDistAttribute::partial_status)
-      .def("partial_dims", &TensorDistAttribute::partial_dims);
+      .def_property_readonly("process_mesh",
+                             [](TensorDistAttribute &self) {
+                               return self.process_mesh_attr().process_mesh();
+                             })
+      .def_property_readonly(
+          "dims_mapping",
+          [](TensorDistAttribute &self) { return self.dims_mapping(); })
+      .def_property_readonly(
+          "partial_status",
+          [](TensorDistAttribute &self) { return self.partial_status(); })
+      .def_property_readonly("partial_dims", [](TensorDistAttribute &self) {
+        return self.partial_dims();
+      });
 }
 
 void BindDistOpsAPI(pybind11::module *module) {
