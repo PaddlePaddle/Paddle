@@ -1058,8 +1058,10 @@ class Completer:
         return serial_main_program
 
     def _get_tensor_names_and_ops_with_global_mesh(self, serial_main_program):
-        pp_degree, _ = get_pp_degree(self._dist_context)
-        if pp_degree < 2:
+        if (
+            not self._dist_context.strategy
+            or not self._dist_context.strategy.pipeline.enable
+        ):
             return [], []
 
         # step1: get tensor annotated with global mesh
