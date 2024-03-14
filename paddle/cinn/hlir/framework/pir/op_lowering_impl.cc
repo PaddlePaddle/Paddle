@@ -39,6 +39,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
@@ -143,7 +144,6 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     spatial_inner_num = 1;
     reduce_inner_num = 4;
     warp_num = 8;
-
   } else if (reduce_numel == 1) {
     reduce_block = 1;
     if (spatial_is_dynamic) {
@@ -614,7 +614,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
   // TODO(phlrain): this is primary verion for loop aligment
   // will be update by a new method
-  auto& align_info = group->alignment_schedule_info;
+  auto align_info = group->alignment_schedule_info;
 
   auto& ops = group->ops;
   for (auto op1 : ops) {
@@ -626,10 +626,19 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       continue;
     }
 
+    if (it->second.size() > 1) {
+      for (size_t i = 0; i < it->second.size(); ++i) {
+      }
+      // TODO(phlran): merge to factor info here
+      it->second.front().factor_info = it->second.back().factor_info;
+      it->second.resize(1);
+    }
+
     PADDLE_ENFORCE_EQ(
         it->second.size(),
         1,
-        phi::errors::Unimplemented("only suppopt one transform yet"));
+        phi::errors::Unimplemented("%s, only suppopt one transform yet",
+                                   it->first->name()));
 
     if (it->second[0].type == ScheduleAlignType::kBroadcast) {
       // get broadcast op
@@ -665,7 +674,8 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         info.full_broadcast = true;
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
-          info.output_shape.push_back(output_shape[i]);
+          info.output_shape.push_back(-1);
+          info.output_dim_expr.push_back(group->loop_ranges_expr[i]);
         }
       } else if (in_dim.size() == broadcast_axes.size()) {
         if (in_dim.size() != output_shape.size()) {
@@ -687,6 +697,9 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           }
         } else {
           for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+            if (in_dim[i] < 0 || output_shape[broadcast_axes[i]] < 0) {
+              continue;
+            }
             if (in_dim[i] != output_shape[broadcast_axes[i]]) {
               if (in_dim[i] != 1) {
                 throw std::runtime_error("Only support 1 - D broadcast ");
@@ -709,10 +722,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           info.output_shape.push_back(output_shape[broadcast_axes[i]]);
         }
       }
-      PADDLE_ENFORCE_NE(
-          info.broadcast_axes.size(),
-          0,
-          phi::errors::PreconditionNotMet("broadcast axes can not be zero"));
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {
         if (!align_info.count(it->first->operand_source(i).defining_op())) {
