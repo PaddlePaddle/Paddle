@@ -777,7 +777,7 @@
 
 - op : fused_token_prune
   args : (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token = true, bool keep_order = false)
-  output : Tensor(slimmed_x), Tensor(clsi_nds)
+  output : Tensor(slimmed_x), Tensor(cls_inds)
   infer_meta :
     func : FusedTokenPruneInferMeta
   kernel:
