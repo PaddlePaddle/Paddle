@@ -114,7 +114,6 @@ class SaveOpKernel : public framework::OpKernel<T> {
             "The variable %s to be saved cannot be found.", iname));
 
     auto filename = ctx.Attr<std::string>("file_path");
-    // auto overwrite = ctx.Attr<bool>("overwrite");
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
 
     VLOG(4) << "save output file_path: " << filename;
