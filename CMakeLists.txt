@@ -67,6 +67,8 @@ option(CINN_ONLY "Compile CINN only in Paddle" OFF)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 option(WITH_PIP_CUDA_LIBRARIES
        "Paddle uses the CUDA library provided by NVIDIA" OFF)
+option(WITH_NIGHTLY_BUILD
+       "Compile nightly paddle whl package of the develop branch" OFF)
 find_package(Git REQUIRED)
 
 # config GIT_URL with github mirrors to speed up dependent repos clone

@@ -1,5 +1,10 @@
 # Get the latest git tag.
 set(PADDLE_VERSION $ENV{PADDLE_VERSION})
+if(WITH_NIGHTLY_BUILD)
+  string(TIMESTAMP CURRENT_DATE "dev%Y%m%d")
+  message(STATUS "Current Date: ${CURRENT_DATE}")
+  set(PADDLE_VERSION "${PADDLE_VERSION}.${CURRENT_DATE}")
+endif()
 set(tmp_version "HEAD")
 set(TAG_VERSION_REGEX "[0-9]+\\.[0-9]+\\.[0-9]+(\\.(a|b|rc)\\.[0-9]+)?")
 set(COMMIT_VERSION_REGEX "[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+")
@@ -65,6 +70,7 @@ string(REPLACE "." ";" PADDLE_VER_LIST ${PADDLE_VER_LIST})
 list(GET PADDLE_VER_LIST 0 PADDLE_MAJOR_VER)
 list(GET PADDLE_VER_LIST 1 PADDLE_MINOR_VER)
 list(GET PADDLE_VER_LIST 2 PADDLE_PATCH_VER)
+
 math(EXPR PADDLE_VERSION_INTEGER "${PADDLE_MAJOR_VER} * 1000000
     + ${PADDLE_MINOR_VER} * 1000 + ${PADDLE_PATCH_VER}")
 
