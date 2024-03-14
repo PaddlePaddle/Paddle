@@ -26,17 +26,24 @@ class MatmulElementwiseAddFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string matmul_name_;
   std::string fused_matmul_name_;
+  uint32_t benefit_;
+  bool as_x_;
 
  public:
   MatmulElementwiseAddFusePattern(const std::string &matmul_name,
-                                  const std::string &fused_matmul_name)
-      : matmul_name_(matmul_name), fused_matmul_name_(fused_matmul_name) {}
+                                  const std::string &fused_matmul_name,
+                                  uint32_t benefit,
+                                  bool as_x)
+      : matmul_name_(matmul_name),
+        fused_matmul_name_(fused_matmul_name),
+        benefit_(benefit),
+        as_x_(as_x) {}
 
   std::string name() const override {
     return "MatmulElementwiseAddFusePattern";
   }
 
-  uint32_t benefit() const override { return 2; }
+  uint32_t benefit() const override { return benefit_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -48,7 +55,9 @@ class MatmulElementwiseAddFusePattern : public paddle::drr::DrrPatternBase {
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     matmul({&pat.Tensor("X"), &pat.Tensor("Y")}, {&pat.Tensor("Out")});
 
-    pat.Tensor("add_out") = add(pat.Tensor("Out"), pat.Tensor("residual"));
+    pat.Tensor("add_out") =
+        as_x_ ? add(pat.Tensor("Out"), pat.Tensor("residual"))
+              : add(pat.Tensor("residual"), pat.Tensor("Out"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       std::set<bool> bool_sets = {true, false};
@@ -91,22 +100,32 @@ class MatmulElementwiseAddFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class MatmulReverseElementwiseAddFusePattern
+class FusedMatmulElementwiseAddFusePattern
     : public paddle::drr::DrrPatternBase {
  private:
   std::string matmul_name_;
   std::string fused_matmul_name_;
+  uint32_t benefit_;
+  bool as_x_;
+  bool as_x2_;
 
  public:
-  MatmulReverseElementwiseAddFusePattern(const std::string &matmul_name,
-                                         const std::string &fused_matmul_name)
-      : matmul_name_(matmul_name), fused_matmul_name_(fused_matmul_name) {}
+  FusedMatmulElementwiseAddFusePattern(const std::string &matmul_name,
+                                       const std::string &fused_matmul_name,
+                                       uint32_t benefit,
+                                       bool as_x,
+                                       bool as_x2)
+      : matmul_name_(matmul_name),
+        fused_matmul_name_(fused_matmul_name),
+        benefit_(benefit),
+        as_x_(as_x),
+        as_x2_(as_x2) {}
 
   std::string name() const override {
-    return "MatmulReverseElementwiseAddFusePattern";
+    return "FusedMatmulElementwiseAddFusePattern";
   }
 
-  uint32_t benefit() const override { return 2; }
+  uint32_t benefit() const override { return benefit_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -116,9 +135,15 @@ class MatmulReverseElementwiseAddFusePattern
                                  {"transpose_y", pat.Attr("transpose_y")}});
 
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
+    const auto &add2 = pat.Op(paddle::dialect::AddOp::name());
     matmul({&pat.Tensor("X"), &pat.Tensor("Y")}, {&pat.Tensor("Out")});
 
-    pat.Tensor("add_out") = add(pat.Tensor("residual"), pat.Tensor("Out"));
+    pat.Tensor("add_out") =
+        as_x_ ? add(pat.Tensor("Out"), pat.Tensor("residual"))
+              : add(pat.Tensor("residual"), pat.Tensor("Out"));
+    pat.Tensor("add_out_end") =
+        as_x2_ ? add2(pat.Tensor("add_out"), pat.Tensor("residual2"))
+               : add2(pat.Tensor("residual2"), pat.Tensor("add_out"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       std::set<bool> bool_sets = {true, false};
@@ -131,6 +156,10 @@ class MatmulReverseElementwiseAddFusePattern
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    const auto &fused_add = res.Op(paddle::dialect::AddOp::name());
+    res.Tensor("residual3") =
+        fused_add(res.Tensor("residual1"), res.Tensor("residual2"));
 
     const auto &fused_matmul =
         res.Op(fused_matmul_name_,
@@ -156,8 +185,8 @@ class MatmulReverseElementwiseAddFusePattern
                    {"force_fp32_output", res.BoolAttr(false)},
                }});
 
-    fused_matmul({&res.Tensor("X"), &res.Tensor("Y"), &res.Tensor("residual")},
-                 {&res.Tensor("add_out")});
+    fused_matmul({&res.Tensor("X"), &res.Tensor("Y"), &res.Tensor("residual3")},
+                 {&res.Tensor("add_out_end")});
   }
 };
 
@@ -168,14 +197,29 @@ class MatmulElementwiseAddFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(paddle::drr::Create<MatmulElementwiseAddFusePattern>(
-        context,
-        paddle::dialect::MatmulOp::name(),
-        paddle::onednn::dialect::FusedMatmulOp::name()));
-    ps.Add(paddle::drr::Create<MatmulReverseElementwiseAddFusePattern>(
-        context,
-        paddle::dialect::MatmulOp::name(),
-        paddle::onednn::dialect::FusedMatmulOp::name()));
+    std::vector<bool> bool_set = {false, true};
+    int benefit_idx = 1;
+    for (auto as_x : bool_set) {
+      ps.Add(paddle::drr::Create<MatmulElementwiseAddFusePattern>(
+          context,
+          paddle::dialect::MatmulOp::name(),
+          paddle::onednn::dialect::FusedMatmulOp::name(),
+          benefit_idx,
+          as_x));
+      benefit_idx++;
+    }
+
+    for (auto as_x : bool_set)
+      for (auto as_x2 : bool_set) {
+        ps.Add(paddle::drr::Create<FusedMatmulElementwiseAddFusePattern>(
+            context,
+            paddle::dialect::MatmulOp::name(),
+            paddle::onednn::dialect::FusedMatmulOp::name(),
+            benefit_idx,
+            as_x,
+            as_x2));
+        benefit_idx++;
+      }
     return ps;
   }
 };
@@ -185,10 +229,11 @@ class MatmulElementwiseAddFusePass : public pir::PatternRewritePass {
 namespace pir {
 
 std::unique_ptr<Pass> CreateMatmulElementwiseAddFusePass() {
-  // pd_op.batch_norm + pd_op.relu -> onednn_op.batch_norm
+  // pd_op.matmul + pd_op.add -> onednn_op.fused_matmul
+  // pd_op.matmul + pd_op.add + pd_op.add -> pd_op.add + onednn_op.fused_matmul
+  // -> onednn_op.fused_matmul
   return std::make_unique<MatmulElementwiseAddFusePass>();
 }
-
 }  // namespace pir
 
 REGISTER_IR_PASS(matmul_elementwise_add_fuse_pass,

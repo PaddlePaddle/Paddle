@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../")
 from pass_test import PassTest
 
 import paddle
@@ -29,7 +26,7 @@ paddle.enable_static()
     not paddle.base.core.is_compiled_with_mkldnn(),
     "Test case only for OneDNN pass.",
 )
-class TestMatmulAddFusePass(PassTest):
+class TestMatmulAddFusePattern(PassTest):
     def is_program_valid(self, program=None):
         return True
 
@@ -74,7 +71,7 @@ class TestMatmulAddFusePass(PassTest):
     not paddle.base.core.is_compiled_with_mkldnn(),
     "Test case only for OneDNN pass.",
 )
-class TestMatmulAddFusePassCase2(PassTest):
+class TestMatmulAddFusePatternCase2(PassTest):
     def is_program_valid(self, program=None):
         return True
 
@@ -119,7 +116,7 @@ class TestMatmulAddFusePassCase2(PassTest):
     not paddle.base.core.is_compiled_with_mkldnn(),
     "Test case only for OneDNN pass.",
 )
-class TestMatmulAddFusePassCase3(PassTest):
+class TestMatmulAddFusePatternCase3(PassTest):
     def is_program_valid(self, program=None):
         return True
 
@@ -164,7 +161,7 @@ class TestMatmulAddFusePassCase3(PassTest):
     not paddle.base.core.is_compiled_with_mkldnn(),
     "Test case only for OneDNN pass.",
 )
-class TestMatmulAddFusePassCase4(PassTest):
+class TestMatmulAddFusePatternCase4(PassTest):
     def is_program_valid(self, program=None):
         return True
 
@@ -192,6 +189,52 @@ class TestMatmulAddFusePassCase4(PassTest):
                     "onednn_op.fused_matmul": 1,
                     "pd_op.matmul": 0,
                     "pd_op.add": 0,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_mkldnn(),
+    "Test case only for OneDNN pass.",
+)
+class TestFusedMatmulAddFusePattern(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[5, 5, 5, 5], dtype='float32'
+                )
+                bias = paddle.static.data(
+                    name="bias", shape=[1], dtype='float32'
+                )
+                matmul_out = paddle.matmul(x, x)
+                out = paddle.add(bias, matmul_out)
+                out_end = paddle.add(out, bias)
+                out_end = paddle.assign(out_end)
+                self.pass_list = ['matmul_elementwise_add_fuse_pass']
+                self.feeds = {
+                    "x": np.random.random((5, 5, 5, 5)).astype("float32"),
+                    "bias": np.random.random(1).astype("float32"),
+                }
+                self.fetch_list = [out_end]
+                self.valid_op_map = {
+                    "onednn_op.fused_matmul": 1,
+                    "pd_op.matmul": 0,
+                    "pd_op.add": 1,
                 }
                 return [main_prog, start_prog]
 
