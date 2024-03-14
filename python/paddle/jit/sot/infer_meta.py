@@ -16,7 +16,6 @@ from functools import cached_property
 
 import paddle
 from paddle.amp.auto_cast import amp_state
-from paddle.base import framework
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.unique_name import (
     UniqueNameGenerator,
@@ -41,15 +40,20 @@ class MetaInfo:
 
     @staticmethod
     def from_tensor(tensor):
-        # We always use float32 in simulation if AMP is enabled.
         if isinstance(tensor, paddle.pir.Value):
             name = "Value@NoName"
-            persistable = tensor.persistable
-            dtype = framework.paddle_type_to_proto_type[tensor.dtype]
-        else:
+        else:  # For Tensor or Variable
             name = tensor.name
-            persistable = tensor.persistable
-            dtype = tensor.dtype
+        persistable = tensor.persistable
+        dtype = tensor.dtype
+        expected_dtype_class = (
+            paddle.core.DataType
+            if paddle.framework.use_pir_api()
+            else paddle.core.VarDesc.VarType
+        )
+        assert isinstance(dtype, expected_dtype_class)
+
+        # We always use float32 in simulation if AMP is enabled.
         current_amp_state = amp_state()
         if (
             dtype == paddle.float16

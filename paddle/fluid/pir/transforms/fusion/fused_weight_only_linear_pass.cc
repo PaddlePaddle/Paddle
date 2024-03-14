@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -123,9 +123,9 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    int sm_vesion = getSMVersion();
-    if (sm_vesion != 70 && sm_vesion != 75 && sm_vesion != 80 &&
-        sm_vesion != 86) {
+    int sm_version = getSMVersion();
+    if (sm_version != 70 && sm_version != 75 && sm_version != 80 &&
+        sm_version != 86) {
       return false;
     }
     return op->num_regions() > 0;

@@ -30,9 +30,9 @@
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(graph_load_in_parallel);
 COMMON_DECLARE_bool(graph_get_neighbor_id);

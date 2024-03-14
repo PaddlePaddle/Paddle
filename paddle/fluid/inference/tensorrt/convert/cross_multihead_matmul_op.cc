@@ -24,8 +24,9 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a cross_multihead_mamul op to a corresponding tensorrt "
-               "network structure";
+    VLOG(3)
+        << "convert a cross_multihead_matmul op to a corresponding tensorrt "
+           "network structure";
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (engine_->precision() == phi::DataType::INT8) {
       with_fp16 = true;
@@ -109,7 +110,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
                                       weight_q,
                                       bias_q);
     fc_q_layer->setName(
-        ("multihead_mamul_fc_q(Output: " + output_name + ")").c_str());
+        ("multihead_matmul_fc_q(Output: " + output_name + ")").c_str());
 
     // add shuffle for fc layer
     auto* reshape_after_fc_q_layer =
@@ -211,7 +212,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
                                     weight_kv,
                                     bias_kv);
     fc_layer->setName(
-        ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+        ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
 
     // add shuffle for fc layer
     auto* reshape_after_fc_layer =

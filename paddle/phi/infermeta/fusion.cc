@@ -116,6 +116,108 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void FusedMultiTransformerInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& ln_scales,
+    const std::vector<const MetaTensor*>& ln_biases,
+    const std::vector<const MetaTensor*>& qkv_weights,
+    const paddle::optional<std::vector<const MetaTensor*>>& qkv_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& cache_kvs,
+    const paddle::optional<std::vector<const MetaTensor*>>& pre_caches,
+    const MetaTensor& rotary_tensor,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
+    const std::vector<const MetaTensor*>& out_linear_weights,
+    const paddle::optional<std::vector<const MetaTensor*>>& out_linear_biases,
+    const std::vector<const MetaTensor*>& ffn_ln_scales,
+    const std::vector<const MetaTensor*>& ffn_ln_biases,
+    const std::vector<const MetaTensor*>& ffn1_weights,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn1_biases,
+    const std::vector<const MetaTensor*>& ffn2_weights,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn2_biases,
+    bool pre_layer_norm,
+    float epsilon,
+    float dropout_rate,
+    int rotary_emb_dims,
+    bool is_test,
+    const std::string& dropout_implementation,
+    const std::string& act_method,
+    bool trans_qkvw,
+    int ring_id,
+    std::vector<MetaTensor*> cache_kv_outs,
+    MetaTensor* out) {
+  // x: qkv's input [batch_size, seq_len, dim_embed]
+  // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+  auto x_dim = x.dims();
+  auto y_dim = qkv_weights[0]->dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      3,
+      phi::errors::InvalidArgument("The dimensions of x must be 3"
+                                   "(batch_size, seq_len, dim_embed),"
+                                   "but received dimensions of"
+                                   "Input is [%d]",
+                                   x_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
+                                   "(3, num_head, dim_head, dim_embed),"
+                                   "but received dimensions of"
+                                   "Input is [%d]",
+                                   y_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dim[2],
+      trans_qkvw ? y_dim[3] : y_dim[0],
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of x_dim[2] and y_dim[3](trans_qkvw is "
+          "true) or y_dim[0](trans_qkvw is false)"
+          "must be equal. But received: the shape "
+          "of input x = [%s], and the shape of "
+          "input qkv_weight = [%s]",
+          x_dim,
+          y_dim));
+
+  if (cache_kvs && cache_kvs->size() > 0) {
+    // [2, batch_size, num_head, max_seq_len, head_size]
+    const auto& c_dim = cache_kvs.get()[0]->dims();
+
+    PADDLE_ENFORCE_EQ(
+        c_dim.size(),
+        5,
+        phi::errors::InvalidArgument("The CacheKV must be 5 dims, but got %d",
+                                     c_dim.size()));
+    PADDLE_ENFORCE_EQ(c_dim[0],
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The first dim of CacheKV must be 2, but got %d",
+                          c_dim[0]));  // 2
+    PADDLE_ENFORCE_EQ(c_dim[1],
+                      x_dim[0],
+                      phi::errors::InvalidArgument(
+                          "The second dim of CacheKV must be equal with "
+                          "batch size %d, but got %d",
+                          x_dim[0],
+                          c_dim[1]));  // batch_size
+    PADDLE_ENFORCE_EQ(c_dim[2],
+                      trans_qkvw ? y_dim[1] : y_dim[2],
+                      phi::errors::InvalidArgument(
+                          "The third dim of CacheKV must be equal with num "
+                          "head %d, but got %d",
+                          trans_qkvw ? y_dim[1] : y_dim[2],
+                          c_dim[2]));  // num_head
+    PADDLE_ENFORCE_EQ(c_dim[4],
+                      trans_qkvw ? y_dim[2] : y_dim[3],
+                      phi::errors::InvalidArgument(
+                          "The fifth dim of CacheKV must be equal with head "
+                          "size %d, but got %d",
+                          trans_qkvw ? y_dim[2] : y_dim[3],
+                          c_dim[4]));  // head_size
+  }
+  out->set_dims(x.dims());
+}
+
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& key_cache,
                                       const MetaTensor& value_cache,
@@ -975,7 +1077,6 @@ void FusedBiasDropoutResidualLnInferMeta(
 }
 
 void FusedBiasDropoutResidualLnGradInferMeta(
-    const MetaTensor& y_grad,
     const MetaTensor& x,
     const MetaTensor& residual,
     const MetaTensor& bias,
@@ -985,6 +1086,7 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     const MetaTensor& ln_variance,
     const MetaTensor& bias_dropout_residual_out,
     const MetaTensor& dropout_mask_out,
+    const MetaTensor& y_grad,
     const float dropout_rate,
     const bool is_test,
     const bool dropout_fix_seed,
@@ -3830,6 +3932,166 @@ void MultiGruInferMeta(
   phi::DDim out_dims({x_mat_dims[0], 2 * last_frame_size});
   hidden->set_dims(out_dims);
   hidden->share_lod(x);
+}
+
+void FusionLstmInferMeta(const MetaTensor& x,
+                         const MetaTensor& weight_x,
+                         const MetaTensor& weight_h,
+                         const MetaTensor& bias,
+                         const MetaTensor& h0,
+                         const MetaTensor& c0,
+                         const bool use_peepholes,
+                         const bool is_reverse,
+                         const bool use_seq,
+                         const std::string& gate_activation,
+                         const std::string& cell_activation,
+                         const std::string& candidate_activation,
+                         const float scale_data,
+                         const float shift_data,
+                         const std::vector<float>& scale_weights,
+                         const bool force_fp32_output,
+                         MetaTensor* hidden,
+                         MetaTensor* cell,
+                         MetaTensor* xx,
+                         MetaTensor* batched_input,
+                         MetaTensor* batched_hidden,
+                         MetaTensor* batched_cell,
+                         MetaTensor* reordered_h0,
+                         MetaTensor* reordered_c0,
+                         MetaTensor* checked_cell) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(X)'s rank must be 2, but received x's rank "
+                        "is:%d, x dim is:[%s]",
+                        x_dims.size(),
+                        x_dims));
+
+  if (h0.initialized()) {
+    PADDLE_ENFORCE_EQ(
+        c0.initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "fusion_lstm must has h0 and c0 input at the same time."));
+    auto h_dims = h0.dims();
+    auto c_dims = c0.dims();
+    PADDLE_ENFORCE_EQ(h_dims,
+                      c_dims,
+                      phi::errors::InvalidArgument(
+                          "The dimension of Input(H0) and Input(C0) should be "
+                          "same, but received h0 dims is:[%s], c0 dims is:[%s]",
+                          h_dims,
+                          c_dims));
+  }
+
+  auto wx_dims = weight_x.dims();
+  PADDLE_ENFORCE_EQ(wx_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(WeightX) should be 2, but received "
+                        "WeightX's rank is:%d, WeightX dim is:[%s]",
+                        wx_dims.size(),
+                        wx_dims));
+  PADDLE_ENFORCE_EQ(wx_dims[0],
+                    x_dims[1],
+                    phi::errors::InvalidArgument(
+                        "The first dimension of Input(WeightX) "
+                        "should equal to second dimension of Input(X), but "
+                        "received WeightX first dim is:%d, X second dim is:%d",
+                        wx_dims[0],
+                        x_dims[1]));
+
+  int frame_size = static_cast<int>(wx_dims[1] / 4);
+  auto wh_dims = weight_h.dims();
+
+  PADDLE_ENFORCE_EQ(wh_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(WeightH) should be 2, but received "
+                        "WeightH rank is:%d, WeightH dim is:[%s]",
+                        wh_dims.size(),
+                        wh_dims));
+  PADDLE_ENFORCE_EQ(wh_dims[0],
+                    frame_size,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of Input(WeightH) "
+                        "should equal to frame size, but received WeightH "
+                        "first dim is:%d, frame size is:%d.",
+                        wh_dims[0],
+                        frame_size));
+
+  PADDLE_ENFORCE_EQ(wh_dims[1],
+                    4 * frame_size,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of Input(WeightH) "
+                        "should equal to 4 * frame_size, but received WeightH "
+                        "second dimension is:%d, frame size is:%d.",
+                        wh_dims[1],
+                        frame_size));
+
+  auto b_dims = bias.dims();
+  PADDLE_ENFORCE_EQ(b_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(Bias) should be 2, but received "
+                        "Bias rank is:%d, Bias dim is:[%s]",
+                        b_dims.size(),
+                        b_dims));
+  PADDLE_ENFORCE_EQ(b_dims[0],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of Input(Bias) should be 1, but "
+                        "received Bias's dimension is:[%s]",
+                        b_dims));
+
+  if (use_peepholes) {
+    PADDLE_ENFORCE_EQ(b_dims[1],
+                      7 * frame_size,
+                      phi::errors::InvalidArgument(
+                          "The second dimension of Input(Bias) should be "
+                          "7 * %d if enable peepholes connection, but received "
+                          "Bias dim is:[%s]",
+                          frame_size,
+                          b_dims));
+    checked_cell->set_dims(phi::make_ddim({2, frame_size}));
+    checked_cell->set_dtype(x.dtype());
+  } else {
+    PADDLE_ENFORCE_EQ(
+        b_dims[1],
+        4 * frame_size,
+        phi::errors::InvalidArgument(
+            "The second dimension of Input(Bias) should be "
+            "4 * %d if disable peepholes, but received Bias dim is:[%s]",
+            frame_size,
+            b_dims));
+  }
+
+  auto out_dims = phi::make_ddim({x_dims[0], frame_size});
+  hidden->set_dims(out_dims);
+  cell->set_dims(out_dims);
+  hidden->share_lod(x);
+  cell->share_lod(x);
+  hidden->set_dtype(x.dtype());
+  cell->set_dtype(x.dtype());
+
+  int xx_width = 0;
+  if (use_seq) {
+    xx_width = static_cast<int>(wx_dims[1]);
+  } else {
+    xx_width =
+        static_cast<int>(x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1]);
+
+    batched_input->set_dims(phi::make_ddim({x_dims[0], wx_dims[1]}));
+    batched_hidden->set_dims(out_dims);
+    batched_cell->set_dims(out_dims);
+    batched_input->set_dtype(x.dtype());
+    batched_hidden->set_dtype(x.dtype());
+    batched_cell->set_dtype(x.dtype());
+  }
+  xx->set_dims(phi::make_ddim({x_dims[0], xx_width}));
+  xx->set_dtype(x.dtype());
+  xx->share_lod(x);
 }
 
 void RoformerRelativePosXPUInferMeta(const MetaTensor& x,

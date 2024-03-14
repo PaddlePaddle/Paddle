@@ -308,25 +308,10 @@ class FP16State:
             if op.type == "cast":
                 in_name = op.input('X')[0]
                 out_name = op.output('Out')[0]
-                if "@GRAD" in in_name:
-                    in_var_fw = block._find_var_recursive(
-                        in_name[: in_name.find("@")]
-                    )
-                    out_var_fw = block._find_var_recursive(
-                        out_name[: out_name.find("@")]
-                    )
-                    op._set_attr('in_dtype', in_var_fw.dtype)
-                    op._set_attr('out_dtype', out_var_fw.dtype)
-
-                    in_var = block._find_var_recursive(in_name)
-                    out_var = block._find_var_recursive(out_name)
-                    in_var.desc.set_dtype(in_var_fw.dtype)
-                    out_var.desc.set_dtype(out_var_fw.dtype)
-                else:
-                    in_var = block._find_var_recursive(in_name)
-                    out_var = block._find_var_recursive(out_name)
-                    op._set_attr("in_dtype", in_var.dtype)
-                    op._set_attr("out_dtype", out_var.dtype)
+                in_var = block._find_var_recursive(in_name)
+                out_var = block._find_var_recursive(out_name)
+                op._set_attr("in_dtype", in_var.dtype)
+                op._set_attr("out_dtype", out_var.dtype)
 
     def resolute_tensor_dtype(self, block):
         for op in block.ops:

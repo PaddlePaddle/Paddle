@@ -1704,6 +1704,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
   CheckWhetherPreparePhiData(Inputs(), Outputs(), scope);
+#if defined(PADDLE_WITH_XPU)
+  if (std::getenv("XPU_NEED_PREPARE_PHI_DATA") != nullptr) {
+    need_prepare_phi_data_ = atoi(std::getenv("XPU_NEED_PREPARE_PHI_DATA"));
+  }
+#endif
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
@@ -1754,7 +1759,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
-      if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
+      if (phi::KernelFactory::Instance().HasStructuredKernel(
+              type_)) {  // NOLINT
         kernel_signature_ =
             std::make_unique<phi::KernelSignature>(type_.c_str());
       } else {
@@ -1989,7 +1995,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        1,
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
-      if (fallback_to_cpu) {
+      if (fallback_to_cpu) {  // NOLINT
         transfer_scope = PrepareData(scope,
                                      phi_cpu_kernel_key,
                                      &transfered_inplace_vars,
@@ -2037,7 +2043,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
-        // TODO(inference): Now we only suppor dense_tensor cache, we may be
+        // TODO(inference): Now we only support dense_tensor cache, we may be
         // support ScalarTensor, SparseTensor in future.
         bool all_dense_tensor_input_{true};
         for (auto& iter : Inputs()) {
@@ -2278,7 +2284,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
   std::string phi_kernel_name;
-  if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
+  if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {  // NOLINT
     kernel_signature_ = std::make_unique<phi::KernelSignature>(type_.c_str());
   } else {
     kernel_signature_ = std::make_unique<phi::KernelSignature>(
@@ -2572,7 +2578,7 @@ Scope* OperatorWithKernel::PrepareData(
         // for some situation like InferShape().
         // In this situation We cannot skip Var analysis, as
         // oneDNN shape of Var may differ from kNHWC Var
-        // In such situation corressponding resized Var
+        // In such situation corresponding resized Var
         // has to be created and registered
         if ((tensor_in->layout() == DataLayout::ONEDNN) &&
             (var->IsType<phi::DenseTensor>() == true) &&
@@ -3104,7 +3110,7 @@ static void SetDnnAttrIntoDeviceContext(
       case proto::AttrType::STRING:
         one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(std::string, attr));
         break;
-      case proto::AttrType::INTS:
+      case proto::AttrType::INTS:  // NOLINT
         one_dnn_ctx->SetDnnAttr(attr_name,
                                 PADDLE_GET_CONST(std::vector<int>, attr));
         break;
@@ -3192,7 +3198,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ctx.inputs.find(input_names[i]);
 
-    // calcute the start and end index of the input tensors
+    // calculate the start and end index of the input tensors
     size_t start_idx =
         (i == 0 ? 0 : phi_kernel_context->InputRangeAt(i - 1).second);
     // deal with optional here
@@ -3358,7 +3364,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       case phi::AttributeType::INT_ARRAY:
         if (attr_iter != Attrs().end()) {
           switch (AttrTypeID(attr_iter->second)) {
-            case proto::AttrType::INTS:
+            case proto::AttrType::INTS:  // NOLINT
               phi_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
                   PADDLE_GET_CONST(std::vector<int32_t>, attr_iter->second))));
               break;
@@ -3398,7 +3404,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             attr_iter,
             Attrs().end(),
             platform::errors::NotFound("(%s) is not found in AttributeMap when "
-                                       "buildind static KernelContext.",
+                                       "building static KernelContext.",
                                        attr_names[i]));
         switch (AttrTypeID(attr_iter->second)) {
           case proto::AttrType::INTS: {
@@ -3472,7 +3478,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                             RuntimeAttrs().end(),
                             platform::errors::NotFound(
                                 "(%s) is not found in AttributeMap when "
-                                "buildind static KernelContext.",
+                                "building static KernelContext.",
                                 attr_names[i]));
         }
 
@@ -3497,7 +3503,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(int64_t, attr_iter->second));
             break;
-          case phi::AttributeType::INT32S:
+          case phi::AttributeType::INT32S:  // NOLINT
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<int>, attr_iter->second));
             break;
@@ -3536,7 +3542,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                     attr_names[i]));
             }
             break;
-          case phi::AttributeType::FLOAT32S:
+          case phi::AttributeType::FLOAT32S:  // NOLINT
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<float>, attr_iter->second));
             break;
