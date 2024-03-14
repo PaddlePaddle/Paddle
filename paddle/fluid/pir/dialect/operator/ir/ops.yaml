@@ -47,6 +47,17 @@
   kernel :
     func : all
 
+- op : all_reduce
+  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param: [x]
+  kernel :
+    func : all_reduce
+    param: [x, reduce_type]
+  inplace : (x -> out)
+
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
