@@ -26,33 +26,30 @@ namespace {
 class MatmulOutTransposeFusePattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "MatmulOutTransposeFusePattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-   paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
-                                  {{"transpose_x", pat.Attr("transpose_x")},
-                                   {"transpose_y", pat.Attr("transpose_y")}});
-    
+                                   {{"transpose_x", pat.Attr("transpose_x")},
+                                    {"transpose_y", pat.Attr("transpose_y")}});
+
     const auto &transpose_op = pat.Op(paddle::dialect::TransposeOp::name(),
-                                    {{"perm", pat.Attr("perm")}});
+                                      {{"perm", pat.Attr("perm")}});
 
-    matmul_op({&pat.Tensor("x"), &pat.Tensor("y")},
-              {&pat.Tensor("matmul_out")});
-
-    transpose_op({&pat.Tensor("matmul_out")}, 
-                 {&pat.Tensor("transpose_out")});
+    pat.Tensor("matmul_op_out") = matmul_op(pat.Tensor("x"), pat.Tensor("y"));
+    pat.Tensor("transpose_op_out") = transpose_op(pat.Tensor("matmul_op_out"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor("y"));
-      if (x_shape.size() < 2 || y_shape.size() < 2)
-        return false;
+      if (x_shape.size() < 2 || y_shape.size() < 2) return false;
       const auto &perm = match_ctx.Attr<std::vector<int>>("perm");
       const int perm_size = perm.size();
       for (int i = 0; i < perm_size - 2; ++i) {
-        if (perm[i] != i)
-          return false; 
+        if (perm[i] != i) return false;
       }
-      if ((perm[perm_size - 1] != perm_size - 2) && (perm[perm_size - 2] != perm_size - 1))
+      if ((perm[perm_size - 1] != perm_size - 2) &&
+          (perm[perm_size - 2] != perm_size - 1))
         return false;
       return true;
     });
@@ -60,55 +57,51 @@ class MatmulOutTransposeFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     // transpose x y
-    const auto &transpose_x = res.ComputeAttr(
-      [](const paddle::drr::MatchContext &match_ctx) -> bool {
-        bool transpose_status_x = !match_ctx.Attr<bool>("transpose_x");
-        return transpose_status_x;
-      });
-    const auto &transpose_y = res.ComputeAttr(
-      [](const paddle::drr::MatchContext &match_ctx) -> bool {
-        bool transpose_status_y = !match_ctx.Attr<bool>("transpose_y");
-        return transpose_status_y;
-      });
-    const auto &fused_matmul_transpose_op = res.Op(paddle::dialect::MatmulOp::name(),
-                                                   {{"transpose_x", transpose_y},
-                                                    {"transpose_y", transpose_x}});
-    fused_matmul_transpose_op({&res.Tensor("y"), &res.Tensor("x")},
-                              {&res.Tensor("transpose_out")});    
- }
+    const auto &transpose_x =
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          bool transpose_status_x = !match_ctx.Attr<bool>("transpose_x");
+          return transpose_status_x;
+        });
+    const auto &transpose_y =
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          bool transpose_status_y = !match_ctx.Attr<bool>("transpose_y");
+          return transpose_status_y;
+        });
+    const auto &fused_matmul_transpose_op =
+        res.Op(paddle::dialect::MatmulOp::name(),
+               {{"transpose_x", transpose_y}, {"transpose_y", transpose_x}});
+    res.Tensor("transpose_op_out") =
+        fused_matmul_transpose_op(res.Tensor("y"), res.Tensor("x"));
+  }
 };
-
 
 class MatmulXTransposeFusePattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "MatmulXTransposeFusePattern"; }
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-   paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
-                                  {{"transpose_x", pat.Attr("transpose_x")},
-                                   {"transpose_y", pat.Attr("transpose_y")}});
-    
+                                   {{"transpose_x", pat.Attr("transpose_x")},
+                                    {"transpose_y", pat.Attr("transpose_y")}});
+
     const auto &transpose_op = pat.Op(paddle::dialect::TransposeOp::name(),
-                                    {{"perm", pat.Attr("perm")}});
+                                      {{"perm", pat.Attr("perm")}});
 
-    transpose_op({&pat.Tensor("x")}, 
-                 {&pat.Tensor("x_transpose")});
-
-    matmul_op({&pat.Tensor("x_transpose"), &pat.Tensor("y")},
-              {&pat.Tensor("matmul_out")});
+    pat.Tensor("x_transpose_out") = transpose_op(pat.Tensor("x"));
+    pat.Tensor("matmul_op_out") =
+        matmul_op(pat.Tensor("x_transpose_out"), pat.Tensor("y"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor("y"));
-      if (x_shape.size() < 2 || y_shape.size() < 2)
-        return false;
+      if (x_shape.size() < 2 || y_shape.size() < 2) return false;
       const auto &perm = match_ctx.Attr<std::vector<int>>("perm");
       const int perm_size = perm.size();
       for (int i = 0; i < perm_size - 2; ++i) {
-        if (perm[i] != i)
-          return false; 
+        if (perm[i] != i) return false;
       }
-      if ((perm[perm_size - 1] != perm_size - 2) && (perm[perm_size - 2] != perm_size - 1))
+      if ((perm[perm_size - 1] != perm_size - 2) &&
+          (perm[perm_size - 2] != perm_size - 1))
         return false;
       return true;
     });
@@ -116,79 +109,75 @@ class MatmulXTransposeFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     // transpose x y
-    const auto &transpose_x = res.ComputeAttr(
-      [](const paddle::drr::MatchContext &match_ctx) -> bool {
-        bool transpose_status_x = !match_ctx.Attr<bool>("transpose_x");
-        return transpose_status_x;
-      });
-    const auto &transpose_y = res.ComputeAttr(
-      [](const paddle::drr::MatchContext &match_ctx) -> bool {
-        bool transpose_status_y = match_ctx.Attr<bool>("transpose_y");
-        return transpose_status_y;
-      });
-    const auto &fused_matmul_transpose_op = res.Op(paddle::dialect::MatmulOp::name(),
-                                                   {{"transpose_x", transpose_x},
-                                                    {"transpose_y", transpose_y}});
-    fused_matmul_transpose_op({&res.Tensor("x"), &res.Tensor("y")},
-                              {&res.Tensor("matmul_out")});    
- }
+    const auto &transpose_x =
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          bool transpose_status_x = !match_ctx.Attr<bool>("transpose_x");
+          return transpose_status_x;
+        });
+    const auto &transpose_y =
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          bool transpose_status_y = match_ctx.Attr<bool>("transpose_y");
+          return transpose_status_y;
+        });
+    const auto &fused_matmul_transpose_op =
+        res.Op(paddle::dialect::MatmulOp::name(),
+               {{"transpose_x", transpose_x}, {"transpose_y", transpose_y}});
+    res.Tensor("matmul_op_out") =
+        fused_matmul_transpose_op(res.Tensor("x"), res.Tensor("y"));
+  }
 };
-
 
 class MatmulYTransposeFusePattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "MatmulYTransposeFusePattern"; }
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-   paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
-                                  {{"transpose_x", pat.Attr("transpose_x")},
-                                   {"transpose_y", pat.Attr("transpose_y")}});
-    
+                                   {{"transpose_x", pat.Attr("transpose_x")},
+                                    {"transpose_y", pat.Attr("transpose_y")}});
+
     const auto &transpose_op = pat.Op(paddle::dialect::TransposeOp::name(),
-                                    {{"perm", pat.Attr("perm")}});
+                                      {{"perm", pat.Attr("perm")}});
 
-    transpose_op({&pat.Tensor("y")}, 
-                 {&pat.Tensor("y_transpose")});
+    pat.Tensor("y_transpose_out") = transpose_op(pat.Tensor("y"));
 
-    matmul_op({&pat.Tensor("x"), &pat.Tensor("y_transpose")},
-              {&pat.Tensor("matmul_out")});
+    pat.Tensor("matmul_op_out") =
+        matmul_op(pat.Tensor("x"), pat.Tensor("y_transpose_out"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor("y"));
-      if (x_shape.size() < 2 || y_shape.size() < 2)
-        return false;
+      if (x_shape.size() < 2 || y_shape.size() < 2) return false;
       const auto &perm = match_ctx.Attr<std::vector<int>>("perm");
       const int perm_size = perm.size();
       for (int i = 0; i < perm_size - 2; ++i) {
-        if (perm[i] != i)
-          return false; 
+        if (perm[i] != i) return false;
       }
-      if ((perm[perm_size - 1] != perm_size - 2) && (perm[perm_size - 2] != perm_size - 1))
+      if ((perm[perm_size - 1] != perm_size - 2) &&
+          (perm[perm_size - 2] != perm_size - 1))
         return false;
       return true;
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     // transpose x y
-    const auto &transpose_x = res.ComputeAttr(
-      [](const paddle::drr::MatchContext &match_ctx) -> bool {
-        bool transpose_status_x = !match_ctx.Attr<bool>("transpose_x");
-        return transpose_status_x;
-      });
-    const auto &transpose_y = res.ComputeAttr(
-      [](const paddle::drr::MatchContext &match_ctx) -> bool {
-        bool transpose_status_y = match_ctx.Attr<bool>("transpose_y");
-        return transpose_status_y;
-      });
-    const auto &fused_matmul_transpose_op = res.Op(paddle::dialect::MatmulOp::name(),
-                                                   {{"transpose_x", transpose_x},
-                                                    {"transpose_y", transpose_y}});
-    fused_matmul_transpose_op({&res.Tensor("x"), &res.Tensor("y")}, 
-                              {&pat.Tensor("matmul_out")});    
- }
+    const auto &transpose_x =
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          bool transpose_status_x = match_ctx.Attr<bool>("transpose_x");
+          return transpose_status_x;
+        });
+    const auto &transpose_y =
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          bool transpose_status_y = !match_ctx.Attr<bool>("transpose_y");
+          return transpose_status_y;
+        });
+    const auto &fused_matmul_transpose_op =
+        res.Op(paddle::dialect::MatmulOp::name(),
+               {{"transpose_x", transpose_x}, {"transpose_y", transpose_y}});
+    res.Tensor("matmul_op_out") =
+        fused_matmul_transpose_op(res.Tensor("x"), res.Tensor("y"));
+  }
 };
-
 
 class MatmulTransposeFusePass : public pir::PatternRewritePass {
  public:
