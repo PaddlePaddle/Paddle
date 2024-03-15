@@ -204,6 +204,10 @@ class TestSwigluOp(OpTest):
         )
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_dist(),
+    "The spmd rule is should be tested with distributed=ON",
+)
 class TestSwigluSpmd(unittest.TestCase):
     def setUp(self):
         self.kernel = 'swiglu'
