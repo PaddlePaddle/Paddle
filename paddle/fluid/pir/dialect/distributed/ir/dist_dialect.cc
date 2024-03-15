@@ -61,11 +61,21 @@ void DistDialect::PrintType(pir::Type type, std::ostream &os) const {
 
 void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
   if (auto process_mesh_attr = attr.dyn_cast<ProcessMeshAttribute>()) {
-    os << "mesh: " << process_mesh_attr.process_mesh();
+    os << "mesh_shape:[" +
+              phi::distributed::auto_parallel::str_join(
+                  process_mesh_attr.shape()) +
+              "]";
+    os << ",process_ids:[" +
+              phi::distributed::auto_parallel::str_join(
+                  process_mesh_attr.process_ids()) +
+              "]";
   } else if (auto tensor_dist_attr = attr.dyn_cast<TensorDistAttribute>()) {
     // Todo: Design the tensor dist attr print format.
-    os << "mesh: " << tensor_dist_attr.process_mesh_attr().process_mesh();
-    os << ", dims_mappings: [" +
+    os << "mesh_shape:[" +
+              phi::distributed::auto_parallel::str_join(
+                  tensor_dist_attr.process_mesh_attr().shape()) +
+              "]";
+    os << ",dims_mappings:[" +
               phi::distributed::auto_parallel::str_join(
                   tensor_dist_attr.dims_mapping()) +
               "]";
@@ -81,18 +91,25 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
          << phi::distributed::auto_parallel::str_join(partial_status_strs);
     }
   } else if (auto op_dist_attr = attr.dyn_cast<OperationDistAttribute>()) {
-    os << " {mesh: " << op_dist_attr.process_mesh_attr().process_mesh();
+    os << "mesh_shape:[" +
+              phi::distributed::auto_parallel::str_join(
+                  op_dist_attr.process_mesh_attr().shape()) +
+              "]";
+    os << ",process_ids:[" +
+              phi::distributed::auto_parallel::str_join(
+                  op_dist_attr.process_mesh_attr().process_ids()) +
+              "]";
     auto num_operand_dist_attrs = op_dist_attr.num_operand_dist_attrs();
-    if (num_operand_dist_attrs > 0) {
-      os << ", operands_dist_attrs: {";
-    }
+    // if (num_operand_dist_attrs > 0) {
+    //   os << ",operands_dist_attrs:{";
+    // }
     for (uint32_t i = 0; i < num_operand_dist_attrs; ++i) {
       auto dist_attr = op_dist_attr.operand_dist_attr(i);
-      os << "operand(" << i << "): {mesh shape: ["
-         << phi::distributed::auto_parallel::str_join(
-                dist_attr.process_mesh_attr().shape())
-         << "]";
-      os << ", dims_maping: [" +
+      os << ",operand(" + std::to_string(i) + "):{mesh_shape:[" +
+                phi::distributed::auto_parallel::str_join(
+                    dist_attr.process_mesh_attr().shape()) +
+                "]";
+      os << ",dims_maping:[" +
                 phi::distributed::auto_parallel::str_join(
                     dist_attr.dims_mapping()) +
                 "]";
@@ -104,27 +121,28 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
                           ")";
           partial_status_strs.emplace_back(s);
         }
-        os << ", "
-           << phi::distributed::auto_parallel::str_join(partial_status_strs)
-           << "}";
+        os << "," +
+                  phi::distributed::auto_parallel::str_join(
+                      partial_status_strs) +
+                  "}";
       } else {
         os << "}";
       }
     }
-    if (num_operand_dist_attrs > 0) {
-      os << "}";
-    }
+    // if (num_operand_dist_attrs > 0) {
+    //   os << "}";
+    // }
     auto num_result_dist_attrs = op_dist_attr.num_result_dist_attrs();
-    if (num_result_dist_attrs > 0) {
-      os << ", result_dist_attrs: {";
-    }
+    // if (num_result_dist_attrs > 0) {
+    //   os << ",result_dist_attrs:{";
+    // }
     for (uint32_t i = 0; i < num_result_dist_attrs; ++i) {
       auto dist_attr = op_dist_attr.result_dist_attr(i);
-      os << "result(" << i << "): {mesh shape: ["
-         << phi::distributed::auto_parallel::str_join(
-                dist_attr.process_mesh_attr().shape())
-         << "]";
-      os << ", dims_maping: [" +
+      os << ",result(" + std::to_string(i) + "):{mesh_shape:[" +
+                phi::distributed::auto_parallel::str_join(
+                    dist_attr.process_mesh_attr().shape()) +
+                "]";
+      os << ",dims_maping:[" +
                 phi::distributed::auto_parallel::str_join(
                     dist_attr.dims_mapping()) +
                 "]";
@@ -136,16 +154,17 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
                           ")";
           partial_status_strs.emplace_back(s);
         }
-        os << ", "
-           << phi::distributed::auto_parallel::str_join(partial_status_strs)
-           << "}";
+        os << "," +
+                  phi::distributed::auto_parallel::str_join(
+                      partial_status_strs) +
+                  "}";
       } else {
         os << "}";
       }
     }
-    if (num_result_dist_attrs > 0) {
-      os << "}";
-    }
+    // if (num_result_dist_attrs > 0) {
+    //   os << "}";
+    // }
   } else {
     os << "error_attribute_type";
   }
