@@ -30,6 +30,11 @@ void ArgMaxKernel(const Context& dev_ctx,
                   bool flatten,
                   DataType dtype,
                   DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument(
+          "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   using XPUType = typename XPUTypeTrait<T>::Type;
   PADDLE_ENFORCE_EQ(
       (dtype == DataType::UNDEFINED || dtype == DataType::INT32 ||

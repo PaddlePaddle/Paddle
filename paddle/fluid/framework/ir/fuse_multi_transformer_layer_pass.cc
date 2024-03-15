@@ -291,6 +291,16 @@ void FuseMultiTransformerLayerPass::ApplyImpl(Graph* graph) const {
       scope,
       platform::errors::Fatal("During the fuse_multi_transformer_layer pass, "
                               "The scope should not be null."));
+
+  VLOG(3) << "Running fuse_multi_transformer_layer_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running fuse_multi_transformer_layer_pass is: "
+               "0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running fuse_multi_transformer_layer_pass is: "
+            << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
 
   AddStatis(fusion_count);

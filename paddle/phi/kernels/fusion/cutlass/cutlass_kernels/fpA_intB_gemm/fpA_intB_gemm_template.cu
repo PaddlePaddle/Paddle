@@ -42,6 +42,7 @@ template <typename T,
           typename WeightType,
           typename arch,
           typename EpilogueTag,
+          bool FineGrained,
           typename ThreadblockShape,
           typename WarpShape>
 void dispatch_gemm_config(const T* A,
@@ -52,6 +53,7 @@ void dispatch_gemm_config(const T* A,
                           int m,
                           int n,
                           int k,
+                          int group_size,
                           CutlassGemmConfig gemm_config,
                           char* workspace,
                           size_t workspace_bytes,
@@ -63,6 +65,7 @@ void dispatch_gemm_config(const T* A,
                                                 WeightType,
                                                 arch,
                                                 EpilogueTag,
+                                                FineGrained,
                                                 ThreadblockShape,
                                                 WarpShape,
                                                 2>;
@@ -74,6 +77,7 @@ void dispatch_gemm_config(const T* A,
                                   m,
                                   n,
                                   k,
+                                  group_size,
                                   gemm_config,
                                   workspace,
                                   workspace_bytes,
@@ -85,6 +89,7 @@ void dispatch_gemm_config(const T* A,
                                                 WeightType,
                                                 arch,
                                                 EpilogueTag,
+                                                FineGrained,
                                                 ThreadblockShape,
                                                 WarpShape,
                                                 3>;
@@ -96,6 +101,7 @@ void dispatch_gemm_config(const T* A,
                                   m,
                                   n,
                                   k,
+                                  group_size,
                                   gemm_config,
                                   workspace,
                                   workspace_bytes,
@@ -107,6 +113,7 @@ void dispatch_gemm_config(const T* A,
                                                 WeightType,
                                                 arch,
                                                 EpilogueTag,
+                                                FineGrained,
                                                 ThreadblockShape,
                                                 WarpShape,
                                                 4>;
@@ -118,6 +125,7 @@ void dispatch_gemm_config(const T* A,
                                   m,
                                   n,
                                   k,
+                                  group_size,
                                   gemm_config,
                                   workspace,
                                   workspace_bytes,
@@ -129,6 +137,7 @@ void dispatch_gemm_config(const T* A,
                                                 WeightType,
                                                 arch,
                                                 EpilogueTag,
+                                                FineGrained,
                                                 ThreadblockShape,
                                                 WarpShape,
                                                 5>;
@@ -140,6 +149,7 @@ void dispatch_gemm_config(const T* A,
                                   m,
                                   n,
                                   k,
+                                  group_size,
                                   gemm_config,
                                   workspace,
                                   workspace_bytes,
@@ -154,7 +164,11 @@ void dispatch_gemm_config(const T* A,
   }
 }
 
-template <typename T, typename WeightType, typename arch, typename EpilogueTag>
+template <typename T,
+          typename WeightType,
+          typename arch,
+          typename EpilogueTag,
+          bool FineGrained>
 void dispatch_gemm_to_cutlass(const T* A,
                               const WeightType* B,
                               const T* weight_scales,
@@ -163,6 +177,7 @@ void dispatch_gemm_to_cutlass(const T* A,
                               int m,
                               int n,
                               int k,
+                              int group_size,
                               char* workspace,
                               size_t workspace_bytes,
                               CutlassGemmConfig gemm_config,
@@ -179,6 +194,7 @@ void dispatch_gemm_to_cutlass(const T* A,
                            WeightType,
                            arch,
                            EpilogueTag,
+                           FineGrained,
                            cutlass::gemm::GemmShape<16, 128, 64>,
                            cutlass::gemm::GemmShape<16, 32, 64>>(
           A,
@@ -189,6 +205,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           m,
           n,
           k,
+          group_size,
           gemm_config,
           workspace,
           workspace_bytes,
@@ -201,6 +218,7 @@ void dispatch_gemm_to_cutlass(const T* A,
                            WeightType,
                            arch,
                            EpilogueTag,
+                           FineGrained,
                            cutlass::gemm::GemmShape<32, 128, 64>,
                            cutlass::gemm::GemmShape<32, 32, 64>>(
           A,
@@ -211,6 +229,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           m,
           n,
           k,
+          group_size,
           gemm_config,
           workspace,
           workspace_bytes,
@@ -222,6 +241,7 @@ void dispatch_gemm_to_cutlass(const T* A,
                            WeightType,
                            arch,
                            EpilogueTag,
+                           FineGrained,
                            cutlass::gemm::GemmShape<64, 128, 64>,
                            cutlass::gemm::GemmShape<64, 64, 64>>(
           A,
@@ -232,6 +252,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           m,
           n,
           k,
+          group_size,
           gemm_config,
           workspace,
           workspace_bytes,
@@ -244,6 +265,7 @@ void dispatch_gemm_to_cutlass(const T* A,
                            WeightType,
                            arch,
                            EpilogueTag,
+                           FineGrained,
                            cutlass::gemm::GemmShape<128, 128, 64>,
                            cutlass::gemm::GemmShape<64, 64, 64>>(
           A,
@@ -254,6 +276,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           m,
           n,
           k,
+          group_size,
           gemm_config,
           workspace,
           workspace_bytes,
@@ -266,6 +289,7 @@ void dispatch_gemm_to_cutlass(const T* A,
                            WeightType,
                            arch,
                            EpilogueTag,
+                           FineGrained,
                            cutlass::gemm::GemmShape<128, 256, 64>,
                            cutlass::gemm::GemmShape<64, 64, 64>>(
           A,
@@ -276,6 +300,30 @@ void dispatch_gemm_to_cutlass(const T* A,
           m,
           n,
           k,
+          group_size,
+          gemm_config,
+          workspace,
+          workspace_bytes,
+          stream,
+          occupancy);
+      break;
+    case CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64:
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           FineGrained,
+                           cutlass::gemm::GemmShape<256, 128, 64>,
+                           cutlass::gemm::GemmShape<64, 64, 64>>(
+          A,
+          B,
+          weight_scales,
+          biases,
+          C,
+          m,
+          n,
+          k,
+          group_size,
           gemm_config,
           workspace,
           workspace_bytes,
@@ -300,7 +348,11 @@ void dispatch_gemm_to_cutlass(const T* A,
   }
 }
 
-template <typename T, typename WeightType, typename arch, typename EpilogueTag>
+template <typename T,
+          typename WeightType,
+          typename arch,
+          typename EpilogueTag,
+          bool FineGrained>
 void dispatch_gemm_to_cutlass_sm7x(const T* A,
                                    const WeightType* B,
                                    const T* weight_scales,
@@ -309,6 +361,7 @@ void dispatch_gemm_to_cutlass_sm7x(const T* A,
                                    int m,
                                    int n,
                                    int k,
+                                   int group_size,
                                    char* workspace,
                                    size_t workspace_bytes,
                                    CutlassGemmConfig gemm_config,
@@ -324,6 +377,7 @@ void dispatch_gemm_to_cutlass_sm7x(const T* A,
                            WeightType,
                            arch,
                            EpilogueTag,
+                           FineGrained,
                            cutlass::gemm::GemmShape<32, 128, 64>,
                            cutlass::gemm::GemmShape<32, 32, 64>>(
           A,
@@ -334,6 +388,7 @@ void dispatch_gemm_to_cutlass_sm7x(const T* A,
           m,
           n,
           k,
+          group_size,
           gemm_config,
           workspace,
           workspace_bytes,
@@ -345,6 +400,7 @@ void dispatch_gemm_to_cutlass_sm7x(const T* A,
                            WeightType,
                            arch,
                            EpilogueTag,
+                           FineGrained,
                            cutlass::gemm::GemmShape<64, 128, 64>,
                            cutlass::gemm::GemmShape<64, 64, 64>>(
           A,
@@ -355,6 +411,7 @@ void dispatch_gemm_to_cutlass_sm7x(const T* A,
           m,
           n,
           k,
+          group_size,
           gemm_config,
           workspace,
           workspace_bytes,
@@ -394,8 +451,9 @@ CutlassFpAIntBGemmRunner<T, WeightType>::~CutlassFpAIntBGemmRunner() {
 }
 
 template <typename T, typename WeightType>
-template <typename EpilogueTag>
-void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
+template <typename EpilogueTag, bool FineGrained>
+void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag,
+                                                               FineGrained>(
     const T* A,
     const WeightType* B,
     const T* weight_scales,
@@ -404,6 +462,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
     int m,
     int n,
     int k,
+    int group_size,
     CutlassGemmConfig gemm_config,
     char* workspace_ptr,
     const size_t workspace_bytes,
@@ -415,19 +474,21 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
     dispatch_gemm_to_cutlass_sm7x<T,
                                   WeightType,
                                   cutlass::arch::Sm70,
-                                  EpilogueTag>(A,
-                                               B,
-                                               weight_scales,
-                                               biases,
-                                               C,
-                                               m,
-                                               n,
-                                               k,
-                                               workspace_ptr,
-                                               workspace_bytes,
-                                               gemm_config,
-                                               stream,
-                                               occupancy);
+                                  EpilogueTag,
+                                  false>(A,
+                                         B,
+                                         weight_scales,
+                                         biases,
+                                         C,
+                                         m,
+                                         n,
+                                         k,
+                                         group_size,
+                                         workspace_ptr,
+                                         workspace_bytes,
+                                         gemm_config,
+                                         stream,
+                                         occupancy);
 #else
     throw std::runtime_error(
         "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "
@@ -438,19 +499,21 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
     dispatch_gemm_to_cutlass_sm7x<T,
                                   WeightType,
                                   cutlass::arch::Sm75,
-                                  EpilogueTag>(A,
-                                               B,
-                                               weight_scales,
-                                               biases,
-                                               C,
-                                               m,
-                                               n,
-                                               k,
-                                               workspace_ptr,
-                                               workspace_bytes,
-                                               gemm_config,
-                                               stream,
-                                               occupancy);
+                                  EpilogueTag,
+                                  false>(A,
+                                         B,
+                                         weight_scales,
+                                         biases,
+                                         C,
+                                         m,
+                                         n,
+                                         k,
+                                         group_size,
+                                         workspace_ptr,
+                                         workspace_bytes,
+                                         gemm_config,
+                                         stream,
+                                         occupancy);
 #else
     throw std::runtime_error(
         "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "
@@ -458,20 +521,24 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
 #endif
   } else if (sm_ >= 80 && sm_ < 90) {
 #if defined(USE_FPAINTB_GEMM_WITH_SM80)
-    dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm80, EpilogueTag>(
-        A,
-        B,
-        weight_scales,
-        biases,
-        C,
-        m,
-        n,
-        k,
-        workspace_ptr,
-        workspace_bytes,
-        gemm_config,
-        stream,
-        occupancy);
+    dispatch_gemm_to_cutlass<T,
+                             WeightType,
+                             cutlass::arch::Sm80,
+                             EpilogueTag,
+                             FineGrained>(A,
+                                          B,
+                                          weight_scales,
+                                          biases,
+                                          C,
+                                          m,
+                                          n,
+                                          k,
+                                          group_size,
+                                          workspace_ptr,
+                                          workspace_bytes,
+                                          gemm_config,
+                                          stream,
+                                          occupancy);
 #else
     throw std::runtime_error(
         "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "
@@ -485,8 +552,9 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
 }
 
 template <typename T, typename WeightType>
-template <typename EpilogueTag>
-void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag>(
+template <typename EpilogueTag, bool FineGrained>
+void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag,
+                                                       FineGrained>(
     const T* A,
     const WeightType* B,
     const T* weight_scales,
@@ -495,30 +563,32 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag>(
     int m,
     int n,
     int k,
+    int group_size,
     char* workspace_ptr,
     const size_t workspace_bytes,
     cudaStream_t stream) {
   // VLOG(3)<<__PRETTY_FUNCTION__;
   static constexpr bool is_weight_only = !std::is_same<T, WeightType>::value;
   const bool is_weight_only_encoder = m >= 512 ? true : false;
-  std::vector<CutlassGemmConfig> candidate_configs =
-      get_candidate_configs(sm_, is_weight_only, is_weight_only_encoder, false);
+  std::vector<CutlassGemmConfig> candidate_configs = get_candidate_configs(
+      sm_, group_size, is_weight_only, is_weight_only_encoder, false);
   std::vector<int> occupancies(candidate_configs.size());
 
   for (size_t ii = 0; ii < candidate_configs.size(); ++ii) {
-    dispatch_to_arch<EpilogueTag>(A,
-                                  B,
-                                  weight_scales,
-                                  biases,
-                                  C,
-                                  m,
-                                  n,
-                                  k,
-                                  candidate_configs[ii],
-                                  workspace_ptr,
-                                  workspace_bytes,
-                                  stream,
-                                  &occupancies[ii]);
+    dispatch_to_arch<EpilogueTag, FineGrained>(A,
+                                               B,
+                                               weight_scales,
+                                               biases,
+                                               C,
+                                               m,
+                                               n,
+                                               k,
+                                               group_size,
+                                               candidate_configs[ii],
+                                               workspace_ptr,
+                                               workspace_bytes,
+                                               stream,
+                                               &occupancies[ii]);
   }
   // Standard GEMM, so 1 "expert". We use the same function for MoE and regular
   // FFN.
@@ -529,24 +599,27 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag>(
                                             m,
                                             n,
                                             k,
+                                            group_size,
                                             num_experts,
                                             split_k_limit,
                                             workspace_bytes,
                                             multi_processor_count_,
-                                            is_weight_only);
+                                            is_weight_only,
+                                            sm_);
 
-  dispatch_to_arch<EpilogueTag>(A,
-                                B,
-                                weight_scales,
-                                biases,
-                                C,
-                                m,
-                                n,
-                                k,
-                                chosen_config,
-                                workspace_ptr,
-                                workspace_bytes,
-                                stream);
+  dispatch_to_arch<EpilogueTag, FineGrained>(A,
+                                             B,
+                                             weight_scales,
+                                             biases,
+                                             C,
+                                             m,
+                                             n,
+                                             k,
+                                             group_size,
+                                             chosen_config,
+                                             workspace_ptr,
+                                             workspace_bytes,
+                                             stream);
 }
 
 template <typename T, typename WeightType>
@@ -559,6 +632,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm_bias_act(
     int m,
     int n,
     int k,
+    int group_size,
     std::string activation_type,
     char* workspace_ptr,
     const size_t workspace_bytes,
@@ -570,17 +644,37 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm_bias_act(
     PADDLE_THROW(phi::errors::Unimplemented(
         "Activation_type = relu for fpA_intB gemm is not instantiated."));
   } else if (activation_type == "none") {
-    run_gemm<EpilogueOpBias>(A,
-                             B,
-                             weight_scales,
-                             biases,
-                             C,
-                             m,
-                             n,
-                             k,
-                             workspace_ptr,
-                             workspace_bytes,
-                             stream);
+    if (group_size > 0) {
+      PADDLE_ENFORCE_GE(sm_,
+                        80,
+                        phi::errors::Unimplemented(
+                            "Groupwise mode is not supported on SM < 8.0"));
+      run_gemm<EpilogueOpBias, true>(A,
+                                     B,
+                                     weight_scales,
+                                     biases,
+                                     C,
+                                     m,
+                                     n,
+                                     k,
+                                     group_size,
+                                     workspace_ptr,
+                                     workspace_bytes,
+                                     stream);
+    } else {
+      run_gemm<EpilogueOpBias, false>(A,
+                                      B,
+                                      weight_scales,
+                                      biases,
+                                      C,
+                                      m,
+                                      n,
+                                      k,
+                                      group_size,
+                                      workspace_ptr,
+                                      workspace_bytes,
+                                      stream);
+    }
   } else {
     throw std::runtime_error(("Invalid activation type."));
   }
@@ -594,21 +688,41 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm(const T* A,
                                                    int m,
                                                    int n,
                                                    int k,
+                                                   int group_size,
                                                    char* workspace_ptr,
                                                    const size_t workspace_bytes,
                                                    cudaStream_t stream) {
-  // VLOG(3)<<__PRETTY_FUNCTION__;
-  run_gemm<EpilogueOpNoBias>(A,
-                             B,
-                             weight_scales,
-                             nullptr,
-                             C,
-                             m,
-                             n,
-                             k,
-                             workspace_ptr,
-                             workspace_bytes,
-                             stream);
+  if (group_size > 0) {
+    PADDLE_ENFORCE_GE(sm_,
+                      80,
+                      phi::errors::Unimplemented(
+                          "Groupwise mode is not supported on SM < 8.0"));
+    run_gemm<EpilogueOpNoBias, true>(A,
+                                     B,
+                                     weight_scales,
+                                     nullptr,
+                                     C,
+                                     m,
+                                     n,
+                                     k,
+                                     group_size,
+                                     workspace_ptr,
+                                     workspace_bytes,
+                                     stream);
+  } else {
+    run_gemm<EpilogueOpNoBias, false>(A,
+                                      B,
+                                      weight_scales,
+                                      nullptr,
+                                      C,
+                                      m,
+                                      n,
+                                      k,
+                                      group_size,
+                                      workspace_ptr,
+                                      workspace_bytes,
+                                      stream);
+  }
 }
 
 template <typename T, typename WeightType>
@@ -636,6 +750,7 @@ void CutlassFpAIntBGemmRunner<float, WeightType>::gemm_bias_act(
     int m,
     int n,
     int k,
+    int group_size,
     std::string activation_type,
     char* workspace_ptr,
     const size_t workspace_bytes,
@@ -654,6 +769,7 @@ void CutlassFpAIntBGemmRunner<float, WeightType>::gemm(
     int m,
     int n,
     int k,
+    int group_size,
     char* workspace_ptr,
     const size_t workspace_bytes,
     cudaStream_t stream) {

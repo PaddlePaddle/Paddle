@@ -58,6 +58,7 @@ void BindCommContextManager(py::module *m) {
               py::arg("size"),
               py::arg("hash_key") = "",
               py::arg("p2p_opt") = nullptr,
+              py::arg("nccl_comm_init_option") = 0,
               py::call_guard<py::gil_scoped_release>())
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)

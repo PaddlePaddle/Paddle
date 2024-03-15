@@ -91,6 +91,43 @@ function(bash_test_modules TARGET_NAME)
   endif()
 endfunction()
 
+function(set_pit_tests_properties)
+  file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_white_list"
+       PIR_OP_TESTS)
+  foreach(IR_OP_TEST ${PIR_OP_TESTS})
+    if(TEST ${IR_OP_TEST})
+      set_property(
+        TEST ${IR_OP_TEST}
+        APPEND
+        PROPERTY ENVIRONMENT "FLAGS_PIR_OPTEST_WHITE_LIST=True")
+    endif()
+  endforeach()
+
+  file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_no_check_list"
+       PIR_OP_NO_CHECK_TESTS)
+  foreach(IR_OP_TEST ${PIR_OP_NO_CHECK_TESTS})
+    if(TEST ${IR_OP_TEST})
+      set_property(
+        TEST ${IR_OP_TEST}
+        APPEND
+        PROPERTY ENVIRONMENT "FLAGS_PIR_NO_CHECK=True")
+    endif()
+  endforeach()
+
+  file(STRINGS
+       "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_precision_white_list"
+       PIR_OP_RELAXED_TESTS)
+  foreach(IR_OP_TEST ${PIR_OP_RELAXED_TESTS})
+    if(TEST ${IR_OP_TEST})
+      set_property(
+        TEST ${IR_OP_TEST}
+        APPEND
+        PROPERTY ENVIRONMENT "FLAGS_PIR_OPTEST_RELAX_CHECK=True")
+    endif()
+  endforeach()
+
+endfunction()
+
 if(WITH_TESTING)
   if(WITH_CINN)
     add_subdirectory(cpp/cinn)
@@ -256,3 +293,5 @@ add_custom_target(build_tests)
 if(${len} GREATER_EQUAL 1)
   add_dependencies(build_tests ${test_names})
 endif()
+
+set_pit_tests_properties()

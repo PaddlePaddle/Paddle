@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 from paddle import pir
+from paddle.autograd.backward_utils import ValueSet
 
 paddle.enable_static()
 
@@ -41,7 +42,6 @@ def get_ir_program():
 class TestPybind(unittest.TestCase):
     def test_program(self):
         pir_program = get_ir_program()
-        print(pir_program)
 
         block = pir_program.global_block()
         program = block.program
@@ -71,7 +71,7 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(len(matmul_op.get_input_names()), 2)
         self.assertEqual(len(matmul_op.get_attr_names()), 2)
         self.assertEqual(len(matmul_op.get_output_names()), 1)
-        # test oprand.index
+        # test operand.index
         self.assertEqual(matmul_op.operand(0).index(), 0)
         self.assertEqual(matmul_op.operand(1).index(), 1)
         self.assertEqual(add_op.operand(0).index(), 0)
@@ -98,7 +98,7 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(matmul_op.result(0).stop_gradient, True)
 
         # test opresult hash
-        result_set = set()
+        result_set = ValueSet()
         for opresult in matmul_op.results():
             result_set.add(opresult)
         # test opresult hash and hash(opresult) == hash(operesult)
@@ -106,29 +106,34 @@ class TestPybind(unittest.TestCase):
         # test value hash and hash(value) == hash(operesult)
         self.assertTrue(add_op.operands_source()[0] in result_set)
         # test value == value
-        self.assertEqual(
-            add_op.operands_source()[0], add_op.operands_source()[0]
+        self.assertTrue(
+            add_op.operands_source()[0].is_same(add_op.operands_source()[0])
         )
         # test value == opresult
-        self.assertEqual(add_op.operands_source()[0], matmul_op.results()[0])
+        self.assertTrue(
+            add_op.operands_source()[0].is_same(matmul_op.results()[0])
+        )
         # test opresult print
         self.assertTrue(
-            'dtype=pd_op.tensor<4x4xf32>'
+            'dtype=builtin.tensor<4x4xf32>'
             in add_op.operands_source()[0].__str__()
         )
         # test opresult == value
-        self.assertEqual(
-            add_op.operands()[0].source(), add_op.operands_source()[0]
+        self.assertTrue(
+            add_op.operands()[0].source().is_same(add_op.operands_source()[0])
         )
         # test opresult == opresult
-        self.assertEqual(add_op.operands()[0].source(), matmul_op.results()[0])
+        self.assertTrue(
+            add_op.operands()[0].source().is_same(matmul_op.results()[0])
+        )
 
         # test opresult print
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(), "pd_op.add"
         )
         self.assertTrue(
-            'pd_op.tensor<4x4xf32>' in tanh_op.operands()[0].source().__str__()
+            'builtin.tensor<4x4xf32>'
+            in tanh_op.operands()[0].source().__str__()
         )
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(
@@ -140,14 +145,13 @@ class TestPybind(unittest.TestCase):
 
         self.assertEqual(add_op.result(0).initialized(), True)
 
-        uninit_op_result = paddle.pir.OpResult()
-        self.assertEqual(uninit_op_result.initialized(), False)
+        uninit_value = paddle.pir.Value()
+        self.assertEqual(uninit_value.initialized(), False)
 
     def test_type(self):
         pir_program = get_ir_program()
         matmul_op = pir_program.global_block().ops[1]
         add_op = pir_program.global_block().ops[2]
-        print(matmul_op.result(0).type())
         self.assertEqual(
             matmul_op.result(0).type() == add_op.result(0).type(), True
         )
@@ -179,7 +183,6 @@ class TestPybind(unittest.TestCase):
             )
 
         pir_program = pir.translate_to_pir(main_program.desc)
-        print(pir_program)
         conv_attr = pir_program.global_block().ops[3].attrs()
         full_attr = pir_program.global_block().ops[8].attrs()
         self.assertEqual(conv_attr["stop_gradient"], [False])

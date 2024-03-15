@@ -30,17 +30,13 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
-from paddle.base.unique_name import (
-    UniqueNameGenerator,
-    guard as UniqueNameGuard,
-)
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
-from paddle.pir import OpResult
+from paddle.pir import Value
+from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
-from .ast_transformer import DygraphToStaticAst
 from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
@@ -56,11 +52,13 @@ from .partial_program import PartialProgramLayerHook
 from .pir_partial_program import (
     PartialProgramLayerHook as PirPartialProgramLayerHook,
 )
+from .transformers import DygraphToStaticAst
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
     ast_to_func,
     backend_guard,
+    cuda_pinned_tensors_move_to_excepted_place,
     func_to_source_code,
     input_specs_compatible,
     is_paddle_func,
@@ -68,7 +66,6 @@ from .utils import (
     prim_is_enabled,
     prim_or_cinn_is_enabled,
     type_name,
-    unwrap,
 )
 
 if TYPE_CHECKING:
@@ -137,9 +134,7 @@ class FunctionCache:
         If the conversion of A.foo happens after B.foo, it will reuse the transformed ast node of B.foo
         to speed up the conversion.
         """
-        # Note: In Python2, it will raise OSError when inspect function
-        # with decorator directly and function.__wrapped__ holds the actual function.
-        func = unwrap(func)
+        func = inspect.unwrap(func)
         source_code = func_to_source_code(func)
 
         # TODO(liym27):
@@ -355,7 +350,11 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
         # TODO(chenzhuo): Remove this after lowering prim into C++
-        if input_spec is not None and prim_is_enabled():
+        if (
+            input_spec is not None
+            and prim_is_enabled()
+            and not core._enable_prim_dynamic_shape()
+        ):
             from paddle.static import InputSpec
 
             for spec in flatten(input_spec):
@@ -720,6 +719,8 @@ class SymbolicStaticFunction(StaticFunction):
         from ..sot import symbolic_translate
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        cuda_pinned_tensors_move_to_excepted_place(args)
+
         (
             input_args_with_spec,
             input_kwargs_with_spec,
@@ -1034,7 +1035,7 @@ class ASTStaticFunction(StaticFunction):
         inputs = [
             var
             for var in flatten(concrete_program.inputs)
-            if isinstance(var, (framework.Variable, OpResult))
+            if isinstance(var, (framework.Variable, Value))
         ]
         return inputs
 
@@ -1048,7 +1049,7 @@ class ASTStaticFunction(StaticFunction):
         outputs = [
             var
             for var in flatten(concrete_program.outputs)
-            if isinstance(var, (framework.Variable, OpResult))
+            if isinstance(var, (framework.Variable, Value))
         ]
 
         return outputs
@@ -1149,7 +1150,6 @@ class ConcreteProgram:
         "startup_program",
         "parameters",
         "function",
-        "name_generator",
         'kwargs',
     ]
 
@@ -1159,7 +1159,6 @@ class ConcreteProgram:
         outputs,
         parameters,
         function,
-        name_generator,
         main_program,
         startup_program=None,
         **kwargs,
@@ -1170,7 +1169,6 @@ class ConcreteProgram:
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
-        self.name_generator = name_generator
         self.kwargs = kwargs
 
     @staticmethod
@@ -1209,7 +1207,9 @@ class ConcreteProgram:
         # framework.default_startup_program().random_seed
         # ) }}}
         with ir_static.program_guard(main_program, startup_program):
-            with _to_static_mode_guard_(is_to_static=True):
+            with _to_static_mode_guard_(
+                is_to_static=True
+            ), static_op_arg_cast_guard(_convert_into_value):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.pir_to_static_inputs_with_spec(
                     input_spec, main_program
@@ -1258,15 +1258,12 @@ class ConcreteProgram:
                     if need_wrap_into_list:
                         outputs = [outputs]
 
-        # TODO(@xiongkun): support op call stack in new ir?
-        # main_program = update_op_callstack_with_origin_info(main_program)
+        main_program = update_op_callstack_with_origin_info(main_program)
 
-        new_name_generator = UniqueNameGenerator()
         return ConcreteProgram(
             inputs=static_inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
-            name_generator=new_name_generator,
             function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program,
@@ -1307,13 +1304,10 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        new_name_generator = UniqueNameGenerator()
         ProgramTranslator.get_instance()._amp_records.clear()
 
         with framework.program_guard(main_program, startup_program):
-            with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
-                new_name_generator
-            ):
+            with _to_static_mode_guard_(is_to_static=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
@@ -1368,7 +1362,6 @@ class ConcreteProgram:
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
-            name_generator=new_name_generator,
             main_program=main_program,
             startup_program=startup_program,
             **kwargs,
@@ -1401,7 +1394,9 @@ class ParametersRecorder:
         if params is None:
             return []
         del self.params_dict[_program_hash(program)]
-        return list(params)
+        params = list(params)
+        params.sort(key=lambda x: x.name)
+        return params
 
 
 class InplaceMap:
@@ -1445,7 +1440,11 @@ class InplaceMap:
         self.params_dict = checkpoint
 
     def save_checkpoint(self):
-        return dict(self.params_dict.items())
+        ckp = {}
+        for program_id, params in self.params_dict.items():
+            new_params = dict(params.items())
+            ckp[program_id] = new_params
+        return ckp
 
 
 class FallbackProgramLayer:

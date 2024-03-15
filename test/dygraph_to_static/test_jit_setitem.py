@@ -16,7 +16,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -40,6 +43,7 @@ class TestSetItemBase(Dy2StTestBase):
 
         return foo
 
+    @test_legacy_and_pt_and_pir
     def test_case(self):
         func = self.init_func()
         dy_res = self.run_dygraph(func)
@@ -198,6 +202,15 @@ class TestCase12(TestSetItemBase):
         y = func()
         return (y,)
 
+    @test_legacy_and_pt_and_pir
+    def test_case(self):
+        func = self.init_func()
+        dy_res = self.run_dygraph(func)
+        st_res = self.run_to_static(func)
+
+        for dy_out, st_out in zip(dy_res, st_res):
+            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
+
 
 class TestCase13(TestSetItemBase):
     # Test gradient of value tensor
@@ -242,7 +255,6 @@ class TestCase15(TestSetItemBase):
             pad_list = paddle.zeros([4], dtype="int32")
             pad_list[3] = H // 2
             pad_list[1] = W // 2
-
             x = F.pad(x, pad_list, data_format="NHWC")
             return x
 

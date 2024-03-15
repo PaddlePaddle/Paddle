@@ -22,13 +22,18 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename DeviceContext, typename T, typename D, int bits>
+template <typename DeviceContext,
+          typename T,
+          typename D,
+          int bits,
+          typename ScaleT = T>
 void quant_compute(const DeviceContext& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out,
                    DenseTensor* scale,
                    const std::string& algo,
-                   const int32_t arch) {
+                   const int32_t arch,
+                   const int32_t group_size) {
   PADDLE_ENFORCE_EQ(
       ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
       true,
@@ -47,11 +52,12 @@ void quant_compute(const DeviceContext& dev_ctx,
   DDim dims = {num};
   const T* x_data = x.data<T>();
   D* out_data = out->data<D>();
-  T* scale_data = scale->data<T>();
+  ScaleT* scale_data = scale->data<ScaleT>();
 
   DenseTensor x_int(out->type());
 
-  if ((arch == 80) || (arch == 75) || (arch == 86)) {
+  if ((arch == 80) || (arch == 75) || (arch == 86) || (arch == 89) ||
+      (arch == 90)) {
     x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
   } else {
     // phi::Copy may change tensor meta info, here we transpose the quanted
@@ -71,9 +77,19 @@ void quant_compute(const DeviceContext& dev_ctx,
   int_processed_2.Resize(out->dims());
   dev_ctx.template Alloc<D>(&int_processed_2);
   D* int_processed_2_data = int_processed_2.data<D>();
-  per_channel_scale(scale_data, x_data, m, n, bits == 8 ? 127.0f : 7.0f);
+  if (group_size == -1) {
+    per_channel_scale(scale_data, x_data, m, n, bits == 8 ? 127.0f : 7.0f);
+    per_channel_quant<T, bits>(x_int_data, x_data, scale_data, m, n);
+  } else {
+    group_wise_scale(scale_data,
+                     x_data,
+                     m,
+                     n,
+                     bits == 8 ? 127.0f : 7.0f,
+                     static_cast<size_t>(group_size));
 
-  per_channel_quant<T, bits>(x_int_data, x_data, scale_data, m, n);
+    group_wise_quant<T, bits>(x_int_data, x_data, scale_data, m, n, group_size);
+  }
   if (algo == "llm.int8") {
     std::vector<int> axis = {1, 0};
     funcs::Transpose<DeviceContext, int8_t, 2> trans;
@@ -105,14 +121,22 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::string& algo,
                           const int32_t arch,
+                          const int32_t group_size,
                           DenseTensor* out,
                           DenseTensor* scale) {
   dev_ctx.template Alloc<int8_t>(out);
-  dev_ctx.template Alloc<T>(scale);
-  if (algo == "weight_only_int8" || algo == "llm.int8") {
-    quant_compute<Context, T, int8_t, 8>(dev_ctx, x, out, scale, algo, arch);
+  if (algo == "weight_only_int8") {
+    dev_ctx.template Alloc<T>(scale);
+    quant_compute<Context, T, int8_t, 8>(
+        dev_ctx, x, out, scale, algo, arch, group_size);
+  } else if (algo == "llm.int8") {
+    dev_ctx.template Alloc<float>(scale);
+    quant_compute<Context, T, int8_t, 8, float>(
+        dev_ctx, x, out, scale, algo, arch, group_size);
   } else if (algo == "weight_only_int4") {
-    quant_compute<Context, T, int8_t, 4>(dev_ctx, x, out, scale, algo, arch);
+    dev_ctx.template Alloc<T>(scale);
+    quant_compute<Context, T, int8_t, 4>(
+        dev_ctx, x, out, scale, algo, arch, group_size);
   } else {
     phi::errors::Unimplemented(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "

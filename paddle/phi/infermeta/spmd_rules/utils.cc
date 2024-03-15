@@ -27,7 +27,7 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
+std::string GetBroadcastAxes(const int64_t& tensor_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet) {
   PADDLE_ENFORCE_GE(
@@ -38,15 +38,15 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
           alphabet.size(),
           broadcast_ndim));
   PADDLE_ENFORCE_GE(broadcast_ndim,
-                    tenosr_ndim,
+                    tensor_ndim,
                     phi::errors::InvalidArgument(
-                        "The broadcast ndim [%d] is less than tenosr ndim [%d]",
+                        "The broadcast ndim [%d] is less than tensor ndim [%d]",
                         broadcast_ndim,
-                        tenosr_ndim));
-  if (tenosr_ndim <= 0) {
+                        tensor_ndim));
+  if (tensor_ndim <= 0) {
     return std::string();
   }
-  return alphabet.substr(broadcast_ndim - tenosr_ndim, tenosr_ndim);
+  return alphabet.substr(broadcast_ndim - tensor_ndim, tensor_ndim);
 }
 
 // Rule1: A repicated dimension could be merged by any sharded dimension.
@@ -170,6 +170,8 @@ TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr) {
 TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim) {
   TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
   std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  int64_t n_dim = dims_mapping.size();
+  dim = dim < 0 ? n_dim + dim : dim;
   dims_mapping[dim] = kReplicateDim;
   dst_dist_attr.set_dims_mapping(dims_mapping);
   return dst_dist_attr;
@@ -178,6 +180,8 @@ TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim) {
 TensorDistAttr UnShardTensorDim(const TensorDistAttr& dist_attr, int dim) {
   TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
   std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  int64_t n_dim = dims_mapping.size();
+  dim = dim < 0 ? n_dim + dim : dim;
   dims_mapping[dim] = kReplicateDim;
   dst_dist_attr.set_dims_mapping(dims_mapping);
   return dst_dist_attr;
@@ -403,7 +407,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     for (auto pair : partial_dim_to_type) {
       placements[pair.first] = std::make_shared<PartialStatus>(pair.second);
     }
-    new_input_attrs.emplace_back(FromPlacements(e, placements));
+    new_input_attrs.emplace_back(FromPlacements(e, placements));  // NOLINT
   }
   std::swap(input_attrs, new_input_attrs);
 }
@@ -419,13 +423,14 @@ TensorDistAttr FromPlacements(
     auto& placement = placements[mesh_dim];
     if (placement->is_shard()) {
       auto shard_placement = std::dynamic_pointer_cast<ShardStatus>(placement);
-      dims_mapping[shard_placement->get_axis()] = mesh_dim;
+      dims_mapping[shard_placement->get_axis()] =
+          static_cast<int64_t>(mesh_dim);
     }
     if (placement->is_partial()) {
       auto partial_placement =
           std::dynamic_pointer_cast<PartialStatus>(placement);
       auto reduce_type = partial_placement->get_reduce_type();
-      partial_status[mesh_dim] = reduce_type;
+      partial_status[mesh_dim] = reduce_type;  // NOLINT
     }
   }
   dst_dist_attr.set_dims_mapping(dims_mapping);
@@ -466,7 +471,7 @@ std::vector<int64_t> GetLocalShape(
   for (size_t i = 0; i < n_placement; i++) {
     auto& placement = placements.at(i);
     if (placement->is_shard()) {
-      auto mesh_dim_size = mesh.dim_size(i);
+      auto mesh_dim_size = mesh.dim_size(i);  // NOLINT
       auto shard_dim =
           std::dynamic_pointer_cast<ShardStatus>(placement)->get_axis();
       auto split_size =
@@ -548,6 +553,56 @@ void DebugInfoForInferSpmd(const std::string& rule_name,
           i));
     }
   }
+}
+
+TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
+                                       const ArgDistAttr& grad) {
+  const auto& grad_in = PADDLE_GET_CONST(TensorDistAttr, grad);
+  return ReduceGradBroadCastDims(input, grad_in);
+}
+
+TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
+                                       const TensorDistAttr& grad) {
+  TensorDistAttr input;
+  std::vector<int64_t> dim_mapping(input_dims, -1);
+  input.set_dims_mapping(dim_mapping);
+  return ReduceGradBroadCastDims(input, grad);
+}
+
+TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
+                                       const TensorDistAttr& grad) {
+  auto grad_dim = grad.dims_mapping().size();
+  auto input_dim = input.dims_mapping().size();
+  PADDLE_ENFORCE_GE(
+      grad_dim,
+      input_dim,
+      phi::errors::InvalidArgument("grad dim must ge than input dim, but we "
+                                   "got grad_dim [%d], input_dim[%d]",
+                                   grad_dim,
+                                   input_dim));
+  if (grad_dim == input_dim) {
+    return grad;
+  }
+  size_t broadcast_dim = grad_dim - input_dim;
+  // gather partial status
+  auto partial_dims = grad.partial_dims();
+  auto& grad_dims_mapping = grad.dims_mapping();
+  auto dims_mapping = input.dims_mapping();
+  for (size_t i = 0; i < grad_dim; ++i) {
+    auto mapping = grad_dims_mapping[i];
+    if (i < broadcast_dim) {
+      if (mapping >= 0) {
+        partial_dims.insert(mapping);
+      }
+    } else {
+      dims_mapping[i - broadcast_dim] = mapping;
+    }
+  }
+  auto grad_out = CopyTensorDistAttrForOutput(input);
+  grad_out.set_dims_mapping(dims_mapping);
+  std::vector<int64_t> partial_status(partial_dims.begin(), partial_dims.end());
+  grad_out.set_partial_status(partial_status);
+  return grad_out;
 }
 
 }  // namespace distributed

@@ -33,7 +33,7 @@ class SimpleLayer(paddle.nn.Layer):
         x = paddle.flatten(x, 1, -1)
         if target is not None:
             x = paddle.nn.functional.softmax(x)
-            loss = paddle.paddle.nn.functional.cross_entropy(
+            loss = paddle.nn.functional.cross_entropy(
                 x, target, reduction='none', use_softmax=False
             )
             return x, loss
@@ -79,8 +79,6 @@ class TestBase(IPUOpTest):
     def reset_seeds(self):
         np.random.seed(self.SEED)
         paddle.seed(self.SEED)
-        self.main_prog.random_seed = self.SEED
-        self.startup_prog.random_seed = self.SEED
 
     def _test(self, use_ipu=False):
         self.reset_seeds()

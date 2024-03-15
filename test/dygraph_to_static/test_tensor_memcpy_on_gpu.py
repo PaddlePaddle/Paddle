@@ -18,6 +18,10 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -43,8 +47,7 @@ def tensor_copy_to_cuda_with_warning(x, device_id=None, blocking=True):
 
 
 class TestTensorCopyToCpuOnDefaultGPU(Dy2StTestBase):
-    def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
+    def _run(self):
         x1 = paddle.ones([1, 2, 3])
         x2 = paddle.jit.to_static(tensor_copy_to_cpu)(x1)
         return x1.place, x2.place, x2.numpy()
@@ -55,10 +58,10 @@ class TestTensorCopyToCpuOnDefaultGPU(Dy2StTestBase):
             return
         place = paddle.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
         paddle.framework._set_expected_place(place)
-        dygraph_x1_place, dygraph_place, dygraph_res = self._run(
-            to_static=False
-        )
-        static_x1_place, static_place, static_res = self._run(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_x1_place, dygraph_place, dygraph_res = self._run()
+
+        static_x1_place, static_place, static_res = self._run()
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
         self.assertTrue(dygraph_x1_place.is_gpu_place())
         self.assertTrue(static_x1_place.is_gpu_place())
@@ -67,8 +70,7 @@ class TestTensorCopyToCpuOnDefaultGPU(Dy2StTestBase):
 
 
 class TestTensorCopyToCUDAOnDefaultGPU(Dy2StTestBase):
-    def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
+    def _run(self):
         x1 = paddle.ones([1, 2, 3])
         x2 = paddle.jit.to_static(tensor_copy_to_cuda)(x1)
         return x1.place, x2.place, x2.numpy()
@@ -79,10 +81,10 @@ class TestTensorCopyToCUDAOnDefaultGPU(Dy2StTestBase):
             return
         place = paddle.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
         paddle.framework._set_expected_place(place)
-        dygraph_x1_place, dygraph_place, dygraph_res = self._run(
-            to_static=False
-        )
-        static_x1_place, static_place, static_res = self._run(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_x1_place, dygraph_place, dygraph_res = self._run()
+
+        static_x1_place, static_place, static_res = self._run()
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
         self.assertTrue(dygraph_x1_place.is_gpu_place())
         self.assertTrue(static_x1_place.is_gpu_place())
@@ -90,9 +92,8 @@ class TestTensorCopyToCUDAOnDefaultGPU(Dy2StTestBase):
         self.assertTrue(static_place.is_gpu_place())
 
 
-class TestTensorCopyToCUDAWithWarningOnGPU(unittest.TestCase):
-    def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
+class TestTensorCopyToCUDAWithWarningOnGPU(Dy2StTestBase):
+    def _run(self):
         x1 = paddle.ones([1, 2, 3])
         x2 = paddle.jit.to_static(tensor_copy_to_cuda_with_warning)(
             x1, device_id=1, blocking=False
@@ -100,6 +101,8 @@ class TestTensorCopyToCUDAWithWarningOnGPU(unittest.TestCase):
         return x1.place, x2.place, x2.numpy()
 
     @test_legacy_and_pt_and_pir
+    @disable_test_case((ToStaticMode.SOT, IrMode.LEGACY_IR))
+    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.LEGACY_IR))
     def test_with_warning_on_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return

@@ -47,7 +47,7 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
-  VLOG(3) << "Call PToRReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
@@ -105,6 +105,8 @@ bool PToRReshardFunctionCrossMesh::IsSuitable(
 
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
   RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
+                            out_process_mesh.shape());
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
 
   return true;
@@ -114,7 +116,7 @@ void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
-  VLOG(3) << "Call PToRReshardFunctionCrossMesh Eval";
+  VLOG(3) << "Call " << Name();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
   DistTensor tmp_result;

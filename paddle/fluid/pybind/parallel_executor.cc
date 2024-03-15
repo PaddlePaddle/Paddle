@@ -125,7 +125,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -164,17 +164,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/parallel_executor.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -588,6 +588,34 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         >>> build_strategy.fuse_gemm_epilogue = True
           )DOC")
       .def_property(
+          "fuse_dot_product_attention",
+          [](const BuildStrategy &self) {
+            return self.fuse_dot_product_attention_;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_dot_product_attention_ = b;
+          },
+          R"DOC((bool, optional): fuse_dot_product_attention indicate whether
+                to fuse dot product attention,
+                it would make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_dot_product_attention = True
+                     )DOC")
+      .def_property(
           "fuse_adamw",
           [](const BuildStrategy &self) { return self.fuse_adamw_; },
           [](BuildStrategy &self, bool b) {
@@ -687,6 +715,36 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         >>> build_strategy = static.BuildStrategy()
                         >>> build_strategy.sequential_run = True
           )DOC")
+      .def_property(
+          "fuse_resunit",
+          [](const BuildStrategy &self) { return self.fuse_resunit_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finalized, cannot be "
+                                  "configured again."));
+            self.fuse_resunit_ = b;
+#ifndef PADDLE_WITH_CUDNN_FRONTEND
+            if (self.fuse_resunit_) {
+              PADDLE_THROW(platform::errors::PreconditionNotMet(
+                  "Paddle is not built with CUDNN Frontend support."));
+            }
+#endif
+          },
+          R"DOC((bool, optional): fuse_resunit Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_resunit = True
+                     )DOC")
       .def_property(
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
@@ -873,7 +931,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
       .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) -> py::object {
-            if (self.memory_optimize_) {
+            if (self.memory_optimize_) {  // NOLINT
               return py::cast(self.memory_optimize_.get());
             } else {
               return py::cast(nullptr);

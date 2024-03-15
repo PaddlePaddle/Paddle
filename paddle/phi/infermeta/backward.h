@@ -123,6 +123,16 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           MetaTensor* logits_grad,
                                           MetaConfig config = MetaConfig());
 
+void CSoftmaxWithCrossEntropyGradInferMeta(const MetaTensor& softmax,
+                                           const MetaTensor& label,
+                                           const MetaTensor& loss_grad,
+                                           int64_t ignore_index,
+                                           int ring_id,
+                                           int rank,
+                                           int nranks,
+                                           MetaTensor* logits_grad,
+                                           MetaConfig config = MetaConfig());
+
 void DeformableConvGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& offset,
                                  const MetaTensor& filter,
@@ -191,6 +201,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
                             bool use_neox_rotary_style,
+                            bool time_major,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv);
@@ -302,6 +313,16 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
                                      float scale,
                                      MetaTensor* logits_grad);
 
+void MatchMatrixTensorGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& w,
+                                    const MetaTensor& tmp,
+                                    const MetaTensor& out_grad,
+                                    int dim_t,
+                                    MetaTensor* x_grad,
+                                    MetaTensor* y_grad,
+                                    MetaTensor* w_grad);
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
@@ -350,6 +371,13 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             const IntArray& axes,
                             bool keep_dim,
                             MetaTensor* x_grad);
+
+void NceGradInferMeta(const MetaTensor& input,
+                      const MetaTensor& bias,
+                      const MetaTensor& weight,
+                      MetaTensor* input_grad,
+                      MetaTensor* bias_grad,
+                      MetaTensor* weight_grad);
 
 void NllLossGradInferMeta(const MetaTensor& input,
                           const MetaTensor& label,
@@ -400,6 +428,11 @@ void RnnGradInferMeta(const MetaTensor& x,
                       std::vector<MetaTensor*> pre_state_grad,
                       std::vector<MetaTensor*> weight_grad_list);
 
+void RowConvGradInferMeta(const MetaTensor& out_grad,
+                          const MetaTensor& filter,
+                          MetaTensor* x_grad,
+                          MetaTensor* filter_grad);
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,
@@ -413,6 +446,11 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
                                MetaTensor* x_grad,
                                MetaTensor* updates_grad);
 
+void ShuffleBatchGradInferMeta(const MetaTensor& shuffle_idx,
+                               const MetaTensor& out_grad,
+                               int startup_seed,
+                               MetaTensor* x_grad);
+
 void SpectralNormGradInferMeta(const MetaTensor& weight,
                                const MetaTensor& u,
                                const MetaTensor& v,
@@ -425,6 +463,11 @@ void SpectralNormGradInferMeta(const MetaTensor& weight,
 void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,
                         std::vector<MetaTensor*> x_grad);
+
+void SwiGLUGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* x_grad,
+                         MetaTensor* y_grad);
 
 void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
@@ -454,6 +497,7 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& out_grad,
                                    const std::string& weight_dtype,
                                    const int32_t arch,
+                                   const int32_t group_size,
                                    MetaTensor* x_grad);
 
 void YoloLossGradInferMeta(const MetaTensor& x,
@@ -494,4 +538,5 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            const MetaTensor& values,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
+
 }  // namespace phi

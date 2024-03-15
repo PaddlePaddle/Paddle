@@ -818,7 +818,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Var_ *op) {
   // TODO(fc500110) hard coding
   if (LLVM_WillVarLowerAsPointer(op->name)) {
     result = value;
-  } else if (value->getType()->isPointerTy()) {
+  } else if (value->getType()->isPointerTy() &&
+             !value->getType()->getPointerElementType()->isPointerTy()) {
     result = Load(value, op->name + "_load");
   } else {
     result = value;
@@ -1394,7 +1395,7 @@ void CodeGenLLVM::InitTarget(const Target &target) {
 }
 
 bool LLVM_WillVarLowerAsPointer(const std::string &var_name) {
-  return var_name == "_args" || utils::Endswith(var_name, "__ptr");
+  return var_name == "_args" || utils::EndsWith(var_name, "__ptr");
 }
 
 void CodeGenLLVM::AddTbaaMetadata(llvm::Instruction *inst,

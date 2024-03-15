@@ -70,7 +70,7 @@ class TestAutoGenRuleBase : public ::testing::Test {
  protected:
   cinn::common::Target target_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
-  std::unique_ptr<backends::Compiler> backend_compier_;
+  std::unique_ptr<backends::Compiler> backend_compiler_;
 };
 
 /* @brief: Interface for checking function correctness.

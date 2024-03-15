@@ -170,7 +170,7 @@ class Categorical(distribution.Distribution):
         )
 
         # multinomial sample shape is (logits.shape[:-1], num_samples), need to
-        # tanspose to (num_samples, logits.shape[:-1])
+        # transpose to (num_samples, logits.shape[:-1])
         permute = list(range(sample_index.dim()))
         permute.insert(0, permute.pop(-1))
         sample_index = sample_index.transpose(permute)
@@ -273,7 +273,7 @@ class Categorical(distribution.Distribution):
 
         If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as
         category, and the others represents the different distributions.
-        At the same time, if ``vlaue`` is 1-D Tensor, ``value`` will be broadcast to the
+        At the same time, if ``value`` is 1-D Tensor, ``value`` will be broadcast to the
         same number of distributions as ``logits``.
         If ``value`` is not 1-D Tensor, ``value`` should have the same number distributions
         with ``logits. That is, ``value[:-1] = logits[:-1]``.

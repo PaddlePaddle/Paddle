@@ -23,6 +23,7 @@ import numpy as np
 
 import paddle
 from paddle import nn, profiler
+from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
@@ -38,10 +39,12 @@ from paddle.base.framework import (
     Parameter,
     Program,
     _current_expected_place as _get_device,
-    _global_flags,
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
+    in_pir_mode,
+    name_struct,
+    paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -266,14 +269,9 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-        if (use_mkldnn is not None) and use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if in_dygraph_mode():
-            res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
-            )
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
@@ -305,7 +303,7 @@ class LayerObjectHelper(LayerHelperBase):
             )
 
 
-class LayerOpsRecoder:
+class LayerOpsRecorder:
     """
     Record generated operators information in nn.Layer.
     """
@@ -408,17 +406,17 @@ class Layer:
         self._loaddict_holder = collections.OrderedDict()
 
         # Record generated op_descs in this layer
-        self._op_recorder = LayerOpsRecoder(ops=[], hooks=[])
+        self._op_recorder = LayerOpsRecorder(ops=[], hooks=[])
         self._customized_attrs = {}
 
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
 
         # only used in AMP Training
-        self._cast_to_low_precison = True
+        self._cast_to_low_precision = True
 
         self._state_dict_hooks = collections.OrderedDict()
-        # Records orignal functions after @to_static to support to rollback
+        # Records original functions after @to_static to support to rollback
         self._original_funcs = collections.OrderedDict()
 
     def train(self):
@@ -639,7 +637,7 @@ class Layer:
 
                 >>> # the forward_post_hook change the output of the layer: output = output * 2
                 >>> def forward_post_hook(layer, input, output):
-                ...     # user can use layer, input and output for information statistis tasks
+                ...     # user can use layer, input and output for information statistics tasks
                 ...
                 ...     # change the output
                 ...     return output * 2
@@ -693,7 +691,7 @@ class Layer:
 
                 >>> # the forward_pre_hook change the input of the layer: input = input * 2
                 >>> def forward_pre_hook(layer, input):
-                ...     # user can use layer and input for information statistis tasks
+                ...     # user can use layer and input for information statistics tasks
                 ...
                 ...     # change the input
                 ...     input_return = (input[0] * 2)
@@ -1001,7 +999,7 @@ class Layer:
             return self
         else:
             raise ValueError(
-                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but recieve "
+                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but receive "
                 + str(dtype)
             )
 
@@ -1142,7 +1140,9 @@ class Layer:
                  [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
                  0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
-        params_set = set()
+        params_set = (
+            ValueSet() if in_pir_mode() and not in_to_static_mode() else set()
+        )
         named_sublayers = (
             self.named_sublayers(prefix=prefix, include_self=True)
             if include_sublayers
@@ -1407,7 +1407,8 @@ class Layer:
             ):
                 outputs = self.forward(*inputs, **kwargs)
         else:
-            outputs = self.forward(*inputs, **kwargs)
+            with name_struct(self.__class__.__name__):
+                outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
@@ -1678,7 +1679,7 @@ class Layer:
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
         elif (
-            isinstance(value, paddle.pir.OpResult)
+            isinstance(value, paddle.pir.Value)
             and value.get_defining_op().name() == 'builtin.parameter'
         ):
             if params is None:
@@ -1733,7 +1734,7 @@ class Layer:
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
                     # value via `assign`.
                     if type(value) == framework.Variable or isinstance(
-                        value, paddle.pir.OpResult
+                        value, paddle.pir.Value
                     ):
                         from paddle import assign
 
@@ -1951,7 +1952,7 @@ class Layer:
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
-        Retruns:
+        Returns:
             dict, a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -1988,7 +1989,7 @@ class Layer:
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
-        Retruns:
+        Returns:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -2049,7 +2050,7 @@ class Layer:
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
-                        f"{key} receieves the length of {len(state)}, "
+                        f"{key} receives the length of {len(state)}, "
                         f"but the expected shape is {len(param)}"
                     )
                 else:
@@ -2074,6 +2075,8 @@ class Layer:
 
         matched_param_state = []
         for key, param in self._state_dict_impl(use_hook=False).items():
+            if isinstance(param, paddle.Tensor) and not param._is_initialized():
+                continue
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
@@ -2124,7 +2127,7 @@ class Layer:
                     _set_var(param, state)
             except ValueError as e:
                 raise ValueError(
-                    "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
 
         return missing_keys, unexpected_keys
@@ -2221,14 +2224,19 @@ class Layer:
         if dtype is None:
             dtype = t.dtype
 
-        if type(dtype) is not VarDesc.VarType:
+        if not isinstance(dtype, (VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         # 1. gpu place need to determine whether the memory is sufficient for allocation:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
-            size_dtype = core.size_of_dtype(dtype)
-            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
+            proto_dtype = (
+                paddle_type_to_proto_type[dtype]
+                if isinstance(dtype, core.DataType)
+                else dtype
+            )
+            size_dtype = core.size_of_dtype(proto_dtype)
+            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will compute ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (
                 ((np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
@@ -2262,7 +2270,11 @@ class Layer:
         # 4. share Tensor to origin param / Tensor
         dst_tensor = t.value().get_tensor()
         src_tensor = new_t.value().get_tensor()
-        dst_tensor._share_data_with(src_tensor)
+        if t._is_initialized():
+            dst_tensor._share_data_with(src_tensor)
+        else:
+            # If the tensor is not initialized, we can't check the memory size.
+            dst_tensor._share_data_nocheck_with(src_tensor)
 
         return t
 
@@ -2339,7 +2351,7 @@ class Layer:
 
     def _startup_program(self):
         """
-        Return starup program containing initialization operations of all parameters.
+        Return startup program containing initialization operations of all parameters.
 
         NOTE(dev): This is a very low level API and only for inner developer.
         """

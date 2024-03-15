@@ -16,18 +16,25 @@
 set -e
 
 export log_path=/workspace/case_logs
-export case_path=/workspace/Paddle/test/auto_parallel/hybrid_strategy
+export auto_case_path=/workspace/Paddle/test/auto_parallel/hybrid_strategy
+export dygraph_case_path=/workspace/Paddle/test/collective/hybrid_strategy
 
 function case_list_unit() {
     if [ ! -f "testslist.csv" ]; then
         echo "文件 testslist.csv 不存在"
         exit -1
     fi
-    
+
+    target_key=${1:-"all"}
     for ((i=2; i<=`awk -F, 'END {print NR}' testslist.csv`; i++)); do
         item=`awk -F, 'NR=='$i' {print}' testslist.csv`
         case_name=`awk -F, 'NR=='$i' {print $1}' testslist.csv`
-        echo "=========== $case_name run  begin ==========="
+        if [[ ${target_key} != "all" ]] && [[ ! ${case_name} =~ ${target_key} ]]; then
+            echo "=========== skip $case_name run  ==========="
+            continue
+        else
+            echo "=========== $case_name run  begin ==========="
+        fi
         if [[ $item =~ PYTHONPATH=([^,;]*)([,;]|$) ]]; then
             substring="${BASH_REMATCH[1]}"
             echo "PYTHONPATH=$substring"
@@ -42,9 +49,21 @@ function case_list_unit() {
 }
 
 main() {
-    echo -e "\033[31m ---- Start executing unit_test case \033[0m"
-    cd ${case_path}
-    case_list_unit
+    export exec_case=$1
+    echo -e "\033[31m ---- Start executing $exec_case case \033[0m"
+
+    if [[ $exec_case == "auto_unit_test" ]];then
+        cd ${auto_case_path}
+        case_list_unit
+    elif [[ $exec_case == "dygraph_unit_test" ]];then
+        cd ${dygraph_case_path}
+        case_list_unit
+    elif [[ $exec_case == "llama_auto_unit_test" ]];then
+        cd ${auto_case_path}
+        case_list_unit llama
+    else
+        echo -e "\033[31m ---- Invalid exec_case $exec_case \033[0m"
+    fi
 }
 
-main$@
+main $@

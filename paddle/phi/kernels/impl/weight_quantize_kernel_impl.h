@@ -42,9 +42,9 @@ inline T xabs(const T x) {
   return x < static_cast<T>(0.0) ? -x : x;
 }
 
-template <typename T>
+template <typename T, typename ScaleT>
 void per_channel_scale(
-    T* scale, const T* input, size_t m, size_t n, float bound) {
+    ScaleT* scale, const T* input, size_t m, size_t n, float bound) {
   for (size_t i = 0; i < n; ++i) {
     float max = static_cast<float>(input[i]);
     for (size_t j = 0; j < m; ++j) {
@@ -52,14 +52,35 @@ void per_channel_scale(
                 ? static_cast<float>(xabs(input[j * n + i]))
                 : max;
     }
-    scale[i] = static_cast<T>(max / bound);
+    scale[i] = static_cast<ScaleT>(max / bound);
   }
 }
 
-template <typename T, int quant_bit = 8>
+template <typename T, typename ScaleT>
+void group_wise_scale(ScaleT* scale,
+                      const T* input,
+                      size_t m,
+                      size_t n,
+                      float bound,
+                      size_t group_size) {
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = 0; j < m; j += group_size) {
+      float max = static_cast<float>(0.f);
+      for (size_t k = 0; k < group_size && j + k < m; ++k) {
+        max = static_cast<float>(xabs(input[(j + k) * n + i])) > max
+                  ? static_cast<float>(xabs(input[(j + k) * n + i]))
+                  : max;
+      }
+      scale[static_cast<int>(j / group_size) * n + i] =
+          static_cast<ScaleT>(max / bound);
+    }
+  }
+}
+
+template <typename T, int quant_bit = 8, typename ScaleT>
 void per_channel_quant(int8_t* output,
                        const T* input,
-                       const T* scale,
+                       const ScaleT* scale,
                        size_t num_rows,
                        size_t num_cols) {
   size_t bytes_per_out_col = num_cols * quant_bit / 8;
@@ -81,6 +102,55 @@ void per_channel_quant(int8_t* output,
           const size_t input_idx = 2 * jj + packed_idx;
           if (input_idx < num_cols) {
             const float col_scale = static_cast<float>(scale[input_idx]);
+            const float weight_elt =
+                static_cast<float>(current_weight_row[input_idx]);
+            const float scaled_weight = round(weight_elt / col_scale);
+            int int_weight = static_cast<int>(scaled_weight);
+            const int8_t clipped_weight = std::max(-7, std::min(7, int_weight));
+
+            // Kill the sign extension bits (hence 0x0F mask) then shift to
+            // upper bits if packing the second int4 and or the bits into the
+            // final result.
+            packed_int4s |= ((clipped_weight & 0x0F) << (4 * packed_idx));
+          }
+        }
+        current_quantized_weight_row[jj] = packed_int4s;
+      } else {
+        phi::errors::Unimplemented("Unsupported quantization bits: %d",
+                                   quant_bit);
+      }
+    }
+  }
+}
+
+template <typename T, int quant_bit = 8, typename ScaleT>
+void group_wise_quant(int8_t* output,
+                      const T* input,
+                      const ScaleT* scale,
+                      size_t num_rows,
+                      size_t num_cols,
+                      const int group_size) {
+  size_t bytes_per_out_col = num_cols * quant_bit / 8;
+  for (size_t ii = 0; ii < num_rows; ++ii) {
+    int8_t* current_quantized_weight_row = output + ii * bytes_per_out_col;
+    const T* current_weight_row = input + ii * num_cols;
+    for (size_t jj = 0; jj < bytes_per_out_col; ++jj) {
+      if (quant_bit == 8) {
+        size_t scale_cur_offset = jj + (ii / group_size) * num_cols;
+        const float col_scale = static_cast<float>(scale[scale_cur_offset]);
+        const float weight_elt = static_cast<float>(current_weight_row[jj]);
+        const float scaled_weight = round(weight_elt / col_scale);
+        const int8_t clipped_weight = static_cast<int8_t>(
+            std::max(-127.f, std::min(127.f, scaled_weight)));
+        current_quantized_weight_row[jj] = clipped_weight;
+      } else if (quant_bit == 4) {
+        // We will pack two int4 elements per iteration of the inner loop.
+        int8_t packed_int4s = 0;
+        for (int packed_idx = 0; packed_idx < 2; ++packed_idx) {
+          const size_t input_idx = 2 * jj + packed_idx;
+          if (input_idx < num_cols) {
+            size_t scale_cur_offset = input_idx + (ii / group_size) * num_cols;
+            const float col_scale = static_cast<float>(scale[scale_cur_offset]);
             const float weight_elt =
                 static_cast<float>(current_weight_row[input_idx]);
             const float scaled_weight = round(weight_elt / col_scale);

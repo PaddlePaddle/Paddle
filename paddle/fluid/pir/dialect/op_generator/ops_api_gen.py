@@ -20,11 +20,11 @@ from api_gen import NAMESPACE_TEMPLATE, CodeGen
 CPP_FILE_TEMPLATE = """
 #include <pybind11/pybind11.h>
 
-#include "paddle/fluid/pybind/static_op_function.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/pybind/eager_op_function.h"
 #include "paddle/fluid/pybind/manual_static_op_function.h"
+#include "paddle/fluid/pybind/static_op_function.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/fluid/eager/api/utils/global_utils.h"
 
 {body}
 
@@ -69,19 +69,22 @@ OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
 NEED_GEN_STATIC_ONLY_APIS = [
+    'distributed_fused_lamb_init',
+    'distributed_fused_lamb_init_',
     'fetch',
-    'fused_bias_dropout_residual_layer_norm',
     'fused_embedding_eltwise_layernorm',
     'fused_fc_elementwise_layernorm',
     'fused_multi_transformer_xpu',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'fused_dconv_drelu_dbn',
+    'fused_dot_product_attention',
     'fusion_transpose_flatten_concat',
     'skip_layernorm',
     'generate_sequence_xpu',
     'layer_norm_act_xpu',
     'memcpy',
+    'memcpy_d2h_multi_io',
     'batch_norm_',
     'multi_encoder_xpu',
     'multihead_matmul',
@@ -99,37 +102,86 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'self_dp_attention',
     'get_tensor_from_selected_rows',
     'print',
-    'sequence_mask',
+    'number_count',
+    'assign_value',
+    'share_data',
+    'onednn_to_paddle_layout',
+    'lrn',
+    'multi_gru',
+    'matmul_with_flatten',
+    'moving_average_abs_max_scale',
+    'moving_average_abs_max_scale_',
+    'quantize_linear',
+    'quantize_linear_',
+    'dequantize_linear',
+    'dequantize_linear_',
+    'coalesce_tensor_',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
-    'add_n_with_kernel',
-    'assign_value',
+    'all_reduce',
+    'all_reduce_',
     'c_allgather',
+    'c_allreduce_avg',
+    'c_allreduce_avg_',
     'c_allreduce_max',
+    'c_allreduce_min',
+    'c_allreduce_min_',
     'c_allreduce_sum',
+    'c_allreduce_prod',
+    'c_allreduce_prod_',
     'c_embedding',
     'c_identity',
     'c_reduce_sum',
     'c_reducescatter',
+    'c_softmax_with_cross_entropy',
+    'c_split',
     'decayed_adagrad',
+    'distributed_lookup_table',
     'dpsgd',
     'embedding_grad_sparse',
+    'ftrl',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
     'fused_elemwise_add_activation',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'fused_dconv_drelu_dbn',
+    'fused_dot_product_attention',
+    'nce',
+    'lars_momentum',
+    'lars_momentum_',
+    'max_pool2d_v2',
+    'random_routing',
     'recv_v2',
     'rnn_',
+    'row_conv',
     'seed',
     'send_v2',
     'shadow_feed',
+    'shadow_feed_tensors',
+    'shuffle_batch',
     'sparse_momentum',
+    'tdm_sampler',
     'soft_relu',
     'uniform_random_batch_size_like',
+    'match_matrix_tensor',
+    'c_reduce_avg',
+    'c_reduce_avg_',
+    'c_reduce_max',
+    'c_reduce_max_',
+    'c_reduce_min',
+    'c_reduce_min_',
+    'c_reduce_prod',
+    'c_reduce_prod_',
+    'c_scatter',
+    'push_sparse_v2',
+    'push_sparse_v2_',
+    'partial_send',
+    'partial_recv',
+    'nop',
+    'nop_',
 ]
 
 

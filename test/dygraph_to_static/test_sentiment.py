@@ -15,12 +15,11 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 from test_lac import DynamicGRU
 
 import paddle
 from paddle import base
-from paddle.base.dygraph import to_variable
 from paddle.nn import Embedding, Linear
 
 SEED = 2020
@@ -172,7 +171,7 @@ class GRU(paddle.nn.Layer):
             sparse=False,
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
-        h_0 = to_variable(h_0)
+        h_0 = paddle.to_tensor(h_0)
         self._fc1 = Linear(self.hid_dim, self.hid_dim * 3)
         self._fc2 = Linear(self.hid_dim, self.fc_hid_dim)
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
@@ -219,7 +218,7 @@ class BiGRU(paddle.nn.Layer):
             sparse=False,
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
-        h_0 = to_variable(h_0)
+        h_0 = paddle.to_tensor(h_0)
         self._fc1 = Linear(self.hid_dim, self.hid_dim * 3)
         self._fc2 = Linear(self.hid_dim * 2, self.fc_hid_dim)
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
@@ -297,8 +296,7 @@ class Args:
     train_step = 10
 
 
-def train(args, to_static):
-    paddle.jit.enable_to_static(to_static)
+def train(args):
     np.random.seed(SEED)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
@@ -373,8 +371,9 @@ class TestSentiment(Dy2StTestBase):
 
     def train_model(self, model_type='cnn_net'):
         self.args.model_type = model_type
-        st_out = train(self.args, True)
-        dy_out = train(self.args, False)
+        st_out = train(self.args)
+        with enable_to_static_guard(False):
+            dy_out = train(self.args)
         np.testing.assert_allclose(
             dy_out,
             st_out,

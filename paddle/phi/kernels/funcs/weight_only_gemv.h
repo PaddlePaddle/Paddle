@@ -19,15 +19,18 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void GemvWeightonlyInt8Wrapper(const Context& ctx,
-                               const T* x,
-                               const int8_t* weight,
-                               const T* bias,
-                               const T* weight_scale,
-                               const int m,
-                               const int n,
-                               const int k,
-                               const std::string& act_method,
-                               T* output);
+void WeightOnlyGemvWrapper(const Context& dev_ctx,
+                           const T* input,
+                           const int8_t* weight,
+                           const T* bias,
+                           const T* scales,
+                           int m,
+                           int n,
+                           int k,
+                           int group_size,
+                           const std::string& weight_only_quant_type,
+                           const std::string& weight_only_type,
+                           const std::string& act_method,
+                           T* output);
 
 }  // namespace phi

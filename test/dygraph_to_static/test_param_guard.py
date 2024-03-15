@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -60,25 +61,25 @@ class TestParameterList(Dy2StTestBase):
         self.seed = 2021
         self.iter_num = 5
 
-    def train(self, is_iter, to_static):
+    def train(self, is_iter, to_static: bool):
         paddle.seed(self.seed)
         np.random.seed(self.seed)
-        paddle.jit.enable_to_static(to_static)
-        if is_iter:
-            net = paddle.jit.to_static(NetWithParameterList(10, 3))
-        else:
-            net = paddle.jit.to_static(NetWithParameterListIter(10, 3))
-        sgd = paddle.optimizer.SGD(0.1, parameters=net.parameters())
+        with enable_to_static_guard(to_static):
+            if is_iter:
+                net = paddle.jit.to_static(NetWithParameterList(10, 3))
+            else:
+                net = paddle.jit.to_static(NetWithParameterListIter(10, 3))
+            sgd = paddle.optimizer.SGD(0.1, parameters=net.parameters())
 
-        for batch_id in range(self.iter_num):
-            x = paddle.rand([4, 10], dtype='float32')
-            out = net(x)
-            loss = paddle.mean(out)
-            loss.backward()
-            sgd.step()
-            sgd.clear_grad()
+            for batch_id in range(self.iter_num):
+                x = paddle.rand([4, 10], dtype='float32')
+                out = net(x)
+                loss = paddle.mean(out)
+                loss.backward()
+                sgd.step()
+                sgd.clear_grad()
 
-        return loss
+            return loss
 
     @test_legacy_and_pt_and_pir
     def test_parameter_list(self):
@@ -114,23 +115,23 @@ class TestRawParameterList(Dy2StTestBase):
     def init_net(self):
         self.net = paddle.jit.to_static(NetWithRawParamList(10, 3))
 
-    def train(self, to_static):
+    def train(self, to_static: bool):
         paddle.seed(self.seed)
         np.random.seed(self.seed)
-        paddle.jit.enable_to_static(to_static)
-        self.init_net()
+        with enable_to_static_guard(to_static):
+            self.init_net()
 
-        sgd = paddle.optimizer.SGD(0.1, parameters=self.net.parameters())
+            sgd = paddle.optimizer.SGD(0.1, parameters=self.net.parameters())
 
-        for batch_id in range(self.iter_num):
-            x = paddle.rand([4, 10], dtype='float32')
-            out = self.net(x)
-            loss = paddle.mean(out)
-            loss.backward()
-            sgd.step()
-            sgd.clear_grad()
+            for batch_id in range(self.iter_num):
+                x = paddle.rand([4, 10], dtype='float32')
+                out = self.net(x)
+                loss = paddle.mean(out)
+                loss.backward()
+                sgd.step()
+                sgd.clear_grad()
 
-        return loss
+            return loss
 
     @test_legacy_and_pt_and_pir
     def test_parameter_list(self):

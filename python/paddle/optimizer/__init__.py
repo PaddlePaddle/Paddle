@@ -18,11 +18,13 @@ from .adagrad import Adagrad
 from .adam import Adam
 from .adamax import Adamax
 from .adamw import AdamW
+from .asgd import ASGD
 from .lamb import Lamb
 from .lbfgs import LBFGS
 from .momentum import Momentum
 from .optimizer import Optimizer
 from .rmsprop import RMSProp
+from .rprop import Rprop
 from .sgd import SGD
 
 __all__ = [
@@ -31,9 +33,11 @@ __all__ = [
     'Adam',
     'AdamW',
     'Adamax',
+    'ASGD',
     'RMSProp',
     'Adadelta',
     'SGD',
+    'Rprop',
     'Momentum',
     'Lamb',
     'LBFGS',

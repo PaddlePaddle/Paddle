@@ -65,7 +65,7 @@ class SequenceParallelOptimizationPass(PassBase):
         with paddle.static.program_guard(main_program, startup_program):
             # TODO remove this pass when we use local reshard for all communication
             self._fuse_allreduce_split()
-            self._memory_opimization()
+            self._memory_optimization()
             self._overlap()
 
     def _fuse_allreduce_split(self):
@@ -145,7 +145,10 @@ class SequenceParallelOptimizationPass(PassBase):
             )
             ref_process_mesh = allreduce_input_dist_attr.process_mesh
             naive_set_dist_op_attr_for_program_by_mesh(
-                new_op, ref_process_mesh, self.dist_context
+                new_op,
+                ref_process_mesh,
+                self.dist_context,
+                chunk_id=allreduce_input_dist_attr.chunk_id,
             )
 
         # remove vars
@@ -154,7 +157,7 @@ class SequenceParallelOptimizationPass(PassBase):
 
         block._sync_with_cpp()
 
-    def _memory_opimization(self):
+    def _memory_optimization(self):
         pass
 
     def _overlap(self):

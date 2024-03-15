@@ -87,7 +87,7 @@ class RollOpConverter : public OpConverter {
       }
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "roll", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "roll", {output_name}, test_mode);
   }
 };
 

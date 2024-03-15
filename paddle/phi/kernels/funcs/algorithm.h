@@ -18,7 +18,7 @@
 #include <cstdint>  // for int64_t
 #include <numeric>
 
-#include "paddle/phi/core/hostdevice.h"
+#include "paddle/common/hostdevice.h"
 
 namespace phi {
 namespace funcs {

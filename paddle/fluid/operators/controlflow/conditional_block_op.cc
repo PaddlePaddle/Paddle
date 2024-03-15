@@ -15,15 +15,15 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 #include <array>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
-#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
@@ -103,6 +103,9 @@ class ConditionalBlockOp : public ConditionalOp {
                                                       dev_place);
 
         framework::interpreter::ExecutionConfig execution_config;
+        if (HasAttr("used_for_inference") && Attr<bool>("used_for_inference")) {
+          execution_config.used_for_inference = true;
+        }
         execution_config.create_local_scope = false;
         execution_config.used_for_control_flow_op = true;
         execution_config.skip_gc_vars =
@@ -113,6 +116,8 @@ class ConditionalBlockOp : public ConditionalOp {
 #endif
         core_.reset(new InterpreterCore(
             dev_place, *block, &cur_scope, execution_config));
+        core_->SetOutputHooks(output_hookfuncs_);
+        core_->SetInputHooks(input_hookfuncs_);
         VLOG(10) << "[interpreterCore] created:" << core_;
       } else {
         BuildScopeForControlFlowOp(*core_, *block, &cur_scope);

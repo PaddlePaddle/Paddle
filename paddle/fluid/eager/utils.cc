@@ -133,7 +133,7 @@ std::vector<AutogradMeta*> EagerUtils::autograd_meta(
   std::vector<AutogradMeta*> ret;
   ret.reserve(targets->size());
 
-  // for autograd_meta we can tolerent it has nullptr.
+  // for autograd_meta we can tolerate it has nullptr.
   for (auto& target : *targets) {
     auto* p_autograd_meta = autograd_meta(&target);
     ret.emplace_back(p_autograd_meta);
@@ -146,7 +146,7 @@ std::vector<AutogradMeta*> EagerUtils::autograd_meta(
   std::vector<AutogradMeta*> ret;
   ret.reserve(targets->size());
 
-  // for autograd_meta we can tolerent it has nullptr.
+  // for autograd_meta we can tolerate it has nullptr.
   for (auto& target : *targets) {
     auto* p_autograd_meta = autograd_meta(target);
     ret.emplace_back(p_autograd_meta);
@@ -506,7 +506,7 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "GetGradAccumulationNode should only be called on leaf tensor, but "
             "target tensor: %s has GradNode which is not a "
-            "GradNodeAccumulation, and this should not happend unless target "
+            "GradNodeAccumulation, and this should not happened unless target "
             "tensor is modified by some ops and calling set history for it.",
             tensor.name()));
       }
@@ -617,6 +617,13 @@ void EagerUtils::FillZeroForEmptyGradInput(paddle::Tensor* in_grad,
         *(static_cast<phi::distributed::DistTensor*>(in_grad->impl().get())
               ->unsafe_mutable_value()) =
             *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+      } else {
+        *(static_cast<phi::distributed::DistTensor*>(in_grad->impl().get())
+              ->unsafe_mutable_value()) =
+            phi::DenseTensor(
+                std::make_shared<phi::Allocation>(
+                    nullptr, 0, phi::distributed::GetDefaultPlace()),
+                phi::DenseTensorMeta());
       }
     } else {
       auto tensor_with_zero =
@@ -770,9 +777,11 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                 "%s, Local Shape: %s", t.dims(), dist_t->local_dims()),
             dist_t->dist_attr());
       } else {
+        // NOTE: If the tensor is a dist-tensor, it's place may be `unknown` in
+        // the no-calculation rank.
         tensor_info_str += paddle::string::Sprintf(DIST_TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
-                                                   "Unknown",
+                                                   t.dtype(),
                                                    "Unknown",
                                                    dist_t->defined(),
                                                    dist_t->initialized(),

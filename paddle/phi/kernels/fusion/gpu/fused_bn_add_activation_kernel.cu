@@ -21,10 +21,10 @@
 #include "cub/cub.cuh"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -32,7 +32,7 @@
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/fused_bn_add_activation_kernel.h"
 
-PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace phi {
 namespace fusion {

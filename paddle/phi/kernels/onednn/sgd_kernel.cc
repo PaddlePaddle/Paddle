@@ -20,6 +20,22 @@
 
 namespace phi {
 
+bool SgdCheckIfOneDNNSupport(const KernelContext* ctx) {
+  if (DenseTensor::classof(ctx->MutableIutputAt(0)) &&
+      DenseTensor::classof(ctx->MutableIutputAt(2))) {
+    return true;
+  }
+  return false;
+}
+
+bool SgdSparseCheckIfOneDNNSupport(const KernelContext* ctx) {
+  if (DenseTensor::classof(ctx->MutableIutputAt(0)) &&
+      SelectedRows::classof(ctx->MutableIutputAt(2))) {
+    return true;
+  }
+  return false;
+}
+
 template <typename T, typename Context>
 void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
@@ -82,11 +98,15 @@ void SGDDenseParamSparseGradKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sgd, OneDNN, ONEDNN, phi::SGDDenseKernel, float, phi::dtype::bfloat16) {}
+    sgd, OneDNN, ONEDNN, phi::SGDDenseKernel, float, phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::SgdCheckIfOneDNNSupport;
+}
 
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    OneDNN,
                    ONEDNN,
                    phi::SGDDenseParamSparseGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::SgdSparseCheckIfOneDNNSupport;
+}

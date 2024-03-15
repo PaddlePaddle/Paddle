@@ -13,15 +13,18 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include "glog/logging.h"
 
-#include "paddle/cinn/adt/graph_symbolic_dim_infer_ctx.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 
@@ -34,8 +37,17 @@ namespace framework {
 namespace pir {
 using framework::OpPatternKind;
 
-// TODO(Aurelius84): Need to be replaced with CinnGroupOp
 struct Group {
+  // Control the clone strategy for Group.
+  class Options {
+   public:
+    Options() : only_clone_ops(true) {}
+    bool OnlyCloneOps() const { return only_clone_ops; }
+
+   private:
+    bool only_clone_ops = false;
+  };
+
  public:
   Group() = default;
   Group(const Group&) = delete;
@@ -46,6 +58,33 @@ struct Group {
 
   explicit Group(std::initializer_list<::pir::Operation*> group_ops)
       : ops(group_ops) {}
+
+  std::shared_ptr<Group> Clone(::pir::Block* target_block,
+                               ::pir::IrMapping& ir_mapping,
+                               const Options& option = Options()) const;
+
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
+      const ::pir::Value& value) const {
+    CHECK(value_to_shape_or_data_exprs_.count(value))
+        << "value not found in value_to_shape_or_data_exprs_";
+    return value_to_shape_or_data_exprs_.at(value);
+  }
+
+  void SetShapeOrDataExprs(const ::pir::Value& value,
+                           const symbol::ShapeOrDataDimExprs& shape_or_data) {
+    auto iter = value_to_shape_or_data_exprs_.find(value);
+    if (iter == value_to_shape_or_data_exprs_.end()) {
+      value_to_shape_or_data_exprs_.emplace(value, shape_or_data);
+    } else {
+      iter->second = shape_or_data;
+    }
+  }
+
+  void set_value_to_shape_or_data_exprs(
+      const std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>&
+          value_to_shape_or_data_exprs) {
+    value_to_shape_or_data_exprs_ = value_to_shape_or_data_exprs;
+  }
 
   // distance to last group.
   int depth{0};
@@ -75,14 +114,19 @@ struct Group {
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
 
-  std::shared_ptr<::pir::ShapeConstraintIRAnalysis> shape_analysis = nullptr;
-
   // for op lowering.
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
   std::vector<::pir::Value> output_values;
   std::string fn_name{""};
   std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
+
+  std::unordered_map<::pir::Operation*,
+                     std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>
+      alignment_schedule_info;
+  std::vector<int64_t> reduce_axis;
+  std::vector<int64_t> loop_ranges;
+  std::vector<symbol::DimExpr> loop_ranges_expr;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -140,7 +184,7 @@ struct Group {
           continue;
         }
 
-        if (!ops_set.count(value.dyn_cast<::pir::OpResult>().owner())) {
+        if (!ops_set.count(value.defining_op())) {
           // if the input value owner op is not in OpSet, it's the group's input
           group_inputs.insert(value);
           continue;
@@ -166,7 +210,35 @@ struct Group {
     return group_outputs;
   }
 
+  const std::vector<::pir::Value>& GetGroupOutputValues() const {
+    return this->output_values;
+  }
+
   std::string GetFuncName() { return "fn_" + group_id + unique_id; }
+
+  std::vector<::pir::Value> GenerateGroupOutputValues() const {
+    std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
+                                                        this->ops.end());
+
+    std::vector<::pir::Value> output_values;
+    for (auto* op : this->ops) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        auto result = op->result(i);
+        if (!result) {
+          continue;
+        }
+        for (auto use_iter = result.use_begin(); use_iter != result.use_end();
+             ++use_iter) {
+          auto* use_op = use_iter->owner();
+          if (group_ops_set.find(use_op) == group_ops_set.end()) {
+            output_values.push_back(result);
+            break;
+          }
+        }
+      }
+    }
+    return output_values;
+  }
 
   std::shared_ptr<adt::MapExprCtx> mut_map_expr_ctx() {
     CHECK_NOTNULL(map_expr_ctx_);
@@ -179,22 +251,6 @@ struct Group {
 
   void set_map_expr_ctx(const std::shared_ptr<adt::MapExprCtx>& map_expr_ctx) {
     map_expr_ctx_ = map_expr_ctx;
-  }
-
-  void set_graph_symbolic_dim_infer_ctx(
-      std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>&&
-          graph_symbolic_dim_infer_ctx) {
-    CHECK_EQ(this, graph_symbolic_dim_infer_ctx->group());
-    graph_symbolic_dim_infer_ctx_ = std::move(graph_symbolic_dim_infer_ctx);
-  }
-
-  const adt::config::GraphSymbolicDimInferCtx* graph_symbolic_dim_infer_ctx()
-      const {
-    return graph_symbolic_dim_infer_ctx_.get();
-  }
-
-  adt::config::GraphSymbolicDimInferCtx* mut_graph_symbolic_dim_infer_ctx() {
-    return graph_symbolic_dim_infer_ctx_.get();
   }
 
  public:
@@ -248,9 +304,12 @@ struct Group {
                      SharedGroupComparator>
       consumer_groups_;
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
-  std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>
-      graph_symbolic_dim_infer_ctx_;
+
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_exprs_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Group& group);
 
 }  // namespace pir
 }  // namespace framework

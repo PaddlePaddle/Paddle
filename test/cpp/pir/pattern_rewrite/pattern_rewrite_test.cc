@@ -20,6 +20,7 @@
 #include <sstream>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -30,30 +31,30 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
-
-#include "paddle/common/enforce.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/cast_utils.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/op_info.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/cast_utils.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/op_info.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
@@ -66,6 +67,7 @@ PD_DECLARE_KERNEL(reshape, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(fetch, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(conv2d, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(transpose, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cummax, CPU, ALL_LAYOUT);
 
 // Define op1.
 class Operation1 : public pir::Op<Operation1> {
@@ -82,17 +84,19 @@ void Operation1::VerifySig() {
   auto &attributes = this->attributes();
   if (attributes.count("op2_attr1") == 0 ||
       (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op2_attr2") == 0 ||
       (!attributes.at("op2_attr2").isa<pir::StrAttribute>())) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Type of attribute: parameter_name is not right."));
   }
 }
 const char *Operation1::attributes_name[attributes_num] = {  // NOLINT
     "op2_attr1",
     "op2_attr2"};
-IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
@@ -107,7 +111,7 @@ class TestDialect : public pir::Dialect {
  private:
   void initialize() { RegisterOps<Operation1>(); }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 // TODO(wilber): Add logical when ir support erase, replace or update.
@@ -215,7 +219,7 @@ class RedundantTransposeFusePattern
     if (prev_trans_op) {
       std::vector<int> axis_first = GetAxis(prev_trans_op);
       IR_ENFORCE(axis_first.size() == axis_last.size(),
-                 "tranpose op's perm rank should be same.");
+                 "transpose op's perm rank should be same.");
       auto new_perm = GetPerm(axis_first, axis_last);
       rewriter.set_insertion_point(op);
       auto new_transpose_op = rewriter.Build<paddle::dialect::TransposeOp>(
@@ -399,20 +403,25 @@ TEST(pattern_rewrite, Patterns) {
   pm.AddPass(pir::CreateConv2dBnFusePass());
   pm.AddPass(pir::CreateConv2dAddActFusePass());
   pm.AddPass(pir::CreateConv2dAddFusePass());
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
-  //   pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       true,
-  //       true));
+  // pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     true,
+  //     true));
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 17u);
@@ -437,8 +446,8 @@ void BuildConstantFoldingProgram(pir::Program *program,
       paddle::platform::DeviceContextPool::Instance().Get(
           paddle::platform::CPUPlace());
 
-  auto op1 = builder.Build<pir::ParameterOp>("a", dense_tensor_dtype);
-  auto op2 = builder.Build<pir::ParameterOp>("b", dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ConstantTensorOp>("a", dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ConstantTensorOp>("b", dense_tensor_dtype);
 
   auto op3 =
       builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
@@ -472,12 +481,42 @@ TEST(constant_folding, ConstantFolding) {
   BuildConstantFoldingProgram(&program, ctx, &scope);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, &scope);
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 2u);
+}
+
+TEST(constant_folding, ConstantFolding_Train) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  paddle::framework::Scope scope;
+  BuildConstantFoldingProgram(&program, ctx, &scope);
+
+  pir::PassManager pm(ctx);
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, &scope);
+  constant_folding_pass->Set("train_mode", new bool(true));
+
+  pm.AddPass(std::move(constant_folding_pass));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 4u);
 }
 
 void BuildConcatProgram(pir::Program *program, pir::IrContext *ctx) {
@@ -534,11 +573,57 @@ TEST(constant_folding, ConstantFolding_Combine) {
   BuildConcatProgram(&program, ctx);
 
   pir::PassManager pm(ctx);
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 12u);
+  EXPECT_EQ(program.block()->size(), 2u);
+}
+
+void BuildMultiOutputProgram(pir::Program *program, pir::IrContext *ctx) {
+  pir::Builder builder = pir::Builder(ctx, program->block());
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({2, 2}),
+                                               2.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+
+  auto cummax_op = builder.Build<paddle::dialect::CummaxOp>(x, 0);
+
+  auto out = cummax_op.out();
+  auto indices = cummax_op.indices();
+
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(indices, "indices", 1);
+}
+
+TEST(constant_folding, ConstantFolding_MultiOutput) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  BuildMultiOutputProgram(&program, ctx);
+
+  pir::PassManager pm(ctx);
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 4u);
 }

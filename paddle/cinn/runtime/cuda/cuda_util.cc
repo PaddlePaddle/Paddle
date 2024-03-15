@@ -78,7 +78,7 @@ class CublasHandle {
   cublasHandle_t cuhandle;
 };
 
-int32_t cinn_get_value_in_cuda_kernel_args(void *v_args, int idx) {
+int64_t cinn_get_value_in_cuda_kernel_args(void *v_args, int idx) {
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
   return args[idx].operator int64_t();
 }
@@ -92,10 +92,12 @@ void cinn_call_cuda_kernel(void *kernel_fn,
                            int block_x,
                            int block_y,
                            int block_z,
+                           int shared_memory_bytes,
                            void *stream) {
   VLOG(3) << "cinn_call_cuda_kernel, grid_dim={" << grid_x << ", " << grid_y
           << ", " << grid_z << "}, block_dim={" << block_x << ", " << block_y
           << ", " << block_z << "}, num_args=" << num_args
+          << ", shared_memory_bytes=" << shared_memory_bytes
           << ", stream=" << stream;
 
   std::vector<void *> kernel_args;
@@ -124,7 +126,7 @@ void cinn_call_cuda_kernel(void *kernel_fn,
                                     block_x,
                                     block_y,
                                     block_z,
-                                    0,  // share memory
+                                    shared_memory_bytes,
                                     static_cast<CUstream>(stream),
                                     kernel_args.data(),
                                     nullptr))
@@ -479,7 +481,7 @@ void cinn_call_batched_cublas(void *v_args,
     void *B = args[1 + g].operator cinn_buffer_t *()->memory;
     void *C = args[1 + num_gemm + g].operator cinn_buffer_t *()->memory;
 
-    // if opside is 1, exhange A,B.
+    // if opside is 1, exchange A,B.
     if (opside) {
       auto tmp = A;
       A = B;
@@ -701,7 +703,7 @@ std::string debug_cudnn_pool_mode(cudnnPoolingMode_t pool_mode) {
     case CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING:
       return "avg_include_padding";
     case CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING:
-      return "avg_exclulude_padding";
+      return "avg_exclude_padding";
     default:
       LOG(FATAL) << "Pool only support max and avg now!";
   }
@@ -2748,6 +2750,9 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
   cudnnDestroyPoolingDescriptor(pooling_desc);
 }
 
+void infer_shape_set_value(int row, int col, int64_t value, int64_t **v) {
+  v[row][col] = value;
+}
 void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
                             cinn_buffer_t *input,
                             cinn_buffer_t *output,

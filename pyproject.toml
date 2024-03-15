@@ -15,7 +15,7 @@ exclude = [
     "./python/paddle/utils/gast/**",
 ]
 line-length = 80
-target-version = "py37"
+target-version = "py38"
 
 [tool.ruff.lint]
 select = [
@@ -32,12 +32,16 @@ select = [
     # Comprehensions
     "C4",
 
+    # Debugger
+    "T100",
+
     # Pyupgrade
     "UP",
 
     # NumPy-specific rules
     "NPY001",
     "NPY003",
+    "NPY201",
 
     # Bugbear
     "B002",
@@ -108,10 +112,8 @@ combine-as-imports = true
 known-first-party = ["paddle"]
 
 [tool.ruff.lint.per-file-ignores]
-# Ignore unused imports in __init__.py
-"__init__.py" = ["F401", "I001"]
 # These files need tabs for testing.
-"test/dygraph_to_static/test_legacy_error.py" = ["E101", "W191"]
+"test/dygraph_to_static/test_error.py" = ["E101", "W191"]
 # Ignore compare with True in sot unittest
 "test/sot/test_dup_top.py" = ["E712"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
@@ -124,3 +126,8 @@ known-first-party = ["paddle"]
 "test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
+
+
+# temp ignore isort
+"python/paddle/distributed/__init__.py" = ["I001"]
+"python/paddle/distributed/passes/__init__.py" = ["I001"]

@@ -41,8 +41,11 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'lrn',
     'match_matrix_tensor',
     'matmul',
+    'max_pool2d_v2',
     'max_pool2d_with_index',
     'max_pool3d_with_index',
+    'fractional_max_pool2d',
+    'fractional_max_pool3d',
     'minus',
     'modified_huber_loss',
     'nce',
@@ -94,4 +97,5 @@ NO_FP16_COMPARED_WITH_FP32_OP_LIST = [
 
 NO_BF16_COMPARED_WITH_FP32_OP_LIST = [
     'dequantize',
+    'fusion_lstm',
 ]

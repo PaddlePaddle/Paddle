@@ -16,6 +16,8 @@ import struct
 
 import numpy as np
 
+from paddle import pir
+
 from ..pir import Value
 from ..pir.core import ParameterMeta
 from . import core
@@ -183,7 +185,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         return
 
     # NOTE: `in_to_static_mode` is used to determined whether this op is called under
-    # @to_static in transformation from dygrah to static layer. We add Tensor in
+    # @to_static in transformation from dygraph to static layer. We add Tensor in
     # expected_type to skip checking because Tensor may be created and used in unusual way.
     from .dygraph.base import in_to_static_mode
 
@@ -257,11 +259,11 @@ class DataToLoDTensorConverter:
         self.place = place
         self.lod_level = lod_level
         self.shape = shape
-        negtive_count = 0
+        negative_count = 0
         for s in self.shape:
             if s < 0:
-                negtive_count += 1
-            if negtive_count > 1:
+                negative_count += 1
+            if negative_count > 1:
                 self.shape = None
                 break
         self.dtype = convert_dtype(dtype)
@@ -419,19 +421,35 @@ class DataFeeder:
         self.feed_names = []
         self.feed_shapes = []
         self.feed_lod_level = []
-        if program is None:
-            program = default_main_program()
-        for each_var in feed_list:
-            if isinstance(each_var, str):
-                each_var = program.block(0).var(each_var)
-            if not isinstance(each_var, Variable):
-                raise TypeError("Feed list should contain a list of variable")
-            self.feed_dtypes.append(each_var.dtype)
-            self.feed_names.append(each_var.name)
-            self.feed_lod_level.append(each_var.lod_level)
-            self.feed_shapes.append(each_var.shape)
-
         self.place = place
+        if in_pir_mode():
+            if program is None:
+                program = pir.core.default_main_program()
+            for each_var in feed_list:
+                if isinstance(each_var, str):
+                    raise ValueError(
+                        "In PIR Mode, Not supported string input yet"
+                    )
+                if not isinstance(each_var, Value):
+                    raise TypeError("Feed list should contain a list of Value")
+                self.feed_dtypes.append(each_var.dtype)
+                self.feed_names.append(each_var.name)
+                self.feed_lod_level.append(each_var.lod_level)
+                self.feed_shapes.append(each_var.shape)
+        else:
+            if program is None:
+                program = default_main_program()
+            for each_var in feed_list:
+                if isinstance(each_var, str):
+                    each_var = program.block(0).var(each_var)
+                if not isinstance(each_var, Variable):
+                    raise TypeError(
+                        "Feed list should contain a list of variable"
+                    )
+                self.feed_dtypes.append(each_var.dtype)
+                self.feed_names.append(each_var.name)
+                self.feed_lod_level.append(each_var.lod_level)
+                self.feed_shapes.append(each_var.shape)
 
     def feed(self, iterable):
         """

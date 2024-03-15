@@ -381,6 +381,8 @@ struct _Var_ : public ExprNode<_Var_> {
   std::string name;
 
   bool is_reduce_axis{false};
+  bool is_keepdim{false};
+  bool is_symbolic_constant{false};
   //! Lower bound and upper bound of a axis.
   // @{
   Expr lower_bound;
@@ -399,7 +401,9 @@ struct _Var_ : public ExprNode<_Var_> {
   static Expr Make(Expr lower_bound,
                    Expr upper_bound,
                    const std::string& name,
-                   bool is_reduce);
+                   bool is_reduce,
+                   bool is_symbolic_constant = false,
+                   bool is_keepdim = false);
 
   void Verify() const override;
 
@@ -417,12 +421,14 @@ struct Var : public IrNodeRef {
   Var(Expr lower_bound,
       Expr upper_bound,
       const std::string& name,
-      bool is_reduce = false)
-      : Var(_Var_::Make(lower_bound, upper_bound, name, is_reduce)) {}
+      bool is_reduce = false,
+      bool is_keepdim = false)
+      : Var(_Var_::Make(
+            lower_bound, upper_bound, name, is_reduce, false, is_keepdim)) {}
   Var(int upper_bound, const std::string& name)
-      : Var(_Var_::Make(Expr(0), Expr(upper_bound), name, false)) {}
+      : Var(_Var_::Make(Expr(0), Expr(upper_bound), name, false, false)) {}
   Var(Expr upper_bound, const std::string& name)
-      : Var(_Var_::Make(Expr(0), upper_bound, name, false)) {}
+      : Var(_Var_::Make(Expr(0), upper_bound, name, false, false)) {}
 
   operator Expr() { return Expr(get()); }
   operator Expr() const {
@@ -468,7 +474,7 @@ struct Reduce : public ExprNode<Reduce> {
   static Expr Make(ReduceType reduce_type,
                    Expr init,
                    Expr body,
-                   const std::vector<Var>& reduce_aixs);
+                   const std::vector<Var>& reduce_axis);
 
   Type type() const override { return body.type().ElementOf(); }
 
@@ -960,6 +966,12 @@ struct Block : public ExprNode<Block> {
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
 };
 
+struct NoneReduceMethod {};
+struct WarpReduceMethod {};
+struct BlockReduceMethod {};
+using ReduceMethod =
+    std::variant<NoneReduceMethod, WarpReduceMethod, BlockReduceMethod>;
+
 // ScheduleBlock is the unit of schedule IR which represents tensor's
 // computation
 struct ScheduleBlock : public ExprNode<ScheduleBlock> {
@@ -975,6 +987,7 @@ struct ScheduleBlock : public ExprNode<ScheduleBlock> {
   std::map<std::string, attr_t> attrs;
   std::string name;
   Expr body;
+  ReduceMethod reduce_method{NoneReduceMethod()};
 
   static Expr Make(const std::vector<Var>& iter_vars,
                    const std::vector<Expr>& read_buffers,
@@ -1018,6 +1031,7 @@ struct _Module_ : public ExprNode<_Module_> {
   std::vector<Expr> functions;
   std::vector<Expr> submodules;
   std::vector<Expr> predicates;
+  Expr infer_shape_func;
 
   static ir::Module Make(const std::string& name, Target target);
 
@@ -1076,3 +1090,12 @@ using ir::Var;
 // @}
 
 }  // namespace cinn
+
+namespace std {
+template <>
+struct hash<cinn::ir::Var> {
+  std::size_t operator()(const cinn::ir::Var& var) const {
+    return std::hash<std::string>()(var->name);
+  }
+};
+}  // namespace std

@@ -126,7 +126,7 @@ INPLACE_OUT_CREATION_TEMPLATE = """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({name});
     auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
-    if (dense_out_{idx} && !rank_is_in_current_mesh && dist_out_{idx}->defined()) {{
+    if (dense_out_{idx} && !rank_is_in_current_mesh && !dist_out_{idx}->defined()) {{
       *dense_out_{idx} = phi::DenseTensor(
         std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
         phi::DenseTensorMeta());
@@ -137,7 +137,7 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD = """
         CreateKernelDistOutput({name}, !rank_is_in_current_mesh, spmd_info.second[{idx}]);
     phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
     phi::DenseTensor* dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
-    if (dense_out_{idx} && !rank_is_in_current_mesh && dist_out_{idx}->defined()) {{
+    if (dense_out_{idx} && !rank_is_in_current_mesh && !dist_out_{idx}->defined()) {{
       *dense_out_{idx} = phi::DenseTensor(
           std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
           phi::DenseTensorMeta());
@@ -169,13 +169,13 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
 
 # 9. Reshard Output
 RESHARD_SINGLE_OUTPUT_TEMPLATE = """
-      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {}, "{}");"""
 
 RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {}, "{}");"""
 
 RESHARD_VECTOR_OUTPUT_TEMPLATE = """
-      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {}, "{}");"""
 
 NONEED_TO_RESHARD_OUTPUT_TEMPLATE = """
     // API `{}` does not need to reshard output."""
@@ -321,13 +321,13 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                 if self.outputs['types'][0] == 'Tensor':
                     reshard_output_code += (
                         RESHARD_SINGLE_OUTPUT_TEMPLATE.format(
-                            self.outputs['names'][0]
+                            self.outputs['names'][0], self.outputs['names'][0]
                         )
                     )
                 elif self.outputs['types'][0] == 'std::vector<Tensor>':
                     reshard_output_code += (
                         RESHARD_VECTOR_OUTPUT_TEMPLATE.format(
-                            self.outputs['names'][0]
+                            self.outputs['names'][0], self.outputs['names'][0]
                         )
                     )
                 else:
@@ -337,7 +337,9 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     if out_type == 'Tensor':
                         reshard_output_code += (
                             RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE.format(
-                                i, self.outputs['names'][i]
+                                i,
+                                self.outputs['names'][i],
+                                self.outputs['names'][i],
                             )
                         )
                     else:
@@ -355,8 +357,8 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
 
         return reshard_output_code
 
-    def generate_auto_paralel_branch(self) -> str:
-        # if no tensor input, do not genetate auto parallel branch
+    def generate_auto_parallel_branch(self) -> str:
+        # if no tensor input, do not generate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
         infer_spmd_code = self.generate_infer_spmd_code()
@@ -414,7 +416,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -425,6 +427,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include "{fw_header_file_path}"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/fusion.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
@@ -435,7 +438,7 @@ def source_include(header_file_path, fw_header_file_path):
 #endif
 
 PD_DECLARE_bool(conv2d_disable_cudnn);
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -490,7 +493,7 @@ def generate_backward_api(
         source_include(include_header_file, include_fw_header_file)
     )
     source_file.write(namespace[0])
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if is_fused_backward_yaml is True:
         new_bw_apis = [
             bw_api

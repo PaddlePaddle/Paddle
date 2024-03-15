@@ -151,7 +151,20 @@ struct XPUContext::Impl {
     LOG_FIRST_N(WARNING, 1)
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
     context_ = xpu::create_context();
-    context_->set_option("XPUAPI_DEFAULT_SIZE", "1");
+    // Setup XPU GM Buffer
+    if (std::getenv("XPUAPI_DEFAULT_SIZE") != nullptr) {
+      context_->set_option("XPUAPI_DEFAULT_SIZE",
+                           std::getenv("XPUAPI_DEFAULT_SIZE"));
+    } else {
+      // Optimization described in
+      // https://github.com/PaddlePaddle/Paddle/pull/54674
+      context_->set_option("XPUAPI_DEFAULT_SIZE", "1");
+    }
+    if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+      XPUStream s;
+      xpu_stream_create(&s);
+      context_->set_stream(s);
+    }
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
   }
@@ -192,6 +205,9 @@ struct XPUContext::Impl {
               << tname << " currently " << context_map_.size()
               << " contexts existing";
       xpu::Context* ctx_t = xpu::create_context();
+      // DataLoader does not require a pre-allocated GM buffer
+      // to avoid xpu_wait calls
+      ctx_t->set_option("XPUAPI_DEFAULT_SIZE", "1");
       context_map_[tname] = ctx_t;
     }
   }
@@ -223,58 +239,81 @@ struct XPUContext::Impl {
   xpu::BKCLContext_t bkcl_context_{nullptr};
 };
 
-XPUContext::XPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {
-  impl_->Init();
+XPUContext::XPUContext() : DeviceContext() {
+  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+    for (int i = 0; i < 4; i++) {
+      impls_.push_back(std::make_unique<Impl>());
+      impls_[i]->Init();
+    }
+  } else {
+    impls_.push_back(std::make_unique<Impl>());
+    impls_[0]->Init();
+  }
 }
 
-XPUContext::XPUContext(const XPUPlace& place)
-    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
-  impl_->Init();
+XPUContext::XPUContext(const XPUPlace& place) : DeviceContext() {
+  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+    for (int i = 0; i < 4; i++) {
+      impls_.push_back(std::make_unique<Impl>(place));
+      impls_[i]->Init();
+    }
+  } else {
+    impls_.push_back(std::make_unique<Impl>(place));
+    impls_[0]->Init();
+  }
 }
 
 XPUContext::~XPUContext() = default;
 
-const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
+const Place& XPUContext::GetPlace() const { return impls_[0]->GetPlace(); }
 
-XPUStream XPUContext::stream() const { return impl_->stream(); }
+XPUStream XPUContext::stream(int i) const { return impls_[i]->stream(); }
 
-void XPUContext::SetStream(void* stream) { impl_->SetStream(stream); }
+void XPUContext::SetStream(void* stream, int i) {
+  impls_[i]->SetStream(stream);
+}
 
 void XPUContext::SetXpuVersion(int version) {
-  impl_->xpu_version_ = static_cast<backends::xpu::XPUVersion>(version);
+  impls_[0]->xpu_version_ = static_cast<backends::xpu::XPUVersion>(version);
 }
 
 void XPUContext::SetRuntimeVersion(int version) {
-  impl_->runtime_version_ = version;
+  impls_[0]->runtime_version_ = version;
 }
 
 void XPUContext::SetDriverVersion(int version) {
-  impl_->driver_version_ = version;
+  impls_[0]->driver_version_ = version;
 }
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {
-  return impl_->xpu_version_;
+  return impls_[0]->xpu_version_;
 }
 
-xpu::Context* XPUContext::x_context() const { return impl_->GetXContext(); }
+xpu::Context* XPUContext::x_context(int i) const {
+  return impls_[i]->GetXContext();
+}
 
 xpu::BKCLContext_t XPUContext::bkcl_context() const {
-  return impl_->GetBkclContext();
+  return impls_[0]->GetBkclContext();
 }
 
-void XPUContext::Wait() const { impl_->Wait(); }
+void XPUContext::Wait() const {
+  for (uint64_t i = 0; i < impls_.size(); i++) {
+    impls_[i]->Wait();
+  }
+}
 
 void XPUContext::SetXContext(xpu::Context* context) {
-  impl_->SetXContext(context);
+  impls_[0]->SetXContext(context);
 }
 
-void XPUContext::SetL3Cache(int l3_size) { impl_->SetL3Cache(l3_size); }
+void XPUContext::SetL3Cache(int l3_size) { impls_[0]->SetL3Cache(l3_size); }
 
 void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
-  impl_->SetBkclContext(context);
+  impls_[0]->SetBkclContext(context);
 }
 
-void XPUContext::CreateStream() { impl_->CreateStream(); }
+void XPUContext::CreateStream(int i) { impls_[i]->CreateStream(); }
 
-void XPUContext::Init() { impl_->Init(); }
+void XPUContext::Init() { impls_[0]->Init(); }
 }  // namespace phi

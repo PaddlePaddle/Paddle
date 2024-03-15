@@ -15,19 +15,21 @@
 #pragma once
 
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/type.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace dialect {
 
 using DenseTensorType = pir::DenseTensorType;
 
-class SelectedRowsType : public pir::Type::TypeBase<SelectedRowsType,
-                                                    pir::Type,
-                                                    SelectedRowsTypeStorage,
-                                                    pir::ShapedTypeInterface> {
+class TEST_API SelectedRowsType
+    : public pir::Type::TypeBase<SelectedRowsType,
+                                 pir::Type,
+                                 SelectedRowsTypeStorage,
+                                 pir::ShapedTypeInterface> {
  public:
   using Base::Base;
 
@@ -40,6 +42,14 @@ class SelectedRowsType : public pir::Type::TypeBase<SelectedRowsType,
   const phi::LoD &lod() const;
 
   const size_t &offset() const;
+
+  ///
+  /// \brief Implementation of 'classof' that compares the type id of
+  /// the provided value with the concrete type id.
+  ///
+  static bool classof(Type type);
+
+  static SelectedRowsType dyn_cast_impl(Type type);
 };
 
 class DenseTensorArrayType
@@ -51,7 +61,17 @@ class DenseTensorArrayType
 
   const pir::Type &dtype() const;
 
+  const phi::DDim &dims() const;
+
   const phi::DataLayout &data_layout() const;
+
+  ///
+  /// \brief Implementation of 'classof' that compares the type id of
+  /// the provided value with the concrete type id.
+  ///
+  static bool classof(Type type);
+
+  static DenseTensorArrayType dyn_cast_impl(Type type);
 };
 
 }  // namespace dialect

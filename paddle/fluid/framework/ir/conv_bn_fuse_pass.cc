@@ -312,6 +312,14 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
+  VLOG(3) << "Running conv_bn_fuse_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running conv_bn_fuse_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running conv_bn_fuse_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
@@ -413,7 +421,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // without MKL-DNN fuse conv+bn into conv+elementwise_add
     if (is_mkldnn) {
       if (conv->Op()->Type() == "conv2d" ||
-          conv->Op()->Type() == "depthwise_conv2d") {
+          conv->Op()->Type() == "depthwise_conv2d" ||
+          conv->Op()->Type() == "conv2d_transpose") {
         ConvertToFusedOp(conv->Op());
       }
       if (mkldnn_with_bias) {
@@ -612,6 +621,15 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
+  VLOG(3) << "Running conv_eltwiseadd_bn_fuse_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running conv_eltwiseadd_bn_fuse_pass is: "
+               "0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running conv_eltwiseadd_bn_fuse_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
@@ -759,6 +777,48 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
 ConvTransposeBNFusePass::ConvTransposeBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("output_padding")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("output_size")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("groups")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("conv2d_transpose_bias"))
       .AddInput("Input")
       .IsTensor()
       .End()

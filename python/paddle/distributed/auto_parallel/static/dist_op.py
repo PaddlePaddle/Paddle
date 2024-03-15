@@ -130,6 +130,8 @@ class DistributedOperator:
             f", process_mesh ({annotated_str}): {self.dist_attr.process_mesh}"
         )
 
+        str += f" , execution_stream: {self.dist_attr.execution_stream}"
+
         for arg_name in self.serial_op.desc.input_arg_names():
             try:
                 dims_mapping = self.dist_attr.get_input_dims_mapping(arg_name)
@@ -258,7 +260,12 @@ class DistributedOperatorHelper:
         default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         op_size = len(cur_block.ops)
-        output = self._serial_op(*args, **kwargs)
+        if paddle.base.dygraph.base.in_to_static_mode():
+            output = paddle.jit.dy2static.convert_call_func.convert_call(
+                self._serial_op
+            )(*args, **kwargs)
+        else:
+            output = self._serial_op(*args, **kwargs)
         new_op_size = len(cur_block.ops)
 
         if isinstance(output, (tuple, list)):

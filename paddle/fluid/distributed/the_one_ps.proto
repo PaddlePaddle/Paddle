@@ -88,7 +88,7 @@ message ServerServiceParameter {
   optional string client_class = 2 [ default = "BrpcPsClient" ];
   optional string service_class = 3 [ default = "BrpcPsService" ];
   optional uint32 start_server_port = 4
-      [ default = 0 ]; // will find a avaliable port from it
+      [ default = 0 ]; // will find a available port from it
   optional uint32 server_thread_num = 5 [ default = 12 ];
 }
 

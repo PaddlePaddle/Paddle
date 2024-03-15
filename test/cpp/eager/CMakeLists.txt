@@ -17,14 +17,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   set(eager_deps ${eager_deps} accumulation_node prim_utils)
 endif()
 
-set(fluid_deps
-    tracer
-    layer
-    proto_desc
-    operator
-    op_registry
-    variable_helper
-    memcpy)
+set(fluid_deps tracer layer proto_desc operator op_registry variable_helper)
 set(generated_deps final_dygraph_function final_dygraph_node dygraph_function
                    dygraph_node)
 

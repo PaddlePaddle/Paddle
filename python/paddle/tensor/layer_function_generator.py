@@ -97,8 +97,6 @@ def _generate_doc_string_(
         buf.write('\n')
 
     skip_attrs = OpProtoHolder.generated_op_attr_names()
-    # attr use_mkldnn and is_test also should not be visible to users.
-    skip_attrs.add("use_mkldnn")
     skip_attrs.add("is_test")
     skip_attrs.add("use_cudnn")
 

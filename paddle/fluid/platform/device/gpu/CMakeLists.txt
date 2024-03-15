@@ -3,13 +3,7 @@ if(WITH_GPU)
   nv_library(
     gpu_info
     SRCS gpu_info.cc
-    DEPS phi
-         common
-         glog
-         enforce
-         monitor
-         dynload_cuda
-         malloc)
+    DEPS phi common glog enforce monitor dynload_cuda)
 
   nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
   nv_test(

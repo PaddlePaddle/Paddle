@@ -70,7 +70,7 @@ void BilinearGradKernel(const Context& ctx,
 
   auto blas = funcs::GetBlas<Context, T>(ctx);
 
-  // Caculate the Output(X@Grad) and Output(Y@Grad).
+  // Calculate the Output(X@Grad) and Output(Y@Grad).
   if (dx || dy || dweight) {
     Eigen::DSizes<int, 2> bcast_for_x(1, y_dim);
     Eigen::DSizes<int, 2> bcast_for_y(1, x_dim);

@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import gc
-import sys
 import traceback
 import types
 from typing import List, Tuple
@@ -170,7 +169,7 @@ class OpcodeExecutorCache:
                     result = guard(frame)
                 except Exception as e:
                     print(
-                        f"[Cache]: skip checking {guard_str}\n         because error occured {e}"
+                        f"[Cache]: skip checking {guard_str}\n         because error occurred {e}"
                     )
                 if result is False:
                     print(f"[Cache]: missed at {guard_str}")
@@ -190,13 +189,6 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
     Returns:
         GuardedFunction | None: The translated code object and its guard function, or None if translation fails.
     """
-    if sys.version_info >= (3, 11):
-        for const in frame.f_code.co_consts:
-            if isinstance(const, types.CodeType) and const.co_name.startswith(
-                "<"
-            ):
-                log(2, f"Found code object {const.co_name}, skip it\n")
-                return CustomCode(None, False), dummy_guard
     simulator = OpcodeExecutor(frame, **kwargs)
     try:
         simulator.check_code_simulatable()
@@ -213,7 +205,7 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
             raise InnerError(
                 f"{simulator._code.co_name} should not fallback, but got '{e}'"
             )
-        # if disable_eval_frame is True, it means we want fallback to speedup rather than error occured
+        # if disable_eval_frame is True, it means we want fallback to speedup rather than error occurred
         if is_strict_mode() and e.disable_eval_frame is False:
             raise
         log(

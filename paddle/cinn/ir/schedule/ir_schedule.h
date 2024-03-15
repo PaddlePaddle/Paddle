@@ -46,11 +46,11 @@ class IRSchedule {
                       bool debug_flag = false,
                       utils::ErrorMessageLevel err_msg_level =
                           utils::ErrorMessageLevel::kGeneral,
-                      bool is_dynamic = false);
+                      bool is_dynamic_shape = false);
   IRSchedule(ir::ModuleExpr&& mod_expr,
              ScheduleDesc&& trace,
              utils::LinearRandomEngine::StateType rand_seed = -1,
-             bool is_dynamic = false);
+             bool is_dynamic_shape = false);
   IRSchedule(const IRSchedule& other);
   IRSchedule& operator=(const IRSchedule& src);
   IRSchedule(IRSchedule&& other);
@@ -107,8 +107,6 @@ class IRSchedule {
    * @return The splited loops.
    */
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);
-
-  std::vector<Expr> DySplit(const Expr& loop, const std::vector<int>& factors);
 
   /**
    * \brief Split a for loop into multiple loops, based on the factors.
@@ -197,6 +195,12 @@ class IRSchedule {
    * @param memory_type String that indicates the buffer's storage scope.
    * @return The buffer's cache.
    */
+
+  void Broadcast(const std::string& block_name, const BroadcastInfo& info);
+
+  void BroadcastToElementwise(const std::string& block_name,
+                              const std::vector<int64_t>& axes);
+
   Expr CacheRead(const Expr& block,
                  int read_buffer_index,
                  const std::string& memory_type);
@@ -404,7 +408,9 @@ class IRSchedule {
    *        B[i] = B[i] + rf_B[j, i]
    * \endcode
    */
-  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
+  Expr FactorizeReduction(const Expr& rf_loop,
+                          int rf_axis,
+                          bool with_write_back_block_init = true);
 
   /*!
    * \brief Annotate a block with a key-value pair to set as its attribute

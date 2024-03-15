@@ -17,6 +17,8 @@ Only test simple cases here."""
 import sys
 from pathlib import Path
 
+from dygraph_to_static_utils import enable_to_static_guard
+
 sys.path.append(
     str(Path(__file__).absolute().parent.parent.joinpath("legacy_test"))
 )
@@ -265,18 +267,18 @@ class SimplePyLayerNetStopGrad(paddle.nn.Layer):
 class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
-        self.to_static = False
+        self.to_static: bool = False
 
     def _run(self, *input_args, **input_kwargs):
         assert getattr(
             self, "dygraph_func", None
         ), "Please setting `self.dygraph_func` before calling `self._run`"
 
-        paddle.jit.enable_to_static(self.to_static)
-        paddle.set_device(self.place)
-        result = self.dygraph_func(*input_args, **input_kwargs)
-        result.mean().backward()
-        return result
+        with enable_to_static_guard(self.to_static):
+            paddle.set_device(self.place)
+            result = self.dygraph_func(*input_args, **input_kwargs)
+            result.mean().backward()
+            return result
 
     def _run_dygraph(self, *args, **kwargs):
         self.to_static = False
@@ -320,7 +322,7 @@ class TestPyLayerBase(unittest.TestCase):
                 dygraph_inp_kwargs[k].stop_gradient = False
                 static_inp_kwargs[k].stop_gradient = False
 
-        # Step2. Run the dygraph and the static seperately
+        # Step2. Run the dygraph and the static separately
         dygraph_res = self._run_dygraph(*dygraph_inp_args, **dygraph_inp_kwargs)
         static_res = self._run_static(*static_inp_args, **static_inp_kwargs)
 
@@ -516,12 +518,10 @@ class PyLayerTrainHelper(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
 
-    def _run_train(self, to_static, layer_builder, build_strategy=None):
+    def _run_train(self, to_static: bool, layer_builder, build_strategy=None):
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
-        paddle.jit.enable_to_static(to_static)
-
         paddle.set_device(self.place)
         np.random.seed(SEED)
         paddle.seed(SEED)
@@ -623,9 +623,7 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
         train_layer.eval()
         infer_layer.eval()
         # inference & compare
-        x = paddle.base.dygraph.to_variable(
-            np.random.random((1, 784)).astype('float32')
-        )
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
         train_layer_result = train_layer(x).numpy()
         infer_layer_result = infer_layer(x).numpy()
 

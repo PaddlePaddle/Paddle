@@ -36,7 +36,7 @@ repos:
         # Exclude some unit test files that require tabs.
         exclude: |
             (?x)^(
-                test/dygraph_to_static/test_legacy_error.py
+                test/dygraph_to_static/test_error.py
             )$
 -   repo: local
     hooks:
@@ -62,7 +62,7 @@ repos:
     -   id: flake8
         args: ["--config=.flake8"]
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.5
+    rev: v0.2.0
     hooks:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]

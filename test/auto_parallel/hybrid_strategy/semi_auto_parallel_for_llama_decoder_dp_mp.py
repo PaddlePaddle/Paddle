@@ -228,21 +228,21 @@ class TestLlamaDecoderForSemiAutoParallel:
             np1, np2, rtol=rtol, atol=atol, verbose=verbose
         )
 
-    def check_dim_mapping(self, output, expected_dim_mapping):
+    def check_placements(self, output, expected_placements):
         assert (
-            output.dist_attr.dims_mapping == expected_dim_mapping
-        ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+            output.placements == expected_placements
+        ), f"{output.placements}  vs {expected_placements}"
 
     def get_shard_check_hook(self, dims_mapping, check_input=False):
         def check_func(layer, input, output=None):
             if check_input:
                 if isinstance(input, tuple):
                     input = input[0]
-                self.check_dim_mapping(input, dims_mapping)
+                self.check_placements(input, dims_mapping)
             else:
                 if isinstance(output, tuple):
                     output = output[0]
-                self.check_dim_mapping(output, dims_mapping)
+                self.check_placements(output, dims_mapping)
 
         return check_func
 
@@ -253,15 +253,27 @@ class TestLlamaDecoderForSemiAutoParallel:
         dp_mp_layer = dist.shard_layer(
             LlamaLayerDecoder("mp_demo_weight"), dp_mp_mesh, self.dp_mp_shard_fn
         )
-        input_layer_norm_post_hook = self.get_shard_check_hook([0, -1, -1])
-        attn_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
-        attn_post_hook = self.get_shard_check_hook([0, -1, -1])
-        post_attn_layer_norm_pre_hook = self.get_shard_check_hook(
-            [0, -1, -1], True
+        input_layer_norm_post_hook = self.get_shard_check_hook(
+            [dist.Shard(0), dist.Replicate()]
         )
-        post_attn_layer_norm_post_hook = self.get_shard_check_hook([0, -1, -1])
-        mlp_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
-        mlp_post_hook = self.get_shard_check_hook([0, -1, -1])
+        attn_pre_hook = self.get_shard_check_hook(
+            [dist.Shard(0), dist.Replicate()], True
+        )
+        attn_post_hook = self.get_shard_check_hook(
+            [dist.Shard(0), dist.Replicate()]
+        )
+        post_attn_layer_norm_pre_hook = self.get_shard_check_hook(
+            [dist.Shard(0), dist.Replicate()], True
+        )
+        post_attn_layer_norm_post_hook = self.get_shard_check_hook(
+            [dist.Shard(0), dist.Replicate()]
+        )
+        mlp_pre_hook = self.get_shard_check_hook(
+            [dist.Shard(0), dist.Replicate()], True
+        )
+        mlp_post_hook = self.get_shard_check_hook(
+            [dist.Shard(0), dist.Replicate()]
+        )
 
         dp_mp_layer.input_layernorm.register_forward_post_hook(
             input_layer_norm_post_hook

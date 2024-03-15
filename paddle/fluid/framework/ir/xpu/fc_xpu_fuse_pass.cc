@@ -499,7 +499,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
           weight_scale.size(),
           mean_len,
           platform::errors::InvalidArgument(
-              "Weight max_scale size must equal batch_norm sacle/mean size."));
+              "Weight max_scale size must equal batch_norm scale/mean size."));
       for (int i = 0; i < mean_len; i++) {
         weight_scale[i] *= fabs(bn_scale_ptr[i]);
       }
@@ -572,6 +572,19 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                     !transpose_w,
                                     weight_scale,
                                     true);
+    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
+               quant_post_type.find("fc")->second == 4) {
+      VLOG(5) << "Use int31 per-tensor weight";
+      PrepareWeight<float, float>(graph,
+                                  scope,
+                                  block,
+                                  mul_w_replicated_node,
+                                  &filter_intx,
+                                  &filter_max,
+                                  &scale_max,
+                                  !transpose_w,
+                                  weight_scale,
+                                  false);
     } else if (quant_post_type.find("fc") != quant_post_type.end() &&
                    quant_post_type.find("fc")->second == 0 ||
                quant_post_type.find("fc") != quant_post_type.end() &&

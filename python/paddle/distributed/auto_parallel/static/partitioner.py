@@ -123,6 +123,9 @@ class Partitioner:
             )
 
         partitioned_startup_prog = paddle.framework.Program()
+        partitioned_startup_prog._name_generator = (
+            serial_startup_program._name_generator.clone()
+        )
         ref_block = serial_main_program.global_block()
         target_block = partitioned_startup_prog.global_block()
         var2shape = {}
@@ -158,7 +161,7 @@ class Partitioner:
             )
             target_block._sync_with_cpp()
 
-            # set distribute atrribute
+            # set distribute attribute
             new_op = target_block.ops[-1]
             assert new_op.type == new_op_desc.type()
             assert new_op.desc == new_op_desc
@@ -185,6 +188,9 @@ class Partitioner:
         """
 
         partitioned_main_prog = paddle.framework.Program()
+        partitioned_main_prog._name_generator = (
+            serial_main_program._name_generator.clone()
+        )
         dist_op_context = self._dist_context.dist_op_context
         dist_op_context.dst_main_program = partitioned_main_prog
 

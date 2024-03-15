@@ -21,12 +21,13 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
-from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestAPISwitchCase(unittest.TestCase):
+    @test_with_pir_api
     def test_return_single_var(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -43,9 +44,9 @@ class TestAPISwitchCase(unittest.TestCase):
                 shape=[4, 3], dtype='int32', value=3
             )
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             index_1 = paddle.tensor.fill_constant(
                 shape=[1], dtype='int32', value=1
             )
@@ -126,6 +127,7 @@ class TestAPISwitchCase(unittest.TestCase):
                 err_msg=f'result is {res[4]} but answer is {2}',
             )
 
+    @test_with_pir_api
     def test_0d_tensor(self):
         def fn_1():
             return paddle.full(shape=[], dtype='int32', fill_value=1)
@@ -136,9 +138,9 @@ class TestAPISwitchCase(unittest.TestCase):
         def fn_3():
             return paddle.full(shape=[], dtype='int32', fill_value=3)
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             index_1 = paddle.full(shape=[], dtype='int32', fill_value=1)
             index_2 = paddle.full(shape=[], dtype='int32', fill_value=2)
             index_5 = paddle.full(shape=[], dtype='int32', fill_value=5)
@@ -218,12 +220,14 @@ class TestAPISwitchCase(unittest.TestCase):
             )
             self.assertEqual(res[4].shape, ())
 
+    @test_with_pir_api
     def test_0d_tensor_backward(self):
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.full(shape=[], dtype='float32', fill_value=-2.0)
             x.stop_gradient = False
+            x.persistable = True
             pred = paddle.full(shape=[], dtype='int32', fill_value=2)
             # pred is 2, so out = 2 * x
             out = paddle.static.nn.switch_case(
@@ -231,7 +235,7 @@ class TestAPISwitchCase(unittest.TestCase):
                 branch_fns=[(1, lambda: x), (2, lambda: 2 * x)],
                 default=lambda: -x,
             )
-            append_backward(out)
+            grad_list = append_backward(out)
 
         place = (
             base.CUDAPlace(0)
@@ -239,8 +243,13 @@ class TestAPISwitchCase(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-
-        res = exe.run(main_program, fetch_list=[out.name, x.grad_name])
+        if paddle.framework.in_pir_mode():
+            for p, g in grad_list:
+                if p.is_same(x):
+                    dx = g
+            res = exe.run(main_program, fetch_list=[out, dx])
+        else:
+            res = exe.run(main_program, fetch_list=[out.name, x.grad_name])
         np.testing.assert_allclose(
             np.asarray(res[0]), np.array(-4.0), rtol=1e-05
         )
@@ -250,6 +259,7 @@ class TestAPISwitchCase(unittest.TestCase):
         )
         self.assertEqual(res[1].shape, ())
 
+    @test_with_pir_api
     def test_0d_tensor_dygraph(self):
         paddle.disable_static()
 
@@ -331,6 +341,7 @@ class TestAPISwitchCase(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_return_var_tuple(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -348,14 +359,14 @@ class TestAPISwitchCase(unittest.TestCase):
 
         def fn_3():
             return paddle.tensor.fill_constant(
-                shape=[5], dtype='int32', value=5
+                shape=[5, 6], dtype='int32', value=5
             ), paddle.tensor.fill_constant(
                 shape=[5, 6], dtype='float32', value=6
             )
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             index_1 = paddle.tensor.fill_constant(
                 shape=[1], dtype='int32', value=1
             )
@@ -381,6 +392,7 @@ class TestAPISwitchCase(unittest.TestCase):
 
 
 class TestAPISwitchCase_Nested(unittest.TestCase):
+    @test_with_pir_api
     def test_nested_switch_case(self):
         def fn_1(x=1):
             out = paddle.static.nn.switch_case(
@@ -390,13 +402,13 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 branch_fns={
                     1: partial(
                         paddle.tensor.fill_constant,
-                        shape=[1],
+                        shape=[1, 2],
                         dtype='int32',
                         value=1,
                     ),
                     x: partial(
                         paddle.tensor.fill_constant,
-                        shape=[2],
+                        shape=[2, 3],
                         dtype='int32',
                         value=x,
                     ),
@@ -438,9 +450,9 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             )
             return out
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             index_1 = paddle.static.data(
                 name="index_1", shape=[1], dtype='uint8'
             )
@@ -494,6 +506,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 err_msg=f'result is {res[2]} but answer is {3}',
             )
 
+    @test_with_pir_api
     def test_nested_switch_0d_tensor(self):
         def fn_1(x=1):
             out = paddle.static.nn.switch_case(
@@ -539,9 +552,9 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             )
             return out
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             index_1 = paddle.static.data(
                 name="index_1", shape=[1], dtype='uint8'
             )
@@ -597,6 +610,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
 
 # test TypeError and ValueError of api switch_case
 class TestAPISwitchCase_Error(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -613,9 +627,9 @@ class TestAPISwitchCase_Error(unittest.TestCase):
                 shape=[4, 3], dtype='int32', value=3
             )
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             key_float32 = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.23
             )

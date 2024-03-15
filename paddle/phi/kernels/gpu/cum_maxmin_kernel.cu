@@ -16,8 +16,8 @@
 
 #include <numeric>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -265,9 +265,9 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     int num_rows = x.numel() / row_size;
 
     dim3 threads(16, 32);
-    dim3 grid(
-        std::min(dev_ctx.GetCUDAMaxGridDimSize()[0],
-                 static_cast<int>(std::ceil(static_cast<float>(num_rows) /
+    dim3 grid(std::min(
+        dev_ctx.GetCUDAMaxGridDimSize()[0],
+        static_cast<unsigned int>(std::ceil(static_cast<float>(num_rows) /
                                             static_cast<float>(threads.y)))));
 
     KernelScanInnerWithIndices<T1, T2, 16, 32>

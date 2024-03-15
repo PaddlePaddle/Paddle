@@ -134,7 +134,7 @@
 #include <sstream>
 
 #include "paddle/utils/string/to_string.h"
-
+#include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace string {
 namespace tinyformat {
@@ -206,7 +206,7 @@ struct convertToInt<T, true> {
 
 // Format at most ntrunc characters to the given stream.
 template <typename T>
-inline void formatTruncated(std::ostream &out, const T &value, int ntrunc) {
+void formatTruncated(std::ostream &out, const T &value, int ntrunc) {
   std::ostringstream tmp;
   tmp << value;
   std::string result = tmp.str();
@@ -243,11 +243,11 @@ TINYFORMAT_DEFINE_FORMAT_TRUNCATED_CSTR(char)
 /// operator<< to format the type T, with special cases for the %c and %p
 /// conversions.
 template <typename T>
-inline void formatValue(std::ostream &out,
-                        const char * /*fmtBegin*/,
-                        const char *fmtEnd,
-                        int ntrunc,
-                        const T &value) {
+void formatValue(std::ostream &out,
+                 const char * /*fmtBegin*/,
+                 const char *fmtEnd,
+                 int ntrunc,
+                 const T &value) {
   // The mess here is to support the %c and %p conversions: if these
   // conversions are active we try to convert the type to a char or const
   // void* respectively and format that instead of the value itself.  For the

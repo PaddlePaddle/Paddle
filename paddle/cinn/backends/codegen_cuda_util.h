@@ -20,6 +20,7 @@
 #include <tuple>
 #include <vector>
 
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -31,9 +32,10 @@ namespace backends {
 #define KERNEL_ARGS "kernel_args"
 #define KERNEL_ARGS_NUM "kernel_args_num"
 #define KERNEL_STREAM "kernel_stream"
+#define TENSOR_SHAPE_ARGS "tensor_shape_args"
 
 /**
- * Split a CINN Module into two separate modules, one cantains the host
+ * Split a CINN Module into two separate modules, one contains the host
  * functions, the other contains the device kernels.
  *
  * This contains some process:
@@ -66,9 +68,11 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
       if (!op->cuda_axis_info.valid()) {
         expr->as_lowered_func_ref()->cuda_axis_info.set_valid(true);
       }
-      auto host_func = CreateHostFunctionGivenDeviceKernel(op);
+      auto host_func =
+          CreateHostFunctionGivenDeviceKernel(expr->as_lowered_func());
       host_module_builder.AddFunctionWithoutOptim(
           host_func.as_lowered_func_ref());
+
       device_module_builder.AddFunctionWithoutOptim(
           CreateDeviceFunctionGivenDeviceKernel(*expr).as_lowered_func_ref());
     }
@@ -92,7 +96,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
    * }
    * \endcode
    */
-  Expr CreateHostFunctionGivenDeviceKernel(const ir::_LoweredFunc_* func) {
+  Expr CreateHostFunctionGivenDeviceKernel(ir::_LoweredFunc_* func) {
     // std::vector<Expr> args;
     // NOTE the suffix `__ptr` makes this argument lower to a pointer in LLVM
     // backend. args.push_back(Var("args__ptr", type_of<cinn_pod_value_t*>()));
@@ -102,18 +106,34 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     ir::Var kernel_args_num(KERNEL_ARGS_NUM, type_of<int>());
     ir::Var kernel_stream(KERNEL_STREAM, type_of<void*>());
 
+    // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
+    // however, this make CodeGenCUDA_Dev before spliting the host and device
+    // module Maybe we could reorder the process.
+    CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+    codegen_dev.Compile(ir::LoweredFunc(func));
+    Expr shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+
+    VLOG(6) << "Add a call node for func->name " << func->name << "\n"
+            << "grid_dim: (" << func->cuda_axis_info.grid_dim(0) << ", "
+            << func->cuda_axis_info.grid_dim(1) << ", "
+            << func->cuda_axis_info.grid_dim(2) << "), "
+            << "block_dim: (" << func->cuda_axis_info.block_dim(0) << ", "
+            << func->cuda_axis_info.block_dim(1) << ", "
+            << func->cuda_axis_info.block_dim(2) << "), "
+            << "shared_mem: " << shared_mem_bytes;
     auto call_extern_api =
         ir::Call::Make(Void(),
                        runtime::intrinsic::call_cuda_kernel,
                        {kernel_ptr,
                         kernel_args,
                         kernel_args_num,
-                        Expr(func->cuda_axis_info.grid_dim(0)),   // grid_x
-                        Expr(func->cuda_axis_info.grid_dim(1)),   // grid_y
-                        Expr(func->cuda_axis_info.grid_dim(2)),   // grid_z
-                        Expr(func->cuda_axis_info.block_dim(0)),  // block_x
-                        Expr(func->cuda_axis_info.block_dim(1)),  // block_y
-                        Expr(func->cuda_axis_info.block_dim(2)),  // block_z
+                        func->cuda_axis_info.grid_dim(0),   // grid_x
+                        func->cuda_axis_info.grid_dim(1),   // grid_y
+                        func->cuda_axis_info.grid_dim(2),   // grid_z
+                        func->cuda_axis_info.block_dim(0),  // block_x
+                        func->cuda_axis_info.block_dim(1),  // block_y
+                        func->cuda_axis_info.block_dim(2),  // block_z
+                        shared_mem_bytes,
                         kernel_stream},
                        {},
                        ir::CallType::Extern,
@@ -150,7 +170,8 @@ struct CollectBucketStrategyHostFunctionVisitor
       : CollectHostFunctionVisitor(module_name),
         kernel_args_(KERNEL_ARGS, type_of<void*>()),
         kernel_args_num_(KERNEL_ARGS_NUM, type_of<int>()),
-        kernel_stream_(KERNEL_STREAM, type_of<void*>()) {}
+        kernel_stream_(KERNEL_STREAM, type_of<void*>()),
+        tensor_shape_args_(TENSOR_SHAPE_ARGS, type_of<int64_t**>()) {}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);
@@ -160,6 +181,9 @@ struct CollectBucketStrategyHostFunctionVisitor
 
  private:
   void Visit(const ir::_Module_* op, Expr* expr) {
+    if (op->functions.size() == 1 && op->predicates.size() == 0) {
+      expr->as_module()->predicates.push_back(ir::Expr(true));
+    }
     CHECK_EQ(op->functions.size(), op->predicates.size());
     for (int i = 0; i < op->functions.size(); ++i) {
       ProcessLoweredFunc(op->functions[i], op->predicates[i]);
@@ -181,6 +205,25 @@ struct CollectBucketStrategyHostFunctionVisitor
                                 {});
     host_module_builder.AddFunctionWithoutOptim(
         host_func.as_lowered_func_ref());
+
+    // Parse LoweredFunc to infer output tensor's shape
+    std::vector<ir::Expr> infer_shape_func_body_stmts(arg_defs_);
+    infer_shape_func_body_stmts.insert(
+        infer_shape_func_body_stmts.end(),
+        op->infer_shape_func.as_lowered_func()->body);
+
+    std::vector<ir::Argument> infer_shape_arguments = {
+        ir::Argument(kernel_args_, ir::Argument::IO::kOutput),
+        ir::Argument(kernel_args_num_, ir::Argument::IO::kInput),
+        ir::Argument(tensor_shape_args_, ir::Argument::IO::kOutput)};
+
+    ir::Expr host_infer_shape_func =
+        ir::_LoweredFunc_::Make(op->infer_shape_func.as_lowered_func()->name,
+                                infer_shape_arguments,
+                                ir::Block::Make(infer_shape_func_body_stmts),
+                                {});
+    host_module_builder.AddFunctionWithoutOptim(
+        host_infer_shape_func.as_lowered_func_ref());
   }
 
   void ProcessLoweredFunc(ir::Expr func, ir::Expr predicate);
@@ -199,6 +242,7 @@ struct CollectBucketStrategyHostFunctionVisitor
   ir::Var kernel_args_;
   ir::Var kernel_args_num_;
   ir::Var kernel_stream_;
+  ir::Var tensor_shape_args_;
 };
 
 }  // namespace detail

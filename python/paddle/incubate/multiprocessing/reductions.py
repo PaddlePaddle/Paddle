@@ -84,7 +84,7 @@ def _rebuild_tensor(cls, lodtensor, metadata):
         size, stop_gradient = metadata
         tensor = paddle.base.core.eager.Tensor()
         if lodtensor._is_initialized():
-            tensor.value().get_tensor()._share_data_with(lodtensor)
+            tensor.get_tensor()._share_data_with(lodtensor)
         else:
             tensor = paddle.to_tensor([], dtype=lodtensor._dtype())
         tensor.stop_gradient = stop_gradient
@@ -92,7 +92,7 @@ def _rebuild_tensor(cls, lodtensor, metadata):
 
 
 def _reduce_tensor(tensor):
-    lodtensor = tensor.value().get_tensor()
+    lodtensor = tensor.get_tensor()
 
     if not tensor.stop_gradient and not tensor.is_leaf:
         raise RuntimeError(
@@ -133,9 +133,9 @@ def _rebuild_cuda_tensor(
         )
         # We only cache cuda shared tensor here.
         # The opening cost of cudaIpcMemoryHandle is very high.
-        # Since we cache the recived tensor directly,
+        # Since we cache the received tensor directly,
         # The sender may reallocate the tensor space,
-        # you should manualy maintian the lifecycle of ipc tensor
+        # you should manually maintain the lifecycle of ipc tensor
         shared_cache[(handle, offset_bytes)] = lodtensor
     else:
         lodtensor = paddle.base.core.LoDTensor()
@@ -159,17 +159,17 @@ def _reduce_lodtensor(lodtensor):
     ):
         for dim in lodtensor.shape():
             if dim == 0:
-                # Empty tensors have nothing be mmapped.
+                # Empty tensors have nothing be mapped.
                 return (_rebuild_lodtensor_empty, (type(lodtensor),))
 
-        # Default use share filename stratege
+        # Default use share filename strategy
         metadata = (
             lodtensor._share_filename()
         )  # ipc_name, size, type_idx, dims, lod
         rebuild = _rebuild_lodtensor_filename
         lodtensor._shared_incref()
         # TODO, maintain reference for lodtensor
-        # TODO: support file_discriptor stratege
+        # TODO: support file_descriptor strategy
     elif lodtensor._place().is_gpu_place():
         metadata = lodtensor._share_cuda()
         rebuild = _rebuild_cuda_tensor

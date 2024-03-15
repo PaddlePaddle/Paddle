@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace paddle {
 namespace framework {
@@ -144,6 +144,47 @@ static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
   }
 }
 
+static double GetDenseTensorEleSum(const Scope& scope,
+                                   const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+  if (var->IsType<phi::DenseTensor>() &&
+      var->Get<phi::DenseTensor>().initialized()) {
+    phi::DenseTensor cpu_tensor;
+    paddle::platform::CPUPlace place;
+    paddle::framework::TensorCopy(
+        var->Get<phi::DenseTensor>(), place, &cpu_tensor);
+    paddle::platform::DeviceContextPool& pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(var->Get<phi::DenseTensor>().place());
+    dev_ctx.Wait();
+    double sum = 0.0;
+    for (int64_t i = 0; i < cpu_tensor.numel(); i++) {
+      if (cpu_tensor.dtype() == phi::DataType::FLOAT32) {
+        sum += static_cast<double>(cpu_tensor.data<float>()[i]);
+      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT64) {
+        sum += static_cast<double>(cpu_tensor.data<double>()[i]);
+      } else if (cpu_tensor.dtype() == phi::DataType::INT32) {
+        sum += static_cast<double>(cpu_tensor.data<int32_t>()[i]);
+      } else if (cpu_tensor.dtype() == phi::DataType::INT64) {
+        sum += static_cast<double>(cpu_tensor.data<int64_t>()[i]);
+      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT16) {
+        const phi::dtype::float16* data =
+            cpu_tensor.data<phi::dtype::float16>();
+        sum += static_cast<double>(data[0]);
+      } else if (cpu_tensor.dtype() == phi::DataType::BOOL) {
+        sum += static_cast<double>(cpu_tensor.data<bool>()[i]);
+      } else {
+        return std::numeric_limits<double>::quiet_NaN();
+      }
+    }
+    return sum;
+  }
+  return std::numeric_limits<double>::quiet_NaN();
+}
+
 InstructionBase::InstructionBase(size_t id, const platform::Place& place) {
   id_ = id;
 
@@ -198,7 +239,17 @@ const std::vector<size_t>& InstructionBase::GCCheckVars() const {
 }
 
 void InstructionBase::AddEagerGCVar(Variable* var) {
-  eager_gc_vars_.push_back(var);
+  if (var->IsType<VariableRefArray>()) {
+    auto array = var->Get<VariableRefArray>();
+    for (size_t i = 0; i < array.size(); ++i) {
+      AddEagerGCVar(const_cast<Variable*>(array.at(i)));
+    }
+  } else {
+    if (std::find(eager_gc_vars_.begin(), eager_gc_vars_.end(), var) ==
+        eager_gc_vars_.end()) {
+      eager_gc_vars_.push_back(var);
+    }
+  }
 }
 
 const std::vector<Variable*>& InstructionBase::EagerGCVars() const {
@@ -237,7 +288,7 @@ void InstructionBase::InitInputsOutputsIds(
     ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
   std::string op_name;
-  if (op_attributes.count("op_name ")) {
+  if (op_attributes.count("op_name")) {
     op_name =
         op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   }
@@ -290,53 +341,58 @@ std::string InstructionBase::DebugStringEx(
     bool is_no_need_buffer_var = (!no_need_buffer_vars.empty() &&
                                   no_need_buffer_vars.count(input.first) > 0);
     auto var_name = value_exe_info->GetVarName(input.first);
-    ss << var_name;
+    ss << var_name << ":[";
     if (scope) {
       if (!VarInited(*scope, var_name)) {
-        ss << "[uninited]";
+        ss << "uninited";
       } else {
-        int row_size = GetRowSize(*scope, var_name);
-        if (row_size >= 0) {
-          ss << "[row_size=" << row_size << "]";
-        }
         std::string dtype = is_no_need_buffer_var ? "unknown_dtype"
                                                   : GetDtype(*scope, var_name);
         std::string place = is_no_need_buffer_var ? "unknown_place"
                                                   : GetPlace(*scope, var_name);
-        ss << ":" << dtype;
-        ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
-        ss << "(" << GetLoDDebug(*scope, var_name) << ")";
-        ss << "(" << place << ")";
+        ss << "dtype=" << dtype << ";";
+        ss << "place=" << place << ";";
+
+        ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
+        ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
+        int row_size = GetRowSize(*scope, var_name);
+        if (row_size >= 0) {
+          ss << "row_size=" << row_size << ";";
+        }
       }
     }
     ++it;
     if (it != Inputs().end()) {
-      ss << ", ";
+      ss << "], ";
+    } else {
+      ss << "]";
     }
   }
   ss << "}, outputs:{";
   for (auto it = Outputs().begin(); it != Outputs().end();) {
     auto& output = *it;
     auto var_name = value_exe_info->GetVarName(output.first);
-    ss << var_name;
+    ss << var_name << ":[";
     if (scope) {
       if (!VarInited(*scope, var_name)) {
-        ss << "[uninited]";
+        ss << "uninited";
       } else {
+        std::string dtype = GetDtype(*scope, var_name);
+        ss << "dtype=" << dtype << ";";
+        ss << "place=" << GetPlace(*scope, var_name) << ";";
+        ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
+        ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
-          ss << "[row_size=" << row_size << "]";
+          ss << "row_size=" << row_size << ";";
         }
-        std::string dtype = GetDtype(*scope, var_name);
-        ss << ":" << dtype;
-        ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
-        ss << "(" << GetLoDDebug(*scope, var_name) << ")";
-        ss << "(" << GetPlace(*scope, var_name) << ")";
       }
     }
     ++it;
     if (it != Outputs().end()) {
       ss << ", ";
+    } else {
+      ss << "]";
     }
   }
   ss << "}.";

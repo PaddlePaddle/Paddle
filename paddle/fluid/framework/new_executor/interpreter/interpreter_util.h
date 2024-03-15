@@ -70,6 +70,8 @@ bool IsCommunicationOp(const OperatorBase* op);
 
 bool IsCommunicationOp(const Instruction& instr);
 
+bool IsCommunicationOp(const ::pir::Operation* op);
+
 bool IsCpuOp(const Instruction& instr);
 
 bool IsCpuOp(Instruction* instr);

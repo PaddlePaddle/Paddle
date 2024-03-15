@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from copy import deepcopy
 
 import numpy as np
@@ -25,7 +24,6 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass, get_flags
-from paddle.base.unique_name import switch
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -114,7 +112,7 @@ class LazyInitialized:
 
 class ProgramInfo:
     """
-    A helper class to recoder Program information
+    A helper class to record Program information
     """
 
     def __init__(self):
@@ -128,7 +126,7 @@ class ProgramInfo:
 
     def __call__(self, key, prog_creator):
         """
-        Recoder infer program and op size.
+        Record infer program and op size.
         """
         assert key in ['fp32', 'amp', 'fp16']
         if key not in self.programs:
@@ -172,19 +170,12 @@ class PartialProgramLayer:
     """
 
     def __init__(
-        self,
-        main_program,
-        inputs,
-        outputs,
-        name_generator,
-        parameters=None,
-        **kwargs
+        self, main_program, inputs, outputs, parameters=None, **kwargs
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
-        self._name_generator = name_generator
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
         assert isinstance(self._build_strategy, BuildStrategy)
@@ -234,15 +225,10 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        old_generator, old_para_name_checker = switch(self._name_generator)
-
         in_vars, in_var_names = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
         self._cast_fp16_if_pure_fp16(in_vars)
-        # TODO(dev): Currently AST + PT has some issues in control flow, so we only
-        # enable SOT + PT in 2.6, we will fix it later.
-        is_dy2st_test = os.environ.get("DY2ST_TEST", None) == "True"
-        attrs = self._prepare_attributes(force_not_use_pt=(not is_dy2st_test))
+        attrs = self._prepare_attributes()
         attrs.extend(["x_names", in_var_names])
 
         self._sync_lr_value_with_scheduler()
@@ -261,51 +247,17 @@ class PartialProgramLayer:
         restored_nest_out = self._restore_out(out_vars)
         restored_nest_out = self._remove_no_value(restored_nest_out)
 
-        switch(old_generator, old_para_name_checker)
         return restored_nest_out
 
     def sot_call(self, inputs):
         """
-        Same as __call__, but set force_not_use_pt to False.
-        Currently _sot_call will cause CUDA 700 error, so we disable it temporarily.
-        """
-        old_generator, old_para_name_checker = switch(self._name_generator)
-
-        in_vars, in_var_names = self._prepare_inputs(inputs)
-        out_vars = self._prepare_outputs()
-        self._cast_fp16_if_pure_fp16(in_vars)
-        attrs = self._prepare_attributes(force_not_use_pt=False)
-        attrs.extend(["x_names", in_var_names])
-
-        self._sync_lr_value_with_scheduler()
-
-        _legacy_C_ops.run_program(
-            self._valid_vars(in_vars),
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                program_id=self.program_id, use_scope_cache=True
-            ),
-            self._cuda_graph_vec,
-            *attrs
-        )
-
-        restored_nest_out = self._restore_out(out_vars)
-        restored_nest_out = self._remove_no_value(restored_nest_out)
-
-        switch(old_generator, old_para_name_checker)
-        return restored_nest_out
-
-    def _sot_call(self, inputs):
-        """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
-        old_generator, old_para_name_checker = switch(self._name_generator)
-
         out_vars = self._prepare_outputs()
         self._cast_fp16_if_pure_fp16(inputs)
         attrs = self._prepare_attributes()
         attrs.extend(["x_names", self._in_var_names])
+
         self._sync_lr_value_with_scheduler()
 
         _legacy_C_ops.run_program(
@@ -319,7 +271,6 @@ class PartialProgramLayer:
             *attrs
         )
 
-        switch(old_generator, old_para_name_checker)
         return out_vars
 
     def _sync_lr_value_with_scheduler(self):
@@ -341,14 +292,7 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
-        if (
-            get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]
-            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
-                'FLAGS_enable_pir_with_pt_in_dy2st'
-            ]
-        ):
+        if self._in_pir_pt_mode or self._enable_pir_in_executor:
             _scope_cache = self._pir_scope_cache
         else:
             _scope_cache = self._legacy_scope_cache
@@ -620,7 +564,7 @@ class PartialProgramLayer:
         else:
             """
             Can't just return paddle.static.Program(), because self.backward_program is a property,
-            whenever we call this method, a tmp Program() object is created and is gc immediatly
+            whenever we call this method, a tmp Program() object is created and is gc immediately
             after executed the following line in PartialProgramLayer.__call__.
 
             >>> self.backward_program.desc.block(0),
@@ -653,7 +597,7 @@ class PartialProgramLayer:
             return x, y
 
         loss = forward(in)[0].sum()
-        loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
+        loss.backward()  # <----- x@grad will be overwritten by elementwise_add_grad Op
         """
 
         def _need_aggregation(var):
@@ -677,7 +621,7 @@ class PartialProgramLayer:
             suffix = "@dy2static"
             var_grad_name = var.grad_name
             new_grad_name = var.name + suffix + "@GRAD"
-            finded_ops = list(
+            found_ops = list(
                 filter(
                     lambda x: x[0] >= start_idx
                     and any(
@@ -688,9 +632,9 @@ class PartialProgramLayer:
                 )
             )
 
-            # len(finded_ops) may equals zero when stop_gradient works.
-            # len(finded_ops) may > 1, because we may have fill_constant op.
-            if len(finded_ops) == 0:
+            # len(found_ops) may equals zero when stop_gradient works.
+            # len(found_ops) may > 1, because we may have fill_constant op.
+            if len(found_ops) == 0:
                 return None
             # step1: create a new var named var.name@GRAD
             target_program.block(0).create_var(
@@ -700,13 +644,13 @@ class PartialProgramLayer:
                 shape=var.shape,
             )
             # step2: rename the var.name@GRAD to var.name@GRAD@dy2static
-            for idx, op in finded_ops:
+            for idx, op in found_ops:
                 op._rename_input(var_grad_name, new_grad_name)
                 op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
             #        var.name@GRAD = sum(var.name@dy2static@GRAD, var.name@GRAD)
             target_program.block(0)._insert_op(
-                finded_ops[-1][0] + 1,
+                found_ops[-1][0] + 1,
                 type='sum',
                 inputs={'X': [var_grad_name, new_grad_name]},
                 outputs={"Out": var_grad_name},
@@ -813,7 +757,28 @@ class PartialProgramLayer:
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
 
-    def _prepare_attributes(self, force_not_use_pt=False):
+    @property
+    def _in_pir_pt_mode(self):
+        pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
+        in_pir_pt_mode = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
+        is_prim_enabled = (
+            core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
+        )
+        in_cinn_backend = self._backend == "CINN"
+        is_cinn_enabled = self._build_strategy.build_cinn_pass
+        if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
+            in_pir_pt_mode = False
+        return in_pir_pt_mode
+
+    @property
+    def _enable_pir_in_executor(self):
+        enable_pir_in_executor_flag = 'FLAGS_enable_pir_in_executor'
+        enable_pir_in_executor = get_flags(enable_pir_in_executor_flag)[
+            enable_pir_in_executor_flag
+        ]
+        return enable_pir_in_executor
+
+    def _prepare_attributes(self):
         attrs = [
             'forward_global_block',
             self.forward_program.desc.block(0),
@@ -849,17 +814,7 @@ class PartialProgramLayer:
                 )
             )
 
-        pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
-        in_pir_pt_mode = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
-        is_prim_enabled = (
-            core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
-        )
-        in_cinn_backend = self._backend == "CINN"
-        is_cinn_enabled = self._build_strategy.build_cinn_pass
-        if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
-            in_pir_pt_mode = False
-        if force_not_use_pt:
-            in_pir_pt_mode = False
+        in_pir_pt_mode = self._in_pir_pt_mode
         attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
 
         return attrs
@@ -887,7 +842,7 @@ class PartialProgramLayer:
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
-        # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
+        # For Backward process in CINN, all param@GRAD should be skipped for GC, because
         # they will be shared in scope and used by optimizer.
         backward_skip_vars = self._parse_skip_gc_vars(
             whole_program
@@ -946,21 +901,13 @@ class PartialProgramLayer:
             forward_program, backward_program
         )
         backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
-        in_pir_pt_mode = (
-            get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]
-            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
-                'FLAGS_enable_pir_with_pt_in_dy2st'
-            ]
-        )
         if forward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not in_pir_pt_mode:
+            if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -974,7 +921,7 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not in_pir_pt_mode:
+            if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
                 _apply_pass(
                     backward_program,
                     empty_startup_program,
@@ -1169,7 +1116,7 @@ class PartialProgramLayer:
 
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
-            # self._params constains parameters and buffers with persistable=True.
+            # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
                     'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
@@ -1187,7 +1134,7 @@ class PartialProgramLayer:
                             "\n\tBut we found parameter(%s) was created in the decorated function."
                             "\n"
                             "\n\tRevise suggestion: "
-                            "\n\t\t1. Please ensure all your sublayers are inheritted from nn.Layer."
+                            "\n\t\t1. Please ensure all your sublayers are inherited from nn.Layer."
                             "\n\t\t2. Please use nn.ParameterList and nn.LayerList as container instead of using a native Python container such as List"
                             % name
                         )
@@ -1207,7 +1154,6 @@ def partial_program_from(concrete_program, from_method=False):
         concrete_program.main_program,
         inputs,
         concrete_program.outputs,
-        concrete_program.name_generator,
         concrete_program.parameters,
         **concrete_program.kwargs
     )

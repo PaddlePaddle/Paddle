@@ -16,7 +16,7 @@
 
 #include <memory>
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/include/core/dll_decl.h"
 
 namespace paddle {
 namespace framework {
@@ -28,7 +28,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateConstantFoldingPass(
-    const phi::Place& place, paddle::framework::Scope* scope);
+IR_API std::unique_ptr<Pass> CreateConstantFoldingPass();
 
 }  // namespace pir

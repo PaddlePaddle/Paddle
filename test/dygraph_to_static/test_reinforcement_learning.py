@@ -20,13 +20,12 @@ import gym
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
 import paddle
 import paddle.nn.functional as F
-from paddle import base
-from paddle.base.dygraph import to_variable
 from paddle.nn import Layer
 
 SEED = 2020
@@ -61,13 +60,11 @@ class Args:
     train_step = 10
 
 
-def train(args, place, to_static):
-    paddle.jit.enable_to_static(to_static)
+def train(args, to_static: bool):
+    with enable_to_static_guard(to_static):
+        env = gym.make('CartPole-v0')
+        env.reset(seed=SEED)
 
-    env = gym.make('CartPole-v0')
-    env.reset(seed=SEED)
-
-    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
@@ -114,14 +111,14 @@ def train(args, place, to_static):
             return idx, np.array([mask]).astype("float32")
 
         def select_action(state):
-            state = to_variable(state)
+            state = paddle.to_tensor(state)
             state.stop_gradient = True
             loss_probs = policy(state)
 
             probs = loss_probs.numpy()
 
             action, _mask = sample_action(probs[0])
-            mask = to_variable(_mask)
+            mask = paddle.to_tensor(_mask)
             mask.stop_gradient = True
 
             loss_probs = paddle.log(loss_probs)
@@ -150,7 +147,7 @@ def train(args, place, to_static):
 
                 R_numpy = np.ones_like(log_prob_numpy).astype("float32")
                 _R = -1 * R * R_numpy
-                _R = to_variable(_R)
+                _R = paddle.to_tensor(_R)
                 _R.stop_gradient = True
                 cur_loss = paddle.multiply(_R, log_prob)
                 policy_loss.append(cur_loss)
@@ -206,17 +203,12 @@ def train(args, place, to_static):
 
 class TestDeclarative(Dy2StTestBase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
         self.args = Args()
 
     @test_legacy_and_pt_and_pir
     def test_train(self):
-        st_out = train(self.args, self.place, to_static=True)
-        dy_out = train(self.args, self.place, to_static=False)
+        st_out = train(self.args, to_static=True)
+        dy_out = train(self.args, to_static=False)
         np.testing.assert_allclose(st_out, dy_out, rtol=1e-05)
 
 

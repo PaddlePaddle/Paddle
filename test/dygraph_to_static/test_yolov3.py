@@ -19,14 +19,19 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_default_mode_only,
+    enable_to_static_guard,
+    test_default_and_pir,
 )
 from yolov3 import YOLOv3, cfg
 
 import paddle
 
+if paddle.is_compiled_with_cuda():
+    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
+
 random.seed(0)
 np.random.seed(0)
+paddle.seed(0)
 
 
 class SmoothedValue:
@@ -77,14 +82,11 @@ class FakeDataReader:
 fake_data_reader = FakeDataReader()
 
 
-def train(to_static):
-    paddle.jit.enable_to_static(to_static)
-
+def train():
     random.seed(0)
     np.random.seed(0)
+    paddle.seed(1000)
 
-    paddle.static.default_startup_program().random_seed = 1000
-    paddle.static.default_main_program().random_seed = 1000
     model = paddle.jit.to_static(YOLOv3(3, is_train=True))
 
     boundaries = cfg.lr_steps
@@ -129,9 +131,7 @@ def train(to_static):
         prev_start_time = start_time
         start_time = time.time()
         img = np.array([x[0] for x in data]).astype('float32')
-        # breakpoint()
         img = paddle.to_tensor(img)
-        # img = paddle.base.dygraph.to_variable(img)
 
         gt_box = np.array([x[1] for x in data]).astype('float32')
         gt_box = paddle.to_tensor(gt_box)
@@ -166,10 +166,12 @@ def train(to_static):
 
 
 class TestYolov3(Dy2StTestBase):
-    @test_default_mode_only
+    @test_default_and_pir
     def test_dygraph_static_same_loss(self):
-        dygraph_loss = train(to_static=False)
-        static_loss = train(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_loss = train()
+
+        static_loss = train()
         np.testing.assert_allclose(
             dygraph_loss, static_loss, rtol=0.001, atol=1e-05
         )

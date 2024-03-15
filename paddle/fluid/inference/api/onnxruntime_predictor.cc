@@ -333,7 +333,7 @@ bool ONNXRuntimePredictor::Run(const std::vector<PaddleTensor> &inputs,
   return false;
 }
 
-bool ONNXRuntimePredictor::ZeroCopyRun() {
+bool ONNXRuntimePredictor::ZeroCopyRun(bool switch_stream) {
   try {
     const char *device_name = platform::is_cpu_place(place_) ? "Cpu" : "Cuda";
     std::vector<Ort::Value> inputs;

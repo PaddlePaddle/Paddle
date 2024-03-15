@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -275,9 +276,7 @@ learning_rate = 1e-3
 total_steps = len(dataset) * epoch_num // batch_size
 
 
-def train(to_static):
-    paddle.jit.enable_to_static(to_static)
-
+def train():
     random.seed(0)
     np.random.seed(0)
 
@@ -285,8 +284,7 @@ def train(to_static):
         base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
     with base.dygraph.guard(place):
-        base.default_startup_program().random_seed = 1000
-        base.default_main_program().random_seed = 1000
+        paddle.seed(1000)
 
         skip_gram_model = paddle.jit.to_static(
             SkipGram("skip_gram_model", vocab_size, embedding_size)
@@ -301,9 +299,9 @@ def train(to_static):
         for center_words, target_words, label, eval_words in build_batch(
             dataset, batch_size, epoch_num
         ):
-            center_words_var = base.dygraph.to_variable(center_words)
-            target_words_var = base.dygraph.to_variable(target_words)
-            label_var = base.dygraph.to_variable(label)
+            center_words_var = paddle.to_tensor(center_words)
+            target_words_var = paddle.to_tensor(target_words)
+            label_var = paddle.to_tensor(label)
             pred, loss = skip_gram_model(
                 center_words_var, target_words_var, label_var
             )
@@ -322,8 +320,10 @@ def train(to_static):
 class TestWord2Vec(Dy2StTestBase):
     @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
-        dygraph_loss = train(to_static=False)
-        static_loss = train(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_loss = train()
+
+        static_loss = train()
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
 

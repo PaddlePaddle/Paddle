@@ -31,13 +31,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/parser/ir_parser.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/parser/ir_parser.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
 using ProgramDesc = paddle::framework::ProgramDesc;
@@ -85,7 +85,7 @@ TEST(OperatorDialectTest, ConditionBlock) {
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
-  EXPECT_EQ(program->block()->size(), 4u);
+  EXPECT_EQ(program->block()->size(), 9u);
   size_t id = 0;
   for (auto &op : *program->block()) {
     if (id == 0 || id == 1) {
@@ -117,77 +117,36 @@ TEST(OperatorDialectTest, ConditionBlock) {
               EXPECT_EQ(op2.isa<paddle::dialect::AddOp>(), true);
             }
             if (true_true_id == 1) {
+              EXPECT_EQ(op2.isa<paddle::dialect::AssignOp>(), true);
+            }
+            if (true_true_id == 2) {
               EXPECT_EQ(op2.isa<pir::YieldOp>(), true);
             }
             true_true_id++;
           }
-          auto &false_false_block =
-              op1.dyn_cast<paddle::dialect::IfOp>().false_block();
-          size_t false_false_id = 0;
-          for (auto &op2 : false_false_block) {
-            if (false_false_id == 0) {
-              EXPECT_EQ(op2.isa<paddle::dialect::MultiplyOp>(), true);
-            }
-            if (false_false_id == 1) {
-              EXPECT_EQ(op2.isa<pir::YieldOp>(), true);
-            }
-            false_false_id++;
-          }
         }
         if (true_id == 4) {
-          EXPECT_EQ(op1.isa<paddle::dialect::MultiplyOp>(), true);
+          EXPECT_EQ(op1.isa<paddle::dialect::LogicalNotOp>(), true);
         }
         if (true_id == 5) {
+          EXPECT_EQ(op1.isa<paddle::dialect::IfOp>(), true);
+        }
+        if (true_id == 6) {
+          EXPECT_EQ(op1.isa<paddle::dialect::CastOp>(), true);
+        }
+        if (true_id == 7) {
+          EXPECT_EQ(op1.isa<paddle::dialect::SelectInputOp>(), true);
+        }
+        if (true_id == 8) {
+          EXPECT_EQ(op1.isa<paddle::dialect::MultiplyOp>(), true);
+        }
+        if (true_id == 9 || true_id == 10) {
+          EXPECT_EQ(op1.isa<paddle::dialect::AssignOp>(), true);
+        }
+        if (true_id == 11) {
           EXPECT_EQ(op1.isa<pir::YieldOp>(), true);
         }
         true_id++;
-      }
-      // false block
-      auto &false_block = op.dyn_cast<paddle::dialect::IfOp>().false_block();
-      size_t false_id = 0;
-      for (auto &op1 : false_block) {
-        if (false_id == 0 || false_id == 1) {
-          EXPECT_EQ(op1.isa<paddle::dialect::FullOp>(), true);
-        }
-        if (false_id == 2) {
-          EXPECT_EQ(op1.isa<paddle::dialect::LessThanOp>(), true);
-        }
-        if (false_id == 3) {
-          EXPECT_EQ(op1.isa<paddle::dialect::IfOp>(), true);
-          // true block
-          auto &false_true_block =
-              op1.dyn_cast<paddle::dialect::IfOp>().true_block();
-          size_t false_true_id = 0;
-          for (auto &op2 : false_true_block) {
-            if (false_true_id == 0) {
-              EXPECT_EQ(op2.isa<paddle::dialect::AddOp>(), true);
-            }
-            if (false_true_id == 1) {
-              EXPECT_EQ(op2.isa<pir::YieldOp>(), true);
-            }
-            false_true_id++;
-          }
-          // false block
-          auto &false_false_block =
-              op1.dyn_cast<paddle::dialect::IfOp>().true_block();
-          size_t false_false_id = 0;
-          for (auto &op2 : false_false_block) {
-            if (false_false_id == 0) {
-              EXPECT_EQ(op2.isa<paddle::dialect::AddOp>(), true);
-            }
-            if (false_false_id == 1) {
-              EXPECT_EQ(op2.isa<pir::YieldOp>(), true);
-            }
-            false_false_id++;
-          }
-        }
-        if (false_id == 4) {
-          EXPECT_EQ(op1.isa<paddle::dialect::MultiplyOp>(), true);
-        }
-        if (false_id == 5) {
-          EXPECT_EQ(op1.isa<pir::YieldOp>(), true);
-        }
-        false_id++;
       }
     }
     id++;

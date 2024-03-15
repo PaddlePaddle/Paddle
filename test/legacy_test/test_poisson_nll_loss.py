@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(100)
 
@@ -33,7 +34,7 @@ def ref_poisson_nll_loss(
 ):
     if epsilon <= 0:
         raise ValueError(
-            "The value of `epsilon` in PoissonNLLLoss should be positve, but received %f, which is not allowed"
+            "The value of `epsilon` in PoissonNLLLoss should be positive, but received %f, which is not allowed"
             % epsilon
         )
 
@@ -75,6 +76,7 @@ class TestPoissonNLLLossBasicCase(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_case(
         self,
         dtype="float32",
@@ -90,8 +92,6 @@ class TestPoissonNLLLossBasicCase(unittest.TestCase):
         with paddle.static.program_guard(prog, startup_prog):
             input = paddle.static.data('input', self.shape, dtype)
             label = paddle.static.data('label', self.shape, dtype)
-            input.desc.set_need_check_feed(False)
-            label.desc.set_need_check_feed(False)
             out1 = F.poisson_nll_loss(
                 input,
                 label,
@@ -228,7 +228,7 @@ class TestPoissonNLLLossFloat64Case(TestPoissonNLLLossBasicCase):
         self.test_dynamic_case(dtype="float64")
 
 
-class TestPoissonNLLLossNoLoginputCase(TestPoissonNLLLossBasicCase):
+class TestPoissonNLLLossNoLogInputCase(TestPoissonNLLLossBasicCase):
     def test_api(self):
         self.test_static_case(log_input=False)
         self.test_dynamic_case(log_input=False)

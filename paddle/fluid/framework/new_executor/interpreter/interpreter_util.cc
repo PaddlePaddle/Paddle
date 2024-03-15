@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
@@ -33,6 +34,7 @@
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -47,8 +49,10 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 
 namespace paddle {
 namespace framework {
@@ -149,6 +153,27 @@ bool IsCommunicationOp(const Instruction& instr) {
     return false;
   }
   return IsCommunicationOp(instr.OpBase());
+}
+
+bool IsCommunicationOp(const ::pir::Operation* op) {
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
+  const std::set<std::string> special_comm_op_set = {
+      paddle::dialect::SendV2Op::name(),
+      paddle::dialect::RecvV2Op::name(),
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  if (op->attributes().count("ring_id") != 0) {
+    return true;
+  }
+  return false;
 }
 
 bool IsCpuOp(const Instruction& instr) {
@@ -610,9 +635,12 @@ void BuildOpFuncList(const platform::Place& place,
         hook(op, local_scope);
       }
 
-      if (op->Type() == "while") {
+      if (op->Type() == "while" || op->Type() == "conditional_block") {
         op->SetInputHooks(input_hookfuncs);
         op->SetOutputHooks(output_hookfuncs);
+        auto runtime_attrs = op->RuntimeAttrs();
+        runtime_attrs.insert(std::make_pair("used_for_inference", true));
+        op->SetRuntimeAttributeMap(runtime_attrs);
       }
     }
 
@@ -963,6 +991,44 @@ void BuildOpFuncList(const platform::Place& place,
       std::rethrow_exception(std::current_exception());
     }
 
+    if (FLAGS_save_static_runtime_data) {
+      VLOG(6) << "start to save paddle variable";
+      auto root_path = FLAGS_static_runtime_data_save_path;
+      for (auto& vname : op->InputVars()) {
+        auto* var = local_scope->FindVar(vname);
+        if (var == nullptr) continue;
+        const phi::DenseTensor* tensor{nullptr};
+        if (var->IsType<phi::DenseTensor>()) {
+          tensor = &var->Get<phi::DenseTensor>();
+        } else {
+          VLOG(6) << vname << " is not DenseTensor";
+          continue;
+        }
+        if (!tensor->IsInitialized()) continue;
+        paddle::framework::SaveTensor(
+            *tensor,
+            root_path + "/saved_tensors/" + op_type + "-input-" + vname,
+            false);
+      }
+      for (auto& vname : op->OutputVars(true)) {
+        auto* var = local_scope->FindVar(vname);
+        if (var == nullptr) continue;
+        const phi::DenseTensor* tensor{nullptr};
+        if (var->IsType<phi::DenseTensor>()) {
+          tensor = &var->Get<phi::DenseTensor>();
+        } else {
+          VLOG(6) << vname << "  is not DenseTensor";
+          continue;
+        }
+        if (!tensor->IsInitialized()) continue;
+        paddle::framework::SaveTensor(
+            *tensor,
+            root_path + "/saved_tensors/" + op_type + "-output-" + vname,
+            false);
+      }
+      VLOG(6) << "end save paddle variable";
+    }
+
     if (FLAGS_check_nan_inf) {
       VLOG(4) << "Check nan/inf";
       try {
@@ -1223,6 +1289,7 @@ const paddle::framework::Variable* GetVariableByName(
       return kv.first;
     }
   }
+  VLOG(8) << "cannot find var: " << var_name;
   return nullptr;
 }
 
@@ -1233,7 +1300,7 @@ std::vector<std::string> GetOriginInputNames(const std::string& op_name) {
   if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
     paddle::dialect::OpYamlInfoParser yaml_parser(
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-            ->get_op_info_());
+            ->get_op_info_(op_name));
     ret = yaml_parser.InputNames();
   }
   return ret;
@@ -1246,7 +1313,7 @@ std::vector<std::string> GetOriginOutputNames(const std::string& op_name) {
   if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
     paddle::dialect::OpYamlInfoParser yaml_parser(
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-            ->get_op_info_());
+            ->get_op_info_(op_name));
     ret = yaml_parser.OutputNames();
   }
   return ret;
@@ -1275,6 +1342,7 @@ void PrintValuesAndVariables(
         GetOriginOutputNames(op_name);
 
     // 1. output string
+    VLOG(10) << "Generate output string ...";
     std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
     if (!op.results().empty()) {
@@ -1320,10 +1388,12 @@ void PrintValuesAndVariables(
     ret_variable_str += ") = ";
 
     // 2. op name
+    VLOG(10) << "Generate op name ...";
     ret_value_str += op_name;
     ret_variable_str += op_name;
 
     // 3. input string
+    VLOG(10) << "Generate input string ...";
     ret_value_str += "(";
     ret_variable_str += "(";
     if (!op.operands().empty()) {

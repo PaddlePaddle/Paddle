@@ -8,7 +8,7 @@ cc_test(
   SRCS errors_test.cc
   DEPS phi common enforce)
 
-set(enforce_deps phi common)
+set(enforce_deps phi)
 if(WITH_GPU)
   set(enforce_deps ${enforce_deps} external_error_proto)
 endif()
@@ -16,7 +16,7 @@ endif()
 cc_library(
   enforce INTERFACE
   SRCS enforce.cc
-  DEPS ${enforce_deps} common)
+  DEPS ${enforce_deps})
 cc_library(monitor SRCS monitor.cc)
 cc_test(
   enforce_test
@@ -108,16 +108,16 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context phi common memcpy)
+  DEPS device_context phi common fluid_memory)
 
-# memcpy depends on device_context, here add deps individually for
+#fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 
 cc_library(
   device_context
   SRCS device_context.cc
   DEPS simple_threadpool
-       malloc
+       allocator
        xxhash
        ${STREAM_CALLBACK_DEPS}
        place
@@ -269,45 +269,23 @@ if(WITH_GPU)
          gpu_info
          enforce
          dynload_cuda
-         new_profiler
-         stats
          op_proto_maker
          shape_inference)
 elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi
-         common
-         gpu_info
-         enforce
-         new_profiler
-         stats
-         op_proto_maker
-         shape_inference)
+    DEPS phi common gpu_info enforce op_proto_maker shape_inference)
 elseif(WITH_XPU)
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi
-         common
-         enforce
-         dynload_xpti
-         new_profiler
-         stats
-         op_proto_maker
-         shape_inference)
+    DEPS phi common enforce dynload_xpti op_proto_maker shape_inference)
 else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi
-         common
-         enforce
-         new_profiler
-         stats
-         op_proto_maker
-         shape_inference)
+    DEPS phi common enforce op_proto_maker shape_inference)
 endif()
 
 cc_test(

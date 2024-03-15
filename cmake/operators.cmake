@@ -520,6 +520,21 @@ function(op_library TARGET)
     endif()
   endforeach()
 
+  # pybind USE_OP_DEVICE_KERNEL for operators/mkldnn/*
+  list(APPEND mkldnn_srcs ${mkldnn_cc_srcs})
+  foreach(mkldnn_src ${mkldnn_srcs})
+    set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${mkldnn_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${mkldnn_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${mkldnn_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
+    find_register(${mkldnn_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
+      set(pybind_flag 1)
+    endif()
+  endforeach()
   # pybind USE_OP_DEVICE_KERNEL for ROCm
   list(APPEND hip_srcs ${hip_cc_srcs})
   # message("hip_srcs ${hip_srcs}")
@@ -733,4 +748,54 @@ function(prune_pybind_h)
       file(APPEND ${pybind_file} "${op_name}\n")
     endif()
   endforeach()
+endfunction()
+
+function(append_op_util_declare TARGET)
+  file(READ ${TARGET} target_content)
+  string(REGEX MATCH "(PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
+               util_registrar "${target_content}")
+  if(NOT ${util_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_ARG_MAPPING_FN" "PD_DECLARE_ARG_MAPPING_FN"
+                   util_declare "${util_registrar}")
+    string(APPEND util_declare ");\n")
+    file(APPEND ${op_utils_header} "${util_declare}")
+  endif()
+endfunction()
+
+function(append_op_kernel_map_declare TARGET)
+  file(READ ${TARGET} target_content)
+  string(
+    REGEX
+      MATCH
+      "(PD_REGISTER_BASE_KERNEL_NAME)\\([ \t\r\n]*[a-z0-9_]*,[ \\\t\r\n]*[a-z0-9_]*"
+      kernel_mapping_registrar
+      "${target_content}")
+  if(NOT ${kernel_mapping_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_BASE_KERNEL_NAME" "PD_DECLARE_BASE_KERNEL_NAME"
+                   kernel_mapping_declare "${kernel_mapping_registrar}")
+    string(APPEND kernel_mapping_declare ");\n")
+    file(APPEND ${op_utils_header} "${kernel_mapping_declare}")
+  endif()
+endfunction()
+
+function(register_op_utils TARGET_NAME)
+  set(utils_srcs)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs EXCLUDES DEPS)
+  cmake_parse_arguments(register_op_utils "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+
+  file(GLOB SIGNATURES
+       "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/ops_signature/*_sig.cc")
+  foreach(target ${SIGNATURES})
+    append_op_util_declare(${target})
+    append_op_kernel_map_declare(${target})
+    list(APPEND utils_srcs ${target})
+  endforeach()
+
+  cc_library(
+    ${TARGET_NAME}
+    SRCS ${utils_srcs}
+    DEPS ${register_op_utils_DEPS})
 endfunction()

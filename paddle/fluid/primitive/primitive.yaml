@@ -26,6 +26,7 @@
 - gather_nd
 - log
 - max
+- min
 - maximum
 - minimum
 - prod
@@ -35,7 +36,6 @@
 - tile
 - transpose
 - pad
-- sqrt
 - cumsum
 - put_along_axis
 - equal
@@ -48,8 +48,11 @@
 - reshape
 - erf
 - tanh
-- full
 - cast
 - sign
 - slice
 - uniform
+- shape
+- full_int_array
+- squeeze
+- unsqueeze

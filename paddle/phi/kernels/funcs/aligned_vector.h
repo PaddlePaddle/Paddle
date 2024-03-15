@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/hostdevice.h"
 
 #if defined(__xpu__)
 #define CHAR_BIT 8

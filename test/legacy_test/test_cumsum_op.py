@@ -44,10 +44,10 @@ class TestCumsumOp(unittest.TestCase):
         np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, dtype='float64')
-        self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
+        self.assertTrue(y.dtype == paddle.float64)
 
         y = paddle.cumsum(data, dtype=np.int32)
-        self.assertTrue(y.dtype == core.VarDesc.VarType.INT32)
+        self.assertTrue(y.dtype == paddle.int32)
 
         y = paddle.cumsum(data, axis=-2)
         z = np.cumsum(data_np, axis=-2)
@@ -143,7 +143,9 @@ class TestSumOp1(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
@@ -252,7 +254,9 @@ class TestSumOpExclusive1(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
@@ -351,7 +355,9 @@ class TestSumOpExclusiveFP16(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = np.float16
@@ -390,7 +396,9 @@ class TestSumOpReverseExclusive(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
@@ -411,7 +419,13 @@ def create_test_fp16_class(parent, max_relative_error=1e-2):
             self.check_output(check_pir=True)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestCumsumFP16Op.__name__ = cls_name
@@ -459,6 +473,7 @@ def create_test_bf16_class(parent):
                 check_prim=True,
                 numeric_grad_delta=0.05,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16")
@@ -481,9 +496,12 @@ create_test_bf16_class(TestSumOpReverseExclusive)
 
 
 class BadInputTest(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         paddle.enable_static()
-        with base.program_guard(base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_bad_x():
                 data = [1, 2, 4]
@@ -519,8 +537,8 @@ class TestTensorAxis(unittest.TestCase):
         paddle.enable_static()
         np_x = np.random.randn(9, 10, 11).astype('float32')
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
             linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
@@ -533,7 +551,7 @@ class TestTensorAxis(unittest.TestCase):
             sgd.minimize(paddle.mean(out))
 
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
 
             # run infer

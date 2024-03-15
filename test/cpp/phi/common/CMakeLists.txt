@@ -30,7 +30,7 @@ if(WITH_GPU)
   nv_test(
     transform_test
     SRCS transform_test.cu
-    DEPS memory place phi common)
+    DEPS place phi common)
 endif()
 if(WITH_ROCM)
   hip_test(
@@ -40,5 +40,5 @@ if(WITH_ROCM)
   hip_test(
     transform_test
     SRCS transform_test.cu
-    DEPS memory place phi common)
+    DEPS place phi common)
 endif()

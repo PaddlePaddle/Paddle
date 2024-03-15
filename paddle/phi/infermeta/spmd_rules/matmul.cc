@@ -121,8 +121,8 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   // Step0: verify input args based on matmul logic
   auto x_shape = common::vectorize(x.dims());
   auto y_shape = common::vectorize(y.dims());
-  int x_ndim = x_shape.size();
-  int y_ndim = y_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int y_ndim = static_cast<int>(y_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   auto y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -157,7 +157,7 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   std::string out_axes;
   FillMatmulOperandNotation(x_ndim, y_ndim, &x_axes, &y_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   if (trans_x) {
     PADDLE_ENFORCE_GE(x_ndim,
                       2,
@@ -227,12 +227,12 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
                                 bool trans_x,
                                 bool trans_y) {
   auto out_shape = common::vectorize(out.dims());
-  int out_ndim = out_shape.size();
+  int out_ndim = static_cast<int>(out_shape.size());
 
   auto x_shape = common::vectorize(x.dims());
   auto y_shape = common::vectorize(y.dims());
-  int x_ndim = x_shape.size();
-  int y_ndim = y_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int y_ndim = static_cast<int>(y_shape.size());
   int max_ndim = std::max(x_ndim, y_ndim);
   PADDLE_ENFORCE_EQ(max_ndim,
                     out_ndim,
@@ -251,7 +251,7 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
   std::string out_axes;
   FillMatmulOperandNotation(x_ndim, y_ndim, &x_axes, &y_axes, &out_axes);
 
-  // step2: Sharding Propogation
+  // step2: Sharding Propagation
   // should not use input dims mapping for backward sharding merge
   auto axis_to_dim_map =
       ShardingMergeForTensors({{out_axes, out_dims_mapping}}, false);
@@ -284,43 +284,6 @@ static bool DistAttrsAreBasicallyEqual(
   return (in_dist_attr.process_mesh() == out_dist_attr.process_mesh() &&
           in_dist_attr.dims_mapping() == out_dist_attr.dims_mapping() &&
           in_dist_attr.partial_status() == out_dist_attr.partial_status());
-}
-
-TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const ArgDistAttr& grad) {
-  auto& grad_in = PADDLE_GET_CONST(TensorDistAttr, grad);
-  auto grad_dim = grad_in.dims_mapping().size();
-  auto input_dim = input.dims_mapping().size();
-  PADDLE_ENFORCE_GE(
-      grad_dim,
-      input_dim,
-      phi::errors::InvalidArgument("grad dim must ge than input dim, but we "
-                                   "got grad_dim [%d], input_dim[%d]",
-                                   grad_dim,
-                                   input_dim));
-  if (grad_dim == input_dim) {
-    return grad_in;
-  }
-  size_t broadcast_dim = grad_dim - input_dim;
-  // gather partial status
-  auto partial_dims = grad_in.partial_dims();
-  auto& grad_dims_mapping = grad_in.dims_mapping();
-  auto dims_mapping = input.dims_mapping();
-  for (size_t i = 0; i < grad_dim; ++i) {
-    auto mapping = grad_dims_mapping[i];
-    if (i < broadcast_dim) {
-      if (mapping >= 0) {
-        partial_dims.insert(mapping);
-      }
-    } else {
-      dims_mapping[i - broadcast_dim] = mapping;
-    }
-  }
-  auto grad_out = CopyTensorDistAttrForOutput(input);
-  grad_out.set_dims_mapping(dims_mapping);
-  std::vector<int64_t> partial_status(partial_dims.begin(), partial_dims.end());
-  grad_out.set_partial_status(partial_status);
-  return grad_out;
 }
 
 SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,

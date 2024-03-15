@@ -74,7 +74,7 @@ void TensorFromStream(std::istream &is,
   tensor->Resize(dims);
   void *buf;
   size_t size = tensor->shape().numel() * SizeOfType(desc.data_type());
-  // alllocate memory
+  // allocate memory
   if (target.arch == Target::Arch::X86) {
     switch (static_cast<int>(desc.data_type())) {
 #define SET_TENSOR(desc, type, precision)     \

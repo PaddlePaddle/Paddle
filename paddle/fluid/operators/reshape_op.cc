@@ -71,7 +71,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     }
 
     if (ctx->HasInputs("ShapeTensor")) {
-      // top prority shape
+      // top priority shape
       auto ShapeTensor = ctx->Inputs("ShapeTensor");
       PADDLE_ENFORCE_GT(
           ShapeTensor.size(),
@@ -303,10 +303,6 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         "It has the lowest priority compare with Input(Shape) and "
         " Input(ShapeTensor).")
         .SetDefault({});
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Reshape Operator.
 
@@ -585,7 +581,7 @@ class Reshape2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
     auto *dx_ptr = this->GetOutputPtr(&dx);
     std::string dx_name = this->GetOutputName(dx);
-    VLOG(6) << "Runing reshape2_grad composite func";
+    VLOG(6) << "Running reshape2_grad composite func";
     prim::reshape_grad<prim::DescTensor>(x, out_grad, dx_ptr);
     this->RecoverOutputName(dx, dx_name);
   }

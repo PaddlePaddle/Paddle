@@ -64,21 +64,23 @@ struct SetConstant {
                   T num);
 };
 
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+struct SetConstant<phi::XPUContext, T> {
+  void operator()(const phi::XPUContext& context,
+                  phi::DenseTensor* tensor,
+                  T num);
+};
+#endif
+
 template <typename Place>
 void set_constant_with_place(const phi::DeviceContext& context,
                              phi::DenseTensor* tensor,
-                             const void* value);
+                             float value);
 
 void set_constant(const phi::DeviceContext& context,
                   phi::DenseTensor* tensor,
-                  const void* value);
-
-template <typename T>
-void set_constant(const phi::DeviceContext& context,
-                  phi::DenseTensor* tensor,
-                  const T value) {
-  set_constant(context, tensor, reinterpret_cast<const void*>(&value));
-}
+                  float value);
 
 template <typename DeviceContext, typename T>
 struct RowwiseAdd {
@@ -108,6 +110,64 @@ struct RowwiseMean {
                   const phi::DenseTensor& input,
                   phi::DenseTensor* vec);
 };
+
+#ifdef PADDLE_WITH_XPU
+template <typename U>
+struct TensorSetConstantXPU {
+  TensorSetConstantXPU(phi::DenseTensor* tensor, U value, phi::Place place)
+      : tensor_(tensor), value_(value), place_(place) {}
+  template <typename T>
+  void apply() const {
+    auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto begin = ctx->Alloc<T>(tensor_);
+    int numel = tensor_->numel();
+    std::unique_ptr<T[]> data_cpu(new T[numel]);
+    std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
+    memory_utils::Copy(place_,
+                       begin,
+                       phi::CPUPlace(),
+                       static_cast<void*>(data_cpu.get()),
+                       numel * sizeof(T));
+  }
+  phi::DenseTensor* tensor_;
+  U value_;
+  phi::Place place_;
+};
+
+template <>
+struct TensorSetConstantXPU<float> {
+  TensorSetConstantXPU(phi::DenseTensor* tensor, float value, phi::Place place)
+      : tensor_(tensor), value_(value), place_(place) {}
+  template <typename T>
+  void apply() const {
+    auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto begin = ctx->Alloc<T>(tensor_);
+    int numel = tensor_->numel();
+    if ((std::is_same<T, float>::value) ||
+        (std::is_same<T, phi::dtype::bfloat16>::value) ||
+        (std::is_same<T, phi::dtype::float16>::value)) {
+      using XPUType = typename XPUTypeTrait<T>::Type;
+      auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
+      int r = xpu::constant<XPUType>(dev_ctx->x_context(),
+                                     reinterpret_cast<XPUType*>(begin),
+                                     numel,
+                                     static_cast<XPUType>(value_));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    } else {
+      std::unique_ptr<T[]> data_cpu(new T[numel]);
+      std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
+      memory_utils::Copy(place_,
+                         begin,
+                         phi::CPUPlace(),
+                         static_cast<void*>(data_cpu.get()),
+                         numel * sizeof(T));
+    }
+  }
+  phi::DenseTensor* tensor_;
+  float value_;
+  phi::Place place_;
+};
+#endif
 
 template <typename Context, typename T>
 inline void TransCompute(const int dim,

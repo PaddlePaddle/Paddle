@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule_block_graph.h"
 
@@ -29,10 +30,12 @@ class GroupScheduler {
  public:
   GroupScheduler(ir::IRSchedule* ir_sch,
                  const std::unordered_set<std::string>& output_tensor_names,
-                 const cinn::common::Target& target)
+                 const cinn::common::Target& target,
+                 const std::shared_ptr<GroupTileInfo>& group_tile_info)
       : ir_sch_(ir_sch),
         output_tensor_names_(output_tensor_names),
-        target_(target) {
+        target_(target),
+        group_tile_info_(group_tile_info) {
     schedule_block_graph_ = std::make_unique<ir::ScheduleBlockGraph>(*ir_sch_);
   }
 
@@ -40,13 +43,16 @@ class GroupScheduler {
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
       const cinn::common::Target& target,
-      bool is_dy_shape = false);
+      bool is_dy_shape = false,
+      const std::shared_ptr<GroupTileInfo>& group_tile_info = nullptr);
 
   virtual ~GroupScheduler() = default;
 
   virtual void Schedule() = 0;
 
   virtual std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() = 0;
+
+  std::unordered_set<std::string> OutputTensorNames() const;
 
  protected:
   ir::IRSchedule* ir_sch_;
@@ -55,6 +61,8 @@ class GroupScheduler {
   // Graph in units of ScheduleBlockNode, each node corresponds to a
   // ScheduleBlock in IR.
   std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph_;
+
+  std::shared_ptr<GroupTileInfo> group_tile_info_;
 };
 
 }  // namespace ir

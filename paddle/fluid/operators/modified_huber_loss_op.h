@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

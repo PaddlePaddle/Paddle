@@ -17,8 +17,6 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import base
-from paddle.base.dygraph import to_variable
-from paddle.jit.api import dygraph_to_static_func
 from paddle.nn import Layer, Linear
 
 
@@ -679,7 +677,6 @@ class Transformer(Layer):
         self.d_key = d_key
         self.d_value = d_value
 
-    @dygraph_to_static_func
     def forward(
         self,
         src_word,
@@ -696,7 +693,6 @@ class Transformer(Layer):
         )
         return predict
 
-    @dygraph_to_static_func
     def beam_search(
         self,
         src_word,
@@ -793,28 +789,31 @@ class Transformer(Layer):
         vocab_size_tensor = paddle.tensor.fill_constant(
             shape=[1], dtype="int64", value=self.trg_vocab_size
         )
-        end_token_tensor = to_variable(
+        end_token_tensor = paddle.to_tensor(
             np.full([batch_size, beam_size], eos_id, dtype="int64")
         )
         noend_array = [-inf] * self.trg_vocab_size
         noend_array[eos_id] = 0
-        noend_mask_tensor = to_variable(np.array(noend_array, dtype="float32"))
+        noend_mask_tensor = paddle.to_tensor(
+            np.array(noend_array, dtype="float32")
+        )
         batch_pos = paddle.expand(
             paddle.unsqueeze(
-                to_variable(np.arange(0, batch_size, 1, dtype="int64")), [1]
+                paddle.to_tensor(np.arange(0, batch_size, 1, dtype="int64")),
+                [1],
             ),
             [-1, beam_size],
         )
         predict_ids = []
         parent_ids = []
         # initialize states of beam search
-        log_probs = to_variable(
+        log_probs = paddle.to_tensor(
             np.array(
                 [[0.0] + [-inf] * (beam_size - 1)] * batch_size, dtype="float32"
             )
         )
 
-        finished = to_variable(
+        finished = paddle.to_tensor(
             np.full([batch_size, beam_size], 0, dtype="bool")
         )
 

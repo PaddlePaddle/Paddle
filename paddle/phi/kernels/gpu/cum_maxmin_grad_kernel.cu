@@ -39,10 +39,10 @@ void CummaxGradKernel(const Context& dev_ctx,
 
   if (dtype == DataType::INT32) {
     phi::funcs::gpu_scatter_add_kernel<T, int32_t>(
-        *x_grad, axis, indices, out_grad, dev_ctx);
+        *x_grad, axis, indices, out_grad, true, dev_ctx);
   } else if (dtype == DataType::INT64) {
     phi::funcs::gpu_scatter_add_kernel<T, int64_t>(
-        *x_grad, axis, indices, out_grad, dev_ctx);
+        *x_grad, axis, indices, out_grad, true, dev_ctx);
   }
 }
 
@@ -63,10 +63,10 @@ void CumminGradKernel(const Context& dev_ctx,
 
   if (dtype == DataType::INT32) {
     phi::funcs::gpu_scatter_add_kernel<T, int32_t>(
-        *x_grad, axis, indices, out_grad, dev_ctx);
+        *x_grad, axis, indices, out_grad, true, dev_ctx);
   } else if (dtype == DataType::INT64) {
     phi::funcs::gpu_scatter_add_kernel<T, int64_t>(
-        *x_grad, axis, indices, out_grad, dev_ctx);
+        *x_grad, axis, indices, out_grad, true, dev_ctx);
   }
 }
 

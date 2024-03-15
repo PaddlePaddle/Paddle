@@ -84,8 +84,9 @@ class TestReshardSameStatus:
         in_mesh = dist.ProcessMesh(in_mesh_list, dim_names=["x", "y"])
         value = paddle.uniform(self._shape, self._dtype)
 
-        input_tensor = dist.shard_tensor(value, in_mesh, [dist.Shard(0)])
-        input_tensor.dist_attr._set_partial_dims([1])
+        input_tensor = dist.shard_tensor(
+            value, in_mesh, [dist.Shard(0), dist.Partial()]
+        )
 
         in_expected_local_tensor_list = paddle.split(
             value, num_or_sections=in_mesh.shape[0], axis=0

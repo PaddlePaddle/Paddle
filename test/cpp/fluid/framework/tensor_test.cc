@@ -19,7 +19,6 @@
 
 #include <string>
 
-namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
 TEST(DenseTensor, Dims) {

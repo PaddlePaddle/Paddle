@@ -127,7 +127,7 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "A Varaible list. The shape and data type of the list elements"
+        "A Variable list. The shape and data type of the list elements"
         "should be consistent. Variable can be multi-dimensional Tensor"
         "or phi::DenseTensor, and data types can be: float32, float64, int32, "
         "int64.")
@@ -135,14 +135,6 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
               "consistent with :code:`x`.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
     AddComment(
         R"DOC(This OP is used to sum one or more Tensor or phi::DenseTensor
                     of the input. If the input is phi::DenseTensor, the output only

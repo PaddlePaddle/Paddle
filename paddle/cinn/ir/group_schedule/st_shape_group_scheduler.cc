@@ -24,32 +24,12 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/utils/external_func_names.h"
 
 namespace cinn {
 namespace ir {
 
-static const std::unordered_set<std::string>
-    kProhibitScheduleExternalFuncNames = {
-#define CINN_NVGPU_FUNC2STRING(str) #str
-#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE) \
-  CINN_NVGPU_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE)
-
-#define GEN_FUNC_NAME(_, impl) \
-  _(impl, gt_num)              \
-  _(impl, lt_num)              \
-  _(impl, index_add)           \
-  _(impl, next_smallest)
-
-#define GEN_FUNC_NAME_WITH_TYPE(_, ...)                                     \
-  _(__VA_ARGS__, _bool), _(__VA_ARGS__, _fp16), _(__VA_ARGS__, _fp32),      \
-      _(__VA_ARGS__, _fp64), _(__VA_ARGS__, _uint8), _(__VA_ARGS__, _int8), \
-      _(__VA_ARGS__, _int16), _(__VA_ARGS__, _int32), _(__VA_ARGS__, _int64),
-
-        GEN_FUNC_NAME(GEN_FUNC_NAME_WITH_TYPE, CINN_NVGPU_FUNC_TYPE)
-#undef GEN_FUNC_NAME
-};
-
-bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
+static bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
   ir::ScheduleBlockRealize* sch_block_realize =
       block.As<ir::ScheduleBlockRealize>();
   CHECK_NOTNULL(sch_block_realize);
@@ -61,7 +41,8 @@ bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
       sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
   for (ir::Expr call : find_call) {
     ir::Call* call_node = call.As<ir::Call>();
-    if (kProhibitScheduleExternalFuncNames.count(call_node->name) != 0) {
+    if (cinn::utils::GetProhibitScheduleExternalFuncNames().count(
+            call_node->name) != 0) {
       return true;
     }
   }
@@ -203,15 +184,6 @@ ir::ScheduleBlockNode* StaticShapeGroupScheduler::FindGlobalMasterNode() const {
   CHECK(master) << "Cannot find global master node";
   VLOG(6) << "Find the global master node: " << master->id();
   return master;
-}
-
-std::unordered_set<std::string> StaticShapeGroupScheduler::OutputTensorNames()
-    const {
-  std::unordered_set<std::string> output_tensor_names{output_tensor_names_};
-  for (ir::ScheduleBlockNode* node : schedule_block_graph_->EndPoints()) {
-    output_tensor_names.insert(node->id());
-  }
-  return output_tensor_names;
 }
 
 void StaticShapeGroupScheduler::DoLoopAlignment() {
@@ -379,7 +351,7 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
       source_loops = {source_loop};
     }
 
-    // 3. Rerorder loops to match the target loops
+    // 3. Reorder loops to match the target loops
     if (total_source_extent == total_master_loop_extents) {
       ir_sch_->Reorder(node->id(), recover_loop_order);
     }

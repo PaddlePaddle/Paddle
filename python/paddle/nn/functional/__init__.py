@@ -78,16 +78,16 @@ from .conv import (
     conv3d,
     conv3d_transpose,
 )
-from .distance import pairwise_distance
+from .distance import pairwise_distance, pdist  # noqa: F401
 from .extension import (
     diag_embed,  # noqa: F401
     gather_tree,
     sequence_mask,
     temporal_shift,
 )
-from .flash_attention import (  # noqa: F401
+from .flash_attention import (
     scaled_dot_product_attention,
-    sdp_kernel,
+    sdp_kernel,  # noqa: F401
 )
 from .input import embedding, one_hot
 from .loss import (
@@ -137,6 +137,8 @@ from .pooling import (
     avg_pool1d,
     avg_pool2d,
     avg_pool3d,
+    fractional_max_pool2d,
+    fractional_max_pool3d,
     max_pool1d,
     max_pool2d,
     max_pool3d,
@@ -225,6 +227,8 @@ __all__ = [
     'adaptive_max_pool1d',
     'adaptive_max_pool2d',
     'adaptive_max_pool3d',
+    'fractional_max_pool2d',
+    'fractional_max_pool3d',
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
     'cross_entropy',

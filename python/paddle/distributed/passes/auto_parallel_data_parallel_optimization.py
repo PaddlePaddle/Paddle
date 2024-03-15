@@ -63,7 +63,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def __init__(self):
         super().__init__()
-        # NOTE not use depence on loss and param_grads
+        # NOTE not use dependence on loss and param_grads
         self.set_attr("dist_context", None)
         self.set_attr("global_rank", -1)
         self.set_attr("use_sharding", False)
@@ -306,11 +306,11 @@ class DataParallelOptimizationPass(PassBase):
 
         block = default_main_program().global_block()
 
-        # NOTE the naive overlap implement in static hybird parallel only sync comm stream
+        # NOTE the naive overlap implement in static hybrid parallel only sync comm stream
         # at the end of Backward phase, based on a strong constraint that
         # all communicating gradient would NOT be used after communication in Backward phase.
         # BUT this constraint will fail for scenario like Weight-Sharing and Higher-Order Differentiation,
-        # where gradient will be involved in other calculation between data-parallel allreduce kernel submmited
+        # where gradient will be involved in other calculation between data-parallel allreduce kernel submitted
         # into comm streams and the synchronization of comm stream at the end of Backward phase.
         # synchronization of  comm stream should add according to the usage of communicating gradients
         # to support Overlapping for Weight-Sharing and Higher-Order Differentiation.
@@ -440,7 +440,12 @@ class DataParallelOptimizationPass(PassBase):
     def _update_program(self, grad_groups):
         block = default_main_program().global_block()
 
-        remove_op_types = ['scale', 'c_allreduce_sum', 'c_wait_compute']
+        remove_op_types = [
+            'scale',
+            'c_allreduce_avg',
+            'c_allreduce_sum',
+            'c_wait_compute',
+        ]
 
         for i, group in enumerate(grad_groups[::-1]):
             # skip unfused big tensor
@@ -492,9 +497,10 @@ class DataParallelOptimizationPass(PassBase):
                 )
 
             allreduce_op = block.ops[group.allreduce_op_idx]
-            assert (
-                allreduce_op.type == 'c_allreduce_sum'
-            ), f"should found c_allreduce_sum op but found {str(allreduce_op)}"
+            assert allreduce_op.type in [
+                'c_allreduce_avg',
+                'c_allreduce_sum',
+            ], f"should found c_allreduce_avg or c_allreduce_sum op but found {str(allreduce_op)}"
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
             )
@@ -518,7 +524,7 @@ class DataParallelOptimizationPass(PassBase):
                 new_out_name, out_dist_attr
             )
 
-            # remvoe un-used op
+            # remove un-used op
             remove_op_indices = (
                 group.remove_wait_op_indices
                 + group.remove_allreduce_op_indices

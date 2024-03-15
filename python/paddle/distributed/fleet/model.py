@@ -34,7 +34,7 @@ def distributed_model(model):
     Return distributed data parallel model (Only work in dygraph mode)
 
     Args:
-        model (Layer): the user-defind model which inherits Layer.
+        model (Layer): the user-defined model which inherits Layer.
 
     Returns:
         distributed data parallel model which inherits Layer.
@@ -161,19 +161,18 @@ def distributed_model(model):
         else:
             accumulate_steps = strategy.pipeline_configs['accumulate_steps']
             pp_degree = fleet_env._hcg.get_pipe_parallel_world_size()
-            if (
-                accumulate_steps >= pp_degree
-                and accumulate_steps < pp_degree * 2
-            ):
-                # NOTE(shenliang03): Hacky for unbalanced pipeline parallel with interleave
-                # Currently, we only support pp_degree <= accumulate_steps < 2 * pp_degree
+            if accumulate_steps >= 2 * pp_degree:
+                # interleave pipeline
+                model = PipelineParallelWithInterleave(
+                    model, fleet_env._hcg, strategy=strategy
+                )
+            elif pp_degree <= accumulate_steps < 2 * pp_degree:
                 model = PipelineParallelWithInterleaveFthenB(
                     model, fleet_env._hcg, strategy=strategy
                 )
             else:
-                # interleave pipeline
-                model = PipelineParallelWithInterleave(
-                    model, fleet_env._hcg, strategy=strategy
+                raise ValueError(
+                    f"The accumulate_steps({accumulate_steps}) should be greater than or equal to pp_degree({pp_degree})"
                 )
 
     return model

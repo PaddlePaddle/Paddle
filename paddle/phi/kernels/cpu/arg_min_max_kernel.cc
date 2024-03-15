@@ -90,7 +90,7 @@ struct VisitDataArgMinMaxFunctor {
   void apply() const {
     dev_ctx.template Alloc<Tout>(out);
 
-    // if flatten, will construct the new dims for the cacluate
+    // if flatten, will construct the new dims for the calculation
     phi::DDim x_dims;
     phi::DDim out_dims;
     int new_axis = axis;
@@ -153,6 +153,11 @@ void ArgMinMaxKernel(const Context& dev_ctx,
                      bool flatten,
                      DataType dtype,
                      DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument(
+          "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(
         phi::DataType::INT64,

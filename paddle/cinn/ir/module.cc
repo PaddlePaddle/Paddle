@@ -53,6 +53,10 @@ void Module::Builder::AddPredicate(ir::Expr predicate) {
   module_->predicates.push_back(predicate);
 }
 
+void Module::Builder::SetInferShapeFunc(ir::Expr infer_shape_func) {
+  module_->infer_shape_func = infer_shape_func;
+}
+
 void Module::Builder::Clear() {
   module_->buffers.clear();
   module_->functions.clear();

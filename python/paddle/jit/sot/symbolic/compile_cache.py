@@ -20,10 +20,12 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base.data_feeder import convert_dtype
-from paddle.framework import _dygraph_tracer
+from paddle.framework import _dygraph_tracer, use_pir_api
 
+from ..infer_meta import convert_meta_to_input_spec
 from ..profiler import EventGuard
 from ..utils import (
+    ENV_SOT_EXPORT,
     Cache,
     GraphLogger,
     Singleton,
@@ -32,6 +34,7 @@ from ..utils import (
     log_do,
     map_if,
 )
+from .export import export
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
@@ -62,6 +65,7 @@ class FallbackWrapper:
         self.concrete_program = None
         self.SIR = SIR  # for debug
         self.is_training = is_training
+        self.exported = False
 
     def amp_cast_inputs(self, args, kwargs):
         """Prepare inputs for amp, cast float16 into float32 if needed."""
@@ -86,6 +90,23 @@ class FallbackWrapper:
             false_fn=lambda x: x,
         )
 
+    def graph_size(self):
+        if self.partial_program is None:
+            input_spec = convert_meta_to_input_spec(
+                [self.SIR.symbol_meta_map[symbol] for symbol in self.SIR.inputs]
+            )
+            (
+                self.concrete_program,
+                self.partial_program,
+            ) = self.compiled_fn.get_concrete_program(input_spec)
+            self.partial_program.training = self.is_training
+        if use_pir_api():
+            return len(self.partial_program.program.program.global_block().ops)
+        else:
+            if self.partial_program.program.num_blocks > 1:
+                return -1
+            return len(self.partial_program.program.block(0).ops)
+
     def __call__(self, *args, **kwargs):
         with EventGuard(f"FallbackWrapper: {self.SIR.name}"):
             if StepInfoManager().need_back_trace:
@@ -95,7 +116,8 @@ class FallbackWrapper:
                 2,
                 lambda: print("[FallbackWrapper] start run SIR: \n", self.SIR),
             )
-            args, kwargs = self.amp_cast_inputs(args, kwargs)
+            if not use_pir_api():
+                args, kwargs = self.amp_cast_inputs(args, kwargs)
             log_do(
                 4,
                 lambda: print(
@@ -125,6 +147,10 @@ class FallbackWrapper:
                 4,
                 lambda: print("[CompileCache] run sir forward success."),
             )
+            if ENV_SOT_EXPORT.get() != "" and not self.exported:
+                export(self.SIR, ENV_SOT_EXPORT.get())
+                self.exported = True
+
             return outputs
 
 
@@ -150,7 +176,7 @@ class CompileSIRCache(Cache):
             The hash key of the SIR
         """
         sir = context.get_sir(sir_name)
-        # NOTE(dev): Is str(sir) a heavy opearation ?
+        # NOTE(dev): Is str(sir) a heavy operation ?
         hash_key = hash((str(sir), kwargs['training']))
         return hash_key
 

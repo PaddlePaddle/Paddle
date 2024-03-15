@@ -1,0 +1,56 @@
+--- old/CMakeLists.txt	2024-02-01 12:01:53.589574744 +0000
++++ new/CMakeLists.txt	2024-02-01 12:05:03.708426912 +0000
+@@ -71,49 +71,10 @@
+     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fopenmp")
+ endif()
+ 
+-
+-# need to be at least 30 or __shfl_down in reduce wont compile
+-IF (CUDA_VERSION VERSION_LESS "11.0")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_30,code=sm_30")
+-ENDIF()
+-
+-# sm35 is deprecated after cuda 12.0
+-IF (CUDA_VERSION VERSION_LESS "12.0")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_35,code=sm_35")
+-ENDIF()
+-
+-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_50,code=sm_50")
+-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_52,code=sm_52")
+-
+-IF (CUDA_VERSION VERSION_GREATER "7.6")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_60,code=sm_60")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_61,code=sm_61")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_62,code=sm_62")
+-ENDIF()
+-
+-IF ((CUDA_VERSION VERSION_GREATER "9.0") OR (CUDA_VERSION VERSION_EQUAL "9.0"))
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_70,code=sm_70")
+-ENDIF()
+-
+-IF ((CUDA_VERSION VERSION_GREATER "10.0") OR (CUDA_VERSION VERSION_EQUAL "10.0"))
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_75,code=sm_75")
+-ENDIF()
+-
+-IF ((CUDA_VERSION VERSION_GREATER "11.0") OR (CUDA_VERSION VERSION_EQUAL "11.0"))
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_80,code=sm_80")
+-ENDIF()
+-
+-IF ((CUDA_VERSION VERSION_GREATER "11.2") OR (CUDA_VERSION VERSION_EQUAL "11.2"))
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_86,code=sm_86")
+-ENDIF()
+-
+-IF ((CUDA_VERSION VERSION_GREATER "11.8") OR (CUDA_VERSION VERSION_EQUAL "11.8"))
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_90,code=sm_90")
+-ENDIF()
+-
+-if (NOT APPLE)
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --std=c++11")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}")
++if (NOT APPLE AND NOT WIN32)
++    set(CUDA_NVCC_FLAGS "${NVCC_FLAGS_EXTRA} --std=c++11")
++ELSE(NOT APPLE AND NOT WIN32)
++    set(CUDA_NVCC_FLAGS "${NVCC_FLAGS_EXTRA}")
+ ENDIF()
+ 
+ IF (APPLE)

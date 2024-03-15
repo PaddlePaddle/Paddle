@@ -28,7 +28,7 @@ def convert_out_size_to_list(out_size, op_type):
         out_size = [0]
     elif isinstance(out_size, (int, np.int32, np.int64)):
         out_size = [out_size]
-    elif isinstance(out_size, (Variable, paddle.pir.OpResult)):
+    elif isinstance(out_size, (Variable, paddle.pir.Value)):
         out_size.stop_gradient = True
         check_dtype(
             out_size.dtype,

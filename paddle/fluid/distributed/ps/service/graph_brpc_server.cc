@@ -247,7 +247,7 @@ void GraphBrpcService::service(google::protobuf::RpcController *cntl_base,
   brpc::ClosureGuard done_guard(done);
   std::string log_label("ReceiveCmd-");
   if (!request->has_table_id()) {
-    set_response_code(*response, -1, "PsRequestMessage.tabel_id is required");
+    set_response_code(*response, -1, "PsRequestMessage.table_id is required");
     return;
   }
 
@@ -282,7 +282,7 @@ int32_t GraphBrpcService::Barrier(Table *table,
   if (request.params_size() < 1) {
     set_response_code(response,
                       -1,
-                      "PsRequestMessage.params is requeired at "
+                      "PsRequestMessage.params is required at "
                       "least 1 for num of sparse_key");
     return 0;
   }
@@ -316,7 +316,7 @@ int32_t GraphBrpcService::LoadOneTable(Table *table,
     set_response_code(
         response,
         -1,
-        "PsRequestMessage.datas is requeired at least 2 for path & load_param");
+        "PsRequestMessage.datas is required at least 2 for path & load_param");
     return -1;
   }
   if (table->Load(request.params(0), request.params(1)) != 0) {
@@ -558,10 +558,8 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   auto local_promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> local_fut = local_promise->get_future();
   std::vector<bool> failed(server_size, false);
-  std::function<void(void *)> func = [&,
-                                      node_id_buckets,
-                                      query_idx_buckets,
-                                      request_call_num](void *done) {
+  std::function<void(void *)> func = [&, node_id_buckets, query_idx_buckets](
+                                         void *done) {
     local_fut.get();
     std::vector<int> actual_size;
     auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);

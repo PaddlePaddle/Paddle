@@ -86,13 +86,13 @@ class SplitOp : public framework::OperatorWithKernel {
         Variable *var = PADDLE_GET_CONST(Variable *, section_varptr);
         sections_from_tensor.emplace_back(var->Get<phi::DenseTensor>());
       }
-      sections_final = std::move(phi::IntArray(sections_from_tensor));
+      sections_final = phi::IntArray(sections_from_tensor);
     } else if (!ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
-      sections_final = std::move(phi::IntArray(std::vector<int>(
-          ctx->GetInputVarPtrs("SectionsTensorList").size(), -1)));
+      sections_final = phi::IntArray(std::vector<int>(
+          ctx->GetInputVarPtrs("SectionsTensorList").size(), -1));
       sections_final.SetFromTensor(true);
     } else {
-      sections_final = std::move(phi::IntArray(sections));
+      sections_final = phi::IntArray(sections);
     }
     if (!sections.empty()) {
       if (ctx->IsRuntime()) {
@@ -196,14 +196,6 @@ Example:
                  "(int, default 0) "
                  "The axis which the input will be split on.")
         .SetDefault(0);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16", "int8", "uint8"});
   }
 };
 
@@ -230,7 +222,7 @@ class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
           "We don't support dynamic index or sections from tensor for split "
           "composite grad for now. "));
     } else {
-      VLOG(6) << "Runing split_grad composite func";
+      VLOG(6) << "Running split_grad composite func";
       prim::split_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
       this->RecoverOutputName(input_grad, dx_name);
     }

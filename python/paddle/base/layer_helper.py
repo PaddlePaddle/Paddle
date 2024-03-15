@@ -15,14 +15,15 @@
 import copy
 
 import paddle
+from paddle import _C_ops
 
 from . import unique_name
 from .dygraph_utils import _append_activation_in_dygraph
 from .framework import (
     Parameter,
-    _global_flags,
     dtype_is_floating,
     in_dygraph_mode,
+    in_pir_mode,
 )
 from .layer_helper_base import LayerHelperBase
 from .param_attr import ParamAttr
@@ -36,7 +37,12 @@ class LayerHelper(LayerHelperBase):
         # can not use both `layer_type` and `name`. Deprecate LayerHelper
         # and write a Helper for dygraph mode.
         if name is None:
-            self.kwargs['name'] = unique_name.generate(layer_type)
+            if in_dygraph_mode():
+                self.kwargs['name'] = unique_name.generate(layer_type)
+            else:
+                self.kwargs[
+                    'name'
+                ] = self.main_program._name_generator.generate(layer_type)
 
         super().__init__(self.kwargs['name'], layer_type=layer_type)
 
@@ -128,6 +134,8 @@ class LayerHelper(LayerHelperBase):
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True
         )
+        if in_pir_mode():
+            return input_var + b
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type='elementwise_add',
@@ -151,17 +159,24 @@ class LayerHelper(LayerHelperBase):
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             use_cudnn = self.kwargs.get('use_cudnn')
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = self.kwargs.get(
-            'use_mkldnn', _global_flags().get("FLAGS_use_mkldnn", False)
-        )
-        if use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if in_dygraph_mode():
-            res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
-            )
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
+        elif in_pir_mode():
+
+            def _append_activation_in_pir(input, act=None, use_cudnn=None):
+                if act is None:
+                    return input
+
+                attrs = ()
+                if use_cudnn:
+                    attrs = ('use_cudnn', use_cudnn)
+
+                act_op = getattr(_C_ops, act)
+                return act_op(input, *attrs)
+
+            return _append_activation_in_pir(input_var, act_type, use_cudnn)
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
             self.append_op(

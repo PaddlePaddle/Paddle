@@ -514,8 +514,8 @@ void MatMulFunctionImplWithCublasLt(
         M,
         N,
         phi::errors::InvalidArgument(
-            "X's numbers must be equal to Y's numbers,"
-            "when X/Y's dims =1. But received X has [%d] elements,"
+            "X's numbers must be equal to Y's numbers, "
+            "when X/Y's dims =1. But received X has [%d] elements, "
             "received Y has [%d] elements",
             M,
             N));
@@ -638,8 +638,8 @@ void MatMulFunctionImplWithCublasLt(
           x_dims[x_ndim - 1],
           N,
           phi::errors::InvalidArgument("Input(X) has error dim."
-                                       "X'dims[%d] must be equal to %d"
-                                       "But received X'dims[%d] is %d",
+                                       "X'dims[%d] must be equal to %d, "
+                                       "but received X'dims[%d] is %d",
                                        x_ndim - 1,
                                        N,
                                        x_ndim - 1,
@@ -1021,8 +1021,8 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
         M,
         N,
         phi::errors::InvalidArgument(
-            "X's numbers must be equal to Y's numbers,"
-            "when X/Y's dims =1. But received X has [%d] elements,"
+            "X's numbers must be equal to Y's numbers, "
+            "when X/Y's dims =1. But received X has [%d] elements, s"
             "received Y has [%d] elements",
             M,
             N));
@@ -1138,8 +1138,8 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
           x_dims[x_ndim - 2],
           N,
           phi::errors::InvalidArgument("Input(X) has error dim."
-                                       "X'dims[%d] must be equal to %d"
-                                       "But received X'dims[%d] is %d",
+                                       "X'dims[%d] must be equal to %d, "
+                                       "but received X'dims[%d] is %d",
                                        x_ndim - 2,
                                        N,
                                        x_ndim - 2,
@@ -1153,8 +1153,8 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
           x_dims[x_ndim - 1],
           N,
           phi::errors::InvalidArgument("Input(X) has error dim."
-                                       "X'dims[%d] must be equal to %d"
-                                       "But received X'dims[%d] is %d",
+                                       "X'dims[%d] must be equal to %d, "
+                                       "but received X'dims[%d] is %d",
                                        x_ndim - 1,
                                        N,
                                        x_ndim - 1,
@@ -1477,13 +1477,13 @@ void MatmulKernel(const Context& ctx,
   PADDLE_ENFORCE_NE(
       common::product(x.dims()),
       0,
-      phi::errors::InvalidArgument("The Input(X) dims size must not be equal 0,"
-                                   " but reviced dims size is 0. "));
+      phi::errors::InvalidArgument("The Input(X) dims size must not be equal "
+                                   "0, but received dims size is 0."));
   PADDLE_ENFORCE_NE(
       common::product(y.dims()),
       0,
-      phi::errors::InvalidArgument("The Input(Y) dims size must not be equal 0,"
-                                   " but reviced dims size is 0. "));
+      phi::errors::InvalidArgument("The Input(Y) dims size must not be equal "
+                                   "0, but received dims size is 0."));
   const std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
   MatmulJudgeDtypeKernel<Context, T>(
@@ -1562,14 +1562,14 @@ void MatmulWithFlattenKernelInt8Impl(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ((y_matrix.dims()[1] % 4 == 0 || y_matrix.dims()[1] == 1),
                     true,
                     phi::errors::InvalidArgument(
-                        "The dimension size N used in int8 mul must be 1"
+                        "The dimension size N used in int8 mul must be 1 "
                         "or a multiple of 4 does not match the size (%d)"
                         "currently contained in the container.",
                         y_matrix.dims()[1]));
   PADDLE_ENFORCE_EQ((x_matrix.dims()[1] % 4 == 0),
                     true,
                     phi::errors::InvalidArgument(
-                        "The dimension size K used in int8 mul must be a"
+                        "The dimension size K used in int8 mul must be a "
                         "multiple of 4 does not match the size (%d) currently"
                         "contained in the container.",
                         x_matrix.dims()[1]));

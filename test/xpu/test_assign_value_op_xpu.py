@@ -53,7 +53,7 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
 
         def init_data(self):
             self.value = np.random.random(size=(2, 5)).astype(np.float32)
-            self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
+            self.attrs["values"] = [float(v) for v in self.value.flat]
 
         def test_forward(self):
             self.check_output_with_place(self.place)
@@ -61,19 +61,40 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
     class TestAssignValueOp2(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.random(size=(2, 5)).astype(np.int32)
-            self.attrs["int32_values"] = [int(v) for v in self.value.flat]
+            self.attrs["values"] = [int(v) for v in self.value.flat]
 
     class TestAssignValueOp3(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.random(size=(2, 5)).astype(np.int64)
-            self.attrs["int64_values"] = [int(v) for v in self.value.flat]
+            self.attrs["values"] = [int(v) for v in self.value.flat]
 
     class TestAssignValueOp4(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
                 np.bool_
             )
-            self.attrs["bool_values"] = [int(v) for v in self.value.flat]
+            self.attrs["values"] = [int(v) for v in self.value.flat]
+
+    class TestAssignValueOp5(TestAssignValueOp):
+        def init_data(self):
+            self.value = np.random.random(size=(2, 5)).astype(np.float64)
+            self.attrs["values"] = [float(v) for v in self.value.flat]
+
+    class TestAssignValueOp6(TestAssignValueOp):
+        def init_data(self):
+            self.value = (
+                np.random.random(size=(2, 5))
+                + 1j * np.random.random(size=(2, 5))
+            ).astype(np.complex64)
+            self.attrs["values"] = list(self.value.flat)
+
+    class TestAssignValueOp7(TestAssignValueOp):
+        def init_data(self):
+            self.value = (
+                np.random.random(size=(2, 5))
+                + 1j * np.random.random(size=(2, 5))
+            ).astype(np.complex128)
+            self.attrs["values"] = list(self.value.flat)
 
 
 class TestAssignApi(unittest.TestCase):
@@ -90,8 +111,7 @@ class TestAssignApi(unittest.TestCase):
     def test_assign(self):
         main_program = base.Program()
         with base.program_guard(main_program):
-            x = paddle.tensor.create_tensor(dtype=self.dtype)
-            paddle.assign(self.value, output=x)
+            x = paddle.assign(self.value)
 
         exe = base.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
@@ -119,6 +139,35 @@ class TestAssignApi4(TestAssignApi):
 
     def init_dtype(self):
         self.dtype = "bool"
+
+
+class TestAssignApi5(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "float64"
+
+
+class TestAssignApi6(TestAssignApi):
+    def setUp(self):
+        self.init_dtype()
+        self.value = (
+            np.random.random(size=(2, 5)) + 1j * (np.random.random(size=(2, 5)))
+        ).astype(np.complex64)
+        self.place = base.XPUPlace(0)
+
+    def init_dtype(self):
+        self.dtype = "complex64"
+
+
+class TestAssignApi7(TestAssignApi):
+    def setUp(self):
+        self.init_dtype()
+        self.value = (
+            np.random.random(size=(2, 5)) + 1j * (np.random.random(size=(2, 5)))
+        ).astype(np.complex128)
+        self.place = base.XPUPlace(0)
+
+    def init_dtype(self):
+        self.dtype = "complex128"
 
 
 support_types = get_xpu_op_support_types('assign_value')

@@ -95,7 +95,7 @@ class TestReQuantizeOp(OpTest):
             self.input_data_type == 'uint8' or self.shift_in == 0.0,
             'Input data must be unsigned if it has nonzero shift.',
         )
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_pir_onednn=True)
 
     def check_raise_error(self, msg):
         try:
@@ -296,7 +296,7 @@ class TestReQuantizeOp_U8_DifferentScales_2_DifferentShift_2(
         self.shift_out = 128.0
 
 
-# ---------------test non-four dimentional formats--------------------------
+# ---------------test non-four dimensional formats--------------------------
 
 
 class TestReQuantizeOp_2DimFormat(TestReQuantizeOp):

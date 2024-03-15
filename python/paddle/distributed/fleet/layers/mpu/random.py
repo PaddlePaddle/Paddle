@@ -59,12 +59,26 @@ class RNGStatesTracker:
 
     def get_states_tracker(self):
         states = {}
+        orig_rng_state_index = paddle.incubate.get_rng_state(use_index=True)
         for name in self.states_:
-            states[name] = self.states_[name]
+            # switch index to name
+            paddle.incubate.set_rng_state(self.states_[name], use_index=True)
+            # export the saved state
+            states[name] = paddle.get_cuda_rng_state()
+        paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
         return states
 
     def set_states_tracker(self, states):
-        self.states_ = states
+        orig_rng_state_index = paddle.incubate.get_rng_state(use_index=True)
+        for name in states:
+            if name not in self.states_:
+                raise ValueError(f'state {name} does not exists')
+            # switch index to name
+            paddle.incubate.set_rng_state(self.states_[name], use_index=True)
+            # set the state to saved state
+            paddle.set_cuda_rng_state(states[name])
+
+        paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
 
     @contextlib.contextmanager
     def rng_state(self, name=MODEL_PARALLEL_RNG):

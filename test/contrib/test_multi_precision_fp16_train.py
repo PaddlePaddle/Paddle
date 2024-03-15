@@ -101,8 +101,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
 
     train_program = base.Program()
     startup_prog = base.Program()
-    train_program.random_seed = 123
-    startup_prog.random_seed = 456
+    paddle.seed(123)
     with base.program_guard(train_program, startup_prog):
         images = paddle.static.data(
             name='pixel', shape=[-1] + data_shape, dtype='float32'

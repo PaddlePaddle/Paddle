@@ -17,12 +17,13 @@
 #include <chrono>
 #include <ctime>
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -31,22 +32,18 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
-#include "paddle/pir/core/operation_utils.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/core/operation_utils.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 namespace paddle {
 namespace test {
 
 bool AllClose(const phi::DenseTensor& a,
               const phi::DenseTensor& b,
-              float rtol = 1e-5,
-              float atol = 1e-8) {
-  if (a.dims() != b.dims()) {
-    return false;
-  }
-
-  if (a.dtype() != b.dtype()) {
+              const float rtol = 1e-5,
+              const float atol = 1e-8) {
+  if (a.dims() != b.dims() || a.dtype() != b.dtype()) {
     return false;
   }
 
@@ -61,70 +58,72 @@ bool AllClose(const phi::DenseTensor& a,
       }
     }
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("ONLY support float32 "));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ONLY support float32, but received %s", a.dtype()));
   }
 
   return true;
 }
 
 std::vector<pir::Value> GetBlockInput(pir::Block* block) {
-  std::vector<pir::Value> vec_res;
-  std::unordered_set<::pir::Value> block_inner_output;
+  std::vector<pir::Value> inputs;
+  std::unordered_set<::pir::Value> inner_output;
   for (auto& op : *block) {
     for (size_t i = 0; i < op.num_results(); ++i) {
-      block_inner_output.insert(op.result(i));
+      inner_output.insert(op.result(i));
     }
 
     if (op.isa<paddle::dialect::DataOp>()) {
-      vec_res.push_back(op.result(0));
+      inputs.push_back(op.result(0));
     }
   }
 
-  std::unordered_set<::pir::Value> insert_value;
+  std::unordered_set<::pir::Value> value_set;
   for (auto& op : *block) {
     for (size_t i = 0; i < op.num_operands(); ++i) {
       if (!op.operand(i) || !(op.operand_source(i))) {
         continue;
       }
-      if (!block_inner_output.count(op.operand_source(i)) &&
-          !insert_value.count(op.operand_source(i))) {
-        vec_res.push_back(op.operand_source(i));
-        insert_value.insert(op.operand_source(i));
+      auto value = op.operand_source(i);
+      if (!inner_output.count(value) && !value_set.count(value)) {
+        inputs.push_back(value);
+        value_set.insert(value);
       }
     }
   }
-  return vec_res;
+  return inputs;
 }
 
 SubGraphChecker::SubGraphChecker(std::shared_ptr<pir::Program> phi_program,
                                  std::shared_ptr<pir::Program> prim_program)
     : phi_program_(phi_program), prim_program_(prim_program) {}
 
-void SubGraphChecker::CheckResult() {
+bool SubGraphChecker::CheckResult() {
   auto phi_res = RunPhiResult();
-
   auto cinn_res = RunCinnResult();
 
-  bool check = true;
+  bool check_right = true;
   for (size_t i = 0; i < phi_res.size(); ++i) {
     auto res = AllClose(phi_res[i], cinn_res[i]);
     if (!res) {
-      check = false;
+      check_right = false;
+      break;
     }
-    LOG(INFO) << "compare index " << i << "\t" << res << std::endl;
+    VLOG(3) << "compare index " << i << "\t" << res << std::endl;
   }
 
-  if (check) {
+  if (check_right) {
     LOG(INFO) << "Result check Success" << std::endl;
   } else {
     LOG(INFO) << "Result check Failed" << std::endl;
   }
+  return check_right;
 }
 
 std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
   phi_input_values_ = GetBlockInput(phi_program_->block());
   InitInputs(phi_input_values_, phi_program_->block(), &inner_scope_);
-  AppendFetchOp(phi_program_->block(), &phi_fetch_names_, "phi_out_");
+  AppendFetchOp(phi_program_->block(), &phi_fetch_names_, kOutputPrefix);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
   phi_kernel_program_ =
@@ -133,13 +132,13 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
   for (size_t i = 0; i < phi_input_values_.size(); ++i) {
-    std::string name = "input_" + std::to_string(i);
+    std::string name = kInputPrefix + std::to_string(i);
     exec_config.skip_gc_vars.insert(name);
   }
 
   std::vector<std::string> fetch_var_names;
   for (auto name : phi_fetch_names_) {
-    fetch_var_names.push_back(name + "@fetch");
+    fetch_var_names.push_back(name + kFetchSuffix);
   }
   paddle::framework::InterpreterCore exec(place,
                                           fetch_var_names,
@@ -151,8 +150,7 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
 
   std::vector<phi::DenseTensor> vec_res;
   for (auto& name : fetch_var_names) {
-    vec_res.push_back(
-        inner_scope_.FindVar("phi_out_0@fetch")->Get<phi::DenseTensor>());
+    vec_res.push_back(inner_scope_.FindVar(name)->Get<phi::DenseTensor>());
   }
 
   return vec_res;
@@ -163,18 +161,17 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
 
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 
-  AppendFetchOp(prim_program_->block(), &cinn_fetch_names_, "cinn_out_");
+  AppendFetchOp(prim_program_->block(), &cinn_fetch_names_, kOutputPrefix);
 
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(prim_program_.get());
-
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pm.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.Run(prim_program_.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
@@ -184,13 +181,13 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
 
   std::vector<std::string> fetch_var_names;
   for (auto name : cinn_fetch_names_) {
-    fetch_var_names.push_back(name + "@fetch");
+    fetch_var_names.push_back(name + kFetchSuffix);
   }
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
   for (size_t i = 0; i < phi_input_values_.size(); ++i) {
-    std::string name = "input_" + std::to_string(i);
+    std::string name = kInputPrefix + std::to_string(i);
     exec_config.skip_gc_vars.insert(name);
   }
 
@@ -210,12 +207,15 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
   return vec_res;
 }
 
-void SubGraphChecker::CheckSpeed() {
+std::vector<double> SubGraphChecker::CheckSpeed() {
   auto time_phi = RunPhiSpeed();
   auto time_cinn = RunCinnSpeed();
 
   LOG(INFO) << "time cost: Phi: " << time_phi << "\tCINN : " << time_cinn
             << std::endl;
+
+  std::vector<double> speed_data{time_phi, time_cinn};
+  return speed_data;
 }
 
 double SubGraphChecker::RunPhiSpeed() {
@@ -227,13 +227,13 @@ double SubGraphChecker::RunPhiSpeed() {
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
   for (size_t i = 0; i < phi_input_values_.size(); ++i) {
-    std::string name = "input_" + std::to_string(i);
+    std::string name = kInputPrefix + std::to_string(i);
     exec_config.skip_gc_vars.insert(name);
   }
 
   std::vector<std::string> fetch_var_names;
   for (auto name : phi_fetch_names_) {
-    fetch_var_names.push_back(name + "@fetch");
+    fetch_var_names.push_back(name + kFetchSuffix);
   }
   paddle::framework::InterpreterCore exec(place,
                                           fetch_var_names,
@@ -258,18 +258,17 @@ double SubGraphChecker::RunPhiSpeed() {
 double SubGraphChecker::RunCinnSpeed() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 
-  AppendFetchOp(prim_program_->block(), &cinn_fetch_names_, "cinn_out_");
+  AppendFetchOp(prim_program_->block(), &cinn_fetch_names_, kOutputPrefix);
 
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(prim_program_.get());
-
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pm.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.Run(prim_program_.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
@@ -281,13 +280,13 @@ double SubGraphChecker::RunCinnSpeed() {
 
   std::vector<std::string> fetch_var_names;
   for (auto name : cinn_fetch_names_) {
-    fetch_var_names.push_back(name + "@fetch");
+    fetch_var_names.push_back(name + kFetchSuffix);
   }
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
   for (size_t i = 0; i < phi_input_values_.size(); ++i) {
-    std::string name = "input_" + std::to_string(i);
+    std::string name = kInputPrefix + std::to_string(i);
     exec_config.skip_gc_vars.insert(name);
   }
 
@@ -325,7 +324,7 @@ void SubGraphChecker::RemoveFetchOp(pir::Block* block) {
 void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,
                                  pir::Block* block,
                                  paddle::framework::Scope* scope) {
-  // build a proram, init data and set parameter to scope
+  // build a program, init data and set parameter to scope
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
@@ -347,7 +346,7 @@ void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,
                 0,
                 phi::GPUPlace())
             .result(0);
-    auto name = "input_" + std::to_string(i);
+    auto name = kInputPrefix + std::to_string(i);
     builder.Build<pir::SetParameterOp>(random, name);
     auto param = scope->Var(name);
     out_tensor = param->GetMutable<phi::DenseTensor>();
@@ -375,10 +374,11 @@ void SubGraphChecker::AppendGetParameter(
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   builder.SetInsertionPointToStart(block);
   for (size_t i = 0; i < input_values.size(); ++i) {
-    auto get_param = builder
-                         .Build<pir::ParameterOp>("input_" + std::to_string(i),
-                                                  input_values[i].type())
-                         .result(0);
+    auto get_param =
+        builder
+            .Build<pir::ParameterOp>(kInputPrefix + std::to_string(i),
+                                     input_values[i].type())
+            .result(0);
 
     for (auto it = input_values[i].use_begin();
          it != input_values[i].use_end();) {

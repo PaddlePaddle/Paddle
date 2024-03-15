@@ -23,7 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import core, framework
 from paddle.base.framework import Program, program_guard
-from paddle.pir_utils import IrGuard, test_with_pir_api
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestEyeOp(OpTest):
@@ -123,6 +123,7 @@ class API_TestTensorEye(unittest.TestCase):
         paddle.enable_static()
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
 
@@ -141,25 +142,6 @@ class API_TestTensorEye(unittest.TestCase):
 
             self.assertRaises(TypeError, test_num_columns_type_check1)
 
-    def test_pir_errors(self):
-        with IrGuard():
-            with paddle.static.program_guard(paddle.static.Program()):
-
-                def test_num_rows_type_check():
-                    paddle.eye(-1, dtype="int64")
-
-                self.assertRaises(TypeError, test_num_rows_type_check)
-
-                def test_num_columns_type_check():
-                    paddle.eye(10, num_columns=5.2, dtype="int64")
-
-                self.assertRaises(TypeError, test_num_columns_type_check)
-
-                def test_num_columns_type_check1():
-                    paddle.eye(10, num_columns=10, dtype="int8")
-
-                self.assertRaises(ValueError, test_num_columns_type_check1)
-
 
 class TestEyeRowsCol(UnittestBase):
     def init_info(self):
@@ -168,8 +150,8 @@ class TestEyeRowsCol(UnittestBase):
 
     def test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -183,7 +165,7 @@ class TestEyeRowsCol(UnittestBase):
             self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[tmp, out])
             gt = np.eye(3, 10)
             np.testing.assert_allclose(res[0], gt)
@@ -221,7 +203,7 @@ class TestEyeFP16OP(TestEyeOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestEyeBF16OP(OpTest):
     def setUp(self):
