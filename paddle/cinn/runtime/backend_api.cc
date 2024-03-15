@@ -29,7 +29,7 @@ BackendAPI* BackendAPI::get_backend(common::Target::Language target_language) {
   void * temp_backend_api;
   switch(target_language){
     case common::Target::Language::cuda:
-      temp_backend_api = GlobalSymbolRegistry::Global().Lookup("backend_api.sycl");
+      temp_backend_api = GlobalSymbolRegistry::Global().Lookup("backend_api.cuda");
       CHECK(temp_backend_api != nullptr) << "global symbol (backend_api.cuda) not found!";
       break;
     case common::Target::Language::sycl:
@@ -37,9 +37,8 @@ BackendAPI* BackendAPI::get_backend(common::Target::Language target_language) {
       CHECK(temp_backend_api != nullptr) << "global symbol (backend_api.sycl) not found!";
       break;
     case common::Target::Language::hip:
-      // todo: backend_api.hip
-      temp_backend_api = GlobalSymbolRegistry::Global().Lookup("backend_api.sycl");
-      CHECK(temp_backend_api != nullptr) << "global symbol (backend_api.sycl) not found!";
+      temp_backend_api = GlobalSymbolRegistry::Global().Lookup("backend_api.hip");
+      CHECK(temp_backend_api != nullptr) << "global symbol (backend_api.hip) not found!";
       break;
     case common::Target::Language::bangc:
       LOG(FATAL) << "Target(" << target_language <<") is not support get_backend now.";

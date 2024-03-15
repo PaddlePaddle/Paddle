@@ -194,5 +194,7 @@ if is_compiled_with_cuda():
     hfile = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
 elif is_compiled_with_sycl():
     hfile = os.path.join(runtime_include_dir, "cinn_sycl_runtime_source.h")
+elif is_compiled_with_hip():
+    hfile = os.path.join(runtime_include_dir, "cinn_hip_runtime_source.h")
 if os.path.exists(hfile):
     os.environ.setdefault('runtime_include_dir', runtime_include_dir)

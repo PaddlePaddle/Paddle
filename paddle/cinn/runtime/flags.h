@@ -28,6 +28,7 @@ void SetCinnCudnnDeterministic(bool state);
 bool GetCinnCudnnDeterministic();
 
 bool CanUseNvccCompiler();
+bool CanUseHipccCompiler();
 
 class RandomSeed {
  public:

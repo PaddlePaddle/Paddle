@@ -1,5 +1,8 @@
 #include "paddle/cinn/runtime/hip/hip_backend_api.h"
+#include <hip/hip_runtime.h>
+#include "paddle/cinn/runtime/hip/hip_util.h"
 #include <glog/logging.h>
+
 namespace cinn {
 namespace runtime {
 namespace hip {
@@ -13,47 +16,64 @@ void HIPBackendAPI::set_device(int device_id) {
   this->now_device_id = device_id;
 }
 
-int HIPBackendAPI::get_device_property(DeviceProperty device_property,
+int HIPBackendAPI::get_device() {
+  int device_id = 0;
+  HIP_CALL(hipGetDevice(&device_id));
+  return device_id;
+}
+
+std::variant<int, std::array<int, 3>> HIPBackendAPI::get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id) {
-  int dev_index = device_id ? device_id.value() : this->now_device_id;
+  int dev_index = device_id.value_or(this->now_device_id);
+  std::variant<int, std::array<int, 3>> rv_variant;
   int rv = -1;
   switch (device_property) {
     case DeviceProperty::MaxBlockDims: {
-      LOG(FATAL) << "Not supported device property!";
+      hipDeviceProp_t prop_;
+      HIP_CALL(hipGetDeviceProperties(&prop_, dev_index));
+      rv_variant = std::array<int, 3>{prop_.maxThreadsDim[0], prop_.maxThreadsDim[1], prop_.maxThreadsDim[2]};
       break;
     }
     case DeviceProperty::MaxGridDims: {
-      LOG(FATAL) << "Not supported device property!";
+      hipDeviceProp_t prop_;
+      HIP_CALL(hipGetDeviceProperties(&prop_, dev_index));
+      rv_variant = std::array<int, 3>{prop_.maxGridSize[0], prop_.maxGridSize[1], prop_.maxGridSize[2]};
       break;
     }
     case DeviceProperty::MaxSharedMemoryPerBlock: {
       HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMaxSharedMemoryPerBlock, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty::MaxThreadsPerBlock: {
       HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerBlock, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty::MaxThreadsPerSM: {
       HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerMultiProcessor, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty::MultiProcessorCount: {
       HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMultiprocessorCount, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty:: MaxBlocksPerSM: {
       HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerMultiProcessor, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty::WarpSize: {
       HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeWarpSize, dev_index));
+      rv_variant = rv;
       break;
     }
     default:
       LOG(FATAL) << "Not supported device property!";
   }
-  return rv;
+  return rv_variant;
 }
 
 
@@ -94,6 +114,9 @@ void HIPBackendAPI::device_sync(){
   HIP_CALL(hipDeviceSynchronize());
 }
 
+void HIPBackendAPI::stream_sync(void* stream){
+  HIP_CALL(hipStreamSynchronize(static_cast<hipStream_t>(stream)));
+}
 
 }  // namespace hip
 }  // namespace runtime

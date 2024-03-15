@@ -21,7 +21,7 @@ int CUDABackendAPI::get_device() {
 
 std::variant<int, std::array<int, 3>> CUDABackendAPI::get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id) {
-  int dev_index = device_id ? device_id.value() : this->now_device_id;
+  int dev_index = device_id.value_or(this->now_device_id);
   std::variant<int, std::array<int, 3>> rv_variant;
   int rv = -1;
   switch (device_property) {

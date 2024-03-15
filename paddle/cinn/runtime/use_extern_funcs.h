@@ -21,3 +21,6 @@
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/runtime/sycl/use_extern_funcs.h"
 #endif
+#ifdef CINN_WITH_ROCM
+#include "paddle/cinn/runtime/hip/use_extern_funcs.h"
+#endif

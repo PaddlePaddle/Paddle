@@ -30,16 +30,7 @@ namespace backends {
 
 const std::string CodeGenHIP_Dev::source_header_ =  // NOLINT
     R"(#include <cstdint>
-    #include <hip/hip_runtime.h>
-    #include <hip/hip_kernel.h>
-    #include <hip/hip_device_functions.h>
-
-#define CINN_WITH_ROCM
-using cinn::common::bfloat16;
-using cinn::common::float16;
-using cinn::common::half4;
-using cinn::common::half8;
-using cinn::common::float8;
+#include <hip/hip_runtime.h>
 
 #include "cinn_hip_runtime_source.h"
 )";
@@ -68,16 +59,16 @@ void CodeGenHIP_Dev::Compile(const ir::Module &module,
     file << source;
     file.close();
     LOG(WARNING) << "Output C header to file " << outputs.c_header_name;
-  } 
+  }
 
-  if (!outputs.c_source_name.empty()) {
+  if (!outputs.cuda_source_name.empty()) {
     auto source = Compile(module, OutputKind::CImpl);
     str_ = "";
-    std::ofstream file(outputs.c_source_name);
-    CHECK(file.is_open()) << "failed to open file " << outputs.c_source_name;
+    std::ofstream file(outputs.cuda_source_name);
+    CHECK(file.is_open()) << "failed to open file " << outputs.cuda_source_name;
     file << source;
     file.close();
-    LOG(WARNING) << "Output C source to file " << outputs.c_source_name;
+    LOG(WARNING) << "Output C source to file " << outputs.cuda_source_name;
   }
 }
 

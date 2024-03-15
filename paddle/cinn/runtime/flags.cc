@@ -288,6 +288,10 @@ bool CanUseNvccCompiler() {
          (!FLAGS_cinn_compile_with_nvrtc);
 }
 
+bool CanUseHipccCompiler() {
+  return false;
+}
+
 bool IsCompiledWithCUDA() {
 #if !defined(CINN_WITH_CUDA)
   return false;

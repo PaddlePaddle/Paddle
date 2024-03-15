@@ -27,18 +27,18 @@ namespace backends {
 namespace hiprtc {
 
 /**
- * An helper class to call HIPRTC. Input HIP device source code, get PTX string.
+ * An helper class to call HIPRTC. Input HIP device source code, get hsaco string.
  */
 class Compiler {
  public:
   Compiler();
 
   /**
-   * Compile the \p code and get PTX string.
+   * Compile the \p code and get hsaco string.
    * @param code The HIP source code.
    * @param include_headers Whether to include the headers of HIP and CINN
    * runtime modules.
-   * @return Compiled PTX code string.
+   * @return Compiled hsaco code string.
    */
   std::string operator()(const std::string& code, bool include_headers = true);
 
@@ -54,20 +54,24 @@ class Compiler {
    * @return list of header file directories.
    */
   std::vector<std::string> FindCINNRuntimeIncludePaths();
-
   /**
-   * Compile HIP source code and get PTX or CUBIN.
+   * Compile HIP source code and get hsaco.
    * @param code source code string.
-   * @return PTX or CUBIN string.
+   * @return hsaco string.
    */
   std::string CompileHipSource(const std::string& code, bool include_headers);
+
+  // compile with hipcc
+  std::string CompileWithHipcc(const std::string&);
+
+  std::string GetDeviceArch();
 
   std::string ReadFile(const std::string&, std::ios_base::openmode);
 
   std::string prefix_name_{""};
 };
 
-}  // namespace nvrtc
+}  // namespace hiprtc
 }  // namespace backends
 }  // namespace cinn
 

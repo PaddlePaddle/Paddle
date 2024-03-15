@@ -1534,7 +1534,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       use_warp_reduce = true;
     }
     use_warp_reduce = false;
-    //LOG(INFO) << "use_warp_reduce:" << use_warp_reduce;
+    LOG(INFO) << "use_warp_reduce:" << use_warp_reduce;
   }
   strategy->AddImpl(pool2d_compute, pool2d_schedule, "strategy.pool2d.x86", 1);
   if (use_warp_reduce) {

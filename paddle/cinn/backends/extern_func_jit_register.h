@@ -100,6 +100,8 @@ static const char* TargetToBackendRepr(Target target) {
       return backend_cuda;
     case Target::Language::sycl:
       return backend_sycl;
+    case Target::Language::hip:
+      return backend_hip;
     default:
       CINN_NOT_IMPLEMENTED
   }
