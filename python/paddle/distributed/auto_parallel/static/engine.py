@@ -205,9 +205,10 @@ class Engine:
             fleet.init(is_collective=True)
 
         # for compute cost
-        # TODO: remove _fwd_main_progs and _orig_optimizer
+        # TODO: remove _fwd_main_progs and _orig_optimizer and _pir_main_progs
         self._fwd_dist_contexts = {}
         self._fwd_main_progs = {}
+        self._pir_main_progs = {}
         self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         self._executor = None
@@ -621,17 +622,21 @@ class Engine:
     def _parallel_pir(self, mode):
         """A concise and light weight parallel transform for auto parallel in pir mode.
         Its logic consist of Four parts:
-            1. Complete program: build a completion program with forward-backward-optimizer from a forward program. (if in train mode, maybe re-allocation.)
-            2. Parallelism search: entire-graph sharding propagation Or fully-auto-parallel search.
-            3. Graph partition: Partition and Reshard Pass.
-            4. Parallel related Optimization Pass. (maybe re-allocation.)
+            1. Complete program: build a completion program with forward-backward-optimizer from a forward program. (if in train mode, maybe re-placed.)
+            2. Parallelism completion: rule-based entire-graph sharding propagation(Semi-Auto) Or algorithm/random-based parallel search(Fully-Auto).
+            3. Graph partition: Partition(Pipeline-like parallel) and Reshard Pass(SPMD parallel).
+            4. Parallel related Optimization Pass. (maybe re-placed.)
+
+        It is experimental and subject to change.
         """
         mix_fw_program = self._fwd_main_progs[mode]
 
         # Part 1: Complete program
         # Step 1.1: Mix2Dense Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
-        # dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(mix_fw_program)
+        dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
+            mix_fw_program
+        )
 
         # TODO(winter-wang) Step 1.2: pir backward
         # with program_guard(dist_program):
@@ -691,12 +696,14 @@ class Engine:
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
         #   dense_program = apply_dist2dense_pass_optimization_pass(dist_program)
+        self._pir_main_progs[mode] = dist_program
 
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
         self._build(mode)
         # TODO(zhiqiu): fit the processes below for pir
         if self._in_pir_mode:
+            self._parallel_pir(mode)
             return
         # Do the planning process
         self._plan(mode)
