@@ -794,13 +794,12 @@ def _insert_reshape_op(
     x,
     shape,
     op_role,
+    dist_context,
     out=None,
     op_namescope="/",
-    dist_context=None,
 ):
     var_x = block.var(x[0])
-    if dist_context:
-        x_dist_attr = dist_context.get_tensor_dist_attr_for_program(var_x)
+    x_dist_attr = dist_context.get_tensor_dist_attr_for_program(var_x)
 
     if out is None:
         out = block.create_var(
@@ -808,12 +807,10 @@ def _insert_reshape_op(
             dtype=var_x.dtype,
             persistable=False,
         )
-        if dist_context:
-            dist_context.set_tensor_dist_attr_for_program(out, x_dist_attr)
+        dist_context.set_tensor_dist_attr_for_program(out, x_dist_attr)
 
     x_shape = block.create_var(name=f"{x[0]}@reshape.xshape", dtype=var_x.dtype)
-    if dist_context:
-        dist_context.set_tensor_dist_attr_for_program(x_shape, x_dist_attr)
+    dist_context.set_tensor_dist_attr_for_program(x_shape, x_dist_attr)
 
     reshape_op = block._insert_op_without_sync(
         index=index,
@@ -826,20 +823,20 @@ def _insert_reshape_op(
             'op_namescope': op_namescope,
         },
     )
-    if dist_context:
-        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-            reshape_op,
-            process_mesh=x_dist_attr.process_mesh,
-            ref_mapping=x_dist_attr.dims_mapping,
-            ctx=dist_context,
-            chunk_id=x_dist_attr.chunk_id,
-        )
+    
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+        reshape_op,
+        process_mesh=x_dist_attr.process_mesh,
+        ref_mapping=x_dist_attr.dims_mapping,
+        ctx=dist_context,
+        chunk_id=x_dist_attr.chunk_id,
+    )
 
     return out
 
 
 def _split_matmul_grad_to_matmul(
-    block, matmul_grad_id, op_namescope="/", dist_context=None
+    block, matmul_grad_id, dist_context, op_namescope="/"
 ):
     ops = block.ops
     matmul_grad_op = ops[matmul_grad_id]
@@ -860,10 +857,6 @@ def _split_matmul_grad_to_matmul(
     y_grad = matmul_grad_op.output("Y@GRAD")
     op_role = matmul_grad_op.attr("op_role")
 
-    # NOTE(Ruibiao): Required OP scheduling order: matmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
-    # c_allreduce_sum(dX) and matmul(X^T, dOut) cannot be swapped. Otherwise, after buffer_shared_inplace_pass
-    # adding share_buffer OP before c_allreduce_sum, c_allreduce_sum will synchronous with comp-stream, and then
-    # the matmul op before it cannot be overlapped.
     var_x = block.var(x[0])
     var_out_grad = block.var(out_grad[0])
     var_y_grad = block.var(y_grad[0])
@@ -894,8 +887,8 @@ def _split_matmul_grad_to_matmul(
         x,
         new_x_dims,
         op_role,
-        op_namescope=op_namescope,
         dist_context=dist_context,
+        op_namescope=op_namescope,
     )
     new_out_grad = _insert_reshape_op(
         block,
@@ -903,8 +896,8 @@ def _split_matmul_grad_to_matmul(
         out_grad,
         new_out_grad_dims,
         op_role,
-        op_namescope=op_namescope,
         dist_context=dist_context,
+        op_namescope=op_namescope,
     )
     new_y_grad = block.create_var(
         name=f"{y_grad[0]}@reshape.out",
@@ -912,16 +905,14 @@ def _split_matmul_grad_to_matmul(
         persistable=False,
     )
 
-    if dist_context:
-        dist_context.set_tensor_dist_attr_for_program(
-            new_y_grad,
-            dist_context.get_tensor_dist_attr_for_program(var_y_grad),
-        )
+    dist_context.set_tensor_dist_attr_for_program(
+        new_y_grad,
+        dist_context.get_tensor_dist_attr_for_program(var_y_grad),
+    )
 
-    if dist_context:
-        matmul_grad_dist_attr = dist_context.get_op_dist_attr_for_program(
-            matmul_grad_op
-        )
+    matmul_grad_dist_attr = dist_context.get_op_dist_attr_for_program(
+        matmul_grad_op
+    )
 
     matmul_op = block._insert_op_without_sync(
         index=matmul_grad_id + 3,
@@ -935,10 +926,10 @@ def _split_matmul_grad_to_matmul(
             'op_namescope': op_namescope,
         },
     )
-    if dist_context:
-        dist_context.set_op_dist_attr_for_program(
-            matmul_op, matmul_grad_dist_attr
-        )
+
+    dist_context.set_op_dist_attr_for_program(
+        matmul_op, matmul_grad_dist_attr
+    )
     _insert_reshape_op(
         block,
         matmul_grad_id + 4,
@@ -946,8 +937,8 @@ def _split_matmul_grad_to_matmul(
         y_grad_dims,
         op_role,
         y_grad,
-        op_namescope=op_namescope,
         dist_context=dist_context,
+        op_namescope=op_namescope,
     )
 
     matmul_op = block._insert_op_without_sync(
@@ -962,9 +953,9 @@ def _split_matmul_grad_to_matmul(
             'op_namescope': op_namescope,
         },
     )
-    if dist_context:
-        dist_context.set_op_dist_attr_for_program(
-            matmul_op, matmul_grad_dist_attr
-        )
+
+    dist_context.set_op_dist_attr_for_program(
+        matmul_op, matmul_grad_dist_attr
+    )
 
     block._remove_op(matmul_grad_id, sync=False)

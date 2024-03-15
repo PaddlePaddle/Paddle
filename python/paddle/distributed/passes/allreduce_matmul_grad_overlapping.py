@@ -94,12 +94,9 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             matmul_grad_op = ops[matmul_grad_id]
             allreduce_op = ops[allreduce_id]
 
-            # NOTE(Sonder): Why move those operations to the back of matmul_v2?
-            # When using amp_master_grad, the cast operation is inserted after matmul_grad.
-            # However, when employing allreduce_matmul_grad_overlapping, the matmul_grad is
-            # split into two matmul operations. In this case, some operations would access
-            # uninitialized tensors. Therefore, we move the cast operation to the back of the
-            # second matmul operation to avoid this problem.
+            # NOTE(Sonder): When there are ops between matmul_grad and allreduce, we should check whether the
+            # these ops rely on the output of the intermediate ops. If so, we should not split the matmul_grad.
+            # Otherwise, the output of the intermediate ops will get wrong results.
             skip_overlapping = False
             moved_ops_output = []
             matmul_grad_output = matmul_grad_op.output('Y@GRAD')[0]
@@ -117,7 +114,7 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
 
             # matmul_grad_op => matmul_v2 + reshape + reshape + matmul_v2 + reshape
             _split_matmul_grad_to_matmul(
-                block, matmul_grad_id, self.op_namescope, self.dist_context
+                block, matmul_grad_id, self.dist_context, self.op_namescope
             )
 
             # NOTE(Ruibiao): Required OP scheduling order: matmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
