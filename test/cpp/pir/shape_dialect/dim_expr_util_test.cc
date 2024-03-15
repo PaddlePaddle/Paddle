@@ -63,9 +63,9 @@ TEST(DimExpr, CollectDimExprSymbol) {
   std::unordered_set<std::string> symbols = CollectDimExprSymbols(dim_expr);
   std::unordered_set<std::string> expected = {
       "S0", "S1", "S2", "S3", "S4", "S5"};
-  EXPECT_EQ(symbols.size(), 6);
+  ASSERT_EQ(symbols.size(), 6UL);
   for (const auto& symbol : symbols) {
-    EXPECT_TRUE(expected.find(symbol) != expected.end());
+    ASSERT_TRUE(expected.find(symbol) != expected.end());
   }
 }
 

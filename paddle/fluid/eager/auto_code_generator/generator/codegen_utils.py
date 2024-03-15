@@ -39,7 +39,6 @@ ops_to_fill_zero_for_empty_grads = {
     "tanh_double_grad",
     "tanh_triple_grad",
     "sin_triple_grad",
-    "cos_double_grad",
     "cos_triple_grad",
     "subtract_double_grad",
     "divide_double_grad",

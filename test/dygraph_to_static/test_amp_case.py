@@ -17,7 +17,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+    test_pir_only,
 )
 
 import paddle
@@ -39,9 +41,39 @@ class TestAmp64Case(Dy2StTestBase):
             st_out = static_func(x)
         np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
 
-    @test_legacy_and_pt
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self._run_static()
+
+
+class Net(paddle.nn.Layer):
+    def __init__(self) -> None:
+        super().__init__()
+        self.linear = paddle.nn.Linear(5, 5)
+
+    def forward(self, x):
+        out = self.linear(x)
+        with paddle.amp.auto_cast(level='O2'):
+            out = self.linear(out)
+        return out
+
+
+class TestPartialAutoCast(Dy2StTestBase):
+    @test_ast_only
+    @test_pir_only
+    def test_run(self):
+        if not paddle.base.core.is_compiled_with_cuda():
+            return
+        x = paddle.randn([5, 5], 'float32')
+        net = Net()
+        net = paddle.jit.to_static(net)
+        out = net(x)
+        main = net.forward.main_program
+        cast_op_count = 0
+        for op in main.global_block().ops:
+            if op.name() == 'pd_op.cast':
+                cast_op_count += 1
+        np.testing.assert_equal(cast_op_count, 3)
 
 
 if __name__ == '__main__':
