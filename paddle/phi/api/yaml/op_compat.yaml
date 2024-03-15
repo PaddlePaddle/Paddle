@@ -3801,7 +3801,7 @@
 
 - op: prune_gate_by_capacity
   inputs:
-    {gate_idx: GateIdx, expert_count: ExpertCount, n_expert: n_expert, n_worker: n_worker}
+    {gate_idx: GateIdx, expert_count: ExpertCount}
   outputs:
     new_gate_idx: NewGateIdx
 
