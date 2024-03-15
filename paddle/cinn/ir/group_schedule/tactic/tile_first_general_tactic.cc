@@ -213,8 +213,9 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
   }
   loops = sch->GetLoops(block_id);
   if (IsReduceBlock(context_->config, block_id)) {
-    sch->FactorizeReduction(
-        loops[0], 0, /* with_write_back_block_init = */ false);
+    sch->FactorizeReduction(loops[reduce_current_axis_],
+                            0,
+                            /* with_write_back_block_init = */ false);
   }
 }
 
