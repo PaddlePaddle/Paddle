@@ -184,6 +184,7 @@ if(WITH_MKL)
 endif()
 
 if(CINN_ONLY)
+  add_subdirectory(paddle/common)
   target_link_libraries(cinnapi common)
   add_dependencies(cinnapi common)
 endif()
