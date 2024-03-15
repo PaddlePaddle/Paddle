@@ -117,6 +117,12 @@ class IR_API alignas(8) Operation final
     return attributes_.find(key) != attributes_.end();
   }
 
+  void set_value_property(const std::string &key,
+                          const Property &value,
+                          size_t index);
+
+  void *value_property(const std::string &key, size_t index) const;
+
   ///
   /// \brief op ouput related public interfaces
   ///
@@ -265,6 +271,9 @@ class IR_API alignas(8) Operation final
   };
 
   AttributeMap attributes_;
+
+  // store data that user create by Python
+  std::vector<PropertyMap> value_properties_;
 
   OpInfo info_;
 
