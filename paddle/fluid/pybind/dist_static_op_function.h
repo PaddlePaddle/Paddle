@@ -53,8 +53,8 @@ static PyObject *static_api_shard_tensor(PyObject *self,
 }
 
 static PyObject *static_api_reshard(PyObject *self,
-        PyObject *args,
-        PyObject *kwargs) {
+                                    PyObject *args,
+                                    PyObject *kwargs) {
   try {
     VLOG(6) << "Add reshard op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);

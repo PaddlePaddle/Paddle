@@ -29,7 +29,7 @@ pir::Value shard_tensor(const pir::Value& x,
                         const std::vector<int64_t>& dims_mapping);
 
 pir::Value reshard(const pir::Value& x,
-        const phi::distributed::ProcessMesh& process_mesh,
-        const std::vector<int64_t>& dims_mapping);
+                   const phi::distributed::ProcessMesh& process_mesh,
+                   const std::vector<int64_t>& dims_mapping);
 }  // namespace dialect
 }  // namespace paddle

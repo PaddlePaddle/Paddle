@@ -167,8 +167,7 @@ void ShardTensorOp::Build(pir::Builder& builder,
 }
 
 void ReShardOp::VerifySig() {
-  VLOG(4)
-      << "Start Verifying inputs, outputs and attributes for: ReShardOp.";
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: ReShardOp.";
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
@@ -230,9 +229,9 @@ void ReShardOp::VerifySig() {
 }
 
 void ReShardOp::Build(pir::Builder& builder,
-                          pir::OperationArgument& argument,
-                          pir::Value input,
-                          pir::AttributeMap attributes) {
+                      pir::OperationArgument& argument,
+                      pir::Value input,
+                      pir::AttributeMap attributes) {
   VLOG(4) << "Start build ReShardOp";
 
   // Temporary restriction, will support input use_empty false in the future
@@ -268,7 +267,6 @@ void ReShardOp::Build(pir::Builder& builder,
       std::vector<TensorDistAttribute>{dst_tensor_dist_attr});
   argument.AddAttribute("op_dist_attr", op_dist_attr);
 
-  // TODO remove
   VLOG(4) << "Builder construction outputs";
   auto global_dims = input_tensor_type.global_ddim();
   auto process_mesh_attr = dst_tensor_dist_attr.process_mesh_attr();
@@ -296,11 +294,11 @@ void ReShardOp::Build(pir::Builder& builder,
     }
   }
 
-  pir::Type out_dist_tensor_type =
-      paddle::dialect::DistDenseTensorType::get(pir::IrContext::Instance(),
-                                                input_tensor_type.dense_tensor_type(),
-                                                dst_tensor_dist_attr,
-                                                phi::make_ddim(local_shape));
+  pir::Type out_dist_tensor_type = paddle::dialect::DistDenseTensorType::get(
+      pir::IrContext::Instance(),
+      input_tensor_type.dense_tensor_type(),
+      dst_tensor_dist_attr,
+      phi::make_ddim(local_shape));
   argument.AddOutput(out_dist_tensor_type);
 }
 
