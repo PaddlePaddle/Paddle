@@ -29,11 +29,9 @@ set(DGC_INCLUDE_DIR
 set(DGC_LIBRARIES
     "${DGC_INSTALL_DIR}/lib/libdgc.a"
     CACHE FILEPATH "dgc library." FORCE)
-#set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_7369ff.tgz")
-set(DGC_URL "http://172.161.13.41/pde-ai/dgc-for-paddle/uploads/57a43783881b60c398aeee3f94ad1ba6/collective_f66ef73.tgz")
+set(DGC_URL "http://pdegit.metax-internal.com/pde-ai/dgc-for-paddle/uploads/57a43783881b60c398aeee3f94ad1ba6/collective_f66ef73.tgz")
 include_directories(${DGC_INCLUDE_DIR})
 set(DGC_CACHE_FILENAME "collective_7369ff.tgz")
-#set(DGC_URL_MD5 ede459281a0f979da8d84f81287369ff)
 set(DGC_URL_MD5 e2798e006d6c068cee91f23b772f2478)
 
 function(download_dgc)

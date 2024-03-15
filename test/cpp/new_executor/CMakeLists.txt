@@ -34,9 +34,9 @@ if(WITH_GPU
   add_custom_target(
     download_program
     COMMAND wget -nc --no-check-certificate
-            https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
+            http://pdegit.metax-internal.com/pde-ai/static-dependency-for-paddle/uploads/541fc54680c9c06c5135081f36778a18/lm_main_program
     COMMAND wget -nc --no-check-certificate
-            https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program
+            http://pdegit.metax-internal.com/pde-ai/static-dependency-for-paddle/uploads/629b1f49b6bede0f14a4725a9b6f0a88/lm_startup_program)
     WORKING_DIRECTORY "${CC_TESTS_DIR}")
 
   # all operators used in the program

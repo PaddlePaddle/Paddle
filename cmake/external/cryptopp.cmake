@@ -19,7 +19,7 @@ set(CRYPTOPP_INSTALL_DIR ${THIRD_PARTY_PATH}/install/cryptopp)
 set(CRYPTOPP_INCLUDE_DIR
     "${CRYPTOPP_INSTALL_DIR}/include"
     CACHE PATH "cryptopp include directory." FORCE)
-set(CRYPTOPP_REPOSITORY http://172.161.13.41/pde-ai/cryptopp.git)
+set(CRYPTOPP_REPOSITORY http://pdegit.metax-internal.com/pde-ai/cryptopp.git)
 set(CRYPTOPP_TAG CRYPTOPP_8_2_0)
 
 if(WIN32)
@@ -70,7 +70,7 @@ ExternalProject_Add(
   PATCH_COMMAND
   COMMAND ${CMAKE_COMMAND} -E remove_directory "<SOURCE_DIR>/cmake/"
   #COMMAND git clone ${GIT_URL}/noloader/cryptopp-cmake "<SOURCE_DIR>/cmake"
-  COMMAND git clone http://172.161.13.41/pde-ai/cryptopp-cmake.git "<SOURCE_DIR>/cmake"
+  COMMAND git clone http://pdegit.metax-internal.com/pde-ai/cryptopp-cmake.git "<SOURCE_DIR>/cmake"
   COMMAND cd "<SOURCE_DIR>/cmake" && git checkout tags/${CRYPTOPP_TAG} -b
           ${CRYPTOPP_TAG}
   COMMAND ${CMAKE_COMMAND} -E copy_directory "<SOURCE_DIR>/cmake/"

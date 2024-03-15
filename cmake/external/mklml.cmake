@@ -43,7 +43,7 @@ else()
   #    "http://paddlepaddledeps.bj.bcebos.com/${MKLML_FILE}"
   #    CACHE STRING "" FORCE)
   #set(MKLML_URL_MD5 bc6a7faea6a2a9ad31752386f3ae87da)
-  set(MKLML_REPOSITORY http://172.161.13.41/pde-ai/mklml.git)
+  set(MKLML_REPOSITORY http://pdegit.metax-internal.com/pde-ai/mklml.git)
   set(MKLML_LIB ${MKLML_LIB_DIR}/libmklml_intel.so)
   set(MKLML_IOMP_LIB ${MKLML_LIB_DIR}/libiomp5.so)
   set(MKLML_SHARED_LIB ${MKLML_LIB_DIR}/libmklml_intel.so)

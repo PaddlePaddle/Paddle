@@ -26,12 +26,8 @@ if(LINUX)
   set(LAPACK_FILE
       "lapack_lnx_v3.10.0.20210628.tar.gz"
       CACHE STRING "" FORCE)
-  #set(LAPACK_URL
-  #    "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_FILE}"
-  #    CACHE STRING "" FORCE)
-  #set(LAPACK_URL_MD5 71f8cc8237a8571692f3e07f9a4f25f6)
   set(LAPACK_URL
-      "http://172.161.13.41/pde-ai/lapack/uploads/970f9a0aea79f54d94cddeb64bd18da6/${LAPACK_FILE}}"
+      "http://pdegit.metax-internal.com/pde-ai/lapack/uploads/970f9a0aea79f54d94cddeb64bd18da6/${LAPACK_FILE}}"
       CACHE STRING "" FORCE)
   set(LAPACK_URL_MD5 d41d8cd98f00b204e9800998ecf8427e)
   set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath.so.0")

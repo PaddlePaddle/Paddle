@@ -391,21 +391,15 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-    #include(external/cub) # download cub
-    #list(APPEND third_party_deps extern_cub)
-  elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.0 AND WITH_SHARED_PHI)
-    include(external/cccl)
-    add_definitions(-DPADDLE_WITH_CCCL)
-  endif()
-  #set(URL
-  #    "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg_20210928.tar.gz"
-  #    CACHE STRING "" FORCE)
-  #file_download_and_uncompress(
-  #  ${URL} "externalError" MD5 a712a49384e77ca216ad866712f7cafa
-  #)# download file externalErrorMsg.tar.gz
+  # if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+  #   include(external/cub) # download cub
+  #   list(APPEND third_party_deps extern_cub)
+  # elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.0 AND WITH_SHARED_PHI)
+  #   include(external/cccl)
+  #   add_definitions(-DPADDLE_WITH_CCCL)
+  # endif()
   set(URL
-      "http://172.161.13.41/pde-ai/static-dependency-for-paddle/uploads/4b9906cbd8034aa0b8300d1b89def65f/externalErrorMsg_20210928.tar.gz"
+      "http://pdegit.metax-internal.com/pde-ai/static-dependency-for-paddle/uploads/4b9906cbd8034aa0b8300d1b89def65f/externalErrorMsg_20210928.tar.gz"
       CACHE STRING "" FORCE)
   file_download_and_uncompress(
     ${URL} "externalError" MD5 a712a49384e77ca216ad866712f7cafa
@@ -567,21 +561,21 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
-if(WITH_GPU
-   AND NOT WITH_ARM
-   AND NOT WIN32
-   AND NOT APPLE)
-  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
-    foreach(arch ${NVCC_ARCH_BIN})
-      if(${arch} GREATER_EQUAL 80)
-        include(external/flashattn)
-        list(APPEND third_party_deps extern_flashattn)
-        set(WITH_FLASHATTN ON)
-        break()
-      endif()
-    endforeach()
-  endif()
-endif()
+# if(WITH_GPU
+#    AND NOT WITH_ARM
+#    AND NOT WIN32
+#    AND NOT APPLE)
+#   if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
+#     foreach(arch ${NVCC_ARCH_BIN})
+#       if(${arch} GREATER_EQUAL 80)
+#         include(external/flashattn)
+#         list(APPEND third_party_deps extern_flashattn)
+#         set(WITH_FLASHATTN ON)
+#         break()
+#       endif()
+#     endforeach()
+#   endif()
+# endif()
 
 if(WITH_CUDNN_FRONTEND)
   include(external/cudnn-frontend) # download cudnn-frontend

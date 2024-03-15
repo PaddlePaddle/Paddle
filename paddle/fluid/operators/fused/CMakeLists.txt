@@ -12,8 +12,8 @@ register_operators(
   fusion_group_op
   fusion_lstm_op
   fused_bn_add_activation_op
-  #fused_attention_op
-  #fused_transformer_op
+  fused_attention_op
+  fused_transformer_op
   fused_feedforward_op
   #fused_multi_transformer_op
   #fused_multi_transformer_int8_op
@@ -61,8 +61,8 @@ if(WITH_GPU OR WITH_ROCM)
   if(NOT WITH_ROCM)
     op_library(fused_feedforward_op)
     # fused_attention_op
-    #op_library(fused_attention_op)
-    #op_library(fused_multi_transformer_op)
+    op_library(fused_attention_op)
+    op_library(fused_multi_transformer_op)
     #op_library(fused_multi_transformer_int8_op)
   endif()
   # resnet_unit needs cudnn 8.0 above
