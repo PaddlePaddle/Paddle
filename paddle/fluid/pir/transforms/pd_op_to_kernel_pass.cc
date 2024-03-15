@@ -105,8 +105,6 @@ static const std::vector<pir::Type> InferMetaByValue(
   return output_types;
 }
 
-static constexpr char* kCinnJitKernelName = "cinn_runtime.jit_kernel";
-
 std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
     {"DataType::FLOAT16", phi::DataType::FLOAT16},
     {"DataType::BFLOAT16", phi::DataType::BFLOAT16},
@@ -130,7 +128,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     FeedOp::name(),
     DataOp::name(),
     ArrayLengthOp::name(),
-    kCinnJitKernelName,
+    "cinn_runtime.jit_kernel",
 };
 const std::unordered_set<std::string> SpecialLowerOps = {
     pir::CombineOp::name(),
@@ -151,7 +149,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     AssertOp::name(),
     SelectInputOp::name(),
     SelectOutputOp::name(),
-    kCinnJitKernelName};
+    "cinn_runtime.jit_kernel"};
 
 const std::unordered_map<std::string, uint32_t> NoBufferRelatedOps = {
     {paddle::dialect::ReshapeOp::name(), /*xshape_idx*/ 1U},
@@ -1818,7 +1816,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->name() == kCinnJitKernelName) {
+  if (op_item->name() == "cinn_runtime.jit_kernel") {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
       if (!cur_in) {
@@ -1841,8 +1839,6 @@ void HandleForSpecialOp(
           auto value_type =
               op_item->operand_source(i).type().dyn_cast<DenseTensorType>();
           auto out_place = phi::TransToPhiPlace(dst_backend);
-          auto new_in_alloc_type =
-              new_in.type().dyn_cast<AllocatedDenseTensorType>();
           auto out_type =
               AllocatedDenseTensorType::get(ctx, out_place, value_type);
           phi::KernelKey kernel_key(phi::Backend::GPU,
