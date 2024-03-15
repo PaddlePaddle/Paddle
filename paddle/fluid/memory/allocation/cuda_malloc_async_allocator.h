@@ -62,7 +62,7 @@ class CUDAMallocAsyncAllocation : public Allocation {
   std::unordered_set<gpuStream_t> graph_capturing_stream_set_;
 
   SpinLock recorded_streams_lock_;
-  std::unordered_map<gpuStream_t, gpuEvent_t> recorded_streams_;
+  std::unordered_set<gpuStream_t> recorded_streams_;
 };
 
 // The `CUDAMallocAsyncAllocator` class extends `Allocator` and is specialized
@@ -78,6 +78,7 @@ class CUDAMallocAsyncAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
   gpuStream_t GetDefaultStream() const;
   void SetDefaultStream(gpuStream_t stream);
+  void ClearFreeStream(bool sync = false);
 
  protected:
   void FreeImpl(phi::Allocation* allocation) override;

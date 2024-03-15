@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 
 #if CUDA_VERSION < 11000
 cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
@@ -31,6 +31,7 @@ namespace gpu {
 
 std::unique_ptr<CUDAGraph> CUDAGraph::capturing_graph_{nullptr};
 paddle::optional<std::thread::id> CUDAGraph::capturing_thread_id_{paddle::none};
+std::vector<std::function<void()>> CUDAGraph::cudagraph_pre_capture_callbacks_;
 
 static std::vector<cudaGraphNode_t> ToposortCUDAGraph(cudaGraph_t graph) {
   size_t num_nodes;
@@ -154,6 +155,11 @@ void CUDAGraph::BeginSegmentCapture() {
                           "you cannot begin segmented capturing in the thread "
                           "which is not the one that starts the capturing."));
   }
+
+  for (auto &hook : cudagraph_pre_capture_callbacks_) {
+    hook();
+  }
+
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamBeginCapture(
       capturing_graph_->stream_, capturing_graph_->capture_mode_));
   PADDLE_ENFORCE_EQ(
@@ -211,7 +217,8 @@ void CUDAGraph::EndSegmentCapture() {
       phi::errors::PermissionDenied("No CUDA Graph is capturing."));
 
   for (const auto &stream : capturing_graph_->streams_to_join_) {
-    VLOG(10) << "Joining steam when the capture is going to end stream =" << stream;
+    VLOG(10) << "Joining steam when the capture is going to end stream ="
+             << stream;
     sync_streams(stream, capturing_graph_->stream_);
   }
   capturing_graph_->streams_to_join_.clear();
@@ -260,7 +267,6 @@ void CUDAGraph::EndSegmentCapture() {
   capturing_graph_->graphs_.emplace_back(graph);
   capturing_graph_->exec_graphs_.emplace_back(exec_graph);
 #endif
-
 }
 
 std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {

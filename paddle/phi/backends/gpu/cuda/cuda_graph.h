@@ -253,6 +253,10 @@ class CUDAGraph {
     cudagraph_post_reset_callbacks_.push_back(std::move(callback));
   }
 
+  static void AddPreCaptureCallback(std::function<void()> callback) {
+    cudagraph_pre_capture_callbacks_.push_back(std::move(callback));
+  }
+
   void AddPostCaptureCallback(std::function<void()> callback) {
     std::lock_guard<std::mutex> guard(mtx_);
     cudagraph_post_capture_callbacks_.push_back(std::move(callback));
@@ -349,6 +353,9 @@ class CUDAGraph {
   // callbacks are used for operations that need to be performed following the
   // reset of a CUDA graph.
   std::vector<std::function<void()>> cudagraph_post_reset_callbacks_;
+
+
+  static std::vector<std::function<void()>> cudagraph_pre_capture_callbacks_;
 
   // Contains callbacks that are invoked after the CUDA graph has been captured.
   // These callbacks are crucial for managing memory allocations related to the
