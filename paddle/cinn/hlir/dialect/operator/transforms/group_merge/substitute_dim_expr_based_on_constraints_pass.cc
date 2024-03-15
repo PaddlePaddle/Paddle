@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraints_pass.h"
 
+#include <regex>
 #include "paddle/cinn/common/union_find.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
