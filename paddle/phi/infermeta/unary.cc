@@ -738,6 +738,14 @@ void CropInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  dim[0] = dim[0] / nranks;
+  if (dim[0] < 0) dim[0] = -1;
+  out->set_dims(dim);
+  out->set_dtype(x.dtype());
+}
+
 void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
   phi::DDim dim = x.dims();
   dim[dim.size() - 1] = dim[dim.size() - 1] / nranks;
@@ -3168,7 +3176,7 @@ void Pool2DInferMeta(const MetaTensor& x,
                             (data_format == "NHWC" || data_format == "NDHWC");
   if (!config.is_runtime && kernel_size.FromTensor()) {
     auto x_dims = x.dims();
-    std::vector<int64_t> output_shape = std::move(common::vectorize(x_dims));
+    std::vector<int64_t> output_shape = common::vectorize(x_dims);
     // set dims of HW -1
     output_shape[x_dims.size() - 2] = -1;
     if (channel_last) {  // for NHWC, NDHWC

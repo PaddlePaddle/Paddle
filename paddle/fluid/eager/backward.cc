@@ -382,8 +382,7 @@ std::vector<paddle::Tensor> RunBackward(
                 "Node's in-degree cannot be negative.",
                 next_node->name()));
 
-        auto add_next_node_func = [&node_in_degree_map,
-                                   &queue](GradNodeBase* next_node) {
+        auto add_next_node_func = [&queue](GradNodeBase* next_node) {
           if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
             queue.push_front(next_node);
           } else {
