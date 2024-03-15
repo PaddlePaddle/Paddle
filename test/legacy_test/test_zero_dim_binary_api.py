@@ -248,11 +248,7 @@ class TestBinaryAPI(unittest.TestCase):
                     self.assertEqual(out.shape, out_cls.shape)
                 else:
                     out = api(x, y)
-                (
-                    (x, x_grad),
-                    (_, y_grad),
-                    (_, out_grad),
-                ) = paddle.static.append_backward(
+                grad_list = paddle.static.append_backward(
                     out, parameter_list=[x, y, out]
                 )
 
@@ -260,10 +256,13 @@ class TestBinaryAPI(unittest.TestCase):
                 self.assertShapeEqual(y, [])
                 self.assertShapeEqual(out, [])
 
-                if x is None:
-                    self.assertShapeEqual(x_grad, [])
-                    self.assertShapeEqual(y_grad, [])
-                    self.assertShapeEqual(out_grad, [])
+                if len(grad_list) != 0 and grad_list[0][1] is not None:
+                    # x_grad
+                    self.assertShapeEqual(grad_list[0][1], [])
+                    # y_grad
+                    self.assertShapeEqual(grad_list[1][1], [])
+                    # out_grad
+                    self.assertShapeEqual(grad_list[2][1], [])
 
         paddle.disable_static()
 
@@ -300,8 +299,11 @@ class TestBinaryAPI(unittest.TestCase):
                 self.assertShapeEqual(out, [2, 3, 4])
 
                 if len(grad_list) != 0 and grad_list[0][1] is not None:
+                    # x_grad
                     self.assertShapeEqual(grad_list[0][1], [])
+                    # y_grad
                     self.assertShapeEqual(grad_list[1][1], [2, 3, 4])
+                    # out_grad
                     self.assertShapeEqual(grad_list[2][1], [2, 3, 4])
         paddle.disable_static()
 
@@ -329,11 +331,7 @@ class TestBinaryAPI(unittest.TestCase):
                     self.assertEqual(out.shape, out_cls.shape)
                 else:
                     out = api(x, y)
-                (
-                    (x, x_grad),
-                    (_, y_grad),
-                    (_, out_grad),
-                ) = paddle.static.append_backward(
+                grad_list = paddle.static.append_backward(
                     out, parameter_list=[x, y, out]
                 )
 
@@ -341,10 +339,13 @@ class TestBinaryAPI(unittest.TestCase):
                 self.assertShapeEqual(y, [])
                 self.assertShapeEqual(out, [2, 3, 4])
 
-                if x is None:
-                    self.assertShapeEqual(x_grad, [2, 3, 4])
-                    self.assertShapeEqual(y_grad, [])
-                    self.assertShapeEqual(out_grad, [2, 3, 4])
+                if len(grad_list) != 0 and grad_list[0][1] is not None:
+                    # x_grad
+                    self.assertShapeEqual(grad_list[0][1], [2, 3, 4])
+                    # y_grad
+                    self.assertShapeEqual(grad_list[1][1], [])
+                    # out_grad
+                    self.assertShapeEqual(grad_list[2][1], [2, 3, 4])
         paddle.disable_static()
 
     @test_with_pir_api
@@ -366,16 +367,17 @@ class TestBinaryAPI(unittest.TestCase):
                         else paddle.static.Variable,
                         api['cls_method'],
                     )(x, y)
-                    (x, x_grad), (_, out_grad) = paddle.static.append_backward(
+                    grad_list = paddle.static.append_backward(
                         out, parameter_list=[x, out]
                     )
-
                     self.assertShapeEqual(x, [])
                     self.assertShapeEqual(out, [])
 
-                    if x is None:
-                        self.assertShapeEqual(x_grad, [])
-                        self.assertShapeEqual(out_grad, [])
+                    if len(grad_list) != 0 and grad_list[0][1] is not None:
+                        # x_grad
+                        self.assertShapeEqual(grad_list[0][1], [])
+                        # out_grad
+                        self.assertShapeEqual(grad_list[1][1], [])
         paddle.disable_static()
 
     @test_with_pir_api
@@ -390,19 +392,19 @@ class TestBinaryAPI(unittest.TestCase):
                 x = paddle.randint(-10, 10, [])
                 y = paddle.randint(-10, 10, [])
                 out = api(x, y)
-                self.assertShapeEqual(out.shape, [])
+                self.assertShapeEqual(out, [])
 
                 # 2) x is ND , y is 0D
                 x = paddle.randint(-10, 10, [3, 5])
                 y = paddle.randint(-10, 10, [])
                 out = api(x, y)
-                self.assertShapeEqual(out.shape, [3, 5])
+                self.assertShapeEqual(out, [3, 5])
 
                 # 3) x is 0D , y is ND
                 x = paddle.randint(-10, 10, [])
                 y = paddle.randint(-10, 10, [3, 5])
                 out = api(x, y)
-                self.assertShapeEqual(out.shape, [3, 5])
+                self.assertShapeEqual(out, [3, 5])
 
         paddle.disable_static()
 
