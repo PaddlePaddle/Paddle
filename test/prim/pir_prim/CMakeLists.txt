@@ -9,6 +9,7 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_prim_dynamic
     test_prim_jit_dynamic
     test_auto_recompute
+    test_auto_recompute_dy2static
     test_prim_sub_graph_dynamic_shape
     test_decompose_control_flow)
 

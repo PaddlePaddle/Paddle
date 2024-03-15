@@ -1513,7 +1513,15 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                 return forward_program, dst_vars
             return forward_program, src_vars
 
-    def after_append_backward(self, whole_program, src_vars, forward_end_idx):
+    def after_append_backward(
+        self,
+        whole_program,
+        inputs,
+        src_vars,
+        grad_outputs,
+        forward_end_idx,
+        backward_start_idx,
+    ):
         with backend_guard(self.backend):
             if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
                 backward_length = (
@@ -1540,6 +1548,34 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                     len(infer_program.program.global_block().ops),
                 )
             return
+
+
+class PirAutoRecomputeHooker(PirPartialProgramLayerHook):
+    def __init__(self, recompute_ops=None):
+        self.recompute_ops = recompute_ops
+
+    def before_append_backward(self, forward_program, src_vars):
+        return forward_program, src_vars
+
+    def after_append_backward(
+        self,
+        whole_program,
+        inputs,
+        src_vars,
+        grad_outputs,
+        forward_end_idx,
+        backward_start_idx,
+    ):
+        if core._enable_auto_recompute():
+            whole_program, forward_end_idx = decomposition.auto_recompute(
+                whole_program,
+                inputs,
+                src_vars,
+                grad_outputs,
+                forward_end_idx,
+                backward_start_idx,
+            )
+        return whole_program, forward_end_idx, src_vars
 
 
 class ProgramCache:
@@ -1626,13 +1662,15 @@ class ProgramCache:
         with backend_guard(backend):
             if core._is_fwd_prim_enabled():
                 if use_pir_api():
-                    partial_program.set_hooker(
+                    partial_program.add_hooker(
                         PirPrimHooker(concrete_program.main_program, backend)
                     )
                 else:
                     partial_program.set_hooker(
                         PrimHooker(concrete_program.main_program, backend)
                     )
+        if use_pir_api() and core._enable_auto_recompute():
+            partial_program.add_hooker(PirAutoRecomputeHooker())
         return concrete_program, partial_program
 
     def __getitem__(self, item):
