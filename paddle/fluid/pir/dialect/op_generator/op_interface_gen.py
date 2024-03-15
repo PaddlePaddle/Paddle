@@ -15,12 +15,6 @@
 # generator interfaces
 from vjp_interface_black_list import vjp_interface_black_list
 
-OP_INFER_SHAPE_TEMPLATE = """
-void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
-  auto fn = PD_INFER_META(phi::{infer_meta_func});
-  fn(infer_meta);
-}}
-"""
 CHECK_INPUT_TEMPLATE = """
     PADDLE_ENFORCE_EQ(
       inputs_.size(),
@@ -272,37 +266,8 @@ def gen_op_vjp_str(
     return str
 
 
-def gen_op_infer_meta_str(op_info, op_class_name, op_info_items):
-    op_infer_meta_str = ""
-    if op_info.infer_meta_func:
-        op_infer_meta_str = OP_INFER_SHAPE_TEMPLATE.format(
-            op_name=op_class_name,
-            infer_meta_func=op_info.infer_meta_func,
-        )
-    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
-        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
-            op_infer_meta_str = OP_INFER_SHAPE_TEMPLATE.format(
-                op_name=op_class_name,
-                infer_meta_func=op_info_items[
-                    op_info.invoke_map['func']
-                ].infer_meta_func,
-            )
-    return op_infer_meta_str
-
-
 def gen_exclusive_interface_str(op_info, op_info_items):
     exclusive_interface_str = ""
-    if op_info.infer_meta_func:
-        exclusive_interface_str += (
-            "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
-            "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes );"
-        )
-    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
-        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
-            exclusive_interface_str += (
-                "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
-                "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes );"
-            )
     if op_info.op_phi_name[0] not in vjp_interface_black_list:
         exclusive_interface_str += "\n  static std::vector<std::vector<pir::Value>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
     return exclusive_interface_str
