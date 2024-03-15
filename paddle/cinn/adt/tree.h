@@ -17,7 +17,7 @@
 #include <optional>
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/tags.h"
-#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn::adt {
 

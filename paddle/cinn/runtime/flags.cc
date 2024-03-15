@@ -21,8 +21,8 @@
 #include <thread>
 #include <unordered_set>
 
-#include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/utils/error.h"
 #include "paddle/common/flags.h"
 
 #ifdef CINN_WITH_CUDNN
