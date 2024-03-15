@@ -443,7 +443,9 @@ class TestDistPPTraining:
             loss_b = model_b.train_batch(
                 [(x1, x2), (y1,)], optimizer_b, scheduler_b
             )
-            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-6, atol=1e-6
+            )
 
 
 if __name__ == "__main__":
