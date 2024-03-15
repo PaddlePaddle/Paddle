@@ -68,13 +68,35 @@ void check_k_or_v(const DistMetaTensor& k_or_v,
                                    ndim,
                                    dims_mapping_size));
 
+  int64_t k_num_head = shape[kNumHeadsDimIndex];
+  int64_t q_num_head = q_shape[kNumHeadsDimIndex];
   PADDLE_ENFORCE_EQ(
-      shape,
-      q_shape,
+      q_num_head % k_num_head == 0,
+      true,
       phi::errors::InvalidArgument(
-          "The shape of q and k/v's are not matched, [%d]  vs [%d]",
-          str_join(q_shape),
-          str_join(shape)));
+          "The num_head of q must be divisible by k/v's, but [%d]  vs [%d]",
+          q_num_head,
+          k_num_head));
+
+  for (size_t i = 0; i <= kHeadDimIndex; ++i) {
+    if (i == kNumHeadsDimIndex) {
+      PADDLE_ENFORCE_EQ(
+          q_shape[i] % shape[i] == 0,
+          true,
+          phi::errors::InvalidArgument(
+              "The num_head of q must be divisible by k/v's, but [%d]  vs [%d]",
+              q_shape[i],
+              shape[i]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          q_shape[i],
+          shape[i],
+          phi::errors::InvalidArgument("The shape except for num_head of q and "
+                                       "k/v's must be same, but [%d]  vs [%d]",
+                                       str_join(q_shape),
+                                       str_join(shape)));
+    }
+  }
 }
 
 void check_sin_cos(const DistMetaTensor& sin,
@@ -234,9 +256,12 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
   std::vector<int64_t> q_shape = common::vectorize(q.dims());
   bool is_k_none = IsEmpty(common::vectorize(k.dims()));
   // except for q, all other inputs are optional.
+  bool is_same_num_heads = true;
   if (!is_k_none) {
     check_k_or_v(k, q_shape);
     inputs_sharding_info.emplace_back(qkv_axes, k_dist_attr_src.dims_mapping());
+    std::vector<int64_t> k_shape = common::vectorize(k.dims());
+    is_same_num_heads = q_shape[kHeadDimIndex] == k_shape[kHeadDimIndex];
   }
 
   const TensorDistAttr& v_dist_attr_src = v.dist_attr();
@@ -245,7 +270,6 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
     check_k_or_v(v, q_shape);
     inputs_sharding_info.emplace_back(qkv_axes, v_dist_attr_src.dims_mapping());
   }
-
   const TensorDistAttr& position_ids_dist_attr_src = position_ids.dist_attr();
   std::string position_ids_axes = time_major ? "ba" : "ab";
   bool is_ids_none = IsEmpty(common::vectorize(position_ids.dims()));
@@ -277,6 +301,10 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
   } else {
     q_dist_attr_dst =
         UnShardTensorDims(q_dist_attr_dst, {kSeqlenDimIndex, kHeadDimIndex});
+  }
+
+  if (!is_same_num_heads) {
+    q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {kNumHeadsDimIndex});
   }
 
   TensorDistAttr k_dist_attr_dst = CopyTensorDistAttrForOutput(k_dist_attr_src);
@@ -346,10 +374,14 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
   std::vector<int64_t> out_q_shape = common::vectorize(out_q.dims());
   bool is_k_none = IsEmpty(common::vectorize(out_k.dims()));
   // except for q, all other inputs are optional.
+  bool is_same_num_heads = true;
   if (!is_k_none) {
     check_k_or_v(out_k, out_q_shape);
     outputs_sharding_info.emplace_back(qkv_axes,
                                        out_k_dist_attr_src.dims_mapping());
+    std::vector<int64_t> out_k_shape = common::vectorize(out_k.dims());
+    is_same_num_heads =
+        out_q_shape[kHeadDimIndex] == out_k_shape[kHeadDimIndex];
   }
 
   const TensorDistAttr& out_v_dist_attr_src = out_v.dist_attr();
@@ -387,6 +419,10 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
   } else {
     q_dist_attr_dst =
         UnShardTensorDims(q_dist_attr_dst, {kSeqlenDimIndex, kHeadDimIndex});
+  }
+
+  if (!is_same_num_heads) {
+    q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {kNumHeadsDimIndex});
   }
 
   TensorDistAttr out_q_dist_attr_dst = q_dist_attr_dst;
