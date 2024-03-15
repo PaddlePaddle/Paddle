@@ -88,8 +88,6 @@ std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
 
 std::vector<ir::Var> GetOutputIters(const FusibleOp& op);
 
-std::vector<ir::Var> GetAllIterVars(const ReduceOp& op);
-
 std::vector<ir::Var> GetReduceIters(const ReduceOp& op);
 
 ir::Expr GetInitExpr(const ReduceOp& op);
