@@ -668,10 +668,14 @@ class LlamaModelAuto(nn.Layer):
                     get_mesh(ipp),
                     [dist.Replicate(), dist.Replicate()],
                 )
-                attention_mask_input = dist.reshard(
-                    attention_mask,
-                    get_mesh(ipp),
-                    [dist.Replicate(), dist.Replicate()],
+                attention_mask_input = (
+                    dist.reshard(
+                        attention_mask,
+                        get_mesh(ipp),
+                        [dist.Replicate(), dist.Replicate()],
+                    )
+                    if attention_mask is not None
+                    else None
                 )
 
             if idx in self.next_pp_stage_indexes:
