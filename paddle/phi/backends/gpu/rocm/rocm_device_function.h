@@ -42,12 +42,12 @@ namespace gpu {
 
 template <typename T>
 __forceinline__ __device__ T
-CudaShuffleDownSync(unsigned mask, T val, int delta, int width = warpSize) {
+CudaShuffleDownSync(unsigned long long mask, T val, int delta, int width = warpSize) {
   return __shfl_down(val, delta, width);
 }
 
 template <typename T>
-__forceinline__ __device__ T CudaShuffleXorSync(unsigned mask,
+__forceinline__ __device__ T CudaShuffleXorSync(unsigned long long mask,
                                                 T val,
                                                 int width = warpSize) {
   return __shfl_xor(val, width);
@@ -55,21 +55,21 @@ __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask,
 
 template <>
 __forceinline__ __device__ phi::dtype::float16 CudaShuffleDownSync(
-    unsigned mask, phi::dtype::float16 val, int delta, int width) {
+    unsigned long long mask, phi::dtype::float16 val, int delta, int width) {
   return phi::dtype::float16(__shfl_down(
       static_cast<float>(val), static_cast<unsigned>(delta), width));
 }
 
 template <>
 __forceinline__ __device__ phi::dtype::bfloat16 CudaShuffleDownSync(
-    unsigned mask, phi::dtype::bfloat16 val, int delta, int width) {
+    unsigned long long mask, phi::dtype::bfloat16 val, int delta, int width) {
   return phi::dtype::bfloat16(__shfl_down(
       static_cast<float>(val), static_cast<unsigned>(delta), width));
 }
 
 template <>
 __forceinline__ __device__ phi::dtype::complex<float> CudaShuffleDownSync(
-    unsigned mask, phi::dtype::complex<float> val, int delta, int width) {
+    unsigned long long mask, phi::dtype::complex<float> val, int delta, int width) {
   float real = __shfl_down(val.real, delta, width);
   float imag = __shfl_down(val.imag, delta, width);
   return phi::dtype::complex<float>(real, imag);
@@ -77,7 +77,7 @@ __forceinline__ __device__ phi::dtype::complex<float> CudaShuffleDownSync(
 
 template <>
 __forceinline__ __device__ phi::dtype::complex<double> CudaShuffleDownSync(
-    unsigned mask, phi::dtype::complex<double> val, int delta, int width) {
+    unsigned long long mask, phi::dtype::complex<double> val, int delta, int width) {
   double real = __shfl_down(val.real, delta, width);
   double imag = __shfl_down(val.imag, delta, width);
   return phi::dtype::complex<double>(real, imag);
@@ -85,19 +85,19 @@ __forceinline__ __device__ phi::dtype::complex<double> CudaShuffleDownSync(
 
 template <>
 __forceinline__ __device__ phi::dtype::float16 CudaShuffleXorSync(
-    unsigned mask, phi::dtype::float16 val, int width) {
+    unsigned long long mask, phi::dtype::float16 val, int width) {
   return phi::dtype::float16(__shfl_xor(static_cast<float>(val), width));
 }
 
 template <>
 __forceinline__ __device__ phi::dtype::bfloat16 CudaShuffleXorSync(
-    unsigned mask, phi::dtype::bfloat16 val, int width) {
+    unsigned long long mask, phi::dtype::bfloat16 val, int width) {
   return phi::dtype::bfloat16(__shfl_xor(static_cast<float>(val), width));
 }
 
 template <>
 __forceinline__ __device__ phi::dtype::complex<float> CudaShuffleXorSync(
-    unsigned mask, phi::dtype::complex<float> val, int width) {
+    unsigned long long mask, phi::dtype::complex<float> val, int width) {
   float real = __shfl_xor(val.real, width);
   float imag = __shfl_xor(val.imag, width);
   return phi::dtype::complex<float>(real, imag);
@@ -105,7 +105,7 @@ __forceinline__ __device__ phi::dtype::complex<float> CudaShuffleXorSync(
 
 template <>
 __forceinline__ __device__ phi::dtype::complex<double> CudaShuffleXorSync(
-    unsigned mask, phi::dtype::complex<double> val, int width) {
+    unsigned long long mask, phi::dtype::complex<double> val, int width) {
   double real = __shfl_xor(val.real, width);
   double imag = __shfl_xor(val.imag, width);
   return phi::dtype::complex<double>(real, imag);
@@ -113,7 +113,7 @@ __forceinline__ __device__ phi::dtype::complex<double> CudaShuffleXorSync(
 
 template <typename T>
 __forceinline__ __device__ T
-CudaShuffleSync(unsigned mask, T val, int src_line, int width = 32) {
+CudaShuffleSync(unsigned long long mask, T val, int src_line, int width = 64) {
   return __shfl(val, src_line, width);
 }
 
@@ -133,10 +133,10 @@ __device__ T reduceSum(T val, int tid, int len) {
 #ifdef PADDLE_WITH_HIP
   const int warpSize = 64;
 #else
-  const int warpSize = 32;
+  const int warpSize = 64;
 #endif
   __shared__ T shm[warpSize];
-  unsigned mask = 0u;
+  unsigned long long mask = 0ull;
   CREATE_SHFL_MASK(mask, tid < len);
 
   for (int offset = warpSize / 2; offset > 0; offset /= 2)

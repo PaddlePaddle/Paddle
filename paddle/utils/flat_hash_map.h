@@ -18,6 +18,7 @@
 #include <iterator>
 #include <type_traits>
 #include <utility>
+#include <iostream>
 
 #ifdef _MSC_VER
 #define SKA_NOINLINE(...) __declspec(noinline) __VA_ARGS__
@@ -548,7 +549,7 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
         it->destroy_value();
       }
     }
-    deallocate_data(new_buckets, num_buckets, old_max_lookups);
+    // deallocate_data(new_buckets, num_buckets, old_max_lookups);
   }
 
   void reserve(size_t num_elements) {

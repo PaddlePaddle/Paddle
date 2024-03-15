@@ -31,7 +31,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__forceinline__ __device__ T CudaShuffleXorSync(unsigned mask,
+__forceinline__ __device__ T CudaShuffleXorSync(unsigned long long mask,
                                                 T val,
                                                 int width = warpSize) {
   return __shfl_xor_sync(mask, val, width);
@@ -43,7 +43,7 @@ __device__ __forceinline__ void WarpReduceSum(T* sum) {
   for (int offset = warp_size / 2; offset > 0; offset /= 2) {
 #pragma unroll
     for (int i = 0; i < batch_size; ++i) {
-      T sum_val = CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+      T sum_val = CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, sum[i], offset);
       sum[i] = sum[i] + sum_val;
     }
   }
@@ -55,7 +55,7 @@ __device__ __forceinline__ void WarpReduceMax(T* sum) {
   for (int offset = warp_size / 2; offset > 0; offset /= 2) {
 #pragma unroll
     for (int i = 0; i < batch_size; ++i) {
-      T max_val = CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+      T max_val = CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, sum[i], offset);
       sum[i] = max(sum[i], max_val);
     }
   }
@@ -71,7 +71,7 @@ __global__ void BlockSparseSoftmaxForward(T* softmax,
                                           const int* layout_colindex,
                                           int num_rows) {
   // current thread related info
-  const int WarpSize = 32;
+  const int WarpSize = 64;
   const int cur_row = blockIdx.x * blockDim.y + threadIdx.y;
   if (cur_row < num_rows) {
     const int cur_block_row = cur_row / BlockSize;
@@ -155,7 +155,7 @@ __global__ void BlockSparseSoftmaxBackward(T* dst,
                                            const int* layout_colindex,
                                            int num_rows) {
   // current thread related info
-  const int WarpSize = 32;
+  const int WarpSize = 64;
   const int cur_row = blockIdx.x * blockDim.y + threadIdx.y;
   if (cur_row < num_rows) {
     const int cur_block_row = cur_row / BlockSize;
@@ -229,7 +229,7 @@ void SparseSoftmaxForward(const phi::GPUContext& ctx,
       (attn_mask != nullptr) ? attn_mask->data<T>() : nullptr;
 
   const int block_size = 1;
-  dim3 blocks(32, 4, 1);
+  dim3 blocks(64, 4, 1);
   int grid = (num_rows * block_size + 3) / 4;
   T scaling = static_cast<T>(1.0) / sqrt(static_cast<T>(num_cols));
 
@@ -337,7 +337,7 @@ void SparseSoftmaxBackward(const phi::GPUContext& ctx,
   const T* out_data = out->data<T>();
 
   const int block_size = 1;
-  dim3 blocks(32, 4, 1);
+  dim3 blocks(64, 4, 1);
   int grid = (num_rows * block_size + 3) / 4;
   T scaling = static_cast<T>(1.0) / sqrt(static_cast<T>(num_cols));
 

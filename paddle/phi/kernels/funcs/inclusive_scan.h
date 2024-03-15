@@ -52,14 +52,22 @@ static void CubInclusiveScan(InputIterator x_iter,
   void *temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
   for (size_t i = 0; i < 2; ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cub::DeviceScan::InclusiveScan(temp_storage,
-                                       temp_storage_bytes,
-                                       x_iter,
-                                       y_iter,
-                                       op,
-                                       static_cast<int>(n),
-                                       dev_ctx.stream()));
+    // PADDLE_ENFORCE_GPU_SUCCESS(
+    //     cub::DeviceScan::InclusiveScan(temp_storage,
+    //                                    temp_storage_bytes,
+    //                                    x_iter,
+    //                                    y_iter,
+    //                                    op,
+    //                                    static_cast<int>(n),
+    //                                    dev_ctx.stream()));
+    cub::DeviceScan::InclusiveScan(temp_storage,     \
+                                       temp_storage_bytes,  \
+                                       x_iter,    \
+                                       y_iter,     \
+                                       op,         \
+                                       static_cast<int>(n),   \
+                                       dev_ctx.stream());
+                                       
     if (i == 0 && temp_storage_bytes > 0) {
       allocation =
           phi::memory_utils::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);

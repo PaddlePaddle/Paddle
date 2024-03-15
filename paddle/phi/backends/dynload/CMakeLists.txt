@@ -15,9 +15,9 @@ list(
   nvtx.cc
   cufft.cc)
 
-if(NOT WITH_NV_JETSON)
-  list(APPEND CUDA_SRCS nvjpeg.cc)
-endif()
+#if(NOT WITH_NV_JETSON)
+#  list(APPEND CUDA_SRCS nvjpeg.cc)
+#endif()
 
 if(WITH_ROCM)
   list(

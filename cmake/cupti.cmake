@@ -20,6 +20,7 @@ find_path(
         ${CUDA_TOOLKIT_ROOT_DIR}/extras/CUPTI/include
         ${CUDA_TOOLKIT_ROOT_DIR}/targets/x86_64-linux/include
         ${CUDA_TOOLKIT_ROOT_DIR}/targets/aarch64-linux/include
+        $ENV{MACA_PATH}/tools/cu-bridge/include
   NO_DEFAULT_PATH)
 
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
@@ -41,10 +42,11 @@ list(
   $ENV{CUPTI_ROOT}/lib
   /usr/lib
   ${CUDA_TOOLKIT_ROOT_DIR}/targets/x86_64-linux/lib64
-  ${CUDA_TOOLKIT_ROOT_DIR}/extras/CUPTI/lib64)
+  ${CUDA_TOOLKIT_ROOT_DIR}/extras/CUPTI/lib64
+  $ENV{MACA_PATH}/lib)
 find_library(
   CUPTI_LIBRARY
-  NAMES libcupti.so libcupti.dylib # libcupti_static.a
+  NAMES libcupti.so libcupti.dylib libmcpti.so # libcupti_static.a
   PATHS ${CUPTI_CHECK_LIBRARY_DIRS} ${CUPTI_INCLUDE_DIR} ${__libpath_hist}
   NO_DEFAULT_PATH
   DOC "Path to cuPTI library.")
@@ -59,3 +61,4 @@ if(CUPTI_INCLUDE_DIR AND CUPTI_LIBRARY)
 else()
   set(CUPTI_FOUND OFF)
 endif()
+link_libraries($ENV{MACA_PATH}/lib/libmcToolsExt.so)

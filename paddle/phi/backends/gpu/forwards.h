@@ -24,11 +24,11 @@ struct GpuDevice;
 /// Forward declaration of CUDA types.
 
 // Forward declaration of CUDA runtime types.
-using cudaStream_t = struct CUstream_st *;
+// using cudaStream_t = struct CUstream_st *;
 using cudaEvent_t = struct CUevent_st *;
 
 // Forward declaration of cuDNN types.
-using cudnnHandle_t = struct cudnnContext *;
+// using cudnnHandle_t = struct cudnnContext *;
 using cudnnTensorDescriptor_t = struct cudnnTensorStruct *;
 using cudnnConvolutionDescriptor_t = struct cudnnConvolutionStruct *;
 using cudnnPoolingDescriptor_t = struct cudnnPoolingStruct *;
@@ -55,34 +55,34 @@ using cudnnFusedOpsVariantParamPack_t =
 using cudnnFusedOpsPlan_t = struct cudnnFusedOpsPlanStruct *;
 
 // Forward declaration of cuBLAS types.
-using cublasHandle_t = struct cublasContext *;
+// using cublasHandle_t = struct cublasContext *;
 
 // Forward declaration of cuBLASLt types.
-using cublasLtHandle_t = struct cublasLtContext *;
+// using cublasLtHandle_t = struct cublasLtContext *;
 
 // Forward declaration of cuSOLVER types.
-using cusolverDnHandle_t = struct cusolverDnContext *;
+// using cusolverDnHandle_t = struct cusolverDnContext *;
 
 // Forward declaration of cuSparse types.
-using cusparseHandle_t = struct cusparseContext *;
+// using cusparseHandle_t = struct cusparseContext *;
 
 // Forward declaration of cuFFT types.
-using cufftHandle = int;
+// using cufftHandle = int;
 
 // Forward declaration of NCCL types.
-using ncclComm_t = struct ncclComm *;
+// using ncclComm_t = struct ncclComm *;
 
 /// Forward declaration of ROCM types.
 #include <cstddef>
 
 using hipDevice_t = int;
-using hipCtx_t = struct ihipCtx_t *;
-using hipStream_t = struct ihipStream_t *;
-using hipEvent_t = struct ihipEvent_t *;
+// using hipCtx_t = struct ihipCtx_t *;
+// using hipStream_t = struct ihipStream_t *;
+// using hipEvent_t = struct ihipEvent_t *;
 
 // Forward declaration of MIOpen types.
 using miopenHandle_t = struct miopenHandle *;
-using miopenAcceleratorQueue_t = hipStream_t;
+// using miopenAcceleratorQueue_t = hipStream_t;
 using miopenFusionOpDescriptor_t = struct miopenFusionOpDescriptor *;
 using miopenTensorDescriptor_t = struct miopenTensorDescriptor *;
 using miopenConvolutionDescriptor_t = struct miopenConvolutionDescriptor *;

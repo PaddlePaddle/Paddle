@@ -48,7 +48,8 @@ namespace internal {
 class EigenGpuStreamDevice : public Eigen::StreamInterface {
  public:
   EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
-    Eigen::initializeDeviceProp();
+    // Eigen::initializeDeviceProp();
+    Eigen::GetGpuDeviceProperties();
   }
   ~EigenGpuStreamDevice() override = default;
 
@@ -57,7 +58,8 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
                     GPUPlace place) {
     stream_ = cuda_stream;
     allocator_ = allocator;
-    device_prop_ = &Eigen::m_deviceProperties[place.device];
+    // device_prop_ = &Eigen::m_deviceProperties[place.device];
+    device_prop_ = &Eigen::GetGpuDeviceProperties(place.device);
   }
 
   const gpuStream_t& stream() const override { return stream_; }
@@ -166,7 +168,7 @@ void GPUContextResource::DestroyGPUResource() {
 
   DestroyDnnHandle();
   DestroyBlasHandle();
-  DestroyBlasLtHandle();
+  // DestroyBlasLtHandle();
   DestroySolverHandle();
   DestroySparseHandle();
 }
@@ -205,13 +207,13 @@ void GPUContextResource::DestroyBlasHandle() {
   phi::DestroyBlasHandle(blas_tf32_tensor_core_handle_);
 }
 
-void GPUContextResource::InitBlasLtHandle() {
-  phi::InitBlasLtHandle(&blaslt_handle_);
-}
+// void GPUContextResource::InitBlasLtHandle() {
+//   phi::InitBlasLtHandle(&blaslt_handle_);
+// }
 
-void GPUContextResource::DestroyBlasLtHandle() {
-  phi::DestroyBlasLtHandle(blaslt_handle_);
-}
+// void GPUContextResource::DestroyBlasLtHandle() {
+//   phi::DestroyBlasLtHandle(blaslt_handle_);
+// }
 
 void GPUContextResource::InitSolverHandle() {
   phi::InitSolverHandle(&solver_handle_, stream_);
@@ -279,25 +281,25 @@ GPUContextResource::GetBlasTF32TensorCoreHandleCreator() {
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 11000
     phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-        blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+    // PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+    //     blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
 #endif
 #endif
     return blas_tf32_tensor_core_handle_;
   };
 }
 
-blasLtHandle_t GPUContextResource::GetBlasLtHandle() const {
-  return blaslt_handle_;
-}
+// blasLtHandle_t GPUContextResource::GetBlasLtHandle() const {
+//   return blaslt_handle_;
+// }
 
-std::function<phi::blasLtHandle_t()>
-GPUContextResource::GetBlasLtHandleCreator() {
-  return [&]() {
-    InitBlasLtHandle();
-    return blaslt_handle_;
-  };
-}
+// std::function<phi::blasLtHandle_t()>
+// GPUContextResource::GetBlasLtHandleCreator() {
+//   return [&]() {
+//     InitBlasLtHandle();
+//     return blaslt_handle_;
+//   };
+// }
 
 phi::solverHandle_t GPUContextResource::GetSolverDnHandle() const {
   return solver_handle_;

@@ -178,29 +178,29 @@ PHI_DEFINE_EXPORTED_string(
     "share-memory only.");
 #endif
 
-#if defined(PADDLE_WITH_CUDA)
-/**
- * CUDA related FLAG
- * Name: FLAGS_cublaslt_exhaustive_search_times
- * Since Version: 2.3.0
- * Value Range: int64_t, default=0
- * Example:
- * Note: Represents times of exhaustive search to evaluate performance of
- *       cuBlasLt matmul algorithm (with/without epilogue). Set this flag
- *       with value > 0 to enable exhaustive search. Default is 0, means
- *       getting algorithms via heuristic search. There are two search methods
- *       in cuBlasLt, heuristic search and exhaustive search. Exhaustive search
- *       attempts all cuBlasLt algorithms to select the fastest, which is very
- *       time-consuming, and the selected algorithm will be cached for a given
- *       layer specification Once you change the layer specifications
- *       (such as M, N and K), it will re-search again.
- */
-PHI_DEFINE_EXPORTED_int64(
-    cublaslt_exhaustive_search_times,
-    0,
-    "The times of exhaustive search for cuBlasLt matmul with/without "
-    " epilogue algorithms, default is 0, means disabling exhaustive search.");
-#endif
+// #if defined(PADDLE_WITH_CUDA)
+// /**
+//  * CUDA related FLAG
+//  * Name: FLAGS_cublaslt_exhaustive_search_times
+//  * Since Version: 2.3.0
+//  * Value Range: int64_t, default=0
+//  * Example:
+//  * Note: Represents times of exhaustive search to evaluate performance of
+//  *       cuBlasLt matmul algorithm (with/without epilogue). Set this flag
+//  *       with value > 0 to enable exhaustive search. Default is 0, means
+//  *       getting algorithms via heuristic search. There are two search methods
+//  *       in cuBlasLt, heuristic search and exhaustive search. Exhaustive search
+//  *       attempts all cuBlasLt algorithms to select the fastest, which is very
+//  *       time-consuming, and the selected algorithm will be cached for a given
+//  *       layer specification Once you change the layer specifications
+//  *       (such as M, N and K), it will re-search again.
+//  */
+// PHI_DEFINE_EXPORTED_int64(
+//     cublaslt_exhaustive_search_times,
+//     0,
+//     "The times of exhaustive search for cuBlasLt matmul with/without "
+//     " epilogue algorithms, default is 0, means disabling exhaustive search.");
+// #endif
 
 /*
  * Kernel related FLAG

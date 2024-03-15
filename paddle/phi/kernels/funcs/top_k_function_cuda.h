@@ -32,8 +32,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
-#define FINAL_MASK 0xffffffff
-#define WARP_SIZE 32
+#define FINAL_MASK 0xffffffffffffffffull
+#define WARP_SIZE 64
 #define MAX_NUM_THREADS 1024
 
 inline static size_t divide_round_up(size_t n, size_t q) {
@@ -385,7 +385,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
     }
     if (--(*k) == 0) break;
 
-    unsigned mask = 0u;
+    unsigned long long mask = 0ull;
     CREATE_SHFL_MASK(mask, true);
     if (tid_max / 32 == wid) {
       if (phi::backends::gpu::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
@@ -478,16 +478,21 @@ struct Bitfield<unsigned int> {
                                                              int pos,
                                                              int len) {
     unsigned int ret;
-    asm("bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(val), "r"(pos), "r"(len));
+    // asm("bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(val), "r"(pos), "r"(len));
+    ret = (static_cast<unsigned int>(val) << (32 - pos - len)) >> (32 - len);
     return ret;
   }
 
   static __device__ __forceinline__ unsigned int SetBitfield(
       unsigned int val, unsigned int to_insert, int pos, int len) {
     unsigned int ret;
-    asm("bfi.b32 %0, %1, %2, %3, %4;"
-        : "=r"(ret)
-        : "r"(to_insert), "r"(val), "r"(pos), "r"(len));
+    val << pos;
+    unsigned int MASK_X = (((unsigned int)1 << len) - 1) << pos;
+    unsigned int MASK_Y = ~MASK_X;
+    ret = (to_insert & MASK_Y) | (val & MASK_X);
+    // asm("bfi.b32 %0, %1, %2, %3, %4;"
+    //     : "=r"(ret)
+    //     : "r"(to_insert), "r"(val), "r"(pos), "r"(len));
     return ret;
   }
 };
@@ -498,7 +503,8 @@ struct Bitfield<uint64_t> {
                                                          int pos,
                                                          int len) {
     uint64_t ret;
-    asm("bfe.u64 %0, %1, %2, %3;" : "=l"(ret) : "l"(val), "r"(pos), "r"(len));
+    // asm("bfe.u64 %0, %1, %2, %3;" : "=l"(ret) : "l"(val), "r"(pos), "r"(len));
+    ret = (static_cast<uint64_t>(val) << (64 - pos - len)) >> (64 - len);
     return ret;
   }
 
@@ -507,9 +513,13 @@ struct Bitfield<uint64_t> {
                                                          int pos,
                                                          int len) {
     uint64_t ret;
-    asm("bfi.b64 %0, %1, %2, %3, %4;"
-        : "=l"(ret)
-        : "l"(to_insert), "l"(val), "r"(pos), "r"(len));
+    val << pos;
+    uint64_t MASK_X = ((uint64_t(1) << len) - 1) << pos;
+    uint64_t MASK_Y = ~MASK_X;
+    ret = (to_insert & MASK_Y) | (val & MASK_X);
+    // asm("bfi.b64 %0, %1, %2, %3, %4;"
+    //     : "=l"(ret)
+    //     : "l"(to_insert), "l"(val), "r"(pos), "r"(len));
     return ret;
   }
 };
@@ -626,15 +636,17 @@ struct RadixTypeConfig<phi::dtype::bfloat16> {
 
 /*---------------------------Helper Functions------------------*/
 __device__ __forceinline__ int GetLaneId() {
-  int lane_id;
-  asm("mov.s32 %0, %%laneid;" : "=r"(lane_id));
-  return lane_id;
+  // int lane_id;
+  // asm("mov.s32 %0, %%laneid;" : "=r"(lane_id));
+  // return lane_id;
+  return ::__lane_id();
 }
 
 __device__ __forceinline__ unsigned GetLaneMaskLe() {
-  unsigned mask;
-  asm("mov.u32 %0, %%lanemask_le;" : "=r"(mask));
-  return mask;
+  // unsigned mask;
+  // asm("mov.u32 %0, %%lanemask_le;" : "=r"(mask));
+  // return mask;
+  return ((uint64_t(1) << ::__lane_id()) << 1) - 1;
 }
 
 template <typename T, bool KillDependency, class Function>

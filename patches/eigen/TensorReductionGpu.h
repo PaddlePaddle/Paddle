@@ -189,7 +189,7 @@ __global__ void FullReductionKernel(Reducer reducer, const Self input, Index num
   #elif defined(EIGEN_CUDA_SDK_VER) && EIGEN_CUDA_SDK_VER < 90000
     reducer.reduce(__shfl_down(accum, offset, warpSize), &accum);
   #else
-    reducer.reduce(__shfl_down_sync(0xFFFFFFFF, accum, offset, warpSize), &accum);
+    reducer.reduce(__shfl_down_sync(0xFFFFFFFFFFFFFFFFULL, accum, offset, warpSize), &accum);
   #endif
   }
 
@@ -329,7 +329,7 @@ __global__ void FullReductionKernelHalfFloat(Reducer reducer, const Self input, 
     half2* hr = reinterpret_cast<half2*>(&r1);
     half2* hacc = reinterpret_cast<half2*>(&accum);
     for (int i = 0; i < packet_width / 2; i++) {
-      hr[i] = __shfl_down_sync(0xFFFFFFFF, hacc[i], (unsigned)offset, warpSize);
+      hr[i] = __shfl_down_sync(0xFFFFFFFFFFFFFFFFULL, hacc[i], (unsigned)offset, warpSize);
     }
     reducer.reducePacket(r1, &accum);
 
@@ -542,7 +542,7 @@ __global__ void InnerReductionKernel(Reducer reducer, const Self input, Index nu
       #elif defined(EIGEN_CUDA_SDK_VER) && EIGEN_CUDA_SDK_VER < 90000
         reducer.reduce(__shfl_down(reduced_val, offset), &reduced_val);
       #else
-        reducer.reduce(__shfl_down_sync(0xFFFFFFFF, reduced_val, offset), &reduced_val);
+        reducer.reduce(__shfl_down_sync(0xFFFFFFFFFFFFFFFFULL, reduced_val, offset), &reduced_val);
       #endif
       }
 
@@ -708,9 +708,9 @@ __global__ void InnerReductionKernelHalfFloat(Reducer reducer, const Self input,
         half2* rr2 = reinterpret_cast<half2*>(&reduced_val2);
         for (int i = 0; i < packet_width / 2; i++) {
           hr1[i] =
-              __shfl_down_sync(0xFFFFFFFF, rr1[i], (unsigned)offset, warpSize);
+              __shfl_down_sync(0xFFFFFFFFFFFFFFFFULL, rr1[i], (unsigned)offset, warpSize);
           hr2[i] =
-              __shfl_down_sync(0xFFFFFFFF, rr2[i], (unsigned)offset, warpSize);
+              __shfl_down_sync(0xFFFFFFFFFFFFFFFFULL, rr2[i], (unsigned)offset, warpSize);
         }
         reducer.reducePacket(r1, &reduced_val1);
         reducer.reducePacket(r2, &reduced_val2);

@@ -24,9 +24,12 @@ set(LIBMCT_NAME
 set(LIBMCT_DOWNLOAD_FILE
     "${LIBMCT_NAME}.tar.gz"
     CACHE STRING "" FORCE)
+#set(LIBMCT_URL
+#    "https://pslib.bj.bcebos.com/libmct/${LIBMCT_DOWNLOAD_FILE}"
+#    CACHE STRING "" FORCE)
 set(LIBMCT_URL
-    "https://pslib.bj.bcebos.com/libmct/${LIBMCT_DOWNLOAD_FILE}"
-    CACHE STRING "" FORCE)
+      "http://172.161.13.41/pde-ai/libmct/uploads/db3486de7311486d821d77b050bb6c0e/libmct.tar.gz"
+      CACHE STRING "" FORCE)
 set(LIBMCT_URL_MD5 7e6b6c91b45b7490186f7120ef7e08fe)
 
 message(STATUS "LIBMCT_NAME: ${LIBMCT_NAME}, LIBMCT_URL: ${LIBMCT_URL}")

@@ -27,7 +27,7 @@
 
 namespace phi {
 
-#define FULL_MASK 0xffffffff
+#define FULL_MASK 0xffffffffffffffffull
 
 template <typename Tx, typename Ty = Tx>
 struct ZeroOrderFunctor {

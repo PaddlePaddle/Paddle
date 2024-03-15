@@ -1,30 +1,33 @@
 [submodule "third_party/protobuf"]
 	path = third_party/protobuf
-	url = https://github.com/protocolbuffers/protobuf.git
+	url = http://172.161.13.41/pde-ai/protobuf.git
+	tag = paddle
 	ignore = dirty
 [submodule "third_party/pocketfft"]
 	path = third_party/pocketfft
-	url = https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git
+	url = http://172.161.13.41/pde-ai/pocketfft.git
 	ignore = dirty
 [submodule "third_party/gflags"]
 	path = third_party/gflags
-	url = https://github.com/gflags/gflags.git
+	url = http://172.161.13.41/pde-ai/gflags.git
 	ignore = dirty
 [submodule "third_party/gloo"]
 	path = third_party/gloo
-	url = https://github.com/ziyoujiyi/gloo.git
+	url = http://172.161.13.41/pde-ai/gloo.git
 	ignore = dirty
 [submodule "third_party/dlpack"]
 	path = third_party/dlpack
-	url = https://github.com/dmlc/dlpack.git
+	url = http://172.161.13.41/pde-ai/dlpack.git
 	ignore = dirty
 [submodule "third_party/utf8proc"]
 	path = third_party/utf8proc
-	url = https://github.com/JuliaStrings/utf8proc.git
+	url = http://172.161.13.41/pde-ai/utf8proc.git
+	tag = v2.6.1
 	ignore = dirty
 [submodule "third_party/warpctc"]
 	path = third_party/warpctc
-	url = https://github.com/baidu-research/warp-ctc.git
+	url = http://172.161.13.41/pde-ai/warp-ctc.git
+	tag = maca
 	ignore = dirty
 [submodule "third_party/warprnnt"]
 	path = third_party/warprnnt
@@ -32,23 +35,26 @@
 	ignore = dirty
 [submodule "third_party/xxhash"]
 	path = third_party/xxhash
-	url = https://github.com/Cyan4973/xxHash.git
+	url = http://172.161.13.41/pde-ai/xxhash.git
+	tag = v0.6.5
 	ignore = dirty
 [submodule "third_party/pybind"]
 	path = third_party/pybind
-	url = https://github.com/pybind/pybind11.git
+	url = http://172.161.13.41/pde-ai/pybind11.git
+	tag = v2.4.3
 	ignore = dirty
 [submodule "third_party/threadpool"]
 	path = third_party/threadpool
-	url = https://github.com/progschj/ThreadPool.git
+	url = http://172.161.13.41/pde-ai/threadpool.git
 	ignore = dirty
 [submodule "third_party/zlib"]
 	path = third_party/zlib
-	url = https://github.com/madler/zlib.git
+	url = http://172.161.13.41/pde-ai/zlib.git
+	tag = v1.2.8
 	ignore = dirty
 [submodule "third_party/glog"]
 	path = third_party/glog
-	url = https://github.com/google/glog.git
+	url = http://172.161.13.41/pde-ai/glog.git
 	ignore = dirty
 [submodule "third_party/eigen3"]
 	path = third_party/eigen3
@@ -56,23 +62,24 @@
 	ignore = dirty
 [submodule "third_party/snappy"]
 	path = third_party/snappy
-	url = https://github.com/google/snappy.git
+	url = http://172.161.13.41/pde-ai/snappy.git
 	ignore = dirty
 [submodule "third_party/cub"]
 	path = third_party/cub
-	url = https://github.com/NVIDIA/cub.git
+	url = http://172.161.13.41/pde-ai/cub.git
 	ignore = dirty
 [submodule "third_party/cutlass"]
 	path = third_party/cutlass
-	url = https://github.com/NVIDIA/cutlass.git
+	url = http://172.161.13.41/pde-ai/cutlass.git
 	ignore = dirty
 [submodule "third_party/xbyak"]
 	path = third_party/xbyak
-	url = https://github.com/herumi/xbyak.git
+	url = http://172.161.13.41/pde-ai/xbyak.git
+	tag = v5.81
 	ignore = dirty
 [submodule "third_party/mkldnn"]
 	path = third_party/mkldnn
-	url = https://github.com/oneapi-src/oneDNN.git
+	url = http://172.161.13.41/pde-ai/onednn.git
 	ignore = dirty
 [submodule "third_party/flashattn"]
 	path = third_party/flashattn
@@ -80,23 +87,23 @@
 	ignore = dirty
 [submodule "third_party/gtest"]
 	path = third_party/gtest
-	url = https://github.com/google/googletest.git
+	url = http://172.161.13.41/pde-ai/googletest.git
 	ignore = dirty
 [submodule "third_party/openblas"]
 	path = third_party/openblas
-	url = https://github.com/xianyi/OpenBLAS.git
+	url = http://172.161.13.41/pde-ai/OpenBLAS.git
 	ignore = dirty
 [submodule "third_party/leveldb"]
 	path = third_party/leveldb
-	url = https://github.com/google/leveldb.git
+	url = http://172.161.13.41/pde-ai/leveldb.git
 	ignore = dirty
 [submodule "third_party/brpc"]
 	path = third_party/brpc
-	url = https://github.com/apache/brpc.git
+	url = http://172.161.13.41/pde-ai/brpc.git
 	ignore = dirty
 [submodule "third_party/rocksdb"]
 	path = third_party/rocksdb
-	url = https://github.com/Thunderbrook/rocksdb
+	url = http://172.161.13.41/pde-ai/rocksdb.git
 	ignore = dirty
 [submodule "third_party/absl"]
 	path = third_party/absl

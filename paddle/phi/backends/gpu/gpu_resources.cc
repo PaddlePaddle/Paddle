@@ -252,20 +252,20 @@ void DestroyBlasHandle(blasHandle_t handle) {
 #endif  // PADDLE_WITH_HIP
 }
 
-void InitBlasLtHandle(blasLtHandle_t* blaslt_handle) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-  phi::dynload::cublasLtCreate(blaslt_handle);
-#endif
-}
+// void InitBlasLtHandle(blasLtHandle_t* blaslt_handle) {
+// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+//   phi::dynload::cublasLtCreate(blaslt_handle);
+// #endif
+// }
 
-void DestroyBlasLtHandle(blasLtHandle_t handle) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-  if (handle != nullptr) {
-    phi::dynload::cublasLtDestroy(handle);
-    handle = nullptr;
-  }
-#endif
-}
+// void DestroyBlasLtHandle(blasLtHandle_t handle) {
+// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+//   if (handle != nullptr) {
+//     phi::dynload::cublasLtDestroy(handle);
+//     handle = nullptr;
+//   }
+// #endif
+// }
 
 void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
   if (phi::dynload::HasCUDNN()) {
@@ -295,16 +295,16 @@ void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
         (version < 9000) ? version / 1000 : version / 10000;
     auto local_cudnn_minor =
         (version < 9000) ? (version % 1000) / 100 : (version % 10000) / 100;
-    if (version < static_cast<size_t>(CUDNN_VERSION)) {
-      LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << place.device
-          << ". The installed Paddle is compiled with CUDNN " << CUDNN_MAJOR
-          << "." << CUDNN_MINOR << ", but CUDNN version in your machine is "
-          << local_cudnn_major << "." << local_cudnn_minor
-          << ", which may cause serious incompatible bug. "
-          << "Please recompile or reinstall Paddle with compatible CUDNN "
-             "version.";
-    }
+    // if (version < static_cast<size_t>(CUDNN_VERSION)) {
+    //   LOG_FIRST_N(WARNING, 1)
+    //       << "WARNING: device: " << place.device
+    //       << ". The installed Paddle is compiled with CUDNN " << CUDNN_MAJOR
+    //       << "." << CUDNN_MINOR << ", but CUDNN version in your machine is "
+    //       << local_cudnn_major << "." << local_cudnn_minor
+    //       << ", which may cause serious incompatible bug. "
+    //       << "Please recompile or reinstall Paddle with compatible CUDNN "
+    //          "version.";
+    // }
     PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cudnnCreate(handle));
     PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cudnnSetStream(*handle, stream));
 #endif

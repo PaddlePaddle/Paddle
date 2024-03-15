@@ -70,7 +70,7 @@ struct MaxOP {
 
 template <typename T>
 __device__ __forceinline__ T
-warp_shfl_xor(T value, int laneMask, int width, unsigned int mask = MASK) {
+warp_shfl_xor(T value, int laneMask, int width, unsigned long long int mask = MASK) {
 #if CUDA_VERSION >= 9000
   return __shfl_xor_sync(mask, value, laneMask, width);
 #else

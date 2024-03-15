@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
+// #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -88,8 +88,8 @@ class CublasHandleHolder {
           dynload::cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
 #if CUDA_VERSION >= 11000
     } else if (math_type == CUBLAS_TF32_TENSOR_OP_MATH) {
-      PADDLE_RETRY_CUDA_SUCCESS(
-          dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+      // PADDLE_RETRY_CUDA_SUCCESS(
+      //     dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
 #endif  // CUDA_VERSION >= 11000
     }
 #endif  // CUDA_VERSION >= 9000
@@ -113,28 +113,28 @@ class CublasHandleHolder {
   mutable std::mutex mtx_;
 };
 
-class CublasLtHandleHolder {
- public:
-  CublasLtHandleHolder() {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasLtCreate(&handle_));
-  }
-  const cublasLtHandle_t& GetCublasLtHandle() const { return handle_; }
+// class CublasLtHandleHolder {
+//  public:
+//   CublasLtHandleHolder() {
+//     PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasLtCreate(&handle_));
+//   }
+//   const cublasLtHandle_t& GetCublasLtHandle() const { return handle_; }
 
-  ~CublasLtHandleHolder() PADDLE_MAY_THROW {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasLtDestroy(handle_));
-  }
+//   ~CublasLtHandleHolder() PADDLE_MAY_THROW {
+//     PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasLtDestroy(handle_));
+//   }
 
-  inline void Call(const std::function<void(blasLtHandle_t)>& callback) const {
-    std::lock_guard<std::mutex> guard(mtx_);
-    callback(handle_);
-  }
+//   inline void Call(const std::function<void(blasLtHandle_t)>& callback) const {
+//     std::lock_guard<std::mutex> guard(mtx_);
+//     callback(handle_);
+//   }
 
- private:
-  DISABLE_COPY_AND_ASSIGN(CublasLtHandleHolder);
+//  private:
+//   DISABLE_COPY_AND_ASSIGN(CublasLtHandleHolder);
 
-  cublasLtHandle_t handle_;
-  mutable std::mutex mtx_;
-};
+//   cublasLtHandle_t handle_;
+//   mutable std::mutex mtx_;
+// };
 
 }  // namespace platform
 }  // namespace paddle

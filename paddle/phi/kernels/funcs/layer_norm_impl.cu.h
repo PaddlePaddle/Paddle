@@ -42,18 +42,19 @@ template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 inline static int GetDesiredBlockDim(int64_t block_dim) {
-  const int kMaxBlockDim = 512;
+  const int kMaxBlockDim = 256;
 #ifdef __HIPCC__
   const int lwarpSize = 64;
 #else
-  const int lwarpSize = 32;
+  const int lwarpSize = 64;
 #endif
   return block_dim >= kMaxBlockDim ? kMaxBlockDim : lwarpSize;
 }
 
 template <typename U>
 static __forceinline__ __device__ U WarpReduceSum(U val) {
-  unsigned mask = 0u;
+  // unsigned mask = 0u;
+  unsigned long long mask = 0ull;
   CREATE_SHFL_MASK(mask, true);
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
     val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
@@ -254,7 +255,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
-      mu_local += __shfl_xor_sync(uint32_t(-1), mu_local, it);
+      mu_local += __shfl_xor_sync(uint64_t(-1), mu_local, it);
     }
     if (WARPS_N > 1) {
       if (lane == 0) {
@@ -290,7 +291,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
-      var_local += __shfl_xor_sync(uint32_t(-1), var_local, it);
+      var_local += __shfl_xor_sync(uint64_t(-1), var_local, it);
     }
 
     if (WARPS_N > 1) {
@@ -678,16 +679,16 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
 #pragma unroll
       // row reduction among 32 threads.
       for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
-        sum_loss1 += __shfl_xor_sync(uint32_t(-1), sum_loss1, it);
-        sum_loss2 += __shfl_xor_sync(uint32_t(-1), sum_loss2, it);
+        sum_loss1 += __shfl_xor_sync(uint64_t(-1), sum_loss1, it);
+        sum_loss2 += __shfl_xor_sync(uint64_t(-1), sum_loss2, it);
       }
       sum_loss1 *= rn;
       sum_loss2 *= rn;
     } else {
 #pragma unroll
       for (int it = 16; it > 0; it /= 2) {
-        sum_loss1 += __shfl_down_sync(uint32_t(-1), sum_loss1, it);
-        sum_loss2 += __shfl_down_sync(uint32_t(-1), sum_loss2, it);
+        sum_loss1 += __shfl_down_sync(uint64_t(-1), sum_loss1, it);
+        sum_loss2 += __shfl_down_sync(uint64_t(-1), sum_loss2, it);
       }
 
       if (lane == 0) {
@@ -1365,8 +1366,8 @@ __global__ void LayerNormBackwardComputeGradInput(const T *__restrict__ dout,
       sum_loss2 += __shfl_xor(sum_loss2, mask, warpSize);
 #else
       // WARP_SHFL_XOR(sum_loss, mask);
-      sum_loss1 += __shfl_xor_sync(0xffffffff, sum_loss1, mask, warpSize);
-      sum_loss2 += __shfl_xor_sync(0xffffffff, sum_loss2, mask, warpSize);
+      sum_loss1 += __shfl_xor_sync(0xffffffffffffffffull, sum_loss1, mask, warpSize);
+      sum_loss2 += __shfl_xor_sync(0xffffffffffffffffull, sum_loss2, mask, warpSize);
 #endif
     }
     // inter-warp reductions
@@ -1516,8 +1517,8 @@ __global__ void LayerNormBackwardComputeGradInputWithSmallFeatureSize(
       sum_loss2 += __shfl_xor(sum_loss2, mask, warpSize);
 #else
       // WARP_SHFL_XOR(sum_loss, mask);
-      sum_loss1 += __shfl_xor_sync(0xffffffff, sum_loss1, mask, WarpSize);
-      sum_loss2 += __shfl_xor_sync(0xffffffff, sum_loss2, mask, WarpSize);
+      sum_loss1 += __shfl_xor_sync(0xffffffffffffffffull, sum_loss1, mask, WarpSize);
+      sum_loss2 += __shfl_xor_sync(0xffffffffffffffffull, sum_loss2, mask, WarpSize);
 #endif
     }
 

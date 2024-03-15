@@ -142,8 +142,8 @@ __global__ void FusedLayernormResidualDropoutBias(
 
   __shared__ U mean_share;
   __shared__ U var_share;
-  __shared__ U shared_mean[32];
-  __shared__ U shared_var[32];
+  __shared__ U shared_mean[64];
+  __shared__ U shared_var[64];
 
   phi::funcs::ReluFunctor<T> relu;
   U mean_val = 0;
@@ -329,8 +329,8 @@ __global__ void FusedLayernormResidualDropoutBiasInfer(
 
   __shared__ U mean_share;
   __shared__ U var_share;
-  __shared__ U shared_mean[32];
-  __shared__ U shared_var[32];
+  __shared__ U shared_mean[64];
+  __shared__ U shared_var[64];
 
   phi::funcs::ReluFunctor<T> relu;
   U mean_val = 0;
@@ -503,7 +503,7 @@ template <bool HasDropout,
           int WARPS_N = 1,
           int BYTES_PER_LDG = 16,
           int ELTS_PER_ROW = 1024,
-          int THREADS_PER_WARP = 32,
+          int THREADS_PER_WARP = 64,
           int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
           int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW,
           int ROWS_PER_CTA = WARPS_M,
@@ -609,7 +609,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
         RandVec<VecSize>(&state, rand);
 #pragma unroll
         for (int jt = 0; jt < VecSize; jt++) {
-#pragma unroll
+// #pragma unroll
           mask_vec[it][jt] = static_cast<MaskType>(rand[jt] >= dropout_prob);
         }
       }
@@ -697,7 +697,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
-      mu_local += __shfl_xor_sync(uint32_t(-1), mu_local, it);
+      mu_local += __shfl_xor_sync(uint64_t(-1), mu_local, it);
     }
     if (WARPS_N > 1) {
       if (lane == 0) {
@@ -732,7 +732,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
-      var_local += __shfl_xor_sync(uint32_t(-1), var_local, it);
+      var_local += __shfl_xor_sync(uint64_t(-1), var_local, it);
     }
     if (WARPS_N > 1) {
       if (lane == 0) {
@@ -884,7 +884,7 @@ void LaunchLayernormResidualDropoutBias(
   case (cols): {                                                               \
     constexpr int WARPS_N = cols < 1024 ? 1 : (cols / 1024);                   \
     constexpr int WARPS_M = 4 / WARPS_N;                                       \
-    const int THREADS_PER_WARP = 32;                                           \
+    const int THREADS_PER_WARP = 64;                                           \
     const int BYTES_PER_LDG = 16;                                              \
     const int VecSize = BYTES_PER_LDG / sizeof(T);                             \
     const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;          \

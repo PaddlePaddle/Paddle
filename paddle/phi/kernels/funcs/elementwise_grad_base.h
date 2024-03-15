@@ -640,7 +640,7 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
           my_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, my_val, i);
         }
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
@@ -670,7 +670,7 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
           my_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, my_val, i);
         }
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
@@ -841,7 +841,7 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1)
           my_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, my_val, i);
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
           sdata[0][THREAD_ID_Y] = my_val;
@@ -873,7 +873,7 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1)
           my_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, my_val, i);
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
           sdata[0][THREAD_ID_Y] = my_val;

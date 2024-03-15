@@ -85,23 +85,25 @@ class DepthwiseConvFilterGradFunctor {
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
-#define FINAL_MASK 0xffffffff
-#define HALF_WARP 16
-#define WARP_SIZE 32
+#define FINAL_MASK 0xFFFFFFFFFFFFFFFFULL
+#define HALF_WARP 32
+#define WARP_SIZE 64
 
 template <typename T>
-__forceinline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
+__forceinline__ __device__ T WarpReduceSum(T val, unsigned long long lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
     val += phi::backends::gpu::CudaShuffleDownSync(lane_mask, val, mask);
   return val;
 }
 
 template <typename T>
-__forceinline__ __device__ T BlockReduceSum(T val, unsigned mask = FINAL_MASK) {
+__forceinline__ __device__ T BlockReduceSum(T val, unsigned long long mask = FINAL_MASK) {
   static __shared__ T shared[WARP_SIZE];
   int tid = threadIdx.y * blockDim.x + threadIdx.x;
-  int lane = tid & 0x1f;
-  int wid = tid >> 5;
+  // int lane = tid & 0x1f;
+  // int wid = tid >> 5;
+  int lane = tid & 0x3f;
+  int wid = tid >> 6;
 
   val = WarpReduceSum<T>(val, mask);
 
@@ -111,7 +113,7 @@ __forceinline__ __device__ T BlockReduceSum(T val, unsigned mask = FINAL_MASK) {
   __syncthreads();
 
   // align block_span to WARP_SIZE
-  int block_span = (blockDim.x * blockDim.y + WARP_SIZE - 1) >> 5;
+  int block_span = (blockDim.x * blockDim.y + WARP_SIZE - 1) >> 6;
   val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
   val = WarpReduceSum<T>(val, mask);
 

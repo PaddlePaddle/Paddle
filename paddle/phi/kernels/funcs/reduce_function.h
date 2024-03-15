@@ -15,6 +15,9 @@
 #pragma once
 
 // CUDA, XPU and HIP use same api
+
+#define warpThread 32
+
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 #include <algorithm>
@@ -48,7 +51,7 @@ namespace cub = hipcub;
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
-#define REDUCE_VEC_SIZE 4
+#define REDUCE_VEC_SIZE 8
 
 namespace kps = phi::kps;
 #ifdef PADDLE_WITH_XPU_KP
@@ -457,7 +460,7 @@ struct ReduceConfig {
     } else {
       block_x = GetBlockDim(left_num);
       block_y = GetBlockDim(reduce_num);
-      block_dim->x = std::min(block_x, 32);
+      block_dim->x = std::min(block_x, warpThread);
       block_dim->y =
           std::min(block_y, static_cast<int>(max_num_threads / block_dim->x));
       block_dim->x =
@@ -885,8 +888,8 @@ static void LaunchReduceKernel(const Tx* x_data,
     dim3 block;
     dim3 grid;
     if (config.reduce_last_dim) {
-      block = dim3(32, 1, 1);
-      grid = dim3(details::CeilingDiv(config.left_num, 32), 1, 1);
+      block = dim3(warpThread, 1, 1);
+      grid = dim3(details::CeilingDiv(config.left_num, warpThread), 1, 1);
     } else {
       block = dim3(config.block.x, 1, 1);
       grid = dim3(config.grid.x, 1, config.grid.z);

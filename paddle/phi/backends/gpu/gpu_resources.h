@@ -35,8 +35,8 @@ void DestoryStream(gpuStream_t stream);
 void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream);
 void DestroyBlasHandle(blasHandle_t handle);
 
-void InitBlasLtHandle(blasLtHandle_t* blaslt_handle);
-void DestroyBlasLtHandle(blasLtHandle_t handle);
+// void InitBlasLtHandle(blasLtHandle_t* blaslt_handle);
+// void DestroyBlasLtHandle(blasLtHandle_t handle);
 
 void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place);
 void DestroyDnnHandle(dnnHandle_t handle);

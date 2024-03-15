@@ -248,13 +248,13 @@ template <> struct V_vec_acum_fp32_<uint4> { using Type = Float8_; };
 
 inline __device__ float half_to_float(uint16_t h) {
   float f;
-  asm volatile("cvt.f32.f16 %0, %1;\n" : "=f"(f) : "h"(h));
+  // asm volatile("cvt.f32.f16 %0, %1;\n" : "=f"(f) : "h"(h));
   return f;
 }
 
 inline __device__ float2 half2_to_float2(uint32_t v) {
   uint16_t lo, hi;
-  asm volatile("mov.b32 {%0, %1}, %2;\n" : "=h"(lo), "=h"(hi) : "r"(v));
+  // asm volatile("mov.b32 {%0, %1}, %2;\n" : "=h"(lo), "=h"(hi) : "r"(v));
   return make_float2(half_to_float(lo), half_to_float(hi));
 }
 
@@ -268,8 +268,8 @@ inline __device__ uint32_t float2_to_half2(float2 f) {
                : "=r"(tmp.u32)
                : "f"(f.y), "f"(f.x));
 #else
-  asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[0]) : "f"(f.x));
-  asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[1]) : "f"(f.y));
+  // asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[0]) : "f"(f.x));
+  // asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[1]) : "f"(f.y));
 #endif
   return tmp.u32;
 }
@@ -294,13 +294,15 @@ inline __device__ float4 add(float4 a, float4 b) {
 
 inline __device__ uint16_t add(uint16_t a, uint16_t b) {
   uint16_t c;
-  asm volatile("add.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
+  c = a + b;
+  // asm volatile("add.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
   return c;
 }
 
 inline __device__ uint32_t add(uint32_t a, uint32_t b) {
   uint32_t c;
-  asm volatile("add.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
+  c = a + b;
+  // asm volatile("add.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
   return c;
 }
 
@@ -363,14 +365,16 @@ inline __device__ float4 mul(float4 a, float4 b) {
 template <>
 inline __device__ uint16_t mul(uint16_t a, uint16_t b) {
   uint16_t c;
-  asm volatile("mul.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
+  c = a * b;
+  // asm volatile("mul.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
   return c;
 }
 
 template <>
 inline __device__ uint32_t mul(uint32_t a, uint32_t b) {
   uint32_t c;
-  asm volatile("mul.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
+  c = a * b;
+  // asm volatile("mul.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
   return c;
 }
 
@@ -534,9 +538,9 @@ inline __device__ float4 fma(float4 a, float4 b, float4 c) {
 
 inline __device__ uint32_t fma(uint32_t a, uint32_t b, uint32_t c) {
   uint32_t d;
-  asm volatile("fma.rn.f16x2 %0, %1, %2, %3;\n"
-               : "=r"(d)
-               : "r"(a), "r"(b), "r"(c));
+  // asm volatile("fma.rn.f16x2 %0, %1, %2, %3;\n"
+  //              : "=r"(d)
+  //              : "r"(a), "r"(b), "r"(c));
   return d;
 }
 
@@ -583,7 +587,7 @@ inline __device__ Float8_ fma(float a, Float8_ b, Float8_ c) {
 
 inline __device__ uint32_t h0_h0(uint16_t a) {
   uint32_t b;
-  asm volatile("mov.b32 %0, {%1, %1};" : "=r"(b) : "h"(a));
+  // asm volatile("mov.b32 %0, {%1, %1};" : "=r"(b) : "h"(a));
   return b;
 }
 
@@ -639,7 +643,7 @@ inline __device__ float qk_dot_(const K_vec (&q)[N],
   float qk = sum(qk_vec);
 #pragma unroll
   for (int mask = THREADS_PER_KEY / 2; mask >= 1; mask /= 2) {
-    qk += __shfl_xor_sync(uint32_t(-1), qk, mask);
+    qk += __shfl_xor_sync(uint64_t(-1), qk, mask);
   }
   return qk;
 }
@@ -713,14 +717,14 @@ struct Qk_dot<float16, 4> {
   }
 };
 
-template <int WARPS_PER_BLOCK, int WARP_SIZE = 32>
+template <int WARPS_PER_BLOCK, int WARP_SIZE = 64>
 inline __device__ float block_sum(float *red_smem, float sum) {
   int warp = threadIdx.x / WARP_SIZE;
   int lane = threadIdx.x % WARP_SIZE;
 
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
-    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+    sum += __shfl_xor_sync(uint64_t(-1), sum, mask);
   }
 
   if (lane == 0) {
@@ -734,10 +738,10 @@ inline __device__ float block_sum(float *red_smem, float sum) {
 
 #pragma unroll
   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+    sum += __shfl_xor_sync(uint64_t(-1), sum, mask);
   }
 
-  return __shfl_sync(uint32_t(-1), sum, 0);
+  return __shfl_sync(uint64_t(-1), sum, 0);
 }
 
 inline __device__ void convert_from_float(float &dst, float src) {  // NOLINT
@@ -1034,7 +1038,7 @@ __global__ void masked_multihead_attention_kernel(
 
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
-    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint64_t(-1), qk_max, mask));
   }
 
   const int warp = tid / WARP_SIZE;
@@ -1049,7 +1053,7 @@ __global__ void masked_multihead_attention_kernel(
   qk_max = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
 #pragma unroll
   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint64_t(-1), qk_max, mask));
   }
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);

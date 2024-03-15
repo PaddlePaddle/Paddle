@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <cublasXt.h>
+// #include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
 
@@ -46,7 +46,11 @@ extern void *cublas_dso_handle;
       std::call_once(cublas_dso_flag, []() {                                \
         cublas_dso_handle = phi::dynload::GetCublasDsoHandle();             \
       });                                                                   \
-      static void *p_##__name = dlsym(cublas_dso_handle, #__name);          \
+      std::string mcname = #__name;                                  \
+      mcname =  mcname.replace(0,2,"mc");          \
+      int index = mcname.find("_",0);                                      \
+      if(index != -1) mcname = mcname.substr(0,index);                  \
+      static void* p_##__name = dlsym(cublas_dso_handle, mcname.c_str()); \
       return reinterpret_cast<cublas_func>(p_##__name)(args...);            \
     }                                                                       \
   };                                                                        \

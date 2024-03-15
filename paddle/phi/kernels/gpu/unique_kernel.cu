@@ -68,7 +68,7 @@ struct BinaryEqual {
   BinaryEqual(int64_t _col, const InT* _in_trans_data)
       : col(_col), in_trans_data(_in_trans_data) {}
 
-  __device__ bool operator()(int64_t a, int64_t b) const {
+  __host__ __device__ bool operator()(int64_t a, int64_t b) const {
     for (int64_t i = 0; i < col; ++i) {
       InT lhs = in_trans_data[i + a * col];
       InT rhs = in_trans_data[i + b * col];
@@ -89,7 +89,7 @@ struct BinaryNotEqual {
   BinaryNotEqual(int64_t _col, const InT* _in_trans_data)
       : col(_col), in_trans_data(_in_trans_data) {}
 
-  __device__ bool operator()(int64_t a, int64_t b) const {
+  __host__ __device__ bool operator()(int64_t a, int64_t b) const {
     for (int64_t i = 0; i < col; ++i) {
       InT lhs = in_trans_data[i + a * col];
       InT rhs = in_trans_data[i + b * col];

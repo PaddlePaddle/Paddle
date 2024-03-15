@@ -110,7 +110,7 @@ __device__ __forceinline__ void WarpReduceSum(T* sum) {
 #pragma unroll
     for (int i = 0; i < BatchSize; ++i) {
       T sum_val =
-          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, sum[i], offset);
       sum[i] = sum[i] + sum_val;
     }
   }
@@ -123,7 +123,7 @@ __device__ __forceinline__ void WarpReduceMax(T* sum) {
 #pragma unroll
     for (int i = 0; i < BatchSize; ++i) {
       T max_val =
-          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFFFFFFFFFFULL, sum[i], offset);
       sum[i] = max(sum[i], max_val);
     }
   }

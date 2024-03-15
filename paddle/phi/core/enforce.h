@@ -299,7 +299,7 @@ struct EnforceNotMet : public std::exception {
     END_HANDLE_THE_ERROR                                       \
   } while (0)
 
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDACC__)
 // For cuda, the assertions can affect performance and it is therefore
 // recommended to disable them in production code
 // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
@@ -311,7 +311,7 @@ struct EnforceNotMet : public std::exception {
              __LINE__,                                             \
              #_IS_NOT_ERROR,                                       \
              ##__VA_ARGS__);                                       \
-      asm("trap;");                                                \
+      __builtin_trap();                                            \
     }                                                              \
   } while (0)
 #elif defined(__HIPCC__)

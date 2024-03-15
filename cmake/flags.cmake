@@ -146,7 +146,7 @@ if(NOT WIN32)
       -fdata-sections
       -Wl
       -gc-sections
-      -Werror
+      #-Werror
       -Wall
       -Wextra
       -Wno-unused-parameter

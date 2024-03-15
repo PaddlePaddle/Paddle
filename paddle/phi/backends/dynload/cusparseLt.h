@@ -42,7 +42,9 @@ extern void *cusparselt_dso_handle;
       std::call_once(cusparselt_dso_flag, []() {                        \
         cusparselt_dso_handle = phi::dynload::GetCusparseLtDsoHandle(); \
       });                                                               \
-      static void *p_##__name = dlsym(cusparselt_dso_handle, #__name);  \
+      std::string mcname = #__name;                                  \
+      mcname =  mcname.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(cusparselt_dso_handle, mcname.c_str());    \
       return reinterpret_cast<cusparseltFunc>(p_##__name)(args...);     \
     }                                                                   \
   };                                                                    \

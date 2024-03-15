@@ -237,6 +237,10 @@ void MultiDotKernel(const Context& ctx,
     *out = tmp;
     out->Resize(out_dim);
   }
+
+  auto& theta_grad = out;
+  T* th_data = ctx.template Alloc<T>(theta_grad);
+  
 }
 
 /**

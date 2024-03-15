@@ -31,7 +31,9 @@ extern void *nvjpeg_dso_handle;
       std::call_once(nvjpeg_dso_flag, []() {                       \
         nvjpeg_dso_handle = phi::dynload::GetNvjpegDsoHandle();    \
       });                                                          \
-      static void *p_##__name = dlsym(nvjpeg_dso_handle, #__name); \
+      std::string mcname = #__name;                                  \
+      mcname =  mcname.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(nvjpeg_dso_handle, mcname.c_str());    \
       return reinterpret_cast<nvjpegFunc>(p_##__name)(args...);    \
     }                                                              \
   };                                                               \

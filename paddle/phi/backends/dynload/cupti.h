@@ -45,7 +45,9 @@ extern void *cupti_dso_handle;
       std::call_once(cupti_dso_flag, []() {                       \
         cupti_dso_handle = phi::dynload::GetCUPTIDsoHandle();     \
       });                                                         \
-      static void *p_##__name = dlsym(cupti_dso_handle, #__name); \
+      std::string mcname = #__name;                                  \
+      mcname =  mcname.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(cupti_dso_handle, mcname.c_str());    \
       return reinterpret_cast<cuptiFunc>(p_##__name)(args...);    \
     }                                                             \
   };                                                              \

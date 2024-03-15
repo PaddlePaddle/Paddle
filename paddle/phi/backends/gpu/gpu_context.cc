@@ -64,7 +64,8 @@ namespace internal {
 class EigenGpuStreamDevice : public Eigen::StreamInterface {
  public:
   EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
-    Eigen::initializeDeviceProp();
+    // Eigen::initializeDeviceProp();
+    Eigen::GetGpuDeviceProperties();
   }
   ~EigenGpuStreamDevice() override = default;
 
@@ -74,7 +75,8 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
     stream_ = cuda_stream;
     place_ = place;
     allocator_ = allocator;
-    device_prop_ = &Eigen::m_deviceProperties[place.device];
+    // device_prop_ = &Eigen::m_deviceProperties[place.device];
+    device_prop_ = &Eigen::GetGpuDeviceProperties(place.device);
   }
 
   const gpuStream_t& stream() const override { return stream_; }
@@ -264,7 +266,7 @@ struct GPUContext::Impl {
       phi::DestroyBlasHandle(blas_handle_);
       phi::DestroyBlasHandle(blas_tensor_core_handle_);
       phi::DestroyBlasHandle(blas_tf32_tensor_core_handle_);
-      phi::DestroyBlasLtHandle(blaslt_handle_);
+      // phi::DestroyBlasLtHandle(blaslt_handle_);
     }
     if (stream_owned_ && stream_) {
       delete stream_;
@@ -374,7 +376,7 @@ struct GPUContext::Impl {
         }
       }
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
@@ -393,8 +395,8 @@ struct GPUContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-        PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-            blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+        // PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+        //     blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
 #endif
 #endif
@@ -425,24 +427,24 @@ struct GPUContext::Impl {
     blas_tf32_tensor_core_handle_creator_ = std::move(handle_creator);
   }
 
-  void SetBlasLtHandle(blasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }
+  // void SetBlasLtHandle(blasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }
 
-  void SetBlasLtHandle(std::function<blasLtHandle_t()>&& handle_creator) {
-    blaslt_handle_creator_ = std::move(handle_creator);
-  }
+  // void SetBlasLtHandle(std::function<blasLtHandle_t()>&& handle_creator) {
+  //   blaslt_handle_creator_ = std::move(handle_creator);
+  // }
 
-  blasLtHandle_t GetBlasLtHandle() {
-    std::call_once(flag_blaslt_, [&]() {
-      if (!blaslt_handle_) {
-        if (!blaslt_handle_creator_)
-          phi::InitBlasLtHandle(&blaslt_handle_);
-        else
-          blaslt_handle_ = blaslt_handle_creator_();
-      }
-    });
-    PD_CHECK(blaslt_handle_ != nullptr, "the gpu blasLt handle is nullptr.");
-    return blaslt_handle_;
-  }
+  // blasLtHandle_t GetBlasLtHandle() {
+  //   std::call_once(flag_blaslt_, [&]() {
+  //     if (!blaslt_handle_) {
+  //       if (!blaslt_handle_creator_)
+  //         phi::InitBlasLtHandle(&blaslt_handle_);
+  //       else
+  //         blaslt_handle_ = blaslt_handle_creator_();
+  //     }
+  //   });
+  //   PD_CHECK(blaslt_handle_ != nullptr, "the gpu blasLt handle is nullptr.");
+  //   return blaslt_handle_;
+  // }
 
   dnnHandle_t GetDnnHandle() {
     std::call_once(flag_dnn_, [&]() {
@@ -576,15 +578,15 @@ struct GPUContext::Impl {
         }
       }
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
         } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         }
-        PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-            blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
+        // PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+        //     blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
 #endif
 #if CUDA_VERSION >= 11000
@@ -595,8 +597,8 @@ struct GPUContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-        PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-            blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+        // PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+        //     blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
 #endif
 #endif
@@ -621,7 +623,7 @@ struct GPUContext::Impl {
         }
       }
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 && CUDA_VERSION < 11000
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
@@ -640,8 +642,8 @@ struct GPUContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-        PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-            blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+        // PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+        //     blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
 #endif
 #endif
@@ -764,8 +766,8 @@ struct GPUContext::Impl {
   std::function<blasHandle_t()> blas_tensor_core_handle_creator_{nullptr};
   blasHandle_t blas_tf32_tensor_core_handle_{nullptr};
   std::function<blasHandle_t()> blas_tf32_tensor_core_handle_creator_{nullptr};
-  blasLtHandle_t blaslt_handle_{nullptr};
-  std::function<blasLtHandle_t()> blaslt_handle_creator_{nullptr};
+  // blasLtHandle_t blaslt_handle_{nullptr};
+  // std::function<blasLtHandle_t()> blaslt_handle_creator_{nullptr};
   dnnHandle_t dnn_handle_{nullptr};
   std::function<dnnHandle_t()> dnn_handle_creator_{nullptr};
   solverHandle_t solver_handle_{nullptr};
@@ -776,7 +778,7 @@ struct GPUContext::Impl {
 
   std::once_flag flag_sparse_;
   std::once_flag flag_blas_;
-  std::once_flag flag_blaslt_;
+  // std::once_flag flag_blaslt_;
   std::once_flag flag_dnn_;
   std::once_flag flag_slover_;
   std::once_flag flag_cublas_;
@@ -839,9 +841,9 @@ blasHandle_t GPUContext::cublas_handle() const {
   return impl_->GetBlasHandle();
 }
 
-blasLtHandle_t GPUContext::cublaslt_handle() const {
-  return impl_->GetBlasLtHandle();
-}
+// blasLtHandle_t GPUContext::cublaslt_handle() const {
+//   return impl_->GetBlasLtHandle();
+// }
 
 solverHandle_t GPUContext::cusolver_dn_handle() const {
   return impl_->GetSolverHandle();
@@ -965,13 +967,13 @@ void GPUContext::SetBlasTF32Handle(std::function<blasHandle_t()>&& func) {
   impl_->SetBlasTF32Handle(std::move(func));
 }
 
-void GPUContext::SetBlasLtHandle(blasLtHandle_t blaslt) {
-  impl_->SetBlasLtHandle(blaslt);
-}
+// void GPUContext::SetBlasLtHandle(blasLtHandle_t blaslt) {
+//   impl_->SetBlasLtHandle(blaslt);
+// }
 
-void GPUContext::SetBlasLtHandle(std::function<blasLtHandle_t()>&& func) {
-  impl_->SetBlasLtHandle(std::move(func));
-}
+// void GPUContext::SetBlasLtHandle(std::function<blasLtHandle_t()>&& func) {
+//   impl_->SetBlasLtHandle(std::move(func));
+// }
 
 void GPUContext::SetDnnHandle(dnnHandle_t handle) {
   impl_->SetDnnHandle(handle);

@@ -27,7 +27,7 @@
 #include <cuda_runtime.h>
 
 #include "paddle/fluid/platform/dynload/cublas.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
+// #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
 
@@ -86,7 +86,7 @@ DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
 
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.
-DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
+// DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
 
 using CUDAGraphID = unsigned long long;  // NOLINT
 

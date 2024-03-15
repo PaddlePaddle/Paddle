@@ -29,13 +29,13 @@ namespace phi {
 #ifdef __NVCC__
 template <bool FastMode>
 static __device__ __forceinline__ float FP32FastTanh(float x) {
-#if __CUDA_ARCH__ >= 750 && CUDA_VERSION >= 11000
-  if (FastMode) {
-    float y;
-    asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(y) : "f"(x));
-    return y;
-  }
-#endif
+// #if __CUDA_ARCH__ >= 750 && CUDA_VERSION >= 11000
+//   if (FastMode) {
+//     float y;
+//     asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(y) : "f"(x));
+//     return y;
+//   }
+// #endif
   return tanhf(x);
 }
 

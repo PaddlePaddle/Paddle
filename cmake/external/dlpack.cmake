@@ -15,6 +15,7 @@
 include(ExternalProject)
 
 set(DLPACK_PREFIX_DIR ${THIRD_PARTY_PATH}/dlpack)
+set(DLPACK_REPOSITORY http://172.161.13.41/pde-ai/dlpack.git)
 set(DLPACK_TAG v0.4)
 set(DLPACK_INCLUDE_DIR ${THIRD_PARTY_PATH}/dlpack/src/extern_dlpack/include)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/dlpack)

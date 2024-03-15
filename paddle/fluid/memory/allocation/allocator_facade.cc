@@ -824,7 +824,8 @@ class AllocatorFacadePrivate {
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGetAttribute(
               &val,
-              CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+              CU_DEVICE_ATTRIBUTE_VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED,
+              #CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
               device));
     } catch (...) {
       val = 0;
@@ -910,7 +911,8 @@ class AllocatorFacadePrivate {
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGetAttribute(
               &val,
-              CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+              CU_DEVICE_ATTRIBUTE_VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED,
+              #CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
               device));
     } catch (...) {
       val = 0;

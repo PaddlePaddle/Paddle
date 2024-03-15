@@ -12,16 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/backends/dynload/cublasLt.h"
+// #include "paddle/phi/backends/dynload/cublasLt.h"
 
-namespace phi {
-namespace dynload {
-std::once_flag cublasLt_dso_flag;
-void *cublasLt_dso_handle = nullptr;
+// namespace phi {
+// namespace dynload {
+// std::once_flag cublasLt_dso_flag;
+// void *cublasLt_dso_handle = nullptr;
 
-#define DEFINE_WRAP(__name) DynLoad__##__name __name
+// #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-CUBLASLT_BLAS_ROUTINE_EACH(DEFINE_WRAP);
+// CUBLASLT_BLAS_ROUTINE_EACH(DEFINE_WRAP);
 
-}  // namespace dynload
-}  // namespace phi
+// }  // namespace dynload
+// }  // namespace phi

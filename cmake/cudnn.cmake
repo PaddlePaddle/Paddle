@@ -6,14 +6,17 @@ if(WIN32)
   set(CUDNN_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
 else()
   set(CUDNN_ROOT
-      "/usr"
+      #"/usr"
+      $ENV{MACA_PATH}
       CACHE PATH "CUDNN ROOT")
 endif()
+
+set(CUDNN_INCLUDE_DIR "$ENV{MACA_PATH}/include/mcdnn")
 
 find_path(
   CUDNN_INCLUDE_DIR cudnn.h
   PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include $ENV{CUDNN_ROOT}
-        $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
+        $ENV{CUDNN_ROOT}/include/mcdnn ${CUDA_TOOLKIT_INCLUDE}
   NO_DEFAULT_PATH)
 
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
@@ -42,7 +45,7 @@ list(
 set(CUDNN_LIB_NAME "")
 
 if(LINUX)
-  set(CUDNN_LIB_NAME "libcudnn.so")
+  set(CUDNN_LIB_NAME "libmcdnn.so")
 endif()
 
 if(WIN32)
@@ -108,7 +111,8 @@ macro(find_cudnn_version cudnn_header_file)
 endmacro()
 
 if(CUDNN_FOUND)
-  find_cudnn_version(${CUDNN_INCLUDE_DIR}/cudnn.h)
+  find_cudnn_version(${CUDNN_INCLUDE_DIR}/mcdnn.h)
+  set(CUDNN_MAJOR_VERSION 8)
   if(NOT CUDNN_MAJOR_VERSION)
     find_cudnn_version(${CUDNN_INCLUDE_DIR}/cudnn_version.h)
   endif()

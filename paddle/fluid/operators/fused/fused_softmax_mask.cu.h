@@ -22,14 +22,14 @@ namespace operators {
 
 namespace plat = paddle::platform;
 
-#define FINAL_MASK 0xffffffff
+#define FINAL_MASK 0xffffffffffffffffull
 #define DIV_UP(x, y) (((x) + (y)-1) / (y))
 
 template <typename T>
 __inline__ __device__ T warpReduceSum(T val) {
 #pragma unroll
   for (int mask = 16; mask > 0; mask >>= 1)
-    val += __shfl_xor_sync(FINAL_MASK, val, mask, 32);
+    val += __shfl_xor_sync(FINAL_MASK, val, mask, 64);
   return val;
 }
 
@@ -37,13 +37,13 @@ template <typename T>
 __inline__ __device__ T warpReduceMax(T val) {
 #pragma unroll
   for (int mask = 16; mask > 0; mask >>= 1)
-    val = max(val, __shfl_xor_sync(FINAL_MASK, val, mask, 32));
+    val = max(val, __shfl_xor_sync(FINAL_MASK, val, mask, 64));
   return val;
 }
 
 inline int ElementsCeil(int seq_len) {
   int elements = 1;
-  while (elements * 32 < seq_len) elements *= 2;
+  while (elements * 64 < seq_len) elements *= 2;
   return elements;
 }
 
@@ -53,7 +53,7 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst,
                                           const T* mask,
                                           int seq_len) {
   constexpr int block_size = 128;
-  constexpr int warp_size = 32;
+  constexpr int warp_size = 64;
   constexpr int warps_per_block = block_size / warp_size;
 
   // blockDim/threadIdx = (warp_size, warps_per_block)
@@ -164,7 +164,7 @@ void LaunchFusedSoftmaxMaskKernel(const T* src,
                                         seq_len));
 
   constexpr int block_size = 128;
-  constexpr int warp_size = 32;
+  constexpr int warp_size = 64;
   constexpr int warps_per_block = block_size / warp_size;
 
   // put head_num to the outside for mask

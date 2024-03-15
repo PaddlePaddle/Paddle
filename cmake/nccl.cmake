@@ -9,12 +9,12 @@ endif()
 
 if(WITH_NCCL)
   set(NCCL_ROOT
-      "/usr"
+      #"/usr"
       CACHE PATH "NCCL ROOT")
   find_path(
     NCCL_INCLUDE_DIR nccl.h
     PATHS ${NCCL_ROOT} ${NCCL_ROOT}/include ${NCCL_ROOT}/local/include
-          $ENV{NCCL_ROOT} $ENV{NCCL_ROOT}/include $ENV{NCCL_ROOT}/local/include
+          $ENV{NCCL_ROOT} $ENV{NCCL_ROOT}/include $ENV{NCCL_ROOT}/local/include $ENV{MACA_PATH}/tools/cu-bridge/include
     NO_DEFAULT_PATH)
 
   file(READ ${NCCL_INCLUDE_DIR}/nccl.h NCCL_VERSION_FILE_CONTENTS)

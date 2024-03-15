@@ -36,7 +36,9 @@ extern bool HasCUDADriver();
       std::call_once(cuda_dso_flag, []() {                           \
         cuda_dso_handle = phi::dynload::GetCUDADsoHandle();          \
       });                                                            \
-      static void* p_##__name = dlsym(cuda_dso_handle, #__name);     \
+      std::string mcname = #__name;                                  \
+      mcname =  mcname.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(cuda_dso_handle, mcname.c_str());    \
       return reinterpret_cast<cuda_func>(p_##__name)(args...);       \
     }                                                                \
   };                                                                 \

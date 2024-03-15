@@ -47,6 +47,7 @@ static void CubInclusiveScan(InputIterator x_iter,
   memory::AllocationPtr allocation;
   void *temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
+   mcGetLastError();  // clear cudaerr
   for (size_t i = 0; i < 2; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         cub::DeviceScan::InclusiveScan(temp_storage,

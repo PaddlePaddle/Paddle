@@ -34,7 +34,9 @@ extern void* nccl_dso_handle;
       std::call_once(nccl_dso_flag, []() {                       \
         nccl_dso_handle = phi::dynload::GetNCCLDsoHandle();      \
       });                                                        \
-      static void* p_##__name = dlsym(nccl_dso_handle, #__name); \
+      std::string mcname = #__name;                                  \
+      mcname =  mcname.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(nccl_dso_handle, mcname.c_str());    \
       return reinterpret_cast<nccl_func>(p_##__name)(args...);   \
     }                                                            \
   };                                                             \

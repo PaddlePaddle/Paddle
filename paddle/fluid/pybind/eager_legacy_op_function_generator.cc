@@ -409,7 +409,7 @@ GenerateOpFunctions() {
     if (op_proto == nullptr) {
       continue;
     }
-    auto& op_type = op_proto->type();
+    auto op_type = op_proto->type();
     // Skip operators that will be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
     if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
       continue;
@@ -422,11 +422,26 @@ GenerateOpFunctions() {
     // Skip operator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
     // if the phi lib contains op kernel, we still generate ops method
+    if(op_type=="dgc"){
+      std::cerr << "count legacy: " << all_kernels.count(op_type) << std::endl;
+      std::cerr << "map size: " << all_kernels.size() << std::endl;
+      std::cerr << "HasCompatiblePhiKernel legacy: " << phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type) << std::endl;
+      continue;
+    }
+
     if (!all_kernels.count(op_type) &&
         !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
     std::string func_name = "eager_legacy_api_" + op_type;
+
+    if("" + op_type == "multihead_matmul" || "" + op_type == "fused_bias_dropout_residual_layer_norm" || "" + op_type == "fused_embedding_eltwise_layernorm" || 
+      "" + op_type == "fused_fc_elementwise_layernorm" || "" + op_type == "yolo_box_head" || "" + op_type == "fused_gemm_epilogue_grad" || "" + op_type == "pad_constant_like"||
+      "" + op_type == "transfer_dtype" || "" + op_type == "isinf" || "" + op_type == "isfinite" || "" + op_type == "sparse_attention" || "" + op_type == "isnan"
+      || "" + op_type == "fused_token_prune" || "" + op_type == "unsqueeze" || "" + op_type == "skip_layernorm" || "" + op_type == "yolo_box_post" || "" + op_type == "flatten" || "" + op_type == "resnet_unit"
+      || "" + op_type == "conv2d_inception_fusion"|| "" + op_type == "fused_bn_add_activation"|| "" + op_type == "conv2d_fusion"|| "" + op_type == "fused_batch_norm_act")
+      continue;
+
     std::string op_function_str =
         GenerateOpFunctionsBody(op_proto, func_name, {});
 

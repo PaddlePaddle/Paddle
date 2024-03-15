@@ -27,22 +27,22 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#define FINAL_MASK 0xffffffff
+#define FINAL_MASK 0xffffffffffffffffull
 
 template <typename T>
 __inline__ __device__ T warpReduceSum(T val) {
 #pragma unroll
   for (int mask = 16; mask > 0; mask >>= 1)
-    val += __shfl_xor_sync(FINAL_MASK, val, mask, 32);
+    val += __shfl_xor_sync(FINAL_MASK, val, mask, 64);
   return val;
 }
 
 /* Calculate the sum of all elements in a block */
 template <typename T>
 __inline__ __device__ T blockReduceSum(T val) {
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
+  static __shared__ T shared[64];
+  int lane = threadIdx.x & 0x3f;
+  int wid = threadIdx.x >> 6;
 
   val = warpReduceSum<T>(val);
 
@@ -52,7 +52,7 @@ __inline__ __device__ T blockReduceSum(T val) {
 
   // Modify from blockDim.x << 5 to blockDim.x / 32. to prevent
   // blockDim.x is not divided by 32
-  val = (threadIdx.x < (blockDim.x / 32.f)) ? shared[lane] : (T)(0.0f);
+  val = (threadIdx.x < (blockDim.x / 64.f)) ? shared[lane] : (T)(0.0f);
   val = warpReduceSum<T>(val);
 
   return val;
@@ -397,9 +397,9 @@ void invokeLayernormShiftPartition(T *out,
                                    const float eps,
                                    cudaStream_t stream) {
   dim3 grid(W, H, batch);
-  int blockSize = (n + 31) / 32 * 32;
+  int blockSize = (n + 63) / 64 * 64;
   if (blockSize >= 768) {
-    blockSize = ((blockSize / 4) + 31) / 32 * 32;
+    blockSize = ((blockSize / 4) + 63) / 64 * 64;
     layernorm_shift_partition_v2<T><<<grid, blockSize, 0, stream>>>(
         out, input, gamma, beta, batch, H, W, n, shift_size, window_size, eps);
   } else {
@@ -423,10 +423,10 @@ void invokeLayernormShiftPartition(half *out,
                                    cudaStream_t stream) {
   dim3 grid(W, H, batch);
   int blockSize = n / 2;
-  blockSize = (blockSize + 31) / 32 * 32;
+  blockSize = (blockSize + 63) / 64 * 64;
 
   if ((batch * H * W >= 512 && blockSize >= 768) || blockSize > 1024) {
-    blockSize = ((blockSize / 4) + 31) / 32 * 32;
+    blockSize = ((blockSize / 4) + 63) / 64 * 64;
     layernorm_shift_partition_v2<<<grid, blockSize, 0, stream>>>(
         reinterpret_cast<half2 *>(out),
         (const half2 *)input,
