@@ -324,6 +324,8 @@ if(WITH_XPU)
   pass_library(quant_dequant_xpu_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(roformer_relative_pos_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(permute_int8_weight_only_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
