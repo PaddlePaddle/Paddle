@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/core/kmap_cache.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
