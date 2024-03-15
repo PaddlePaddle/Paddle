@@ -100,9 +100,6 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
                   op_dist_attr.process_mesh_attr().process_ids()) +
               "]";
     auto num_operand_dist_attrs = op_dist_attr.num_operand_dist_attrs();
-    // if (num_operand_dist_attrs > 0) {
-    //   os << ",operands_dist_attrs:{";
-    // }
     for (uint32_t i = 0; i < num_operand_dist_attrs; ++i) {
       auto dist_attr = op_dist_attr.operand_dist_attr(i);
       os << ",operand(" + std::to_string(i) + "):{";
@@ -132,13 +129,7 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
         os << "}";
       }
     }
-    // if (num_operand_dist_attrs > 0) {
-    //   os << "}";
-    // }
     auto num_result_dist_attrs = op_dist_attr.num_result_dist_attrs();
-    // if (num_result_dist_attrs > 0) {
-    //   os << ",result_dist_attrs:{";
-    // }
     for (uint32_t i = 0; i < num_result_dist_attrs; ++i) {
       auto dist_attr = op_dist_attr.result_dist_attr(i);
       os << ",result(" + std::to_string(i) + "):{";
@@ -168,9 +159,6 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
         os << "}";
       }
     }
-    // if (num_result_dist_attrs > 0) {
-    //   os << "}";
-    // }
   } else {
     os << "error_attribute_type";
   }
