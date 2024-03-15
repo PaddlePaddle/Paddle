@@ -18,7 +18,11 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
-from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
+from paddle.distributed.communication.reduce import (
+    ReduceOp,
+    _get_reduce_op,
+    _to_inplace_op,
+)
 from paddle.framework import in_pir_mode
 
 
@@ -60,7 +64,9 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
         raise ValueError("The type of 'ring_id' for all_reduce should be int.")
 
     if in_pir_mode():
-        return getattr(_C_ops, op_type)(tensor, ring_id, sync_op, False)
+        op_type: str = _to_inplace_op(op_type)
+        getattr(_C_ops, op_type)(tensor, ring_id, sync_op, False)
+        return
 
     # TODO: Support task and use task.wait in static graph mode
     #       Use use_calc_stream rather than sync_op
