@@ -54,7 +54,7 @@ std::vector<ir::Expr> VarVec2ExprVec(const std::vector<ir::Var>& in) {
 
 std::vector<ir::Expr> GetEachTensorLoadExpr(const ir::Expr& body,
                                             const ir::Tensor& tensor) {
-  VLOG(4) << "Start GetEachTensorLoadExpr: " << tensor;
+  VLOG(4) << "GetEachTensorLoadExpr: " << tensor;
   std::set<Expr> load_exprs = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(
       body, [&tensor](const Expr* expr) {
         return expr->As<ir::Load>() && expr->As<ir::Load>()->is_addr_tensor() &&
@@ -62,7 +62,7 @@ std::vector<ir::Expr> GetEachTensorLoadExpr(const ir::Expr& body,
                    tensor->name;
       });
   for (auto& t : load_exprs) {
-    VLOG(4) << "GetEachTensorLoadExpr: " << t << " " << t.ptr();
+    VLOG(4) << "GetEachTensorLoadExpr Found: " << t << " " << t.ptr();
   }
   return std::vector(load_exprs.begin(), load_exprs.end());
 }
@@ -76,10 +76,7 @@ void MappingTargetExprToDestExprMutator::operator()(Expr* expr) {
 }
 
 void MappingTargetExprToDestExprMutator::Visit(const ir::Load* load, Expr* op) {
-  VLOG(4) << "SubstitudeTargetExprWithDestExpr: " << load << " vs "
-          << source_.ptr();
   if (load == source_.ptr()) {
-    VLOG(4) << "substitude find!";
     *op = dest_;
   } else {
     IRMutator::Visit(load, op);
@@ -87,10 +84,7 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Load* load, Expr* op) {
 }
 void MappingTargetExprToDestExprMutator::Visit(const ir::Store* store,
                                                Expr* op) {
-  VLOG(4) << "SubstitudeTargetExprWithDestExpr: " << store << " vs "
-          << source_.ptr();
   if (store == source_.ptr()) {
-    VLOG(4) << "substitude find!";
     *op = dest_;
   } else {
     IRMutator::Visit(store, op);
@@ -98,10 +92,7 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Store* store,
 }
 void MappingTargetExprToDestExprMutator::Visit(const ir::Reduce* reduce,
                                                Expr* op) {
-  VLOG(4) << "SubstitudeTargetExprWithDestExpr: " << reduce << " vs "
-          << source_.ptr();
   if (reduce == source_.ptr()) {
-    VLOG(4) << "substitude find!";
     *op = dest_;
   } else {
     IRMutator::Visit(reduce, op);
@@ -130,7 +121,11 @@ bool CheckIterEq(const std::vector<ir::Var>& up_iter,
 ir::Expr CopyedReplaceExpr(const Expr& source,
                            const std::vector<Var>& replaced,
                            const std::vector<Expr>& candidates) {
-  VLOG(4) << "Copyed Replace Expr Start";
+  VLOG(4) << "CopyedReplaceExpr Start";
+  VLOG(4) << "Replace Body  : " << source;
+  VLOG(4) << "Replace Traget: " << cinn::utils::Join(replaced, " ");
+  VLOG(4) << "Replace To    : " << cinn::utils::Join(candidates, " ");
+
   CHECK_EQ(replaced.size(), candidates.size())
       << "In ReplaceExpr, the size of Vars to be replaced must be equal to "
          "the "
@@ -146,7 +141,7 @@ ir::Expr CopyedReplaceExpr(const Expr& source,
   }
   ir::MappingVarToExprMutator mapper(replacing_map);
   mapper(&copyed_source);
-  VLOG(4) << "Copyed Replace Expr End";
+  VLOG(4) << "CopyedReplaceExpr Result: " << copyed_source;
   return copyed_source;
 }
 
@@ -156,7 +151,6 @@ void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
   VLOG(4) << "Start SubstitudeTargetExprWithDestExpr";
   MappingTargetExprToDestExprMutator mapper(source, dest);
   mapper(body);
-  VLOG(4) << "End SubstitudeTargetExprWithDestExpr";
 }
 
 ir::Expr SubstitudeIndexVector(const Expr& source,
