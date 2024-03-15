@@ -2935,6 +2935,7 @@ void Pad3dInferMeta(const MetaTensor& x,
 void PartialAllgatherInferMeta(const MetaTensor& x,
                                int nranks,
                                int rank,
+                               int ring_id,
                                bool use_calc_stream,
                                MetaTensor* out) {
   PADDLE_ENFORCE_GE(
