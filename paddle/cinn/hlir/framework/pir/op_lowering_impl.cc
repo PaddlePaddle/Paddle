@@ -143,7 +143,6 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     spatial_inner_num = 1;
     reduce_inner_num = 4;
     warp_num = 8;
-
   } else if (reduce_numel == 1) {
     reduce_block = 1;
     if (spatial_is_dynamic) {
