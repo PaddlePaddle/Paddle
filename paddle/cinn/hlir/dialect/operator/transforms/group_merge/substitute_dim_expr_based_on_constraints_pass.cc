@@ -18,11 +18,11 @@
 
 #include <regex>
 
-#include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/cinn/common/union_find.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 PD_DECLARE_string(cinn_symbol_dim_constraints);
 
@@ -126,7 +126,7 @@ symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
     std::vector<symbol::DimExpr> substituted_dim_expr{};
     for (const symbol::DimExpr& dim_expr : original_dim_expr) {
       const auto& tmp_dim_expr =
-          cinn::common::SubstituteDimExpr(dim_expr, substitution_pattern);
+          symbol::SubstituteDimExpr(dim_expr, substitution_pattern);
       substituted_dim_expr.push_back(symbol::SimplifyDimExpr(tmp_dim_expr));
     }
     return substituted_dim_expr;
@@ -181,6 +181,35 @@ int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
       dim_expr.variant());
 }
 
+/**
+ * @brief Compare the two dim exprs
+ *
+ * @param lhs The left-hand side dim expr
+ * @param rhs The right-hand side dim expr
+ *
+ * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
+ * they are equal
+ */
+int CompareDimExpr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? -1 : 1;
+  }
+
+  // if the priority is same, we compare the string value to find the smallest
+  // one
+  if (lhs.isa<std::string>()) {
+    const auto& lhs_str = lhs.dyn_cast<std::string>();
+    const auto& rhs_str = rhs.dyn_cast<std::string>();
+    if (lhs_str.size() != rhs_str.size()) {
+      return lhs_str.size() < rhs_str.size() ? -1 : 1;
+    }
+    return lhs_str.compare(rhs_str);
+  }
+  return 0;
+}
+
 void SimplifyUnionSet(
     cinn::common::UnionFindSet<symbol::DimExpr>* union_find_set) {
   const std::vector<std::vector<symbol::DimExpr>>& dim_expr_clusters =
@@ -190,31 +219,12 @@ void SimplifyUnionSet(
         std::unordered_map<symbol::DimExpr, symbol::DimExpr>
             substitution_pattern;
         for (const auto& dim_expr_cluster : dim_expr_clusters) {
-          VLOG(0) << "####### dim_expr_cluster ######: " << dim_expr_cluster;
           CHECK(!dim_expr_cluster.empty());
           auto dim_expr_root = dim_expr_cluster[0];
           for (const auto& dim_expr : dim_expr_cluster) {
-            int dim_expr_priority = GetDimExprPriority(dim_expr);
-            int dim_expr_root_priority = GetDimExprPriority(dim_expr_root);
-            if (dim_expr_priority > dim_expr_root_priority) {
-              continue;
+            if (CompareDimExpr(dim_expr, dim_expr_root) < 0) {
+              dim_expr_root = dim_expr;
             }
-            if (dim_expr_priority == dim_expr_root_priority &&
-                dim_expr.isa<std::string>()) {
-              // if the priority is same, we compare the string value to find
-              // the smallest one
-              const auto& dim_expr_str = dim_expr.dyn_cast<std::string>();
-              const auto& dim_expr_root_str =
-                  dim_expr_root.dyn_cast<std::string>();
-              if (dim_expr_str.size() > dim_expr_root_str.size()) {
-                continue;
-              }
-              if (dim_expr_str.size() == dim_expr_root_str.size() &&
-                  dim_expr_str > dim_expr_root_str) {
-                continue;
-              }
-            }
-            dim_expr_root = dim_expr;
           }
           for (const auto& dim_expr : dim_expr_cluster) {
             if (dim_expr.isa<std::string>() && dim_expr != dim_expr_root) {
@@ -224,20 +234,15 @@ void SimplifyUnionSet(
         }
         return substitution_pattern;
       }();
-  for (const auto& [k, v] : substitution_pattern) {
-    VLOG(0) << "###### substitution_pattern: " << k << " ---> " << v;
-  }
 
   bool is_update = false;
   for (const auto& dim_expr_cluster : dim_expr_clusters) {
     for (const auto& dim_expr : dim_expr_cluster) {
       if (!dim_expr.isa<int64_t>() && !dim_expr.isa<std::string>()) {
         const auto& tmp_dim_expr = symbol::SimplifyDimExpr(
-            cinn::common::SubstituteDimExpr(dim_expr, substitution_pattern));
+            symbol::SubstituteDimExpr(dim_expr, substitution_pattern));
         if (tmp_dim_expr != dim_expr && union_find_set->Find(tmp_dim_expr) !=
                                             union_find_set->Find(dim_expr)) {
-          VLOG(0) << "###### update union set : " << tmp_dim_expr
-                  << "==" << dim_expr;
           union_find_set->Union(tmp_dim_expr, dim_expr);
           is_update = true;
         }
@@ -245,7 +250,6 @@ void SimplifyUnionSet(
     }
   }
   if (is_update) {
-    VLOG(0) << "###### update union set";
     SimplifyUnionSet(union_find_set);
   }
 }
@@ -265,7 +269,6 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
       if (data->lhs == data->rhs) {
         return;
       }
-      VLOG(0) << "AddEqualCstr: " << data->lhs << "==" << data->rhs;
       union_find_set.Union(data->lhs, data->rhs);
     };
     const auto& shape_analysis_constraints =
@@ -289,7 +292,7 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     CHECK(!dim_expr_cluster.empty());
     auto dim_expr_root = dim_expr_cluster[0];
     for (const auto& dim_expr : dim_expr_cluster) {
-      if (GetDimExprPriority(dim_expr) < GetDimExprPriority(dim_expr_root)) {
+      if (CompareDimExpr(dim_expr, dim_expr_root) < 0) {
         dim_expr_root = dim_expr;
       }
     }

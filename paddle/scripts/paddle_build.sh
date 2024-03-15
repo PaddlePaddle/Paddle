@@ -1006,7 +1006,7 @@ function run_sot_test() {
     if [ -f "$skiplist_filename" ];then
         # Prevent missing lines
         echo "" >> "$skiplist_filename"
-        while IFS= read -r line; do  
+        while IFS= read -r line; do
             skip_files+=("$line")
             echo "$line"
         done < "$skiplist_filename"
@@ -2593,9 +2593,9 @@ set +x
                 testcase=''
         done <<< "$test_cases";
         card_test "$eight_cards_tests" -1 1
-        
+
 set -x
-        
+
         ut_endTime_s=`date +%s`
         echo "HYBRID testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
@@ -3415,7 +3415,7 @@ function distribute_test() {
     echo "Dowloading ...."
     cd ${work_dir}
     wget https://paddlenlp.bj.bcebos.com/wheels/PaddleNLP_stable_paddle.tar.gz --no-proxy
-    tar -zvxf PaddleNLP_stable_paddle.tar.gz 
+    tar -zvxf PaddleNLP_stable_paddle.tar.gz
     cd PaddleNLP
     sed -i '/lac/d' scripts/regression/requirements_ci.txt
 
@@ -4450,7 +4450,7 @@ function main() {
       cicheck_sot)
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PYTHON_VERSIONS=(3.12 3.8 3.9 3.10 3.11)
+        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11 3.12)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip

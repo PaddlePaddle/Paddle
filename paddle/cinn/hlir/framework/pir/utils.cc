@@ -134,6 +134,7 @@ class OpTransInfo {
       "concat",
       "gather_nd",
       "pool2d",
+      "pool2d_grad",
       "split",
       "matmul",
       "matmul_grad",
