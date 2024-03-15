@@ -253,11 +253,13 @@ ir::Expr CreateReduceExpr(
   VLOG(4) << "CreateReduceExpr Start.";
   const std::vector<ir::Expr> indice_expr =
       std::vector<ir::Expr>(output_iters.begin(), output_iters.end());
-  const auto& new_init_tensor = ir::Tensor(new_write_tensor->name + "__init",
-                                           new_write_tensor->type(),
-                                           new_write_tensor->shape,
-                                           new_write_tensor->domain,
-                                           new_write_tensor->operation);
+  const auto& new_init_tensor =
+      ir::Tensor(new_write_tensor->name + "__reduce_init",
+                 new_write_tensor->type(),
+                 new_write_tensor->shape,
+                 new_write_tensor->domain,
+                 new_write_tensor->operation,
+                 reduce_iters);
 
   const auto& init_schedule_block =
       (TransformerUtils::WrapStoreTransformer(new_init_tensor, indice_expr) *
@@ -389,12 +391,15 @@ std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
   const auto create_new_tensor = [&](const ir::Tensor& downstream_load_tensor) {
     VLOG(4) << "downstream output tensor: " << downstream_output_tensor;
     VLOG(4) << "downstream_load_tensor  : " << downstream_load_tensor;
-    return ir::Tensor(
+    ir::Tensor result = ir::Tensor(
         downstream_load_tensor->name + "_" + FusionNode::GetTensorCounter(),
         downstream_load_tensor->type(),
         downstream_output_tensor->shape,
         downstream_output_tensor->domain,
-        downstream_load_tensor->operation);
+        GetOutputTensor(upstream)->operation,
+        GetReduceIters(upstream));
+    result->WithBuffer();
+    return result;
   };
 
   for (const auto& load_tensor : load_upstream_expr) {

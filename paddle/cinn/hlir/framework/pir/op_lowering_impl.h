@@ -22,7 +22,7 @@
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
-#include "paddle/cinn/hlir/framework/pir/trivial_op.h"
+#include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
