@@ -32,6 +32,8 @@ class AddYieldStoreInFusionOpPattern
 
   bool MatchAndRewrite(::pir::YieldOp op,
                        pir::PatternRewriter& rewriter) const override {
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     for (auto i = 0; i < op->num_operands(); ++i) {
       if (auto reshape_op = op->operand_source(i)
                                 .defining_op()
@@ -47,9 +49,6 @@ class AddYieldStoreInFusionOpPattern
           auto store_op = rewriter.Build<cinn::dialect::YieldStoreOp>(
               op->operand_source(i).defining_op()->operand_source(0),
               op->operand_source(i).type());
-
-          auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-              reshape_op->GetParentProgram());
 
           if (shape_analysis.HasShapeOrDataForValue(reshape_op->result(0))) {
             shape_analysis.SetShapeOrDataForValue(
@@ -74,17 +73,10 @@ class AddYieldStoreInFusionOpPattern
       auto orignal_base = op->operand_source(i);
       op->operand(i).set_source(store_op.result(0));
 
-      auto& shape_analysis =
-          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-
       if (shape_analysis.HasShapeOrDataForValue(orignal_base)) {
         shape_analysis.SetShapeOrDataForValue(
             store_op.result(0),
             shape_analysis.GetShapeOrDataForValue(orignal_base));
-        std::cerr << "set impr " << store_op.result(0).impl() << "\t"
-                  << orignal_base.impl() << std::endl;
-      } else {
-        std::cerr << "not found info for yiled stro input\n";
       }
     }
 
