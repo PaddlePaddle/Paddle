@@ -366,10 +366,14 @@ class ProgramHelper:
                     var
                 )
                 is_comm = True
-                tmp = paddle.base.core.reshard(param, var_dist_attr)
+                # No need to construct backward.
+                with paddle.no_grad():
+                    tmp = paddle.base.core.reshard(param, var_dist_attr)
                 if tmp._is_initialized():
                     param.get_tensor()._share_data_with(tmp.get_tensor())
                 else:
+                    # Only setting the "param" to "None" can't release the memory
+                    param.get_tensor()._clear()
                     param = None
             paddle.device.synchronize()
 
@@ -377,6 +381,8 @@ class ProgramHelper:
             if param is None:
                 continue
             if param.name not in main_program.global_block().vars:
+                # Release the reduntant params
+                param.get_tensor()._clear()
                 continue
             if param.is_dense():
                 # get param_var's dist_attr
