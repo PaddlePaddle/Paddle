@@ -1766,15 +1766,14 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
   phi::Scalar i_scalar;
   if (i_.isa<pir::OpResult>() &&
       i_.defining_op()->isa<paddle::dialect::FullOp>()) {
-    i_scalar =
-        std::move(phi::Scalar(i_.defining_op()
-                                  ->dyn_cast<paddle::dialect::FullOp>()
-                                  .attribute("value")
-                                  .dyn_cast<paddle::dialect::ScalarAttribute>()
-                                  .data()
-                                  .to<int64_t>()));
+    i_scalar = phi::Scalar(i_.defining_op()
+                               ->dyn_cast<paddle::dialect::FullOp>()
+                               .attribute("value")
+                               .dyn_cast<paddle::dialect::ScalarAttribute>()
+                               .data()
+                               .to<int64_t>());
   } else {
-    i_scalar = std::move(phi::Scalar(-1));
+    i_scalar = phi::Scalar(-1);
     i_scalar.SetFromTensor(true);
   }
 
@@ -2445,16 +2444,15 @@ void SliceArrayOp::VerifySig() {
 phi::IntArray CalcSliceBoundsFromValue(pir::Value starts_or_ends) {
   phi::IntArray starts_or_ends_list;
   if (starts_or_ends.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
-    starts_or_ends_list =
-        std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-            starts_or_ends.defining_op()
-                ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                .attribute("value"))));
+    starts_or_ends_list = phi::IntArray(paddle::dialect::GetInt64Vector(
+        starts_or_ends.defining_op()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value")));
   } else if (starts_or_ends.type().isa<pir::VectorType>()) {
     size_t starts_or_ends_size =
         starts_or_ends.type().dyn_cast<pir::VectorType>().size();
     starts_or_ends_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1)));
+        phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1));
     starts_or_ends_list.SetFromTensor(true);
   } else if (starts_or_ends.type().isa<paddle::dialect::DenseTensorType>()) {
     common::DDim starts_or_ends_dim =
@@ -2466,7 +2464,7 @@ phi::IntArray CalcSliceBoundsFromValue(pir::Value starts_or_ends) {
       starts_or_ends_size = 1;
     }
     starts_or_ends_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1)));
+        phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1));
     starts_or_ends_list.SetFromTensor(true);
   } else {
     PADDLE_THROW(
@@ -3227,8 +3225,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   };
 
   is_from_tensor = false;
-  phi::IntArray shape =
-      std::move(phi::IntArray(ParseValueShape(shape_, &is_from_tensor)));
+  phi::IntArray shape = phi::IntArray(ParseValueShape(shape_, &is_from_tensor));
   if (is_from_tensor) shape.SetFromTensor(true);
 
   VLOG(4) << "Builder construction  dense_x";
