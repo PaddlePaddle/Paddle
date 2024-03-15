@@ -17,9 +17,9 @@
 
 #include <random>
 #include <vector>
-
 #include "paddle/cinn/common/bfloat16.h"
 #include "paddle/cinn/common/float16.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn {
 namespace common {
