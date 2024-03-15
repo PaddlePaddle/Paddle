@@ -88,6 +88,74 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             print("test allreduce sum api ok")
 
+        # test allreduce sum with shape = []
+        # rank 0
+        x_np = np.random.random([]).astype(self.dtype)
+        # rank 1
+        y_np = np.random.random([]).astype(self.dtype)
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(name="x", shape=[], dtype=self.dtype)
+                y = paddle.static.data(name="y", shape=[], dtype=self.dtype)
+                exe = paddle.static.Executor()
+
+                if pg.rank() == 0:
+                    dist.all_reduce(x)
+                else:
+                    dist.all_reduce(y)
+
+                (x_out, y_out) = exe.run(
+                    main_program,
+                    feed={"x": x_np, "y": y_np},
+                    fetch_list=[x, y],
+                )
+
+                if pg.rank() == 0:
+                    np.testing.assert_array_equal(x_np + y_np, x_out)
+                else:
+                    np.testing.assert_array_equal(x_np + y_np, y_out)
+
+            print("test allreduce sum api with shape = [] ok")
+
+        # test allreduce max
+        # rank 0
+        x_np = np.random.random(self.shape).astype(self.dtype)
+        # rank 1
+        y_np = np.random.random(self.shape).astype(self.dtype)
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(
+                    name="x", shape=self.shape, dtype=self.dtype
+                )
+                y = paddle.static.data(
+                    name="y", shape=self.shape, dtype=self.dtype
+                )
+                exe = paddle.static.Executor()
+
+                if pg.rank() == 0:
+                    dist.all_reduce(x, dist.ReduceOp.MAX, sync_op=False)
+                    dist.wait(x)
+                else:
+                    dist.all_reduce(y, dist.ReduceOp.MAX, sync_op=False)
+                    dist.wait(y)
+
+                (x_out, y_out) = exe.run(
+                    main_program,
+                    feed={"x": x_np, "y": y_np},
+                    fetch_list=[x, y],
+                )
+
+                if pg.rank() == 0:
+                    np.testing.assert_array_equal(np.maximum(x_np, y_np), x_out)
+                else:
+                    np.testing.assert_array_equal(np.maximum(x_np, y_np), y_out)
+
+            print("test allreduce max api ok")
+
         # test allreduce max with shape = []
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)

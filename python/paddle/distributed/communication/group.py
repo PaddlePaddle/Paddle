@@ -17,6 +17,7 @@ import warnings
 import paddle
 import paddle.distributed as dist
 from paddle import framework
+from paddle.framework import use_pir_api
 
 
 class Group:
@@ -229,6 +230,8 @@ def get_group(id=0):
 def _sync_calc_stream(tensor):
     if framework.in_dynamic_mode():
         return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
+    elif use_pir_api():
+        return paddle._C_ops.c_sync_calc_stream_(tensor)
     else:
         op_type = 'c_sync_calc_stream'
         helper = framework.LayerHelper(op_type, **locals())
@@ -244,6 +247,8 @@ def _sync_comm_stream(tensor, ring_id=0):
         return paddle._legacy_C_ops.c_sync_comm_stream(
             [tensor], [tensor], 'ring_id', ring_id
         )
+    elif use_pir_api():
+        return paddle._C_ops.c_sync_comm_stream_(tensor, ring_id)
     else:
         op_type = 'c_sync_comm_stream'
         helper = framework.LayerHelper(op_type, **locals())
