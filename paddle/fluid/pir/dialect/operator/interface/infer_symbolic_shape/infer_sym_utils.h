@@ -17,6 +17,21 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
+inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
+  const auto &attr_map = op->attributes();
+  PADDLE_ENFORCE(
+      attr_map.count(str),
+      phi::errors::PreconditionNotMet(
+          "attr [%s] MUST in attribute map for [%s] op", str, op->name()));
+  return attr_map.at(str).dyn_cast<pir::BoolAttribute>().data();
+}
+
+// To make codes shorter
+using ExprVec = std::vector<symbol::DimExpr>;
+using ShapeOrData = symbol::ShapeOrDataDimExprs;
+using TensorExprs = symbol::TensorShapeOrDataDimExprs;
+using TensorListExprs = symbol::TensorListShapeOrDataDimExprs;
+
 namespace paddle::dialect::details {
 template <typename T>
 struct AttributeTrait;
@@ -59,6 +74,10 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
   }
   return vec_res;
 }
+
+std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
+
+ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec);
 
 bool ReduceInferDim(pir::Operation *op,
                     pir::ShapeConstraintIRAnalysis *shape_analysis,

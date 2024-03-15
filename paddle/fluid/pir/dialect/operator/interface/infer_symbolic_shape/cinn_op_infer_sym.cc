@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/cinn_op_infer_sym.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_slice_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 
 namespace cinn::dialect {
@@ -41,6 +42,25 @@ bool ConcatOpInferSymbolicShape(
   const auto input_values = op->operands_source();
   const auto input_size = input_values.size();
 
+  if (shape_analysis->GetShapeOrDataForValue(input_values[0])
+          .data()
+          .has_value()) {
+    std::vector<symbol::DimExpr> out_data;
+    for (const auto &value : input_values) {
+      const auto &shape_or_data = shape_analysis->GetShapeOrDataForValue(value);
+      for (size_t i = 0; i < shape_or_data.data().value().size(); ++i) {
+        out_data.emplace_back(shape_or_data.data().value()[i]);
+      }
+    }
+    const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(shape, out_data)};
+
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    return true;
+  }
+
   int axis = op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
 
   const auto &GetOutDimExprs = [&]() -> std::vector<symbol::DimExpr> {
@@ -56,7 +76,7 @@ bool ConcatOpInferSymbolicShape(
       out_dims[axis] = out_dims[axis] + operand_shape_or_data.shape()[axis];
     }
 
-    for (size_t i = 1; i < rank; ++i) {
+    for (size_t i = 0; i < rank; ++i) {
       if (i == static_cast<size_t>(axis)) continue;
       paddle::dialect::details::BuildCstrEqForTensorListAlongAxis(
           shape_analysis, input_values, i);
@@ -64,6 +84,9 @@ bool ConcatOpInferSymbolicShape(
 
     return out_dims;
   };
+
+  VLOG(3) << "constraints size:"
+          << shape_analysis->CreateDimExprBuilder().constraints().size();
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};
@@ -74,16 +97,11 @@ bool ConcatOpInferSymbolicShape(
 
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &attr_map = op->attributes();
-  PADDLE_ENFORCE(
-      attr_map.count("keep_dim"),
-      phi::errors::PreconditionNotMet(
-          "attr [keep_dim] MUST in attribute map for [%s] op", op->name()));
-  bool keepdim = attr_map.at("keep_dim").dyn_cast<pir::BoolAttribute>().data();
+  bool keep_dim = GetBoolAttr(op, "keep_dim");
   auto axis = paddle::dialect::details::GetVectorAttr(op, "dim");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::details::ReduceInferDim(
-      op, shape_analysis, axis, keepdim, reduce_all);
+      op, shape_analysis, axis, keep_dim, reduce_all);
 }
 
 bool ReduceMaxOpInferSymbolicShape(
@@ -111,10 +129,61 @@ bool ReshapeOpInferSymbolicShape(
   std::vector<int> shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "shape");
 
-  std::vector<symbol::DimExpr> out_dims;
-  for (int dim : shape) {
-    out_dims.emplace_back(static_cast<std::int64_t>(dim));
-  }
+  const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
+    symbol::DimExpr product{1};
+    for (const auto &dim_expr : dim_exprs) {
+      if (Filter(dim_expr)) {
+        product = product * dim_expr;
+      }
+    }
+    return product;
+  };
+
+  const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
+    if (dim_expr.isa<int64_t>()) {
+      return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
+    }
+    return true;
+  };
+
+  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
+    if (dim_expr.isa<int64_t>()) {
+      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
+    }
+    return false;
+  };
+
+  const auto &target_shape = [&] {
+    std::vector<symbol::DimExpr> target_shape;
+    for (int dim : shape) {
+      target_shape.emplace_back(static_cast<std::int64_t>(dim));
+    }
+    return target_shape;
+  }();
+
+  const auto &original_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+
+  const auto &out_dims = [&] {
+    const auto &numel =
+        GetProduct(original_shape, [](const auto &) { return true; });
+
+    const auto &product_exclude_minus_one =
+        GetProduct(target_shape, IsNotMinusOne);
+
+    std::vector<symbol::DimExpr> out_dims;
+    out_dims.reserve(target_shape.size());
+    for (size_t i = 0; i < target_shape.size(); ++i) {
+      auto out_dim_expr = IsNotMinusOne(target_shape[i])
+                              ? target_shape[i]
+                              : (numel / product_exclude_minus_one);
+      out_dim_expr = IsZero(target_shape[i]) ? original_shape[i] : out_dim_expr;
+      out_dims.emplace_back(out_dim_expr);
+    }
+
+    return out_dims;
+  }();
+
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_dims)};
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
@@ -124,52 +193,30 @@ bool ReshapeOpInferSymbolicShape(
 
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // TODO(zhangbopd): Not implemented yet, different from the one in paddle
-  // dialect. And Currently only support start/end/axis with single value.
-  pir::AttributeMap attributes = op->attributes();
+  const std::vector<int64_t> starts_raw =
+      paddle::dialect::details::GetVectorAttr(op, "starts");
+  const std::vector<int64_t> ends_raw =
+      paddle::dialect::details::GetVectorAttr(op, "ends");
+  const std::vector<int64_t> axes_raw =
+      paddle::dialect::details::GetVectorAttr(op, "axes");
+  const std::vector<int64_t> infer_flags_raw =
+      paddle::dialect::details::GetVectorAttr(op, "infer_flags");
+  const std::vector<int64_t> decrease_axis_raw =
+      paddle::dialect::details::GetVectorAttr(op, "decrease_axis");
 
-  auto GetAttrInt64Value = [&](const std::string &name) -> int64_t {
-    std::vector<pir::Attribute> attr =
-        attributes[name].dyn_cast<pir::ArrayAttribute>().AsVector();
-    PADDLE_ENFORCE_GT(
-        attr.size(),
-        0,
-        phi::errors::PreconditionNotMet(
-            "Only Support [%s] op len(%s) == 1 , but received %d.",
-            op->name(),
-            name,
-            attr.size()));
-    return attr[0].dyn_cast<pir::Int64Attribute>().data();
-  };
+  const ExprVec starts = paddle::dialect::details::VecInt642Expr(starts_raw);
+  const ExprVec ends = paddle::dialect::details::VecInt642Expr(ends_raw);
 
-  const int64_t start = GetAttrInt64Value("starts");
-  const int64_t end = GetAttrInt64Value("ends");
-  const int64_t axis = GetAttrInt64Value("axes");
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      paddle::dialect::slice_utils::SliceRawInferSymbolicShape(
+          shape_analysis->GetShapeOrDataForValue(op->operand_source(0)),
+          starts,
+          ends,
+          axes_raw,
+          infer_flags_raw,
+          decrease_axis_raw));
 
-  const pir::Value operand_source = op->operand_source(0);
-  const auto &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(operand_source);
-
-  const auto GetOutDimExprs = [&]() -> symbol::TensorShapeOrDataDimExprs {
-    std::vector<symbol::DimExpr> out_sym_shape = operand_shape_or_data.shape();
-    if (end == std::numeric_limits<int>::max()) {
-      out_sym_shape[axis] = out_sym_shape[axis] - start;
-    } else {
-      out_sym_shape[axis] = end - start;
-    }
-    symbol::TensorShapeOrDataDimExprs shape_dim_expr(out_sym_shape);
-    if (operand_shape_or_data.data().has_value()) {
-      std::vector<symbol::DimExpr> out_data;
-      for (int64_t i = start; i < end; i++) {
-        out_data.push_back(operand_shape_or_data.data().value()[i]);
-      }
-      shape_dim_expr.SetData(out_data);
-    }
-    return shape_dim_expr;
-  };
-  symbol::ShapeOrDataDimExprs shape_data{GetOutDimExprs()};
-
-  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
 

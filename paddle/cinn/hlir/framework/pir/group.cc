@@ -50,6 +50,15 @@ std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
     new_group->output_values.push_back(ir_mapping.Lookup(output_value));
   }
 
+  new_group->input_names = this->input_names;
+  new_group->output_names = this->output_names;
+  new_group->output_values = this->output_values;
+  new_group->fn_name = this->fn_name;
+  new_group->int_args_map = this->int_args_map;
+  new_group->alignment_schedule_info = this->alignment_schedule_info;
+  new_group->reduce_axis = this->reduce_axis;
+  new_group->loop_ranges = this->loop_ranges;
+
   return new_group;
 }
 
