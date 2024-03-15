@@ -110,7 +110,6 @@ class MixPrecisionOptimizer:
                 if param.stop_gradient:
                     continue
                 grad_var = param.main_grad
-
                 if grad_var is None:
                     continue
                 if paddle.in_dynamic_mode():
