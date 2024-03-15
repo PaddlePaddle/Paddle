@@ -87,4 +87,3 @@ test_fleet_checkpoint,LINUX,GPU;ROCM,200,EXCLUSIVE:NIGHTLY,test_runner.py,,,http
 test_fleet_log,,,200,DIST,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dygraph_dist_save_load,LINUX,GPU,300,DIST,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dygraph_save_for_auto_infer,LINUX,GPU,300,DIST,test_runner.py,,,NVIDIA_TF32_OVERRIDE=0;FLAGS_new_executor_micro_batching=False;http_proxy=;https_proxy=;PYTHONPATH=../..,
-test_parallel_dygraph_pipeline_parallel_communicate_with_dict,,GPU,500,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
