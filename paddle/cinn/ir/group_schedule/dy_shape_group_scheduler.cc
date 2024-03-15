@@ -71,11 +71,11 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     }
     SymbolicPredicate sp_lower_bound_predicate = ir::GE::Make(
         iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_lower_bound));
-    SymbolicPredicate sp_upper_bound_predicate = ir::LT::Make(
+    SymbolicPredicate sp_upper_bound_predicate = ir::LE::Make(
         iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_upper_bound));
     SymbolicPredicate rb_lower_bound_predicate = ir::GE::Make(
         iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_lower_bound));
-    SymbolicPredicate rb_upper_bound_predicate = ir::LT::Make(
+    SymbolicPredicate rb_upper_bound_predicate = ir::LE::Make(
         iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_upper_bound));
     SymbolicPredicate sp_predicate =
         ir::And::Make(sp_lower_bound_predicate, sp_upper_bound_predicate);
