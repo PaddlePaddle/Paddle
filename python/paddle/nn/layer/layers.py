@@ -44,6 +44,7 @@ from paddle.base.framework import (
     in_dygraph_mode,
     in_pir_mode,
     name_struct,
+    paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -2223,13 +2224,18 @@ class Layer:
         if dtype is None:
             dtype = t.dtype
 
-        if type(dtype) is not VarDesc.VarType:
+        if not isinstance(dtype, (VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         # 1. gpu place need to determine whether the memory is sufficient for allocation:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
-            size_dtype = core.size_of_dtype(dtype)
+            proto_dtype = (
+                paddle_type_to_proto_type[dtype]
+                if isinstance(dtype, core.DataType)
+                else dtype
+            )
+            size_dtype = core.size_of_dtype(proto_dtype)
             # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will compute ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (

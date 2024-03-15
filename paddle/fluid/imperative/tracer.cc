@@ -30,10 +30,10 @@
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_string(tracer_mkldnn_ops_on);
@@ -660,8 +660,8 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
   if (phi::KernelFactory::Instance().HasStructuredKernel(type)) {
     return phi::KernelSignature(op->Type().c_str());
   } else {
-    return phi::KernelSignature(std::move(
-        opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx)));
+    return phi::KernelSignature(
+        opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx));
   }
 }
 

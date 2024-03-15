@@ -440,9 +440,6 @@ void SimplyConditionBlock(
     };
     EraseUnnecessaryExpandsInBlock(block, rewriter, GetShapeOrDataForValue);
   });
-  ForEachMutBlockGroup([&](auto* block, const auto& group) {
-    ReplaceExpandWithBroadcast(rewriter.ir_context(), block, group);
-  });
 }
 
 void CompileGroupToJitKernelOp(
@@ -701,6 +698,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
       group->op_pattern_kind = attr.op_pattern_kind;
       group->loop_ranges = attr.loop_ranges;
+      group->loop_ranges_expr = attr.loop_ranges_expr;
 
       group->reduce_axis = attr.reduce_axis;
       group->alignment_schedule_info = attr.alignment_schedule_info;

@@ -24,7 +24,8 @@ namespace dialect {
 ///
 /// \brief Define Parametric TypeStorage for DistDenseTensorType.
 ///
-struct DistDenseTensorTypeStorage : public pir::TypeStorage {
+class DistDenseTensorTypeStorage : public pir::TypeStorage {
+ public:
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///

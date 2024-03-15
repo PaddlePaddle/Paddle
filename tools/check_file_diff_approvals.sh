@@ -297,7 +297,7 @@ if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 
 HAS_MODIFIED_DEMO_CMAKE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/inference/api/demo_ci/CMakeLists.txt" || true`
 if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (Superjomn (Recommend), Shixiaowei02, luotao1 or Aurelius84) approval for paddle/fluid/inference/api/demo_ci/CMakeLists.txt.\nwhich manages the compilation parameter of inference demo\n"
+    echo_line="You must have one RD (yuanlehome (Recommend), vivienfanghuagood or Aurelius84) approval for paddle/fluid/inference/api/demo_ci/CMakeLists.txt.\nwhich manages the compilation parameter of inference demo\n"
     check_approval 1 Superjomn Shixiaowei02 luotao1 Aurelius84
   fi
 
@@ -394,7 +394,7 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
 fi
 
 
-HAS_MODIFIED_ENFORCE_SYNTAX=`git diff upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
+HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --diff-filter=A upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
 if [ "${HAS_MODIFIED_ENFORCE_SYNTAX}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, LOG(FATAL)', it is recommended to use PADDLE_ENFORCE as a replacement,see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\n"
     check_approval 1 risemeup1 winter-wang

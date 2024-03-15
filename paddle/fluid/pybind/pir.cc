@@ -32,6 +32,7 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -629,6 +630,7 @@ void BindOperation(py::module *m) {
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
       .def("__repr__",
+
            [](Operation &self) {
              std::ostringstream print_stream;
              print_stream << "Operation(";
@@ -643,9 +645,51 @@ void BindOperation(py::module *m) {
             return ApiBuilder::Instance().GetBuilder()->Insert(op);
           },
           return_value_policy::reference)
-      .def("move_before", [](Operation &self, Operation &other) {
-        self.MoveTo(other.GetParent(), Block::Iterator{other});
-      });
+      .def("move_before",
+           [](Operation &self, Operation &other) {
+             self.MoveTo(other.GetParent(), Block::Iterator{other});
+           })
+      .def_property(
+          "callstack",
+          [](Operation &self) -> py::list {
+            py::list callstack_list;
+            pir::Attribute op_callstack = self.attribute<pir::Attribute>(
+                paddle::framework::OpProtoAndCheckerMaker::
+                    OpCreationCallstackAttrName());
+            PADDLE_ENFORCE(op_callstack.isa<pir::ArrayAttribute>(),
+                           phi::errors::PreconditionNotMet(
+                               "The callstack of operation `%s` should be an "
+                               "array attribute.",
+                               self.name()));
+            auto op_callstack_array_attr =
+                op_callstack.dyn_cast<pir::ArrayAttribute>();
+            for (size_t i = 0; i < op_callstack_array_attr.size(); ++i) {
+              PADDLE_ENFORCE(
+                  op_callstack_array_attr.at(i).isa<pir::StrAttribute>(),
+                  phi::errors::PreconditionNotMet(
+                      "The callstack info of operation `%s` should be array of "
+                      "string attribute.",
+                      self.name()));
+              callstack_list.append(op_callstack_array_attr.at(i)
+                                        .dyn_cast<pir::StrAttribute>()
+                                        .AsString());
+            }
+            return callstack_list;
+          },
+          [](Operation &self,
+             const std::vector<std::string> &callstack) -> void {
+            std::vector<pir::Attribute> op_callstack_infos;
+            for (auto str : callstack) {
+              op_callstack_infos.push_back(
+                  pir::StrAttribute::get(pir::IrContext::Instance(), str));
+            }
+
+            self.set_attribute(
+                paddle::framework::OpProtoAndCheckerMaker::
+                    OpCreationCallstackAttrName(),
+                pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                         op_callstack_infos));
+          });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -877,6 +921,7 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<DenseTensorArrayType>(); })
       .def("is_dist_dense_tensor_type",
            [](Value self) { return self.type().isa<DistDenseTensorType>(); })
+      .def("value_assign", [](Value &self, Value value) { self = value; })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
       .def("replace_grad_users_with",
@@ -1556,7 +1601,7 @@ void BindUtils(pybind11::module *m) {
       "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
         std::shared_ptr<Program> ret =
-            std::move(paddle::TranslateLegacyProgramToProgram(legacy_program));
+            paddle::TranslateLegacyProgramToProgram(legacy_program);
         return ret;
       },
       R"DOC(
@@ -1685,13 +1730,16 @@ void BindUtils(pybind11::module *m) {
                 {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=builtin.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=builtin.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=builtin.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=builtin.tensor<4x4xf32>)]}
     )DOC");
 
-  m->def("clear_pir_compiler_manager", []() {
+  m->def(
+      "clear_pir_compiler_manager",
+      []() {
 #ifdef PADDLE_WITH_CINN
-    pybind11::gil_scoped_release release;
-    VLOG(4) << "clear PirCompilerManager and free PirCompiler resources.";
-    cinn::hlir::framework::PirCompilerManager::Instance().clear();
+        pybind11::gil_scoped_release release;
+        VLOG(4) << "clear PirCompilerManager and free PirCompiler resources.";
+        cinn::hlir::framework::PirCompilerManager::Instance().clear();
 #endif
-  });
+      }),
+      m->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
 }
 
 namespace {
@@ -1762,8 +1810,7 @@ void BindPassManager(pybind11::module *m) {
            py::arg("opt_level") = 2)
       .def("add_pass",
            [](PassManager &self, const std::string &pass_name) {
-             self.AddPass(
-                 std::move(pir::PassRegistry::Instance().Get(pass_name)));
+             self.AddPass(pir::PassRegistry::Instance().Get(pass_name));
            })
       .def("passes",
            [](PassManager &self) {

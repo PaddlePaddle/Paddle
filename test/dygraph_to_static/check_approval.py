@@ -127,6 +127,7 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
     UseToStaticAsDecoratorDiagnostic: [
         "test_rollback.py",
         "test_legacy_error.py",
+        "test_error.py",
         "test_op_attr.py",
         "test_se_resnet.py",
         "test_lac.py",
@@ -142,6 +143,7 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_eval_frame.py",
         "test_ignore_module.py",
         "test_legacy_error.py",
+        "test_error.py",
         "test_local_cast.py",
         "test_ordered_set.py",
         "test_origin_info.py",

@@ -126,6 +126,7 @@ struct Group {
       alignment_schedule_info;
   std::vector<int64_t> reduce_axis;
   std::vector<int64_t> loop_ranges;
+  std::vector<symbol::DimExpr> loop_ranges_expr;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {

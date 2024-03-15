@@ -146,7 +146,7 @@ void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AddNOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta AddNOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -292,7 +292,7 @@ void AddN_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AddN_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta AddN_Op";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -441,7 +441,7 @@ void AddNArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AddNArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta AddNArrayOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -662,7 +662,7 @@ void FusedGemmEpilogueOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta FusedGemmEpilogueOp";
   IR_ENFORCE(input_values.size() == 3,
              "Num of inputs is expected to be 3 but got %d.",
@@ -907,7 +907,7 @@ void FusedGemmEpilogueGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   IR_ENFORCE(input_values.size() == 4,
              "Num of inputs is expected to be 4 but got %d.",
              input_values.size());
@@ -1204,7 +1204,7 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> SplitGradOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta SplitGradOp";
 
   IR_ENFORCE(input_values.size() == 2,
@@ -1343,7 +1343,7 @@ void CreateArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> CreateArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta CreateArrayOp";
 
   PADDLE_ENFORCE(
@@ -1461,7 +1461,7 @@ void CreateArrayLikeOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta CreateArrayLikeOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -1582,7 +1582,7 @@ void ArrayLengthOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayLengthOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta ArrayLengthOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -1738,7 +1738,7 @@ void ArrayReadOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayReadOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta ArrayLengthOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -1766,15 +1766,14 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
   phi::Scalar i_scalar;
   if (i_.isa<pir::OpResult>() &&
       i_.defining_op()->isa<paddle::dialect::FullOp>()) {
-    i_scalar =
-        std::move(phi::Scalar(i_.defining_op()
-                                  ->dyn_cast<paddle::dialect::FullOp>()
-                                  .attribute("value")
-                                  .dyn_cast<paddle::dialect::ScalarAttribute>()
-                                  .data()
-                                  .to<int64_t>()));
+    i_scalar = phi::Scalar(i_.defining_op()
+                               ->dyn_cast<paddle::dialect::FullOp>()
+                               .attribute("value")
+                               .dyn_cast<paddle::dialect::ScalarAttribute>()
+                               .data()
+                               .to<int64_t>());
   } else {
-    i_scalar = std::move(phi::Scalar(-1));
+    i_scalar = phi::Scalar(-1);
     i_scalar.SetFromTensor(true);
   }
 
@@ -1907,7 +1906,7 @@ void ArrayWrite_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayWrite_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta ArrayWrite_Op";
   IR_ENFORCE(input_values.size() == 3,
              "Num of inputs is expected to be 3 but got %d.",
@@ -2099,7 +2098,7 @@ void ArrayToTensorOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayToTensorOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta ArrayToTensorOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -2288,7 +2287,7 @@ void TensorToArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> TensorToArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta TensorToArrayOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -2445,16 +2444,15 @@ void SliceArrayOp::VerifySig() {
 phi::IntArray CalcSliceBoundsFromValue(pir::Value starts_or_ends) {
   phi::IntArray starts_or_ends_list;
   if (starts_or_ends.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
-    starts_or_ends_list =
-        std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-            starts_or_ends.defining_op()
-                ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                .attribute("value"))));
+    starts_or_ends_list = phi::IntArray(paddle::dialect::GetInt64Vector(
+        starts_or_ends.defining_op()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value")));
   } else if (starts_or_ends.type().isa<pir::VectorType>()) {
     size_t starts_or_ends_size =
         starts_or_ends.type().dyn_cast<pir::VectorType>().size();
     starts_or_ends_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1)));
+        phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1));
     starts_or_ends_list.SetFromTensor(true);
   } else if (starts_or_ends.type().isa<paddle::dialect::DenseTensorType>()) {
     common::DDim starts_or_ends_dim =
@@ -2466,7 +2464,7 @@ phi::IntArray CalcSliceBoundsFromValue(pir::Value starts_or_ends) {
       starts_or_ends_size = 1;
     }
     starts_or_ends_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1)));
+        phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1));
     starts_or_ends_list.SetFromTensor(true);
   } else {
     PADDLE_THROW(
@@ -2501,7 +2499,7 @@ void SliceArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> SliceArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta SliceArrayOp";
   IR_ENFORCE(input_values.size() == 3,
              "Num of inputs is expected to be 3 but got %d.",
@@ -2652,7 +2650,7 @@ void SliceArrayDenseOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta SliceArrayDenseOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -2791,7 +2789,7 @@ phi::DataType AssignArrayOp::GetKernelTypeForVar(
 
 std::vector<pir::Type> AssignArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta AssignArrayOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -2892,7 +2890,7 @@ void AssignArray_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AssignArray_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta AssignArray_Op";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -3158,7 +3156,7 @@ void ExpandOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ExpandOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta ExpandOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -3227,8 +3225,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   };
 
   is_from_tensor = false;
-  phi::IntArray shape =
-      std::move(phi::IntArray(ParseValueShape(shape_, &is_from_tensor)));
+  phi::IntArray shape = phi::IntArray(ParseValueShape(shape_, &is_from_tensor));
   if (is_from_tensor) shape.SetFromTensor(true);
 
   VLOG(4) << "Builder construction  dense_x";
@@ -3381,7 +3378,7 @@ void IncrementOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> IncrementOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta IncrementOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -3562,7 +3559,7 @@ void Increment_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> Increment_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta Increment_Op";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -3722,7 +3719,7 @@ void AssignOut_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AssignOut_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
              input_values.size());
@@ -3801,7 +3798,7 @@ void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta ShapeBroadcastOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -4011,7 +4008,7 @@ void MemcpyD2hMultiIoOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> MemcpyD2hMultiIoOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
              input_values.size());
@@ -4158,7 +4155,7 @@ void ArrayPopOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayPopOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    const pir::AttributeMap &attributes) {
+    pir::AttributeMap &attributes) {  // NOLINT
   VLOG(4) << "Start infermeta ArrayPopOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
