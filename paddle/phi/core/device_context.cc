@@ -396,8 +396,8 @@ void* DeviceContext::Alloc(TensorBase* tensor,
 
 template <typename T>
 T* DeviceContext::Alloc(TensorBase* tensor,
-                                 size_t requested_size,
-                                 bool pinned) const {
+                        size_t requested_size,
+                        bool pinned) const {
   DataType dtype = phi::CppTypeToDataType<T>::Type();
   return static_cast<T*>(this->Alloc(tensor, dtype, requested_size, pinned));
 }
@@ -415,7 +415,7 @@ T* DeviceContext::HostAlloc(TensorBase* tensor, size_t requested_size) const {
 }
 
 #define DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(dtype)              \
-  template TEST_API dtype* DeviceContext::Alloc(                              \
+  template TEST_API dtype* DeviceContext::Alloc(                     \
       TensorBase* tensor, size_t requested_size, bool pinned) const; \
   template dtype* DeviceContext::HostAlloc(TensorBase* tensor,       \
                                            size_t requested_size) const;
