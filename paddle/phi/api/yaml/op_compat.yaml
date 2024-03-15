@@ -843,6 +843,10 @@
     out : Out
 
 - op : distributed_push_sparse
+  inputs :
+    {ids : Ids, shows : Shows, clicks: Clicks}
+  outputs :
+    output : Outputs
   extra :
     attrs : ['int[] slots = {}']
 
@@ -3610,6 +3614,12 @@
     out: Out
 
 - op: c_reducescatter
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_scatter
   inputs :
     x : X
   outputs :
