@@ -23,7 +23,7 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"

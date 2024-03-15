@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/constant_folding_pass.h"
+#include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 
 #include <memory>
 #include <string>

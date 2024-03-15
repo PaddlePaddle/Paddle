@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_add_act_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"

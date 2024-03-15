@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/auto_mixed_precision_pass.h"
+#include "paddle/fluid/pir/transforms/general/auto_mixed_precision_pass.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
