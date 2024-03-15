@@ -26,8 +26,8 @@ class TestPartialAllgetherOpTranslator(test_op_translator.TestOpTranslator):
         x = paddle.ones(shape=(100, 2, 3), dtype='float32')
         out = paddle.ones(shape=(100, 2, 3), dtype='float32')
         attrs = {
-            'nranks': 0,
-            'rank': 2,
+            'nranks': 2,
+            'rank': 0,
             'ring_id': 0,
             'use_calc_stream': False,
         }
