@@ -403,7 +403,13 @@ def remove_op(block, op, state):
                 raise ValueError(
                     'input_grad in [%s] is value which need to sum ', op.name()
                 )
-
+def while_prune_check(while_tuple_ops):
+    if len(while_tuple_ops) != 0:
+        for opresult in while_tuple_ops[0].results():
+            if not opresult.use_empty():
+                return False
+        return True
+    return False
 
 def remove_useless_full_like_ops(block, ops, state):
     '''
