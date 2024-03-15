@@ -213,9 +213,9 @@ void ReShardOp::VerifySig() {
         this->attribute<paddle::dialect::OperationDistAttribute>(
             "op_dist_attr");
     PADDLE_ENFORCE_EQ(op_dist_attr.num_operand_dist_attrs(),
-                      0u,
+                      1u,
                       phi::errors::PreconditionNotMet(
-                          "The op_dist_attr input size %d must be equal to 0.",
+                          "The op_dist_attr input size %d must be equal to 1.",
                           op_dist_attr.num_operand_dist_attrs()));
 
     PADDLE_ENFORCE_EQ(

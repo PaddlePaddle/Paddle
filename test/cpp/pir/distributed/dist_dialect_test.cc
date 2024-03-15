@@ -343,25 +343,25 @@ TEST(shard_tensor_op_shard_row_test, base) {
 
   // check reshard
   std::vector<int64_t> dst_mesh_shape = {3, 2};
-  phi::distributed::ProcessMesh process_mesh(
+  phi::distributed::ProcessMesh dst_process_mesh(
       dst_mesh_shape, process_ids, dim_names);
-  auto dst_mesh_attr = ProcessMeshAttribute::get(ctx, process_mesh);
+  auto dst_mesh_attr = ProcessMeshAttribute::get(ctx, dst_process_mesh);
   auto dst_tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
-  paddle::dialect::ReshardOp reshard_op = builder.Build<paddle::dialect::ReshardOp>(shard_op.out(), dst_tensor_dist_attr);
+      TensorDistAttribute::get(ctx, dst_mesh_attr, dims_mapping, partial_status);
+  attr_map = {{"tensor_dist_attr", dst_tensor_dist_attr}};
+  paddle::dialect::ReShardOp reshard_op = builder.Build<paddle::dialect::ReShardOp>(shard_op.out(), attr_map);
 
   EXPECT_TRUE(reshard_op.result(0).type().isa<DistDenseTensorType>());
-  std::vector<int64_t> dst_local_shape = {6, 6};
   auto dst_op_out_type = reshard_op.result(0).type().dyn_cast<DistDenseTensorType>();
   EXPECT_EQ(dst_op_out_type.global_ddim(), phi::make_ddim(data_shape));
-  EXPECT_EQ(dst_op_out_type.local_ddim(), phi::make_ddim(dst_local_shape));
+  EXPECT_EQ(dst_op_out_type.local_ddim(), phi::make_ddim({6, 6}));
   EXPECT_EQ(dst_op_out_type.process_mesh_attr(), dst_mesh_attr);
   EXPECT_EQ(dst_op_out_type.dims_mapping(), dims_mapping);
   EXPECT_EQ(dst_op_out_type.partial_dims().size(), (size_t)0);
 
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_operand_dist_attrs(),
-            (uint32_t)0);
+            (uint32_t)1);
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_result_dist_attrs(),
             (uint32_t)1);
