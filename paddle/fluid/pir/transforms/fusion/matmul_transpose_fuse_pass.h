@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateMatmulTransposeFusePass();
+IR_API std::unique_ptr<Pass> CreateMatmulScaleFusePass();
 
 }  // namespace pir
