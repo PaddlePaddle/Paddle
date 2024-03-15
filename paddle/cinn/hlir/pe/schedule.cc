@@ -290,7 +290,7 @@ void MatmulScheduleCPU(poly::StageMap stages,
   for (int i = 0; i < all_axes_inner.size(); ++i) {
     all_axes.push_back(all_axes_inner[i]);
   }
-  // int axies
+  // int axes
   CHECK_EQ(all_axes.size(), out_axis_dims);
   if (is_k_splited) {
     if (is_m_splited || is_n_splited) {

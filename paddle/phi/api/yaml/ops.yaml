@@ -207,7 +207,6 @@
     func : as_strided
   backward : as_strided_grad
   no_need_buffer : input
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : asgd_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor d, Tensor y, Tensor n, Tensor master_param, bool multi_precision=false)
@@ -803,6 +802,7 @@
     func : digamma
   inplace: (x -> out)
   backward : digamma_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dirichlet
   args: (Tensor alpha)
@@ -940,7 +940,6 @@
     func : expand
     data_type : x
   backward : expand_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : expand_as
   args : (Tensor x, Tensor y, int[] target_shape = {})
@@ -2907,6 +2906,7 @@
     func : trunc
   inplace: (input -> out)
   backward : trunc_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unbind
   args : (Tensor input, int axis = 0)

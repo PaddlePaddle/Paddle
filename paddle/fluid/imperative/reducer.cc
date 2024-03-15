@@ -227,7 +227,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (platform::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ConcatTensorsWithType(static_cast<const phi::GPUContext &>(context),
                           dense_tensors_,
@@ -263,7 +263,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
 
 void Group::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (platform::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     SplitTensorsWithType(static_cast<const phi::GPUContext &>(context),
                          &dense_contents_,
@@ -493,8 +493,10 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
                 "using PyLayer in a DataParallel model, you can skip gradient "
                 "synchronization among multiple cards by 'no_sync', and "
                 "manually implement 'all_reduce' before model optimization. "
-                "There is an example showing specific implemetation processing "
-                "in offical docs: https://www.paddlepaddle.org.cn/documentation"
+                "There is an example showing specific implementation "
+                "processing "
+                "in official docs: "
+                "https://www.paddlepaddle.org.cn/documentation"
                 "/docs/api/paddle/DataParallel_cn.html"));
       }
       ++node_deps_[grad_pending_node.get()];

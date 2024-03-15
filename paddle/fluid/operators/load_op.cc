@@ -47,7 +47,7 @@ void LoadKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_GE(seek,
                       0,
                       phi::errors::InvalidArgument(
-                          "seek witn tensor must great than or equal to 0"));
+                          "seek with tensor must great than or equal to 0"));
     framework::DeserializeFromStream(fin, out, dev_ctx, seek, shape);
   } else {
     framework::DeserializeFromStream(fin, out, dev_ctx);

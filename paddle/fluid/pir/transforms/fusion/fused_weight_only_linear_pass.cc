@@ -123,9 +123,9 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    int sm_vesion = getSMVersion();
-    if (sm_vesion != 70 && sm_vesion != 75 && sm_vesion != 80 &&
-        sm_vesion != 86) {
+    int sm_version = getSMVersion();
+    if (sm_version != 70 && sm_version != 75 && sm_version != 80 &&
+        sm_version != 86) {
       return false;
     }
     return op->num_regions() > 0;

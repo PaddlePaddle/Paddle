@@ -53,12 +53,12 @@ class ParametersRecorder:
         params = self.params_dict.get(hash_id)
         if params is None:
             return [], []
-        params_values = [
-            self.tensor2value[hash_id][id(x)] for x in list(params)
-        ]
+        params = list(params)
+        params.sort(key=lambda x: x.name)
+        params_values = [self.tensor2value[hash_id][id(x)] for x in params]
         del self.params_dict[hash_id]
         del self.tensor2value[hash_id]
-        return list(params), list(params_values)
+        return params, params_values
 
 
 class InplaceMap:

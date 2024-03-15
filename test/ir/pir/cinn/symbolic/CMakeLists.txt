@@ -7,10 +7,13 @@ if(WITH_GPU)
   list(
     REMOVE_ITEM
     CINN_PIR_SYMBOLIC_TEST
+    test_simple_llama_dy.py
     test_cinn_reduce_symbolic_demo.py
     test_if_st.py
     test_if_dy.py
     test_llama_if_dy.py
+    test_decomp_inference_predictor_run.py
+    test_unary_op_infer_sym_shape.py
     test_sub_graph_for_backend.py
     test_sub_graph_for_frontend.py
     test_check_infer_symbolic.py
@@ -29,12 +32,26 @@ if(WITH_GPU)
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
         FLAGS_enable_pir_api=1 FLAGS_cinn_bucket_compile=True
-        FLAGS_pir_apply_shape_optimization_pass=1 ${PYTHON_EXECUTABLE}
+        FLAGS_prim_enable_dynamic=true FLAGS_pir_apply_shape_optimization_pass=1
+        FLAGS_group_schedule_tiling_first=1 FLAGS_cinn_new_group_scheduler=1
+        ${PYTHON_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/${cinn_pir_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(${cinn_pir_test_name} PROPERTIES LABELS
                                                           "RUN_TYPE=CINN")
   endforeach()
+
+  add_test(
+    NAME test_unary_op_infer_sym_shape
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_enable_pir_api=1 FLAGS_cinn_bucket_compile=True FLAGS_prim_all=True
+      FLAGS_pir_apply_shape_optimization_pass=1 ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_unary_op_infer_sym_shape.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_tests_properties(test_unary_op_infer_sym_shape PROPERTIES LABELS
+                                                                "RUN_TYPE=CINN")
 
   add_test(
     NAME test_if_st
@@ -52,7 +69,6 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_cinn_convert_dynamic_dim_to_static_dim=S0:2048
       FLAGS_cinn_bucket_compile=True FLAGS_enable_pir_api=1 ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_if_dy.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -69,6 +85,31 @@ if(WITH_GPU)
       ${CMAKE_CURRENT_SOURCE_DIR}/test_llama_if_dy.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties(test_llama_if_dy PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  add_test(
+    NAME test_simple_llama_dy
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_prim_enable_dynamic=true FLAGS_prim_check_ops=true
+      FLAGS_enable_pir_api=true FLAGS_cinn_bucket_compile=false
+      FLAGS_pir_apply_shape_optimization_pass=false ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_simple_llama_dy.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_tests_properties(test_simple_llama_dy PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  add_test(
+    NAME test_decomp_inference_predictor_run
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_prim_all=true FLAGS_cinn_bucket_compile=false
+      FLAGS_pir_apply_shape_optimization_pass=true
+      FLAGS_prim_enable_dynamic=true ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_decomp_inference_predictor_run.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_tests_properties(test_decomp_inference_predictor_run
+                       PROPERTIES LABELS "RUN_TYPE=CINN")
 
   add_test(
     NAME test_cinn_reduce_symbolic_demo
@@ -159,7 +200,8 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_prim_all=true FLAGS_cinn_bucket_compile=True FLAGS_enable_pir_api=1
+      FLAGS_prim_all=true FLAGS_cinn_bucket_compile=True
+      FLAGS_group_schedule_tiling_first=1 FLAGS_enable_pir_api=1
       ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_llama_mlp_dy.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties(test_llama_mlp_dy PROPERTIES LABELS "RUN_TYPE=CINN")
@@ -180,7 +222,6 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_cinn_convert_dynamic_dim_to_static_dim=S0:2048
       FLAGS_cinn_bucket_compile=True FLAGS_enable_pir_api=1 ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_while_dy.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
