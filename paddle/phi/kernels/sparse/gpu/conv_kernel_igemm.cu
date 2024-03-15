@@ -47,23 +47,22 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
                     1,
                     phi::errors::InvalidArgument(
                         "The group must be 1, but received %d.", groups));
-  PADDLE_ENFORCE(strides.size() == 3 && strides[0] == 1 && strides[1] == 1 &&
-                     strides[2] == 1,
-                 phi::errors::InvalidArgument(
-                     "The strides must have 3 elements and be 1, but received "
-                     "[%d, %d, %d].",
-                     strides[0],
-                     strides[1],
-                     strides[2]));
-  PADDLE_ENFORCE(
-      dilations.size() == 3 && dilations[0] == 1 && dilations[1] == 1 &&
-          dilations[2] == 1,
-      phi::errors::InvalidArgument(
-          "The dilations must have 3 elements and be 1, but received "
-          "[%d, %d, %d].",
-          dilations[0],
-          dilations[1],
-          dilations[2]));
+  PADDLE_ENFORCE_EQ((strides.size() == 3 && strides[0] == 1 &&
+                     strides[1] == 1 && strides[2] == 1),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The strides must be 1, but received %d, %d, %d.",
+                        strides[0],
+                        strides[1],
+                        strides[2]));
+  PADDLE_ENFORCE_EQ((dilations.size() == 3 && dilations[0] == 1 &&
+                     dilations[1] == 1 && dilations[2] == 1),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The dilations must be 1, but received %d, %d, %d.",
+                        dilations[0],
+                        dilations[1],
+                        dilations[2]));
 
   const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
