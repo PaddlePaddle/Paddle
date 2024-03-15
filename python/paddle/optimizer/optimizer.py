@@ -816,7 +816,11 @@ class Optimizer:
                     paddle._pir_ops.set_parameter(var, var_name)
                 main_program.set_parameters_from(startup_program)
                 with paddle.static.program_guard(main_program):
-                    var = paddle._pir_ops.parameter(var_name)
+                    paddle.pir.reset_insertion_point_to_start()
+                    var = paddle.static.data(
+                        var_name, var.shape, var.dtype, core.Place()
+                    )
+                    var.persistable = True
             elif framework.in_dygraph_mode():
                 var = paddle.cast(param, 'float32')
                 var.name = var_name
@@ -848,21 +852,28 @@ class Optimizer:
 
     def _create_master_grad(self, grad):
         assert self._is_dtype_fp16_or_bf16(grad.dtype)
-        if grad.name in self._master_grads:
-            var = self._master_grads[grad.name]
+        if in_pir_mode():
+            if grad in self._master_grads:
+                var = self._master_grads[grad]
+            else:
+                var = paddle.cast(grad, 'float32')
+                self._master_grads[grad] = var
         else:
-            var_name = grad.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = grad.block.create_var(
-                name=var_name,
-                shape=grad.shape,
-                value=0,
-                dtype='float32',
-                lod_level=grad.lod_level,
-                persistable=grad.persistable,
-                is_data=grad.is_data,
-            )
-            self._master_grads[grad.name] = var
+            if grad.name in self._master_grads:
+                var = self._master_grads[grad.name]
+            else:
+                var_name = grad.name + "_fp32_master"
+                var_name = unique_name.generate(var_name)
+                var = grad.block.create_var(
+                    name=var_name,
+                    shape=grad.shape,
+                    value=0,
+                    dtype='float32',
+                    lod_level=grad.lod_level,
+                    persistable=grad.persistable,
+                    is_data=grad.is_data,
+                )
+                self._master_grads[grad.name] = var
         return var
 
     def _create_accumulators(self, block, parameters):
