@@ -92,6 +92,15 @@
     data_type : x
   optional : bias, branch, branch_max ,x_max, scale_max, out_max_in
 
+- op : spatial_transformer_resblock_xpu
+  args : (Tensor x, Tensor conv_bias, Tensor conv_filter, Tensor conv_filter_max, Tensor gn_bias, Tensor gn_scale, int[] dilations, int[] paddings, int[] strides, float[] gn_eps, int[] gn_groups, int[] groups)
+  output : Tensor(out)
+  infer_meta :
+    func : SpatialTransformerResblockXPUInferMeta
+  kernel :
+    func : spatial_transformer_resblock_xpu
+    data_type : x
+
 - op : dequantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
   output : Tensor(y)

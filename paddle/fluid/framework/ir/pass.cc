@@ -83,6 +83,7 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "fc_xpu_fuse_pass",
     "link_xpu_op_max_pass",
     "xpu_delete_cast_op_pass",
+    "spatial_transformer_resblock_xpu_fuse_pass",
 };
 
 static std::vector<std::string> support_subgraph_generate_passes;

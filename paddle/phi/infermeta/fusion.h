@@ -120,6 +120,20 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* out_max);
 
+void SpatialTransformerResblockXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& conv_bias,
+                        const MetaTensor& conv_filter,
+                        const MetaTensor& conv_filter_max,
+                        const MetaTensor& gn_bias,
+                        const MetaTensor& gn_scale,
+                        const std::vector<int>& dilations,
+                        const std::vector<int>& paddings,
+                        const std::vector<int>& strides, 
+                        const std::vector<float>& gn_eps, 
+                        const std::vector<int>& gn_groups, 
+                        const std::vector<int>& groups,
+                        MetaTensor* out);
+
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
