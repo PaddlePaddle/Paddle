@@ -242,18 +242,14 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
         weight,
         bias,
         fuse_matmul_bias,
-        sp_fused_linear_param_grad_add,
+        mp_fused_linear_param_grad_add,
         model_parallel_group,
     ):
-        ctx.sp_fused_linear_param_grad_add = sp_fused_linear_param_grad_add
+        ctx.mp_fused_linear_param_grad_add = mp_fused_linear_param_grad_add
         ctx.model_parallel_group = model_parallel_group
 
         world_size = model_parallel_group.nranks
-        is_mp = world_size > 1
-        if is_mp:
-            input_parallel = all_gather(x)
-        else:
-            input_parallel = x
+        input_parallel = all_gather(x)
 
         ctx.save_for_backward(x, weight, bias, input_parallel)
         if not fuse_matmul_bias:
@@ -295,10 +291,10 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
             sync_op=False,
         )
 
-        if ctx.sp_fused_linear_param_grad_add:
+        if ctx.mp_fused_linear_param_grad_add:
             if not is_fused_linear_param_grad_add_supported():
                 raise NotImplementedError(
-                    "You set sp_fused_linear_param_grad_add=True, "
+                    "You set mp_fused_linear_param_grad_add=True, "
                     "however, the paddle you are using not support this operation. "
                     "Please unset fused_linear_param_grad_add or use paddle compiled "
                     "with cuda 11.6 or higher."
@@ -406,9 +402,12 @@ class ColumnSequenceParallelLinear(Layer):
             if mp_group is None
             else mp_group.nranks
         )
+        assert (
+            self.world_size > 1
+        ), "tensor parallel degree must be greater than 1 in sequence parallel"
+
         self._name = name
         self.is_mp = self.world_size > 1
-
         assert (
             gather_output is False
         ), "If sequence_parallel is True, \
@@ -469,17 +468,15 @@ class ColumnSequenceParallelLinear(Layer):
 
             self.linear = fused_linear
 
-        # sp_configs = fleet.fleet._user_defined_strategy.hybrid_configs["sp_configs"]
-        # self.sp_asyn_reduce_scatter = self.is_mp and sp_configs.sp_asyn_reduce_scatter
+        mp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
+            "mp_configs"
+        ]
+        self.mp_async_allreduce = mp_configs.mp_async_allreduce
 
-        # self.sp_fused_linear_param_grad_add = (
-        #     self.is_mp
-        #     and sp_configs.sp_asyn_reduce_scatter
-        #     and sp_configs.sp_fused_linear_param_grad_add
-        # )
-
-        self.sp_asyn_reduce_scatter = True
-        self.sp_fused_linear_param_grad_add = True
+        self.mp_fused_linear_param_grad_add = (
+            self.mp_async_allreduce
+            and mp_configs.mp_fused_linear_param_grad_add
+        )
 
     def forward(self, x):
         # sequence parallelism is same as model parallelis, if sequence parallel is true, input shape is [s, b, h],else input shape is [b, s, h]
@@ -488,7 +485,7 @@ class ColumnSequenceParallelLinear(Layer):
             self.weight,
             self.bias,
             self.fuse_matmul_bias,
-            self.sp_fused_linear_param_grad_add,
+            self.mp_fused_linear_param_grad_add,
             self.model_parallel_group,
         )
 
