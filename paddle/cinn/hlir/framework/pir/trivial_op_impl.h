@@ -81,8 +81,6 @@ ir::Expr GetComputeBody(const FusibleOp& op);
 
 ir::Tensor GetOutputTensor(const FusibleOp& op);
 
-ir::Expr _GetOriginalStoreValuePointer(const FusibleOp& op);
-
 std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
                                  const ir::Expr& root);
 
@@ -133,19 +131,17 @@ DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
   VLOG(4) << "upstream is " << upstream.GetFuncBody();
   VLOG(4) << "downstream is " << downstream.GetFuncBody();
 
-  DownStreamOp fused(ir::ir_utils::IRCopy(downstream.GetFuncBody()));
-  ir::Expr origin_compute_body = _GetOriginalStoreValuePointer(fused);
+  ir::Expr modified_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
   SequenceMutator(
-      ComposeUtils::GetEachTensorLoadExpr(origin_compute_body, replaced_tensor),
-      &origin_compute_body,
+      ComposeUtils::GetEachTensorLoadExpr(modified_body, replaced_tensor),
+      &modified_body,
       [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
         ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
             upstream, downstream_load_expr, downstream_body);
       });
 
-  VLOG(4) << "After mutate, compute body: " << origin_compute_body;
-  VLOG(4) << "TTFusion end:\n" << fused.GetFuncBody();
-  return fused;
+  VLOG(4) << "TTFusion end:\n" << modified_body;
+  return DownStreamOp(modified_body);
 }
 
 bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down);

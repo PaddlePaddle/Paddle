@@ -122,9 +122,9 @@ ir::Expr CopyedReplaceExpr(const Expr& source,
                            const std::vector<Var>& replaced,
                            const std::vector<Expr>& candidates) {
   VLOG(4) << "CopyedReplaceExpr Start";
-  VLOG(4) << "Replace Body  : " << source;
-  VLOG(4) << "Replace Traget: " << cinn::utils::Join(replaced, " ");
-  VLOG(4) << "Replace To    : " << cinn::utils::Join(candidates, " ");
+  VLOG(4) << "Replace Body : " << source;
+  VLOG(4) << "Replace From : " << cinn::utils::Join(replaced, " ");
+  VLOG(4) << "Replace To   : " << cinn::utils::Join(candidates, " ");
 
   CHECK_EQ(replaced.size(), candidates.size())
       << "In ReplaceExpr, the size of Vars to be replaced must be equal to "
@@ -148,9 +148,13 @@ ir::Expr CopyedReplaceExpr(const Expr& source,
 void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
                                       const ir::Expr& dest,
                                       ir::Expr* body) {
-  VLOG(4) << "Start SubstitudeTargetExprWithDestExpr";
+  VLOG(4) << "SubstitideExpr Start";
+  VLOG(4) << "Substitide Body : " << *body;
+  VLOG(4) << "Substitide From : " << source;
+  VLOG(4) << "Substitide To   : " << dest;
   MappingTargetExprToDestExprMutator mapper(source, dest);
   mapper(body);
+  VLOG(4) << "SubstitideExpr Result: " << *body;
 }
 
 ir::Expr SubstitudeIndexVector(const Expr& source,

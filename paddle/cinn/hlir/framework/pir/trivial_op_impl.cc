@@ -126,23 +126,6 @@ ir::Tensor GetOutputTensor(const FusibleOp& op) {
   return std::visit(Visitor(), op);
 }
 
-ir::Expr _GetOriginalStoreValuePointer(const FusibleOp& op) {
-  struct Visitor {
-    ir::Expr operator()(const ReduceOp& op) {
-      return (SearchUtils::ChildScheduleBlockRealizes *
-              SearchUtils::ScheduleBlockRealizeIsNotInit *
-              SearchUtils::ChildStores * SearchUtils::Store2Value)
-          .GetSingle(_GetRootExpr(op));
-    }
-    ir::Expr operator()(const TrivialOp& op) {
-      return (SearchUtils::ChildScheduleBlockRealizes *
-              SearchUtils::ChildStores * SearchUtils::Store2Value)
-          .GetSingle(_GetRootExpr(op));
-    }
-  };
-  return std::visit(Visitor(), op);
-}
-
 std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
                                  const ir::Expr& root) {
   return SearchUtils::MapVector<ir::Var>(vars, [&](const auto& v) -> ir::Var {
