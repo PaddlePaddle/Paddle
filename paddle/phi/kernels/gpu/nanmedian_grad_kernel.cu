@@ -63,11 +63,10 @@ __global__ void KernelNanmedianMinGrad(const int64_t* medians_ptr,
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t offset = index * stride;
     printf("index: %d\n", index);
-    printf("medians_ptr[2 * index]: %d\n", medians_ptr[2 * index]);
-    printf("medians_ptr[2 * index+1]: %d\n", medians_ptr[2 * index + 1]);
+    printf("medians_ptr[index]: %d\n", medians_ptr[index]);
 
-    if (medians_ptr[2 * index] >= 0) {
-      dx_data[offset + medians_ptr[2 * index]] = out_grad_ptr[index];
+    if (medians_ptr[index] >= 0) {
+      dx_data[offset + medians_ptr[index]] = out_grad_ptr[index];
     }
   }
 }

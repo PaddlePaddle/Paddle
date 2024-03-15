@@ -52,8 +52,8 @@ void CalcMedianMinGrad(int64_t pre_dim,
   int64_t i = 0;
   int64_t offset = 0;
   for (i = 0; i < pre_dim; i++) {
-    if (m_data[2 * i] >= 0) {
-      dx_data[offset + m_data[2 * i]] = dout_data[i];
+    if (m_data[i] >= 0) {
+      dx_data[offset + m_data[i]] = dout_data[i];
     }
     offset += stride;
   }

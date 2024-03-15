@@ -2631,7 +2631,9 @@ void NanmedianInferMeta(const MetaTensor& x,
   out->set_dims(make_ddim(out_dim));
 
   auto median_dim = out_dim;
-  median_dim.push_back(2);
+  if (mode == "avg") {
+    median_dim.push_back(2);
+  }
   median_index->set_dtype(DataType::INT64);
   median_index->set_dims(make_ddim(median_dim));
 }

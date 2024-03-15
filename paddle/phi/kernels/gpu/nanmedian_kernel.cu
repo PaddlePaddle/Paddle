@@ -99,20 +99,19 @@ __global__ void CalcMedianMinKernel(const T* sort_out_ptr,
                                     const int64_t* sort_indices_ptr,
                                     int64_t* median_val,
                                     T* output,
+                                    T div_factor,
                                     const bool is_odd,
                                     const int64_t pre_dim,
                                     const int64_t stride) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t pos = static_cast<int64_t>((index + 1) * stride) - 1;
     if (is_odd) {
-      median_val[index * 2] = sort_indices_ptr[pos];
-      median_val[index * 2 + 1] = sort_indices_ptr[pos];
+      median_val[index] = sort_indices_ptr[pos];
       output[index] = sort_out_ptr[pos];
     } else {
       T median_val_left = pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
-      median_val[index * 2] =
+      median_val[index] =
           pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
-      median_val[index * 2 + 1] = median_val[index * 2];
       output[index] = median_val_left;
     }
   }
@@ -169,13 +168,13 @@ __global__ void CalcNanmedianMinKernel(const T* sort_out_ptr,
                                        const int64_t pre_dim,
                                        const int64_t max_valid_num,
                                        const int64_t stride,
+                                       const T div_factor,
                                        const T nan_val) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t pos = static_cast<int64_t>(index * max_valid_num);
     int64_t nan_cnt = nan_counts[index];
     if (nan_cnt == stride) {
-      median_val[index * 2] = -1;
-      median_val[index * 2 + 1] = -1;
+      median_val[index] = -1;
       output[index] = nan_val;
     } else {
       int64_t nan_k =
@@ -184,14 +183,12 @@ __global__ void CalcNanmedianMinKernel(const T* sort_out_ptr,
       pos += row_pos;
 
       if (nan_k & 1) {
-        median_val[index * 2] = sort_indices_ptr[pos];
-        median_val[index * 2 + 1] = sort_indices_ptr[pos];
+        median_val[index] = sort_indices_ptr[pos];
         output[index] = sort_out_ptr[pos];
       } else {
         T median_val_left = pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
-        median_val[index * 2] =
+        median_val[index] =
             pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
-        median_val[index * 2 + 1] = median_val[index * 2];
         output[index] = median_val_left;
       }
     }
@@ -321,6 +318,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
               pre_dim,
               max_valid_num,
               stride,
+              div_factor,
               nan_val);
     }
   } else {
@@ -342,6 +340,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
               sort_indices_ptr,
               m_data,
               out_data,
+              div_factor,
               is_ori_odd,
               pre_dim,
               sort_k);

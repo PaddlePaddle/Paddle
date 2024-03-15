@@ -56,8 +56,12 @@ void CalcMedianFunc(const Context& dev_ctx,
     for (i = 0; i < pre_dim; i++) {
       offset = i * sort_k;
       if (nan_counts[i] == stride) {
-        m_ptr[i * 2] = -1;
-        m_ptr[i * 2 + 1] = -1;  // index is -1
+        if (mode == "avg") {
+          m_ptr[i * 2] = -1;
+          m_ptr[i * 2 + 1] = -1;  // index is -1
+        } else {
+          m_ptr[i] = -1;
+        }
         o_ptr[i] = sort_out_ptr[offset];
       } else {
         int64_t nan_k = nan_counts[i] > 0
@@ -66,8 +70,12 @@ void CalcMedianFunc(const Context& dev_ctx,
         int64_t row_pos = static_cast<int64_t>(nan_k >> 1);
         int64_t pos = offset + row_pos;
         if (nan_k & 1) {
-          m_ptr[2 * i] = sort_indices_ptr[pos];
-          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+          if (mode == "avg") {
+            m_ptr[2 * i] = sort_indices_ptr[pos];
+            m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+          } else {
+            m_ptr[i] = sort_indices_ptr[pos];
+          }
           o_ptr[i] = sort_out_ptr[pos];
         } else {
           // nan_k is even
@@ -82,9 +90,8 @@ void CalcMedianFunc(const Context& dev_ctx,
           } else {
             // mode == "min": output median value should be the left val since
             // the sort_out is in ascending order
-            m_ptr[2 * i] =
+            m_ptr[i] =
                 row_pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
-            m_ptr[2 * i + 1] = m_ptr[2 * i];
             o_ptr[i] = m_val_left;
           }
         }
@@ -113,9 +120,8 @@ void CalcMedianFunc(const Context& dev_ctx,
         } else {
           // mode == "min": output median value should be the left val since the
           // sort_out is in ascending order
-          m_ptr[2 * i] =
+          m_ptr[i] =
               sort_k > 1 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
-          m_ptr[2 * i + 1] = m_ptr[2 * i];
           o_ptr[i] = m_val_left;
         }
       }
@@ -175,8 +181,12 @@ void ProcessMedianKernel(const Context& dev_ctx,
     if (total_nan_num == numel) {
       for (i = 0; i < pre_dim; i++) {
         out_data[i] = std::numeric_limits<T>::quiet_NaN();
-        m_data[2 * i] = -1;
-        m_data[2 * i + 1] = -1;  // indices are all -1
+        if (mode == "avg") {
+          m_data[2 * i] = -1;
+          m_data[2 * i + 1] = -1;  // indices are all -1
+        } else {
+          m_data[i] = -1;
+        }
       }
       return;
     }
