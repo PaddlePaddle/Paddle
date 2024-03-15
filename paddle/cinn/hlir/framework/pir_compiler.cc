@@ -61,7 +61,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
       cinn_kernel_info_vecs[index] = task.BuildPirCINNKernelInfo();
     };
     utils::parallel_run(
-        worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+        worker_fn, utils::SequenceDispatcher(0, groups.size()), 1);
   } else {
     auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 

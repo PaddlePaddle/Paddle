@@ -102,8 +102,10 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   bool spatial_is_dynamic = false;
   bool reduce_is_dynamic = false;
+  std::cerr << "data rank " << group_tile_info->data_rank << std::endl;
   for (int64_t i = 0; i < group_tile_info->data_rank; ++i) {
     if (reduce_set.count(i)) {
+      std::cerr << "index i   " << i << std::endl;
       reduce_numel *= data_dim[i];
       if (data_dim[i] < 0) {
         reduce_is_dynamic = true;
@@ -157,6 +159,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
       group_tile_info->block_num = -1;
     } else {
       spatial_block = Next2Power(spatial_numel);
+      std::cerr << "spatial block " << spatial_block << std::endl;
       if (spatial_block > 1024) {
         spatial_block = 1024;
       }
@@ -634,6 +637,16 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       it->second.resize(1);
     }
 
+    if (it->second.size() > 1) {
+      for (size_t i = 0; i < it->second.size(); ++i) {
+        std::cerr << "align info" << it->second[i].DebugStr() << std::endl;
+      }
+      // try to merge them
+
+      it->second.front().factor_info = it->second.back().factor_info;
+      it->second.resize(1);
+    }
+
     PADDLE_ENFORCE_EQ(
         it->second.size(),
         1,
@@ -672,6 +685,8 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
       cinn::ir::BroadcastInfo info;
       if (in_dim.size() == 1u && in_dim[0] == 1u) {
         info.full_broadcast = true;
+        std::cerr << "full broadcast !!!!!!!!!!!!\n";
+
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
           info.output_shape.push_back(-1);
@@ -908,7 +923,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names);
 #ifdef CINN_WITH_CUDA
-    optim::EliminateCommonGlobalMemoryRead(&(func_body));
+    // optim::EliminateCommonGlobalMemoryRead(&(func_body));
     optim::OptimizeExprGPU(&(func_body));
 #endif
 
@@ -1019,6 +1034,11 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       func_bodies.push_back(func->body);
     }
     remain_ops.push_back(op);
+  }
+
+  std::cerr << "func body size " << func_bodies.size() << std::endl;
+  for (size_t i = 0; i < func_bodies.size(); ++i) {
+    std::cerr << "body i " << i << "\n" << func_bodies[i] << std::endl;
   }
 
   VLOG(4) << "group_func_arg_tensors.size(): "
@@ -1155,6 +1175,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
                                /* is_dy_shape = */ true,
                                group_tile_info);
   group_scheduler->Schedule();
+  std::cerr << "finish schedule \n";
   return ir_sch.GetModule().GetExprs().at(0);
 }
 

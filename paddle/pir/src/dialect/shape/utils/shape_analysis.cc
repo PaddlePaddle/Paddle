@@ -34,7 +34,11 @@ void ShapeConstraintIRAnalysis::Init() {
 }
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
-  return "S" + std::to_string(next_sym_idx_++);
+  auto out = "S" + std::to_string(next_sym_idx_);
+  // auto out = "S" + std::to_string(next_sym_idx_);
+  next_sym_idx_++;
+
+  return out;
 }
 
 bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
@@ -225,6 +229,13 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
     }
     printer.os << " }";
     printer.os << "\t(op_" << op->id() << ")";
+  };
+
+  print_hook.value_print_hook = [&](Value value, IrPrinter& printer) {
+    printer.IrPrinter::PrintValue(value);
+    if (this->HasShapeOrDataForValue(value)) {
+      printer.os << "<<" << this->GetShapeOrDataForValue(value) << ">>";
+    }
   };
   return print_hook;
 }

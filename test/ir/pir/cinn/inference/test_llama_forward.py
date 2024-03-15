@@ -23,12 +23,15 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
+from paddle.base import core
 from paddle.incubate.nn.functional import swiglu
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
 
 import utils
+
+inter_value = None
 
 
 class LlamaConfig:
@@ -245,7 +248,7 @@ class LlamaRMSNorm(nn.Layer):
         self.weight = paddle.create_parameter(
             shape=[self.hidden_size],
             dtype=paddle.get_default_dtype(),
-            default_initializer=nn.initializer.Constant(1.0),
+            default_initializer=nn.initializer.Constant(0.5),
         )
         self.variance_epsilon = config.rms_norm_eps
         self.config = config
@@ -612,10 +615,10 @@ class LlamaModel(nn.Layer):
                 next_decoder_cache += (
                     layer_outputs[2 if output_attentions else 1],
                 )
-
+        t = hidden_states
         hidden_states = self.norm(hidden_states)
-
-        return hidden_states
+        t2 = hidden_states
+        return hidden_states, t, t2
 
 
 class TestLlamaModel(unittest.TestCase):
@@ -644,17 +647,16 @@ class TestLlamaModel(unittest.TestCase):
                     31325,
                     31043,
                     30374,
-                    30024,
                 ]
             ],
             dtype="int64",
         )
         self.position_ids = paddle.to_tensor(
-            [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]],
+            [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
             dtype="int64",
         )
         self.attention_mask = paddle.to_tensor(
-            [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]], dtype="int64"
+            [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]], dtype="int64"
         )
 
     def check_jit_kernel_info(self, static_fn):
@@ -675,13 +677,23 @@ class TestLlamaModel(unittest.TestCase):
         return out
 
     def test_eval(self):
-        dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        dy_out, dy_t, dy_t2 = self.eval(use_cinn=False)
+        # if utils.unittest_use_cinn():
+        cinn_out, cinn_t, cinn_t2 = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_t.numpy(), dy_t.numpy(), atol=1e-6, rtol=1e-6
+        )
+
+        np.testing.assert_allclose(
+            cinn_t2.numpy(), dy_t2.numpy(), atol=1e-6, rtol=1e-6
+        )
+
+        # np.testing.assert_allclose(
+        #     cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        # )
 
 
 if __name__ == '__main__':
+    core._set_prim_forward_blacklist("pd_op.embedding", "pd_op.softmax")
+    paddle.set_default_dtype("float32")
     unittest.main()

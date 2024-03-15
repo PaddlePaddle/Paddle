@@ -94,6 +94,37 @@ std::vector<int64_t> GetBroadcastAxis(pir::Operation* reshape_op,
   return new_broadcast_axes;
 }
 
+// class MergeReshapeWithBroadcastPattern
+//     : public pir::OpRewritePattern<cinn::dialect::BroadcastOp> {
+//  public:
+//   using pir::OpRewritePattern<cinn::dialect::BroadcastOp>::OpRewritePattern;
+
+//   bool MatchAndRewrite(cinn::dialect::BroadcastOp op,
+//                        pir::PatternRewriter& rewriter) const override {
+//     auto reshape_op = op->operand_source(0)
+//                           .defining_op()
+//                           ->dyn_cast<cinn::dialect::ReshapeOp>();
+
+//     if (reshape_op && CanMerge(reshape_op)) {
+//       auto broadcast_axes = GetBroadcastAxis(reshape_op, op);
+
+//       auto output_shape =
+//           phi::vectorize(op->result(0)
+//                              .type()
+//                              .dyn_cast<paddle::dialect::DenseTensorType>()
+//                              .dims());
+//       auto new_broadcast_op = rewriter.Build<cinn::dialect::BroadcastOp>(
+//           reshape_op->operand_source(0), broadcast_axes, output_shape);
+
+//       rewriter.ReplaceAllUsesWith(op->result(0), new_broadcast_op.result(0));
+//       rewriter.EraseOp(op);
+//       return true;
+//     }
+
+//     return false;
+//   }
+// };
+
 class MergeReshapeWithBroadcastPattern
     : public pir::OpRewritePattern<cinn::dialect::BroadcastOp> {
  public:
@@ -101,23 +132,43 @@ class MergeReshapeWithBroadcastPattern
 
   bool MatchAndRewrite(cinn::dialect::BroadcastOp op,
                        pir::PatternRewriter& rewriter) const override {
-    auto reshape_op = op->operand_source(0)
-                          .defining_op()
-                          ->dyn_cast<cinn::dialect::ReshapeOp>();
+    auto full_op = op->operand_source(0)
+                       .defining_op()
+                       ->dyn_cast<paddle::dialect::FullOp>();
 
-    if (reshape_op && CanMerge(reshape_op)) {
-      auto broadcast_axes = GetBroadcastAxis(reshape_op, op);
+    if (full_op) {
+      auto output_shape = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
 
-      auto output_shape =
-          phi::vectorize(op->result(0)
-                             .type()
-                             .dyn_cast<paddle::dialect::DenseTensorType>()
-                             .dims());
-      auto new_broadcast_op = rewriter.Build<cinn::dialect::BroadcastOp>(
-          reshape_op->operand_source(0), broadcast_axes, output_shape);
+      pir::ShapeConstraintIRAnalysis& shape_analysis =
+          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+      const auto& x_shape =
+          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
 
-      rewriter.ReplaceAllUsesWith(op->result(0), new_broadcast_op.result(0));
+      for (size_t i = 0; i < output_shape.size(); ++i) {
+        if (output_shape[i] < 0) {
+          if (x_shape[i].isa<int64_t>()) {
+            output_shape[i] = x_shape[i].Get<int64_t>();
+          } else {
+            output_shape[i] = 1;
+          }
+        }
+      }
+      auto new_full = rewriter.Build<paddle::dialect::FullOp>(
+          output_shape,
+          full_op->attribute("value").dyn_cast<pir::FloatAttribute>().data(),
+          full_op->attribute("dtype")
+              .dyn_cast<paddle::dialect::DataTypeAttribute>()
+              .data(),
+          full_op->attribute("place")
+              .dyn_cast<paddle::dialect::PlaceAttribute>()
+              .data());
+
+      shape_analysis.SetShapeOrDataForValue(
+          new_full.result(0),
+          shape_analysis.GetShapeOrDataForValue(op->result(0)));
+      rewriter.ReplaceAllUsesWith(op->result(0), new_full.result(0));
       rewriter.EraseOp(op);
+      rewriter.EraseOp(full_op);
       return true;
     }
 
@@ -139,7 +190,7 @@ pir::RewritePatternSet MergeReshapeWithBroadcastPass::InitializePatterns(
 }
 
 bool MergeReshapeWithBroadcastPass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  return op->num_regions() > 0;
 }
 
 }  // namespace ir

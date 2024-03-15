@@ -368,6 +368,9 @@ bool HasHandledInPass(const ::pir::Operation& op) {
 // 2. it should be registered in OpRegistry;
 // 3. it should be handled in pd_to_cinn_pass;
 bool IsSupportInCinn(const ::pir::Operation& op) {
+  if (op.name() == "pd_op.reshape") {
+    return false;
+  }
   const bool is_denied = IsDeniedInCinn(op);
   const bool is_registered = IsRegisteredInCINN(op);
   const bool is_handled = HasHandledInPass(op);

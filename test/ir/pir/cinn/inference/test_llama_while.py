@@ -38,13 +38,14 @@ class LlamaWhile(nn.Layer):
         while cur_len < max_new_tokens and paddle.any(unfinished_flag):
             # [batch_size, vocab_size]
             probs = F.softmax(logits[:, -1, :])
-
+            input_ids += 1
             # compute next_tokens
             top_ps_tensor = paddle.full(
                 shape=[paddle.shape(probs)[0], 1],
                 fill_value=0,
                 dtype=probs.dtype,
             )
+
             _, next_tokens = paddle.tensor.top_p_sampling(probs, top_ps_tensor)
             input_ids = paddle.concat([input_ids, next_tokens], axis=1)
             cur_len += 1

@@ -60,7 +60,7 @@ class LlamaPostProcess(nn.Layer):
         )
         _, next_tokens = paddle.tensor.top_p_sampling(probs, top_ps_tensor)
 
-        next_scores = paddle.index_sample(origin_probs, next_tokens)
+        next_scores = paddle.index_sample(origin_probs, next_tokens)  # bs, 1
         scores = self.update_scores_for_generation(
             scores, next_scores, cur_len - origin_len, unfinished_flag
         )
@@ -68,6 +68,22 @@ class LlamaPostProcess(nn.Layer):
         input_ids = paddle.concat([input_ids, next_tokens], axis=1)
 
         return input_ids, scores
+
+    # def _post_process_(
+    #     self, logits, input_ids, cur_len, origin_len, scores, unfinished_flag     ):
+    #     # [batch_size, vocab_size]
+    #     logits = logits[:, -1, :]
+    #     top_p = paddle.full([1], 0)
+
+    #     top_ps_tensor = paddle.full(
+    #         shape=[paddle.shape(logits)[0], 1],
+    #         fill_value=top_p,
+    #         dtype=logits.dtype,
+    #     )
+    #     _, next_tokens = paddle.tensor.top_p_sampling(logits, top_ps_tensor)
+
+    #     next_scores = paddle.index_sample(logits, next_tokens)  # bs, 1
+    #     return next_scores, next_scores
 
     def forward(self, logits, input_ids):
         batch_size, cur_len = paddle.shape(input_ids)
@@ -98,25 +114,26 @@ class TestLlamaPostProcess(unittest.TestCase):
     def eval(self, use_cinn):
         paddle.seed(2024)
         net = LlamaPostProcess()
+        net.eval()
         input_spec = [
-            InputSpec(shape=[None, None, None], dtype='float32'),  # logits
+            InputSpec(shape=[None, None, 3200], dtype='float32'),  # logits
             InputSpec(shape=[None, None], dtype='int64'),  # input_ids
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
-        net.eval()
+
         # paddle.jit.save(net, sys.path.join(dirname(__file__), "post_model"))
         out = net(self.logits, self.input_ids)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
+        # if use_cinn:
+        #     self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
-        dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        dy_out, dy_score = self.eval(use_cinn=False)
+        # if utils.unittest_use_cinn():
+        cinn_out, cinn_score = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':

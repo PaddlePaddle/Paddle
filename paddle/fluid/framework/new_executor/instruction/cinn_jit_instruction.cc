@@ -113,6 +113,7 @@ class CinnJitInstruction::FnPtrImpl {
     for (int i = 0; i < output_tensor_size; ++i) {
       DDim dim(output_tensor_shapes[i],
                kernel_args[input_tensor_size + i]->dims().size());
+      std::cerr << "ddim !!!!!!!!!!! " << i << "\t" << dim << std::endl;
       kernel_args[input_tensor_size + i]->Resize(dim);
       free(output_tensor_shapes[i]);
     }
