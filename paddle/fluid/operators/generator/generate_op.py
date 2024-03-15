@@ -124,8 +124,6 @@ def process_scalar(op_item, scalar_configs):
                     attr_item['default_value'] = (
                         '"' + attr_item['default_value'] + '"'
                     )
-                if attr_item['is_support_tensor'] is False:
-                    attr_item['tensor_name'] = scalar_config['tensor_name']
 
 
 def process_int_array(op_item, int_array_configs):
