@@ -4895,7 +4895,7 @@ struct CudaLog2Functor<ComplexType<T>>
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> arg_x) const {
     return static_cast<ComplexType<T>>(log(arg_x) /
-                                       static_cast<ComplexType<T>>(log(2)));
+                                       static_cast<ComplexType<T>>(log(2.0f)));
   }
 };
 
@@ -4963,7 +4963,7 @@ struct CudaLog10Functor<ComplexType<T>>
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> arg_x) const {
     return static_cast<ComplexType<T>>(log(arg_x) /
-                                       static_cast<ComplexType<T>>(log(10)));
+                                       static_cast<ComplexType<T>>(log(10.0f)));
   }
 };
 
