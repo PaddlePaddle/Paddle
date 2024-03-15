@@ -884,6 +884,10 @@ class CinnGroupClusterPattern
   bool MatchAndRewrite(cinn::dialect::GroupOp group_op,
                        pir::PatternRewriter& rewriter) const override {
     ::pir::IrMapping ir_mapping;
+    // std::stringstream ss;
+    // group_op->Print(ss);
+    // VLOG(0) << "######## GroupClusterPattern: group: ########";
+    // VLOG(0) << ss.str();
 
     auto group_outside_input = GetListOutsideInput(group_op.GetOperators());
     // insert initial input to ir mapping
@@ -945,6 +949,14 @@ class CinnGroupClusterPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    // if (op->num_regions() > 0) {
+    //   auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+    //       op->GetParentProgram());
+    //   std::cout << "Program before CreateCinnGroupClusterPass: \n"
+    //         << pir::CustomPrintHelper(*op->GetParentProgram(),
+    //         shape_analysis.PrintHook()) << std::endl;
+    // }
+
     return op->num_regions() > 0;
   }
 };
