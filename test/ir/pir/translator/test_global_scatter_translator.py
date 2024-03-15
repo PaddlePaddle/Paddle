@@ -27,7 +27,7 @@ class TestDistributedLookupTableOpTranslator(
         self.op_type = "global_scatter"
         x = paddle.ones(shape=(4, 8), dtype='float32')
         local_count = paddle.to_tensor([0, 1], dtype='int64')
-        global_count = paddle.to_tensor(shape=[0, 1], dtype='int64')
+        global_count = paddle.to_tensor([0, 1], dtype='int64')
         out = paddle.ones(shape=(2, 8), dtype='float32')
         attrs = {'ring_id': 0, 'use_calc_stream': False}
         helper = LayerHelper(self.op_type)
