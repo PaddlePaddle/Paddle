@@ -14,10 +14,16 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
-namespace symbol {
+namespace paddle::dialect {
 
-IR_API DimExpr SimplifyDimExpr(const DimExpr& dim_expr);
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Concat)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(FullWithTensor)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Linspace)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logspace)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Stack)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where_)
 
-}  // namespace symbol
+}  // namespace paddle::dialect

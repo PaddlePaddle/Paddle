@@ -50,8 +50,6 @@ class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
         src.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", src.Attr("matmul_transpose_x")},
                 {"transpose_y", src.Attr("matmul_transpose_y")}});
-    const auto &parameter = src.Op(pir::ParameterOp::name());
-    src.Tensor("w") = parameter();
     src.Tensor("matmul_out") = matmul(src.Tensor("x"), src.Tensor("w"));
     const auto &add = src.Op(paddle::dialect::AddOp::name());
     src.Tensor("add_out") = add(src.Tensor("matmul_out"), src.Tensor("bias"));
@@ -61,6 +59,9 @@ class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
     //
     src.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
+            return false;
+          }
           bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
           bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
           if (matmul_trans_x || matmul_trans_y) return false;

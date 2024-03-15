@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,4 +14,20 @@
 
 #pragma once
 
-#include "paddle/utils/string/string_helper.h"
+#include <unordered_map>
+#include <unordered_set>
+
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+
+namespace symbol {
+
+IR_API DimExpr SimplifyDimExpr(const DimExpr& dim_expr);
+
+IR_API DimExpr SubstituteDimExpr(
+    const DimExpr& dim_expr,
+    const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement);
+
+IR_API std::unordered_set<std::string> CollectDimExprSymbols(
+    const DimExpr& dim_expr);
+
+}  // namespace symbol
