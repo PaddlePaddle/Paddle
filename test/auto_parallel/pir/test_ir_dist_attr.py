@@ -151,6 +151,7 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertTrue(dist_w0.dist_attr().dims_mapping == [-1, 0])
         # matmul out
         self.assertTrue(dist_out.shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
+        print(f'--dist_out: {dist_out.is_dist_dense_tensor_type()}')
         self.assertTrue(
             dist_out._local_shape
             == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE // MP_SIZE]

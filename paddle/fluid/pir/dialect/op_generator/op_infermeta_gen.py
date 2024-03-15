@@ -667,7 +667,7 @@ def GenDistBranch(args, op_info):
 """
             dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
     TEMPLATE = """
-    attributes[kAttrOpDistAttrs] = OperationDistAttribute::get(
+    attributes[kAttrOpDistAttr] = OperationDistAttribute::get(
         pir::IrContext::Instance(),
         op_mesh,
         operand_dist_attrs,
