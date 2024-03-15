@@ -52,19 +52,15 @@ class TestMatmulOutTransposeFusePattern(PassTest):
                     with paddle.pir_utils.IrGuard():
                         main_prog = paddle.static.Program()
                         start_prog = paddle.static.Program()
-                        with paddle.static.program_guard(
-                            main_prog, start_prog
-                        ):
+                        with paddle.static.program_guard(main_prog, start_prog):
                             x = paddle.static.data(
                                 name='x', shape=x_shape, dtype='float32'
                             )
                             y = paddle.static.data(
                                 name='y', shape=y_shape, dtype='float32'
                             )
-                            out = paddle.transpose(
-                                paddle.matmul(x, y),
-                                perm=perm
-                            )
+                            matmul_out = paddle.matmul(x, y, name='matmul_out')
+                            out = paddle.transpose(matmul_out, perm=perm)
                             out = paddle.assign(out)
                             self.pass_list = ['matmul_transpose_fuse_pass']
                             self.feeds = {
@@ -89,6 +85,7 @@ class TestMatmulOutTransposeFusePattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestMatmulYTransposeFusePattern(PassTest):
     r"""
@@ -117,9 +114,7 @@ class TestMatmulYTransposeFusePattern(PassTest):
                     with paddle.pir_utils.IrGuard():
                         main_prog = paddle.static.Program()
                         start_prog = paddle.static.Program()
-                        with paddle.static.program_guard(
-                            main_prog, start_prog
-                        ):
+                        with paddle.static.program_guard(main_prog, start_prog):
                             x = paddle.static.data(
                                 name='x', shape=x_shape, dtype='float32'
                             )
@@ -153,6 +148,7 @@ class TestMatmulYTransposeFusePattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+
 class TestMatmulXTransposeFusePattern(PassTest):
     r"""
     x_var        y_var
@@ -180,9 +176,7 @@ class TestMatmulXTransposeFusePattern(PassTest):
                     with paddle.pir_utils.IrGuard():
                         main_prog = paddle.static.Program()
                         start_prog = paddle.static.Program()
-                        with paddle.static.program_guard(
-                            main_prog, start_prog
-                        ):
+                        with paddle.static.program_guard(main_prog, start_prog):
                             x = paddle.static.data(
                                 name='x', shape=x_shape, dtype='float32'
                             )
@@ -215,6 +209,7 @@ class TestMatmulXTransposeFusePattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 if __name__ == "__main__":
     unittest.main()
