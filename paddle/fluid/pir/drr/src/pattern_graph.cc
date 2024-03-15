@@ -16,6 +16,7 @@
 
 #include <queue>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -109,7 +110,8 @@ OpCall *SourcePatternGraph::AnchorNode() const {
                     }))
       return output_op_candidate;
   }
-  IR_THROW("Unable to find a valid anchor");
+  PADDLE_THROW(common::errors::InvalidArgument(
+      "Unable to find a valid anchor in drr's source result pattern!"));
 }
 
 std::unordered_set<const OpCall *> SourcePatternGraph::OutputNodes() const {
