@@ -41,19 +41,24 @@ class TestProcessGroupFp32(unittest.TestCase):
         self.dtype = "float32"
         self.shape = (2, 10, 5)
 
-    def test_create_process_group_nccl(self):
+    @classmethod
+    def setUpClass(cls):
         device_id = paddle.distributed.ParallelEnv().dev_id
         paddle.set_device('gpu:%d' % device_id)
 
         assert paddle.distributed.is_available()
 
         pg = init_process_group()
-        print("rank:", pg.rank(), "size:", pg.size(), "name:", pg.name())
-        print("test new group api ok")
 
         assert paddle.distributed.get_backend() == "NCCL"
+        cls.pg = pg
 
-        # test allreduce sum
+    @classmethod
+    def tearDownClass(cls):
+        del cls.pg
+
+    def test_allreduce_sum(self):
+        pg = self.pg
         # rank 0
         x_np = np.random.random(self.shape).astype(self.dtype)
         # rank 1
@@ -86,9 +91,8 @@ class TestProcessGroupFp32(unittest.TestCase):
                 else:
                     np.testing.assert_array_equal(x_np + y_np, y_out)
 
-            print("test allreduce sum api ok")
-
-        # test allreduce sum with shape = []
+    def test_allreduce_sum_with_0d_input(self):
+        pg = self.pg
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)
         # rank 1
@@ -117,9 +121,8 @@ class TestProcessGroupFp32(unittest.TestCase):
                 else:
                     np.testing.assert_array_equal(x_np + y_np, y_out)
 
-            print("test allreduce sum api with shape = [] ok")
-
-        # test allreduce max
+    def test_allreduce_max(self):
+        pg = self.pg
         # rank 0
         x_np = np.random.random(self.shape).astype(self.dtype)
         # rank 1
@@ -154,9 +157,8 @@ class TestProcessGroupFp32(unittest.TestCase):
                 else:
                     np.testing.assert_array_equal(np.maximum(x_np, y_np), y_out)
 
-            print("test allreduce max api ok")
-
-        # test allreduce max with shape = []
+    def test_allreduce_max_with_0d_input(self):
+        pg = self.pg
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)
         # rank 1
@@ -185,9 +187,8 @@ class TestProcessGroupFp32(unittest.TestCase):
                 else:
                     np.testing.assert_array_equal(np.maximum(x_np, y_np), y_out)
 
-            print("test allreduce max api with shape = [] ok")
-
-        # test allreduce min
+    def test_allreduce_min(self):
+        pg = self.pg
         # rank 0
         x_np = np.random.random(self.shape).astype(self.dtype)
         # rank 1
@@ -220,9 +221,8 @@ class TestProcessGroupFp32(unittest.TestCase):
                 else:
                     np.testing.assert_array_equal(np.minimum(x_np, y_np), y_out)
 
-            print("test allreduce min api ok")
-
-        # test allreduce min with shape = []
+    def test_allreduce_min_with_0d_input(self):
+        pg = self.pg
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)
         # rank 1
@@ -251,9 +251,8 @@ class TestProcessGroupFp32(unittest.TestCase):
                 else:
                     np.testing.assert_array_equal(np.minimum(x_np, y_np), y_out)
 
-            print("test allreduce min api with shape [] ok")
-
-        # test allreduce prod
+    def test_allreduce_prod(self):
+        pg = self.pg
         # rank 0
         x_np = np.random.random(self.shape).astype(self.dtype)
         # rank 1
@@ -290,9 +289,8 @@ class TestProcessGroupFp32(unittest.TestCase):
                         np.multiply(x_np, y_np), y_out
                     )
 
-            print("test allreduce prod api ok")
-
-        # test allreduce prod with shape = []
+    def test_allreduce_prod_with_0d_input(self):
+        pg = self.pg
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)
         # rank 1
@@ -324,8 +322,6 @@ class TestProcessGroupFp32(unittest.TestCase):
                     np.testing.assert_array_equal(
                         np.multiply(x_np, y_np), y_out
                     )
-
-            print("test allreduce prod api with shape = [] ok")
 
 
 class TestProcessGroupFp16(TestProcessGroupFp32):
