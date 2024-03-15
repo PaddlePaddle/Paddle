@@ -4591,7 +4591,7 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
                               bool keep_first_token,
                               bool keep_order,
                               MetaTensor* slimmed_x,
-                              MetaTensor* clsi_nds) {
+                              MetaTensor* cls_inds) {
   auto mask_dim = mask.dims();
   auto attn_dim = attn.dims();
   auto x_dim = x.dims();
@@ -4659,9 +4659,9 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
   slimmed_x->set_dims(common::make_ddim(slimmed_x_dims));
   slimmed_x->set_dtype(x.dtype());
 
-  std::vector<int64_t> clsi_nds_dims({bsz, slim_seq_len});
-  clsi_nds->set_dims(common::make_ddim(clsi_nds_dims));
-  clsi_nds->set_dtype(phi::DataType::INT64);
+  std::vector<int64_t> cls_inds_dims({bsz, slim_seq_len});
+  cls_inds->set_dims(common::make_ddim(cls_inds_dims));
+  cls_inds->set_dtype(phi::DataType::INT64);
 }
 
 void MoeInferMeta(const MetaTensor& x,

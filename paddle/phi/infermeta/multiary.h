@@ -915,7 +915,7 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
                               bool keep_first_token,
                               bool keep_order,
                               MetaTensor* slimmed_x,
-                              MetaTensor* clsi_nds);
+                              MetaTensor* cls_inds);
 
 void MultiheadMatmulInferMeta(const MetaTensor& input,
                               const MetaTensor& w,
