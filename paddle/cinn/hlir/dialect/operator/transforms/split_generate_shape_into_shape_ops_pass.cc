@@ -18,6 +18,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/utils/error.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
