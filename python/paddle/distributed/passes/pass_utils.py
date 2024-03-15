@@ -823,7 +823,7 @@ def _insert_reshape_op(
             'op_namescope': op_namescope,
         },
     )
-    
+
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         reshape_op,
         process_mesh=x_dist_attr.process_mesh,
@@ -927,9 +927,7 @@ def _split_matmul_grad_to_matmul(
         },
     )
 
-    dist_context.set_op_dist_attr_for_program(
-        matmul_op, matmul_grad_dist_attr
-    )
+    dist_context.set_op_dist_attr_for_program(matmul_op, matmul_grad_dist_attr)
     _insert_reshape_op(
         block,
         matmul_grad_id + 4,
@@ -954,8 +952,6 @@ def _split_matmul_grad_to_matmul(
         },
     )
 
-    dist_context.set_op_dist_attr_for_program(
-        matmul_op, matmul_grad_dist_attr
-    )
+    dist_context.set_op_dist_attr_for_program(matmul_op, matmul_grad_dist_attr)
 
     block._remove_op(matmul_grad_id, sync=False)

@@ -94,7 +94,7 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             matmul_grad_op = ops[matmul_grad_id]
             allreduce_op = ops[allreduce_id]
 
-            # NOTE(Sonder): When there are ops between matmul_grad and allreduce, we should check whether the
+            # NOTE(Sonder): When there are ops between matmul_grad and allreduce, we should check whether
             # these ops rely on the output of the intermediate ops. If so, we should not split the matmul_grad.
             # Otherwise, the output of the intermediate ops will get wrong results.
             skip_overlapping = False
