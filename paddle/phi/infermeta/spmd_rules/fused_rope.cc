@@ -254,13 +254,14 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
   // q_shape equals [bs, seq_len, num_heads, head_dim] if time_major is False,
   // otherwise [seq_len, bs, num_heads, head_dim]
   std::vector<int64_t> q_shape = common::vectorize(q.dims());
+  std::vector<int64_t> k_shape = common::vectorize(k.dims());
+  std::vector<int64_t> v_shape = common::vectorize(v.dims());
   bool is_k_none = IsEmpty(common::vectorize(k.dims()));
   // except for q, all other inputs are optional.
   bool is_same_num_heads = true;
   if (!is_k_none) {
     check_k_or_v(k, q_shape);
     inputs_sharding_info.emplace_back(qkv_axes, k_dist_attr_src.dims_mapping());
-    std::vector<int64_t> k_shape = common::vectorize(k.dims());
     is_same_num_heads = q_shape[kHeadDimIndex] == k_shape[kHeadDimIndex];
   }
 
@@ -269,7 +270,19 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
   if (!is_v_none) {
     check_k_or_v(v, q_shape);
     inputs_sharding_info.emplace_back(qkv_axes, v_dist_attr_src.dims_mapping());
+    is_same_num_heads = q_shape[kHeadDimIndex] == v_shape[kHeadDimIndex];
   }
+
+  if (!is_k_none && !is_v_none) {
+    PADDLE_ENFORCE_EQ(
+        k_shape,
+        v_shape,
+        phi::errors::InvalidArgument("The shape of k and v must be same, "
+                                     "but [%d]  vs [%d]",
+                                     str_join(k_shape),
+                                     str_join(v_shape)));
+  }
+
   const TensorDistAttr& position_ids_dist_attr_src = position_ids.dist_attr();
   std::string position_ids_axes = time_major ? "ba" : "ab";
   bool is_ids_none = IsEmpty(common::vectorize(position_ids.dims()));
@@ -372,6 +385,8 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
   const TensorDistAttr& out_k_dist_attr_src = out_k.dist_attr();
   // out_q shape = [bs, seq_len, num_heads, head_dim]
   std::vector<int64_t> out_q_shape = common::vectorize(out_q.dims());
+  std::vector<int64_t> out_k_shape = common::vectorize(out_k.dims());
+  std::vector<int64_t> out_v_shape = common::vectorize(out_v.dims());
   bool is_k_none = IsEmpty(common::vectorize(out_k.dims()));
   // except for q, all other inputs are optional.
   bool is_same_num_heads = true;
@@ -379,7 +394,6 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
     check_k_or_v(out_k, out_q_shape);
     outputs_sharding_info.emplace_back(qkv_axes,
                                        out_k_dist_attr_src.dims_mapping());
-    std::vector<int64_t> out_k_shape = common::vectorize(out_k.dims());
     is_same_num_heads =
         out_q_shape[kHeadDimIndex] == out_k_shape[kHeadDimIndex];
   }
@@ -390,6 +404,18 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
     check_k_or_v(out_v, out_q_shape);
     outputs_sharding_info.emplace_back(qkv_axes,
                                        out_v_dist_attr_src.dims_mapping());
+    is_same_num_heads =
+        out_q_shape[kHeadDimIndex] == out_v_shape[kHeadDimIndex];
+  }
+
+  if (!is_k_none && !is_v_none) {
+    PADDLE_ENFORCE_EQ(
+        out_k_shape,
+        out_v_shape,
+        phi::errors::InvalidArgument("The shape of k and v must be same, "
+                                     "but [%d]  vs [%d]",
+                                     str_join(out_k_shape),
+                                     str_join(out_v_shape)));
   }
 
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
