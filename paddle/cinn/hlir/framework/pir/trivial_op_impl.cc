@@ -116,10 +116,6 @@ ir::Tensor GetOutputTensor(const FusibleOp& op) {
       return compute_body.As<ir::Store>()->tensor.as_tensor_ref();
     }
     ir::Tensor operator()(const TrivialOp& op) {
-      VLOG(4) << "Root is :" << _GetRootExpr(op);
-      VLOG(4) << "Searched is:"
-              << SearchUtils::ChildScheduleBlockRealizes.GetSingle(
-                     _GetRootExpr(op));
       const auto& compute_body =
           (SearchUtils::ChildScheduleBlockRealizes * SearchUtils::ChildStores)
               .GetSingle(_GetRootExpr(op));
@@ -150,12 +146,11 @@ ir::Expr _GetOriginalStoreValuePointer(const FusibleOp& op) {
 std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
                                  const ir::Expr& root) {
   return SearchUtils::MapVector<ir::Var>(vars, [&](const auto& v) -> ir::Var {
-    VLOG(4) << "AppendBound for " << v;
-    VLOG(4) << "lower: "
+    VLOG(4) << "AppendBound for " << v << ", lower: "
             << (SearchUtils::ChildFors * SearchUtils::IsForIterVar(v) *
                 SearchUtils::For2Min)
-                   .GetSingle(root);
-    VLOG(4) << "upper: "
+                   .GetSingle(root)
+            << ", upper: "
             << (SearchUtils::ChildFors * SearchUtils::IsForIterVar(v) *
                 SearchUtils::For2Max)
                    .GetSingle(root);
@@ -189,6 +184,7 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
           outer_iter_expr);
     }
   };
+  VLOG(4) << "GetOutputIters";
   return AppendBound(std::visit(Visitor(), op), _GetRootExpr(op));
 }
 
@@ -217,14 +213,17 @@ std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
       reduce_iter_vars.push_back(iter_var);
     }
   }
+  VLOG(4) << "GetReduceIters";
   return AppendBound(reduce_iter_vars, _GetRootExpr(op));
 }
 
 ir::Expr GetInitExpr(const ReduceOp& op) {
-  return (SearchUtils::ChildScheduleBlockRealizes *
-          SearchUtils::ScheduleBlockRealizeIsInit * SearchUtils::ChildStores *
-          SearchUtils::Store2Value)
-      .GetSingle(op.GetFuncBody());
+  const auto result = (SearchUtils::ChildScheduleBlockRealizes *
+                       SearchUtils::ScheduleBlockRealizeIsInit *
+                       SearchUtils::ChildStores * SearchUtils::Store2Value)
+                          .GetSingle(op.GetFuncBody());
+  VLOG(4) << "GetInitExpr: " << result;
+  return result;
 }
 
 ir::Expr* _GetFuncBodyPointer(FusibleOp op) {
@@ -382,15 +381,15 @@ std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
                                                 FusibleOp* downstream) {
   // downstream will be mutated by this transform.
   VLOG(4) << "RRTransform begin";
-  VLOG(4) << "Upstream is " << upstream.GetFuncBody();
+  VLOG(4) << "RRTransform Upstream is \n" << _GetRootExpr(upstream);
+  VLOG(4) << "RRTransform Downstream is \n" << _GetRootExpr(*downstream);
   ir::Expr modified_downstream_compute_body = GetComputeBody(*downstream);
   const auto& load_upstream_expr = ComposeUtils::GetEachTensorLoadExpr(
       modified_downstream_compute_body, GetOutputTensor(upstream));
   std::vector<FusibleOp> results;
   ir::Tensor downstream_output_tensor = GetOutputTensor(*downstream);
   const auto create_new_tensor = [&](const ir::Tensor& downstream_load_tensor) {
-    VLOG(4) << "downstream output tensor: " << downstream_output_tensor;
-    VLOG(4) << "downstream_load_tensor  : " << downstream_load_tensor;
+    VLOG(4) << "Create New Tensor Start";
     ir::Tensor result = ir::Tensor(
         downstream_load_tensor->name + "_" + FusionNode::GetTensorCounter(),
         downstream_load_tensor->type(),
@@ -399,22 +398,13 @@ std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
         GetOutputTensor(upstream)->operation,
         GetReduceIters(upstream));
     result->WithBuffer();
+    VLOG(4) << "Create New Tensor Result: " << result;
     return result;
   };
 
   for (const auto& load_tensor : load_upstream_expr) {
     const auto& new_tensor =
         create_new_tensor(load_tensor.As<ir::Load>()->tensor.as_tensor_ref());
-    VLOG(4) << "GetInit: " << GetInitExpr(upstream);
-    VLOG(4) << "GetNewTensor: " << new_tensor;
-    VLOG(4) << "GetOutputIter: "
-            << utils::Join(GetOutputIters(*downstream), "  ");
-    VLOG(4) << "GetReduceIter: " << utils::Join(GetReduceIters(upstream), "  ");
-    VLOG(4) << "GetCompute: "
-            << ComposeUtils::CopyedReplaceExpr(
-                   GetComputeBody(upstream),
-                   GetOutputIters(upstream),
-                   load_tensor.As<ir::Load>()->indices);
     ir::Expr new_reduce = CreateReduceExpr(
         GetOutputIters(*downstream),
         GetReduceIters(upstream),
@@ -433,7 +423,8 @@ std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
   _SetFuncBody(*downstream,
                CreateExprWithNewComputeBody(*downstream,
                                             modified_downstream_compute_body));
-  VLOG(4) << "After Replace Downstream Load: \n" << _GetRootExpr(*downstream);
+  VLOG(4) << "RRTransform After Replace Downstream Load: \n"
+          << _GetRootExpr(*downstream);
   return results;
 }
 
