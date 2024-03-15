@@ -803,7 +803,7 @@
     func : GlobalScatterInferMeta
   kernel :
     func : global_scatter
-    data_type : dtype
+    data_type : x
 
 - op : greater_equal
   args : (Tensor x, Tensor y)
@@ -891,7 +891,7 @@
     func : LimitByCapacityInferMeta
   kernel :
     func : limit_by_capacity
-    data_type : dtype
+    data_type : expert_count
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
