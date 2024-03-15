@@ -28,9 +28,6 @@ class TestAllReduceOp(TestDistBase):
     def test_allreduce(self, col_type="allreduce"):
         self.check_with_place("collective_allreduce_op.py", col_type)
 
-    def test_allreduce_pir(self, col_type="allreduce"):
-        self.check_with_place("collective_allreduce_op_pir.py", col_type)
-
 
 if __name__ == '__main__':
     unittest.main()

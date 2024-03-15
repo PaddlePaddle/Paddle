@@ -24,12 +24,10 @@ from contextlib import closing
 
 import numpy as np
 
-import paddle
 import paddle.base.unique_name as nameGen
+from paddle import base
 from paddle.base import core
 from paddle.distributed.collective import _init_parallel_env
-from paddle.framework import use_pir_api
-from paddle.pir_utils import IrGuard
 
 
 class TestCollectiveRunnerBase:
@@ -106,25 +104,15 @@ class TestCollectiveRunnerBase:
             },
         )
 
-    def pir_init_communicator(
-        self, program, rank, nranks, wait_port, current_endpoint, endpoints
-    ):
-        # TODO: add pir init communicator
-        ...
-
     def run_trainer(self, args):
-        train_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
+        train_prog = base.Program()
+        startup_prog = base.Program()
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
         if args["dynamic_static_unified_comm"]:
             _init_parallel_env("nccl")
-        elif use_pir_api():
-            self.pir_init_communicator(
-                startup_prog, rank, nranks, True, current_endpoint, endpoints
-            )
         else:
             self.initCommunicator(
                 startup_prog, rank, nranks, True, current_endpoint, endpoints
@@ -133,10 +121,10 @@ class TestCollectiveRunnerBase:
         self.rank = rank
         result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        place = paddle.CUDAPlace(
+        place = base.CUDAPlace(
             device_id
-        )  # if args.use_gpu else paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
+        )  # if args.use_gpu else base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(startup_prog)
         np.random.seed(os.getpid())
         indata = np.random.random((10, 1000))
@@ -148,7 +136,7 @@ class TestCollectiveRunnerBase:
             pickle.dump(out, f)
 
 
-def runtime_main(test_class, col_type, sub_type, pir_mode=False):
+def runtime_main(test_class, col_type, sub_type):
     args = {}
     model = test_class()
     args["deviceid"] = os.getenv("FLAGS_selected_gpus")
@@ -161,11 +149,7 @@ def runtime_main(test_class, col_type, sub_type, pir_mode=False):
     args["dynamic_static_unified_comm"] = bool(
         int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
     )
-    if pir_mode:
-        with IrGuard():
-            model.run_trainer(args)
-    else:
-        model.run_trainer(args)
+    model.run_trainer(args)
 
 
 class TestDistBase(unittest.TestCase):
