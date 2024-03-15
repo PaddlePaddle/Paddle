@@ -138,6 +138,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_softmax_with_cross_entropy',
     'c_split',
     'decayed_adagrad',
+    'distributed_push_sparse',
     'distributed_lookup_table',
     'dpsgd',
     'embedding_grad_sparse',
