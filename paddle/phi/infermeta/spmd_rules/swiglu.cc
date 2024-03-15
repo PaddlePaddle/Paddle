@@ -25,33 +25,34 @@ namespace phi {
 namespace distributed {
 
 SpmdInfo SwiGLUInferSpmd(const DistMetaTensor& x, const DistMetaTensor& y) {
-  if (y) {
-    return ElementwiseBinaryInferSpmd(x, y);
-  } else {
+  // y.dist_attr() is empty means y is None
+  if (y.dist_attr() == TensorDistAttr()) {
     PADDLE_THROW(
         phi::errors::Unimplemented("The input y is not allowed to be None"));
+  } else {
+    return ElementwiseBinaryInferSpmd(x, y);
   }
 }
 
 SpmdInfo SwiGLUInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& y,
                                 const DistMetaTensor& out) {
-  if (y) {
-    return ElementwiseBinaryInferSpmdReverse(x, y, out);
-  } else {
+  if (y.dist_attr() == TensorDistAttr()) {
     PADDLE_THROW(
         phi::errors::Unimplemented("The input y is not allowed to be None"));
+  } else {
+    return ElementwiseBinaryInferSpmdReverse(x, y, out);
   }
 }
 
 SpmdInfo SwiGLUGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& y,
                              const DistMetaTensor& out_grad) {
-  if (y) {
-    return ElementwiseBinaryGradInferSpmd(x, y, out_grad);
-  } else {
+  if (y.dist_attr() == TensorDistAttr()) {
     PADDLE_THROW(
         phi::errors::Unimplemented("The input y is not allowed to be None"));
+  } else {
+    return ElementwiseBinaryGradInferSpmd(x, y, out_grad);
   }
 }
 
