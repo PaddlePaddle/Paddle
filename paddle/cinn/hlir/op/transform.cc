@@ -1020,57 +1020,6 @@ std::vector<std::vector<std::string>> InferLayoutForLayoutTransform(
   return {{dst_layout}, {src_layout}};
 }
 
-std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<ir::Dim>> &output_shapes,
-    const Target &target) {
-  // check output shape
-  CHECK(!output_shapes.empty() && !output_shapes[0].empty())
-      << "Output shape is empty! Please check.\n";
-
-  std::vector<int> axis;
-  auto input_shape = inputs[0]->shape;
-  if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
-    CHECK_EQ(axis.size(), output_shapes[0].size())
-        << "axis size is not equal output_shapes size! Please check setting.\n";
-    // check axis and shape
-    for (int idx = 0; idx < axis.size(); ++idx) {
-      CHECK(axis[idx] >= 0 && axis[idx] < axis.size());
-      for (int idy = idx + 1; idy < axis.size(); ++idy) {
-        CHECK_NE(axis[idx], axis[idy]) << "axis can't repeat!";
-      }
-    }
-  } else {
-    LOG(FATAL) << "axis is not be set! Please check.";
-  }
-
-  framework::CINNCompute transpose_compute([=](lang::Args args,
-                                               lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of transpose compute is empty! Please check.\n";
-    CINNValuePack input_args = args[0];
-    CHECK(!input_args.empty())
-        << "at least one input tensor for transpose compute\n";
-    Expr A = input_args[0];
-    CHECK(A.as_tensor());
-    CHECK_EQ(input_args.size(), 2);
-    CHECK(input_args[1].is_string());
-    std::string tensor_name = input_args[1].operator std::string();
-
-    auto out = pe::Transpose(A.as_tensor_ref(), axis, tensor_name);
-    auto stages = CreateStages({out});
-    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
-  });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      transpose_compute, lang::PackedFunc(), "strategy.transpose.x86", 1);
-  return strategy;
-}
-
 std::shared_ptr<OpStrategy> StrategyForTranspose(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
