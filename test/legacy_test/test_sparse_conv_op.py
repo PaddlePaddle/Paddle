@@ -234,6 +234,51 @@ class TestSparseConv(unittest.TestCase):
                 1, 1, (1, 3, 3), data_format='NCDHW', key='subm_conv'
             )
 
+    def test_SubmConv3D_igemm_forward(self):
+        indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+        values = [[1], [2], [3], [4]]
+        indices = paddle.to_tensor(indices, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        dense_shape = [1, 1, 3, 4, 1]
+        correct_out_values = [[4], [5], [10], [7]]
+        sparse_input = paddle.sparse.sparse_coo_tensor(
+            indices, values, dense_shape, False
+        )
+
+        subm_conv3d = paddle.sparse.nn.SubmConv3D(
+            1,
+            1,
+            (1, 3, 3),
+            padding=1,
+            stride=1,
+            data_format='NDHWC',
+            key='subm_conv',
+            backend='igemm',
+        )
+        # set weight to all ones
+        subm_conv3d.weight = paddle.create_parameter(
+            (1, 3, 3, 1, 1),
+            dtype='float32',
+            default_initializer=paddle.nn.initializer.Constant(value=1.0),
+        )
+
+        # test extra_repr
+        print(subm_conv3d.extra_repr())
+
+        sparse_out = subm_conv3d(sparse_input)
+        # the output shape of subm_conv is same as input shape
+        np.testing.assert_array_equal(indices, sparse_out.indices().numpy())
+        np.testing.assert_array_equal(
+            correct_out_values, sparse_out.values().numpy()
+        )
+
+        # test errors
+        with self.assertRaises(ValueError):
+            # Currently, only support data_format='NDHWC'
+            conv3d = paddle.sparse.nn.SubmConv3D(
+                1, 1, (1, 3, 3), data_format='NCDHW', key='subm_conv'
+            )
+
     def test_Conv2D_bias(self):
         paddle.seed(0)
         shape = [1, 4, 4, 3]
