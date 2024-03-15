@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/utils/error.h"
 
 #define CUDA_DRIVER_CALL(func)                                         \
   {                                                                    \
