@@ -15,9 +15,9 @@
 #pragma once
 
 #include <optional>
-
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/tags.h"
+#include "paddle/cinn/common/common.h"
 
 namespace cinn::adt {
 

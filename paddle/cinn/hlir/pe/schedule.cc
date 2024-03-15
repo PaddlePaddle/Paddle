@@ -2770,9 +2770,11 @@ void CudaScheduleInjective(poly::Stage *stage,
   if (new_num_thread % 32 != 0) {
     new_num_thread = MaxFactorLessThan(prod_size, num_thread);
   }
-  if (new_num_thread == 1) std::stringstream ss;
-  ss << "prod_size out of range: " << prod_size;
-  CINN_THROW(ss.str());
+  if (new_num_thread == 1) {
+    std::stringstream ss;
+    ss << "prod_size out of range: " << prod_size;
+    CINN_THROW(ss.str());
+  }
 
   CHECK_GT(prod_size, new_num_thread);
   stage->Split(0, new_num_thread);

@@ -20,7 +20,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
-
+#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {

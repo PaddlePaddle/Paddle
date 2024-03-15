@@ -17,6 +17,7 @@
 
 #include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
 #include "paddle/cinn/frontend/paddle/framework.pb.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn::frontend::paddle::pb {
 

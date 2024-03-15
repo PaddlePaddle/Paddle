@@ -15,9 +15,9 @@
 #include "paddle/cinn/utils/event.h"
 
 #include <glog/logging.h>  // for GLog
-
 #include <unordered_map>
 
+#include "paddle/cinn/utils/error.h"
 namespace cinn {
 namespace utils {
 inline std::string EventTypeToString(const EventType &type) {

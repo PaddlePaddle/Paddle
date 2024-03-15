@@ -20,6 +20,7 @@
 #include <iomanip>
 
 #include "glog/logging.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn {
 namespace utils {

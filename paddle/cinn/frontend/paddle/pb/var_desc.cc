@@ -15,9 +15,9 @@
 #include "paddle/cinn/frontend/paddle/pb/var_desc.h"
 
 #include <google/protobuf/map.h>
-
 #include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
 #include "paddle/cinn/frontend/paddle/framework.pb.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn::frontend::paddle::pb {
 

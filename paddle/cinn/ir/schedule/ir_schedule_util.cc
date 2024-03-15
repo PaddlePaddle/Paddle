@@ -338,9 +338,11 @@ std::vector<Expr> GetLoopsOfExpr(const Expr& expr, const Expr& root) {
       root,
       [&](const Expr* x) { return x->As<ir::For>() && Contains(*x, expr); });
   std::vector<Expr> result(loop_nodes.begin(), loop_nodes.end());
-  if (result.empty()) std::stringstream ss;
-  ss << "Didn't find expr's : \n" << expr << "\n loops in root : \n" << root;
-  CINN_THROW(ss.str());
+  if (result.empty()) {
+    std::stringstream ss;
+    ss << "Didn't find expr's : \n" << expr << "\n loops in root : \n" << root;
+    CINN_THROW(ss.str());
+  }
   std::sort(result.begin(), result.end(), [&](Expr i, Expr j) {
     return (utils::GetStreamCnt(i).size() > utils::GetStreamCnt(j).size());
   });

@@ -18,7 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-
+#include "paddle/cinn/common/common.h"
 namespace cinn {
 namespace common {
 

@@ -22,6 +22,7 @@
 #include <sstream>
 
 #include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 

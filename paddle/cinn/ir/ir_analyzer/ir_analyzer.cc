@@ -74,10 +74,12 @@ std::vector<Expr> GetLoops(const std::vector<Expr>& exprs, const Expr& block) {
     FindLoopsVisitor visitor(block);
     auto find_loops = visitor(&it_expr);
     if (!find_loops.empty()) {
-      if (!result.empty()) std::stringstream ss;
-      ss << "Find block with name: \n"
-         << block_name << " appeared in more than one AST!";
-      CINN_THROW(ss.str());
+      if (!result.empty()) {
+        std::stringstream ss;
+        ss << "Find block with name: \n"
+           << block_name << " appeared in more than one AST!";
+        CINN_THROW(ss.str());
+      }
       result = find_loops;
     }
   }
