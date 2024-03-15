@@ -241,8 +241,12 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
 #else
       _sockets.erase(_sockets.begin() + i - 2);
 #endif
-
-      VLOG(5) << "Meet some exceptions during run:" << ex.what();
+      std::string s(ex.what());
+      if (s.find("TCP connection reset by peer") != std::string::npos) {
+        VLOG(5) << "TCP connection reset by peer";
+      } else {
+        VLOG(5) << "Meet some exceptions during run:" << ex.what();
+      }
     }
   }
 }

@@ -225,8 +225,6 @@ class IR_API DimExpr : public DimExprBase {
 //                   | Broadcastable DimExpr
 using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
-// ShapeOrDataDimExprs = (tShape [DimExpr], tData (opt [DimExpr]))
-
 IR_API std::string ToString(const DimExpr& dim_expr);
 
 IR_API std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);

@@ -64,169 +64,174 @@ void OperationFactory::RegisterManualOpCreator() {
             attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
             attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data());
       });
-
 #ifdef PADDLE_WITH_DNNL
-  op_creator_map["onednn_op.conv2d_transpose_bias"] = [](const std::vector<
-                                                             pir::Value>&
-                                                             inputs,
-                                                         const pir::
-                                                             AttributeMap&
-                                                                 attrs,
-                                                         pir::PatternRewriter&
-                                                             rewriter) {
-    if (inputs.size() == 4) {
-      PADDLE_ENFORCE_EQ(
-          attrs.find("strides") != attrs.end(),
-          true,
-          phi::errors::InvalidArgument(
-              "'strides' Attribute is expected for Conv2dTransposeBiasOp. "));
-      std::vector<int> strides;
-      for (size_t i = 0;
-           i < attrs.at("strides").dyn_cast<pir::ArrayAttribute>().size();
-           i++) {
-        strides.push_back(attrs.at("strides")
-                              .dyn_cast<pir::ArrayAttribute>()
-                              .at(i)
-                              .dyn_cast<pir::Int32Attribute>()
-                              .data());
-      }
+  RegisterOperationCreator(
+      "onednn_op.conv2d_transpose_bias",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        if (inputs.size() == 4) {
+          PADDLE_ENFORCE_EQ(
+              attrs.find("strides") != attrs.end(),
+              true,
+              phi::errors::InvalidArgument("'strides' Attribute is expected "
+                                           "for Conv2dTransposeBiasOp. "));
+          std::vector<int> strides;
+          for (size_t i = 0;
+               i < attrs.at("strides").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            strides.push_back(attrs.at("strides")
+                                  .dyn_cast<pir::ArrayAttribute>()
+                                  .at(i)
+                                  .dyn_cast<pir::Int32Attribute>()
+                                  .data());
+          }
 
-      PADDLE_ENFORCE_EQ(
-          attrs.find("paddings") != attrs.end(),
-          true,
-          phi::errors::InvalidArgument(
-              "'paddings' Attribute is expected for Conv2dTransposeBiasOp. "));
-      std::vector<int> paddings;
-      for (size_t i = 0;
-           i < attrs.at("paddings").dyn_cast<pir::ArrayAttribute>().size();
-           i++) {
-        paddings.push_back(attrs.at("paddings")
-                               .dyn_cast<pir::ArrayAttribute>()
-                               .at(i)
-                               .dyn_cast<pir::Int32Attribute>()
-                               .data());
-      }
+          PADDLE_ENFORCE_EQ(
+              attrs.find("paddings") != attrs.end(),
+              true,
+              phi::errors::InvalidArgument("'paddings' Attribute is expected "
+                                           "for Conv2dTransposeBiasOp. "));
+          std::vector<int> paddings;
+          for (size_t i = 0;
+               i < attrs.at("paddings").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            paddings.push_back(attrs.at("paddings")
+                                   .dyn_cast<pir::ArrayAttribute>()
+                                   .at(i)
+                                   .dyn_cast<pir::Int32Attribute>()
+                                   .data());
+          }
 
-      PADDLE_ENFORCE_EQ(attrs.find("output_padding") != attrs.end(),
-                        true,
-                        phi::errors::InvalidArgument(
-                            "'output_padding' Attribute is expected for "
-                            "Conv2dTransposeBiasOp. "));
-      std::vector<int> output_padding;
-      for (size_t i = 0;
-           i <
-           attrs.at("output_padding").dyn_cast<pir::ArrayAttribute>().size();
-           i++) {
-        output_padding.push_back(attrs.at("output_padding")
+          PADDLE_ENFORCE_EQ(attrs.find("output_padding") != attrs.end(),
+                            true,
+                            phi::errors::InvalidArgument(
+                                "'output_padding' Attribute is expected for "
+                                "Conv2dTransposeBiasOp. "));
+          std::vector<int> output_padding;
+          for (size_t i = 0; i < attrs.at("output_padding")
                                      .dyn_cast<pir::ArrayAttribute>()
-                                     .at(i)
-                                     .dyn_cast<pir::Int32Attribute>()
-                                     .data());
-      }
+                                     .size();
+               i++) {
+            output_padding.push_back(attrs.at("output_padding")
+                                         .dyn_cast<pir::ArrayAttribute>()
+                                         .at(i)
+                                         .dyn_cast<pir::Int32Attribute>()
+                                         .data());
+          }
 
-      PADDLE_ENFORCE_EQ(attrs.find("padding_algorithm") != attrs.end(),
-                        true,
-                        phi::errors::InvalidArgument(
-                            "'padding_algorithm' Attribute is expected for "
-                            "Conv2dTransposeBiasOp. "));
-      std::string padding_algorithm = attrs.at("padding_algorithm")
-                                          .dyn_cast<pir::StrAttribute>()
-                                          .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("padding_algorithm") != attrs.end(),
+                            true,
+                            phi::errors::InvalidArgument(
+                                "'padding_algorithm' Attribute is expected for "
+                                "Conv2dTransposeBiasOp. "));
+          std::string padding_algorithm = attrs.at("padding_algorithm")
+                                              .dyn_cast<pir::StrAttribute>()
+                                              .AsString();
 
-      PADDLE_ENFORCE_EQ(
-          attrs.find("groups") != attrs.end(),
-          true,
-          phi::errors::InvalidArgument(
-              "'groups' Attribute is expected for Conv2dTransposeBiasOp. "));
-      int groups = attrs.at("groups").dyn_cast<pir::Int32Attribute>().data();
+          PADDLE_ENFORCE_EQ(
+              attrs.find("groups") != attrs.end(),
+              true,
+              phi::errors::InvalidArgument("'groups' Attribute is expected for "
+                                           "Conv2dTransposeBiasOp. "));
+          int groups =
+              attrs.at("groups").dyn_cast<pir::Int32Attribute>().data();
 
-      PADDLE_ENFORCE_EQ(
-          attrs.find("dilations") != attrs.end(),
-          true,
-          phi::errors::InvalidArgument(
-              "'dilations' Attribute is expected for Conv2dTransposeBiasOp. "));
-      std::vector<int> dilations;
-      for (size_t i = 0;
-           i < attrs.at("dilations").dyn_cast<pir::ArrayAttribute>().size();
-           i++) {
-        dilations.push_back(attrs.at("dilations")
-                                .dyn_cast<pir::ArrayAttribute>()
-                                .at(i)
-                                .dyn_cast<pir::Int32Attribute>()
-                                .data());
-      }
+          PADDLE_ENFORCE_EQ(
+              attrs.find("dilations") != attrs.end(),
+              true,
+              phi::errors::InvalidArgument("'dilations' Attribute is expected "
+                                           "for Conv2dTransposeBiasOp. "));
+          std::vector<int> dilations;
+          for (size_t i = 0;
+               i < attrs.at("dilations").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            dilations.push_back(attrs.at("dilations")
+                                    .dyn_cast<pir::ArrayAttribute>()
+                                    .at(i)
+                                    .dyn_cast<pir::Int32Attribute>()
+                                    .data());
+          }
 
-      PADDLE_ENFORCE_EQ(attrs.find("data_format") != attrs.end(),
-                        true,
-                        phi::errors::InvalidArgument(
-                            "'data_format' Attribute is expected for "
-                            "Conv2dTransposeBiasOp. "));
-      std::string data_format =
-          attrs.at("data_format").dyn_cast<pir::StrAttribute>().AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("data_format") != attrs.end(),
+                            true,
+                            phi::errors::InvalidArgument(
+                                "'data_format' Attribute is expected for "
+                                "Conv2dTransposeBiasOp. "));
+          std::string data_format =
+              attrs.at("data_format").dyn_cast<pir::StrAttribute>().AsString();
 
-      PADDLE_ENFORCE_EQ(
-          attrs.find("is_test") != attrs.end(),
-          true,
-          phi::errors::InvalidArgument(
-              "'is_test' Attribute is expected for Conv2dTransposeBiasOp. "));
-      bool is_test = attrs.at("is_test").dyn_cast<pir::BoolAttribute>().data();
+          PADDLE_ENFORCE_EQ(
+              attrs.find("is_test") != attrs.end(),
+              true,
+              phi::errors::InvalidArgument("'is_test' Attribute is expected "
+                                           "for Conv2dTransposeBiasOp. "));
+          bool is_test =
+              attrs.at("is_test").dyn_cast<pir::BoolAttribute>().data();
 
-      return rewriter.Build<paddle::onednn::dialect::Conv2dTransposeBiasOp>(
-          inputs[0],
-          inputs[1],
-          inputs[2],
-          inputs[3],
-          strides,
-          paddings,
-          output_padding,
-          padding_algorithm,
-          groups,
-          dilations,
-          data_format,
-          is_test);
-    }
+          return rewriter.Build<paddle::onednn::dialect::Conv2dTransposeBiasOp>(
+              inputs[0],
+              inputs[1],
+              inputs[2],
+              inputs[3],
+              strides,
+              paddings,
+              output_padding,
+              padding_algorithm,
+              groups,
+              dilations,
+              data_format,
+              is_test);
+        }
 
-    return rewriter.Build<paddle::onednn::dialect::Conv2dTransposeBiasOp>(
-        inputs[0], inputs[1], inputs[2], attrs);
-  };
+        return rewriter.Build<paddle::onednn::dialect::Conv2dTransposeBiasOp>(
+            inputs[0], inputs[1], inputs[2], attrs);
+      });
 #endif
 }
 
 pir::Attribute CreateIrAttribute(const std::any& obj) {
-  if (obj.type() == typeid(bool)) {
-    return IrAttributeCreator<bool>()(std::any_cast<bool>(obj));
-  } else if (obj.type() == typeid(int32_t)) {
-    return IrAttributeCreator<int32_t>()(std::any_cast<int32_t>(obj));
-  } else if (obj.type() == typeid(int64_t)) {
-    return IrAttributeCreator<int64_t>()(std::any_cast<int64_t>(obj));
-  } else if (obj.type() == typeid(float)) {
-    return IrAttributeCreator<float>()(std::any_cast<float>(obj));
-  } else if (obj.type() == typeid(std::string)) {
-    return IrAttributeCreator<std::string>()(std::any_cast<std::string>(obj));
-  } else if (obj.type() == typeid(const char*)) {
-    return IrAttributeCreator<std::string>()(std::any_cast<const char*>(obj));
-  } else if (obj.type() == typeid(phi::DataType)) {
-    return IrAttributeCreator<phi::DataType>()(
-        std::any_cast<phi::DataType>(obj));
-  } else if (obj.type() == typeid(phi::Place)) {
-    return IrAttributeCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
-  } else if (obj.type() == typeid(std::vector<int32_t>)) {  // NOLINT
-    return IrAttributeCreator<std::vector<int32_t>>()(
-        std::any_cast<std::vector<int32_t>>(obj));
-  } else if (obj.type() == typeid(std::vector<int64_t>)) {
-    return IrAttributeCreator<std::vector<int64_t>>()(
-        std::any_cast<std::vector<int64_t>>(obj));
-  } else if (obj.type() == typeid(std::vector<float>)) {
-    return IrAttributeCreator<std::vector<float>>()(
-        std::any_cast<std::vector<float>>(obj));
-  } else if (obj.type() == typeid(phi::IntArray)) {
-    return IrAttributeCreator<phi::IntArray>()(
-        std::any_cast<phi::IntArray>(obj));
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Type error. CreateIrAttribute for type(%s) "
-                                   "is unimplemented CreateInCurrently.",
-                                   obj.type().name()));
+  try {
+    if (obj.type() == typeid(bool)) {
+      return IrAttributeCreator<bool>()(std::any_cast<bool>(obj));
+    } else if (obj.type() == typeid(int32_t)) {
+      return IrAttributeCreator<int32_t>()(std::any_cast<int32_t>(obj));
+    } else if (obj.type() == typeid(int64_t)) {
+      return IrAttributeCreator<int64_t>()(std::any_cast<int64_t>(obj));
+    } else if (obj.type() == typeid(float)) {
+      return IrAttributeCreator<float>()(std::any_cast<float>(obj));
+    } else if (obj.type() == typeid(std::string)) {
+      return IrAttributeCreator<std::string>()(std::any_cast<std::string>(obj));
+    } else if (obj.type() == typeid(const char*)) {
+      return IrAttributeCreator<std::string>()(std::any_cast<const char*>(obj));
+    } else if (obj.type() == typeid(phi::DataType)) {
+      return IrAttributeCreator<phi::DataType>()(
+          std::any_cast<phi::DataType>(obj));
+    } else if (obj.type() == typeid(phi::Place)) {
+      return IrAttributeCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
+    } else if (obj.type() == typeid(std::vector<int32_t>)) {  // NOLINT
+      return IrAttributeCreator<std::vector<int32_t>>()(
+          std::any_cast<std::vector<int32_t>>(obj));
+    } else if (obj.type() == typeid(std::vector<int64_t>)) {
+      return IrAttributeCreator<std::vector<int64_t>>()(
+          std::any_cast<std::vector<int64_t>>(obj));
+    } else if (obj.type() == typeid(std::vector<float>)) {
+      return IrAttributeCreator<std::vector<float>>()(
+          std::any_cast<std::vector<float>>(obj));
+    } else if (obj.type() == typeid(phi::IntArray)) {
+      return IrAttributeCreator<phi::IntArray>()(
+          std::any_cast<phi::IntArray>(obj));
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Type error. CreateIrAttribute for type(%s) "
+          "is unimplemented CreateInCurrently.",
+          obj.type().name()));
+    }
+  } catch (const std::bad_any_cast& e) {
+    PADDLE_THROW(phi::errors::Fatal(
+        "%s: CreateIrAttribute for type(%s) not successfully.",
+        e.what(),
+        obj.type().name()));
   }
 }
 

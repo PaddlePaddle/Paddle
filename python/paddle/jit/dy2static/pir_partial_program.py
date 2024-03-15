@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.pir.core as ir_static
 from paddle import _legacy_C_ops
-from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.autograd.backward_utils import ValueDict
 from paddle.autograd.ir_backward import grad
 from paddle.base import core, framework
@@ -613,10 +612,6 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
-        if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError(
-                "Currently, AMP is not supported in PIR mode"
-            )
         if self.training:
             return self._train_program_id
         else:
@@ -624,18 +619,10 @@ class PartialProgramLayer:
 
     @cached_property
     def train_program(self):
-        if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError(
-                "Currently, AMP is not supported in PIR mode"
-            )
         return self._create_program()
 
     @cached_property
     def infer_program(self):
-        if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError(
-                "Currently, AMP is not supported in PIR mode"
-            )
         return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program):
