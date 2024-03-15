@@ -20,7 +20,7 @@ OP_INFER_SPMD_TEMPLATE = """
 
 
 def gen_op_infer_spmd_func(args, op_info, op_info_items):
-    if not args.with_distributed or not op_info.spmd_rule_func:
+    if not args.with_distributed or op_info.spmd_rule_func is None:
         return [], None, None
     input_types_map = {
         'paddle::dialect::DenseTensorType': 'const phi::distributed::DistMetaTensor&',
@@ -36,9 +36,18 @@ def gen_op_infer_spmd_func(args, op_info, op_info_items):
 
     attr_name_list = op_info.attribute_name_list
     attr_type_list = op_info.attribute_gen_arg_type_list
+
     attr_name_type_dict = {}
     for attr_idx in range(len(attr_type_list)):
         attr_name_type_dict[attr_name_list[attr_idx]] = attr_type_list[attr_idx]
+        scalar_list = [
+            "Scalar(int64_t)",
+            "Scalar(int)",
+            "Scalar(float)",
+            "Scalar(double)",
+        ]
+        if op_info.op_yaml_item['attrs'][attr_idx]['typename'] in scalar_list:
+            attr_name_type_dict[attr_name_list[attr_idx]] = "const phi::Scalar&"
 
     spmd_params = input_name_list + attr_name_list
     if op_info.kernel_map is not None:
@@ -60,9 +69,12 @@ def gen_op_infer_spmd_func(args, op_info, op_info_items):
             args_list_with_type.append(param_type + " " + param)
             args_list.append(param)
 
+    spmd_rule_func = op_info.spmd_rule_func
+    if spmd_rule_func is None:
+        spmd_rule_func = "VariadicReplicatedInferSpmdDynamic"
     declare_str = OP_INFER_SPMD_TEMPLATE.format(
         infer_spmd_args=', '.join(args_list_with_type),
-        func=op_info.infer_meta_map["spmd_rule"],
+        func=spmd_rule_func,
         args=', '.join(args_list),
     )
     return [], declare_str, None

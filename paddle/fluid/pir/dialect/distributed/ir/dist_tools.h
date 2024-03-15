@@ -11,22 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
+#include "paddle/common/ddim.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
+#include "paddle/pir/include/core/value.h"
 
-#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+namespace paddle {
+namespace dialect {
 
-namespace paddle::dialect {
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Arange)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(AssignValue)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Data)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Empty)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Feed)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Full)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(FullIntArray)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Gaussian)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Randint)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(TrilIndices)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(TriuIndices)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Uniform)
-}  // namespace paddle::dialect
+bool HasDistInput(const std::vector<pir::Value>& inputs);
+bool AllInputAreDist(const std::vector<pir::Value>& inputs);
+phi::distributed::DistMetaTensor CvtToDistMetaTensor(DistDenseTensorType type);
+TensorDistAttribute CvtToPirDistAttr(
+    const phi::distributed::ArgDistAttr& dist_attr);
+
+}  // namespace dialect
+}  // namespace paddle

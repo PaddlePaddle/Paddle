@@ -92,7 +92,7 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
 static const std::vector<pir::Type> InferMetaByValue(
     pir::Operation* op,
     const std::vector<pir::Value>& input_values,
-    const pir::AttributeMap& attribute_map) {
+    pir::AttributeMap& attribute_map) {  // NOLINT
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
   auto infer_meta_interface =
