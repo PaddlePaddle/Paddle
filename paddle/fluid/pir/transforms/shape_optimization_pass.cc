@@ -250,7 +250,7 @@ class ShapeOptimizationPass : public pir::Pass {
 
     InferSymExprForAllValues(module_op);
     // Runner is for Canonicalizer.
-    PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
+    PassPipelineRunner runner = [](pir::PassManager& pm, pir::ModuleOp m) {
       pm.EnableIRPrinting();
       return pm.Run(m.program());
     };
