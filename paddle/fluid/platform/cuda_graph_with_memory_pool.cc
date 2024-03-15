@@ -69,7 +69,7 @@ phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::GPUPlace place,
       mutable_dev_ctx =
           phi::backends::gpu::CUDAGraphContextManager::Instance().Get(
               *pool_id, place, 0);
-    } else if (num_stream == 1) {
+    } else {
       VLOG(4) << "Use recorded stream to capture cuda graph. Used in "
                  "single-stream scenarios with new executor.";
       mutable_dev_ctx = *(all_capturing_dev_ctxs.begin());
