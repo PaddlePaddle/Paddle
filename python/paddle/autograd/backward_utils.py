@@ -141,6 +141,9 @@ class ValueSet:
         for val in other:
             self.add(val)
 
+    def pop(self):
+        return self._set.pop()._value
+
     def __and__(self, other: ValueSet):
         return ValueSet(self._set & other._set)
 
@@ -272,19 +275,7 @@ def _as_list(x):
 
 
 def some_in_set(value_list, value_set):
-    def operand2value(values):
-        value_set = ValueSet()
-        for item in values:
-            if isinstance(item, pir.OpOperand):
-                value_set.add(item.source())
-            else:
-                value_set.add(item)
-        return value_set
-
-    if operand2value(value_list) & operand2value(value_set):
-        return True
-    else:
-        return False
+    return any(v in value_set for v in value_list)
 
 
 def is_control_flow(op):

@@ -137,6 +137,31 @@ class IR_API ShapedTypeInterface
   Concept *impl_;
 };
 
+class IR_API WrapTypeInterface : public TypeInterfaceBase<WrapTypeInterface> {
+ public:
+  struct Concept {
+    /// Defined these methods with the interface.
+    explicit Concept(Type (*prim_type)(Type)) : prim_type(prim_type) {}
+    Type (*prim_type)(Type);
+  };
+
+  template <class ConcreteType>
+  struct Model : public Concept {
+    static Type prim_type(Type type) {
+      return pir::cast<ConcreteType>(type).prim_type();
+    }
+    Model() : Concept(prim_type) {}
+  };
+
+  WrapTypeInterface(Type type, Concept *impl)
+      : TypeInterfaceBase<WrapTypeInterface>(type), impl_(impl) {}
+
+  Type prim_type() { return impl_->prim_type(*this); }
+
+ private:
+  Concept *impl_;
+};
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::WrapTypeInterface)

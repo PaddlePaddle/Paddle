@@ -17,30 +17,48 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
-
-bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ArgminOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool AsComplexOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool AsRealOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool CummaxOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool CumminOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool CumprodOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Cumprod_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool CumsumOpInferSymbolicShape(pir::Operation *op,
-                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Cumsum_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ReshapeOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool Reshape_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Argmax)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Argmin)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(AsComplex)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(AsReal)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cummax)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cummin)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumprod)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumprod_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumsum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cumsum_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(DiagEmbed)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Diagonal)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Einsum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Kthvalue)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logcumsumexp)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logsumexp)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Max)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Min)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Pad)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Poisson)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Prod)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(RepeatInterleave)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reshape)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reshape_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Shape)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(ShapeSr)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Slice)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Split)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(SplitWithNum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Squeeze)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Squeeze_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Sum)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Tile)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Topk)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Transpose)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Transpose_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Triu)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Triu_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unbind)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unique)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(UniqueConsecutive)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze_)
 
 }  // namespace paddle::dialect

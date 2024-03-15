@@ -86,13 +86,13 @@ class SplitOp : public framework::OperatorWithKernel {
         Variable *var = PADDLE_GET_CONST(Variable *, section_varptr);
         sections_from_tensor.emplace_back(var->Get<phi::DenseTensor>());
       }
-      sections_final = std::move(phi::IntArray(sections_from_tensor));
+      sections_final = phi::IntArray(sections_from_tensor);
     } else if (!ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
-      sections_final = std::move(phi::IntArray(std::vector<int>(
-          ctx->GetInputVarPtrs("SectionsTensorList").size(), -1)));
+      sections_final = phi::IntArray(std::vector<int>(
+          ctx->GetInputVarPtrs("SectionsTensorList").size(), -1));
       sections_final.SetFromTensor(true);
     } else {
-      sections_final = std::move(phi::IntArray(sections));
+      sections_final = phi::IntArray(sections);
     }
     if (!sections.empty()) {
       if (ctx->IsRuntime()) {

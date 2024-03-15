@@ -30,6 +30,8 @@
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
+#include "paddle/cinn/optim/if_fusion.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -37,6 +39,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
@@ -97,18 +100,34 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   int64_t spatial_numel = 1;
   int64_t reduce_numel = 1;
 
+  bool spatial_is_dynamic = false;
+  bool reduce_is_dynamic = false;
   for (int64_t i = 0; i < group_tile_info->data_rank; ++i) {
     if (reduce_set.count(i)) {
       reduce_numel *= data_dim[i];
+      if (data_dim[i] < 0) {
+        reduce_is_dynamic = true;
+      }
     } else {
       spatial_numel *= data_dim[i];
+
+      if (data_dim[i] < 0) {
+        spatial_is_dynamic = true;
+      }
     }
   }
 
-  PADDLE_ENFORCE_GT(
-      reduce_numel,
-      0,
-      phi::errors::Unimplemented("negative reduce numel or flaten numel"));
+  bool is_reduce_all =
+      (group_tile_info->reduce_axis_.size() == group_tile_info->data_rank);
+
+  if (is_reduce_all) {
+    reduce_is_dynamic = false;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      reduce_is_dynamic,
+      false,
+      phi::errors::Unimplemented("not support dynamic reduce yet"));
 
   int64_t reduce_block = 1;
   int64_t spatial_block = 1;
@@ -116,19 +135,24 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   int64_t reduce_inner_num = 1;
   int64_t spatial_inner_num = 1;
   int warp_num = 1;
+  group_tile_info->is_reduce_all = is_reduce_all;
 
-  if (reduce_numel == 1) {
+  if (is_reduce_all) {
+    // warp reduce
+    reduce_block = 1024;
+    spatial_block = 1;
+    spatial_inner_num = 1;
+    reduce_inner_num = 4;
+    warp_num = 8;
+  } else if (reduce_numel == 1) {
     reduce_block = 1;
-    if (spatial_numel < 0) {
+    if (spatial_is_dynamic) {
       spatial_block = 1024;
 
       reduce_inner_num = 1;
-      warp_num = spatial_block / 128;
+      warp_num = 8;
 
-      spatial_inner_num = spatial_block / (warp_num * 32);
-      if (spatial_inner_num == 0) {
-        spatial_inner_num = 1;
-      }
+      spatial_inner_num = 4;
 
       group_tile_info->block_num = -1;
     } else {
@@ -168,9 +192,9 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     reduce_inner_num = 8;
   } else if (reduce_numel > 2048) {
     spatial_block = 1;
-    reduce_block = 2048;
-    warp_num = 8;
-    reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 256.0));
+    reduce_block = int64_t(std::ceil(reduce_numel * 1.0 / 1024.0)) * 1024;
+    warp_num = 32;
+    reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 1024.0));
     spatial_inner_num = 1;
   }
 
@@ -199,7 +223,13 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   }
 
   for (auto& val : group->output_values) {
-    group_tile_info->direct_output_var_names.insert(ValueName(val));
+    if (val.defining_op()->name() == "cinn_op.reshape" &&
+        erase_reshape.count(val.defining_op())) {
+      group_tile_info->direct_output_var_names.insert(
+          ValueName(val.defining_op()->operand_source(0)));
+    } else {
+      group_tile_info->direct_output_var_names.insert(ValueName(val));
+    }
   }
 
   group_tile_info->shared_var_names = shared_var_names;
@@ -584,18 +614,31 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
   // TODO(phlrain): this is primary verion for loop aligment
   // will be update by a new method
-  auto& align_info = group->alignment_schedule_info;
+  auto align_info = group->alignment_schedule_info;
+
   auto& ops = group->ops;
   for (auto op1 : ops) {
     auto it = align_info.find(op1);
     if (it == align_info.end()) {
       continue;
     }
+    if (op1->name() == "cinn_op.generate_shape") {
+      continue;
+    }
+
+    if (it->second.size() > 1) {
+      for (size_t i = 0; i < it->second.size(); ++i) {
+      }
+      // TODO(phlran): merge to factor info here
+      it->second.front().factor_info = it->second.back().factor_info;
+      it->second.resize(1);
+    }
 
     PADDLE_ENFORCE_EQ(
         it->second.size(),
         1,
-        phi::errors::Unimplemented("only suppopt one transform yet"));
+        phi::errors::Unimplemented("%s, only suppopt one transform yet",
+                                   it->first->name()));
 
     if (it->second[0].type == ScheduleAlignType::kBroadcast) {
       // get broadcast op
@@ -631,7 +674,8 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         info.full_broadcast = true;
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
-          info.output_shape.push_back(output_shape[i]);
+          info.output_shape.push_back(-1);
+          info.output_dim_expr.push_back(group->loop_ranges_expr[i]);
         }
       } else if (in_dim.size() == broadcast_axes.size()) {
         if (in_dim.size() != output_shape.size()) {
@@ -653,6 +697,9 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           }
         } else {
           for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+            if (in_dim[i] < 0 || output_shape[broadcast_axes[i]] < 0) {
+              continue;
+            }
             if (in_dim[i] != output_shape[broadcast_axes[i]]) {
               if (in_dim[i] != 1) {
                 throw std::runtime_error("Only support 1 - D broadcast ");
@@ -675,10 +722,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           info.output_shape.push_back(output_shape[broadcast_axes[i]]);
         }
       }
-      PADDLE_ENFORCE_NE(
-          info.broadcast_axes.size(),
-          0,
-          phi::errors::PreconditionNotMet("broadcast axes can not be zero"));
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {
         if (!align_info.count(it->first->operand_source(i).defining_op())) {
@@ -689,6 +732,16 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
       auto op_out = it->first->result(0);
       info.op_name = it->first->name();
+
+      if (op_out.use_count() == 1 &&
+          op_out.first_use().owner()->name() == "cf.yield") {
+        info.with_constrain = true;
+      }
+
+      if (erase_reshape.count(op_out.first_use().owner())) {
+        info.with_constrain = true;
+      }
+
       broadcast_info[ValueName(op_out)] = info;
 
       for (auto use_it = op_out.use_begin(); use_it != op_out.use_end();
@@ -783,6 +836,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       continue;
     }
     auto tensor = tensor_map.at(op_result);
+    if ((op_result.defining_op()->name() == "cinn_op.reshape") &&
+        erase_reshape.count(op_result.defining_op())) {
+      tensor = tensor_map.at(op_result.defining_op()->operand_source(0));
+    }
+
     if (arg_name_set.count(tensor->buffer->name) != 0) {
       continue;
     }
@@ -841,7 +899,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
-        VLOG(4) << "device kernel func's " << non_tensor_arg_idx << " is from "
+        VLOG(4) << "device kernel func's " << symbol_name << " is from "
                 << tensor_arg_idx << ".shape(" << tensor_arg_dim_idx << ")";
       }
     }
@@ -850,6 +908,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names);
 #ifdef CINN_WITH_CUDA
+    optim::EliminateCommonGlobalMemoryRead(&(func_body));
     optim::OptimizeExprGPU(&(func_body));
 #endif
 
@@ -928,7 +987,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
       CHECK(static_cast<bool>(strategy))
           << " cinn_op_name: " << cinn_op_name
-          << "has no CINNStrategySymbolic registered.";
+          << " has no CINNStrategySymbolic registered.";
       op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
                                                 op_func_arg_tensors,
                                                 out_types,
@@ -959,7 +1018,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body);
     }
-
     remain_ops.push_back(op);
   }
 
@@ -1119,6 +1177,7 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
       }
     }
   };
+
   if (FLAGS_cinn_bucket_compile) {
     std::vector<ir::Dim> sym_shape;
     ForEachDimExpr(

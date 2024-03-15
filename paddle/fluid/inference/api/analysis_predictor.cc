@@ -80,6 +80,7 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
 #endif
 
@@ -133,6 +134,7 @@
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 
@@ -893,8 +895,23 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
     if (config_.new_ir_enabled()) {
-      pir_program_ = std::move(
-          paddle::TranslateLegacyProgramToProgram(*inference_program_));
+      pir_program_ =
+          paddle::TranslateLegacyProgramToProgram(*inference_program_);
+
+      if (!config_.custom_passes_.empty()) {
+        ::pir::PassManager custom_pm(::pir::IrContext::Instance(), 2);
+        for (const auto &custom_pass : config_.custom_passes_) {
+          custom_pm.AddPass(
+              std::move(pir::PassRegistry::Instance().Get(custom_pass)));
+        }
+        if (!config_.glog_info_disabled()) {
+          custom_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          custom_pm.EnableIRPrinting();
+        }
+        custom_pm.Run(pir_program_.get());
+      }
 
 #ifdef PADDLE_WITH_CINN
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
@@ -979,6 +996,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         ::pir::PassManager mkldnn_pm(::pir::IrContext::Instance(), 2);
 
         mkldnn_pm.AddPass(::pir::CreateConv2dBiasFusePass());
+        mkldnn_pm.AddPass(::pir::CreateConv2dTransposeBiasFusePass());
+        mkldnn_pm.AddPass(::pir::CreateConv3dBiasFusePass());
+        mkldnn_pm.AddPass(::pir::CreateBatchNormActFusePass());
 
         auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
         constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
@@ -1016,8 +1036,8 @@ bool AnalysisPredictor::PrepareExecutor() {
         cpu_pm.Run(pir_program_.get());
       }
 
-      pir_program_ = std::move(
-          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
+      pir_program_ =
+          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
       if (FLAGS_pir_apply_inplace_pass) {
@@ -1041,7 +1061,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     }
   }
 
-  if (config_.enable_memory_optim_) {
+  if (config_.enable_memory_optim_ && !config_.use_optimized_model_) {
     auto *pass_res_info =
         inference::analysis::PassResultInfoForRuntime::Instance();
     auto reuse_table =
@@ -1755,8 +1775,13 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_->SetTRTMarkOutput(config_.trt_mark_output_);
     argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
+    argument_->SetTRTParameterRunFp16(config_.trt_parameters_run_fp16_);
+    argument_->SetTRTParameterRunInt8(config_.trt_parameters_run_int8_);
+    argument_->SetTRTParameterRunBfp16(config_.trt_parameters_run_bfp16_);
     argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
     argument_->SetTRTExcludeVarNames(config_.trt_exclude_var_names_);
+    argument_->SetTRTForbidDynamicOp(config_.trt_forbid_dynamic_op_);
+
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_->SetTensorRtDLACore(config_.trt_dla_core_);
     argument_->SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);

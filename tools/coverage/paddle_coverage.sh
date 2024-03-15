@@ -19,14 +19,14 @@ set -xe
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
 
 # install lcov
-if [ ! -f "/root/.cache/lcov-1.14.tar.gz" ];then
-    wget -P /home https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz --no-proxy --no-check-certificate || exit 101
-    cp /home/lcov-1.14.tar.gz /root/.cache/lcov-1.14.tar.gz
+if [ ! -f "/root/.cache/lcov-1.16.tar.gz" ];then
+wget -P /home https://paddle-ci.cdn.bcebos.com/coverage/lcov-1.16.tar.gz --no-proxy --no-check-certificate || exit 101
+cp /home/lcov-1.16.tar.gz /root/.cache/lcov-1.16.tar.gz
 else
-    cp /root/.cache/lcov-1.14.tar.gz /home/lcov-1.14.tar.gz
+    cp /root/.cache/lcov-1.16.tar.gz /home/lcov-1.16.tar.gz
 fi
-tar -xf /home/lcov-1.14.tar.gz -C /
-cd /lcov-1.14
+tar -xf /home/lcov-1.16.tar.gz -C /
+cd /lcov-1.16
 make install
 
 # run paddle coverage

@@ -334,6 +334,11 @@ void ConcatTensorsWithType<platform::XPUDeviceContext>(
                                 platform::float16>()(
           context, dense_tensors_, p_dense_contents);
       break;
+    case phi::DataType::BFLOAT16:
+      ConcatTensorsForAllReduce<platform::XPUDeviceContext,
+                                platform::bfloat16>()(
+          context, dense_tensors_, p_dense_contents);
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
@@ -356,6 +361,11 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
       break;
     case phi::DataType::FLOAT16:
       SplitTensorsForAllReduce<platform::XPUDeviceContext, platform::float16>()(
+          context, p_dense_contents, p_dense_tensors);
+      break;
+    case phi::DataType::BFLOAT16:
+      SplitTensorsForAllReduce<platform::XPUDeviceContext,
+                               platform::bfloat16>()(
           context, p_dense_contents, p_dense_tensors);
       break;
     default:
@@ -840,8 +850,8 @@ void EagerReducer::MarkVarReady(const size_t var_index,
           auto dense_tensor =
               std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
           if (!dense_tensor->meta().is_contiguous()) {
-            grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
-                paddle::experimental::Trans2Contiguous(*dense_tensor))));
+            grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(
+                paddle::experimental::Trans2Contiguous(*dense_tensor)));
           }
         }
 
@@ -874,8 +884,8 @@ void EagerReducer::MarkVarReady(const size_t var_index,
           auto dense_tensor =
               std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
           if (!dense_tensor->meta().is_contiguous()) {
-            grad_tensor->set_impl(std::make_shared<phi::DenseTensor>(std::move(
-                paddle::experimental::Trans2Contiguous(*dense_tensor))));
+            grad_tensor->set_impl(std::make_shared<phi::DenseTensor>(
+                paddle::experimental::Trans2Contiguous(*dense_tensor)));
           }
         }
 

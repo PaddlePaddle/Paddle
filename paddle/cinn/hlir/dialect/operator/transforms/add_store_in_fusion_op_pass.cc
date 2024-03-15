@@ -33,10 +33,10 @@ class AddYieldStoreInFusionOpPattern
   bool MatchAndRewrite(::pir::YieldOp op,
                        pir::PatternRewriter& rewriter) const override {
     for (auto i = 0; i < op->num_operands(); ++i) {
-      if (op->operand_source(i)
-              .defining_op()
-              ->isa<cinn::dialect::ReshapeOp>()) {
-        auto pre_name = op->operand_source(i).defining_op()->name();
+      if (auto reshape_op = op->operand_source(i)
+                                .defining_op()
+                                ->dyn_cast<cinn::dialect::ReshapeOp>()) {
+        auto pre_name = reshape_op.operand_source(0).defining_op()->name();
 
         if (op->operand_source(i).use_count() > 1) {
           continue;
@@ -49,7 +49,9 @@ class AddYieldStoreInFusionOpPattern
               op->operand_source(i).type());
 
           op->operand(i).set_source(new_full.result(0));
-
+          if (reshape_op->result(0).use_count() == 0) {
+            rewriter.EraseOp(reshape_op);
+          }
           continue;
         }
       }
