@@ -104,13 +104,21 @@ void tanh_triple_grad(const Tensor& out,
   dddx = -2 * y * dy * ddy + (1 - y^2) * dddy
   */
   if (grad_out_new_grad && grad_out_grad_grad) {
+    /* precompute '-2 * y' to prevent duplicated computation*/
     Tensor neg_2_out;
     if (grad_out_forward_grad || grad_x_grad_forward_grad) {
       neg_2_out = scale<T>(out, -2.0);
     }
+    /* precompute 'dy(prev) * ddy' to prevent duplicated computation*/
+    Tensor grad_out_forward_mul_grad_out_new_grad;
+    if (out_grad || grad_x_grad_forward_grad) {
+      grad_out_forward_mul_grad_out_new_grad =
+          grad_out_forward * grad_out_new_grad.get();
+    }
+
     if (out_grad) {
       auto out_grad_tmp = (scale<T>(grad_x_grad_forward, -2.0) *
-                           (grad_out_forward * grad_out_new_grad.get() +
+                           (grad_out_forward_mul_grad_out_new_grad +
                             out * grad_out_grad_grad.get()));
       set_output<T>(out_grad_tmp, out_grad);
     }
@@ -122,18 +130,26 @@ void tanh_triple_grad(const Tensor& out,
     if (grad_x_grad_forward_grad) {
       auto grad_x_grad_forward_grad_tmp =
           (scale<T>(out * out, -1.0, 1.0) * grad_out_grad_grad.get() +
-           neg_2_out * grad_out_forward * grad_out_new_grad.get());
+           neg_2_out * grad_out_forward_mul_grad_out_new_grad);
       set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
     }
   } else if (grad_out_new_grad) {
-    // regard grad_out_grad_grad is zero
+    // regard 'grad_out_grad_grad' is zero
+    /* precompute '-2 * y' to prevent duplicated computation*/
     Tensor neg_2_out;
     if (grad_out_forward_grad || grad_x_grad_forward_grad) {
       neg_2_out = scale<T>(out, -2.0);
     }
+    /* precompute 'dy(prev) * ddy' to prevent duplicated computation*/
+    Tensor grad_out_forward_mul_grad_out_new_grad;
+    if (out_grad || grad_x_grad_forward_grad) {
+      grad_out_forward_mul_grad_out_new_grad =
+          grad_out_forward * grad_out_new_grad.get();
+    }
+
     if (out_grad) {
       auto out_grad_tmp = (scale<T>(grad_x_grad_forward, -2.0) *
-                           (grad_out_forward * grad_out_new_grad.get()));
+                           (grad_out_forward_mul_grad_out_new_grad));
       set_output<T>(out_grad_tmp, out_grad);
     }
     if (grad_out_forward_grad) {
@@ -143,11 +159,11 @@ void tanh_triple_grad(const Tensor& out,
     }
     if (grad_x_grad_forward_grad) {
       auto grad_x_grad_forward_grad_tmp =
-          (neg_2_out * grad_out_forward * grad_out_new_grad.get());
+          (neg_2_out * grad_out_forward_mul_grad_out_new_grad);
       set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
     }
   } else if (grad_out_grad_grad) {
-    // regard grad_out_new_grad is zero
+    // regard 'grad_out_new_grad' is zero
     if (out_grad) {
       auto out_grad_tmp = (scale<T>(grad_x_grad_forward, -2.0) *
                            (out * grad_out_grad_grad.get()));
