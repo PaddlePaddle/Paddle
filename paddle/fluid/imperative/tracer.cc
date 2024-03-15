@@ -660,8 +660,8 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
   if (phi::KernelFactory::Instance().HasStructuredKernel(type)) {
     return phi::KernelSignature(op->Type().c_str());
   } else {
-    return phi::KernelSignature(std::move(
-        opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx)));
+    return phi::KernelSignature(
+        opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx));
   }
 }
 

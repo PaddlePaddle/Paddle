@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace phi {
 
-class MetaConfig;
+struct MetaConfig;
 
 // Common InferMeta Functions for unary operators, The format like:
 //

@@ -781,8 +781,7 @@ void GraphSafeRemoveNodes(
   for (auto *node : nodes) {
     if (saved_nodes != nullptr) {
       // prevent unique_ptr node from being released
-      saved_nodes->insert(
-          std::move(graph->RemoveNode(const_cast<Node *>(node))));
+      saved_nodes->insert(graph->RemoveNode(const_cast<Node *>(node)));
     } else {
       graph->RemoveNode(const_cast<Node *>(node));
     }
