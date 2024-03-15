@@ -102,7 +102,6 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                mf_value_size,
                select_value_size,
                pull_values,
-               keys,
                &missed_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
@@ -432,8 +431,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
   size_t value_col = _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_col =
       _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
-  size_t update_value_col =
-      _value_accessor->GetAccessorInfo().update_size / sizeof(float);
+  // size_t update_value_col =
+  // _value_accessor->GetAccessorInfo().update_size / sizeof(float);
   {
     std::vector<std::future<int>> tasks(_real_local_shard_num);
     std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -445,13 +444,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
     for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
       tasks[shard_id] =
           _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
-              [this,
-               shard_id,
-               value_col,
-               mf_value_col,
-               update_value_col,
-               values,
-               &task_keys]() -> int {
+              [this, shard_id, value_col, mf_value_col, values, &task_keys]()
+                  -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
                 float data_buffer[value_col];  // NOLINT

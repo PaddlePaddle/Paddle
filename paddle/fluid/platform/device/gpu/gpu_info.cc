@@ -591,7 +591,7 @@ int GetGPUMaxThreadsPerBlock(int id) {
 
 int GetCurrentDeviceId() { return phi::backends::gpu::GetCurrentDeviceId(); }
 
-std::array<int, 3> GetGpuMaxGridDimSize(int id) {
+std::array<unsigned int, 3> GetGpuMaxGridDimSize(int id) {
   return phi::backends::gpu::GetGpuMaxGridDimSize(id);
 }
 

@@ -895,8 +895,8 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
     if (config_.new_ir_enabled()) {
-      pir_program_ = std::move(
-          paddle::TranslateLegacyProgramToProgram(*inference_program_));
+      pir_program_ =
+          paddle::TranslateLegacyProgramToProgram(*inference_program_);
 
       if (!config_.custom_passes_.empty()) {
         ::pir::PassManager custom_pm(::pir::IrContext::Instance(), 2);
@@ -1036,8 +1036,8 @@ bool AnalysisPredictor::PrepareExecutor() {
         cpu_pm.Run(pir_program_.get());
       }
 
-      pir_program_ = std::move(
-          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
+      pir_program_ =
+          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
       if (FLAGS_pir_apply_inplace_pass) {
