@@ -2940,11 +2940,11 @@ void PartialAllgatherInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_GE(
       nranks,
       2,
-      platform::errors::InvalidArgument("The value of nranks should be >=2."));
+      phi::errors::InvalidArgument("The value of nranks should be >=2."));
   PADDLE_ENFORCE_EQ(
       (rank >= 0 && rank < nranks),
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The rank (%d) for partial_allgather op must >=0 and <nranks (%d)",
           rank,
           nranks));
