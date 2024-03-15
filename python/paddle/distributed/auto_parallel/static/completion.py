@@ -1067,7 +1067,10 @@ class Completer:
         # step1: get tensor annotated with global mesh
         global_mesh = paddle.distributed.auto_parallel.get_mesh()
         if global_mesh is None:
-            raise ValueError("global_mesh must be set")
+            _logger.warning(
+                "global_mesh is not set, tensor annotation with global mesh may be not work, please use paddle.distributed.auto_parallel.set_mesh(mesh) firstly."
+            )
+            return [], []
         global_mesh_process_ids = global_mesh._process_ids
         tensor_names_with_global_mesh = []
         block = serial_main_program.global_block()
