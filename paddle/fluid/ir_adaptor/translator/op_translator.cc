@@ -286,11 +286,10 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
           << target_op_name;
   auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
   if (!op_info) {
-    PADDLE_ENFORCE(false,
-                   phi::errors::PreconditionNotMet(
-                       "Op %d should have corresponding OpInfo %d",
-                       op_desc.Type(),
-                       target_op_name));
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Op %d should have corresponding OpInfo %d",
+        op_desc.Type(),
+        target_op_name));
   }
 
   if (!paddle::dialect::HaveOpToMultiKernelsMap(
@@ -342,12 +341,10 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
                paddle::framework::proto::VarType::SELECTED_ROWS) {
       need_inputs_sig.emplace_back("selected_rows");
     } else {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument(
-              "Op %d only support dense tensor and selected_rows, but not %d",
-              op_desc.Type(),
-              var->GetType()));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op %d only support dense tensor and selected_rows, but not %d",
+          op_desc.Type(),
+          var->GetType()));
     }
   }
 
@@ -387,11 +384,10 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
     target_op_name += "_";
   }
   if (!op_info) {
-    PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
-                       "Op %d should have corresponding OpInfo %d",
-                       op_desc.Type(),
-                       target_op_name));
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Op %d should have corresponding OpInfo %d",
+        op_desc.Type(),
+        target_op_name));
   }
 
   return op_info;
@@ -444,8 +440,7 @@ pir::Value OpTranscriber::GetAttributeAsInput(pir::IrContext* ctx,
       op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
 
   if (!op_desc.HasAttr(legacy_attr_name)) {
-    PADDLE_ENFORCE(
-        false,
+    PADDLE_THROW(
         phi::errors::InvalidArgument("Op %s arg %s should not be zero size",
                                      op_desc.Type(),
                                      legacy_attr_name));
@@ -894,10 +889,8 @@ struct AssignOpTranscriber : public OpTranscriber {
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op assign should have corresponding OpInfo %s.",
-                         target_op_name));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op assign should have corresponding OpInfo %s.", target_op_name));
     }
 
     return op_info;
@@ -1008,10 +1001,8 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     if (op_desc.HasAttr("shape")) {
       legacy_attr = op_desc.GetAttr("shape");
     } else {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument(
-              "Op assign_value should have attribute `shape` but not find"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op assign_value should have attribute `shape` but not find"));
     }
     pir::Attribute attr_shape =
         attribute_translator(attr_info_maps.at("shape").type_name, legacy_attr);
@@ -1020,10 +1011,8 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     if (op_desc.HasAttr("dtype")) {
       legacy_attr = op_desc.GetAttr("dtype");
     } else {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument(
-              "Op assign_value should have attribute `dtype` but not find"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op assign_value should have attribute `dtype` but not find"));
     }
     pir::Attribute attr_dtype =
         attribute_translator(attr_info_maps.at("dtype").type_name, legacy_attr);
@@ -1167,11 +1156,10 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
             << target_op_name;
     auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op %d should have corresponding OpInfo %d",
-                         op_desc.Type(),
-                         target_op_name));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op %d should have corresponding OpInfo %d",
+          op_desc.Type(),
+          target_op_name));
     }
 
     return op_info;
@@ -1341,10 +1329,9 @@ struct SplitOpTranscriber : public OpTranscriber {
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op assign_value should have corresponding OpInfo %s.",
-                         target_op_name));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op assign_value should have corresponding OpInfo %s.",
+          target_op_name));
     }
 
     return op_info;
@@ -1435,10 +1422,8 @@ struct AddNOpTranscriber : public OpTranscriber {
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument(
-              "Op add_n should have corresponding OpInfo %s", target_op_name));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op add_n should have corresponding OpInfo %s", target_op_name));
     }
 
     return op_info;
@@ -1457,8 +1442,7 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
     }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(
-          false,
+      PADDLE_THROW(
           phi::errors::InvalidArgument("Op tril_triu should have corresponding "
                                        "OpInfo pd_op.tril or pd_op.triu."));
     }
@@ -1479,8 +1463,7 @@ struct TrilAndTriuGradOpTranscriber : public OpTranscriber {
     }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(
-          false,
+      PADDLE_THROW(
           phi::errors::InvalidArgument("Op tril_triu_grad should have "
                                        "corresponding OpInfo pd_op.tril_grad "
                                        "or "
@@ -1515,10 +1498,12 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
   const auto& defining_info = param_map->at(name);
 
   pir::Value value = defining_info.value;
-  PADDLE_ENFORCE_NOT_NULL(
-      !IsInvalid(value),
-      phi::errors::NotFound(
-          "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
+  if (!IsInvalid(value)) {
+    PADDLE_ENFORCE_NOT_NULL(
+        defining_info.value,
+        phi::errors::NotFound(
+            "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
+  }
   const pir::Type& type = value.type();
   PADDLE_ENFORCE_EQ(type.isa<dialect::DenseTensorType>(),
                     true,
@@ -1554,11 +1539,10 @@ struct MulOpTranscriber : public OpTranscriber {
     const std::string& target_op_name = paddle::dialect::MatmulOp::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op %d should have corresponding OpInfo %d",
-                         op_desc.Type(),
-                         target_op_name));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op %d should have corresponding OpInfo %d",
+          op_desc.Type(),
+          target_op_name));
     }
     return op_info;
   }
@@ -1731,11 +1715,10 @@ struct MulGradOpTranscriber : public OpTranscriber {
             << target_op_name;
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op %d should have corresponding OpInfo %d",
-                         op_desc.Type(),
-                         target_op_name));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op %d should have corresponding OpInfo %d",
+          op_desc.Type(),
+          target_op_name));
     }
     return op_info;
   }
@@ -1883,10 +1866,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
       auto idx_iter = arg_to_idx.find(grad_var_name);
       if (idx_iter == arg_to_idx.end()) {
-        PADDLE_ENFORCE(
-            false,
-            phi::errors::InvalidArgument(
-                "op[%s] should have got its %s", op_desc.Type(), var_name));
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "op[%s] should have got its %s", op_desc.Type(), var_name));
       }
       auto [idx_in_op, idx_in_vec] = idx_iter->second;
       VLOG(10) << "[output recording]"
@@ -1907,11 +1888,13 @@ struct MulGradOpTranscriber : public OpTranscriber {
       pir::Value value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
 
-      PADDLE_ENFORCE_NOT_NULL(
-          !IsInvalid(value_res),
-          phi::errors::NotFound("Expected op[%s]'s input %s is not null",
-                                op_desc.Type(),
-                                grad_var_name));
+      if (!IsInvalid(value_res)) {
+        PADDLE_ENFORCE_NOT_NULL(
+            operation->result(idx_in_op),
+            phi::errors::NotFound("Expected op[%s]'s input %s is not null",
+                                  op_desc.Type(),
+                                  grad_var_name));
+      }
       pir::Type grad_type = value_res.type();
       PADDLE_ENFORCE_EQ(
           grad_type.isa<dialect::DenseTensorType>(),
@@ -1946,10 +1929,8 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
                            const OpDesc& op_desc) override {
     const auto& op_info = ctx->GetRegisteredOpInfo(dialect::FullOp::name());
     if (!op_info) {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument(
-              "Op fill_constant should have corresponding OpInfo pd_op.full"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op fill_constant should have corresponding OpInfo pd_op.full"));
     }
 
     return op_info;
@@ -2030,10 +2011,9 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
                            const OpDesc& op_desc) override {
     const auto& op_info = ctx->GetRegisteredOpInfo("pd_op.full_with_tensor");
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op fill_constant should have corresponding OpInfo "
-                         "pd_op.full_with_tensor"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op fill_constant should have corresponding OpInfo "
+          "pd_op.full_with_tensor"));
     }
 
     return op_info;
@@ -2183,21 +2163,19 @@ struct SelectInputOpTranscriber : public OpTranscriber {
                        0, undefined_prefix.size()) == undefined_prefix) {
           // do nothing
         } else {
-          PADDLE_ENFORCE(
-              false,
-              phi::errors::InvalidArgument(
-                  "select_input only support same type or DenseTensorType with "
-                  "only different dim, but get dtype:[%s, %s], layout:[%s, "
-                  "%s], "
-                  "lod:[%s, %s], offset:[%s, %s].",
-                  tensor1.dtype(),
-                  tensor2.dtype(),
-                  tensor1.data_layout(),
-                  tensor2.data_layout(),
-                  tensor1.lod(),
-                  tensor2.lod(),
-                  tensor1.offset(),
-                  tensor2.offset()));
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "select_input only support same type or DenseTensorType with "
+              "only different dim, but get dtype:[%s, %s], layout:[%s, "
+              "%s], "
+              "lod:[%s, %s], offset:[%s, %s].",
+              tensor1.dtype(),
+              tensor2.dtype(),
+              tensor1.data_layout(),
+              tensor2.data_layout(),
+              tensor1.lod(),
+              tensor2.lod(),
+              tensor1.offset(),
+              tensor2.offset()));
         }
 
         auto undefined_var_type = tensor1;
@@ -2250,8 +2228,7 @@ struct SelectInputOpTranscriber : public OpTranscriber {
                                                 tensor1.lod(),
                                                 tensor1.offset()));
     } else {
-      PADDLE_ENFORCE(
-          false,
+      PADDLE_THROW(
           phi::errors::InvalidArgument("select_input only support same type or "
                                        "DenseTensorType with only "
                                        "different dim, now is %s != %s.",
@@ -2354,8 +2331,7 @@ pir::Value TranslateNumClassesForOneHot(pir::IrContext* ctx,
 
   auto& attribute_translator = AttributeTranslator::instance();
   if (!op_desc.HasAttr(legacy_attr_name)) {
-    PADDLE_ENFORCE(
-        false,
+    PADDLE_THROW(
         phi::errors::InvalidArgument("Op %s arg %s should not be zero size",
                                      op_desc.Type(),
                                      legacy_attr_name));
@@ -2479,10 +2455,13 @@ struct ElementwiseTranscriber : public OpTranscriber {
       x_defining_info = param_map->at(x_name);
     }
     pir::Value x_value = x_defining_info.value;
-    PADDLE_ENFORCE_NOT_NULL(
-        !IsInvalid(x_value),
-        phi::errors::NotFound(
-            "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
+    if (!IsInvalid(x_value)) {
+      PADDLE_ENFORCE_NOT_NULL(
+          x_defining_info.value,
+          phi::errors::NotFound("Expected op[%s]'s input %s is not null",
+                                op_desc.Type(),
+                                x_name));
+    }
     pir::Type x_type = x_value.type();
     PADDLE_ENFORCE_EQ(
         x_type.isa<dialect::DenseTensorType>(),
@@ -2518,10 +2497,13 @@ struct ElementwiseTranscriber : public OpTranscriber {
       y_defining_info = param_map->at(y_name);
     }
     pir::Value y_value = y_defining_info.value;
-    PADDLE_ENFORCE_NOT_NULL(
-        !IsInvalid(y_value),
-        phi::errors::NotFound(
-            "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
+    if (!IsInvalid(y_value)) {
+      PADDLE_ENFORCE_NOT_NULL(
+          y_defining_info.value,
+          phi::errors::NotFound("Expected op[%s]'s input %s is not null",
+                                op_desc.Type(),
+                                y_name));
+    }
     pir::Type y_type = y_value.type();
     PADDLE_ENFORCE_EQ(
         y_type.isa<dialect::DenseTensorType>(),
@@ -2593,10 +2575,9 @@ struct GradAddOpTranscriber : public ElementwiseTranscriber {
     }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op assign_value should have corresponding OpInfo "
-                         "pd_op.assign_value_"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op assign_value should have corresponding OpInfo "
+          "pd_op.assign_value_"));
     }
 
     return op_info;
@@ -2632,9 +2613,8 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
 
     auto idx_iter = arg_to_idx.find(y_grad_var_name);
     if (idx_iter == arg_to_idx.end()) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "op[%s] should have got its y_grad", op_desc.Type()));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "op[%s] should have got its y_grad", op_desc.Type()));
     }
     auto [idx_in_op, idx_in_vec] = idx_iter->second;
     VLOG(10) << "[output recording]"
@@ -2651,10 +2631,14 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
                           y_name));
     auto y_defining_info = param_map->at(y_name);
     pir::Value y_value = y_defining_info.value;
-    PADDLE_ENFORCE_NOT_NULL(
-        !IsInvalid(y_value),
-        phi::errors::NotFound(
-            "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
+    if (!IsInvalid(y_value)) {
+      PADDLE_ENFORCE_NOT_NULL(
+          y_defining_info.value,
+          phi::errors::NotFound("Expected op[%s]'s input %s is not null",
+                                op_desc.Type(),
+                                y_name));
+    }
+
     pir::Type y_type = y_value.type();
     PADDLE_ENFORCE_EQ(
         y_type.isa<dialect::DenseTensorType>(),
@@ -2705,8 +2689,7 @@ struct SetValueOpTranscriber : public OpTranscriber {
         op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
 
     if (!op_desc.HasAttr(legacy_attr_name)) {
-      PADDLE_ENFORCE(
-          false,
+      PADDLE_THROW(
           phi::errors::InvalidArgument("Op %s arg %s should not be zero size",
                                        op_desc.Type(),
                                        legacy_attr_name));
@@ -2729,10 +2712,9 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
     std::string target_op_name = dialect::SetValueWithTensorOp::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op set_value should have corresponding OpInfo "
-                         "pd_op.set_value_with_tensor"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op set_value should have corresponding OpInfo "
+          "pd_op.set_value_with_tensor"));
     }
 
     return op_info;
@@ -2779,10 +2761,9 @@ struct SetValueGradOpTranscriber : public SetValueWithTensorOpTranscriber {
     std::string target_op_name = dialect::SetValueWithTensorGradOp::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op set_value_grad should have corresponding OpInfo "
-                         "pd_op.set_value_with_tensor_grad"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op set_value_grad should have corresponding OpInfo "
+          "pd_op.set_value_with_tensor_grad"));
     }
 
     return op_info;
@@ -2878,10 +2859,9 @@ struct ShareBufferOpTranscriber : public OpTranscriber {
     std::string target_op_name = dialect::ShareDataOp::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op share_buffer should have corresponding OpInfo "
-                         "pd_op.share_data"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op share_buffer should have corresponding OpInfo "
+          "pd_op.share_data"));
     }
 
     return op_info;
@@ -3022,11 +3002,9 @@ struct FusedElemwiseAddActivationGradOpTranscriber
                            const OpDesc& op_desc) override {
     const auto inter_out_grad = op_desc.Output("IntermediateOut@GRAD");
     if (inter_out_grad.size() > 0) {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument(
-              "pd_op.fused_elemwise_add_activation_grad doesn't have "
-              "Intermediate_out_grad output"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "pd_op.fused_elemwise_add_activation_grad doesn't have "
+          "Intermediate_out_grad output"));
     }
 
     return OpTranscriber::LookUpOpInfo(ctx, op_desc);
@@ -3044,8 +3022,7 @@ struct MatrixRankOpTranscriber : public OpTranscriber {
     }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(
-          false,
+      PADDLE_THROW(
           phi::errors::InvalidArgument("Op matrix_rank should have "
                                        "corresponding OpInfo pd_op.matrix_rank "
                                        "or "
@@ -3061,10 +3038,9 @@ struct LodArrayLengthOpTranscriber : public OpTranscriber {
     std::string target_op_name = dialect::ArrayLengthOp::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op lod_array_length should have corresponding OpInfo "
-                         "pd_op.array_length"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op lod_array_length should have corresponding OpInfo "
+          "pd_op.array_length"));
     }
 
     return op_info;
@@ -3122,10 +3098,9 @@ struct WriteArrayOpTranscriber : public OpTranscriber {
     std::string target_op_name = dialect::ArrayWrite_Op::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op write_to_array should have corresponding OpInfo "
-                         "pd_op.array_write_"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op write_to_array should have corresponding OpInfo "
+          "pd_op.array_write_"));
     }
 
     return op_info;
@@ -3183,10 +3158,9 @@ struct ReadArrayOpTranscriber : public OpTranscriber {
     std::string target_op_name = dialect::ArrayReadOp::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op read_from_array should have corresponding OpInfo "
-                         "pd_op.read_array"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op read_from_array should have corresponding OpInfo "
+          "pd_op.read_array"));
     }
 
     return op_info;
@@ -3240,10 +3214,8 @@ struct SliceOpTranscriber : public OpTranscriber {
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument(
-              "Op slice should have corresponding OpInfo %s", target_op_name));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op slice should have corresponding OpInfo %s", target_op_name));
     }
 
     return op_info;
@@ -3260,8 +3232,7 @@ struct LegacyMatmulOpTranscriber : public OpTranscriber {
       }
       float v = PADDLE_GET_CONST(float, op_desc.GetAttr(attr_name));
       if (abs(v - expected_value) > 1e-6f) {
-        PADDLE_ENFORCE(
-            false,
+        PADDLE_THROW(
             phi::errors::InvalidArgument("Expected op[%s]'s attr %s is not %f",
                                          op_desc.Type(),
                                          attr_name,
@@ -3276,10 +3247,9 @@ struct LegacyMatmulOpTranscriber : public OpTranscriber {
     std::string target_op_name = dialect::MatmulOp::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op read_from_array should have corresponding OpInfo "
-                         "pd_op.read_array"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op read_from_array should have corresponding OpInfo "
+          "pd_op.read_array"));
     }
 
     return op_info;
@@ -3309,9 +3279,8 @@ struct LegacyMatmulOpTranscriber : public OpTranscriber {
 
     auto idx_iter = arg_to_idx.find(output_vars[0]);
     if (idx_iter == arg_to_idx.end()) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "op[%s] should have got its `Out`", op_desc.Type()));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "op[%s] should have got its `Out`", op_desc.Type()));
     }
     auto [idx_in_op, idx_in_vec] = idx_iter->second;
     VLOG(10) << "[output recording]"
