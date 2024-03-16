@@ -54,6 +54,32 @@ DEFAULT_RECOMPUTABLE_OPS: List[str] = [
     "pd_op.where",
     "pd_op.sin",
     "pd_op.cos",
+    "pd_op.add_n",
+    "pd_op.any",
+    "pd_op.bitwise_and",
+    "pd_op.cast",
+    "pd_op.concat",
+    "pd_op.full_with_tensor",
+    "pd_op.gather_nd",
+    "pd_op.greater_than",
+    "pd_op.less_than",
+    "pd_op.logical_and",
+    "pd_op.logical_not",
+    "pd_op.not_equal",
+    "pd_op.pow",
+    "pd_op.shape",
+    "pd_op.slice",
+    "pd_op.squeeze",
+    "pd_op.unsqueeze",
+    "pd_op.transpose",
+    "pd_op.where",
+    "pd_op.prod",
+    "pd_op.log",
+    "pd_op.max",
+    "pd_op.expand_as",
+    "pd_op.split",
+    "pd_op.arange",
+    "pd_op.put_along_axis",
 ]
 
 VIEW_OPS: List[str] = []
@@ -66,8 +92,8 @@ COMPUTE_INTENSIVE_OPS: List[str] = [
     "pd_op.layer_norm",
     "pd_op.batchnorm",
     "pd_op.softmax",
-    "pd_op.add_n",
 ]
+
 
 AGGRESSIVE_RECOMPUTATION = False
 # Restricts the amount of computation recompute can do.
@@ -80,6 +106,7 @@ def auto_recompute(
     outputs: Sequence[pir.Value],
     grad_outputs: Sequence[pir.Value],
     fwd_op_end_idx: int,
+    backward_op_start_idx: int,
     recomputable_ops: Sequence[str] = None,
 ) -> Tuple[paddle.static.Program, int]:
     '''
@@ -103,6 +130,7 @@ def auto_recompute(
         grad_outputs:(list[Value]|tuple(Value)): initial gradient values
             of `outputs` .
         forward_op_end_idx(int): The index of the last forward op.
+        backward_op_start_idx(int): The index of the start backward op.
         recomputable_ops(list[str]|tuple(str)|None): The op names that can
             be recomputed. If 'recompute_ops' is None, we will use the
             default recomputable_ops. Default None.
@@ -144,6 +172,7 @@ def auto_recompute(
         >>>         [out],
         >>>         grad_outputs=[out_grad],
         >>>         fwd_op_end_idx=2,
+        >>>         backward_op_start_idx=4
         >>>     )
         >>>     exe = paddle.static.Executor(paddle.CUDAPlace(0))
         >>>     res = exe.run(
@@ -355,7 +384,12 @@ def auto_recompute(
         program_after_recompute,
         fwd_op_end_idx_after_recompute,
     ) = partition_joint_graph(
-        program, saved_values, inputs, outputs, fwd_op_end_idx
+        program,
+        saved_values,
+        inputs,
+        outputs,
+        fwd_op_end_idx,
+        backward_op_start_idx,
     )
     return program_after_recompute, fwd_op_end_idx_after_recompute
 
@@ -366,6 +400,7 @@ def partition_joint_graph(
     inputs: List[pir.Value],
     outputs: List[pir.Value],
     fwd_op_end_idx: int,
+    backward_op_start_idx: int,
 ) -> Tuple[paddle.static.Program, int]:
     """
     Partition the joint graph, recompute the intermediate values
@@ -379,6 +414,7 @@ def partition_joint_graph(
         outputs(list[valueiable]): The out values
             of the forward graph.
         forward_op_end_idx(int): The index of the last forward op.
+        backward_op_start_idx(int): The index of the start backward op.
     Returns:
         recomputed_program(Program): The recomputed program.
         fwd_op_end_idx(int): The index of the last forward op in
@@ -389,19 +425,28 @@ def partition_joint_graph(
 
     # 1. Analyze the program, get all forward porgram mid hold values
     mid_hold_values = analyze_mid_hold_values(
-        program, saved_values, inputs, outputs, fwd_op_end_idx
+        program,
+        saved_values,
+        inputs,
+        outputs,
+        fwd_op_end_idx,
+        backward_op_start_idx,
     )
 
     # 2. Extract the recompute subgraph and replace forward mid hold values with recompute subgraph's outputs
     program, fwd_op_end_idx = replace_mid_values_with_forward_subgraph(
-        program, saved_values, mid_hold_values, fwd_op_end_idx
+        program,
+        saved_values,
+        mid_hold_values,
+        fwd_op_end_idx,
+        backward_op_start_idx,
     )
 
     return program, fwd_op_end_idx
 
 
 def replace_mid_values_with_forward_subgraph(
-    program, saved_values, mid_values, fwd_op_end_idx
+    program, saved_values, mid_values, fwd_op_end_idx, backward_op_start_idx
 ):
     def _extract_forward_recompute_subgraph_for_backward(
         saved_values, mid_values
@@ -458,8 +503,8 @@ def replace_mid_values_with_forward_subgraph(
         return recompute_subgraph
 
     forward_ops = set(program.global_block().ops[: fwd_op_end_idx + 1])
-    backward_ops = set(program.global_block().ops[fwd_op_end_idx + 1 :])
-    first_backward_op = program.global_block().ops[fwd_op_end_idx + 1]
+    backward_ops = set(program.global_block().ops[backward_op_start_idx:])
+    first_backward_op = program.global_block().ops[backward_op_start_idx]
 
     # 1. find forward subgraph to recompute mid values that backward need to hold.
     recompute_forward_subgraph = (
@@ -485,7 +530,7 @@ def replace_mid_values_with_forward_subgraph(
 
     # 4. reset recomputed ops location in program
     reseted_ops = set()
-    backward_ops_list = program.global_block().ops[fwd_op_end_idx + 1 :]
+    backward_ops_list = program.global_block().ops[backward_op_start_idx:]
     for op in backward_ops_list:
         op_inputs = op.operands_source()
         for op_input in op_inputs:
@@ -510,11 +555,8 @@ def classify_value_node(program, grad_outputs, fwd_op_end_idx):
     required_bw_value_nodes = backward_utils.ValueSet()
     required_bw_ops = set()
     for grad_output in grad_outputs:
-        required_bw_ops = (
-            required_bw_ops
-            | find_child_ops(grad_output)
-            | find_parent_ops(grad_output)
-        )
+        required_bw_ops = required_bw_ops | find_child_ops(grad_output)
+        required_bw_ops.add(grad_output.get_defining_op())
     for required_bw_op in required_bw_ops:
         bw_op_outputs = required_bw_op.results()
         required_bw_value_nodes = (
@@ -634,10 +676,15 @@ def cal_value_nodes_dist_to_backward(all_ops, required_fw_value_nodes):
 
 
 def analyze_mid_hold_values(
-    program, saved_values, inputs, outputs, fwd_op_end_idx
+    program,
+    saved_values,
+    inputs,
+    outputs,
+    fwd_op_end_idx,
+    backward_op_start_idx,
 ):
     forward_ops = set(program.global_block().ops[: fwd_op_end_idx + 1])
-    backward_ops = set(program.global_block().ops[fwd_op_end_idx + 1 :])
+    backward_ops = set(program.global_block().ops[backward_op_start_idx:])
     mid_hold_values = backward_utils.ValueSet()
     for op in forward_ops:
         for result in op.results():
