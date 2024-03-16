@@ -288,9 +288,9 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   if (!op_info) {
     PADDLE_ENFORCE(false,
                    phi::errors::PreconditionNotMet(
-                       "Op %d should have corresponding OpInfo %d"),
-                   op_desc.Type(),
-                   target_op_name);
+                       "Op %d should have corresponding OpInfo %d",
+                       op_desc.Type(),
+                       target_op_name));
   }
 
   if (!paddle::dialect::HaveOpToMultiKernelsMap(
@@ -321,8 +321,8 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
         legacy_input_vars.size() <= 1,
         true,
         phi::errors::InvalidArgument("Do not support duplicable tensor input, "
-                                     "when op have multi kernels. OP is %s."),
-        op_desc.Type());
+                                     "when op have multi kernels. OP is %s.",
+                                     op_desc.Type()));
 
     if (legacy_input_vars.empty()) {
       need_inputs_sig.emplace_back("");
@@ -332,9 +332,9 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
     PADDLE_ENFORCE_EQ(
         var != nullptr,
         true,
-        phi::errors::InvalidArgument("[Op:%s] Input %s should not be null"),
-        op_desc.Type(),
-        legacy_input_vars[0]);
+        phi::errors::InvalidArgument("[Op:%s] Input %s should not be null",
+                                     op_desc.Type(),
+                                     legacy_input_vars[0]));
 
     if (var->GetType() == paddle::framework::proto::VarType::LOD_TENSOR) {
       need_inputs_sig.emplace_back("dense");
@@ -345,9 +345,9 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
       PADDLE_ENFORCE(
           false,
           phi::errors::InvalidArgument(
-              "Op %d only support dense tensor and selected_rows, but not %d"),
-          op_desc.Type(),
-          var->GetType());
+              "Op %d only support dense tensor and selected_rows, but not %d",
+              op_desc.Type(),
+              var->GetType()));
     }
   }
 
@@ -378,9 +378,9 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   PADDLE_ENFORCE_EQ(
       !target_op_name.empty(),
       true,
-      phi::errors::InvalidArgument("Op %d should have corresponding OpInfo %d"),
-      op_desc.Type(),
-      target_op_name);
+      phi::errors::InvalidArgument("Op %d should have corresponding OpInfo %d",
+                                   op_desc.Type(),
+                                   target_op_name));
 
   target_op_name = GetPrefix(ctx, op_desc) + target_op_name;
   if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
@@ -389,9 +389,9 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   if (!op_info) {
     PADDLE_ENFORCE(false,
                    phi::errors::InvalidArgument(
-                       "Op %d should have corresponding OpInfo %d"),
-                   op_desc.Type(),
-                   target_op_name);
+                       "Op %d should have corresponding OpInfo %d",
+                       op_desc.Type(),
+                       target_op_name));
   }
 
   return op_info;
@@ -446,9 +446,9 @@ pir::Value OpTranscriber::GetAttributeAsInput(pir::IrContext* ctx,
   if (!op_desc.HasAttr(legacy_attr_name)) {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument("Op %s arg %s should not be zero size"),
-        op_desc.Type(),
-        legacy_attr_name);
+        phi::errors::InvalidArgument("Op %s arg %s should not be zero size",
+                                     op_desc.Type(),
+                                     legacy_attr_name));
   }
   paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
   VLOG(10) << "[" << op_desc.Type() << "][attribute]"
@@ -552,9 +552,9 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
       PADDLE_ENFORCE_EQ(
           var != nullptr,
           true,
-          phi::errors::InvalidArgument("[op:%s] Input %s should not be null"),
-          op_desc.Type(),
-          legacy_input_vars[0]);
+          phi::errors::InvalidArgument("[op:%s] Input %s should not be null",
+                                       op_desc.Type(),
+                                       legacy_input_vars[0]));
       if (var->GetType() ==
           paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
         is_vector = false;
@@ -566,15 +566,16 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
       PADDLE_ENFORCE_EQ(
           legacy_input_vars.size() == 1u,
           true,
-          phi::errors::InvalidArgument("Input %s not found when parsing op %s"),
-          info.name,
-          op_desc.Type());
+          phi::errors::InvalidArgument("Input %s not found when parsing op %s",
+                                       info.name,
+                                       op_desc.Type()));
       PADDLE_ENFORCE_EQ(param_map->count(legacy_input_vars[0]),
-                        true phi::errors::InvalidArgument(
-                            "Input [%s: %s] of op [%s] not found in param map"),
-                        info.name,
-                        legacy_input_vars[0],
-                        op_desc.Type());
+                        true,
+                        phi::errors::InvalidArgument(
+                            "Input [%s: %s] of op [%s] not found in param map",
+                            info.name,
+                            legacy_input_vars[0],
+                            op_desc.Type()));
       auto defining_info = (*param_map)[legacy_input_vars[0]];
       op_inputs.push_back(defining_info.value);
 
@@ -619,9 +620,9 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
           info.optional,
           true,
           phi::errors::InvalidArgument(
-              "Op %s arg %s should be optional if it can be empty"),
-          op_desc.Type(),
-          legacy_output_name);
+              "Op %s arg %s should be optional if it can be empty",
+              op_desc.Type(),
+              legacy_output_name));
       op_output_types.emplace_back(nullptr);
       continue;
     }
@@ -641,9 +642,9 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
       PADDLE_ENFORCE_EQ(
           var != nullptr,
           true,
-          phi::errors::InvalidArgument("[op:%s] Output %s should not be null"),
-          op_desc.Type(),
-          legacy_output_vars[0]);
+          phi::errors::InvalidArgument("[op:%s] Output %s should not be null",
+                                       op_desc.Type(),
+                                       legacy_output_vars[0]));
       if (var->GetType() ==
           paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
         pir::Type translated_var_type =
@@ -670,9 +671,9 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
       PADDLE_ENFORCE_EQ(
           var != nullptr,
           true,
-          phi::errors::InvalidArgument("[op:%s] Output %s should not be null"),
-          op_desc.Type(),
-          var_name);
+          phi::errors::InvalidArgument("[op:%s] Output %s should not be null",
+                                       op_desc.Type(),
+                                       var_name));
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "]" << info.name
                << " var: " << var_name << " type: " << var->GetType();
@@ -698,12 +699,12 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
           continue;
         }
         VarDesc* var = block->FindVarRecursive(var_name);
-        PADDLE_ENFORCE_EQ(var != nullptr,
-                          true,
-                          phi::errors::InvalidArgument(
-                              "[op:%s] Output %s should not be null"),
-                          op_desc.Type(),
-                          var_name);
+        PADDLE_ENFORCE_EQ(
+            var != nullptr,
+            true,
+            phi::errors::InvalidArgument("[op:%s] Output %s should not be null",
+                                         op_desc.Type(),
+                                         var_name));
         VLOG(10) << "[output translating]"
                  << "[" << op_desc.Type() << "]" << info.name
                  << " var: " << var_name << " type: " << var->GetType();
@@ -873,18 +874,17 @@ struct AssignOpTranscriber : public OpTranscriber {
                            const OpDesc& op_desc) override {
     std::string target_op_name;
 
-    PADDLE_ENFORCE_EQ(
-        op_desc.HasInput("X"),
-        true,
-        phi::errors::InvalidArgument("op %s should have input `X`"),
-        op_desc.Type());
+    PADDLE_ENFORCE_EQ(op_desc.HasInput("X"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "op %s should have input `X`", op_desc.Type()));
     const auto& input_vars = op_desc.Input("X");
     PADDLE_ENFORCE_EQ(input_vars.size() == 1,
                       true,
                       phi::errors::InvalidArgument(
-                          "op %s should have one input `X`, but got %d."),
-                      op_desc.Type(),
-                      input_vars.size());
+                          "op %s should have one input `X`, but got %d.",
+                          op_desc.Type(),
+                          input_vars.size()));
     const auto* input_var = op_desc.Block()->FindVarRecursive(input_vars[0]);
     if (input_var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) {
       target_op_name = dialect::AssignArray_Op::name();
@@ -896,8 +896,8 @@ struct AssignOpTranscriber : public OpTranscriber {
     if (!op_info) {
       PADDLE_ENFORCE(false,
                      phi::errors::InvalidArgument(
-                         "Op assign should have corresponding OpInfo %s."),
-                     target_op_name);
+                         "Op assign should have corresponding OpInfo %s.",
+                         target_op_name));
     }
 
     return op_info;
@@ -1106,9 +1106,9 @@ pir::Value TranslateDropOutStateIn(pir::IrContext* ctx,
   PADDLE_ENFORCE_EQ(
       dropout_state != nullptr,
       true,
-      phi::errors::InvalidArgument("[op:%s] Output %s should not be null"),
-      op_desc.Type(),
-      legacy_output_vars[0]);
+      phi::errors::InvalidArgument("[op:%s] Output %s should not be null",
+                                   op_desc.Type(),
+                                   legacy_output_vars[0]));
   auto& type_translator = TypeTranslator::instance();
   pir::Type translated_var_type =
       type_translator[dropout_state->GetType()](ctx, *dropout_state);
@@ -1169,9 +1169,9 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
     if (!op_info) {
       PADDLE_ENFORCE(false,
                      phi::errors::InvalidArgument(
-                         "Op %d should have corresponding OpInfo %d"),
-                     op_desc.Type(),
-                     target_op_name);
+                         "Op %d should have corresponding OpInfo %d",
+                         op_desc.Type(),
+                         target_op_name));
     }
 
     return op_info;
@@ -1341,11 +1341,10 @@ struct SplitOpTranscriber : public OpTranscriber {
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument(
-              "Op assign_value should have corresponding OpInfo %s."),
-          target_op_name);
+      PADDLE_ENFORCE(false,
+                     phi::errors::InvalidArgument(
+                         "Op assign_value should have corresponding OpInfo %s.",
+                         target_op_name));
     }
 
     return op_info;
@@ -1436,10 +1435,10 @@ struct AddNOpTranscriber : public OpTranscriber {
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op add_n should have corresponding OpInfo %s"),
-                     target_op_name);
+      PADDLE_ENFORCE(
+          false,
+          phi::errors::InvalidArgument(
+              "Op add_n should have corresponding OpInfo %s", target_op_name));
     }
 
     return op_info;
@@ -1503,33 +1502,31 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
       names.size(),
       1UL,
       phi::errors::InvalidArgument(
-          "Expected op[%s]'s input %s has only 1 variable, but got %d"),
-      op_desc.Type(),
-      var_name,
-      names.size());
+          "Expected op[%s]'s input %s has only 1 variable, but got %d",
+          op_desc.Type(),
+          var_name,
+          names.size()));
   const auto& name = names[0];
-  PADDLE_ENFORCE_GT(param_map->count(name),
-                    0UL,
-                    phi::errors::InvalidArgument(
-                        "Expected op[%s]'s input %s has been parsed"),
-                    op_desc.Type(),
-                    name);
+  PADDLE_ENFORCE_GT(
+      param_map->count(name),
+      0UL,
+      phi::errors::InvalidArgument(
+          "Expected op[%s]'s input %s has been parsed", op_desc.Type(), name));
   const auto& defining_info = param_map->at(name);
 
   pir::Value value = defining_info.value;
   PADDLE_ENFORCE_NOT_NULL(
       value,
-      phi::errors::InvalidArgument("Expected op[%s]'s input %s is not null"),
-      op_desc.Type(),
-      name);
+      phi::errors::InvalidArgument(
+          "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
   const pir::Type& type = value.type();
   PADDLE_ENFORCE_EQ(type.isa<dialect::DenseTensorType>(),
                     true,
                     phi::errors::InvalidArgument(
-                        "Expected op[%s]'s input %s is DenseTensor but got %s"),
-                    op_desc.Type(),
-                    name,
-                    type);
+                        "Expected op[%s]'s input %s is DenseTensor but got %s",
+                        op_desc.Type(),
+                        name,
+                        type));
   dialect::DenseTensorType tensor_type =
       type.dyn_cast<dialect::DenseTensorType>();
 
@@ -1559,9 +1556,9 @@ struct MulOpTranscriber : public OpTranscriber {
     if (!op_info) {
       PADDLE_ENFORCE(false,
                      phi::errors::InvalidArgument(
-                         "Op %d should have corresponding OpInfo %d"),
-                     op_desc.Type(),
-                     target_op_name);
+                         "Op %d should have corresponding OpInfo %d",
+                         op_desc.Type(),
+                         target_op_name));
     }
     return op_info;
   }
@@ -1601,10 +1598,10 @@ struct MulOpTranscriber : public OpTranscriber {
         true,
         phi::errors::InvalidArgument(
             "Expected op[%s]'s attr `x_num_col_dims` less than or equal to "
-            "dim of input X %s, but got %d"),
-        op_desc.Type(),
-        x_shape.size(),
-        x_num_col_dims);
+            "dim of input X %s, but got %d",
+            op_desc.Type(),
+            x_shape.size(),
+            x_num_col_dims));
 
     ValueInfo y_info = GetTensorInfoByVarName(
         op_desc, op_desc.Input("Y", true), param_map, "Y");
@@ -1616,10 +1613,10 @@ struct MulOpTranscriber : public OpTranscriber {
         true,
         phi::errors::InvalidArgument(
             "Expected op[%s]'s attr `y_num_col_dims` less than or equal to "
-            "dim of input Y %s, but got %d"),
-        op_desc.Type(),
-        y_shape.size(),
-        y_num_col_dims);
+            "dim of input Y %s, but got %d",
+            op_desc.Type(),
+            y_shape.size(),
+            y_num_col_dims));
 
     pir::Builder builder(ctx, block);
 
@@ -1736,9 +1733,9 @@ struct MulGradOpTranscriber : public OpTranscriber {
     if (!op_info) {
       PADDLE_ENFORCE(false,
                      phi::errors::InvalidArgument(
-                         "Op %d should have corresponding OpInfo %d"),
-                     op_desc.Type(),
-                     target_op_name);
+                         "Op %d should have corresponding OpInfo %d",
+                         op_desc.Type(),
+                         target_op_name));
     }
     return op_info;
   }
@@ -1778,10 +1775,10 @@ struct MulGradOpTranscriber : public OpTranscriber {
         true,
         phi::errors::InvalidArgument(
             "Expected op[%s]'s attr `x_num_col_dims` less than or equal to "
-            "dim of input X %s, but got %d"),
-        op_desc.Type(),
-        x_shape.size(),
-        x_num_col_dims);
+            "dim of input X %s, but got %d",
+            op_desc.Type(),
+            x_shape.size(),
+            x_num_col_dims));
 
     ValueInfo y_info = GetTensorInfoByVarName(
         op_desc, op_desc.Input("Y", true), param_map, "Y");
@@ -1793,10 +1790,10 @@ struct MulGradOpTranscriber : public OpTranscriber {
         true,
         phi::errors::InvalidArgument(
             "Expected op[%s]'s attr `y_num_col_dims` less than or equal to "
-            "dim of input Y %s, but got %d"),
-        op_desc.Type(),
-        y_shape.size(),
-        y_num_col_dims);
+            "dim of input Y %s, but got %d",
+            op_desc.Type(),
+            y_shape.size(),
+            y_num_col_dims));
 
     ValueInfo out_grad_info = GetTensorInfoByVarName(
         op_desc, op_desc.Input("Out@GRAD", true), param_map, "Out@GRAD");
@@ -1878,19 +1875,18 @@ struct MulGradOpTranscriber : public OpTranscriber {
           grad_output.size(),
           1UL,
           phi::errors::InvalidArgument(
-              "Expected op[%s]'s output %s has only 1 variable, but got %d"),
-          op_desc.Type(),
-          var_name,
-          grad_output.size());
+              "Expected op[%s]'s output %s has only 1 variable, but got %d",
+              op_desc.Type(),
+              var_name,
+              grad_output.size()));
       const auto& grad_var_name = grad_output[0];
 
       auto idx_iter = arg_to_idx.find(grad_var_name);
       if (idx_iter == arg_to_idx.end()) {
         PADDLE_ENFORCE(
             false,
-            phi::errors::InvalidArgument("op[%s] should have got its %s"),
-            op_desc.Type(),
-            var_name);
+            phi::errors::InvalidArgument(
+                "op[%s] should have got its %s", op_desc.Type(), var_name));
       }
       auto [idx_in_op, idx_in_vec] = idx_iter->second;
       VLOG(10) << "[output recording]"
@@ -1902,28 +1898,29 @@ struct MulGradOpTranscriber : public OpTranscriber {
       PADDLE_ENFORCE_EQ(
           var_desc != nullptr,
           true,
-          phi::errors::InvalidArgument("[op:%s] Input %s should not be null"),
-          op_desc.Type(),
-          var_name.substr(0, 1));
+          phi::errors::InvalidArgument("[op:%s] Input %s should not be null",
+                                       op_desc.Type(),
+                                       var_name.substr(0, 1)));
       std::vector<int64_t> shape = var_desc->GetShape();
       DenseTensorTypeStorage::Dim dim = common::make_ddim(shape);
 
       pir::Value value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
 
-      PADDLE_ENFORCE_NOT_NULL(value_res,
-                              phi::errors::InvalidArgument(
-                                  "Expected op[%s]'s input %s is not null"),
-                              op_desc.Type(),
-                              grad_var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          value_res,
+          phi::errors::InvalidArgument("Expected op[%s]'s input %s is not null",
+                                       op_desc.Type(),
+                                       grad_var_name));
       pir::Type grad_type = value_res.type();
       PADDLE_ENFORCE_EQ(
           grad_type.isa<dialect::DenseTensorType>(),
-          true phi::errors::InvalidArgument(
-              "Expected op[%s]'s input %s is DenseTensor but got %s"),
-          op_desc.Type(),
-          grad_var_name,
-          grad_type);
+          true,
+          phi::errors::InvalidArgument(
+              "Expected op[%s]'s input %s is DenseTensor but got %s",
+              op_desc.Type(),
+              grad_var_name,
+              grad_type));
       dialect::DenseTensorType grad_tensor_type =
           grad_type.dyn_cast<dialect::DenseTensorType>();
 
@@ -2138,17 +2135,17 @@ struct SelectInputOpTranscriber : public OpTranscriber {
     PADDLE_ENFORCE_GT(param_map->count(Mask_name),
                       0UL,
                       phi::errors::InvalidArgument(
-                          "Expected op[%s]'s input %s has been parsed"),
-                      op_desc.Type(),
-                      Mask_name);
+                          "Expected op[%s]'s input %s has been parsed",
+                          op_desc.Type(),
+                          Mask_name));
     op_inputs.push_back(param_map->at(Mask_name).value);
     for (auto in_name : Input_name) {
       PADDLE_ENFORCE_GT(param_map->count(in_name),
                         0UL,
                         phi::errors::InvalidArgument(
-                            "Expected op[%s]'s input %s has been parsed"),
-                        op_desc.Type(),
-                        in_name);
+                            "Expected op[%s]'s input %s has been parsed",
+                            op_desc.Type(),
+                            in_name));
       op_inputs.push_back(param_map->at(in_name).value);
     }
 
@@ -2192,15 +2189,15 @@ struct SelectInputOpTranscriber : public OpTranscriber {
                   "select_input only support same type or DenseTensorType with "
                   "only different dim, but get dtype:[%s, %s], layout:[%s, "
                   "%s], "
-                  "lod:[%s, %s], offset:[%s, %s]."),
-              tensor1.dtype(),
-              tensor2.dtype(),
-              tensor1.data_layout(),
-              tensor2.data_layout(),
-              tensor1.lod(),
-              tensor2.lod(),
-              tensor1.offset(),
-              tensor2.offset());
+                  "lod:[%s, %s], offset:[%s, %s].",
+                  tensor1.dtype(),
+                  tensor2.dtype(),
+                  tensor1.data_layout(),
+                  tensor2.data_layout(),
+                  tensor1.lod(),
+                  tensor2.lod(),
+                  tensor1.offset(),
+                  tensor2.offset()));
         }
 
         auto undefined_var_type = tensor1;
@@ -2214,9 +2211,9 @@ struct SelectInputOpTranscriber : public OpTranscriber {
             undefine_value.defining_op()->isa<dialect::AssignValueOp>(),
             true,
             phi::errors::InvalidArgument("undefined_var %s should be generated "
-                                         "by assign_value, but got %s"),
-            Input_name[undefined_var_index],
-            undefine_value.defining_op());
+                                         "by assign_value, but got %s",
+                                         Input_name[undefined_var_index],
+                                         undefine_value.defining_op()));
 
         undefine_value.set_type(target_var_type);
         undefine_value.defining_op()->set_attribute(
@@ -2257,9 +2254,9 @@ struct SelectInputOpTranscriber : public OpTranscriber {
           false,
           phi::errors::InvalidArgument("select_input only support same type or "
                                        "DenseTensorType with only "
-                                       "different dim, now is %s != %s."),
-          input1,
-          input2);
+                                       "different dim, now is %s != %s.",
+                                       input1,
+                                       input2));
     }
 
     pir::Operation* operation = pir::Operation::Create(
@@ -2286,16 +2283,16 @@ struct SelectOutputOpTranscriber : public OpTranscriber {
     PADDLE_ENFORCE_GT(param_map->count(Mask_name),
                       0UL,
                       phi::errors::InvalidArgument(
-                          "Expected op[%s]'s input %s has been parsed"),
-                      op_desc.Type(),
-                      Mask_name);
+                          "Expected op[%s]'s input %s has been parsed",
+                          op_desc.Type(),
+                          Mask_name));
     op_inputs.push_back(param_map->at(Mask_name).value);
     PADDLE_ENFORCE_GT(param_map->count(Input_name),
                       0UL,
                       phi::errors::InvalidArgument(
-                          "Expected op[%s]'s input %s has been parsed"),
-                      op_desc.Type(),
-                      Input_name);
+                          "Expected op[%s]'s input %s has been parsed",
+                          op_desc.Type(),
+                          Input_name));
     op_inputs.push_back(param_map->at(Input_name).value);
 
     pir::AttributeMap attribute_map;
@@ -2349,8 +2346,8 @@ pir::Value TranslateNumClassesForOneHot(pir::IrContext* ctx,
         param_map->count(legacy_vars[0]),
         true,
         phi::errors::InvalidArgument(
-            "%s should be existed in one_hot_v2 as input depth_tensor."),
-        legacy_vars[0]);
+            "%s should be existed in one_hot_v2 as input depth_tensor.",
+            legacy_vars[0]));
     auto defining_info = param_map->at(legacy_vars[0]);
     return defining_info.value;
   }
@@ -2359,9 +2356,9 @@ pir::Value TranslateNumClassesForOneHot(pir::IrContext* ctx,
   if (!op_desc.HasAttr(legacy_attr_name)) {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument("Op %s arg %s should not be zero size"),
-        op_desc.Type(),
-        legacy_attr_name);
+        phi::errors::InvalidArgument("Op %s arg %s should not be zero size",
+                                     op_desc.Type(),
+                                     legacy_attr_name));
   }
   paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
   VLOG(10) << "[" << op_desc.Type() << "][attribute]"
@@ -2386,18 +2383,18 @@ struct OneHotTranscriber : public OpTranscriber {
 pir::Attribute TranslateDtypeForArange(pir::IrContext* ctx,
                                        const OpDesc& op_desc,
                                        const OpAttributeInfo& attr_info) {
-  PADDLE_ENFORCE_EQ(op_desc.Input("Start").size(),
-                    1UL,
-                    phi::errors::InvalidArgument(
-                        "[op:%s] Input [Start]'s size should be equal to 1"),
-                    op_desc.Type());
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Start").size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "[op:%s] Input [Start]'s size should be equal to 1", op_desc.Type()));
   auto var_desc = op_desc.Block()->FindVarRecursive(op_desc.Input("Start")[0]);
   PADDLE_ENFORCE_EQ(
       var_desc != nullptr,
       true,
-      phi::errors::InvalidArgument("[op:%s] Input %s should not be null"),
-      op_desc.Type(),
-      op_desc.Input("Start")[0]);
+      phi::errors::InvalidArgument("[op:%s] Input %s should not be null",
+                                   op_desc.Type(),
+                                   op_desc.Input("Start")[0]));
   auto start_proto_dtype = var_desc->GetDataType();
   auto start_phi_dtype = phi::TransToPhiDataType(start_proto_dtype);
   auto dtype_attr =
@@ -2465,16 +2462,16 @@ struct ElementwiseTranscriber : public OpTranscriber {
         x_names.size(),
         1UL,
         phi::errors::InvalidArgument(
-            "Expected op[%s]'s input X has only 1 variable, but got %d"),
-        op_desc.Type(),
-        x_names.size());
+            "Expected op[%s]'s input X has only 1 variable, but got %d",
+            op_desc.Type(),
+            x_names.size()));
     auto x_name = x_names[0];
     PADDLE_ENFORCE_GT(param_map->count(x_name),
                       0UL,
                       phi::errors::InvalidArgument(
-                          "Expected op[%s]'s input %s has been parsed"),
-                      op_desc.Type(),
-                      x_name);
+                          "Expected op[%s]'s input %s has been parsed",
+                          op_desc.Type(),
+                          x_name));
     auto x_defining_info = param_map->at(x_name);
     if (x_defining_info.generated_by_vector) {
       InsertSliceOperationForTarget(
@@ -2482,21 +2479,19 @@ struct ElementwiseTranscriber : public OpTranscriber {
       x_defining_info = param_map->at(x_name);
     }
     pir::Value x_value = x_defining_info.value;
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NOT_NULL(
         x_value,
-        true,
-        phi::errors::InvalidArgument("Expected op[%s]'s input %s is not null"),
-        op_desc.Type(),
-        x_name);
+        phi::errors::InvalidArgument(
+            "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
     pir::Type x_type = x_value.type();
     PADDLE_ENFORCE_EQ(
         x_type.isa<dialect::DenseTensorType>(),
         true,
         phi::errors::InvalidArgument(
-            "Expected op[%s]'s input %s is DenseTensor but got %s"),
-        op_desc.Type(),
-        x_name,
-        x_type);
+            "Expected op[%s]'s input %s is DenseTensor but got %s",
+            op_desc.Type(),
+            x_name,
+            x_type));
     dialect::DenseTensorType x_tensor_type =
         x_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> x_shape = common::vectorize(x_tensor_type.dims());
@@ -2506,16 +2501,16 @@ struct ElementwiseTranscriber : public OpTranscriber {
         y_names.size(),
         1UL,
         phi::errors::InvalidArgument(
-            "Expected op[%s]'s input Y has only 1 variable, but got %d"),
-        op_desc.Type(),
-        y_names.size());
+            "Expected op[%s]'s input Y has only 1 variable, but got %d",
+            op_desc.Type(),
+            y_names.size()));
     auto y_name = y_names[0];
     PADDLE_ENFORCE_GT(param_map->count(y_name),
                       0UL,
                       phi::errors::InvalidArgument(
-                          "Expected op[%s]'s input %s has been parsed"),
-                      op_desc.Type(),
-                      y_name);
+                          "Expected op[%s]'s input %s has been parsed",
+                          op_desc.Type(),
+                          y_name));
     auto y_defining_info = param_map->at(y_name);
     if (y_defining_info.generated_by_vector) {
       InsertSliceOperationForTarget(
@@ -2523,21 +2518,19 @@ struct ElementwiseTranscriber : public OpTranscriber {
       y_defining_info = param_map->at(y_name);
     }
     pir::Value y_value = y_defining_info.value;
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NOT_NULL(
         y_value,
-        true,
-        phi::errors::InvalidArgument("Expected op[%s]'s input %s is not null"),
-        op_desc.Type(),
-        y_name);
+        phi::errors::InvalidArgument(
+            "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
     PADDLE_ENFORCE_EQ(
         y_type.isa<dialect::DenseTensorType>(),
         true,
         phi::errors::InvalidArgument(
-            "Expected op[%s]'s input %s is DenseTensor but got %s"),
-        op_desc.Type(),
-        y_name,
-        y_type);
+            "Expected op[%s]'s input %s is DenseTensor but got %s",
+            op_desc.Type(),
+            y_name,
+            y_type));
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> y_shape = common::vectorize(y_tensor_type.dims());
@@ -2555,10 +2548,10 @@ struct ElementwiseTranscriber : public OpTranscriber {
         append_size,
         0UL,
         phi::errors::InvalidArgument(
-            "Expected op[%s] have append size > 0 with axis=%d but got %d"),
-        op_desc.Type(),
-        axis,
-        append_size);
+            "Expected op[%s] have append size > 0 with axis=%d but got %d",
+            op_desc.Type(),
+            axis,
+            append_size));
 
     pir::Builder builder(ctx, block);
     pir::Value y_new;
@@ -2632,17 +2625,16 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
         y_grad_output.size(),
         1UL,
         phi::errors::InvalidArgument(
-            "Expected op[%s]'s output Y@GRAD has only 1 variable, but got %d"),
-        op_desc.Type(),
-        y_grad_output.size());
+            "Expected op[%s]'s output Y@GRAD has only 1 variable, but got %d",
+            op_desc.Type(),
+            y_grad_output.size()));
     const auto& y_grad_var_name = y_grad_output[0];
 
     auto idx_iter = arg_to_idx.find(y_grad_var_name);
     if (idx_iter == arg_to_idx.end()) {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument("op[%s] should have got its y_grad"),
-          op_desc.Type());
+      PADDLE_ENFORCE(false,
+                     phi::errors::InvalidArgument(
+                         "op[%s] should have got its y_grad", op_desc.Type()));
     }
     auto [idx_in_op, idx_in_vec] = idx_iter->second;
     VLOG(10) << "[output recording]"
@@ -2654,25 +2646,24 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
     PADDLE_ENFORCE_GT(param_map->count(y_name),
                       0UL,
                       phi::errors::InvalidArgument(
-                          "Expected op[%s]'s input %s has been parsed"),
-                      op_desc.Type(),
-                      y_name);
+                          "Expected op[%s]'s input %s has been parsed",
+                          op_desc.Type(),
+                          y_name));
     auto y_defining_info = param_map->at(y_name);
     pir::Value y_value = y_defining_info.value;
     PADDLE_ENFORCE_NOT_NULL(
         y_value,
-        phi::errors::InvalidArgument("Expected op[%s]'s input %s is not null"),
-        op_desc.Type(),
-        y_name);
+        phi::errors::InvalidArgument(
+            "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
     PADDLE_ENFORCE_EQ(
         y_type.isa<dialect::DenseTensorType>(),
         true,
         phi::errors::InvalidArgument(
-            "Expected op[%s]'s input %s is DenseTensor but got %s"),
-        op_desc.Type(),
-        y_name,
-        y_type);
+            "Expected op[%s]'s input %s is DenseTensor but got %s",
+            op_desc.Type(),
+            y_name,
+            y_type));
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
 
@@ -2684,10 +2675,10 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
         y_grad_type.isa<dialect::DenseTensorType>(),
         true,
         phi::errors::InvalidArgument(
-            "Expected op[%s]'s input %s is DenseTensor but got %s"),
-        op_desc.Type(),
-        y_grad_var_name,
-        y_grad_type);
+            "Expected op[%s]'s input %s is DenseTensor but got %s",
+            op_desc.Type(),
+            y_grad_var_name,
+            y_grad_type));
     dialect::DenseTensorType y_grad_tensor_type =
         y_grad_type.dyn_cast<dialect::DenseTensorType>();
     if (y_grad_tensor_type.dims() == y_tensor_type.dims()) {
@@ -2716,9 +2707,9 @@ struct SetValueOpTranscriber : public OpTranscriber {
     if (!op_desc.HasAttr(legacy_attr_name)) {
       PADDLE_ENFORCE(
           false,
-          phi::errors::InvalidArgument("Op %s arg %s should not be zero size"),
-          op_desc.Type(),
-          legacy_attr_name);
+          phi::errors::InvalidArgument("Op %s arg %s should not be zero size",
+                                       op_desc.Type(),
+                                       legacy_attr_name));
     }
     framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
     VLOG(10) << "[" << op_desc.Type() << "][attribute]"
@@ -2768,8 +2759,8 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
           legacy_input_vars.size(),
           1UL,
           phi::errors::InvalidArgument("[set_value][ValueTensor] should only "
-                                       "have 1 variable, but got %d"),
-          legacy_input_vars.size());
+                                       "have 1 variable, but got %d",
+                                       legacy_input_vars.size()));
       auto var_name = legacy_input_vars[0];
       auto defining_info = (*param_map)[var_name];
       if (defining_info.generated_by_vector) {
@@ -2869,9 +2860,9 @@ struct FusedFeedForwardOpTranscriber : public OpTranscriber {
       PADDLE_ENFORCE_EQ(output_vars.size(),
                         1UL,
                         phi::errors::InvalidArgument(
-                            "Expected op[%s]'s Out has only 1 var but got %s"),
-                        op_desc.Type(),
-                        output_vars.size());
+                            "Expected op[%s]'s Out has only 1 var but got %s",
+                            op_desc.Type(),
+                            output_vars.size()));
       auto output_var = output_vars[0];
       auto fused_feedforward_op =
           operation->dyn_cast<dialect::FusedFeedforwardOp>();
@@ -2915,9 +2906,8 @@ struct RandIntOpTranscriber : public OpTranscriber {
     PADDLE_ENFORCE_EQ(
         var != nullptr,
         true,
-        phi::errors::InvalidArgument("[op:%s] Output %s should not be null"),
-        op_desc.Type(),
-        var_name);
+        phi::errors::InvalidArgument(
+            "[op:%s] Output %s should not be null", op_desc.Type(), var_name));
     int dtype_attr_val = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
     paddle::framework::proto::VarType::Type var_type =
@@ -3101,15 +3091,15 @@ struct LodArrayLengthOpTranscriber : public OpTranscriber {
       PADDLE_ENFORCE_EQ(
           vars.size(),
           1UL,
-          phi::errors::InvalidArgument("Input `X` should be one variable %s"),
-          op_desc.Type());
+          phi::errors::InvalidArgument("Input `X` should be one variable %s",
+                                       op_desc.Type()));
       VLOG(10) << "[" << op_desc.Type() << "][input `x`] from " << vars[0];
       const VarDesc* var_desc = op_desc.Block()->FindVarRecursive(vars[0]);
-      PADDLE_ENFORCE_EQ(var_desc != nullptr,
-                        true,
-                        phi::errors::InvalidArgument(
-                            "VarDesc `%s` should be exist in legacy program"),
-                        vars[0]);
+      PADDLE_ENFORCE_EQ(
+          var_desc != nullptr,
+          true,
+          phi::errors::InvalidArgument(
+              "VarDesc `%s` should be exist in legacy program", vars[0]));
       auto defining_value = pir::Value(nullptr);
       if (param_map->count(var_desc->Name())) {
         VLOG(10) << "[" << op_desc.Type() << "][input `x`] var: " << vars[0]
@@ -3159,18 +3149,18 @@ struct WriteArrayOpTranscriber : public OpTranscriber {
           phi::errors::InvalidArgument(
               "Op write_to_array should have output `Out` but not found"));
       const auto& vars = op_desc.Output("Out");
-      PADDLE_ENFORCE_EQ(vars.size(),
-                        1UL,
-                        phi::errors::InvalidArgument(
-                            "Output `Out` should be one variable %s"),
-                        op_desc.Type());
+      PADDLE_ENFORCE_EQ(
+          vars.size(),
+          1UL,
+          phi::errors::InvalidArgument("Output `Out` should be one variable %s",
+                                       op_desc.Type()));
       VLOG(10) << "[" << op_desc.Type() << "][input `array`] from " << vars[0];
       const VarDesc* var_desc = op_desc.Block()->FindVarRecursive(vars[0]);
-      PADDLE_ENFORCE_EQ(var_desc != nullptr,
-                        true,
-                        phi::errors::InvalidArgument(
-                            "VarDesc `%s` should be exist in legacy program"),
-                        vars[0]);
+      PADDLE_ENFORCE_EQ(
+          var_desc != nullptr,
+          true,
+          phi::errors::InvalidArgument(
+              "VarDesc `%s` should be exist in legacy program", vars[0]));
       auto defining_value = pir::Value(nullptr);
       if (param_map->count(var_desc->Name())) {
         VLOG(10) << "[" << op_desc.Type() << "][input `array`] var: " << vars[0]
@@ -3208,40 +3198,38 @@ struct SliceOpTranscriber : public OpTranscriber {
                            const OpDesc& op_desc) override {
     std::string target_op_name = dialect::SliceOp::name();
 
-    PADDLE_ENFORCE_EQ(
-        op_desc.HasInput("Input"),
-        true,
-        phi::errors::InvalidArgument("op %s should have input `Input`"),
-        op_desc.Type());
+    PADDLE_ENFORCE_EQ(op_desc.HasInput("Input"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "op %s should have input `Input`", op_desc.Type()));
     const auto& input_vars = op_desc.Input("Input");
     PADDLE_ENFORCE_EQ(input_vars.size(),
                       1UL,
                       phi::errors::InvalidArgument(
-                          "op %s should have one input `Input`, but got %d."),
-                      op_desc.Type(),
-                      input_vars.size());
+                          "op %s should have one input `Input`, but got %d.",
+                          op_desc.Type(),
+                          input_vars.size()));
     const auto* input_var = op_desc.Block()->FindVarRecursive(input_vars[0]);
     if (input_var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-      PADDLE_ENFORCE_EQ(
-          op_desc.HasOutput("Out"),
-          true,
-          phi::errors::InvalidArgument("op %s should have input `Out`"),
-          op_desc.Type());
+      PADDLE_ENFORCE_EQ(op_desc.HasOutput("Out"),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "op %s should have input `Out`", op_desc.Type()));
       const auto& output_vars = op_desc.Output("Out");
       PADDLE_ENFORCE_EQ(output_vars.size(),
                         1UL,
                         phi::errors::InvalidArgument(
-                            "op %s should have one input `Out`, but got %d."),
-                        op_desc.Type(),
-                        output_vars.size());
+                            "op %s should have one input `Out`, but got %d.",
+                            op_desc.Type(),
+                            output_vars.size()));
       const auto* output_var =
           op_desc.Block()->FindVarRecursive(output_vars[0]);
       PADDLE_ENFORCE_EQ(output_var != nullptr,
                         true,
                         phi::errors::InvalidArgument(
-                            "op %s should have non-empty output `%s`."),
-                        op_desc.Type(),
-                        output_vars[0]);
+                            "op %s should have non-empty output `%s`.",
+                            op_desc.Type(),
+                            output_vars[0]));
 
       if (output_var->GetType() == framework::proto::VarType::LOD_TENSOR) {
         target_op_name = dialect::SliceArrayDenseOp::name();
@@ -3252,10 +3240,10 @@ struct SliceOpTranscriber : public OpTranscriber {
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      PADDLE_ENFORCE(false,
-                     phi::errors::InvalidArgument(
-                         "Op slice should have corresponding OpInfo %s"),
-                     target_op_name);
+      PADDLE_ENFORCE(
+          false,
+          phi::errors::InvalidArgument(
+              "Op slice should have corresponding OpInfo %s", target_op_name));
     }
 
     return op_info;
@@ -3274,10 +3262,10 @@ struct LegacyMatmulOpTranscriber : public OpTranscriber {
       if (abs(v - expected_value) > 1e-6f) {
         PADDLE_ENFORCE(
             false,
-            phi::errors::InvalidArgument("Expected op[%s]'s attr %s is not %f"),
-            op_desc.Type(),
-            attr_name,
-            v);
+            phi::errors::InvalidArgument("Expected op[%s]'s attr %s is not %f",
+                                         op_desc.Type(),
+                                         attr_name,
+                                         v));
       }
     };
 
@@ -3315,16 +3303,15 @@ struct LegacyMatmulOpTranscriber : public OpTranscriber {
         output_vars.size(),
         1UL,
         phi::errors::InvalidArgument(
-            "Expected op[%s]'s output `Out` has only 1 variable, but got %d"),
-        op_desc.Type(),
-        output_vars.size());
+            "Expected op[%s]'s output `Out` has only 1 variable, but got %d",
+            op_desc.Type(),
+            output_vars.size()));
 
     auto idx_iter = arg_to_idx.find(output_vars[0]);
     if (idx_iter == arg_to_idx.end()) {
-      PADDLE_ENFORCE(
-          false,
-          phi::errors::InvalidArgument("op[%s] should have got its `Out`"),
-          op_desc.Type());
+      PADDLE_ENFORCE(false,
+                     phi::errors::InvalidArgument(
+                         "op[%s] should have got its `Out`", op_desc.Type()));
     }
     auto [idx_in_op, idx_in_vec] = idx_iter->second;
     VLOG(10) << "[output recording]"
