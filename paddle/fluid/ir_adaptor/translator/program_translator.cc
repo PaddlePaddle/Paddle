@@ -686,8 +686,8 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           pir::Block::Iterator insert_pos = std::find(
               block->begin(), block->end(), *defining_op_result.owner());
 
-          PADDLE_ENFORCE_EQ(insert_pos != block->end(),
-                            true,
+          PADDLE_ENFORCE_NE(insert_pos,
+                            block->end(),
                             phi::errors::InvalidArgument(
                                 "Parameter %s must have corresponding its "
                                 "defining operation"),

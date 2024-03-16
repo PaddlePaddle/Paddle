@@ -328,9 +328,9 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
       continue;
     }
     VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
-    PADDLE_ENFORCE_EQ(
-        var != nullptr,
-        true,
+    PADDLE_ENFORCE_NE(
+        var,
+        nullptr,
         phi::errors::InvalidArgument("[Op:%s] Input %s should not be null",
                                      op_desc.Type(),
                                      legacy_input_vars[0]));
@@ -544,9 +544,9 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
     // Vector<DenseTensor>
     if (legacy_input_vars.size() == 1) {
       VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
-      PADDLE_ENFORCE_EQ(
-          var != nullptr,
-          true,
+      PADDLE_ENFORCE_NE(
+          var,
+          nullptr,
           phi::errors::InvalidArgument("[op:%s] Input %s should not be null",
                                        op_desc.Type(),
                                        legacy_input_vars[0]));
@@ -634,9 +634,9 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
     // Vector<DenseTensor>
     if (legacy_output_vars.size() == 1) {
       VarDesc* var = block->FindVarRecursive(legacy_output_vars[0]);
-      PADDLE_ENFORCE_EQ(
-          var != nullptr,
-          true,
+      PADDLE_ENFORCE_NE(
+          var,
+          nullptr,
           phi::errors::InvalidArgument("[op:%s] Output %s should not be null",
                                        op_desc.Type(),
                                        legacy_output_vars[0]));
@@ -663,9 +663,9 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
 
       auto& var_name = legacy_output_vars[0];
       VarDesc* var = block->FindVarRecursive(var_name);
-      PADDLE_ENFORCE_EQ(
-          var != nullptr,
-          true,
+      PADDLE_ENFORCE_NE(
+          var,
+          nullptr,
           phi::errors::InvalidArgument("[op:%s] Output %s should not be null",
                                        op_desc.Type(),
                                        var_name));
@@ -694,9 +694,9 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
           continue;
         }
         VarDesc* var = block->FindVarRecursive(var_name);
-        PADDLE_ENFORCE_EQ(
-            var != nullptr,
-            true,
+        PADDLE_ENFORCE_NE(
+            var,
+            nullptr,
             phi::errors::InvalidArgument("[op:%s] Output %s should not be null",
                                          op_desc.Type(),
                                          var_name));
@@ -1040,9 +1040,9 @@ struct AssignValueOpTranscriber : public OpTranscriber {
       }
     }
 
-    PADDLE_ENFORCE_EQ(
-        attribute_map.find("values") != attribute_map.end(),
-        true,
+    PADDLE_ENFORCE_NE(
+        attribute_map.find("values"),
+        attribute_map.end(),
         phi::errors::InvalidArgument("Op assign_value should have attribute "
                                      "`**_values` or `values` but not find"));
 
@@ -1092,9 +1092,9 @@ pir::Value TranslateDropOutStateIn(pir::IrContext* ctx,
   // `DropoutState` is a tensor
   VarDesc* dropout_state =
       op_desc.Block()->FindVarRecursive(legacy_output_vars[0]);
-  PADDLE_ENFORCE_EQ(
-      dropout_state != nullptr,
-      true,
+  PADDLE_ENFORCE_NE(
+      dropout_state,
+      nullptr,
       phi::errors::InvalidArgument("[op:%s] Output %s should not be null",
                                    op_desc.Type(),
                                    legacy_output_vars[0]));
@@ -1499,7 +1499,7 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
 
   pir::Value value = defining_info.value;
   PADDLE_ENFORCE_EQ(
-      value,
+      value.use_empty(),
       true,
       phi::errors::PreconditionNotMet(
           "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
@@ -1875,9 +1875,9 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
       VarDesc* var_desc = op_desc.Block()->FindVarRecursive(
           op_desc.Input(var_name.substr(0, 1))[0]);
-      PADDLE_ENFORCE_EQ(
-          var_desc != nullptr,
-          true,
+      PADDLE_ENFORCE_NE(
+          var_desc,
+          nullptr,
           phi::errors::InvalidArgument("[op:%s] Input %s should not be null",
                                        op_desc.Type(),
                                        var_name.substr(0, 1)));
@@ -2362,9 +2362,9 @@ pir::Attribute TranslateDtypeForArange(pir::IrContext* ctx,
       phi::errors::InvalidArgument(
           "[op:%s] Input [Start]'s size should be equal to 1", op_desc.Type()));
   auto var_desc = op_desc.Block()->FindVarRecursive(op_desc.Input("Start")[0]);
-  PADDLE_ENFORCE_EQ(
-      var_desc != nullptr,
-      true,
+  PADDLE_ENFORCE_NE(
+      var_desc,
+      nullptr,
       phi::errors::InvalidArgument("[op:%s] Input %s should not be null",
                                    op_desc.Type(),
                                    op_desc.Input("Start")[0]));
@@ -2873,9 +2873,9 @@ struct RandIntOpTranscriber : public OpTranscriber {
     const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
     auto& var_name = legacy_output_vars[0];
     VarDesc* var = block->FindVarRecursive(var_name);
-    PADDLE_ENFORCE_EQ(
-        var != nullptr,
-        true,
+    PADDLE_ENFORCE_NE(
+        var,
+        nullptr,
         phi::errors::InvalidArgument(
             "[op:%s] Output %s should not be null", op_desc.Type(), var_name));
     int dtype_attr_val = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
@@ -3061,9 +3061,9 @@ struct LodArrayLengthOpTranscriber : public OpTranscriber {
                                        op_desc.Type()));
       VLOG(10) << "[" << op_desc.Type() << "][input `x`] from " << vars[0];
       const VarDesc* var_desc = op_desc.Block()->FindVarRecursive(vars[0]);
-      PADDLE_ENFORCE_EQ(
-          var_desc != nullptr,
-          true,
+      PADDLE_ENFORCE_NE(
+          var_desc,
+          nullptr,
           phi::errors::InvalidArgument(
               "VarDesc `%s` should be exist in legacy program", vars[0]));
       auto defining_value = pir::Value(nullptr);
@@ -3121,9 +3121,9 @@ struct WriteArrayOpTranscriber : public OpTranscriber {
                                        op_desc.Type()));
       VLOG(10) << "[" << op_desc.Type() << "][input `array`] from " << vars[0];
       const VarDesc* var_desc = op_desc.Block()->FindVarRecursive(vars[0]);
-      PADDLE_ENFORCE_EQ(
-          var_desc != nullptr,
-          true,
+      PADDLE_ENFORCE_NE(
+          var_desc,
+          nullptr,
           phi::errors::InvalidArgument(
               "VarDesc `%s` should be exist in legacy program", vars[0]));
       auto defining_value = pir::Value(nullptr);
@@ -3188,8 +3188,8 @@ struct SliceOpTranscriber : public OpTranscriber {
                             output_vars.size()));
       const auto* output_var =
           op_desc.Block()->FindVarRecursive(output_vars[0]);
-      PADDLE_ENFORCE_EQ(output_var != nullptr,
-                        true,
+      PADDLE_ENFORCE_NE(output_var,
+                        nullptr,
                         phi::errors::InvalidArgument(
                             "op %s should have non-empty output `%s`.",
                             op_desc.Type(),
