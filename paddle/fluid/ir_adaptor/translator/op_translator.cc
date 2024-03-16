@@ -1516,8 +1516,8 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
 
   pir::Value value = defining_info.value;
   PADDLE_ENFORCE_NOT_NULL(
-      value,
-      phi::errors::InvalidArgument(
+      value.get(),
+      phi::errors::Fatal(
           "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
   const pir::Type& type = value.type();
   PADDLE_ENFORCE_EQ(type.isa<dialect::DenseTensorType>(),
@@ -1908,10 +1908,10 @@ struct MulGradOpTranscriber : public OpTranscriber {
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
 
       PADDLE_ENFORCE_NOT_NULL(
-          value_res,
-          phi::errors::InvalidArgument("Expected op[%s]'s input %s is not null",
-                                       op_desc.Type(),
-                                       grad_var_name));
+          value_res.get(),
+          phi::errors::Fatal("Expected op[%s]'s input %s is not null",
+                             op_desc.Type(),
+                             grad_var_name));
       pir::Type grad_type = value_res.type();
       PADDLE_ENFORCE_EQ(
           grad_type.isa<dialect::DenseTensorType>(),
@@ -2480,8 +2480,8 @@ struct ElementwiseTranscriber : public OpTranscriber {
     }
     pir::Value x_value = x_defining_info.value;
     PADDLE_ENFORCE_NOT_NULL(
-        x_value,
-        phi::errors::InvalidArgument(
+        x_value.get(),
+        phi::errors::Fatal(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
     pir::Type x_type = x_value.type();
     PADDLE_ENFORCE_EQ(
@@ -2519,8 +2519,8 @@ struct ElementwiseTranscriber : public OpTranscriber {
     }
     pir::Value y_value = y_defining_info.value;
     PADDLE_ENFORCE_NOT_NULL(
-        y_value,
-        phi::errors::InvalidArgument(
+        y_value.get(),
+        phi::errors::Fatal(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
     PADDLE_ENFORCE_EQ(
@@ -2652,8 +2652,8 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
     auto y_defining_info = param_map->at(y_name);
     pir::Value y_value = y_defining_info.value;
     PADDLE_ENFORCE_NOT_NULL(
-        y_value,
-        phi::errors::InvalidArgument(
+        y_value.get(),
+        phi::errors::Fatal(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
     PADDLE_ENFORCE_EQ(
