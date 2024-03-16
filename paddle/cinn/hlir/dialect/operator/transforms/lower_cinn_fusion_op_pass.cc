@@ -20,7 +20,6 @@
 
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/common/broadcast_tree.h"
-#include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -38,6 +37,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
@@ -690,7 +690,7 @@ symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
     std::vector<symbol::DimExpr> simplified_dim_expr{};
     for (const symbol::DimExpr& dim_expr : original_dim_expr) {
       simplified_dim_expr.push_back(symbol::SimplifyDimExpr(
-          cinn::common::SubstituteDimExpr(dim_expr, dim_expr_map)));
+          symbol::SubstituteDimExpr(dim_expr, dim_expr_map)));
     }
     return simplified_dim_expr;
   };
@@ -851,7 +851,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
       group->op_pattern_kind = attr.op_pattern_kind;
       group->loop_ranges = attr.loop_ranges;
-      group->loop_ranges_expr = attr.loop_ranges_expr;
 
       group->reduce_axis = attr.reduce_axis;
       group->alignment_schedule_info = attr.alignment_schedule_info;
