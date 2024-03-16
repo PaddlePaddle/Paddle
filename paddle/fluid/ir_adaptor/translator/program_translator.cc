@@ -690,8 +690,8 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
                             block->end(),
                             phi::errors::InvalidArgument(
                                 "Parameter %s must have corresponding its "
-                                "defining operation"),
-                            var_name);
+                                "defining operation",
+                                var_name));
           insert_pos++;
 
           block->insert(insert_pos, op);
