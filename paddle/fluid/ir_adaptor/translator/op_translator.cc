@@ -559,13 +559,13 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
     // if src type is Tensor
     if (!is_vector) {
       PADDLE_ENFORCE_EQ(
-          legacy_input_vars.size() == 1u,
-          true,
+          legacy_input_vars.size(),
+          1UL,
           phi::errors::InvalidArgument("Input %s not found when parsing op %s",
                                        info.name,
                                        op_desc.Type()));
       PADDLE_ENFORCE_EQ(param_map->count(legacy_input_vars[0]),
-                        true,
+                        0UL,
                         phi::errors::InvalidArgument(
                             "Input [%s: %s] of op [%s] not found in param map",
                             info.name,
@@ -2318,7 +2318,7 @@ pir::Value TranslateNumClassesForOneHot(pir::IrContext* ctx,
                           "depth_tensor input of one hot MUST be a tensor"));
     PADDLE_ENFORCE_EQ(
         param_map->count(legacy_vars[0]),
-        true,
+        0UL,
         phi::errors::InvalidArgument(
             "%s should be existed in one_hot_v2 as input depth_tensor.",
             legacy_vars[0]));
