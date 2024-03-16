@@ -1498,12 +1498,11 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
   const auto& defining_info = param_map->at(name);
 
   pir::Value value = defining_info.value;
-  if (!IsInvalid(value)) {
-    PADDLE_ENFORCE_NOT_NULL(
-        defining_info.value,
-        phi::errors::NotFound(
-            "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
-  }
+  PADDLE_ENFORCE_EQ(
+      value.use_empty(),
+      true,
+      phi::errors::NotFound(
+          "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
   const pir::Type& type = value.type();
   PADDLE_ENFORCE_EQ(type.isa<dialect::DenseTensorType>(),
                     true,
@@ -1887,14 +1886,12 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
       pir::Value value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
-
-      if (!IsInvalid(value_res)) {
-        PADDLE_ENFORCE_NOT_NULL(
-            operation->result(idx_in_op),
-            phi::errors::NotFound("Expected op[%s]'s input %s is not null",
-                                  op_desc.Type(),
-                                  grad_var_name));
-      }
+      PADDLE_ENFORCE_EQ(
+          value_res.use_empty(),
+          true,
+          phi::errors::NotFound("Expected op[%s]'s input %s is not null",
+                                op_desc.Type(),
+                                grad_var_name));
       pir::Type grad_type = value_res.type();
       PADDLE_ENFORCE_EQ(
           grad_type.isa<dialect::DenseTensorType>(),
@@ -2455,13 +2452,11 @@ struct ElementwiseTranscriber : public OpTranscriber {
       x_defining_info = param_map->at(x_name);
     }
     pir::Value x_value = x_defining_info.value;
-    if (!IsInvalid(x_value)) {
-      PADDLE_ENFORCE_NOT_NULL(
-          x_defining_info.value,
-          phi::errors::NotFound("Expected op[%s]'s input %s is not null",
-                                op_desc.Type(),
-                                x_name));
-    }
+    PADDLE_ENFORCE_EQ(
+        x_value.use_empty(),
+        true,
+        phi::errors::NotFound(
+            "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
     pir::Type x_type = x_value.type();
     PADDLE_ENFORCE_EQ(
         x_type.isa<dialect::DenseTensorType>(),
@@ -2497,13 +2492,11 @@ struct ElementwiseTranscriber : public OpTranscriber {
       y_defining_info = param_map->at(y_name);
     }
     pir::Value y_value = y_defining_info.value;
-    if (!IsInvalid(y_value)) {
-      PADDLE_ENFORCE_NOT_NULL(
-          y_defining_info.value,
-          phi::errors::NotFound("Expected op[%s]'s input %s is not null",
-                                op_desc.Type(),
-                                y_name));
-    }
+    PADDLE_ENFORCE_EQ(
+        y_value.use_empty(),
+        true,
+        phi::errors::NotFound(
+            "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
     PADDLE_ENFORCE_EQ(
         y_type.isa<dialect::DenseTensorType>(),
@@ -2631,14 +2624,11 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
                           y_name));
     auto y_defining_info = param_map->at(y_name);
     pir::Value y_value = y_defining_info.value;
-    if (!IsInvalid(y_value)) {
-      PADDLE_ENFORCE_NOT_NULL(
-          y_defining_info.value,
-          phi::errors::NotFound("Expected op[%s]'s input %s is not null",
-                                op_desc.Type(),
-                                y_name));
-    }
-
+    PADDLE_ENFORCE_EQ(
+        y_value.use_empty(),
+        true,
+        phi::errors::NotFound(
+            "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
     PADDLE_ENFORCE_EQ(
         y_type.isa<dialect::DenseTensorType>(),
