@@ -63,7 +63,6 @@ class Tracer {
  public:
   Tracer()
       : basic_engine_(new BasicEngine()),
-        program_desc_tracer_(new jit::ProgramDescTracer()),
         generator_(new UniqueNameGenerator()) {
     expected_place_ = platform::CPUPlace();
   }
@@ -126,14 +125,6 @@ class Tracer {
                            const NameTensorMap& outs,
                            bool trace_backward);
 
-  void SetEnableProgramDescTracing(bool enabled);
-
-  bool IsProgramDescTracingEnabled() const;
-
-  jit::ProgramDescTracer* GetProgramDescTracer() {
-    return program_desc_tracer_.get();
-  }
-
   // Note(Aurelius84): The `tmp` is used as prefix key while naming a temporary
   // intermediate var both in imperative and static graph mode. But the
   // `UniqueNameGenerator` in C++ and `unique_name.py` in Python doesn't share
@@ -187,7 +178,6 @@ class Tracer {
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
-  std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   GarbageCollectorMap gcs_;
