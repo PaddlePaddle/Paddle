@@ -205,6 +205,18 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                             DenseTensor* dy,
                             DenseTensor* dout,
                             DenseTensor* ddout) {
+  if (dy) {
+    dy->Resize(y.dims());
+    dev_ctx.template Alloc<T>(dy);
+  }
+  if (dout) {
+    dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout);
+  }
+  if (ddout) {
+    ddout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(ddout);
+  }
   auto* ddx_tensor = ddx.get_ptr();
   auto* ddy_tensor = ddy.get_ptr();
   auto* dx_tensor = dx.get_ptr();
@@ -289,7 +301,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                                         DivGradDX<T>,
                                         DivDoubleDY_Only_DDY<T>>(
             dev_ctx,
-            out,
+            *dx_tensor,
             *ddy_tensor,  // ddy
             out,          // out
             tmp,          // dX / Y
@@ -338,65 +350,65 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     } else if (!ddx_tensor && ddy_tensor) {
       // VLOG(4) << "4";
       // ddOut = - Out * ddY / Y
-      // funcs::DefaultElementwiseOperator<Context,
-      //                                   T,
-      //                                   funcs::MultiplyFunctor<T>,
-      //                                   funcs::InverseMultiplyFunctor<T>>(
-      //     dev_ctx, out, *ddy_tensor, &tmp, axis);
-      // // VLOG(4) << "5";
-      // funcs::DefaultElementwiseOperator<Context,
-      //                                   T,
-      //                                   funcs::DivideFunctor<T>,
-      //                                   funcs::InverseDivideFunctor<T>>(
-      //     dev_ctx, tmp, y, ddout, axis);
-      // auto& place = *dev_ctx.eigen_device();
-      // auto ddout_result = phi::EigenVector<T>::Flatten(*ddout);
-      // // VLOG(4) << "6";
-      // ddout_result.device(place) = static_cast<T>(-1) * ddout_result;
-      phi::funcs::ElemwiseGradCompute<Context,
-                                      T,
-                                      DivGradDX<T>,
-                                      DivDoubleDDOut_Only_DDY<T>>(
-          dev_ctx,
-          out,
-          *ddy_tensor,  // ddy
-          out,          // out
-          y,            // Y
-          axis,
-          nullptr,
-          dy,
-          DivGradDX<T>(),
-          DivDoubleDDOut_Only_DDY<T>());
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, out, *ddy_tensor, &tmp, axis);
+      // VLOG(4) << "5";
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::DivideFunctor<T>,
+                                        funcs::InverseDivideFunctor<T>>(
+          dev_ctx, tmp, y, ddout, axis);
+      auto& place = *dev_ctx.eigen_device();
+      auto ddout_result = phi::EigenVector<T>::Flatten(*ddout);
+      // VLOG(4) << "6";
+      ddout_result.device(place) = static_cast<T>(-1) * ddout_result;
+      // phi::funcs::ElemwiseGradCompute<Context,
+      //                                 T,
+      //                                 DivGradDX<T>,
+      //                                 DivDoubleDDOut_Only_DDY<T>>(
+      //     dev_ctx,
+      //     out,
+      //     *ddy_tensor,  // ddy
+      //     out,          // out
+      //     y,            // Y
+      //     axis,
+      //     nullptr,
+      //     ddout,
+      //     DivGradDX<T>(),
+      //     DivDoubleDDOut_Only_DDY<T>());
     } else {
-      // funcs::DefaultElementwiseOperator<Context,
-      //                                   T,
-      //                                   funcs::MultiplyFunctor<T>,
-      //                                   funcs::InverseMultiplyFunctor<T>>(
-      //     dev_ctx, out, *ddy_tensor, &tmp, axis);
-      // funcs::DefaultElementwiseOperator<Context,
-      //                                   T,
-      //                                   funcs::SubtractFunctor<T>,
-      //                                   funcs::InverseSubtractFunctor<T>>(
-      //     dev_ctx, *ddx_tensor, tmp, &tmp, axis);
-      // funcs::DefaultElementwiseOperator<Context,
-      //                                   T,
-      //                                   funcs::DivideFunctor<T>,
-      //                                   funcs::InverseDivideFunctor<T>>(
-      //     dev_ctx, tmp, y, ddout, axis);
-      phi::funcs::ElemwiseGradCompute<Context,
-                                      T,
-                                      DivGradDX<T>,
-                                      DivDoubleDDOut_Only_DDX<T>>(
-          dev_ctx,
-          *ddx_tensor,
-          y,    // ddy
-          out,  // out
-          y,    // Y
-          axis,
-          nullptr,
-          dy,
-          DivGradDX<T>(),
-          DivDoubleDDOut_Only_DDX<T>());
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, out, *ddy_tensor, &tmp, axis);
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::SubtractFunctor<T>,
+                                        funcs::InverseSubtractFunctor<T>>(
+          dev_ctx, *ddx_tensor, tmp, &tmp, axis);
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::DivideFunctor<T>,
+                                        funcs::InverseDivideFunctor<T>>(
+          dev_ctx, tmp, y, ddout, axis);
+      // phi::funcs::ElemwiseGradCompute<Context,
+      //                                 T,
+      //                                 DivGradDX<T>,
+      //                                 DivDoubleDDOut<T>>(
+      //     dev_ctx,
+      //     *ddx_tensor,
+      //     *ddy_tensor,    // ddy
+      //     out,  // out
+      //     y,    // Y
+      //     axis,
+      //     nullptr,
+      //     ddout,
+      //     DivGradDX<T>(),
+      //     DivDoubleDDOut<T>());
     }
   }
 
