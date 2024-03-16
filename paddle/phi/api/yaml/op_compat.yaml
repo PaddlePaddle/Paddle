@@ -3717,6 +3717,12 @@
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
 
+- op: dgc
+  inputs:
+    {u: U, v: V, grad: Grad}
+  outputs:
+    {u_out: U_out, v_out: V_out, encode_grad: EncodeGrad, grad_out: Grad_out, gather_buff: GatherBuff}
+
 - op: distribute_fpn_proposals
   inputs :
     {fpn_rois: FpnRois, rois_num: RoisNum}

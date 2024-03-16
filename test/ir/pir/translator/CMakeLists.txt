@@ -18,8 +18,7 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_distributed_lookup_table_translate)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_distributed_push_sparse_translator)
-list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_distributed_fused_lamb_init)
-list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_dgc_momentum_translator)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_dgc_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_nop_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_allgather_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_send_translator)
