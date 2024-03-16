@@ -348,7 +348,7 @@ void ProgramTranslator::TranslateIfOperation(
   std::vector<pir::Type> if_op_output_types;
   for (auto var_desc : cond_op_output_vars) {
     PADDLE_ENFORCE_NOT_NULL(var_desc,
-                            phi::errors::InvalidArgument(
+                            phi::errors::PreconditionNotMet(
                                 "[control flow] Output should not be null"));
     pir::Type translated_var_type =
         type_translator[var_desc->GetType()](ctx_, *var_desc);
