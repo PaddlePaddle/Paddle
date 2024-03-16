@@ -209,8 +209,8 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
   auto* ddy_tensor = ddy.get_ptr();
   auto* dx_tensor = dx.get_ptr();
   DenseTensor dz_div_y;
-  dz_div_y.Resize(out.dims());
   if ((dy || dout) && (!dx_tensor || dx_tensor->dims() != out.dims())) {
+    dz_div_y.Resize(out.dims());
     dev_ctx.template Alloc<T>(&dz_div_y);
     funcs::DefaultElementwiseOperator<Context,
                                       T,
