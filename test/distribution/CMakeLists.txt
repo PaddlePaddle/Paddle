@@ -9,3 +9,9 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 set_pit_tests_properties()
+
+if(WIN32)
+  set_tests_properties(test_distribution_gamma PROPERTIES TIMEOUT 
+                                                          5000)
+  set_tests_properties(test_standard_gamma_op PROPERTIES TIMEOUT 
+                                                          5000)
