@@ -564,7 +564,7 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
           phi::errors::InvalidArgument("Input %s not found when parsing op %s",
                                        info.name,
                                        op_desc.Type()));
-      PADDLE_ENFORCE_EQ(param_map->count(legacy_input_vars[0]),
+      PADDLE_ENFORCE_NE(param_map->count(legacy_input_vars[0]),
                         0UL,
                         phi::errors::InvalidArgument(
                             "Input [%s: %s] of op [%s] not found in param map",
@@ -2316,7 +2316,7 @@ pir::Value TranslateNumClassesForOneHot(pir::IrContext* ctx,
                       1UL,
                       phi::errors::InvalidArgument(
                           "depth_tensor input of one hot MUST be a tensor"));
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NE(
         param_map->count(legacy_vars[0]),
         0UL,
         phi::errors::InvalidArgument(
