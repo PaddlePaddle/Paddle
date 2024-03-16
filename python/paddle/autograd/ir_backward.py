@@ -34,13 +34,13 @@ from paddle.autograd.backward_utils import (
     is_control_flow,
     is_inplace_net,
     parent_total_ops,
-    while_prune_check,
     remove_op,
     remove_useless_full_like_ops,
     return_map_value,
     return_map_value_list,
     some_in_set,
     update_no_grad_set_by_stopgradient,
+    while_prune_check,
 )
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
@@ -613,7 +613,7 @@ def append_backward_ops(
                 ) = make_input_with_input_stopgradient(op)
 
                 if op.name() == "cf.tuple_push":
-                    stackop = op.operand_source(0).get_defining_op()                    
+                    stackop = op.operand_source(0).get_defining_op()
                     with dynamic_shape_prim_vjp_guard(op, inputs):
                         copy_out = paddle.framework.core.call_vjp(
                             op,
@@ -824,13 +824,14 @@ def append_backward_ops(
                     state.op_to_opgrad[op] = []
 
         if fwd_block != bwd_block:
-
             if while_prune_check(while_tuple_ops):
-                print(paddle.pir.core.default_main_program())
-                breakpoint()
                 remove_op(bwd_block, while_tuple_ops[0], state)
-                while_tuple_ops[1].get_parent_block().remove_op(while_tuple_ops[1])
-                while_tuple_ops[2].get_parent_block().remove_op(while_tuple_ops[2])
+                while_tuple_ops[1].get_parent_block().remove_op(
+                    while_tuple_ops[1]
+                )
+                while_tuple_ops[2].get_parent_block().remove_op(
+                    while_tuple_ops[2]
+                )
 
             append_yield(
                 bwd_block,
