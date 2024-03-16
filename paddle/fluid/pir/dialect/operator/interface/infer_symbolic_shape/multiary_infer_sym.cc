@@ -123,7 +123,6 @@ bool LogspaceOpInferSymbolicShape(
 
 bool MeshgridOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &attributes = op->attributes();
   const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0))
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
@@ -142,7 +141,7 @@ bool MeshgridOpInferSymbolicShape(
 
     auto shape_dim_exprs = symbol::TensorShapeOrDataDimExprs(vec);
 
-    for (auto &shape_data : shape_data_list) {
+    for (size_t i = 0; i < shape_data_list.size(); i++) {
       shape_dim_exprs_list.emplace_back(shape_dim_exprs);
     }
 
