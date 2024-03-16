@@ -140,6 +140,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'decayed_adagrad',
     'distributed_push_sparse',
     'distributed_lookup_table',
+    'dgc',
+    'dgc_',
     'dpsgd',
     'embedding_grad_sparse',
     'ftrl',
