@@ -353,6 +353,13 @@ Tensor relu_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor relu6_decomp(const Tensor& x) {
+  auto tmp = maximum<T>(x, full<T>(empty_shape, 0.0, x.dtype()));
+  auto res = minimum<T>(tmp, full<T>(empty_shape, 6.0, x.dtype()));
+  return res;
+}
+
+template <typename T>
 Tensor rsqrt_decomp(const Tensor& x) {
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
@@ -1017,10 +1024,8 @@ template <typename T>
 Tensor index_sample_decomp(const Tensor& x, const Tensor& index) {
   std::vector<int64_t> tmp_shape{-1, 1};
   auto index_dim = get_slice<T>(shape<T>(index), 0);
-  auto start =
-      backend::full_with_tensor<T>(shape<T>(index_dim), 0, index_dim.dtype());
-  auto step =
-      backend::full_with_tensor<T>(shape<T>(index_dim), 1, index_dim.dtype());
+  auto start = full<T>({1}, 0, index_dim.dtype());
+  auto step = full<T>({1}, 1, index_dim.dtype());
   auto arange_tmp = reshape<T>(
       backend::arange_with_tensor<T>(start, index_dim, step, index.dtype()),
       tmp_shape);

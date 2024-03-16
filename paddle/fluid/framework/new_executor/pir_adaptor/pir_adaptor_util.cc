@@ -480,18 +480,9 @@ void HandleForSpecialOp(pir::Operation* op,
         auto shape = op->attribute<dialect::IntArrayAttribute>("shape");
         auto dim = phi::make_ddim(shape.data().GetData());
         auto dtype = op->attribute<dialect::DataTypeAttribute>("dtype");
-        auto place = op->attribute<dialect::PlaceAttribute>("place").data();
-        if (place.GetType() == phi::AllocationType::UNDEFINED) {
-          place = phi::CPUPlace();
-        }
         if (!common::contain_unknown_dim(dim)) {
           phi::DenseTensorMeta meta(dtype.data(), dim);
           t->set_meta(meta);
-          auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-          dev_ctx->Alloc(t, dtype.data());
-          VLOG(10) << "[Alloc var]: "
-                   << op->attribute<pir::StrAttribute>("name") << " "
-                   << t->initialized();
         }
       }
     }
@@ -951,27 +942,27 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
         }
         attr_map[legacy_arg_name] = vec_int;
       } else if (array_list[0].isa<pir::Int64Attribute>()) {
-        std::vector<int> vec_int64;
+        std::vector<int64_t> vec_int64;
         for (auto attribute : array_list) {
           vec_int64.push_back(
               attribute.dyn_cast<pir::Int64Attribute>().data());  // NOLINT
         }
         attr_map[legacy_arg_name] = vec_int64;
       } else if (array_list[0].isa<pir::BoolAttribute>()) {
-        std::vector<int> vec_bool;
+        std::vector<bool> vec_bool;
         for (auto attribute : array_list) {
           vec_bool.push_back(attribute.dyn_cast<pir::BoolAttribute>().data());
         }
         attr_map[legacy_arg_name] = vec_bool;
       } else if (array_list[0].isa<pir::FloatAttribute>()) {
-        std::vector<int> vec_float;
+        std::vector<float> vec_float;
         for (auto attribute : array_list) {
           vec_float.push_back(
               attribute.dyn_cast<pir::FloatAttribute>().data());  // NOLINT
         }
         attr_map[legacy_arg_name] = vec_float;
       } else if (array_list[0].isa<pir::DoubleAttribute>()) {
-        std::vector<int> vec_double;
+        std::vector<double> vec_double;
         for (auto attribute : array_list) {
           vec_double.push_back(
               attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT

@@ -16,8 +16,10 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -32,30 +34,54 @@
 namespace cinn {
 namespace dialect {
 namespace ir {
+using paddle::dialect::details::GetExprVecFromShape;
 
-class RemoveUnchangedReshapePattern
-    : public pir::OpRewritePattern<cinn::dialect::ReshapeOp> {
- public:
-  using pir::OpRewritePattern<cinn::dialect::ReshapeOp>::OpRewritePattern;
+bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
+  const auto& IsDynamicShape = [](const pir::Value& value) -> bool {
+    return value.type().dyn_cast<pir::ShapedTypeInterface>().IsDynamicShape();
+  };
+  const auto& GetDims = [](const pir::Value& value) -> decltype(auto) {
+    return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+  };
 
-  bool MatchAndRewrite(cinn::dialect::ReshapeOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    auto in_dim = op->operand_source(0)
-                      .type()
-                      .dyn_cast<paddle::dialect::DenseTensorType>()
-                      .dims();
-    auto out_dim = op->result(0)
-                       .type()
-                       .dyn_cast<paddle::dialect::DenseTensorType>()
-                       .dims();
-
-    if (in_dim == out_dim) {
-      rewriter.ReplaceAllUsesWith(op->result(0), op->operand_source(0));
-      rewriter.EraseOp(op);
-      return true;
+  pir::Value input = op->operand_source(0);
+  pir::Value output = op->result(0);
+  const auto& IsSameShape = [&]() -> bool {
+    const bool has_dynamic_shape =
+        IsDynamicShape(input) || IsDynamicShape(output);
+    if (has_dynamic_shape) {
+      auto& shape_analysis =
+          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+      if (shape_analysis.HasShapeOrDataForValue(input) &&
+          shape_analysis.HasShapeOrDataForValue(output)) {
+        auto input_sym_shape =
+            GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(input));
+        auto output_sym_shape =
+            GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(output));
+        return input_sym_shape == output_sym_shape;
+      }
+      return false;
     }
+    return GetDims(input) == GetDims(output);
+  };
 
-    return false;
+  if (IsSameShape()) {
+    rewriter->ReplaceAllUsesWith(output, input);
+    rewriter->EraseOp(op);
+    return true;
+  }
+
+  return false;
+}
+
+template <typename OPTYPE>
+class RemoveUnchangedReshapePattern : public pir::OpRewritePattern<OPTYPE> {
+ public:
+  using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
+
+  bool MatchAndRewrite(OPTYPE op,
+                       pir::PatternRewriter& rewriter) const override {
+    return RemoveOp(op, &rewriter);
   }
 };
 
@@ -65,7 +91,7 @@ class MergeReshapePattern
   using pir::OpRewritePattern<cinn::dialect::ReshapeOp>::OpRewritePattern;
 
   bool MatchAndRewrite(cinn::dialect::ReshapeOp op,
-                       pir::PatternRewriter &rewriter) const override {
+                       pir::PatternRewriter& rewriter) const override {
     if (auto pre_shape = op->operand_source(0)
                              .defining_op()
                              ->dyn_cast<cinn::dialect::ReshapeOp>()) {
@@ -83,17 +109,19 @@ class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
   RemoveUnchangedReshapePass()
       : pir::PatternRewritePass("remove_unchanged_reshape_pass", 1) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
 
     // remove out_shape equal in_shape reshape op
-    ps.Add<RemoveUnchangedReshapePattern>(context);
+    ps.Add<RemoveUnchangedReshapePattern<cinn::dialect::ReshapeOp>>(context);
+    ps.Add<RemoveUnchangedReshapePattern<paddle::dialect::ReshapeOp>>(context);
     ps.Add<MergeReshapePattern>(context);
+    ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;
   }
 
-  bool CanApplyOn(pir::Operation *op) const override {
+  bool CanApplyOn(pir::Operation* op) const override {
     return op->num_regions() > 0;
   }
 };

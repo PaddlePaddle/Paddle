@@ -18,7 +18,6 @@ paddle::onednn::dialect::ExpandOp
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/paddle_op_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
@@ -244,7 +243,7 @@ void ExpandOp::InferMeta(phi::InferMetaContext* infer_meta) {
 
 std::vector<pir::Type> ExpandOp::InferMeta(
     const std::vector<pir::Value>& input_values,
-    const pir::AttributeMap& attributes) {
+    pir::AttributeMap& attributes) {  // NOLINT
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
              input_values.size());
@@ -256,15 +255,6 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    paddle::dialect::AllocatedDenseTensorType allocated_x =
-        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-    x = paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
-                                              allocated_x.dtype(),
-                                              allocated_x.dims(),
-                                              allocated_x.data_layout(),
-                                              allocated_x.lod(),
-                                              allocated_x.offset());
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -273,22 +263,22 @@ std::vector<pir::Type> ExpandOp::InferMeta(
 
   phi::IntArray shape;
   if (shape_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
-    shape = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+    shape = phi::IntArray(paddle::dialect::GetInt64Vector(
         shape_.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-            .attribute("value"))));
+            .attribute("value")));
   } else if (shape_.type().isa<pir::VectorType>()) {
     size_t shape_size = shape_.type().dyn_cast<pir::VectorType>().size();
     // In ExpandInferMeta use -2 to represent the element in expand_shape is a
     // var.
-    shape = std::move(phi::IntArray(std::vector<int64_t>(shape_size, -2)));
+    shape = phi::IntArray(std::vector<int64_t>(shape_size, -2));
     shape.SetFromTensor(true);
   } else if (shape_.type().isa<paddle::dialect::DenseTensorType>()) {
     size_t shape_size = common::product(
         shape_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
     // In ExpandInferMeta use -2 to represent the element in expand_shape is a
     // var.
-    shape = std::move(phi::IntArray(std::vector<int64_t>(shape_size, -2)));
+    shape = phi::IntArray(std::vector<int64_t>(shape_size, -2));
     shape.SetFromTensor(true);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -334,8 +324,9 @@ phi::DataType ExpandOp::GetKernelTypeForVar(
 bool ExpandOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   VLOG(4) << "Infer symbolic shape for op: ExpandOp";
-  return paddle::dialect::ExpandOpInferSymbolicShape(this->operation(),
-                                                     shape_analysis);
+  PADDLE_THROW(phi::errors::Unimplemented(
+      " ExpandOp's InferSymbolicShape interface is NOT implemented now."));
+  return true;
 }
 
 }  // namespace dialect

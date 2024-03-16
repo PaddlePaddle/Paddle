@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include <glog/logging.h>
+#include "paddle/phi/core/enforce.h"
+
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace pir {
@@ -105,19 +108,29 @@ void TuplePopOp::VerifyRegion() {
              "The outlet value of cf.tuple_pop can only be used once.");
 
   // Verify stack validity:
-  auto pop_op = container_interface().tuple_pop_op();
-  IR_ENFORCE(*this == pop_op,
-             "The pop_op of tuple_pop_op must be this tuple_pop_op self.");
+  if (has_container()) {
+    // can be verified only if TuplePopOp and TuplePushOp are in the same
+    // sub_program
+    auto pop_op = container_interface().tuple_pop_op();
+    PADDLE_ENFORCE(
+        *this == pop_op,
+        phi::errors::InvalidArgument(
+            "The pop_op of tuple_pop_op must be this tuple_pop_op self."));
 
-  auto inlet_size = tuple_push_op().tuple_size();
-  IR_ENFORCE(inlet_size == tuple_size(),
-             "The pop elements size must equal to push elements size.");
-  for (size_t index = 0; index < inlet_size; ++index) {
-    IR_ENFORCE(outlet_element(index).type() == inlet_element(index).type(),
-               "The %d element's push type (%s) isn't equal to pop type (%s)",
-               index,
-               outlet_element(index).type(),
-               inlet_element(index).type());
+    auto inlet_size = tuple_push_op().tuple_size();
+    PADDLE_ENFORCE(
+        inlet_size == tuple_size(),
+        phi::errors::InvalidArgument(
+            "The pop elements size must equal to push elements size."));
+    for (size_t index = 0; index < inlet_size; ++index) {
+      PADDLE_ENFORCE(
+          outlet_element(index).type() == inlet_element(index).type(),
+          phi::errors::InvalidArgument(
+              "The %d element's push type (%s) isn't equal to pop type (%s)",
+              index,
+              outlet_element(index).type(),
+              inlet_element(index).type()));
+    }
   }
   VLOG(4) << "End Verifying for TuplePopOp.";
 }

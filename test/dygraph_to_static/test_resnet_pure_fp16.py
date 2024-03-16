@@ -19,6 +19,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
+    test_default_and_pir,
     test_default_mode_only,
 )
 from test_resnet import SEED, ResNet, optimizer_setting
@@ -123,7 +124,7 @@ class TestResnet(Dy2StTestBase):
             build_strategy.enable_inplace = False
             return train(build_strategy)
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_resnet(self):
         if base.is_compiled_with_cuda():
             static_loss = self.train(to_static=True)
