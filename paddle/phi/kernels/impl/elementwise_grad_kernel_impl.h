@@ -174,24 +174,24 @@ struct DivDoubleDY_Only_DDY {
   }
 };
 
-template <typename T>
-struct DivDoubleDDOut {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return (x - out * y) / dout;
-  }
-};
+// template <typename T>
+// struct DivDoubleDDOut {
+//   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+//     return (x - out * y) / dout;
+//   }
+// };
 
-template <typename T>
-struct DivDoubleDDOut_Only_DDX {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return x / dout; }
-};
+// template <typename T>
+// struct DivDoubleDDOut_Only_DDX {
+//   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return x / dout; }
+// };
 
-template <typename T>
-struct DivDoubleDDOut_Only_DDY {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return -out * y / dout;
-  }
-};
+// template <typename T>
+// struct DivDoubleDDOut_Only_DDY {
+//   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+//     return -out * y / dout;
+//   }
+// };
 
 template <typename T, typename Context>
 void DivideDoubleGradKernel(const Context& dev_ctx,
@@ -205,18 +205,6 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                             DenseTensor* dy,
                             DenseTensor* dout,
                             DenseTensor* ddout) {
-  if (dy) {
-    dy->Resize(y.dims());
-    dev_ctx.template Alloc<T>(dy);
-  }
-  if (dout) {
-    dout->Resize(out.dims());
-    dev_ctx.template Alloc<T>(dout);
-  }
-  if (ddout) {
-    ddout->Resize(out.dims());
-    dev_ctx.template Alloc<T>(ddout);
-  }
   auto* ddx_tensor = ddx.get_ptr();
   auto* ddy_tensor = ddy.get_ptr();
   auto* dx_tensor = dx.get_ptr();
@@ -238,6 +226,8 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
   // inplace ddx
   DenseTensor tmp;
   if (dout) {
+    dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout);
     tmp = *dout;
   } else {
     tmp.Resize(out.dims());
@@ -247,10 +237,10 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     dy->Resize(y.dims());
     dev_ctx.template Alloc<T>(dy);
     if (!ddx_tensor && !ddy_tensor) {
-      FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), dy);
+      FullLikeKernel<T, Context>(
+          dev_ctx, y, Scalar(static_cast<T>(0.0)), y.dtype(), dy);
     } else {
-      // DenseTensor tmp_dy = tmp;
-      // dX / Y
+      // pre-compute 'dX / Y' into 'tmp' for 'ddout' and/or 'dy'
       funcs::DefaultElementwiseOperator<Context,
                                         T,
                                         funcs::DivideFunctor<T>,
@@ -258,15 +248,6 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
           dev_ctx, *dx_tensor, y, &tmp, axis);
       if (ddx_tensor && !ddy_tensor) {
         // dy = -dX * ddX / Y
-        // funcs::DefaultElementwiseOperator<Context,
-        //                                   T,
-        //                                   funcs::MultiplyFunctor<T>,
-        //                                   funcs::InverseMultiplyFunctor<T>>(
-        //     dev_ctx, *ddx_tensor, tmp, dy, axis);
-        // auto& place = *dev_ctx.eigen_device();
-        // auto dy_result = phi::EigenVector<T>::Flatten(*dy);
-        // dy_result.device(place) = static_cast<T>(-1) * dy_result;
-
         phi::funcs::ElemwiseGradCompute<Context,
                                         T,
                                         DivGradDX<T>,
@@ -283,19 +264,6 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
             DivDoubleDY_Only_DDX<T>());
       } else if (!ddx_tensor && ddy_tensor) {
         // dY = Out * dX * ddY / Y
-        // VLOG(4) << "1";
-        // funcs::DefaultElementwiseOperator<Context,
-        //                                   T,
-        //                                   funcs::MultiplyFunctor<T>,
-        //                                   funcs::InverseMultiplyFunctor<T>>(
-        //     dev_ctx, *ddy_tensor, tmp, &tmp, axis);
-        // // VLOG(4) << "2";
-        // funcs::DefaultElementwiseOperator<Context,
-        //                                   T,
-        //                                   funcs::MultiplyFunctor<T>,
-        //                                   funcs::InverseMultiplyFunctor<T>>(
-        //     dev_ctx, out, tmp, dy, axis);
-        // VLOG(4) << "3";
         phi::funcs::ElemwiseGradCompute<Context,
                                         T,
                                         DivGradDX<T>,
@@ -339,7 +307,8 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(ddout);
     // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
     if (!ddx_tensor && !ddy_tensor) {
-      FullLikeKernel<T, Context>(dev_ctx, out, Scalar(0.0), out.dtype(), ddout);
+      FullLikeKernel<T, Context>(
+          dev_ctx, out, Scalar(static_cast<T>(0.0)), out.dtype(), ddout);
     } else if (ddx_tensor != nullptr && ddy_tensor == nullptr) {
       // ddOut = ddX / Y
       funcs::DefaultElementwiseOperator<Context,
@@ -348,7 +317,6 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseDivideFunctor<T>>(
           dev_ctx, *ddx_tensor, y, ddout, axis);
     } else if (!ddx_tensor && ddy_tensor) {
-      // VLOG(4) << "4";
       // ddOut = - Out * ddY / Y
       funcs::DefaultElementwiseOperator<Context,
                                         T,
@@ -363,22 +331,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
           dev_ctx, tmp, y, ddout, axis);
       auto& place = *dev_ctx.eigen_device();
       auto ddout_result = phi::EigenVector<T>::Flatten(*ddout);
-      // VLOG(4) << "6";
       ddout_result.device(place) = static_cast<T>(-1) * ddout_result;
-      // phi::funcs::ElemwiseGradCompute<Context,
-      //                                 T,
-      //                                 DivGradDX<T>,
-      //                                 DivDoubleDDOut_Only_DDY<T>>(
-      //     dev_ctx,
-      //     out,
-      //     *ddy_tensor,  // ddy
-      //     out,          // out
-      //     y,            // Y
-      //     axis,
-      //     nullptr,
-      //     ddout,
-      //     DivGradDX<T>(),
-      //     DivDoubleDDOut_Only_DDY<T>());
     } else {
       funcs::DefaultElementwiseOperator<Context,
                                         T,
@@ -395,31 +348,15 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                                         funcs::DivideFunctor<T>,
                                         funcs::InverseDivideFunctor<T>>(
           dev_ctx, tmp, y, ddout, axis);
-      // phi::funcs::ElemwiseGradCompute<Context,
-      //                                 T,
-      //                                 DivGradDX<T>,
-      //                                 DivDoubleDDOut<T>>(
-      //     dev_ctx,
-      //     *ddx_tensor,
-      //     *ddy_tensor,    // ddy
-      //     out,  // out
-      //     y,    // Y
-      //     axis,
-      //     nullptr,
-      //     ddout,
-      //     DivGradDX<T>(),
-      //     DivDoubleDDOut<T>());
     }
   }
 
   if (dout) {
-    dout->Resize(out.dims());
-    dev_ctx.template Alloc<T>(dout);
     if (!ddy_tensor) {
-      FullLikeKernel<T, Context>(dev_ctx, out, Scalar(0.0), out.dtype(), dout);
+      FullLikeKernel<T, Context>(
+          dev_ctx, out, Scalar(static_cast<T>(0.0)), out.dtype(), dout);
     } else {
       // dOut = - dX * ddY
-      // VLOG(4) << "7";
       funcs::DefaultElementwiseOperator<Context,
                                         T,
                                         funcs::MultiplyFunctor<T>,
@@ -428,7 +365,6 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
       auto& place = *dev_ctx.eigen_device();
       auto dout_result = phi::EigenVector<T>::Flatten(*dout);
       dout_result.device(place) = static_cast<T>(-1) * dout_result;
-      // VLOG(4) << "8";
     }
   }
 }
