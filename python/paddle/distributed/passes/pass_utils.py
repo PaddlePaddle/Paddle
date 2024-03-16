@@ -934,8 +934,8 @@ def _split_matmul_grad_to_matmul(
         [new_y_grad.name],
         y_grad_dims,
         op_role,
-        y_grad,
         dist_context=dist_context,
+        out=y_grad,
         op_namescope=op_namescope,
     )
 
