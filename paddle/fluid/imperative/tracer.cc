@@ -587,10 +587,6 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
   return false;
 }
 
-void Tracer::SetEnableProgramDescTracing(bool enabled) {
-  enable_program_desc_tracing_ = enabled;
-}
-
 void Tracer::SetAmpDtype(std::string amp_dtype) {
   VLOG(4) << "set amp_dtype to " << amp_dtype;
   g_current_amp_attrs->SetAmpDtype(amp_dtype);
