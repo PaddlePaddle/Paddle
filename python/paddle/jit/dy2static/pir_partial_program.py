@@ -113,7 +113,7 @@ class UnionFindSet:
         yield from self.father.keys()
 
 
-class RunableProgram:
+class RunnableProgram:
     """a pir program ready for run_program_op to run. constructed by 3 parts:
     - pir program (pir::Program)
     - in_out_values
@@ -240,7 +240,7 @@ class RunableProgram:
         cloned_program, _ = paddle.base.libpaddle.pir.clone_program(
             self.program
         )
-        return RunableProgram(
+        return RunnableProgram(
             cloned_program,
             (self.x_names, self.param_names, self.out_names),
             None,
@@ -500,7 +500,7 @@ class PartialProgramLayer:
         return out_vars
 
     @cached_property
-    def origin_runable_program(self):
+    def origin_runnable_program(self):
         inputs = list(self._inputs.var_list)
         outputs = list(self._outputs.var_list)
         params = self._param_values
@@ -510,7 +510,7 @@ class PartialProgramLayer:
             len(self._origin_main_program.global_block().ops),
             "output_",
         )
-        return RunableProgram(
+        return RunnableProgram(
             self._origin_main_program, (inputs, params, outputs)
         )
 
@@ -565,13 +565,15 @@ class PartialProgramLayer:
                 return forward_program, backward_program
 
             # TODO(xiongkun) who to transfer the pruning program?
-            infer_program = self.origin_runable_program.clone()
+            infer_program = self.origin_runnable_program.clone()
             if self._hooker:
                 self._hooker.after_infer(infer_program)
             infer_program.apply_pir_program_pass(pass_fn)
             return infer_program
         else:
-            train_program: RunableProgram = self.origin_runable_program.clone()
+            train_program: RunnableProgram = (
+                self.origin_runnable_program.clone()
+            )
             train_program = self._append_backward_desc(train_program)
             # Note: Only set grad type once after initializing train program. So we put it here.
             self._set_grad_type(self._params, train_program)
@@ -716,10 +718,10 @@ class PartialProgramLayer:
             _insert_aggregation_ops_for_var(target_program, _var)
 
     @switch_to_static_graph
-    def _append_backward_desc(self, train_runnable_program: RunableProgram):
+    def _append_backward_desc(self, train_runnable_program: RunnableProgram):
         program = train_runnable_program.program
         targets = train_runnable_program.out_values
-        # TODO(@zhuoge): refine the interface, use runable_program to apply passes.
+        # TODO(@zhuoge): refine the interface, use runnable_program to apply passes.
         if self._hooker:
             program, targets = self._hooker.before_append_backward(
                 program, targets
@@ -808,7 +810,7 @@ class PartialProgramLayer:
         p_grad_value = list(map(mapping_value, grad_info_map[inputs_size:]))
         o_grad_value = list(map(mapping_value, forward_outputs_grads))
 
-        # insert grads name for RunableProgram (we need name for grad_inputs and grad_outputs)
+        # insert grads name for RunnableProgram (we need name for grad_inputs and grad_outputs)
         input_grads_to_append = list(
             filter(lambda x: not is_fake_value(x), o_grad_value)
         )
@@ -827,7 +829,7 @@ class PartialProgramLayer:
             forward_end_idx + op_between_forward_and_backward
         )
         # construct a runnable program.
-        return RunableProgram(
+        return RunnableProgram(
             program,
             (inputs, params, targets),
             (x_grad_value, p_grad_value, o_grad_value),
@@ -996,7 +998,7 @@ class PartialProgramLayer:
 
         return out_vars
 
-    def _set_grad_type(self, params, train_program: RunableProgram):
+    def _set_grad_type(self, params, train_program: RunnableProgram):
         # NOTE: if user set sparse gradient mode, the param's gradient
         # will be SelectedRows, not LoDTensor. But tracer will just
         # set param grad Tensor by forward Tensor(LoDTensor)
