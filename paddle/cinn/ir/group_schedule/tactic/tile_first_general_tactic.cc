@@ -188,21 +188,6 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
     return context_->group_tile_info->reduce_block >= num;
   };
   std::vector<int> split_factors;
-  if (context_->group_tile_info->is_reduce_all) {
-    split_factors.push_back(256);
-    split_factors.push_back(-1);
-  } else if (IsReduceBlockGE(2048)) {
-    split_factors.emplace_back(
-        std::ceil(context_->group_tile_info->reduce_numel * 1.0 /
-                  context_->group_tile_info->reduce_inner_num));
-    split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
-  } else {
-    split_factors.emplace_back(
-        std::ceil(context_->group_tile_info->reduce_block * 1.0 /
-                  context_->group_tile_info->reduce_inner_num));
-    split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
-  }
-
   if (FLAGS_support_reduce_stride_read) {
     if (context_->group_tile_info->reduce_block <= 256) {
       split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
@@ -224,7 +209,6 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
       }
     } else {
       // split warp num first
-      split_factors.clear();
       split_factors.emplace_back(context_->group_tile_info->warp_num);
       split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
       split_factors.emplace_back(32);
@@ -246,6 +230,20 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
       }
     }
   } else {
+    if (context_->group_tile_info->is_reduce_all) {
+      split_factors.push_back(256);
+      split_factors.push_back(-1);
+    } else if (IsReduceBlockGE(2048)) {
+      split_factors.emplace_back(
+          std::ceil(context_->group_tile_info->reduce_numel * 1.0 /
+                    context_->group_tile_info->reduce_inner_num));
+      split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
+    } else {
+      split_factors.emplace_back(
+          std::ceil(context_->group_tile_info->reduce_block * 1.0 /
+                    context_->group_tile_info->reduce_inner_num));
+      split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
+    }
     auto split_loops = sch->Split(loops[reduce_current_axis_], split_factors);
     if (IsReduceBlock(context_->group_tile_info, block_id)) {
       sch->FactorizeReduction(

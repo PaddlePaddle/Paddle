@@ -28,7 +28,8 @@
 
 namespace symbol {
 
-#define SYMBOL_NOT_IMPLEMENTED LOG(FATAL) << "Not Implemented"
+#define SYMBOL_NOT_IMPLEMENTED \
+  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"))
 
 template <class... Ts>
 struct Overloaded : Ts... {

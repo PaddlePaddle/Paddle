@@ -16,13 +16,32 @@ from op_build_gen import (
     _INFERMETA_NEED_META_CONFIG,
     _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE,
 )
+from utils import to_pascal_case
 
-OP_INFERMETA_TEMPLATE = """
-std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes) {{
+OP_INFERMETA_DECL_STRING = (
+    "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
+    "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, pir::AttributeMap& attributes );"
+)
+
+OP_INFERMETA_IMPL_TEMPLATE_1 = """
+void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
+  auto fn = PD_INFER_META(phi::{infer_meta_func});
+  fn(infer_meta);
+}}
+"""
+
+OP_INFERMETA_IMPL_TEMPLATE_2 = """
+std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, pir::AttributeMap& attributes) {{
 {infermeta_inputs}
 {get_attributes_str}
 {infermeta_outputs}
   return argument_outputs;
+}}
+"""
+
+OP_INFERMETA_IMPL_TEMPLATE_2_BY_INVOKE = """
+std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, pir::AttributeMap& attributes) {{
+  return {invoke_class}::InferMeta(input_values, attributes);
 }}
 """
 
@@ -32,12 +51,6 @@ CREATE_INPUT_VALUE_TEMPLATE = """
 ENFORCE_INPUT_NUM_TEMPLATE = """
   IR_ENFORCE(input_values.size() == {op_input_name_list_size},
       "Num of inputs is expected to be {op_input_name_list_size} but got %d.", input_values.size());
-"""
-
-OP_INFERMETA_BY_INVOKE_TEMPLATE = """
-std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes) {{
-  return {invoke_class}::InferMeta(input_values, attributes);
-}}
 """
 
 GET_INPUT_TYPE_TEMPLATE = """
@@ -51,6 +64,7 @@ GET_INPUT_TYPE_TEMPLATE = """
 
 
 def get_infermeta_inputs_str(
+    op_info,
     inuse_infer_meta_args,
     op_input_name_list,
     op_input_type_list,
@@ -58,7 +72,7 @@ def get_infermeta_inputs_str(
     op_mutable_attribute_name_list,
     mutable_attr_is_input,
 ):
-    op_input_name_list_size = len(op_input_name_list)
+    op_input_name_list_size = len(op_info.input_name_list)
     if mutable_attr_is_input:
         op_input_name_list_size += len(op_mutable_attribute_name_list)
 
@@ -66,11 +80,11 @@ def get_infermeta_inputs_str(
         op_input_name_list_size=str(op_input_name_list_size),
     )
 
-    for i in range(len(op_input_name_list)):
-        if op_input_name_list[i] not in inuse_infer_meta_args:
+    for i in range(len(op_info.input_name_list)):
+        if op_info.input_name_list[i] not in inuse_infer_meta_args:
             continue
         infermeta_inputs_str += CREATE_INPUT_VALUE_TEMPLATE.format(
-            input_name=op_input_name_list[i], index=str(i)
+            input_name=op_info.input_name_list[i], index=str(i)
         )
 
     if mutable_attr_is_input:
@@ -119,7 +133,8 @@ def get_infermeta_inputs_str(
 
 
 def GenBuildOutputsPart2(
-    op_class_name,
+    args,
+    op_info,
     inuse_infer_meta_args,
     op_input_name_list,
     op_input_type_list,
@@ -222,7 +237,7 @@ def GenBuildOutputsPart2(
 """
 
     CREATE_INTARRAY_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  is_from_tensor = false;
-  phi::IntArray {name} = std::move(phi::IntArray(paddle::dialect::ParseValueShape({name}_, &is_from_tensor)));
+  phi::IntArray {name} = phi::IntArray(paddle::dialect::ParseValueShape({name}_, &is_from_tensor));
   if (is_from_tensor) {name}.SetFromTensor(true);\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  std::vector<int64_t> {name};
@@ -247,15 +262,15 @@ def GenBuildOutputsPart2(
 
     CREATE_SCALAR_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  phi::Scalar {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
-    {name} = std::move(phi::Scalar({name}_.defining_op()
+    {name} = phi::Scalar({name}_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
                                   .data()
-                                  .to<int>()));
+                                  .to<int>());
   }}
   else {{
-    {name} = std::move(phi::Scalar(-1));
+    {name} = phi::Scalar(-1);
     {name}.SetFromTensor(true);
   }}\n"""
 
@@ -285,7 +300,7 @@ def GenBuildOutputsPart2(
             # int_array
             if attr_dtype[0] == "paddle::dialect::IntArrayAttribute":
                 if (
-                    op_class_name
+                    op_info.class_name
                     in _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE
                 ):
                     build_output_str += CREATE_VECTOR_INT_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE.format(
@@ -415,28 +430,21 @@ def GenBuildOutputsPart2(
     build_output_str += "\n  std::vector<pir::Type> argument_outputs;"
 
     CREATE_OUTPUT_DENSE_TENSOR_TEMPLATE = """
-  pir::Type {name}_dense_tensor_type = {type}::get(pir::IrContext::Instance(), paddle::dialect::TransToIrDataType(dense_{name}.dtype()), dense_{name}.dims(), dense_{name}.layout(), dense_{name}.lod(), dense_{name}.offset());
-  argument_outputs.push_back({name}_dense_tensor_type);
+  pir::Type {name}_type = CvtTo{type}(dense_{name});
 """
-
     CREATE_OUTPUT_INPLACE_OPTIONAL_DENSE_TENSOR_TEMPLATE = """
+  pir::Type {name}_type;
   if ({input_name}_.impl() != nullptr) {{
-    pir::Type {output_name}_dense_tensor_type = {type}::get(pir::IrContext::Instance(), paddle::dialect::TransToIrDataType(dense_{output_name}.dtype()), dense_{output_name}.dims(), dense_{output_name}.layout(), dense_{output_name}.lod(), dense_{output_name}.offset());
-    argument_outputs.push_back({output_name}_dense_tensor_type);
-  }} else {{
-    pir::Type {output_name}_type;
-    argument_outputs.push_back({output_name}_type);
+    {name}_type = CvtTo{type}(dense_{name});
   }}
-
 """
 
     CREATE_OUTPUT_VEC_DENSE_TENSOR_TEMPLATE = """
   std::vector<pir::Type> {name}_types;
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
-    {name}_types.push_back(paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(), paddle::dialect::TransToIrDataType(vec_dense_{name}[i].dtype()), vec_dense_{name}[i].dims(), vec_dense_{name}[i].layout(), vec_dense_{name}[i].lod(), vec_dense_{name}[i].offset()));
+    {name}_types.push_back(CvtToDenseTensorType(vec_dense_{name}[i]));
   }}
-  pir::Type {name}_vector_type = pir::VectorType::get(pir::IrContext::Instance(), {name}_types);
-  argument_outputs.push_back({name}_vector_type);
+  pir::Type {name}_type = pir::VectorType::get(pir::IrContext::Instance(), {name}_types);
 """
     for idx in range(len(op_output_name_list)):
         # is a vector<Tensor>
@@ -457,27 +465,30 @@ def GenBuildOutputsPart2(
                 build_output_str += (
                     CREATE_OUTPUT_INPLACE_OPTIONAL_DENSE_TENSOR_TEMPLATE.format(
                         input_name=op_inplace_map[output_name],
-                        output_name=output_name,
-                        type=op_output_type_list[idx],
+                        name=output_name,
+                        type=op_output_type_list[idx][17:],
                     )
                 )
             else:
                 build_output_str += CREATE_OUTPUT_DENSE_TENSOR_TEMPLATE.format(
-                    type=op_output_type_list[idx], name=output_name
+                    type=op_output_type_list[idx][17:], name=output_name
                 )
+    build_output_str += GenDistBranch(args, op_info)
+
+    PUSH_BACK_OUTPUT_TYPE_TEMPLATE = """
+  argument_outputs.push_back({name});
+"""
+    for idx in range(len(op_output_name_list)):
+        build_output_str += PUSH_BACK_OUTPUT_TYPE_TEMPLATE.format(
+            name=op_output_name_list[idx] + "_type",
+        )
     return build_output_str
 
 
 def GetAttributes(
-    op_class_name,
+    op_info,
     mutable_attr_is_input,
     inuse_infer_meta_args,
-    op_attribute_name_list,
-    op_attribute_type_list,
-    op_attribute_build_arg_type_list,
-    op_non_mutable_attribute_name_list,
-    op_non_mutable_attribute_type_list,
-    op_non_mutable_attribute_build_arg_type_list,
     attr_args_is_map,
 ):
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
@@ -521,13 +532,13 @@ def GetAttributes(
     attr_types = []
     attr_build_arg_types = []
     if not mutable_attr_is_input:
-        attr_names = op_attribute_name_list
-        attr_types = op_attribute_type_list
-        attr_build_arg_types = op_attribute_build_arg_type_list
+        attr_names = op_info.attribute_name_list
+        attr_types = op_info.attribute_type_list
+        attr_build_arg_types = op_info.attribute_build_arg_type_list
     else:
-        attr_names = op_non_mutable_attribute_name_list
-        attr_types = op_non_mutable_attribute_type_list
-        attr_build_arg_types = op_non_mutable_attribute_build_arg_type_list
+        attr_names = op_info.non_mutable_attribute_name_list
+        attr_types = op_info.non_mutable_attribute_type_list
+        attr_build_arg_types = op_info.non_mutable_attribute_build_arg_type_list
     if attr_args_is_map:
         for idx in range(len(attr_names)):
             if attr_names[idx] not in inuse_infer_meta_args:
@@ -545,7 +556,7 @@ def GetAttributes(
                     data_name = "AsString"
                 get_attributes_str += (
                     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
-                        op_name=op_class_name,
+                        op_name=op_info.class_name,
                         attr_type=attr_type,
                         attribute_name=attr_names[idx],
                         inner_type=inner_type,
@@ -555,7 +566,7 @@ def GetAttributes(
             elif "paddle::dialect::IntArrayAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
-                        op_name=op_class_name,
+                        op_name=op_info.class_name,
                         attr_type=attr_type,
                         attribute_name=attr_names[idx],
                     )
@@ -563,7 +574,7 @@ def GetAttributes(
             elif "paddle::dialect::ScalarAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
-                        op_name=op_class_name,
+                        op_name=op_info.class_name,
                         attr_type=attr_type,
                         attribute_name=attr_names[idx],
                     )
@@ -571,7 +582,7 @@ def GetAttributes(
             elif "pir::StrAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
-                        op_name=op_class_name,
+                        op_name=op_info.class_name,
                         attr_type=attr_type,
                         attribute_name=attr_names[idx],
                         attr_ir_type=attr_types[idx],
@@ -579,7 +590,7 @@ def GetAttributes(
                 )
             else:
                 get_attributes_str += GET_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
-                    op_name=op_class_name,
+                    op_name=op_info.class_name,
                     attr_type=attr_type,
                     attribute_name=attr_names[idx],
                     attr_ir_type=attr_types[idx],
@@ -587,81 +598,153 @@ def GetAttributes(
     return get_attributes_str
 
 
-def gen_infermeta_func_str(
-    op_class_name,
-    op_input_name_list,
-    op_input_type_list,
-    op_input_optional_list,
-    op_mutable_attribute_name_list,
-    op_mutable_attribute_type_list,
-    op_output_name_list,
-    op_output_type_list,
-    op_output_size_list,
-    op_output_optional_list,
-    op_infer_meta_map,
-    op_inplace_map,
-    op_attribute_name_list,
-    op_attribute_type_list,
-    op_attribute_build_arg_type_list,
-    op_non_mutable_attribute_name_list,
-    op_non_mutable_attribute_type_list,
-    op_non_mutable_attribute_build_arg_type_list,
-    mutable_attr_is_input=False,
-    attr_args_is_map=True,
-):
+def GenDistBranch(args, op_info):
+    if not args.with_distributed or op_info.spmd_rule_func is None:
+        return ""
+    TEMPLATE = """
+  // Auto Parallel condition
+  if(!input_values.empty() && AllInputAreDist(input_values)) {{
+    ProcessMeshAttribute op_mesh = input_values[0].type().dyn_cast<DistDenseTensorType>().process_mesh_attr();
+    std::vector<TensorDistAttribute> operand_dist_attrs, result_dist_attrs;"""
+    dist_branch_str = TEMPLATE.format()
+    infer_spmd_args_list = []
+    # Prepare inputs_meta_tensor & attributes for infer spmd
+    for name in op_info.spmd_params:
+        # is input
+        if name in op_info.input_name_list:
+            input_index = op_info.input_name_list.index(name)
+            # is a vector<Tensor>
+            if 'pir::VectorType' in op_info.input_type_list[input_index]:
+                TEMPLATE = """
+    std::vector<phi::distributed::DistMetaTensor> vec_dist_meta_{name};
+    for(auto& sub_ir_tensor: {name}.data()) {{
+      vec_dist_meta_{name}.push_back(CvtToDistMetaTensor(sub_ir_tensor.dyn_cast<DistDenseTensorType>()));
+    }}"""
+                dist_branch_str += TEMPLATE.format(name=name)
+                infer_spmd_args_list.append("vec_dist_meta_" + name)
+            # is a Tensor
+            else:
+                if op_info.input_optional_list[input_index] == 'true':
+                    TEMPLATE = """
+    phi::distributed::DistMetaTensor dist_meta_{name};
+    if({name}_) {{
+      dist_meta_{name} = CvtToDistMetaTensor({name}_.type().dyn_cast<DistDenseTensorType>());
+    }}"""
+                    dist_branch_str += TEMPLATE.format(name=name)
+                else:
+                    TEMPLATE = """
+    auto dist_meta_{name} = CvtToDistMetaTensor({name}_.type().dyn_cast<DistDenseTensorType>());"""
+                    dist_branch_str += TEMPLATE.format(name=name)
+                infer_spmd_args_list.append("dist_meta_" + name)
+        else:
+            attr_index = op_info.attribute_name_list.index(name)
+            param_type = op_info.attribute_gen_arg_type_list[attr_index]
+            infer_spmd_args_list.append(name)
+            if param_type == "phi::IntArray":
+                if name in op_info.mutable_attribute_name_list:
+                    attr_index = op_info.mutable_attribute_name_list.index(name)
+                    attr_type = op_info.mutable_attribute_type_list[attr_index]
+                    if attr_type[0] == "paddle::dialect::IntArrayAttribute":
+                        infer_spmd_args_list[-1] = name + ".GetData()"
+    TEMPLATE = """
+    auto spmd_info = InferSpmd({args});
+    for(auto& arg_dist : spmd_info.first) {{
+        operand_dist_attrs.push_back(CvtToPirDistAttr(arg_dist));
+    }}
+"""
+    dist_branch_str += TEMPLATE.format(args=', '.join(infer_spmd_args_list))
+    for idx, output_name in enumerate(op_info.output_name_list):
+        # is a vector<Tensor>
+        if 'pir::VectorType' in op_info.output_type_list[idx]:
+            # Todo: support vector<Tensor> case
+            dist_branch_str += ""
+        # is a Tensor
+        else:
+            TEMPLATE = """
+    auto dist_attr_{name} = CvtToPirDistAttr(spmd_info.second[{idx}]);
+    result_dist_attrs.push_back(dist_attr_{name});
+    argument_outputs.push_back(DistDenseTensorType::get(pir::IrContext::Instance(), {name}_type.dyn_cast<pir::DenseTensorType>(), dist_attr_{name}));
+"""
+            dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
+    TEMPLATE = """
+    attributes[kAttrOpDistAttrs] = OperationDistAttribute::get(
+        pir::IrContext::Instance(),
+        op_mesh,
+        operand_dist_attrs,
+        result_dist_attrs
+    );
+    return argument_outputs;
+  }}
+"""
+    dist_branch_str += TEMPLATE.format()
+    return dist_branch_str
+
+
+def gen_infermeta_func_str(args, op_info):
+    attr_args_is_map = True
+    mutable_attr_is_input = (
+        True if len(op_info.mutable_attribute_name_list) > 0 else False
+    )
     inuse_infer_meta_args = []
-    for idx in range(len(op_infer_meta_map['param'])):
-        inuse_infer_meta_args.append(op_infer_meta_map['param'][idx])
+    for idx in range(len(op_info.infer_meta_map['param'])):
+        inuse_infer_meta_args.append(op_info.infer_meta_map['param'][idx])
 
     # Prepare outputs_meta_tensor for infer meta
-    for idx in range(len(op_output_name_list)):
-        if op_output_name_list[idx].endswith('_grad'):
-            inuse_infer_meta_args.append(f"{op_output_name_list[idx][0:-5]}")
-        if op_output_name_list[idx].endswith('_grad_'):
-            inuse_infer_meta_args.append(f"{op_output_name_list[idx][0:-6]}")
-        inuse_infer_meta_args.append(f"{op_output_name_list[idx]}")
+    for idx in range(len(op_info.output_name_list)):
+        if op_info.output_name_list[idx].endswith('_grad'):
+            inuse_infer_meta_args.append(
+                f"{op_info.output_name_list[idx][0:-5]}"
+            )
+        if op_info.output_name_list[idx].endswith('_grad_'):
+            inuse_infer_meta_args.append(
+                f"{op_info.output_name_list[idx][0:-6]}"
+            )
+        inuse_infer_meta_args.append(f"{op_info.output_name_list[idx]}")
+
+    spmd_params = []
+    if args.with_distributed and op_info.spmd_rule_func is not None:
+        spmd_params = op_info.input_name_list + op_info.attribute_name_list
+        if op_info.kernel_map is not None:
+            spmd_params = op_info.kernel_map['param']
+    op_info.spmd_params = spmd_params
 
     infermeta_inputs_str = get_infermeta_inputs_str(
-        inuse_infer_meta_args,
-        op_input_name_list,
-        op_input_type_list,
-        op_input_optional_list,
-        op_mutable_attribute_name_list,
+        op_info,
+        inuse_infer_meta_args + spmd_params,
+        op_info.input_name_list,
+        op_info.kernel_input_type_list,
+        op_info.input_optional_list,
+        op_info.mutable_attribute_name_list,
         mutable_attr_is_input,
     )
 
     get_attributes_str = GetAttributes(
-        op_class_name,
+        op_info,
         mutable_attr_is_input,
-        inuse_infer_meta_args,
-        op_attribute_name_list,
-        op_attribute_type_list,
-        op_attribute_build_arg_type_list,
-        op_non_mutable_attribute_name_list,
-        op_non_mutable_attribute_type_list,
-        op_non_mutable_attribute_build_arg_type_list,
+        inuse_infer_meta_args + spmd_params,
         attr_args_is_map,
     )
 
     infermeta_outputs_str = GenBuildOutputsPart2(
-        op_class_name,
-        inuse_infer_meta_args,
-        op_input_name_list,
-        op_input_type_list,
-        op_input_optional_list,
-        op_mutable_attribute_name_list,
-        op_mutable_attribute_type_list,
-        op_output_name_list,
-        op_output_type_list,
-        op_output_size_list,
-        op_output_optional_list,
-        op_infer_meta_map,
-        op_inplace_map,
+        args,
+        op_info,
+        inuse_infer_meta_args + spmd_params,
+        op_info.input_name_list,
+        op_info.kernel_input_type_list,
+        op_info.input_optional_list,
+        op_info.mutable_attribute_name_list,
+        op_info.mutable_attribute_type_list,
+        op_info.output_name_list,
+        op_info.kernel_output_type_list,
+        op_info.output_size_list,
+        op_info.output_optional_list,
+        op_info.infer_meta_map,
+        op_info.inplace_map,
         mutable_attr_is_input,
     )
 
-    infermeta_func = OP_INFERMETA_TEMPLATE.format(
-        op_name=op_class_name,
+    infermeta_func = OP_INFERMETA_IMPL_TEMPLATE_2.format(
+        op_name=op_info.class_name,
         infermeta_inputs=infermeta_inputs_str,
         get_attributes_str=get_attributes_str,
         infermeta_outputs=infermeta_outputs_str,
@@ -670,17 +753,45 @@ def gen_infermeta_func_str(
     return infermeta_func
 
 
-def gen_infermeta_by_invoke_func_str(op_class_name, invoke_class_name):
-    return OP_INFERMETA_BY_INVOKE_TEMPLATE.format(
-        op_name=op_class_name, invoke_class=invoke_class_name
+def gen_infermeta_impl_str(args, op_info):
+    return (
+        OP_INFERMETA_IMPL_TEMPLATE_1.format(
+            op_name=op_info.class_name,
+            infer_meta_func=op_info.infer_meta_func,
+        )
+        + "\n"
+        + gen_infermeta_func_str(args, op_info)
+    )
+
+
+def gen_infermeta_by_invoke_impl_str(op_info, op_info_items):
+    invoke_class_name = to_pascal_case(op_info.invoke_map['func']) + "Op"
+    return (
+        OP_INFERMETA_IMPL_TEMPLATE_1.format(
+            op_name=op_info.class_name,
+            infer_meta_func=op_info_items[
+                op_info.invoke_map['func']
+            ].infer_meta_func,
+        )
+        + "\n"
+        + OP_INFERMETA_IMPL_TEMPLATE_2_BY_INVOKE.format(
+            op_name=op_info.class_name, invoke_class=invoke_class_name
+        )
     )
 
 
 def gen_op_infermeta_func(args, op_info, op_info_items):
     interface = []
+    declare_str = ""
+    impl_str = ""
     if op_info.infer_meta_func:
         interface = ["paddle::dialect::InferMetaInterface"]
+        declare_str = OP_INFERMETA_DECL_STRING
+        impl_str = gen_infermeta_impl_str(args, op_info)
     elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
         if op_info_items[op_info.invoke_map['func']].infer_meta_func:
             interface = ["paddle::dialect::InferMetaInterface"]
-    return interface, None, None
+            declare_str = OP_INFERMETA_DECL_STRING
+            impl_str = gen_infermeta_by_invoke_impl_str(op_info, op_info_items)
+
+    return interface, declare_str, impl_str

@@ -494,6 +494,15 @@
     func : distributed_lookup_table
     data_type : dtype
 
+- op : distributed_push_sparse
+  args : (Tensor[] ids, Tensor[] shows, Tensor[] clicks, int table_id = 0, int size = 8, bool is_distributed = false, str push_sparse_version = "push_sparse", int64_t padding_idx = -1, DataType dtype=DataType::FLOAT32, bool is_test = false, bool use_cvm_op = false)
+  output : Tensor[](output){ids.size()}
+  infer_meta :
+    func : DistributedPushSparseInferMeta
+  kernel :
+    func: distributed_push_sparse
+    data_type : dtype
+
 - op : divide
   args : (Tensor x, Tensor y)
   output : Tensor(out)
