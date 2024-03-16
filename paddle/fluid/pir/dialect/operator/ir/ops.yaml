@@ -1555,6 +1555,16 @@
   backward : sum_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : partial_sum
+  args : (Tensor[] x, int start_index = 0, int length = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : PartialSumInferMeta
+  kernel :
+    func : partial_sum
+    data_type : x
+  backward : partial_sum_grad
+
 - op : swish
   args : (Tensor x)
   output : Tensor(out)

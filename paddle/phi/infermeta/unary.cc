@@ -4453,6 +4453,66 @@ void SumInferMeta(const MetaTensor& x,
   SumRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out, config);
 }
 
+void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,
+                         int start_index,
+                         int length,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  int64_t batch_size = -1;
+  int64_t input_len = -1;
+
+  auto inputs_num = xs.size();
+  PADDLE_ENFORCE_GT(inputs_num,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "ShapeError: Input tensors count should > 0. But "
+                        "received inputs' length is 0."));
+
+  // Only support two dimensions now, should be extended later
+  // when length is -1, need make sure all dimensions to be added are the same
+  for (size_t i = 0; i < inputs_num; i++) {
+    auto x_dim = xs[i]->dims();
+    VLOG(1) << "inputs_dims:" << x_dim;
+
+    PADDLE_ENFORCE_EQ(
+        x_dim.size(),
+        2,
+        phi::errors::InvalidArgument("Only support two dimensions input now."));
+
+    if (i == 0) {
+      batch_size = x_dim[0];
+      input_len = x_dim[1];
+    } else {
+      // each tensor's dim must eq
+      PADDLE_ENFORCE_EQ(x_dim[0],
+                        batch_size,
+                        phi::errors::InvalidArgument(
+                            "The batch size of all inputs must be same"));
+      PADDLE_ENFORCE_EQ(x_dim[1],
+                        input_len,
+                        phi::errors::InvalidArgument(
+                            "The input len of all inputs must be same"));
+    }
+  }
+  PADDLE_ENFORCE_GT(
+      input_len,
+      start_index,
+      phi::errors::OutOfRange("start_index must be less than input len"));
+  if (length > 0) {
+    PADDLE_ENFORCE_GE(input_len,
+                      start_index + length,
+                      phi::errors::OutOfRange(
+                          "start_index + length is larger than input length"));
+  }
+
+  std::vector<int64_t> out_dims(2);
+  out_dims[0] = batch_size;
+  out_dims[1] = (length == -1) ? input_len - start_index : length;
+  DDim out_dim = common::make_ddim(out_dims);
+  out->set_dims(out_dim);
+  out->set_dtype(xs[0]->dtype());
+}
+
 void SvdInferMeta(const MetaTensor& x,
                   bool full_matrices,
                   MetaTensor* u,

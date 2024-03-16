@@ -846,6 +846,16 @@
   no_need_buffer : x
   backward : sum_double_grad
 
+- backward_op : partial_sum_grad
+  forward : partial_sum (Tensor[] x, int start_index = 0, int length = -1) -> Tensor(out)
+  args : (Tensor[] x, Tensor out_grad, int start_index, int length)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : PartialSumGradInferMeta
+    param : [x]
+  kernel :
+    func : partial_sum_grad
+
 - backward_op : swish_grad
   forward : swish (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
