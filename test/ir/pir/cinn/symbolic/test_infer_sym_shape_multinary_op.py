@@ -71,29 +71,28 @@ class MeshgridNet(paddle.nn.Layer):
         return out_x, out_y
 
 
-class TestMeshgridOpInferSymbolicShape(TestBase):
+class MeshgridOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
-        self.x_cases = [np.random.rand(1), np.random.rand(10), np.random.rand(100), np.random.rand(1000)]
-        self.y_cases = [np.random.rand(1), np.random.rand(10), np.random.rand(1000), np.random.rand(100)]
+        self.x_cases = [
+            np.random.rand(1),
+            np.random.rand(10),
+            np.random.rand(100),
+            np.random.rand(1000),
+        ]
+        self.y_cases = [
+            np.random.rand(1),
+            np.random.rand(10),
+            np.random.rand(1000),
+            np.random.rand(100),
+        ]
 
         self.expected = [
-            [
-                'shape[S0, S1], data[NULL], shape[S0, S1], data[NULL]',
-            ],
-            [
-                'shape[S0, S1], data[NULL], shape[S0, S1], data[NULL]',
-            ],
-            [
-                'shape[S0, S1], data[NULL], shape[S0, S1], data[NULL]',
-            ],
-            [
-                'shape[S0, S1], data[NULL], shape[S0, S1], data[NULL]',
-            ],
+            'shape[S0, S1], data[NULL], shape[S0, S1], data[NULL]',
         ]
 
     def test_eval_symbolic(self):
         net = MeshgridNet()
-        
+
         for i in range(len(self.x_cases)):
             x = self.x_cases[i]
             y = self.y_cases[i]
@@ -107,20 +106,9 @@ class TestMeshgridOpInferSymbolicShape(TestBase):
             input_spec = [x_spec, y_spec]
             net = apply_to_static(net, False, input_spec)
             net.eval()
-
-            # check the infer result
-            sym_shape_str_list = get_sym_shape_str_for_op(
-                net, input_spec, 'pd_op.meshgrid'
+            check_infer_results(
+                net, input_spec, 'pd_op.meshgrid', self.expected
             )
-            np.testing.assert_equal(
-                len(sym_shape_str_list), len(self.expected[i])
-            )
-            for j in range(len(sym_shape_str_list)):
-                np.testing.assert_equal(
-                    sym_shape_str_list[j].find(self.expected[i][j]),
-                    0,
-                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[j]}) is not expected {(self.expected[i][j])}',
-                )
 
         # TODO(WintersMontagne10335): Add builtin.meshgrid op infer symbolic shape test
         #                Not added because attribute `sym_shape_str` does not support multi-output op now.
