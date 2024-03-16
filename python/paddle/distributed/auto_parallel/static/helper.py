@@ -255,9 +255,7 @@ class ProgramHelper:
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        concrete_program = getattr(
-            self.proxy_layer, func_name
-        ).concrete_program  # noqa: B018
+        concrete_program = getattr(self.proxy_layer, func_name).concrete_program
 
         # TODO(zhiqiu): prepare_op_amp_options is not supported for PIR program
         # It will to use dynamic-static unified amp in pir program, and there is
