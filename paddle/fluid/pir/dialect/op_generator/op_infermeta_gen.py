@@ -49,7 +49,7 @@ CREATE_INPUT_VALUE_TEMPLATE = """
   pir::Value {input_name}_ = input_values[{index}]; (void){input_name}_;"""
 
 ENFORCE_INPUT_NUM_TEMPLATE = """
-  PADDLE_ENFORCE_EQ(input_values.size() == {op_input_name_list_size},phi::errors::InvalidArgument(
+  PADDLE_ENFORCE_EQ(input_values.size() == {op_input_name_list_size}, true, phi::errors::InvalidArgument(
       "Num of inputs is expected to be {op_input_name_list_size} but got %d.", input_values.size()));
 """
 
