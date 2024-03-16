@@ -1500,7 +1500,7 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
   pir::Value value = defining_info.value;
   PADDLE_ENFORCE_EQ(
       value.use_empty(),
-      false,
+      true,
       phi::errors::PreconditionNotMet(
           "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
   const pir::Type& type = value.type();
@@ -2454,7 +2454,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
     pir::Value x_value = x_defining_info.value;
     PADDLE_ENFORCE_EQ(
         x_value.use_empty(),
-        false,
+        true,
         phi::errors::PreconditionNotMet(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
     pir::Type x_type = x_value.type();
