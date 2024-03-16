@@ -45,7 +45,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 #define BUF_SIZE 1024 * 1024
 
 extern void comlog_set_log_level(int log_level);

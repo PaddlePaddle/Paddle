@@ -14,13 +14,14 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
 
-#include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_string(cinn_convert_static_dim_to_dynamic_dim);

@@ -46,9 +46,11 @@ class DemoNet(nn.Layer):
     def __init__(self, mesh):
         super().__init__()
         self._mesh = mesh
-        self.linear_0 = nn.Linear(IMAGE_SIZE, IMAGE_SIZE)
-        self.linear_1 = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-        self.relu = nn.ReLU()
+        self.linear_0 = nn.Linear(IMAGE_SIZE, IMAGE_SIZE, bias_attr=False)
+        self.linear_1 = nn.Linear(IMAGE_SIZE, CLASS_NUM, bias_attr=False)
+        self.relu_0 = nn.ReLU()
+        self.relu_1 = nn.ReLU()
+        self.relu_2 = nn.ReLU()
         # shard the weights of this layer
         self.linear_0.weight = dist.shard_tensor(
             self.linear_0.weight,
@@ -64,9 +66,11 @@ class DemoNet(nn.Layer):
         )
 
     def forward(self, x):
-        out = self.linear_0(x)
-        out = self.relu(out)
+        out = self.relu_0(x)  # triggle backward partial allreduce
+        out = self.linear_0(out)
+        out = self.relu_1(out)
         out = self.linear_1(out)
+        out = self.relu_2(out)  # triggle forward partial allreduce
         return out
 
 
@@ -78,7 +82,33 @@ def create_data_loader():
     return loader
 
 
-class TestToStaticPirProgram(unittest.TestCase):
+class TestToStaticPirProgramEval(unittest.TestCase):
+    def test_to_static_program(self):
+        paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        layer = DemoNet(mesh)
+        opt = None  # forward only
+        loss_fn = nn.MSELoss()
+        loader = create_data_loader()
+        dist_loader = dist.shard_dataloader(loader, meshes=[mesh])
+        dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
+
+        dist_model.eval()
+        main_program = dist_model._engine._fwd_main_progs["eval"]
+
+        for op in main_program.global_block().ops:
+            tensor = op.result(0)
+            if op.name() == 'pd_op.data':
+                self.assertTrue(tensor.is_dist_dense_tensor_type())
+                self.assertEqual(tensor.process_mesh.shape, [2])
+                self.assertEqual(tensor.process_mesh.process_ids, [0, 1])
+                self.assertEqual(tensor.dims_mapping, [-1, -1])
+                self.assertEqual(tensor.partial_dims, set())
+            elif op.name() == "builtin.parameter":
+                pass  # TODO check
+
+
+class TestToStaticPirProgramTrain(unittest.TestCase):
     def test_to_static_program(self):
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
@@ -93,6 +123,7 @@ class TestToStaticPirProgram(unittest.TestCase):
 
         dist_model.train()
         main_program = dist_model._engine._fwd_main_progs["train"]
+
         for op in main_program.global_block().ops:
             tensor = op.result(0)
             if op.name() == 'pd_op.data':
@@ -101,11 +132,23 @@ class TestToStaticPirProgram(unittest.TestCase):
                 self.assertEqual(tensor.process_mesh.process_ids, [0, 1])
                 self.assertEqual(tensor.dims_mapping, [-1, -1])
                 self.assertEqual(tensor.partial_dims, set())
-            else:
+            elif op.name() == 'builtin.parameter':
                 self.assertTrue(tensor.is_dense_tensor_type())
                 self.assertFalse(tensor.is_dist_dense_tensor_type())
+                self.assertTrue(tensor.has_one_use())
 
-        # training
+                use_op = tensor.all_used_ops()[0]
+                if use_op.name() == 'dist_op.shard_tensor':
+                    tensor = use_op.result(0)
+                    self.assertTrue(tensor.is_dist_dense_tensor_type())
+                    self.assertEqual(tensor.process_mesh.shape, [2])
+                    self.assertEqual(tensor.process_mesh.process_ids, [0, 1])
+                    if tensor.shape == [IMAGE_SIZE, IMAGE_SIZE]:
+                        self.assertEqual(tensor.dims_mapping, [-1, 0])
+                    elif tensor.shape == [IMAGE_SIZE, CLASS_NUM]:
+                        self.assertEqual(tensor.dims_mapping, [0, -1])
+                    self.assertEqual(tensor.partial_dims, set())
+
         # dist_model.train()
         # for batch_id, (image, label) in enumerate(dist_loader()):
         #     loss = dist_model(image, label)
