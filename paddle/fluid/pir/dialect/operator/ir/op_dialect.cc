@@ -46,9 +46,12 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     const auto shape_data_list = [&] {
       symbol::TensorListShapeOrDataDimExprs shape_data_list;
       for (size_t i = 0; i < op->num_operands(); ++i) {
-        IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
-                   "Currently InferSymbolicShape of CombineOp only support "
-                   "DenseTensorType.");
+        PADDLE_ENFORCE_EQ(
+            op->operand(i).type().dyn_cast<DenseTensorType>(),
+            true,
+            phi::errors::InvalidArgument(
+                "Currently InferSymbolicShape of CombineOp only support "
+                "DenseTensorType."));
 
         shape_data_list.emplace_back(
             shape_analysis->GetShapeOrDataForValue(op->operand_source(i))
@@ -70,9 +73,12 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    IR_ENFORCE(op->result(0).type().dyn_cast<DenseTensorType>(),
-               "Currently InferSymbolicShape of ConstantOp only support "
-               "DenseTensorType result.");
+    PADDLE_ENFORCE_EQ(
+        op->result(0).type().dyn_cast<DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Currently InferSymbolicShape of ConstantOp only support "
+            "DenseTensorType result."));
 
     const std::vector<symbol::DimExpr> out_dims = [op] {
       std::vector<symbol::DimExpr> dims;
