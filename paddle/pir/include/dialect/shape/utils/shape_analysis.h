@@ -28,8 +28,6 @@ namespace pir {
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
-  explicit ShapeConstraintIRAnalysis(ModuleOp m);
-
   void Init();
 
   const std::string GetNextSymName();
