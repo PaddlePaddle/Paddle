@@ -1498,7 +1498,7 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
   const auto& defining_info = param_map->at(name);
 
   pir::Value value = defining_info.value;
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NE(
       value.use_empty(),
       true,
       phi::errors::PreconditionNotMet(
@@ -1886,7 +1886,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
       pir::Value value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
-      PADDLE_ENFORCE_EQ(value_res.use_empty(),
+      PADDLE_ENFORCE_NE(value_res.use_empty(),
                         true,
                         phi::errors::PreconditionNotMet(
                             "Expected op[%s]'s input %s is not null",
@@ -2452,7 +2452,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
       x_defining_info = param_map->at(x_name);
     }
     pir::Value x_value = x_defining_info.value;
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NE(
         x_value.use_empty(),
         true,
         phi::errors::PreconditionNotMet(
@@ -2492,7 +2492,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
       y_defining_info = param_map->at(y_name);
     }
     pir::Value y_value = y_defining_info.value;
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NE(
         y_value.use_empty(),
         true,
         phi::errors::PreconditionNotMet(
@@ -2624,7 +2624,7 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
                           y_name));
     auto y_defining_info = param_map->at(y_name);
     pir::Value y_value = y_defining_info.value;
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NE(
         y_value.use_empty(),
         true,
         phi::errors::PreconditionNotMet(
