@@ -51,10 +51,18 @@ void GetReduceDimsForY(const std::vector<int>& dy_shape,
 
 void elementwise_add(const Instruction& instr,
                      const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 2UL)
-      << " 2 input tensors for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 1UL)
-      << "1 output tensor for " << instr->op_type;
+  PADDLE_ENFORCE_EQ(instr->inputs.size(),
+                    2UL,
+                    platform::errors::InvalidArgument(
+                        "The size of inputs in elementwise_add is incorrect. "
+                        "Expected size is 2, but receive %d. ",
+                        instr->inputs.size()));
+  PADDLE_ENFORCE_EQ(instr->outputs.size(),
+                    1UL,
+                    platform::errors::InvalidArgument(
+                        "The size of outputs in elementwise_add is incorrect. "
+                        "Expected size is 1, but receive %d. ",
+                        instr->outputs.size()));
   auto x = instr->inputs[0];
   auto y = instr->inputs[1];
   auto output = instr->outputs[0];
@@ -120,10 +128,20 @@ void elementwise_add(const Instruction& instr,
 
 void elementwise_add_grad(const Instruction& instr,
                           const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 3UL)
-      << " 3 input tensors for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 2UL)
-      << "2 output tensors for " << instr->op_type;
+  PADDLE_ENFORCE_EQ(
+      instr->inputs.size(),
+      3UL,
+      platform::errors::InvalidArgument(
+          "The size of inputs in elementwise_add_grad is incorrect. "
+          "Expected size is 3, but receive %d. ",
+          instr->inputs.size()));
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      2UL,
+      platform::errors::InvalidArgument(
+          "The size of outputs in elementwise_add_grad is incorrect. "
+          "Expected size is 2, but receive %d. ",
+          instr->outputs.size()));
   auto dout = instr->inputs[0];
   auto dx = instr->outputs[0];
   auto dy = instr->outputs[1];
