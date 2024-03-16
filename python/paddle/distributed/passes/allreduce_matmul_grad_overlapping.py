@@ -19,7 +19,7 @@ from ..auto_parallel.static.utils import (
     get_logger,
 )
 from .pass_base import PassBase, register_pass
-from .pass_utils import _split_matmul_grad_to_matmul
+from .pass_utils import split_matmul_grad_to_matmul
 
 logger = get_logger(logging.INFO)
 
@@ -113,7 +113,7 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 continue
 
             # matmul_grad_op => matmul_v2 + reshape + reshape + matmul_v2 + reshape
-            _split_matmul_grad_to_matmul(
+            split_matmul_grad_to_matmul(
                 block, matmul_grad_id, self.dist_context, self.op_namescope
             )
 

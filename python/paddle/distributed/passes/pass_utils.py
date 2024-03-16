@@ -835,7 +835,7 @@ def _insert_reshape_op(
     return out
 
 
-def _split_matmul_grad_to_matmul(
+def split_matmul_grad_to_matmul(
     block, matmul_grad_id, dist_context, op_namescope="/"
 ):
     ops = block.ops
