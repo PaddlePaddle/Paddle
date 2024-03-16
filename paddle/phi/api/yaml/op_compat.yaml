@@ -843,6 +843,10 @@
     out : Out
 
 - op : distributed_push_sparse
+  inputs :
+    {ids : Ids, shows : Shows, clicks: Clicks}
+  outputs :
+    output : Outputs
   extra :
     attrs : ['int[] slots = {}']
 
