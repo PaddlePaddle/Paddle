@@ -1516,7 +1516,7 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
 
   pir::Value value = defining_info.value;
   PADDLE_ENFORCE_NOT_NULL(
-      value.get(),
+      !IsInvalid(value),
       phi::errors::NotFound(
           "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
   const pir::Type& type = value.type();
@@ -1908,7 +1908,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
 
       PADDLE_ENFORCE_NOT_NULL(
-          value_res.get(),
+          !IsInvalid(value_res),
           phi::errors::NotFound("Expected op[%s]'s input %s is not null",
                                 op_desc.Type(),
                                 grad_var_name));
@@ -2480,7 +2480,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
     }
     pir::Value x_value = x_defining_info.value;
     PADDLE_ENFORCE_NOT_NULL(
-        x_value.get(),
+        !IsInvalid(x_value),
         phi::errors::NotFound(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
     pir::Type x_type = x_value.type();
@@ -2519,7 +2519,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
     }
     pir::Value y_value = y_defining_info.value;
     PADDLE_ENFORCE_NOT_NULL(
-        y_value.get(),
+        !IsInvalid(y_value),
         phi::errors::NotFound(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
@@ -2652,7 +2652,7 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
     auto y_defining_info = param_map->at(y_name);
     pir::Value y_value = y_defining_info.value;
     PADDLE_ENFORCE_NOT_NULL(
-        y_value.get(),
+        !IsInvalid(y_value),
         phi::errors::NotFound(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
