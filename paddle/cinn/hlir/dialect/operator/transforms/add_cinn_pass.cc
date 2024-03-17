@@ -151,6 +151,8 @@ void ApplyDivideGroupOpToFusionOpPass(
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
   }
+
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->Run(program);
 }
 

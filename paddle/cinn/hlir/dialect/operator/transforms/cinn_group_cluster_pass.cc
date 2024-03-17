@@ -651,6 +651,10 @@ bool CanOpMergeNode(
     const std::unordered_map<::pir::Operation*, GroupClusterNode>& op_path_info,
     ::pir::Operation* pre_op,
     ::pir::Operation* cur_op) {
+  if (pre_op->name() == "cinn_op.generate_shape" &&
+      cur_op->name() == "pd_op.reshape") {
+    return true;
+  }
   const auto& node1 = op_path_info.at(pre_op);
   const auto& node2 = op_path_info.at(cur_op);
   // reduce can not fuse with any op in first stage

@@ -372,6 +372,8 @@ std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
                                             phi::Place place) {
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
 
+  ir_res->Print(std::cout);
+
   if (FLAGS_pir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());

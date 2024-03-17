@@ -1039,6 +1039,8 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ =
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
+      std::cerr << "kernel program\n";
+      pir_program_->Print(std::cout);
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
       if (FLAGS_pir_apply_inplace_pass) {
         lowered_pm.AddPass(::pir::CreateInplacePass());
