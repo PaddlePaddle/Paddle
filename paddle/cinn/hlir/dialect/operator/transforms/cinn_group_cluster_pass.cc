@@ -655,6 +655,7 @@ bool CanOpMergeNode(
       cur_op->name() == "pd_op.reshape") {
     return true;
   }
+
   const auto& node1 = op_path_info.at(pre_op);
   const auto& node2 = op_path_info.at(cur_op);
   // reduce can not fuse with any op in first stage

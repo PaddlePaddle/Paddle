@@ -113,7 +113,10 @@ class CinnJitInstruction::FnPtrImpl {
     for (int i = 0; i < output_tensor_size; ++i) {
       DDim dim(output_tensor_shapes[i],
                kernel_args[input_tensor_size + i]->dims().size());
+      std::cerr << "before infer shape "
+                << kernel_args[input_tensor_size + i]->dims() << std::endl;
       kernel_args[input_tensor_size + i]->Resize(dim);
+      std::cerr << "after infer shape " << dim << std::endl;
       free(output_tensor_shapes[i]);
     }
     VLOG(6) << "End InferShape: " << cinn_kernel_info_.fn_name;
@@ -167,6 +170,7 @@ CinnJitInstruction::CinnJitInstruction(
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     tensor->set_type(
         paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
+
     for (size_t j = 0; j < alloc_tensor_type.dims().size(); ++j) {
       if (alloc_tensor_type.dims()[j] < 0) {
         need_update_shape = true;
@@ -195,7 +199,7 @@ void CinnJitInstruction::Run() {
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
 
   // std::cerr << "input " << *(tensor_args_.front()) << std::endl;
-  std::cerr << "output " << *(tensor_args_.back()) << std::endl;
+  // std::cerr << "output " << *(tensor_args_.back())->dims() << std::endl;
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support non-CUDA kernel";
