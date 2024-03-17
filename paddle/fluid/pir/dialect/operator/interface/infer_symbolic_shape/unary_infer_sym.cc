@@ -334,13 +334,6 @@ bool PadOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool PoissonOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
 bool ProdOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   bool keepdim = GetBoolAttr(op, "keep_dim");
