@@ -46,8 +46,8 @@ class TestMatmulOutTransposeFusePattern(PassTest):
         return True
 
     def sample_program(self):
-        for x_shape in [[10, 2, 3]]:
-            for y_shape in [[10, 3, 2]]:
+        for x_shape in [[1, 2, 3]]:
+            for y_shape in [[1, 3, 2]]:
                 for perm in [[0, 2, 1]]:
                     with paddle.pir_utils.IrGuard():
                         main_prog = paddle.static.Program()
@@ -108,8 +108,8 @@ class TestMatmulYTransposeFusePattern(PassTest):
         return True
 
     def sample_program(self):
-        for x_shape in [[10, 2, 3]]:
-            for y_shape in [[10, 2, 3]]:
+        for x_shape in [[1, 2, 3]]:
+            for y_shape in [[1, 2, 3]]:
                 for perm in [[0, 2, 1]]:
                     with paddle.pir_utils.IrGuard():
                         main_prog = paddle.static.Program()
@@ -170,8 +170,8 @@ class TestMatmulXTransposeFusePattern(PassTest):
         return True
 
     def sample_program(self):
-        for x_shape in [[10, 2, 3]]:
-            for y_shape in [[10, 2, 3]]:
+        for x_shape in [[1, 2, 3]]:
+            for y_shape in [[1, 2, 3]]:
                 for perm in [[0, 2, 1]]:
                     with paddle.pir_utils.IrGuard():
                         main_prog = paddle.static.Program()
