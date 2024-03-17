@@ -16,6 +16,7 @@
 
 #include <queue>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -109,7 +110,8 @@ OpCall *SourcePatternGraph::AnchorNode() const {
                     }))
       return output_op_candidate;
   }
-  IR_THROW("Unable to find a valid anchor");
+  PADDLE_THROW(common::errors::InvalidArgument(
+      "Unable to find a valid anchor in drr's source result pattern!"));
 }
 
 std::unordered_set<const OpCall *> SourcePatternGraph::OutputNodes() const {
@@ -148,7 +150,7 @@ void GraphTopo::WalkGraphNodesTopoOrder(
       graph_->input_tensors();
   const std::unordered_map<std::string, std::shared_ptr<Tensor>>
       &id2owned_tensor = graph_->id2owned_tensor();
-  const std::vector<std::shared_ptr<OpCall>> &owend_opcall =
+  const std::vector<std::shared_ptr<OpCall>> &owned_opcall =
       graph_->owned_op_call();
 
   std::queue<const OpCall *> opcall_queue;
@@ -156,7 +158,7 @@ void GraphTopo::WalkGraphNodesTopoOrder(
       opcall_dependent;
 
   // init opcall_dependent
-  for (const std::shared_ptr<OpCall> &opcall_sptr : owend_opcall) {
+  for (const std::shared_ptr<OpCall> &opcall_sptr : owned_opcall) {
     if (opcall_sptr.get()->inputs().empty()) {  // opcall inputs is empty
       opcall_queue.push(opcall_sptr.get());
     } else {
@@ -174,11 +176,11 @@ void GraphTopo::WalkGraphNodesTopoOrder(
                                             "The input tensor [%s] must exists "
                                             "in pattern graph to be obtained.",
                                             tensor_name));
-    for (const auto &tensor_comsumer :
+    for (const auto &tensor_consumer :
          id2owned_tensor.at(tensor_name).get()->consumers()) {
-      opcall_dependent[tensor_comsumer].erase(tensor_name);
-      if (opcall_dependent[tensor_comsumer].empty()) {
-        opcall_queue.push(tensor_comsumer);
+      opcall_dependent[tensor_consumer].erase(tensor_name);
+      if (opcall_dependent[tensor_consumer].empty()) {
+        opcall_queue.push(tensor_consumer);
       }
     }
   }
@@ -190,10 +192,10 @@ void GraphTopo::WalkGraphNodesTopoOrder(
 
     // update opcall_dependent
     for (const auto &output_tensor : opcall->outputs()) {
-      for (const auto &tensor_comsumer : output_tensor->consumers()) {
-        opcall_dependent[tensor_comsumer].erase(output_tensor->name());
-        if (opcall_dependent[tensor_comsumer].empty()) {
-          opcall_queue.push(tensor_comsumer);
+      for (const auto &tensor_consumer : output_tensor->consumers()) {
+        opcall_dependent[tensor_consumer].erase(output_tensor->name());
+        if (opcall_dependent[tensor_consumer].empty()) {
+          opcall_queue.push(tensor_consumer);
         }
       }
     }

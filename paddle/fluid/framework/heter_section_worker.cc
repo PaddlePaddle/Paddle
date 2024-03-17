@@ -126,9 +126,9 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   bool is_first_stage = (pipeline_stage_ == 0);
   bool is_last_stage = (pipeline_stage_ + 1 == num_pipeline_stages_);
 
-  if (is_first_stage) {
+  if (is_first_stage) {  // NOLINT
     for (auto& op_desc : program_->Block(0).AllOps()) {
-      auto op = std::move(OpRegistry::CreateOp(*op_desc));
+      auto op = OpRegistry::CreateOp(*op_desc);
       auto op_type = op->Type();
       if (listen_op_ == nullptr && op_type == "heter_listen_and_serv") {
         listen_op_ = std::move(op);
@@ -142,11 +142,11 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   } else if (is_last_stage) {
     for (auto& op_desc : program_->Block(0).AllOps()) {
       if (listen_op_ == nullptr) {
-        listen_op_ = std::move(OpRegistry::CreateOp(*op_desc));
+        listen_op_ = OpRegistry::CreateOp(*op_desc);
       }
     }
     for (auto& op_desc : program_->Block(1).AllOps()) {
-      auto op = std::move(OpRegistry::CreateOp(*op_desc));
+      auto op = OpRegistry::CreateOp(*op_desc);
       int op_role = op->Attr<int>(std::string("op_role"));
       bool is_forward_op = (op_role == static_cast<int>(OpRole::kForward)) ||
                            (op_role == (static_cast<int>(OpRole::kForward) |
@@ -161,7 +161,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   } else {
     for (auto& op_desc : program_->Block(0).AllOps()) {
       if (listen_op_ == nullptr) {
-        listen_op_ = std::move(OpRegistry::CreateOp(*op_desc));
+        listen_op_ = OpRegistry::CreateOp(*op_desc);
       }
     }
     for (auto& op_desc : program_->Block(1).AllOps()) {
@@ -507,7 +507,7 @@ void HeterSectionWorker::PrintFetchVars() {
   if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
     time_t curtime;
     time(&curtime);
-    char mbstr[80];
+    char mbstr[80];  // NOLINT
     std::strftime(
         mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S", std::localtime(&curtime));
     std::stringstream ss;

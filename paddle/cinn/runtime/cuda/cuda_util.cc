@@ -481,7 +481,7 @@ void cinn_call_batched_cublas(void *v_args,
     void *B = args[1 + g].operator cinn_buffer_t *()->memory;
     void *C = args[1 + num_gemm + g].operator cinn_buffer_t *()->memory;
 
-    // if opside is 1, exhange A,B.
+    // if opside is 1, exchange A,B.
     if (opside) {
       auto tmp = A;
       A = B;
@@ -703,7 +703,7 @@ std::string debug_cudnn_pool_mode(cudnnPoolingMode_t pool_mode) {
     case CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING:
       return "avg_include_padding";
     case CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING:
-      return "avg_exclulude_padding";
+      return "avg_exclude_padding";
     default:
       LOG(FATAL) << "Pool only support max and avg now!";
   }

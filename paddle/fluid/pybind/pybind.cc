@@ -134,6 +134,10 @@ limitations under the License. */
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/dist_api.h"
+#endif
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -145,7 +149,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -223,6 +227,9 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
 DECLARE_FILE_SYMBOLS(init_phi);
 DECLARE_FILE_SYMBOLS(kernel_dialect);
+#ifdef PADDLE_WITH_DISTRIBUTE
+DECLARE_FILE_SYMBOLS(dist_dialect);
+#endif
 DECLARE_FILE_SYMBOLS(buffered_allocator);
 DECLARE_FILE_SYMBOLS(best_fit_allocator);
 DECLARE_FILE_SYMBOLS(aligned_allocator);
@@ -1240,7 +1247,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
-             if (self.IsType<String>()) {
+             if (self.IsType<String>()) {  // NOLINT
                return py::bytes(*(self.GetMutable<String>()));
              } else {
                return py::bytes(
@@ -2229,7 +2236,7 @@ All parameter, weight, gradient are variables in Paddle.
            const std::string &var_name,
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
-          if (data_is_lod_tensor(var)) {
+          if (data_is_lod_tensor(var)) {  // NOLINT
             return py::cast(PADDLE_GET(phi::DenseTensor, var));
           } else {
             return py::cast(PADDLE_GET(LoDTensorArray, var));
@@ -3046,6 +3053,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  BindDistApi(&m);
+#endif
 }
 }  // namespace pybind
 }  // namespace paddle

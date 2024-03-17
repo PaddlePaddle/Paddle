@@ -286,8 +286,8 @@ std::vector<paddle::Tensor> RunBackward(
             node_input_buffer->Buffers(), create_graph, is_general_grad);
 
     if (!inputs.empty() && is_general_grad) {
-      GeneralGrad::Instance().SetResultForEnddingNodes(grad_output_tensors,
-                                                       node);
+      GeneralGrad::Instance().SetResultForEndingNodes(grad_output_tensors,
+                                                      node);
     }
 
     // retain_grad or not
@@ -382,8 +382,7 @@ std::vector<paddle::Tensor> RunBackward(
                 "Node's in-degree cannot be negative.",
                 next_node->name()));
 
-        auto add_next_node_func = [&node_in_degree_map,
-                                   &queue](GradNodeBase* next_node) {
+        auto add_next_node_func = [&queue](GradNodeBase* next_node) {
           if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
             queue.push_front(next_node);
           } else {

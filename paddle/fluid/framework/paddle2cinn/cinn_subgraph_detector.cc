@@ -169,11 +169,11 @@ bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr subgraph_ptr) {
     if (!consumer->substitute) {
       continue;
     }
-    // fast depency check.
+    // fast dependency check.
     if (IsDependencySimplify(producer, consumer, consumers)) {
       continue;
     }
-    // global depency check.
+    // global dependency check.
     if (IsDependency(producer, consumer, consumers)) {
       continue;
     }
@@ -196,7 +196,7 @@ bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr subgraph_ptr) {
     producer->node_set.insert(candidate->node_set.begin(),
                               candidate->node_set.end());
 
-    // update bound for check depency
+    // update bound for check dependency
     producer->max_depth = std::max(producer->max_depth, candidate->max_depth);
     producer->min_depth = std::min(producer->min_depth, candidate->min_depth);
 
@@ -219,7 +219,7 @@ bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr subgraph_ptr) {
       tmp->producers.erase(candidate);
     }
 
-    // remove candicate in producer/consumer
+    // remove candidate in producer/consumer
     producer->producers.erase(candidate);
     producer->consumers.erase(candidate);
 
