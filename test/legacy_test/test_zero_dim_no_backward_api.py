@@ -494,7 +494,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             x, return_inverse=True, return_counts=True
         )
 
-        prog = paddle.static.default_main_program()
+        prog = paddle.static.program_guard()
         x_res, y_res, inverse_res, counts_res = self.exe.run(
             prog, fetch_list=[x, y, inverse, counts]
         )
@@ -512,7 +512,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             x, return_index=True, return_inverse=True, return_counts=True
         )
 
-        prog = paddle.static.default_main_program()
+        prog = paddle.static.program_guard()
         x_res, y_res, index_res, inverse_res, counts_res = self.exe.run(
             prog, fetch_list=[x, y, index, inverse, counts]
         )
