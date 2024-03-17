@@ -482,13 +482,13 @@ def GenBuildOutputs(
 
     CREATE_INTARRAY_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  phi::IntArray {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
-    {name} = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+    {name} = phi::IntArray(paddle::dialect::GetInt64Vector(
                           {name}_.defining_op()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                          .attribute("value"))));
+                          .attribute("value")));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
     size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
-    {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
+    {name} = phi::IntArray(std::vector<int64_t>({name}_size, -1));
     {name}.SetFromTensor(true);
   }} else if ({name}_.type().isa<paddle::dialect::DenseTensorType>()) {{
     common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
@@ -496,7 +496,7 @@ def GenBuildOutputs(
     if (common::contain_unknown_dim({name}_dim)) {{
       {name}_size = 1;
     }}
-    {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
+    {name} = phi::IntArray(std::vector<int64_t>({name}_size, -1));
     {name}.SetFromTensor(true);
   }} else {{
     PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
@@ -524,15 +524,15 @@ def GenBuildOutputs(
 
     CREATE_SCALAR_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  phi::Scalar {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
-    {name} = std::move(phi::Scalar({name}_.defining_op()
+    {name} = phi::Scalar({name}_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
                                   .data()
-                                  .to<int>()));
+                                  .to<int>());
   }}
   else {{
-    {name} = std::move(phi::Scalar(-1));
+    {name} = phi::Scalar(-1);
     {name}.SetFromTensor(true);
   }}\n"""
 

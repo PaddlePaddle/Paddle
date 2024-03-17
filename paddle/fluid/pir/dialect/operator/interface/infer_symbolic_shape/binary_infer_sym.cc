@@ -18,6 +18,13 @@
 
 namespace paddle::dialect {
 
+bool Conv2dOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  return true;
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto x_shape_or_data =

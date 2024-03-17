@@ -783,6 +783,18 @@ bool Transpose_OpInferSymbolicShape(
   return TransposeOpInferSymbolicShape(op, shape_analysis);
 }
 
+bool TriuOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  return true;
+}
+
+bool Triu_OpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return TriuOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool SqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   IR_ENFORCE(op->num_operands() == 2,
