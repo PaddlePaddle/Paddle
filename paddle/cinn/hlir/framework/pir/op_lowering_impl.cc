@@ -88,7 +88,7 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
   for (auto& op : group->output_ops) {
     group_info->direct_output_var_names.insert(ValueName(op->result(0)));
     // collect all output tensor.
-    if (op->name() == "cinn_op.store") {
+    if (op->name() == "cinn_op.yield_store") {
       auto input_var_name = ValueName(op->operand_source(0));
       if (group_info->broadcast_info.count(input_var_name)) {
         auto base_info = group_info->broadcast_info[input_var_name];
@@ -103,9 +103,14 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
       group_info->direct_output_var_names.insert(ValueName(opresult));
     }
   }
-  for (auto op_result : group->GetGroupOutputValues()) {
-    if (tensor_map.count(op_result) != 0) {
-      group_info->direct_output_var_names.insert(ValueName(op_result));
+
+  for (auto& val : group->output_values) {
+    if (val.defining_op()->name() == "cinn_op.reshape" &&
+        erase_reshape.count(val.defining_op())) {
+      group_info->direct_output_var_names.insert(
+          ValueName(val.defining_op()->operand_source(0)));
+    } else {
+      group_info->direct_output_var_names.insert(ValueName(val));
     }
   }
   return group_info;
