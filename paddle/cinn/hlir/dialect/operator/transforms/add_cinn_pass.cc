@@ -100,7 +100,6 @@ void ApplyCinnPreprocessPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
-  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
 
   pass_manager->Run(program);
 }
@@ -110,6 +109,11 @@ void ApplyBuildGroupOpPass(
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  if (HasDynamicShape(*program)) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+  }
   pass_manager->AddPass(pir::CreateBuildCinnPass());
   if (HasDynamicShape(*program)) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
@@ -135,6 +139,7 @@ void ApplyGroupOpPass(::pir::Program* program,
 
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
 
   pass_manager->Run(program);
 }
@@ -212,11 +217,20 @@ int64_t GetFusionOpNum(const ::pir::Program& program) {
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
-  ApplyCinnPreprocessPass(program, CreatePassManager);
-  ApplyBuildGroupOpPass(program, CreatePassManager);
-  ApplyGroupOpPass(program, CreatePassManager);
-  ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
   auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
+  ApplyCinnPreprocessPass(program, CreatePassManager);
+  // std::cout << "Program before ApplyBuildGroupOpPass: \n"
+  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+  //           << std::endl;
+  ApplyBuildGroupOpPass(program, CreatePassManager);
+  // std::cout << "Program before ApplyGroupOpPass: \n"
+  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+  //           << std::endl;
+  ApplyGroupOpPass(program, CreatePassManager);
+  // std::cout << "Program before ApplyDivideGroupOpToFusionOpPass: \n"
+  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+  //           << std::endl;
+  ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
   std::cout << "Program before lowering: \n"
             << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
             << std::endl;
