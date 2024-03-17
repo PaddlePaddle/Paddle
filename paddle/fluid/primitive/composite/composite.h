@@ -738,7 +738,7 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
   std::vector<int64_t> tmp_shape(x_dim);
   tmp_shape.insert(tmp_shape.begin(), 0);
-  auto xshape = full<T>(tmp_shape, 0.0, DataType::FLOAT32);
+  auto xshape = full<T>(tmp_shape, 0.0, x.dtype());
   if (x_dim.size() == 0) {
     std::vector<int64_t> res_shape(1, 1);
     return std::make_tuple(reshape<T>(x, res_shape), xshape);
