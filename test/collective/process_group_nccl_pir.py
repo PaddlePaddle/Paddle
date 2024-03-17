@@ -140,11 +140,9 @@ class TestProcessGroupFp32(unittest.TestCase):
                 exe = paddle.static.Executor()
 
                 if pg.rank() == 0:
-                    dist.all_reduce(x, dist.ReduceOp.MAX, sync_op=False)
-                    dist.wait(x)
+                    dist.all_reduce(x, dist.ReduceOp.MAX)
                 else:
-                    dist.all_reduce(y, dist.ReduceOp.MAX, sync_op=False)
-                    dist.wait(y)
+                    dist.all_reduce(y, dist.ReduceOp.MAX)
 
                 (x_out, y_out) = exe.run(
                     main_program,
