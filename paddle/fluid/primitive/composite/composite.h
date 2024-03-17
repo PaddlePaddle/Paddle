@@ -751,21 +751,20 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
       return std::make_tuple(backend::reshape<T>(x, x_shape), x_shape_tensor);
     }
     std::vector<Tensor> out_shape;
+
     for (size_t i = 0; i < x_dim.size();) {
-      if (i >= static_cast<size_t>(start_axis) &&
-          i <= static_cast<size_t>(end_axis)) {
-        Tensor flat = get_slice<T>(x_shape, i);
-        i++;
-        while (i <= static_cast<size_t>(end_axis)) {
-          flat = flat * get_slice<T>(x_shape, i);
-          i++;
-        }
-        out_shape.push_back(flat);
+      if (i == static_cast<size_t>(start_axis)) {
+        Tensor flat =
+            slice<T>(x_shape, {0}, {start_axis}, {end_axis + 1}, {1}, {});
+        flat = prod<T>(flat, {0}, false, false);
+        out_shape.push_back(reshape<T>(flat, {1}));
+        i = end_axis + 1;
       } else {
         out_shape.push_back(get_slice<T>(x_shape, i));
         i++;
       }
     }
+
     Tensor out_shape_tensor = concat<T>(out_shape);
     return std::make_tuple(backend::reshape<T>(x, out_shape_tensor),
                            x_shape_tensor);
