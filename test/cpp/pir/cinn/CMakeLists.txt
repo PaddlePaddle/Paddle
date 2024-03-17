@@ -19,6 +19,8 @@ if(WITH_TESTING AND WITH_CINN)
 
   paddle_test(test_pir_all_path SRCS pir_all_path_test.cc DEPS cinn_transforms)
 
+  paddle_test(test_slice_dim SRCS slice_dim_test.cc DEPS cinn_transforms)
+
   paddle_test(test_group_op SRCS group_op_test.cc)
 
   paddle_test(test_symbolic_lower SRCS symbolic_lower_test.cc)
@@ -40,6 +42,7 @@ if(WITH_TESTING AND WITH_CINN)
       test_sub_graph_extract
       test_ir_op_fusion
       test_pir_all_path
+      test_slice_dim
       test_group_op
       test_pir_build_cinn_pass
       test_compilation_task
