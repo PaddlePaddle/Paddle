@@ -4472,7 +4472,6 @@ void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,
   // when length is -1, need make sure all dimensions to be added are the same
   for (size_t i = 0; i < inputs_num; i++) {
     auto x_dim = xs[i]->dims();
-    VLOG(1) << "inputs_dims:" << x_dim;
 
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
