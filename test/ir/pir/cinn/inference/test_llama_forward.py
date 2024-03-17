@@ -500,14 +500,14 @@ class LlamaModel(nn.Layer):
                     attention_mask, dtype, tgt_length=input_shape[-1]
                 )
                 # For decoding phase in generation, seq_length = 1, we don't need to add causal mask
-                if input_shape[-1] > 1:
-                    combined_attention_mask = _make_causal_mask(
-                        input_shape,
-                        past_key_values_length=past_key_values_length,
-                    )
-                    expanded_attn_mask = (
-                        expanded_attn_mask & combined_attention_mask
-                    )
+                # if input_shape[-1] > 1:
+                combined_attention_mask = _make_causal_mask(
+                    input_shape,
+                    past_key_values_length=past_key_values_length,
+                )
+                expanded_attn_mask = (
+                    expanded_attn_mask & combined_attention_mask
+                )
             # [bsz, seq_len, seq_len] -> [bsz, 1, seq_len, seq_len]
             elif len(attention_mask.shape) == 3:
                 expanded_attn_mask = attention_mask.unsqueeze(1).astype("bool")
@@ -676,11 +676,11 @@ class TestLlamaModel(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        # if utils.unittest_use_cinn():
+        cinn_out = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':
