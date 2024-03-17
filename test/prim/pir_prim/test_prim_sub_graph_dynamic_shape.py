@@ -98,6 +98,7 @@ def group_norm_net(x, weight, bias):
     paddle.assign(bias, group_norm.bias)
     return group_norm(x)
 
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
