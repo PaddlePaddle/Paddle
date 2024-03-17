@@ -20,6 +20,7 @@
 
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/common/broadcast_tree.h"
+#include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -690,7 +691,7 @@ symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
     std::vector<symbol::DimExpr> simplified_dim_expr{};
     for (const symbol::DimExpr& dim_expr : original_dim_expr) {
       simplified_dim_expr.push_back(symbol::SimplifyDimExpr(
-          symbol::SubstituteDimExpr(dim_expr, dim_expr_map)));
+          cinn::common::SubstituteDimExpr(dim_expr, dim_expr_map)));
     }
     return simplified_dim_expr;
   };
@@ -784,8 +785,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
 
-    VLOG(4) << "Program before lowering: \n"
-            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
+    // std::cout << "Program before lowering: \n"
+    //         << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+    //         << std::endl;
 
     auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
         *program, target, scope);

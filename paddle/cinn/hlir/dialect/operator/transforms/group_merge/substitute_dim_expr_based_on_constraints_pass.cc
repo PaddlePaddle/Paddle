@@ -16,10 +16,15 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraints_pass.h"
 
+#include <regex>
+
 #include "paddle/cinn/common/union_find.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+
+PD_DECLARE_string(cinn_symbol_dim_constraints);
 
 namespace cinn {
 namespace dialect {
@@ -27,10 +32,70 @@ namespace ir {
 
 namespace {
 
+namespace detail {
+
+void Trim(std::string* str) {
+  str->erase(0, str->find_first_not_of(' '));
+  str->erase(str->find_last_not_of(' ') + 1);
+}
+
+std::vector<std::string> Split(const std::string& str,
+                               const std::string& delimiter) {
+  std::vector<std::string> result;
+  std::regex reg(delimiter);
+  std::sregex_token_iterator pos(str.begin(), str.end(), reg, -1);
+  decltype(pos) end;
+  for (; pos != end; ++pos) {
+    std::string tmp = pos->str();
+    Trim(&tmp);
+    if (!tmp.empty()) {
+      result.emplace_back(tmp);
+    }
+  }
+  return result;
+}
+
+std::vector<symbol::DimExprConstraint> ParseDimExprConstraintsFLAGS() {
+  const auto& CreateConstrain = [&](const std::string& constraint,
+                                    symbol::DimExprBuilder* builder) {
+    std::vector<std::string> expr_pair = Split(constraint, "==");
+    PADDLE_ENFORCE_EQ(expr_pair.size(),
+                      2UL,
+                      ::common::errors::InvalidArgument(
+                          "The constraint is invalid. the result size of "
+                          "constraint after split by '==' should be 2, but now "
+                          "is %d, original constrain is '%s'",
+                          expr_pair.size(),
+                          constraint));
+    const std::string& lhs_expr = expr_pair[0];
+    const std::string& rhs_expr = expr_pair[1];
+    VLOG(0) << "######### ParseDimExprConstraintsFLAG " << lhs_expr
+            << " == " << rhs_expr;
+    builder->CstrEq(symbol::DimExpr{lhs_expr}, symbol::DimExpr{rhs_expr});
+  };
+  std::vector<symbol::DimExprConstraint> dim_expr_constraints = [&] {
+    const std::string& constraints = FLAGS_cinn_symbol_dim_constraints;
+    std::vector<symbol::DimExprConstraint> dim_expr_constraints;
+    symbol::DimExprBuilder builder(&dim_expr_constraints);
+    for (const std::string& constraint : Split(constraints, ",")) {
+      CreateConstrain(constraint, &builder);
+    }
+    return dim_expr_constraints;
+  }();
+  return dim_expr_constraints;
+}
+
+}  // namespace detail
+
 template <typename DoEachT>
-void VisitEachOp(cinn::dialect::GroupOp op, const DoEachT& DoEach) {
-  for (pir::Operation* sub_op : op.GetOperators()) {
-    DoEach(sub_op);
+void VisitEachOp(pir::Operation* op, const DoEachT& DoEach) {
+  DoEach(op);
+  for (auto& region : *op) {
+    for (auto& block : region) {
+      for (auto& op_in_block : block) {
+        DoEach(&op_in_block);
+      }
+    }
   }
 }
 
@@ -42,6 +107,12 @@ void VisitEachValue(const pir::Operation* op, const DoEachT& DoEach) {
   for (std::size_t i = 0; i < op->num_results(); ++i) {
     DoEach(op->result(i));
   }
+}
+
+const std::vector<symbol::DimExprConstraint>& ParseDimExprConstraintsFLAGS() {
+  static std::vector<symbol::DimExprConstraint> dim_expr_constraints{
+      detail::ParseDimExprConstraintsFLAGS()};
+  return dim_expr_constraints;
 }
 
 symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
@@ -110,31 +181,118 @@ int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
       dim_expr.variant());
 }
 
+/**
+ * @brief Compare the two dim exprs
+ *
+ * @param lhs The left-hand side dim expr
+ * @param rhs The right-hand side dim expr
+ *
+ * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
+ * they are equal
+ */
+int CompareDimExpr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? -1 : 1;
+  }
+
+  // if the priority is same, we compare the string value to find the smallest
+  // one
+  if (lhs.isa<std::string>()) {
+    const auto& lhs_str = lhs.dyn_cast<std::string>();
+    const auto& rhs_str = rhs.dyn_cast<std::string>();
+    if (lhs_str.size() != rhs_str.size()) {
+      return lhs_str.size() < rhs_str.size() ? -1 : 1;
+    }
+    return lhs_str.compare(rhs_str);
+  }
+  return 0;
+}
+
+void SimplifyUnionSet(
+    cinn::common::UnionFindSet<symbol::DimExpr>* union_find_set) {
+  const std::vector<std::vector<symbol::DimExpr>>& dim_expr_clusters =
+      union_find_set->Clusters();
+  const std::unordered_map<symbol::DimExpr, symbol::DimExpr>
+      substitution_pattern = [&] {
+        std::unordered_map<symbol::DimExpr, symbol::DimExpr>
+            substitution_pattern;
+        for (const auto& dim_expr_cluster : dim_expr_clusters) {
+          CHECK(!dim_expr_cluster.empty());
+          auto dim_expr_root = dim_expr_cluster[0];
+          for (const auto& dim_expr : dim_expr_cluster) {
+            if (CompareDimExpr(dim_expr, dim_expr_root) < 0) {
+              dim_expr_root = dim_expr;
+            }
+          }
+          for (const auto& dim_expr : dim_expr_cluster) {
+            if (dim_expr.isa<std::string>() && dim_expr != dim_expr_root) {
+              substitution_pattern[dim_expr] = dim_expr_root;
+            }
+          }
+        }
+        return substitution_pattern;
+      }();
+
+  bool is_update = false;
+  for (const auto& dim_expr_cluster : dim_expr_clusters) {
+    for (const auto& dim_expr : dim_expr_cluster) {
+      if (!dim_expr.isa<int64_t>() && !dim_expr.isa<std::string>()) {
+        const auto& tmp_dim_expr = symbol::SimplifyDimExpr(
+            symbol::SubstituteDimExpr(dim_expr, substitution_pattern));
+        if (tmp_dim_expr != dim_expr && union_find_set->Find(tmp_dim_expr) !=
+                                            union_find_set->Find(dim_expr)) {
+          union_find_set->Union(tmp_dim_expr, dim_expr);
+          is_update = true;
+        }
+      }
+    }
+  }
+  if (is_update) {
+    SimplifyUnionSet(union_find_set);
+  }
+}
+
 std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
-      shape_analysis->CreateDimExprBuilder().constraints();
-  const cinn::common::UnionFindSet<symbol::DimExpr>& union_find_set = [&]() {
+  const std::vector<std::vector<symbol::DimExpr>>& dim_expr_clusters = [&]() {
     cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
-    for (const auto& constraint : dim_expr_constraints) {
-      CHECK(std::holds_alternative<symbol::Equal<symbol::DimExpr>>(constraint))
-          << "The DimExprConstraint type is no Equal<DimExpr>, this part is to "
-             "be completed.";
+    auto AddEqualCstr = [&](const symbol::DimExprConstraint& constraint) {
+      if (!std::holds_alternative<symbol::Equal<symbol::DimExpr>>(constraint)) {
+        VLOG(0) << "The DimExprConstraint type is no Equal<DimExpr>, this part "
+                   "is to be completed.";
+        return;
+      }
       const auto& data =
           std::get<symbol::Equal<symbol::DimExpr>>(constraint).data;
+      if (data->lhs == data->rhs) {
+        return;
+      }
       union_find_set.Union(data->lhs, data->rhs);
+    };
+    const auto& shape_analysis_constraints =
+        shape_analysis->CreateDimExprBuilder().constraints();
+    for (const auto& constraint : shape_analysis_constraints) {
+      AddEqualCstr(constraint);
     }
-    return union_find_set;
+    const auto& dim_expr_constraints = ParseDimExprConstraintsFLAGS();
+    for (const auto& constraint : dim_expr_constraints) {
+      AddEqualCstr(constraint);
+    }
+    SimplifyUnionSet(&union_find_set);
+    std::vector<std::vector<symbol::DimExpr>> dim_expr_clusters =
+        union_find_set.Clusters();
+    return dim_expr_clusters;
   }();
 
-  const std::vector<std::vector<symbol::DimExpr>>& dim_expr_clusters =
-      union_find_set.Clusters();
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
   for (const auto& dim_expr_cluster : dim_expr_clusters) {
+    VLOG(0) << "####### dim_expr_cluster: " << dim_expr_cluster;
     CHECK(!dim_expr_cluster.empty());
     auto dim_expr_root = dim_expr_cluster[0];
     for (const auto& dim_expr : dim_expr_cluster) {
-      if (GetDimExprPriority(dim_expr) < GetDimExprPriority(dim_expr_root)) {
+      if (CompareDimExpr(dim_expr, dim_expr_root) < 0) {
         dim_expr_root = dim_expr;
       }
     }
@@ -147,15 +305,14 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
   return substitution_pattern;
 }
 
-void SubstituteDimExprBasedOnConstraints(pir::Operation* op) {
+void SubstituteDimExprBasedOnConstraints(pir::Operation* region_op) {
   VLOG(4) << "SubstituteDimExprBasedOnConstraints start";
-  auto group_op = op->dyn_cast<cinn::dialect::GroupOp>();
   pir::ShapeConstraintIRAnalysis* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
+      &pir::ShapeAnalysisManager::Instance().Get(region_op->GetParentProgram());
   const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
       substitution_pattern = GetDimExprSubstitution(shape_analysis);
 
-  VisitEachOp(group_op, [&](pir::Operation* op) {
+  VisitEachOp(region_op, [&](pir::Operation* op) {
     VisitEachValue(op, [&](pir::Value value) {
       if (!shape_analysis->HasShapeOrDataForValue(value)) {
         VLOG(4) << "Can not find ShapeOrData for value of op(" << op->name()
@@ -173,6 +330,9 @@ void SubstituteDimExprBasedOnConstraints(pir::Operation* op) {
                                                substituted_shape_or_data);
       }
     });
+    if (op->num_regions() > 0) {
+      return;
+    }
     if (op->num_results() > 0) {
       pir::shape::SetShapeAttrForOp(
           op, shape_analysis->GetShapeOrDataForValue(op->result(0)));
@@ -194,7 +354,7 @@ class SubstituteDimExprBasedOnConstraintsPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 
