@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -156,6 +157,7 @@ class TestRandpermBF16Op(OpTest):
 
 
 class TestRandpermOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             self.assertRaises(ValueError, paddle.randperm, -3)
@@ -163,6 +165,7 @@ class TestRandpermOpError(unittest.TestCase):
 
 
 class TestRandpermAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_out(self):
         n = 10
         place = (
