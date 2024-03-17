@@ -160,7 +160,7 @@ class TestRandpermOpError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
-            self.assertRaises(TypeError, paddle.randperm, -3)
+            self.assertRaises(ValueError, paddle.randperm, -3)
             self.assertRaises(TypeError, paddle.randperm, 10, 'int8')
 
 
