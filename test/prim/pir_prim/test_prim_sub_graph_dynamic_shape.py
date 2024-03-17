@@ -92,6 +92,12 @@ def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
 
 
+def group_norm_net(x, weight, bias):
+    group_norm = paddle.nn.GroupNorm(num_channels=x.shape[1], num_groups=32)
+    paddle.assign(weight, group_norm.weight)
+    paddle.assign(bias, group_norm.bias)
+    return group_norm(x)
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -303,6 +309,63 @@ class TestPrimSwiglu2(TestPrimBase):
         self.net = swiglu_net2
         self.necessary_ops = "pd_op.swiglu"
         self.enable_cinn = False
+
+
+class TestPrimThree(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [5, 640, 10, 20]
+        self.shape_y = [640]
+        self.shape_z = [640]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, 640, None, None]
+        self.init_y_shape = [640]
+        self.init_z_shape = [640]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = group_norm_net
+        self.necessary_ops = "pd_op.group_norm"
+        self.enable_cinn = False
+
+    def base_net(self, flag=None):
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        z = paddle.to_tensor(self.z)
+        if flag == "prim":
+            core._set_prim_all_enabled(True)
+            fn = apply_to_static(
+                self.net,
+                use_cinn=self.enable_cinn,
+                input_spec=[
+                    InputSpec(shape=self.init_x_shape, dtype=self.dtype_x),
+                    InputSpec(shape=self.init_y_shape, dtype=self.dtype_y),
+                    InputSpec(shape=self.init_z_shape, dtype=self.dtype_z),
+                ],
+            )
+            fn.eval()
+        else:
+            fn = self.net
+        res = fn(x, y, z)
+
+        if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.program_cache.last()[-1][-1]
+                .infer_program.program.global_block()
+                .ops
+            ]
+            assert self.necessary_ops not in ops
+            core._set_prim_all_enabled(False)
+        return res
+
+    def test_prim_all_dynamic(self):
+        res_ref = self.base_net()
+        res = self.base_net("prim")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
 
 if __name__ == "__main__":
