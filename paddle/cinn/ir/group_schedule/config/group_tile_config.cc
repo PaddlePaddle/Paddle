@@ -215,26 +215,26 @@ BuildStaticReduceConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
   if (base_info->reduce_numel == 1) {
-    BucketInfo bucket_info__1_1024{/* sp_lower_bound = */ 1,
-                                   /* sp_upper_bound = */ 1024,
+    BucketInfo bucket_info__1_1023{/* sp_lower_bound = */ 1,
+                                   /* sp_upper_bound = */ 1023,
                                    /* rb_lower_bound = */ 1,
                                    /* rb_upper_bound = */ 1};
-    ScheduleConfig::TileConfig tile_config__1_1024{
+    ScheduleConfig::TileConfig tile_config__1_1023{
         /* warp_num = */ -1,
         /* tree_reduce_num = */ 1,
         /* spatial_inner_num = */ 1,
         /* reduce_method = */ NoneReduceMethod()};
-    BucketInfo bucket_info__1025_INF{/* sp_lower_bound = */ 1025,
+    BucketInfo bucket_info__1024_INF{/* sp_lower_bound = */ 1024,
                                      /* sp_upper_bound = */ kMaxNumel,
                                      /* rb_lower_bound = */ 1,
                                      /* rb_upper_bound = */ 1};
-    ScheduleConfig::TileConfig tile_config__1025_INF{
+    ScheduleConfig::TileConfig tile_config__1024_INF{
         /* warp_num = */ 32,
         /* tree_reduce_num = */ 1,
         /* spatial_inner_num = */ 1,
         /* reduce_method = */ NoneReduceMethod()};
-    return {{bucket_info__1_1024, tile_config__1_1024},
-            {bucket_info__1025_INF, tile_config__1025_INF}};
+    return {{bucket_info__1_1023, tile_config__1_1023},
+            {bucket_info__1024_INF, tile_config__1024_INF}};
   } else if (base_info->reduce_numel <= 256) {
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ kMaxNumel,

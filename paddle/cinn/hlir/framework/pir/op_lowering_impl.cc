@@ -103,6 +103,11 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
       group_info->direct_output_var_names.insert(ValueName(opresult));
     }
   }
+  for (auto op_result : group->GetGroupOutputValues()) {
+    if (tensor_map.count(op_result) != 0) {
+      group_info->direct_output_var_names.insert(ValueName(op_result));
+    }
+  }
   return group_info;
 }
 
