@@ -489,41 +489,56 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
 
     @test_with_pir_api
     def test_unique_consecutive(self):
-        x = paddle.rand([])
-        y, inverse, counts = paddle.unique_consecutive(
-            x, return_inverse=True, return_counts=True
-        )
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.rand([])
+            y, inverse, counts = paddle.unique_consecutive(
+                x, return_inverse=True, return_counts=True
+            )
 
-        prog = paddle.static.program_guard()
-        x_res, y_res, inverse_res, counts_res = self.exe.run(
-            prog, fetch_list=[x, y, inverse, counts]
-        )
-        self.assertEqual(x_res, y_res)
-        self.assertEqual(inverse_res, 0)
-        self.assertEqual(counts_res, 1)
-        self.assertEqual(y_res.shape, (1,))
-        self.assertEqual(inverse_res.shape, (1,))
-        self.assertEqual(counts_res.shape, (1,))
+            (
+                x_res,
+                y_res,
+                inverse_res,
+                counts_res,
+            ) = paddle.static.Executor().run(
+                main_program, fetch_list=[x, y, inverse, counts]
+            )
+            self.assertEqual(x_res, y_res)
+            self.assertEqual(inverse_res, 0)
+            self.assertEqual(counts_res, 1)
+            self.assertEqual(y_res.shape, (1,))
+            self.assertEqual(inverse_res.shape, (1,))
+            self.assertEqual(counts_res.shape, (1,))
 
     @test_with_pir_api
     def test_unique(self):
-        x = paddle.rand([])
-        y, index, inverse, counts = paddle.unique(
-            x, return_index=True, return_inverse=True, return_counts=True
-        )
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.rand([])
+            y, index, inverse, counts = paddle.unique(
+                x, return_index=True, return_inverse=True, return_counts=True
+            )
 
-        prog = paddle.static.program_guard()
-        x_res, y_res, index_res, inverse_res, counts_res = self.exe.run(
-            prog, fetch_list=[x, y, index, inverse, counts]
-        )
-        self.assertEqual(x_res, y_res)
-        self.assertEqual(index_res, 0)
-        self.assertEqual(inverse_res, 0)
-        self.assertEqual(counts_res, 1)
-        self.assertEqual(y_res.shape, (1,))
-        self.assertEqual(index_res.shape, (1,))
-        self.assertEqual(inverse_res.shape, (1,))
-        self.assertEqual(counts_res.shape, (1,))
+            (
+                x_res,
+                y_res,
+                index_res,
+                inverse_res,
+                counts_res,
+            ) = paddle.static.Executor().run(
+                main_program, fetch_list=[x, y, index, inverse, counts]
+            )
+            self.assertEqual(x_res, y_res)
+            self.assertEqual(index_res, 0)
+            self.assertEqual(inverse_res, 0)
+            self.assertEqual(counts_res, 1)
+            self.assertEqual(y_res.shape, (1,))
+            self.assertEqual(index_res.shape, (1,))
+            self.assertEqual(inverse_res.shape, (1,))
+            self.assertEqual(counts_res.shape, (1,))
 
     @test_with_pir_api
     def test_static_matrix_rank(self):
