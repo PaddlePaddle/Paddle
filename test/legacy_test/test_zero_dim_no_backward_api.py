@@ -487,6 +487,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (4,))
         self.assertEqual(res[0][2], 1)
 
+    @test_with_pir_api
     def test_unique_consecutive(self):
         x = paddle.rand([])
         y, inverse, counts = paddle.unique_consecutive(
@@ -494,14 +495,15 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[y, inverse, counts])
-        self.assertEqual(y, x)
-        self.assertEqual(inverse, 0)
-        self.assertEqual(counts, 1)
-        self.assertEqual(res[0].shape, (1,))
+        res = self.exe.run(prog, fetch_list=[x, y, inverse, counts])
+        self.assertEqual(res[0], res[1])
+        self.assertEqual(res[2], 0)
+        self.assertEqual(res[3], 1)
         self.assertEqual(res[1].shape, (1,))
         self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[3].shape, (1,))
 
+    @test_with_pir_api
     def test_unique(self):
         x = paddle.rand([])
         y, index, inverse, counts = paddle.unique(
@@ -509,15 +511,15 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[y, index, inverse, counts])
-        self.assertEqual(y, x)
-        self.assertEqual(index, 0)
-        self.assertEqual(inverse, 0)
-        self.assertEqual(counts, 1)
-        self.assertEqual(res[0].shape, (1,))
+        res = self.exe.run(prog, fetch_list=[x, y, index, inverse, counts])
+        self.assertEqual(res[0], res[1])
+        self.assertEqual(res[2], 0)
+        self.assertEqual(res[3], 0)
+        self.assertEqual(res[4], 1)
         self.assertEqual(res[1].shape, (1,))
         self.assertEqual(res[2].shape, (1,))
         self.assertEqual(res[3].shape, (1,))
+        self.assertEqual(res[4].shape, (1,))
 
     @test_with_pir_api
     def test_static_matrix_rank(self):
