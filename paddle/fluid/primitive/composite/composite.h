@@ -794,33 +794,22 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
   Tensor out, mean_, var_;
   if (has_dynamic_shape(x.shape())) {
-    std::cout << "step1_______________________________________________"
-              << std::endl;
     Tensor x_dim = shape<T>(x);
     std::vector<int64_t> one_axis(1, 1);
     Tensor x_shape = get_slice<T>(x_dim, 0) * groups;
     Tensor dim_1 = full<T>({1}, -1, x_dim.type());
-    std::cout << "step2_______________________________________________"
-              << std::endl;
     x_shape = concat<T>({x_shape, dim_1});
     x_cast = backend::reshape<T>(x_cast, x_shape);
-    std::cout << "step3_______________________________________________"
-              << std::endl;
     mean_ = mean_decomp<T>(x_cast, IntArray(one_axis), true);
-    std::cout << "step4_______________________________________________"
-              << std::endl;
     Tensor var_tmp_ =
         mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) -
         mean_ * mean_;
-    std::cout << "step5_______________________________________________"
-              << std::endl;
     var_ = maximum<T>(
         var_tmp_,
         backend::full_with_tensor<T>(shape<T>(var_tmp_), 0, var_tmp_.dtype()));
     std::cout << "step6_______________________________________________"
               << std::endl;
-    Tensor var_inv =
-        1 / sqrt_decomp<T>(var_ + epsilon);  // TODO: support dynamic shape
+    Tensor var_inv = 1 / sqrt_decomp<T>(var_ + epsilon);
     std::cout << "step7_______________________________________________"
               << std::endl;
     Tensor res = (x_cast - mean_) * var_inv;
