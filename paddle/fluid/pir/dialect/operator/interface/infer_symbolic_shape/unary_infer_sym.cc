@@ -705,8 +705,45 @@ bool TileOpInferSymbolicShape(pir::Operation *op,
 
 bool TopkOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  symbol::ShapeOrDataDimExprs x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  symbol::ShapeOrDataDimExprs k_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  symbol::ShapeOrDataDimExprs axis_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+  const std::vector<symbol::DimExpr> &in_dims_sym = [&] {
+    std::vector<symbol::DimExpr> dims;
+    const auto &x_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+    if (x_shape_or_data.data().has_value()) {
+      dims = x_shape_or_data.data().value();
+    } else {
+      dims = x_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  int x_rank = in_dims_sym.size();
+  int k = k_shape_or_data.data().value()[0].Get<int64_t>();
+  int axis =
+      static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
+  if (axis < 0) axis += rank;
+  const auto &out_sym_shape = [&] {
+    std::vector<symbol::DimExpr> out_sym_shape;
+    for (int i = 0; i < x_rank; ++i) {
+      if (i == axis) {
+        out_sym_shape.push_back(symbol::DimExpr(k));
+      } else {
+        out_sym_shape.push_back(in_dims_sym[i]);
+      }
+    }
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_sym_shape)});
+
   return true;
 }
 
