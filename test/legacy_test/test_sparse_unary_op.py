@@ -19,6 +19,8 @@ import numpy as np
 import paddle
 from paddle.base.framework import convert_np_dtype_to_dtype_
 
+devices = ['cpu', 'gpu']
+
 
 class TestSparseUnary(unittest.TestCase):
     def to_sparse(self, x, format):
@@ -30,11 +32,6 @@ class TestSparseUnary(unittest.TestCase):
     def check_result(
         self, dense_func, sparse_func, format, dtype='float32', *args
     ):
-        if dtype == 'float32' or dtype == 'float64':
-            origin_x = paddle.rand([8, 16, 32], dtype)
-            mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
-            while paddle.sum(mask) == 0:
-                mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
         if dtype == 'complex64':
             origin_x_real = paddle.rand([8, 16, 32], 'float32')
             origin_x_com = paddle.rand([8, 16, 32], 'float32')
@@ -42,13 +39,18 @@ class TestSparseUnary(unittest.TestCase):
             mask = paddle.randint(0, 2, [8, 16, 32]).astype("float32")
             while paddle.sum(mask) == 0:
                 mask = paddle.randint(0, 2, [8, 16, 32]).astype("float32")
-        if dtype == 'complex128':
+        elif dtype == 'complex128':
             origin_x_real = paddle.rand([8, 16, 32], 'float64')
             origin_x_com = paddle.rand([8, 16, 32], 'float64')
             origin_x = (origin_x_real + 1j * origin_x_com).astype('complex128')
             mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
             while paddle.sum(mask) == 0:
                 mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
+        else:
+            origin_x = paddle.rand([8, 16, 32], dtype)
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
 
         # --- check sparse coo with dense --- #
         dense_x = origin_x * mask
@@ -96,40 +98,45 @@ class TestSparseUnary(unittest.TestCase):
         )
 
     def compare_with_dense(self, dense_func, sparse_func, dtype='float32'):
-        paddle.set_device('cpu')
-        self.check_result(dense_func, sparse_func, 'coo', dtype)
-        self.check_result(dense_func, sparse_func, 'csr', dtype)
-        paddle.set_device('gpu')
-        self.check_result(dense_func, sparse_func, 'coo', dtype)
-        self.check_result(dense_func, sparse_func, 'csr', dtype)
+        for device in devices:
+            # The sparse unary op is only compatible with float16 on the CUDA.
+            if (device == 'cpu' and dtype != 'float16') or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                paddle.set_device(device)
+                self.check_result(dense_func, sparse_func, 'coo', dtype)
+                self.check_result(dense_func, sparse_func, 'csr', dtype)
 
     def compare_with_dense_one_attr(self, dense_func, sparse_func, attr1):
-        paddle.set_device('cpu')
-        self.check_result(dense_func, sparse_func, 'coo', 'float32', attr1)
-        self.check_result(dense_func, sparse_func, 'csr', 'float32', attr1)
-        paddle.set_device('gpu')
-        self.check_result(dense_func, sparse_func, 'coo', 'float32', attr1)
-        self.check_result(dense_func, sparse_func, 'csr', 'float32', attr1)
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                paddle.set_device(device)
+                self.check_result(
+                    dense_func, sparse_func, 'coo', 'float32', attr1
+                )
+                self.check_result(
+                    dense_func, sparse_func, 'csr', 'float32', attr1
+                )
 
     def compare_with_dense_two_attr(
         self, dense_func, sparse_func, attr1, attr2
     ):
-        paddle.set_device('cpu')
-        self.check_result(
-            dense_func, sparse_func, 'coo', 'float32', attr1, attr2
-        )
-        self.check_result(
-            dense_func, sparse_func, 'csr', 'float32', attr1, attr2
-        )
-        paddle.set_device('gpu')
-        self.check_result(
-            dense_func, sparse_func, 'coo', 'float32', attr1, attr2
-        )
-        self.check_result(
-            dense_func, sparse_func, 'csr', 'float32', attr1, attr2
-        )
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                paddle.set_device(device)
+                self.check_result(
+                    dense_func, sparse_func, 'coo', 'float32', attr1, attr2
+                )
+                self.check_result(
+                    dense_func, sparse_func, 'csr', 'float32', attr1, attr2
+                )
 
     def test_sparse_sinh(self):
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'float16')
         self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'float32')
         self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'float64')
         self.compare_with_dense(paddle.sinh, paddle.sparse.sinh, 'complex64')
