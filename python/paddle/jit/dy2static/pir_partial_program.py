@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.pir.core as ir_static
 from paddle import _legacy_C_ops
-from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.autograd.backward_utils import ValueDict
 from paddle.autograd.ir_backward import grad
 from paddle.base import core, framework
@@ -390,7 +389,13 @@ class PartialProgramLayerHook:
         ...
 
     def after_append_backward(
-        self, whole_program, src_vars, backward_start_idx
+        self,
+        whole_program,
+        inputs,
+        src_vars,
+        grad_outputs,
+        forward_end_idx,
+        backward_start_idx,
     ):
         ...
 
@@ -457,7 +462,7 @@ class PartialProgramLayer:
 
         # program_id -> list(scope)
         self._scope_cache = {}
-        self._hooker = None
+        self._hooker = []
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
         self._debug_name = None
@@ -530,8 +535,8 @@ class PartialProgramLayer:
             data = np.array(lr_value).astype(convert_dtype(lr_var.dtype))
             lr_var.set_value(data)
 
-    def set_hooker(self, hooker):
-        self._hooker = hooker
+    def add_hooker(self, hooker):
+        self._hooker.append(hooker)
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
         if not use_scope_cache:
@@ -567,8 +572,8 @@ class PartialProgramLayer:
 
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runable_program.clone()
-            if self._hooker:
-                self._hooker.after_infer(infer_program)
+            for hooker in self._hooker:
+                hooker.after_infer(infer_program)
             infer_program.apply_pir_program_pass(pass_fn)
             return infer_program
         else:
@@ -613,10 +618,6 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
-        if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError(
-                "Currently, AMP is not supported in PIR mode"
-            )
         if self.training:
             return self._train_program_id
         else:
@@ -624,18 +625,10 @@ class PartialProgramLayer:
 
     @cached_property
     def train_program(self):
-        if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError(
-                "Currently, AMP is not supported in PIR mode"
-            )
         return self._create_program()
 
     @cached_property
     def infer_program(self):
-        if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError(
-                "Currently, AMP is not supported in PIR mode"
-            )
         return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program):
@@ -733,10 +726,8 @@ class PartialProgramLayer:
         program = train_runnable_program.program
         targets = train_runnable_program.out_values
         # TODO(@zhuoge): refine the interface, use runable_program to apply passes.
-        if self._hooker:
-            program, targets = self._hooker.before_append_backward(
-                program, targets
-            )
+        for hooker in self._hooker:
+            program, targets = hooker.before_append_backward(program, targets)
         inputs = train_runnable_program.x_values
         params = train_runnable_program.param_values
         combined_inputs = list(itertools.chain(inputs, params))
@@ -802,13 +793,18 @@ class PartialProgramLayer:
                                 forward_end_idx = idx + 1
                                 break
 
-            if self._hooker:
+            for hooker in self._hooker:
                 (
                     program,
                     forward_end_idx,
                     targets,
-                ) = self._hooker.after_append_backward(
-                    program, targets, forward_end_idx
+                ) = hooker.after_append_backward(
+                    program,
+                    combined_inputs,
+                    targets,
+                    forward_outputs_grads,
+                    forward_end_idx,
+                    forward_end_idx + op_between_forward_and_backward,
                 )
             # TODO: add later
             # self.prepare_gradient_aggregation(

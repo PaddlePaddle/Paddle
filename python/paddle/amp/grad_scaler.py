@@ -20,9 +20,9 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.base import core
+from paddle.base import core, unique_name
 from paddle.base.data_feeder import check_type
-from paddle.base.framework import _dygraph_tracer, dygraph_only
+from paddle.base.framework import _dygraph_tracer, in_pir_mode
 from paddle.framework import in_dynamic_mode
 
 from .auto_cast import amp_global_state
@@ -87,7 +87,6 @@ class AmpScaler:
             ...     scaler.minimize(optimizer, scaled)
     """
 
-    @dygraph_only
     def __init__(
         self,
         enable=True,
@@ -98,24 +97,26 @@ class AmpScaler:
         decr_every_n_nan_or_inf=1,
         use_dynamic_loss_scaling=True,
     ):
-        tracer = _dygraph_tracer()
-        if not tracer:
-            raise ValueError(
-                "current_tracer is None, maybe it is not in imperative mode."
-            )
+        if in_dynamic_mode():
+            tracer = _dygraph_tracer()
+            if not tracer:
+                raise ValueError(
+                    "current_tracer is None, maybe it is not in imperative mode."
+                )
 
-        if enable and not (
-            tracer._expected_place.is_gpu_place()
-            or tracer._expected_place.is_xpu_place()
-            or tracer._expected_place.is_custom_place()
-        ):
-            warnings.warn(
-                'AmpScaler can only be enabled on CUDAPlace, XPUPlace and CustomPlace, current place is %s, so it makes no effect.'
-                % tracer._expected_place
-            )
-            enable = False
+            if enable and not (
+                tracer._expected_place.is_gpu_place()
+                or tracer._expected_place.is_xpu_place()
+                or tracer._expected_place.is_custom_place()
+            ):
+                warnings.warn(
+                    'AmpScaler can only be enabled on CUDAPlace, XPUPlace and CustomPlace, current place is %s, so it makes no effect.'
+                    % tracer._expected_place
+                )
+                enable = False
 
         self._enable = enable
+        self._use_dynamic_loss_scaling = False
 
         if self._enable:
             assert incr_ratio > 1.0, "The incr_ratio must be > 1.0."
@@ -130,24 +131,36 @@ class AmpScaler:
             self._decr_count = 0
             self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
-            self._found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
-            self._temp_found_inf_value_false = paddle.to_tensor(
-                np.array([0]).astype(np.bool_)
-            )
-            self._temp_found_inf_fp16 = paddle.to_tensor(
-                np.array([0]).astype(np.bool_)
-            )
-            self._temp_found_inf_bf16 = paddle.to_tensor(
-                np.array([0]).astype(np.bool_)
-            )
-            self._temp_found_inf_fp32 = paddle.to_tensor(
-                np.array([0]).astype(np.bool_)
-            )
-            self._scale = paddle.to_tensor(
-                np.array([self._init_loss_scaling]).astype(np.float32)
-            )
-            self._cache_founf_inf = None
-            self._optimizer_states = defaultdict(_refresh_optimizer_state)
+            if in_pir_mode():
+                self._scale = paddle.pir.core.create_persistable_value(
+                    dtype='float32',
+                    shape=[1],
+                    name=unique_name.generate("loss_scaling"),
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=self._init_loss_scaling
+                    ),
+                )
+            else:
+                self._found_inf = paddle.to_tensor(
+                    np.array([0]).astype(np.bool_)
+                )
+                self._temp_found_inf_value_false = paddle.to_tensor(
+                    np.array([0]).astype(np.bool_)
+                )
+                self._temp_found_inf_fp16 = paddle.to_tensor(
+                    np.array([0]).astype(np.bool_)
+                )
+                self._temp_found_inf_bf16 = paddle.to_tensor(
+                    np.array([0]).astype(np.bool_)
+                )
+                self._temp_found_inf_fp32 = paddle.to_tensor(
+                    np.array([0]).astype(np.bool_)
+                )
+                self._scale = paddle.to_tensor(
+                    np.array([self._init_loss_scaling]).astype(np.float32)
+                )
+                self._cache_founf_inf = None
+                self._optimizer_states = defaultdict(_refresh_optimizer_state)
 
     def scale(self, var):
         """
@@ -179,7 +192,12 @@ class AmpScaler:
                 ...     scaled.backward()
                 ...     scaler.minimize(optimizer, scaled)
         """
-        check_type(var, "var", core.eager.Tensor, 'AmpScaler.scale()')
+        check_type(
+            var,
+            "var",
+            (core.eager.Tensor, paddle.pir.Value),
+            'AmpScaler.scale()',
+        )
 
         if (
             self._enable
@@ -192,6 +210,13 @@ class AmpScaler:
                 'It is not recommended to use dynamic loss scaling for %s, so GradScaler is disable by default.'
                 % (amp_global_state().amp_dtype)
             )
+
+        if in_pir_mode():
+            if var.dtype != core.DataType.FLOAT32:
+                var = var.astype('float32')
+            if not self._use_dynamic_loss_scaling:
+                return var
+            return var * self._scale
 
         # NOTE(lizhiyu): We hack here to avoid changing the `dist_attr` of `self._scale` of 'no-calculation-rank'
         if not self._enable or not var._is_initialized():
@@ -235,6 +260,27 @@ class AmpScaler:
                 ...     scaled.backward()
                 ...     scaler.minimize(optimizer, scaled)
         """
+
+        if in_pir_mode():
+            assert isinstance(
+                optimizer,
+                paddle.static.amp.decorator.OptimizerWithMixedPrecision,
+            )
+            optimizer._use_dynamic_loss_scaling = self._use_dynamic_loss_scaling
+            optimizer._init_loss_scaling = self._init_loss_scaling
+            optimizer._loss_scaling = self._scale
+            optimizer._scaled_loss = args[0]
+            if self._use_dynamic_loss_scaling:
+                optimizer._incr_every_n_steps = self._incr_every_n_steps
+                optimizer._decr_every_n_nan_or_inf = (
+                    self._decr_every_n_nan_or_inf
+                )
+                optimizer._incr_ratio = self._incr_ratio
+                optimizer._decr_ratio = self._decr_ratio
+                optimizer._num_good_steps = None
+                optimizer._num_bad_steps = None
+            return optimizer.minimize(*args, **kwargs)
+
         if not self._enable:
             return optimizer.minimize(*args, **kwargs)
 

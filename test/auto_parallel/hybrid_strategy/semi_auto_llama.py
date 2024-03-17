@@ -250,19 +250,19 @@ class TestLlamaAuto:
                     if global_step // self.gradient_accumulation_steps >= 10:
                         break
         else:
-            strategy = None
+            strategy = dist.Strategy()
             if self.gradient_accumulation_steps > 1:
-                strategy = dist.Strategy()
                 strategy.pipeline.accumulate_steps = (
                     self.gradient_accumulation_steps
                 )
-                if self.amp:
-                    amp = strategy.amp
-                    amp.enable = self.amp
-                    amp.dtype = self.amp_dtype
-                    amp.level = self.amp_level.lower()
-                    if self.amp_master_grad:
-                        amp.use_master_grad = True
+
+            if self.amp:
+                amp = strategy.amp
+                amp.enable = self.amp
+                amp.dtype = self.amp_dtype
+                amp.level = self.amp_level.lower()
+                if self.amp_master_grad:
+                    amp.use_master_grad = True
 
             dist_model = dist.to_static(
                 model,
