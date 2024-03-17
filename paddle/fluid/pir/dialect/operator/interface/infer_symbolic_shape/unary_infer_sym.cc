@@ -285,9 +285,8 @@ bool KthvalueOpInferSymbolicShape(
 
 bool LogcumsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  // same as CumsumOpInferSymbolicShape
+  return CumsumOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool LogsumexpOpInferSymbolicShape(
@@ -325,9 +324,7 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
 
 bool MinOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return MaxOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool PadOpInferSymbolicShape(pir::Operation *op,
