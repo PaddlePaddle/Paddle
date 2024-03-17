@@ -78,7 +78,7 @@ BuildPureStaticShapeConfig(
         /* warp_num = */ 8,
         /* tree_reduce_num = */ 256,
         /* spatial_inner_num = */ 1,
-        /* reduce_method = */ WarpReduceMethod()};
+        /* reduce_method = */ BlockReduceMethod()};
     return {{bucket_info, tile_config}};
   } else if (base_info->reduce_numel == 1) {  // no reduce
     int64_t spatial_block = Next2Power(base_info->spatial_numel);
@@ -162,7 +162,52 @@ std::unordered_map<BucketInfo, ScheduleConfig::TileConfig, BucketInfoHash>
 BuildStaticSpatialConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
-  CINN_NOT_IMPLEMENTED;
+  if (base_info->spatial_numel == 1) {  // reduce all
+    BucketInfo bucket_info{/* sp_lower_bound = */ 1,
+                           /* sp_upper_bound = */ 1,
+                           /* rb_lower_bound = */ 1,
+                           /* rb_upper_bound = */ kMaxNumel};
+    ScheduleConfig::TileConfig tile_config{
+        /* warp_num = */ 8,
+        /* tree_reduce_num = */ 256,
+        /* spatial_inner_num = */ 1,
+        /* reduce_method = */ WarpReduceMethod()};
+    return {{bucket_info, tile_config}};
+  } else {
+    BucketInfo bucket_info_1_256{/* sp_lower_bound = */ 1,
+                                 /* sp_upper_bound = */ kMaxNumel,
+                                 /* rb_lower_bound = */ 1,
+                                 /* rb_upper_bound = */ 256};
+    ScheduleConfig::TileConfig tile_config_1_256{
+        /* warp_num = */ 8,
+        /* tree_reduce_num = */ 32,
+        /* spatial_inner_num = */ 1,
+        /* reduce_method = */ WarpReduceMethod()};
+
+    BucketInfo bucket_info_257_2048{/* sp_lower_bound = */ 1,
+                                    /* sp_upper_bound = */ kMaxNumel,
+                                    /* rb_lower_bound = */ 257,
+                                    /* rb_upper_bound = */ 2048};
+    ScheduleConfig::TileConfig tile_config_257_2048{
+        /* warp_num = */ 8,
+        /* tree_reduce_num = */ 128,
+        /* spatial_inner_num = */ 1,
+        /* reduce_method = */ BlockReduceMethod()};
+
+    BucketInfo bucket_info_2049_INF{/* sp_lower_bound = */ 1,
+                                    /* sp_upper_bound = */ kMaxNumel,
+                                    /* rb_lower_bound = */ 2049,
+                                    /* rb_upper_bound = */ kMaxNumel};
+    ScheduleConfig::TileConfig tile_config_2049_INF{
+        /* warp_num = */ 8,
+        /* tree_reduce_num = */ 256,
+        /* spatial_inner_num = */ 1,
+        /* reduce_method = */ BlockReduceMethod()};
+
+    return {{bucket_info_1_256, tile_config_1_256},
+            {bucket_info_257_2048, tile_config_257_2048},
+            {bucket_info_2049_INF, tile_config_2049_INF}};
+  }
 }
 
 std::unordered_map<BucketInfo, ScheduleConfig::TileConfig, BucketInfoHash>
@@ -233,7 +278,7 @@ BuildStaticReduceConfig(
         /* warp_num = */ warp_num,
         /* tree_reduce_num = */ tree_reduce_num,
         /* spatial_inner_num = */ spatial_inner_num,
-        /* reduce_method = */ NoneReduceMethod()};
+        /* reduce_method = */ BlockReduceMethod()};
     return {{bucket_info, tile_config}};
   }
 }
@@ -268,10 +313,10 @@ BuildScheduleConfig(
   if (!base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
     return CombineBaseInfoAndConfig(
         BuildPureStaticShapeConfig(base_info, target), base_info);
-  } else if (!base_info->has_dynamic_reduce && base_info->has_dynamic_spatial) {
+  } else if (base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
     return CombineBaseInfoAndConfig(BuildStaticSpatialConfig(base_info, target),
                                     base_info);
-  } else if (base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
+  } else if (!base_info->has_dynamic_reduce && base_info->has_dynamic_spatial) {
     return CombineBaseInfoAndConfig(BuildStaticReduceConfig(base_info, target),
                                     base_info);
   } else {  // (base_info->has_dynamic_reduce && base_info->has_dynamic_spatial)
