@@ -37,8 +37,6 @@ namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
     LoadCombineOp::name(),
-    BatchFCOp::name(),
-    BatchFCGradOp::name(),
     CConcatOp::name(),
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
