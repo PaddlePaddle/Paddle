@@ -98,7 +98,6 @@
 - flip
 - roll
 - full_int_array
-- arange
 - empty
 - linspace
 - logspace
@@ -119,5 +118,4 @@
 - poisson
 - randint
 - uniform
-- unique
 - unique_consecutive
