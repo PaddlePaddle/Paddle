@@ -214,6 +214,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   if (reduce_block > 1 && reduce_block <= 256) {
     group_tile_info->reduce_method = ir::WarpReduceMethod();
+    reduce_inner_num = std::ceil(group_tile_info->reduce_block * 1.0 / 32);
   }
 
   for (auto op : group->ops) {
