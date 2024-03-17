@@ -291,9 +291,8 @@ bool LogcumsumexpOpInferSymbolicShape(
 
 bool LogsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  // same as SumOpInferSymbolicShape
+  return SumOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool MaxOpInferSymbolicShape(pir::Operation *op,
