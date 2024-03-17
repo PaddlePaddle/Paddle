@@ -23,29 +23,6 @@ bool ShouldUseData(pir::Value val) {
   return false;
 }
 
-template <typename T>
-bool IsDimExprGTOne(const T& dim_expr) {
-  return false;
-}
-
-bool IsDimExprGTOne(const std::int64_t& dim_expr) { return dim_expr > 1; }
-
-bool IsDimExprGTOne(const symbol::Broadcast<symbol::DimExpr>& dim_expr) {
-  for (const auto& expr : *(dim_expr.operands)) {
-    if (IsDimExprGTOne(expr)) return true;
-  }
-  return false;
-}
-
-bool IsDimExprGTOne(const symbol::Add<symbol::DimExpr>& dim_expr) {
-  return true;
-}
-
-bool IsDimExprGTOne(const symbol::DimExpr& dim_expr) {
-  return std::visit([](const auto& expr) { return IsDimExprGTOne(expr); },
-                    dim_expr.variant());
-}
-
 bool InferSymbolicShapeElementWiseBinary(
     pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const auto& x_shapeordata =
@@ -87,9 +64,11 @@ bool InferSymbolicShapeElementWiseBinary(
     for (size_t i = 0; i < shape_0.size(); i++) {
       if (shape_0[i] == shape_1[i]) {
         shapes.emplace_back(shape_0[i]);
-      } else if (shape_0[i] == 1 || IsDimExprGTOne(shape_1[i])) {
+      } else if (shape_0[i] == 1 ||
+                 symbol::IsDimExprGreaterThanOne(shape_1[i])) {
         shapes.emplace_back(shape_1[i]);
-      } else if (shape_1[i] == 1 || IsDimExprGTOne(shape_0[i])) {
+      } else if (shape_1[i] == 1 ||
+                 symbol::IsDimExprGreaterThanOne(shape_0[i])) {
         shapes.emplace_back(shape_0[i]);
       } else {
         shapes.emplace_back(builder.Broadcast(shape_0[i], shape_1[i]));
