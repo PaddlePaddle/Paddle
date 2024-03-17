@@ -175,6 +175,7 @@ if(NOT WIN32)
 
   set(GPU_COMMON_FLAGS
       -fPIC
+      #sdaa
       -fno-omit-frame-pointer
       -Wnon-virtual-dtor
       -Wdelete-non-virtual-dtor
