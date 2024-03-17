@@ -110,15 +110,28 @@ bool FullWithTensorOpInferSymbolicShape(
 
 bool LinspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const auto &num_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+  const auto step = [&] {
+    symbol::DimExpr expr;
+    if (num_shape_or_data.data().has_value()) {
+      expr = num_shape_or_data.data().value()[0];
+    } else {
+      expr = num_shape_or_data.shape()[0];
+    }
+    return expr;
+  }();
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    out_dims.emplace_back(step);
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+  }();
   return true;
 }
 bool LogspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return LinSpaceOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool StackOpInferSymbolicShape(pir::Operation *op,
