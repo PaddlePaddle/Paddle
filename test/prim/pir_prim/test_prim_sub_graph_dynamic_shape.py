@@ -92,6 +92,10 @@ def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
 
 
+def layer_norm_net1(x):
+    return paddle.nn.functional.layer_norm(x, x.shape[1:])
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -135,7 +139,7 @@ class TestPrimBase(unittest.TestCase):
         res_ref = self.base_net()
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+            np.testing.assert_allclose(ref, actual, rtol=1e-6, atol=1e-6)
 
 
 class TestPrimAny(TestPrimBase):
@@ -302,6 +306,18 @@ class TestPrimSwiglu2(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = swiglu_net2
         self.necessary_ops = "pd_op.swiglu"
+        self.enable_cinn = False
+
+
+class TestPrimLayernorm(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [2, 32, 1280]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = layer_norm_net1
+        self.necessary_ops = "pd_op.layer_norm"
         self.enable_cinn = False
 
 

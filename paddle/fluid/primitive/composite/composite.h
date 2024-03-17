@@ -32,6 +32,13 @@ static Tensor get_slice(const Tensor& x, int64_t idx) {
 }
 
 template <typename T>
+static Tensor get_slice_vec(const Tensor& x,
+                            int64_t start_idx,
+                            int64_t end_idx) {
+  return slice<T>(x, {0}, {start_idx}, {end_idx}, {1}, {});
+}
+
+template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
 
@@ -122,10 +129,6 @@ static bool valid_type(const DataType& dtype) {
 
 template <typename T>
 Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
-  if (y.to<float>() == 2.0) {
-    return x * x;
-  }
-  elif (y.to<float>() == -2.0) { return 1.0 / (x * x); }
   auto org_dtype = x.dtype();
   auto x_cast = x;
 
@@ -417,6 +420,70 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     const paddle::optional<Tensor>& bias,
     float epsilon,
     int begin_norm_axis) {
+  if (has_dynamic_shape(x.shape())) {
+    std::vector<int64_t> axis;
+    auto org_dtype = x.dtype();
+    Tensor x_cast = x;
+
+    bool need_cast = is_half_dtype(org_dtype);
+
+    // cast dtype to float32 if dtype =float16 or bfloat16
+    if (need_cast) {
+      x_cast = cast<T>(x_cast, DataType::FLOAT32);
+    }
+
+    auto x_dim = x.shape();
+    for (size_t i = begin_norm_axis; i < x_dim.size(); i++) {
+      axis.push_back(static_cast<int64_t>(i));
+    }
+    auto mean_ = mean_decomp<T>(x_cast, axis, true);
+    auto difference = x_cast - mean_;
+    auto var_tmp1 = difference * difference;
+    auto variance = mean_decomp<T>(var_tmp1, axis, true);
+    VLOG(0) << "=========================0";
+    auto var_tmp3 = variance + full<T>(empty_shape, epsilon, variance.dtype());
+    VLOG(0) << "=========================1";
+    auto rsqrt_var = elementwise_pow<T>(
+        var_tmp3, full<T>(empty_shape, -0.5, var_tmp3.dtype()));
+    auto out = difference * rsqrt_var;
+
+    auto scale_ptr = scale.get_ptr();
+    auto bias_ptr = bias.get_ptr();
+
+    Tensor slice_shape_l = get_slice_vec<T>(shape<T>(x), 0, begin_norm_axis);
+    Tensor slice_shape_r =
+        get_slice_vec<T>(shape<T>(x), begin_norm_axis, x_dim.size());
+    Tensor scale_cast;
+    if (scale_ptr) {
+      scale_cast = reshape<T>(*scale_ptr, slice_shape_r);
+      if (need_cast) {
+        scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
+      }
+      out = out * scale_cast;
+    }
+    Tensor bias_cast;
+    if (bias_ptr) {
+      bias_cast = backend::reshape_with_tensor<T>(*bias_ptr, slice_shape_r);
+      if (need_cast) {
+        bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
+      }
+      VLOG(0) << "=========================2";
+      out = out + bias_cast;
+      VLOG(0) << "=========================3";
+    }
+    mean_ = backend::reshape_with_tensor<T>(mean_, slice_shape_l);
+    variance = backend::reshape_with_tensor<T>(variance, slice_shape_l);
+
+    // same as LayerNormInferMeta
+    // x: float32 --> out: float32, mean: float32, variance: float32
+    // x: float16 --> out: float16, mean: float32, variance: float32
+    if (need_cast) {
+      out = cast<T>(out, org_dtype);
+    }
+
+    return std::make_tuple(out, mean_, variance);
+  }
+
   std::vector<int64_t> axis;
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
