@@ -58,7 +58,7 @@ static inline phi::DataType GetPromoteType(
       "float16") {
     if (op_name == "fused_attention") {
       for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
-        if (i != 3 || i != 4 || i != 9 || i != 10) {
+        if (i < 3 || (i > 4 && i < 9) || i > 10) {
           if (GetDataType(amp_tensors_vector[i][0]) == phi::DataType::FLOAT32) {
             dst_type = phi::DataType::FLOAT32;
             return dst_type;
@@ -67,7 +67,7 @@ static inline phi::DataType GetPromoteType(
       }
     } else if (op_name == "fused_feedforward") {
       for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
-        if (i != 7 || i != 8 || i != 9 || i != 10) {
+        if (i < 7 || i > 10) {
           if (GetDataType(amp_tensors_vector[i][0]) == phi::DataType::FLOAT32) {
             dst_type = phi::DataType::FLOAT32;
             return dst_type;

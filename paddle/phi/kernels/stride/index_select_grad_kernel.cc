@@ -56,9 +56,9 @@ void IndexSelectGradStridedKernel(const Context& dev_ctx,
 
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    index_select_grad_strided, STRIDED, phi::IndexSelectGradStridedKernel) {}
+    index_select_strided_grad, STRIDED, phi::IndexSelectGradStridedKernel) {}
 #else
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(index_select_grad_strided,
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(index_select_strided_grad,
                                          STRIDED,
                                          phi::IndexSelectGradStridedKernel) {}
 #endif

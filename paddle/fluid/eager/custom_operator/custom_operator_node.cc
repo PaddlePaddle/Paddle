@@ -209,8 +209,8 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                ->meta()
                .is_contiguous()) {
         tensor.set_impl(std::make_shared<phi::DenseTensor>(
-            std::move(paddle::experimental::Trans2Contiguous(*(
-                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+            paddle::experimental::Trans2Contiguous(*(
+                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())))));
       }
     }
 

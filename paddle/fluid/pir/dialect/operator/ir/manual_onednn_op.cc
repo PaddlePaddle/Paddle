@@ -243,7 +243,7 @@ void ExpandOp::InferMeta(phi::InferMetaContext* infer_meta) {
 
 std::vector<pir::Type> ExpandOp::InferMeta(
     const std::vector<pir::Value>& input_values,
-    const pir::AttributeMap& attributes) {
+    pir::AttributeMap& attributes) {  // NOLINT
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
              input_values.size());
@@ -263,22 +263,22 @@ std::vector<pir::Type> ExpandOp::InferMeta(
 
   phi::IntArray shape;
   if (shape_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
-    shape = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+    shape = phi::IntArray(paddle::dialect::GetInt64Vector(
         shape_.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-            .attribute("value"))));
+            .attribute("value")));
   } else if (shape_.type().isa<pir::VectorType>()) {
     size_t shape_size = shape_.type().dyn_cast<pir::VectorType>().size();
     // In ExpandInferMeta use -2 to represent the element in expand_shape is a
     // var.
-    shape = std::move(phi::IntArray(std::vector<int64_t>(shape_size, -2)));
+    shape = phi::IntArray(std::vector<int64_t>(shape_size, -2));
     shape.SetFromTensor(true);
   } else if (shape_.type().isa<paddle::dialect::DenseTensorType>()) {
     size_t shape_size = common::product(
         shape_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
     // In ExpandInferMeta use -2 to represent the element in expand_shape is a
     // var.
-    shape = std::move(phi::IntArray(std::vector<int64_t>(shape_size, -2)));
+    shape = phi::IntArray(std::vector<int64_t>(shape_size, -2));
     shape.SetFromTensor(true);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(

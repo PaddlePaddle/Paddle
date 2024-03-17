@@ -1634,8 +1634,7 @@ void BrpcPsClient::PushSparseTaskConsume() {
 
       task_list.reserve(cur_merge_size + 1);
 
-      task_list.push_back(
-          std::move(std::shared_ptr<SparseAsyncTask>(async_task)));
+      task_list.push_back(std::shared_ptr<SparseAsyncTask>(async_task));
 
       while (!task_queue->Empty() && merge_count < cur_merge_size) {
         ++merge_count;
@@ -1667,8 +1666,7 @@ void BrpcPsClient::PushSparseTaskConsume() {
 
         for_each(task_list.begin() + 1,
                  task_list.end(),
-                 [&request_kv_num, request_call_num, closure](
-                     std::shared_ptr<SparseAsyncTask> &task) {
+                 [closure](std::shared_ptr<SparseAsyncTask> &task) {
                    closure->add_timer(task->timer());
                    closure->add_promise(task->promise());
                  });
@@ -1978,8 +1976,7 @@ void BrpcPsClient::PushDenseTaskConsume() {
           closure->add_timer(async_task->timer());
           closure->add_promise(async_task->promise());
           merge_status[merge_count] =
-              async_merge_dense_threads.enqueue([closure,
-                                                 accessor,
+              async_merge_dense_threads.enqueue([accessor,
                                                  &total_send_data,
                                                  total_send_data_size,
                                                  async_task]() -> int {

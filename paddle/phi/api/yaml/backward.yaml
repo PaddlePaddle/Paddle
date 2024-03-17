@@ -433,9 +433,9 @@
     param : [x, x]
   kernel :
     func : cos_double_grad
-  optional: grad_out
   backward : cos_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
+  composite : cos_double_grad(x, grad_out, grad_x_grad, x_grad, grad_out_grad)
 
 - backward_op : cos_grad
   forward : cos (Tensor x) -> Tensor(out)
