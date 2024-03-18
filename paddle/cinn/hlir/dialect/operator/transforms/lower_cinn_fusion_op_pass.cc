@@ -805,6 +805,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     std::unordered_map<symbol::DimExpr, symbol::DimExpr> update_map;
     group->set_value_to_shape_or_data_exprs(
         CreateGroupShapeOrDataExprs(group, shape_analysis, &update_map));
+
     for (size_t i = 0; i < group->loop_ranges_expr.size(); ++i) {
       if (update_map.count(group->loop_ranges_expr[i])) {
         group->loop_ranges_expr[i] = update_map.at(group->loop_ranges_expr[i]);
