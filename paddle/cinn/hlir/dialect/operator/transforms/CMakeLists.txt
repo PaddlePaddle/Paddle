@@ -9,8 +9,8 @@ set(cinn_transforms_deps
     cinn_runtime_dialect
     pir_compiler)
 
-cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs} DEPS
-                ${cinn_transforms_deps})
+cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs}
+                ${group_pattern_util} DEPS ${cinn_transforms_deps})
 
 cc_library(
   add_cinn_pass
