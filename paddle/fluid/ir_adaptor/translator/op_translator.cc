@@ -284,9 +284,9 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   }
   VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
           << target_op_name;
-  auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+  auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
   if (!op_info) {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Op %d should have corresponding OpInfo %d",
         op_desc.Type(),
         target_op_name));
