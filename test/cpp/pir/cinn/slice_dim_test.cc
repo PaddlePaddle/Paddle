@@ -1,3 +1,4 @@
+
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -160,8 +161,8 @@ std::shared_ptr<::pir::Program> BuildReshapeSumProgram() {
                                                  std::vector<int64_t>({}))
                 .result(0);
 
-  auto s2 = builder.Build<paddle::dialect::AddOp>(s1, s1).result(0);
-  auto out = builder.Build<paddle::dialect::ReshapeOp>(x, s2).result(0);
+  //  auto s2 = builder.Build<paddle::dialect::AddOp>( s1, s1 ).result(0);
+  auto out = builder.Build<paddle::dialect::ReshapeOp>(x, s1).result(0);
 
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
   return program;

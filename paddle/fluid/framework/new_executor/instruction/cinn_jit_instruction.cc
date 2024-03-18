@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
@@ -113,6 +115,7 @@ class CinnJitInstruction::FnPtrImpl {
     for (int i = 0; i < output_tensor_size; ++i) {
       DDim dim(output_tensor_shapes[i],
                kernel_args[input_tensor_size + i]->dims().size());
+      std::cerr << "dim  " << dim << std::endl;
       kernel_args[input_tensor_size + i]->Resize(dim);
       free(output_tensor_shapes[i]);
     }
@@ -134,7 +137,19 @@ CinnJitInstruction::CinnJitInstruction(
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
   fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cinn_kernel_info());
   op_ = op;
-  input_tensor_size = op->num_operands();
+
+  std::unordered_map<symbol::DimExpr, int64_t> dim_expr_2_id;
+  const auto& output_dim_exprs =
+      op->attribute("input_dim_exprs").dyn_cast<pir::ArrayAttribute>();
+  for (int i = 0; i < output_dim_exprs.size(); ++i) {
+    const auto& attr = output_dim_exprs.at(i);
+    const auto& opt_dim_expr = cinn::dialect::ConvertAttributeToDimExpr(attr);
+    CHECK(opt_dim_expr.has_value());
+    dim_expr_2_id.emplace(opt_dim_expr.value(), i);
+  }
+
+  // input_tensor_size = op->num_operands();
+  input_tensor_size = jit_kernel_op.kernel_tensor_number();
   output_tensor_size = op->num_results();
 
   place_ = place;
@@ -149,7 +164,38 @@ CinnJitInstruction::CinnJitInstruction(
                       ->FindVar(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
-    tensor_args_.push_back(tensor);
+    if (i < input_tensor_size) {
+      tensor_args_.push_back(tensor);
+    } else {
+      dim_args_.push_back(tensor);
+    }
+  }
+
+  auto* Convert =
+      &cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings;
+  const auto& symbol_bindings = Convert(op->attribute("symbol_bindings"));
+
+  PADDLE_ENFORCE(
+      symbol_bindings.has_value(),
+      phi::errors::PreconditionNotMet("attr symbol_bindings in op [%s] can "
+                                      "not be converted to symbol bindings",
+                                      op->name()));
+
+  for (const auto& symbol_binding : symbol_bindings.value()) {
+    std::cerr << "11\n";
+    auto t = std::get<cinn::dialect::GenerateShapeOp::ShapeSymbolBinding>(
+        symbol_binding);
+    std::cerr << "symbolic bind" << t.symbol_name << "\t"
+              << t.input_tensor_dim_idx << std::endl;
+    auto expr = symbol::DimExpr(t.symbol_name);
+    if (dim_expr_2_id.count(expr)) {
+      output_dim_info.emplace_back(
+          UpdateDimNode{t.input_tensor_idx,
+                        t.input_tensor_dim_idx,
+                        dim_args_[dim_expr_2_id.at(expr)]});
+    } else {
+      throw std::runtime_error("can not find expr");
+    }
   }
 
   dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
@@ -167,6 +213,8 @@ CinnJitInstruction::CinnJitInstruction(
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     tensor->set_type(
         paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
+    all_dim_info_.push_back(alloc_tensor_type.dims());
+
     for (size_t j = 0; j < alloc_tensor_type.dims().size(); ++j) {
       if (alloc_tensor_type.dims()[j] < 0) {
         need_update_shape = true;
@@ -180,13 +228,32 @@ CinnJitInstruction::CinnJitInstruction(
 void CinnJitInstruction::Run() {
 #if defined(PADDLE_WITH_CUDA)
   auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
+  std::cerr << "dim args size " << dim_args_.size() << std::endl;
+  // for( size_t i = 0; i < dim_args_.size(); ++i )
+  // {
+  //   std::cerr << "dim info " << dim_args_[i]->data<int64_t>()[0] <<
+  //   std::endl;
+  // }
 
+  for (size_t i = 0; i < output_dim_info.size(); ++i) {
+    auto node = output_dim_info[i];
+
+    std::cerr << node.out_tensor_idx << "\t" << node.out_tensor_dim_idx << "\t"
+              << node.tensor->data<int64_t>()[0] << std::endl;
+
+    all_dim_info_[node.out_tensor_idx][node.out_tensor_dim_idx] =
+        node.tensor->data<int64_t>()[0];
+  }
+  for (size_t i = 0; i < output_tensor_size; ++i) {
+    std::cerr << "dims " << all_dim_info_[i] << std::endl;
+    tensor_args_[input_tensor_size + i]->Resize(all_dim_info_[i]);
+  }
   auto stream = gpu_ctx->stream();
 
-  if (FLAGS_cinn_bucket_compile && need_update_shape) {
-    fn_ptr_impl_->InferShape(
-        tensor_args_, input_tensor_size, output_tensor_size);
-  }
+  // if (FLAGS_cinn_bucket_compile && need_update_shape) {
+  //   fn_ptr_impl_->InferShape(
+  //       tensor_args_, input_tensor_size, output_tensor_size);
+  // }
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
     gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }

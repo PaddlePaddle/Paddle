@@ -25,6 +25,12 @@ namespace paddle {
 namespace framework {
 class Scope;
 
+struct UpdateDimNode {
+  int64_t out_tensor_idx;
+  int64_t out_tensor_dim_idx;
+  phi::DenseTensor* tensor{nullptr};
+};
+
 class CinnJitInstruction : public InstructionBase {
  public:
   CinnJitInstruction(size_t id,
@@ -54,6 +60,9 @@ class CinnJitInstruction : public InstructionBase {
 
   bool need_update_shape{false};
   std::vector<phi::DenseTensor*> tensor_args_;
+  std::vector<phi::DenseTensor*> dim_args_;
+  std::vector<phi::DDim> all_dim_info_;
+  std::vector<UpdateDimNode> output_dim_info;
 
   ::pir::Operation* op_{nullptr};  // not owned
 };
