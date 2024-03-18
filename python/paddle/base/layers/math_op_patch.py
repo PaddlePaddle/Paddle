@@ -637,16 +637,13 @@ def monkey_patch_variable():
 
             if lhs_dtype != rhs_dtype:
                 if method_name in SUPPORT_PROMOTION_OPS:
-                    # for 0-d tensor, the logic same with Tensor + Scalar
+                    # different major types or both 0-d tensor follow with T+T rule.
                     if len(other_var.shape) == 0 or len(self.shape) == 0:
-                        if core.is_common_dtype_for_scalar(
+                        if not core.is_common_dtype_for_scalar(
                             lhs_dtype, rhs_dtype
+                        ) or (
+                            len(other_var.shape) == 0 and len(self.shape) == 0
                         ):
-                            if len(self.shape) == 0:
-                                self = astype(self, rhs_dtype)
-                            else:
-                                other_var = astype(other_var, lhs_dtype)
-                        else:
                             promote_type = core.get_promote_dtype(
                                 op_type, lhs_dtype, rhs_dtype
                             )
@@ -654,6 +651,12 @@ def monkey_patch_variable():
                                 self = astype(self, promote_type)
                             if rhs_dtype != promote_type:
                                 other_var = astype(other_var, promote_type)
+                        # common major types follow with tensor: int32(tensor) + int64(scalar) = int32
+                        else:
+                            if len(self.shape) == 0:
+                                self = astype(self, rhs_dtype)
+                            else:
+                                other_var = astype(other_var, lhs_dtype)
                     elif core.need_type_promotion(lhs_dtype, rhs_dtype):
                         # only report warning here, real promotion deal in Executor
                         warnings.warn(

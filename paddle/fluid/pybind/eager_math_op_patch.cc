@@ -240,32 +240,20 @@ static PyObject* tensor__add__method(TensorObject* self,
   paddle::Tensor other_tensor;
 
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if ((other_tensor_ref.shape().size() == 0 ||
-         self_tensor_ref.shape().size() == 0) &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        if (self_tensor_ref.shape().size() == 0) {
-          eager_gil_scoped_release guard;
-          self_tensor_ref =
-              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
-        } else {
-          eager_gil_scoped_release guard;
-          other_tensor_ref =
-              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-        }
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "add", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -276,7 +264,24 @@ static PyObject* tensor__add__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -367,25 +372,20 @@ static PyObject* tensor__sub__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "subtract", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -396,7 +396,22 @@ static PyObject* tensor__sub__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -485,25 +500,20 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    auto& self_tensor_ref = self->tensor;
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+    auto self_tensor_ref = self->tensor;
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "subtract", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -514,7 +524,24 @@ static PyObject* tensor__rsub__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -606,25 +633,20 @@ static PyObject* tensor__mul__method(TensorObject* self,
   // if one of the input is numpy or scalar, no need to do inplace cast.
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "multiply", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -635,7 +657,24 @@ static PyObject* tensor__mul__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -732,24 +771,20 @@ static PyObject* tensor__div__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "divide", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -760,7 +795,24 @@ static PyObject* tensor__div__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -871,24 +923,20 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "divide", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -899,7 +947,24 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1008,25 +1073,20 @@ static PyObject* tensor__gt__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "greater_than", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -1037,7 +1097,24 @@ static PyObject* tensor__gt__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1139,25 +1216,20 @@ static PyObject* tensor__ge__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "greater_equal", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -1168,7 +1240,24 @@ static PyObject* tensor__ge__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1271,25 +1360,20 @@ static PyObject* tensor__mod__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "remainder", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -1300,7 +1384,24 @@ static PyObject* tensor__mod__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1527,25 +1628,20 @@ static PyObject* tensor__lt__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "less_than", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -1556,7 +1652,24 @@ static PyObject* tensor__lt__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1658,25 +1771,20 @@ static PyObject* tensor__le__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "less_equal", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -1687,7 +1795,24 @@ static PyObject* tensor__le__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1790,25 +1915,20 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "floor_divide", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -1819,7 +1939,24 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1911,25 +2048,20 @@ static PyObject* tensor__pow__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype("elementwise_pow",
                                                      self_tensor_ref.dtype(),
                                                      other_tensor_ref.dtype());
@@ -1941,7 +2073,24 @@ static PyObject* tensor__pow__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -2043,25 +2192,20 @@ static PyObject* tensor__rpow__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype("elementwise_pow",
                                                      self_tensor_ref.dtype(),
                                                      other_tensor_ref.dtype());
@@ -2073,7 +2217,24 @@ static PyObject* tensor__rpow__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -2175,25 +2336,20 @@ static PyObject* tensor__ne__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "not_equal", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -2204,7 +2360,24 @@ static PyObject* tensor__ne__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -2304,25 +2477,20 @@ static PyObject* tensor__eq__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref = self->tensor;
-    auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
+    auto self_tensor_ref = self->tensor;
+    auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    auto self_tensor_size = self_tensor_ref.shape().size();
+    auto other_tensor_size = other_tensor_ref.shape().size();
+    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
-      // common major types follow with tensor: int32(tensor) + int64(scalar) =
-      // int32
-      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
-                                     other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
-      } else {
-        // different major types follow with rule.
+      VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
+              << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      // different major types or both 0-d tensor follow with T+T rule.
+      if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                      other_tensor_ref.dtype()) ||
+          (self_tensor_size == 0 && other_tensor_size == 0)) {
         phi::DataType promote_type = GetPromoteDtype(
             "equal", self_tensor_ref.dtype(), other_tensor_ref.dtype());
         if (self_tensor_ref.dtype() != promote_type) {
@@ -2333,7 +2501,24 @@ static PyObject* tensor__eq__method(TensorObject* self,
           eager_gil_scoped_release guard;
           other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
         }
+      } else {
+        // common major types follow with tensor: int32(tensor) + int64(scalar)
+        // = int32
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;

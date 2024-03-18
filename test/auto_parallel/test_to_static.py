@@ -122,7 +122,7 @@ class TestWholeProgram(unittest.TestCase):
             for op in program_helper.main_program.block(0).ops
             if op.type == 'sgd'
         ]
-        self.assertEqual(len(all_ops), 37)
+        self.assertEqual(len(all_ops), 38)
         self.assertEqual(len(optimize_ops), len(sgd_ops))
 
         program_helper.reset()
