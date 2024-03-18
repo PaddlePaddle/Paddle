@@ -159,7 +159,6 @@ void ApplyDivideGroupOpToFusionOpPass(
 
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
-  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
