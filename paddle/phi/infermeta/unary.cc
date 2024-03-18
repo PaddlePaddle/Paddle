@@ -3816,7 +3816,6 @@ void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
 }
 
 void SliceDimInferMeta(const MetaTensor& input, int index, MetaTensor* out) {
-  auto in_dim = input.dims();
   out->set_dims(common::make_ddim({1}));
   out->set_dtype(DataType::INT64);
 }
