@@ -225,12 +225,6 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
     }
     printer.os << " }";
   };
-  print_hook.value_print_hook = [&](Value value, IrPrinter& printer) {
-    printer.IrPrinter::PrintValue(value);
-    if (this->HasShapeOrDataForValue(value)) {
-      printer.os << "<<" << this->GetShapeOrDataForValue(value) << ">>";
-    }
-  };
   return print_hook;
 }
 
