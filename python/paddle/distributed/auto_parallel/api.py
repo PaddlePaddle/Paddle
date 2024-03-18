@@ -740,6 +740,16 @@ class _ShardOptimizer:
                 target_name + "_" + key
             )
 
+    def _reset_placements(self, param):
+        if param.is_dist():
+            if isinstance(self._shard_fn, (ShardingStage1, ShardingStage2)):
+                new_placement = param.placements
+                new_placement[self._sharding_mesh_axis] = dist.Replicate()
+                out_param = dist.reshard(
+                    param, param.process_mesh, new_placement
+                )
+                param.get_tensor()._share_data_with(out_param.get_tensor())
+
     def step(self):
         if not isinstance(self._inner_opt._parameter_list[0], dict):
             params_grads = []
@@ -754,6 +764,10 @@ class _ShardOptimizer:
             self._inner_opt._apply_optimize(
                 loss=None, startup_program=None, params_grads=params_grads
             )
+
+            # reset the parameter and grad to right placements
+            for p, _ in params_grads:
+                self._reset_placements(p)
         else:
             for param_group in self._inner_opt._param_groups:
                 params_grads = defaultdict(lambda: [])
@@ -772,6 +786,11 @@ class _ShardOptimizer:
                 self._inner_opt._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+
+                # reset the parameter and grad to right placements
+                for p, _ in params_grads['params']:
+                    self._reset_placements(p)
+
             # only generate once.
             self._generate_flag = True
 

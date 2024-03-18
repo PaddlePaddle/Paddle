@@ -558,10 +558,8 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   auto local_promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> local_fut = local_promise->get_future();
   std::vector<bool> failed(server_size, false);
-  std::function<void(void *)> func = [&,
-                                      node_id_buckets,
-                                      query_idx_buckets,
-                                      request_call_num](void *done) {
+  std::function<void(void *)> func = [&, node_id_buckets, query_idx_buckets](
+                                         void *done) {
     local_fut.get();
     std::vector<int> actual_size;
     auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);

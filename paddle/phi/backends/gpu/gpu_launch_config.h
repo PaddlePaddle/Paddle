@@ -216,10 +216,13 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
   int block_y = std::min(GetLastPow2(height), max_threads / block_x);
   int block_z = std::min(num_img, max_threads / block_x / block_y);
 
-  std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-  int grid_x = std::min(max_grid_dim[0], DivUp<int>(width, block_x));
-  int grid_y = std::min(max_grid_dim[1], DivUp<int>(height, block_y));
-  int grid_z = std::min(max_grid_dim[2], DivUp<int>(num_img, block_z * 4));
+  std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+  unsigned int grid_x =
+      std::min(max_grid_dim[0], DivUp<unsigned int>(width, block_x));
+  unsigned int grid_y =
+      std::min(max_grid_dim[1], DivUp<unsigned int>(height, block_y));
+  unsigned int grid_z =
+      std::min(max_grid_dim[2], DivUp<unsigned int>(num_img, block_z * 4));
 
   const int capability = context.GetComputeCapability();
   GpuLaunchConfig config;

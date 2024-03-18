@@ -231,11 +231,11 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
 
     if (is_infer) {
       CHECK_EQ(a_width, b_width)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
       trans_b = true;
     } else {
       CHECK_EQ(a_width, b_height)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
     }
   } else {
     LOG(FATAL) << "Unkown Matmul Setting!";
@@ -365,11 +365,11 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
 
     if (is_infer) {
       CHECK_EQ(a_width, b_width)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
       trans_b = true;
     } else {
       CHECK_EQ(a_width, b_height)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
     }
   } else {
     LOG(FATAL) << "Unkown Matmul Setting!";
@@ -937,7 +937,7 @@ std::vector<ir::Expr> CustomCallArgsForMemcpy(
   return {Expr(count)};
 }
 
-bool RegisteryCustomCallArgsFunc() {
+bool RegisterCustomCallArgsFunc() {
 #ifdef CINN_WITH_CUDA
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cublas",
@@ -1025,7 +1025,7 @@ bool RegisteryCustomCallArgsFunc() {
   return true;
 }
 
-static bool registry_custom_call_list_func = RegisteryCustomCallArgsFunc();
+static bool registry_custom_call_list_func = RegisterCustomCallArgsFunc();
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
