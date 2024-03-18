@@ -82,14 +82,10 @@ bool Conv2dOpInferSymbolicShape(
                                             .dyn_cast<pir::StrAttribute>()
                                             .AsString();
 
-  const int groups =
-      attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
-
   const auto in_s_or_d =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   const auto filter_s_or_d =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
-  int dilation_size = static_cast<int>(dilations.size());
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
@@ -126,7 +122,7 @@ bool Conv2dOpInferSymbolicShape(
       out_s_or_d.push_back(filter_s_or_d.shape()[0]);
     }
 
-    for (int i = 0; i < in_data_dims.size(); ++i) {
+    for (size_t i = 0; i < in_data_dims.size(); ++i) {
       if (!in_data_dims[i].isa<int64_t>() ||
           !filter_s_or_d.shape()[i + 2].isa<int64_t>()) {
         out_s_or_d.push_back(shape_analysis->GetNextSymName());
