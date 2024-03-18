@@ -129,6 +129,8 @@ class OpTransInfo {
       "fetch",
       "conv2d",
       "conv2d_grad",
+      "depthwise_conv2d",
+      "depthwise_conv2d_grad",
       "dropout",
       "slice",
       "concat",
