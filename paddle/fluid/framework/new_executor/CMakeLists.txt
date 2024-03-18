@@ -1,6 +1,6 @@
 file(GLOB_RECURSE standalone_executor_srcs "*.cc")
 
-if(NOT (WITH_CINN AND NOT CINN_ONLY))
+if(NOT (WITH_CINN))
   list(REMOVE_ITEM standalone_executor_srcs
        ${CMAKE_CURRENT_SOURCE_DIR}/instruction/cinn_jit_instruction.cc)
 endif()
@@ -26,7 +26,7 @@ set(standalone_executor_deps
     device_event_base
     framework_proto)
 
-if(WITH_CINN AND NOT CINN_ONLY)
+if(WITH_CINN)
   set(standalone_executor_deps
       ${standalone_executor_deps}
       cinn_runtime_dialect

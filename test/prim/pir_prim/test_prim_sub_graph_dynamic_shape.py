@@ -96,6 +96,10 @@ def layer_norm_net1(x):
     return paddle.nn.functional.layer_norm(x, x.shape[1:])
 
 
+def flatten_net(x):
+    return paddle.flatten(x, 1, 2)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -318,6 +322,30 @@ class TestPrimLayernorm(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = layer_norm_net1
         self.necessary_ops = "pd_op.layer_norm"
+        self.enable_cinn = False
+
+
+class TestPrimFlatten1(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [3, 100, 100, 4]
+        self.init_x_shape = [3, None, None, 4]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = flatten_net
+        self.necessary_ops = "pd_op.flatten"
+        self.enable_cinn = False
+
+
+class TestPrimFlatten2(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [3, 100, 100, 640]
+        self.init_x_shape = [None, None, None, 640]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = flatten_net
+        self.necessary_ops = "pd_op.flatten"
         self.enable_cinn = False
 
 

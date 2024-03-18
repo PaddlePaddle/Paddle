@@ -41,6 +41,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
+    DistributedPushSparseOp::name(),
     FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
@@ -94,6 +95,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceMaxOp::name(),
     CReduceMinOp::name(),
     CReduceProdOp::name(),
+    CScatterOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
     PartialRecvOp::name()};
