@@ -48,7 +48,7 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       for (size_t i = 0; i < op->num_operands(); ++i) {
         PADDLE_ENFORCE_EQ(
             op->operand(i).type().dyn_cast<DenseTensorType>(),
-            true,
+            paddle::dialect::DenseTensorType,
             phi::errors::InvalidArgument(
                 "Currently InferSymbolicShape of CombineOp only support "
                 "DenseTensorType."));
@@ -75,7 +75,7 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
     PADDLE_ENFORCE_EQ(
         op->result(0).type().dyn_cast<DenseTensorType>(),
-        true,
+        paddle::dialect::DenseTensorType,
         phi::errors::InvalidArgument(
             "Currently InferSymbolicShape of ConstantOp only support "
             "DenseTensorType result."));
