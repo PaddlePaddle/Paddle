@@ -1170,7 +1170,7 @@
     func: PartialAllgatherInferMeta
   kernel :
     func : partial_allgather
-    data_type : dtype
+  inplace : (x -> out)
 
 - op : partial_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
