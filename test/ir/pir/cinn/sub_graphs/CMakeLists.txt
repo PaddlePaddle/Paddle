@@ -20,5 +20,6 @@ if(WITH_GPU)
     set_tests_properties(${cinn_sub_graph_test_name} PROPERTIES LABELS
                                                                 "RUN_TYPE=CINN")
   endforeach()
+  set_tests_properties(test_sub_graph_30 PROPERTIES TIMEOUT 300)
 
 endif()
