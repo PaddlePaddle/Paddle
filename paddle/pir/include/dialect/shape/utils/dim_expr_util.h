@@ -15,6 +15,8 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
+
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace symbol {
@@ -24,5 +26,8 @@ IR_API DimExpr SimplifyDimExpr(const DimExpr& dim_expr);
 IR_API DimExpr SubstituteDimExpr(
     const DimExpr& dim_expr,
     const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement);
+
+IR_API std::unordered_set<std::string> CollectDimExprSymbols(
+    const DimExpr& dim_expr);
 
 }  // namespace symbol

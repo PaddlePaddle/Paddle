@@ -84,7 +84,7 @@ class ExpandOp : public pir::Op<ExpandOp,
   static void InferMeta(phi::InferMetaContext* infer_meta);
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value>& input_values,
-      const pir::AttributeMap& attributes);
+      pir::AttributeMap& attributes);  // NOLINT
 };
 
 }  // namespace dialect

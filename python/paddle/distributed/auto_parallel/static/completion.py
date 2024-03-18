@@ -16,6 +16,7 @@ import collections
 import copy
 import logging
 import os
+import queue
 import re
 
 import paddle
@@ -1031,6 +1032,9 @@ class Completer:
         else:
             self._dist_context._serial_main_program = serial_main_program
 
+        tensor_names, ops = self._get_tensor_names_and_ops_with_global_mesh(
+            serial_main_program
+        )
         if not is_naive_data_parallel(self._dist_context):
             self._dist_context.initialize(with_graph=True)
             self._prepare()
@@ -1044,6 +1048,7 @@ class Completer:
             # A fast and special completion for data parallel
             self._update_dist_attr_for_dp()
 
+        self._complete_with_global_mesh(serial_main_program, tensor_names, ops)
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
         self._complete_chunk_id(serial_main_program)
@@ -1051,6 +1056,85 @@ class Completer:
         self._dist_context.amend_dist_attr_for_program()
         self._dist_context.validate_dist_attr_for_program()
         return serial_main_program
+
+    def _get_tensor_names_and_ops_with_global_mesh(self, serial_main_program):
+        if (
+            not self._dist_context.strategy
+            or not self._dist_context.strategy.pipeline.enable
+        ):
+            return [], []
+
+        # step1: get tensor annotated with global mesh
+        global_mesh = paddle.distributed.auto_parallel.get_mesh()
+        if global_mesh is None:
+            _logger.warning(
+                "global_mesh is not set, tensor annotation with global mesh may be not work, please use paddle.distributed.auto_parallel.set_mesh(mesh) firstly."
+            )
+            return [], []
+        global_mesh_process_ids = global_mesh._process_ids
+        tensor_names_with_global_mesh = []
+        block = serial_main_program.global_block()
+        for var in block.vars.values():
+            dist_var = self._dist_context.get_dist_tensor_for_program(var)
+            mesh = dist_var.dist_attr.process_mesh
+            if mesh is not None and sorted(mesh.process_ids) == sorted(
+                global_mesh_process_ids
+            ):
+                tensor_names_with_global_mesh.append(var.name)
+
+        # if no one tensor has global mesh, do nothing
+        if len(tensor_names_with_global_mesh) == 0:
+            return [], []
+
+        # step2: get all tensors and ops should annotated with global mesh
+        tensor_name_to_op = {}
+        ops = block.ops
+        for op in ops:
+            output_tensor_names = op.output_arg_names
+            for tensor_name in output_tensor_names:
+                tensor_name_to_op[tensor_name] = op
+
+        ops_with_global_mesh = []
+        has_visited = set()
+        tensor_name_queue = queue.Queue()
+        for tensor_name in tensor_names_with_global_mesh:
+            tensor_name_queue.put(tensor_name)
+        tensor_names_with_global_mesh.clear()
+        # BFS to find all tensors and ops should annotated with global mesh
+        while not tensor_name_queue.empty():
+            tensor_name = tensor_name_queue.get()
+            if tensor_name in has_visited:
+                continue
+
+            has_visited.add(tensor_name)
+            tensor_names_with_global_mesh.append(tensor_name)
+            op = tensor_name_to_op[tensor_name]
+            ops_with_global_mesh.append(op)
+            input_arg_names = op.input_arg_names
+            for input_name in input_arg_names:
+                tensor_name_queue.put(input_name)
+        return tensor_names_with_global_mesh, ops_with_global_mesh
+
+    def _complete_with_global_mesh(
+        self, serial_main_program, tensor_names, ops
+    ):
+        if len(tensor_names) == 0:
+            return
+        # step1: get global mesh
+        block = serial_main_program.global_block()
+        # tensor_names[0] is a tensor annotated with global mesh
+        tensor = block._var_recursive(tensor_names[0])
+        dist_tensor = self._dist_context.get_dist_tensor_for_program(tensor)
+        global_mesh = dist_tensor.dist_attr.process_mesh
+
+        # step2: set the global mesh to ops and tensors
+        for op in ops:
+            dist_op = self._dist_context.get_dist_op_for_program(op)
+            dist_op.dist_attr.process_mesh = global_mesh
+        for tensor_name in tensor_names:
+            tensor = block._var_recursive(tensor_name)
+            dist_tensor = self._dist_context.get_dist_tensor_for_program(tensor)
+            dist_tensor.dist_attr.process_mesh = global_mesh
 
     def _complete_chunk_id(self, serial_main_program):
         def set_chunk_id(block, op, chunk_id, var_to_chunk_id):
@@ -1126,14 +1210,46 @@ class Completer:
         seg_op_deps = collections.OrderedDict()  # struct_name -> [idx]
         seg_op_mesh = collections.OrderedDict()  # struct_name -> process_mesh
         regex = re.compile(seg_method, re.IGNORECASE)
+
+        start_op_index = 0
         for i, op in enumerate(ops):
-            struct_name = op.struct_name
+            m = regex.search(op.struct_name)
+            if m:
+                start_op_index = i
+                break
+
+        total_op_num = len(ops)
+        end_op_index = total_op_num - 1
+        for i in reversed(range(total_op_num)):
+            m = regex.search(ops[i].struct_name)
+            if m:
+                end_op_index = i
+                break
+
+        # all ops betweeen start_op_index and end_op_index should not be ignored
+        for i in range(start_op_index, end_op_index + 1):
+            struct_name = ops[i].struct_name
             m = regex.search(struct_name)
             if not m:
-                continue
+                # only assgin op created by reshard is allowed
+                if (
+                    ops[i].type == "assign"
+                    and "reshard_api" in ops[i].output_arg_names[0]
+                ):
+                    # this assign op belongs to next segment
+                    for j in range(i + 1, total_op_num):
+                        m = regex.search(ops[j].struct_name)
+                        if m:
+                            break
+                    assert m
+                    struct_name = ops[j].struct_name
+                else:
+                    raise ValueError(
+                        f"The op {ops[i]} should only be created by reshard"
+                    )
 
             struct_name = struct_name[m.start(0) :].split("/")[0]
-            dist_op = self._dist_context.get_dist_op_for_program(op)
+            dist_op = self._dist_context.get_dist_op_for_program(ops[i])
             if struct_name not in seg_op_deps:
                 seg_op_deps[struct_name] = [i]
                 seg_op_mesh[struct_name] = dist_op.dist_attr.process_mesh

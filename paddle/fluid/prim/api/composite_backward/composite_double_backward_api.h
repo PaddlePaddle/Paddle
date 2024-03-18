@@ -72,6 +72,24 @@ void sin_double_grad(const Tensor& x,
 }
 
 template <typename T>
+void cos_double_grad(const Tensor& x,
+                     const Tensor& grad_out,
+                     const Tensor& grad_x_grad,
+                     Tensor* x_grad,
+                     Tensor* grad_out_grad) {
+  // cos grad grad : ddout = -sinx * ddx, dx = -dy * cosx * ddx
+  if (x_grad) {
+    auto x_grad_tmp = -(grad_out * cos<T>(x) * grad_x_grad);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = -sin<T>(x) * grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
 void tanh_triple_grad(const Tensor& out,
                       const Tensor& grad_out_forward,
                       const Tensor& grad_x_grad_forward,
@@ -591,8 +609,6 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
       } else {
         by_pass<T>(grad_grad_out_grad, grad_grad_y_grad);
       }
-    } else {
-      grad_grad_y_grad = nullptr;
     }
   }
   if (grad_grad_x_grad) {
@@ -613,8 +629,6 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
       } else {
         by_pass<T>(grad_grad_out_grad, grad_grad_x_grad);
       }
-    } else {
-      grad_grad_x_grad = nullptr;
     }
   }
 }
@@ -635,7 +649,9 @@ void subtract_double_grad(const Tensor& y,
     } else if (grad_y_grad) {
       set_output<T>(-grad_y_grad.get(), grad_out_grad);
     } else {
-      grad_out_grad = nullptr;
+      set_output<T>(
+          full<T>(common::vectorize(grad_out.dims()), 0, grad_out.dtype()),
+          grad_out_grad);
     }
   }
 }
