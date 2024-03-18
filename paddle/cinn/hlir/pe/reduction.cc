@@ -1096,9 +1096,15 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
                                               const ir::Expr& tensor) {
   CHECK_NOTNULL(tensor.as_tensor());
   if (op.As<ir::Add>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_block_reduce_any_internal_shm";
+    }
     return "cinn_block_reduce_sum" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Mul>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_block_reduce_all_internal_shm";
+    }
     return "cinn_block_reduce_prod" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Max>()) {

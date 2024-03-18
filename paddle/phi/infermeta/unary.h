@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace phi {
 
-class MetaConfig;
+struct MetaConfig;
 
 // Common InferMeta Functions for unary operators, The format like:
 //
@@ -136,6 +136,8 @@ void CropInferMeta(const MetaTensor& x,
                    const IntArray& offsets,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
+
+void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 

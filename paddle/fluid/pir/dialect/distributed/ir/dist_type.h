@@ -23,6 +23,8 @@ namespace dialect {
 
 class DistDenseTensorTypeStorage;
 
+common::DDim InferLocalDDim(const common::DDim& global_ddim,
+                            TensorDistAttribute dist_attr);
 class DistDenseTensorType
     : public pir::Type::TypeBase<DistDenseTensorType,
                                  pir::Type,
@@ -57,6 +59,13 @@ class DistDenseTensorType
                                  pir::DenseTensorType dense_tensor_type,
                                  TensorDistAttribute tensor_dist_attr,
                                  const common::DDim& local_ddim);
+  static DistDenseTensorType get(pir::IrContext* ctx,
+                                 pir::DenseTensorType dense_tensor_type,
+                                 TensorDistAttribute tensor_dist_attr) {
+    auto local_ddim =
+        InferLocalDDim(dense_tensor_type.dims(), tensor_dist_attr);
+    return get(ctx, dense_tensor_type, tensor_dist_attr, local_ddim);
+  }
 };
 
 }  // namespace dialect

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
 
-#include "paddle/fluid/string/split.h"
+#include "paddle/utils/string/split.h"
 
 namespace paddle {
 namespace distributed {

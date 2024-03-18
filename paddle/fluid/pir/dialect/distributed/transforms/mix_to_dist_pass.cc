@@ -80,7 +80,7 @@ void ProcessBlock(pir::Block* block) {
       shard_result_value.ReplaceAllUsesWith(shard_operand_value);
       VLOG(0) << "here5";
       // OperationDistAttribute op_dist_attr =
-      //     op_item->attribute(kAttrOpDistAttrs)
+      //     op_item->attribute(kAttrOpDistAttr)
       //         .dyn_cast<OperationDistAttribute>();
       // VLOG(0) << "here6";
       // VLOG(0) << "here6.1";
@@ -92,7 +92,7 @@ void ProcessBlock(pir::Block* block) {
       //                                 op_dist_attr.result_dist_attrs());
       VLOG(0) << "here7";
       shard_operand_define_op->set_attribute(
-          kAttrOpDistAttrs, op_item->attribute(kAttrOpDistAttrs));
+          kAttrOpDistAttr, op_item->attribute(kAttrOpDistAttr));
       VLOG(0) << "here8";
       deleted_ops.push_back(op_item);
     }
@@ -120,7 +120,7 @@ void VerifyBlock(pir::Block* block) {
                       phi::errors::PreconditionNotMet(
                           "Block still contain shard_tensor_op."));
 
-    if (op_item && !op_item->HasAttribute(kAttrOpDistAttrs)) {
+    if (op_item && !op_item->HasAttribute(kAttrOpDistAttr)) {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "The op [%s] does not hase OperatorDistAttr after Mix2Dist Pass.",
           op_item->name()));
