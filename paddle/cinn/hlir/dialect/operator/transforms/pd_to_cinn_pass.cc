@@ -428,6 +428,41 @@ class PowOpPattern : public pir::OpRewritePattern<paddle::dialect::PowOp> {
   }
 };
 
+class ElementwisePowOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ElementwisePowOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::ElementwisePowOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::ElementwisePowOp op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    auto y_op = op->operand_source(1)
+                    .defining_op()
+                    ->dyn_cast<paddle::dialect::FullOp>();
+    return !is_denied && y_op;
+  }
+
+  void Rewrite(paddle::dialect::ElementwisePowOp op,
+               pir::PatternRewriter &rewriter) const override {
+    auto y_op = op->operand_source(1)
+                    .defining_op()
+                    ->dyn_cast<paddle::dialect::FullOp>();
+    auto factor =
+        y_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data();
+    if (factor == 2.0) {
+      auto multiply = rewriter.Build<paddle::dialect::MultiplyOp>(
+          op->operand_source(0), op->operand_source(0));
+      rewriter.ReplaceAllUsesWith(op.result(0), multiply.result(0));
+      rewriter.EraseOp(op);
+    } else if (factor == -0.5) {
+      auto rsqrt =
+          rewriter.Build<paddle::dialect::RsqrtOp>(op->operand_source(0));
+      rewriter.ReplaceAllUsesWith(op.result(0), rsqrt.result(0));
+      rewriter.EraseOp(op);
+    }
+  }
+};
+
 static void ReplaceSliceOp(const cinn::dialect::SplitOp &cinn_split,
                            pir::Operation *slice_op,
                            pir::PatternRewriter &rewriter) {  // NOLINT
@@ -728,6 +763,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<AddNOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
+  ps.Add<ElementwisePowOpPattern>(context);
 
   return ps;
 }

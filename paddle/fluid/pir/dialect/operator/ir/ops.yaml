@@ -47,6 +47,17 @@
   kernel :
     func : all
 
+- op : all_reduce
+  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param: [x]
+  kernel :
+    func : all_reduce
+    param: [x, reduce_type]
+  inplace : (x -> out)
+
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -107,6 +118,7 @@
     param : [shape, dtype, values]
     backend: place>
     data_type : dtype
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : assign_value_
   args : (Tensor output, int[] shape, DataType dtype, Scalar[] values, Place place = {})
@@ -292,6 +304,15 @@
     func : reduce_scatter
     param: [x, nranks]
 
+- op : c_scatter
+  args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
+  output : Tensor(out)
+  infer_meta :
+    func : CScatterInferMeta
+    param : [x, nranks]
+  kernel :
+    func : c_scatter
+
 - op : c_split
   args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true)
   output : Tensor(out)
@@ -471,6 +492,15 @@
     func : DistributeLookupTableInferMeta
   kernel :
     func : distributed_lookup_table
+    data_type : dtype
+
+- op : distributed_push_sparse
+  args : (Tensor[] ids, Tensor[] shows, Tensor[] clicks, int table_id = 0, int size = 8, bool is_distributed = false, str push_sparse_version = "push_sparse", int64_t padding_idx = -1, DataType dtype=DataType::FLOAT32, bool is_test = false, bool use_cvm_op = false)
+  output : Tensor[](output){ids.size()}
+  infer_meta :
+    func : DistributedPushSparseInferMeta
+  kernel :
+    func: distributed_push_sparse
     data_type : dtype
 
 - op : divide
@@ -1475,6 +1505,7 @@
     func : softmax
   inplace : (x -> out)
   backward : softmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)
@@ -1630,6 +1661,7 @@
     func : triu
   inplace: (x -> out)
   backward : triu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : triu_indices
   args : (int row, int col, int offset, DataType dtype, Place place={})

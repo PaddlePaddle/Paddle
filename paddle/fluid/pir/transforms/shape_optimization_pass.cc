@@ -111,6 +111,10 @@ void PrintOpInfo(pir::Operation* op) {
                      << ", num_results=" << op->num_results() << ")"
                      << " has InferSymbolicShapeInterface.\n\t"
                      << PrintOperationWithNoRegion(op);
+    if (op->name() == "cinn_op.group") {
+      std::cerr << "<<<<<<<<<<<<<<<<<<<< " << op->name() << "(op_id: op_"
+                << op->id() << ") START..." << std::endl;
+    }
   }
 }
 
@@ -246,7 +250,7 @@ class ShapeOptimizationPass : public pir::Pass {
 
     InferSymExprForAllValues(module_op);
     // Runner is for Canonicalizer.
-    PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
+    PassPipelineRunner runner = [](pir::PassManager& pm, pir::ModuleOp m) {
       pm.EnableIRPrinting();
       return pm.Run(m.program());
     };

@@ -797,11 +797,11 @@ std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs.size() >= 1u,
       true,
-      phi::errors::InvalidArgument(
-          "tupe_push op's inputs' size should be greater_equal than 1, and the "
-          "inputs[i] should be non-empty. "
-          "Now the inputs's size is %d.",
-          inputs.size()));
+      phi::errors::InvalidArgument("tuple_push op's inputs' size should be "
+                                   "greater_equal than 1, and the "
+                                   "inputs[i] should be non-empty. "
+                                   "Now the inputs's size is %d.",
+                                   inputs.size()));
   auto pop_op = ApiBuilder::Instance().GetBuilder()->Build<TuplePopOp>(
       TuplePushOp::dyn_cast(op).outlet());
   std::vector<std::vector<pir::Value>> res{inputs.size()};

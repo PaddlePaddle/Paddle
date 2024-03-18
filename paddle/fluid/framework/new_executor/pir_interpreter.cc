@@ -865,7 +865,7 @@ std::string PirInterpreter::DebugValueInfo() {
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
-                       "vlaue(%s) should not be nullptr", kv.second));
+                       "var(%s) should not be nullptr", kv.second));
     PADDLE_ENFORCE(value_exe_info_->HasVar(kv.second),
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
