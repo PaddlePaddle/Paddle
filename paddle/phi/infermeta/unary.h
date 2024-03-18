@@ -619,6 +619,8 @@ void SliceArrayDenseInferMeta(const MetaTensor& input,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
+void SliceDimInferMeta(const MetaTensor& input, int index, MetaTensor* out);
+
 void SliceRawInferMeta(const MetaTensor& input,
                        const std::vector<int64_t>& axes,
                        const IntArray& starts,
