@@ -89,10 +89,6 @@ BuildPureStaticShapeConfig(
     if (warp_num == 0) {
       warp_num = 1;
     }
-    int64_t spatial_inner_num = spatial_block / (warp_num * 32);
-    if (spatial_inner_num == 0) {
-      spatial_inner_num = 1;
-    }
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ kMaxNumel,
                            /* rb_lower_bound = */ 1,
@@ -100,7 +96,7 @@ BuildPureStaticShapeConfig(
     ScheduleConfig::TileConfig tile_config{
         /* warp_num = */ warp_num,
         /* tree_reduce_num = */ 1,
-        /* spatial_inner_num = */ spatial_inner_num,
+        /* spatial_inner_num = */ 1,
         /* reduce_method = */ NoneReduceMethod()};
     return {{bucket_info, tile_config}};
   } else if (base_info->reduce_numel <= 256) {
