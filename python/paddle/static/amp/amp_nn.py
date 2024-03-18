@@ -18,7 +18,6 @@ from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.framework import (
     Variable,
     in_dynamic_or_pir_mode,
-    in_pir_mode,
 )
 from paddle.base.layer_helper import LayerHelper
 
@@ -41,28 +40,7 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
     """
 
     if in_dynamic_or_pir_mode():
-        if in_pir_mode():
-            paddle.static.Print(
-                x[0], message="before check_finite_and_unscale_ x[0]: "
-            )
-            paddle.static.Print(
-                x[1], message="before check_finite_and_unscale_ x[1]: "
-            )
-            paddle.static.Print(
-                scale, message="before check_finite_and_unscale_ scale: "
-            )
         x, found_inf = _C_ops.check_finite_and_unscale_(x, scale)
-        if in_pir_mode():
-            paddle.static.Print(
-                x[0], message="after check_finite_and_unscale_ x[0]: "
-            )
-            paddle.static.Print(
-                x[1], message="after check_finite_and_unscale_ x[1]: "
-            )
-            paddle.static.Print(
-                found_inf,
-                message="before check_finite_and_unscale_ found_inf: ",
-            )
         return x, found_inf
 
     helper = LayerHelper("check_finite_and_unscale", **locals())
