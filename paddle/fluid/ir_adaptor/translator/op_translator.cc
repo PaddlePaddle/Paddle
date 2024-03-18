@@ -2851,20 +2851,6 @@ struct FusedElemwiseAddActivationGradOpTranscriber
   }
 };
 
-struct PartialSumOpTranscriber : public OpTranscriber {
-  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
-                           const OpDesc& op_desc) override {
-    std::string target_op_name = "pd_op.partial_sum";
-    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
-    if (!op_info) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Op partial_sum should have corresponding OpInfo "
-          "pd_op.partial_sum"));
-    }
-    return op_info;
-  }
-};
-
 struct MatrixRankOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
@@ -3196,7 +3182,6 @@ OpTranslator::OpTranslator() {
   special_handlers["slice"] = SliceOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
-  special_handlers["partial_sum"] = PartialSumOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["tril_triu_grad"] = TrilAndTriuGradOpTranscriber();
   special_handlers["matmul"] = LegacyMatmulOpTranscriber();
