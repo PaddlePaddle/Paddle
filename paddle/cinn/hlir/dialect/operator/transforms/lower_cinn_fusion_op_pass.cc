@@ -720,8 +720,29 @@ pir::Operation* ProcessDyShapeGroup(
     auto op_attr_map = CompileGroupAsOpAttribute(pir_compiler, {group});
     std::vector<pir::Type> output_types;
     const auto& group_output_values = group->output_values;
+    // update output type here
+
     for (size_t i = 0; i < group_output_values.size(); ++i) {
-      output_types.push_back(group_output_values[i].type());
+      auto t = group_output_values[i].type().dyn_cast<::pir::DenseTensorType>();
+      auto new_dim = t.dims();
+      if (shape_analysis.HasShapeOrDataForValue(group_output_values[i])) {
+        auto shape =
+            shape_analysis.GetShapeOrDataForValue(group_output_values[i])
+                .shape();
+        for (size_t k = 0; k < shape.size(); ++k) {
+          if (shape[k].isa<int64_t>()) {
+            new_dim[k] = shape[k].Get<int64_t>();
+          }
+        }
+      }
+      auto new_type = ::pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                                  t.dtype(),
+                                                  new_dim,
+                                                  t.data_layout(),
+                                                  t.lod(),
+                                                  t.offset());
+
+      output_types.push_back(new_type);
     }
 
     std::cerr << "kernel num " << kernel_tensor_number << std::endl;
@@ -1005,6 +1026,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     std::vector<pir::Type> output_types;
     const auto& group_output_values = group->output_values;
     for (size_t i = 0; i < group_output_values.size(); ++i) {
+      // update
       output_types.push_back(group_output_values[i].type());
     }
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(

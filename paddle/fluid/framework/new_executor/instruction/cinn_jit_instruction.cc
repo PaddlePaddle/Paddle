@@ -236,7 +236,7 @@ void CinnJitInstruction::Run() {
   //   std::cerr << "dim info " << dim_args_[i]->data<int64_t>()[0] <<
   //   std::endl;
   // }
-
+  std::cerr << "out dim info " << output_dim_info.size() << std::endl;
   for (size_t i = 0; i < output_dim_info.size(); ++i) {
     auto node = output_dim_info[i];
 
