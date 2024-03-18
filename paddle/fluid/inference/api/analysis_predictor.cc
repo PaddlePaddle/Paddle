@@ -120,6 +120,7 @@
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/general/map_op_to_another_pass.h"
 #include "paddle/fluid/pir/transforms/general/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/conv2d_add_act_fuse_pass.h"
@@ -964,6 +965,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
+        gpu_pm.AddPass(::pir::CreateMatmulTransposeFusePass());
         gpu_pm.AddPass(::pir::CreateTransposeFlattenConcatFusePass());
         //----------------------------------------------------------------------------------------------//
 

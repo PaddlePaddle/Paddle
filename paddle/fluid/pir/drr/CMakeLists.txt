@@ -54,7 +54,7 @@ add_custom_command(
 
 set(DRR_SRCS ${DRR_SRCS} ${pd_op_creator_file})
 
-if(WITH_CINN AND NOT CINN_ONLY)
+if(WITH_CINN)
   set(cinn_op_yaml_file
       ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
 

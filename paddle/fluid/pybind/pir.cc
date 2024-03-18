@@ -48,6 +48,7 @@
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/general/map_op_to_another_pass.h"
 #include "paddle/fluid/pir/transforms/general/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/conv2d_add_fuse_pass.h"
@@ -136,6 +137,7 @@ USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(map_op_to_another_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
+USE_PIR_PASS(matmul_transpose_fuse_pass);
 USE_PIR_PASS(fc_fuse_pass);
 USE_PIR_PASS(silu_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
