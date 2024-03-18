@@ -744,7 +744,7 @@
   kernel :
     func : flash_attn_with_sparse_mask
     data_type : q
-  #backward : flash_attn_with_sparse_mask_grad
+  backward : flash_attn_with_sparse_mask_grad
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
