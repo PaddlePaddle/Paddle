@@ -209,6 +209,12 @@ GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
 
+   // This 'Local_XXXGradNode' record event is different with 'Global_XXXGradNode' event.
+   // * 'Local_XXXGradNode' will only cover execution time of this function.
+   // * 'Global_XXXGradNode' will not only cover execution time of this function, but also include gradient
+   //    accumulation when the output(s) of corresponding forward OP are shared by other OP(s), which may have extra accumulation overhead than 'Local_XXXGradNode'.
+  paddle::platform::RecordEvent grad_node_record_event_inner(\"Local_{}\", paddle::platform::TracerEventType::OperatorInner, 1);
+
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
@@ -2787,6 +2793,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name,
             self.backward_api_name,
+            grad_node_name,
             fill_zero_str,
             get_grad_in_args_str,
             grad_function_prepare_str,
