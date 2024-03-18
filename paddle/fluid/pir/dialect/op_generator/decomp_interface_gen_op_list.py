@@ -59,6 +59,7 @@ decomp_interface_declare_gen_op_list = [
 # manual decomp interface implementation are located in manual_op_decomp.cc
 decomp_interface_implementation_gen_op_list = [
     "add_n",
+    "any",
     "dropout",
     "elu",
     "embedding",
