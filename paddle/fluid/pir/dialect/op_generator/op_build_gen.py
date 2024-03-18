@@ -386,7 +386,7 @@ def GenBuildAttributes(
                 op_attribute_type=op_non_mutable_attribute_type_list[idx],
                 attr=op_non_mutable_attribute_name_list[idx],
             )
-        attr_str += """  argument_attributes.insert({{"{attr_name}", attr_{attr_name}}});\n""".format(
+        attr_str += """ argument_attributes.insert({{"{attr_name}", attr_{attr_name}}});\n""".format(
             attr_name=op_non_mutable_attribute_name_list[idx]
         )
 
@@ -748,7 +748,7 @@ def GenBuildOutputs(
                     type=op_output_type_list[idx], name=output_name
                 )
 
-    build_output_str += "  argument.AddAttributes(argument_attributes);\n"
+    build_output_str += " argument.AddAttributes(argument_attributes);\n"
     build_output_str += "  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"
     # NOTE(Aurelius84): PassStopGradients must be placed after argument.AddOutputs.
     build_output_str += "  ::pir::PassStopGradientsDefaultly(argument);\n"
@@ -832,7 +832,7 @@ def gen_build_func_str(
     )
 
     build_outputs_str = """
-  std::vector<pir::Type> argument_outputs = {op_name}::InferMeta(argument_inputs, &argument_attributes);
+  std::vector<pir::Type> argument_outputs = {op_name}::InferMeta(argument_inputs, argument_attributes);
   argument.AddAttributes(argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);""".format(
