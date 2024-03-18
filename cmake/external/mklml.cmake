@@ -53,38 +53,6 @@ endif()
 set(MKLML_PROJECT "extern_mklml")
 #message(STATUS "MKLML_FILE: ${MKLML_FILE}, MKLML_URL: ${MKLML_URL}")
 set(MKLML_PREFIX_DIR ${THIRD_PARTY_PATH}/mklml)
-set(MKLML_SOURCE_DIR ${THIRD_PARTY_PATH}/mklml/src/extern_mklml)
-
-#function(download_mklml)
-#  message(
-#    STATUS "Downloading ${MKLML_URL} to ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}")
-#  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
-#  file(
-#    DOWNLOAD ${MKLML_URL} ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
-#    EXPECTED_MD5 ${MKLML_URL_MD5}
-#    STATUS ERR)
-#  if(ERR EQUAL 0)
-#    message(STATUS "Download ${MKLML_FILE} success")
-#  else()
-#    message(
-#      FATAL_ERROR
-#        "Download failed, error: ${ERR}\n You can try downloading ${MKLML_FILE} again"
-#    )
-#  endif()
-#endfunction()
-#
-## Download and check mklml.
-#if(EXISTS ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE})
-#  file(MD5 ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE} MKLML_MD5)
-#  if(NOT MKLML_MD5 STREQUAL MKLML_URL_MD5)
-#    # clean build file
-#    file(REMOVE_RECURSE ${MKLML_PREFIX_DIR})
-#    file(REMOVE_RECURSE ${MKLML_INSTALL_DIR})
-#    download_mklml()
-#  endif()
-#else()
-#  download_mklml()
-#endif()
 
 # Ninja Generator can not establish the correct dependency relationship
 # between the imported library with target, the product file
@@ -97,7 +65,7 @@ ExternalProject_Add(
   #URL ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
   #URL_MD5 ${MKLML_URL_MD5}
   #DOWNLOAD_DIR ${MKLML_DOWNLOAD_DIR}
-  #SOURCE_DIR ${MKLML_INSTALL_DIR}
+  SOURCE_DIR ${MKLML_INSTALL_DIR}
   GIT_REPOSITORY ${MKLML_REPOSITORY}
   PREFIX ${MKLML_PREFIX_DIR}
   CONFIGURE_COMMAND ""

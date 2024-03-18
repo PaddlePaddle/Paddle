@@ -17,7 +17,7 @@ include(ExternalProject)
 set(PYBIND_PREFIX_DIR ${THIRD_PARTY_PATH}/pybind)
 set(PYBIND_SOURCE_DIR ${PYBIND_PREFIX_DIR}/src/extern_pybind)
 set(PYBIND_INCLUDE_DIR ${PYBIND_SOURCE_DIR}/include)
-set(PYBIND_TAG v2.10.3)
+set(PYBIND_TAG v2.10.0)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/pybind)
 set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/include)
 
