@@ -213,6 +213,8 @@ class FunctionSpec:
                         #     var_spec.dims_mapping,
                         # )
                         # feed_value.set_type(dist_dense_tensor_type)
+                    else:
+                        inputs.append(feed_value)
                 else:
                     feed_value = var_spec
                     inputs.append(feed_value)
