@@ -150,7 +150,7 @@ void ShardTensorOp::Build(pir::Builder& builder,
       PADDLE_ENFORCE(
           global_dims[i] % shard_size == 0,
           phi::errors::PreconditionNotMet(
-              "global_dims size %d can't be evenly devided by shard_size %d",
+              "global_dims size %d can't be evenly divided by shard_size %d",
               global_dims[i],
               shard_size));
       local_shape[i] = global_dims[i] / shard_size;
