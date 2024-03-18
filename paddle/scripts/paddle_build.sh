@@ -61,6 +61,8 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default
     export FLAGS_call_stack_level=2
+    # Open PIR mode defaultly
+    export FLAGS_enable_pir_api=1
 }
 
 function cmake_base() {
