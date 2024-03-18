@@ -81,13 +81,13 @@ void ShardTensorOp::VerifySig() {
                           "The op_dist_attr input size %d must be equal to 0.",
                           op_dist_attr.num_operand_dist_attrs()));
 
-    PADDLE_ENFORCE_EQ(
-        op_dist_attr.num_result_dist_attrs(),
-        num_results(),
-        common::errors::PreconditionNotMet("The op_dist_attr output size %d must "
-                                        "be equal to op output size %d.",
-                                        op_dist_attr.num_result_dist_attrs(),
-                                        num_results()));
+    PADDLE_ENFORCE_EQ(op_dist_attr.num_result_dist_attrs(),
+                      num_results(),
+                      common::errors::PreconditionNotMet(
+                          "The op_dist_attr output size %d must "
+                          "be equal to op output size %d.",
+                          op_dist_attr.num_result_dist_attrs(),
+                          num_results()));
   }
   VLOG(4) << "End Verifying for: ShardTensorOp.";
 }
@@ -217,13 +217,13 @@ void ReShardOp::VerifySig() {
                           "The op_dist_attr input size %d must be equal to 1.",
                           op_dist_attr.num_operand_dist_attrs()));
 
-    PADDLE_ENFORCE_EQ(
-        op_dist_attr.num_result_dist_attrs(),
-        num_results(),
-        common::errors::PreconditionNotMet("The op_dist_attr output size %d must "
-                                        "be equal to op output size %d.",
-                                        op_dist_attr.num_result_dist_attrs(),
-                                        num_results()));
+    PADDLE_ENFORCE_EQ(op_dist_attr.num_result_dist_attrs(),
+                      num_results(),
+                      common::errors::PreconditionNotMet(
+                          "The op_dist_attr output size %d must "
+                          "be equal to op output size %d.",
+                          op_dist_attr.num_result_dist_attrs(),
+                          num_results()));
   }
   VLOG(4) << "End Verifying for: ShardTensorOp.";
 }
