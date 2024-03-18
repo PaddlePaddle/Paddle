@@ -34,7 +34,7 @@ class OpResult;
 
 namespace detail {
 class OpResultImpl;
-class OpOperendImpl;
+class OpOperandImpl;
 }  // namespace detail
 
 class CloneOptions {
