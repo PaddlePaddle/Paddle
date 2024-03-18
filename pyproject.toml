@@ -17,6 +17,10 @@ exclude = [
 line-length = 80
 target-version = "py38"
 
+[tool.ruff.format]
+# Prevent change to double quotes by some users use ruff format
+quote-style = "preserve"
+
 [tool.ruff.lint]
 select = [
     # Pycodestyle
@@ -78,6 +82,9 @@ select = [
 
     # Pygrep-hooks
     "PGH004",
+
+    # Ruff-specific rules
+    "RUF100",
 ]
 unfixable = [
     "NPY001"
@@ -112,14 +119,11 @@ combine-as-imports = true
 known-first-party = ["paddle"]
 
 [tool.ruff.lint.per-file-ignores]
-# These files need tabs for testing.
-"test/dygraph_to_static/test_error.py" = ["E101", "W191"]
 # Ignore compare with True in sot unittest
 "test/sot/test_dup_top.py" = ["E712"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
-"python/paddle/static/amp/decorator.py" = ["F821"]
 # Ignore version check in setup.py
 "setup.py" = ["UP036"]
 # Ignore unnecessary comprehension in dy2st unittest test_loop
