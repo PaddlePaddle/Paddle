@@ -44,7 +44,8 @@ void ShardTensorOp::VerifySig() {
                           ->operand_source(0)
                           .type()
                           .isa<paddle::dialect::DenseTensorType>(),
-                           true, common::errors::PreconditionNotMet(
+                      true,
+                      common::errors::PreconditionNotMet(
                           "Type validation failed for the 0th input."));
   }
   VLOG(4) << "Verifying attributes:";
