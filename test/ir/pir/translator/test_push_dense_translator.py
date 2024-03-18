@@ -23,7 +23,7 @@ from paddle.base.layer_helper import LayerHelper
 class TestPushDenseOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "push_dense"
-        ids = paddle.ones(shape=(1, 1), dtype='float32')
+        ids = paddle.ones(shape=(100, 2, 3), dtype='float32')
         input_names = []
         attrs = {
             'table_id': -1,
@@ -33,7 +33,7 @@ class TestPushDenseOpTranslator(test_op_translator.TestOpTranslator):
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
-            inputs={"Ids": ids},
+            inputs={"Ids": [ids]},
             attrs=attrs,
         )
 

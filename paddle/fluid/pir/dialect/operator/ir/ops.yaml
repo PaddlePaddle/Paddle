@@ -1195,7 +1195,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : push_dense
-  args : (Tensor ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})
+  args : (Tensor[] ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})
   output :
   infer_meta :
     func : PushDenseInferMeta

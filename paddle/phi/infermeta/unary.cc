@@ -3341,7 +3341,7 @@ void PoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void PushDenseInferMeta(const MetaTensor& ids,
+void PushDenseInferMeta(const std::vector<const MetaTensor*>& ids,
                         int table_id,
                         float scale_data_norm,
                         const std::vector<std::string>& input_names) {}
