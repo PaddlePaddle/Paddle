@@ -63,10 +63,11 @@ option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
-option(CINN_ONLY "Compile CINN only in Paddle" OFF)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 option(WITH_PIP_CUDA_LIBRARIES
        "Paddle uses the CUDA library provided by NVIDIA" OFF)
+option(WITH_NIGHTLY_BUILD
+       "Compile nightly paddle whl package of the develop branch" OFF)
 find_package(Git REQUIRED)
 
 # config GIT_URL with github mirrors to speed up dependent repos clone
@@ -624,18 +625,6 @@ if(WITH_CINN)
 
   include(cmake/cinn.cmake)
   add_definitions(-DPADDLE_WITH_CINN)
-
-  if(CINN_ONLY)
-    add_definitions(-DCINN_WITH_ONLY)
-    if(WITH_PYTHON)
-      add_subdirectory(python)
-    endif()
-    add_subdirectory(test)
-    if(NOT WITH_GFLAGS)
-      add_subdirectory(paddle/utils)
-    endif()
-    return()
-  endif()
 endif()
 
 #------------- cinn cmake config end --------------

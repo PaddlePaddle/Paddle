@@ -56,6 +56,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/matmul_transpose_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/transpose_flatten_concat_fuse_pass.h"
@@ -136,6 +137,7 @@ USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(map_op_to_another_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
+USE_PIR_PASS(matmul_transpose_fuse_pass);
 USE_PIR_PASS(fc_fuse_pass);
 USE_PIR_PASS(silu_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
@@ -1601,7 +1603,7 @@ void BindUtils(pybind11::module *m) {
       "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
         std::shared_ptr<Program> ret =
-            std::move(paddle::TranslateLegacyProgramToProgram(legacy_program));
+            paddle::TranslateLegacyProgramToProgram(legacy_program);
         return ret;
       },
       R"DOC(
@@ -1810,8 +1812,7 @@ void BindPassManager(pybind11::module *m) {
            py::arg("opt_level") = 2)
       .def("add_pass",
            [](PassManager &self, const std::string &pass_name) {
-             self.AddPass(
-                 std::move(pir::PassRegistry::Instance().Get(pass_name)));
+             self.AddPass(pir::PassRegistry::Instance().Get(pass_name));
            })
       .def("passes",
            [](PassManager &self) {

@@ -14,6 +14,7 @@
 
 #include "gtest/gtest.h"
 
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace symbol::test {
@@ -49,6 +50,23 @@ TEST(DimExprUtil, Calculate) {
   DimExpr ret = SimplifyDimExpr(substitute_expr);
   ASSERT_TRUE(ret.Has<std::int64_t>());
   ASSERT_EQ(ret.Get<std::int64_t>(), 1);
+}
+
+TEST(DimExpr, CollectDimExprSymbol) {
+  DimExpr dim_expr = [&]() -> DimExpr {
+    DimExprBuilder builder(nullptr);
+    DimExpr max_expr = builder.Max(DimExpr("S2"), DimExpr("S3"));
+    DimExpr min_expr = builder.Min(max_expr, DimExpr("S4"));
+    DimExpr broadcast_expr = builder.Broadcast(min_expr, DimExpr("S5"));
+    return CreateExampleDimExpr() + broadcast_expr;
+  }();
+  std::unordered_set<std::string> symbols = CollectDimExprSymbols(dim_expr);
+  std::unordered_set<std::string> expected = {
+      "S0", "S1", "S2", "S3", "S4", "S5"};
+  ASSERT_EQ(symbols.size(), 6UL);
+  for (const auto& symbol : symbols) {
+    ASSERT_TRUE(expected.find(symbol) != expected.end());
+  }
 }
 
 }  // namespace symbol::test

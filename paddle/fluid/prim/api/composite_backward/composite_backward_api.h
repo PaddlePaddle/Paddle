@@ -831,8 +831,6 @@ void group_norm_grad(const Tensor& x,
           tmp1.sum(std::vector<int64_t>({0}), scale_ptr->dtype(), false),
           IntArray(std::vector<int64_t>({C})));
       set_output<T>(scale_grad_tmp, scale_grad);
-    } else {
-      scale_grad = nullptr;
     }
   }
 
@@ -841,8 +839,6 @@ void group_norm_grad(const Tensor& x,
       auto bias_grad_tmp =
           sum_y_grad.sum(std::vector<int64_t>({0}), bias_ptr->dtype(), false);
       set_output<T>(bias_grad_tmp, bias_grad);
-    } else {
-      bias_grad = nullptr;
     }
   }
 }
@@ -934,8 +930,6 @@ void layer_norm_grad(const Tensor& x,
         scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
       }
       set_output<T>(scale_grad_tmp, scale_grad);
-    } else {
-      scale_grad = nullptr;
     }
   }
 
@@ -949,8 +943,6 @@ void layer_norm_grad(const Tensor& x,
         bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
       }
       set_output<T>(bias_grad_tmp, bias_grad);
-    } else {
-      bias_grad = nullptr;
     }
   }
 }
