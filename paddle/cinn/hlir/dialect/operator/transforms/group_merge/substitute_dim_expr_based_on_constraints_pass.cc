@@ -118,7 +118,7 @@ int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
 std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
-      shape_analysis->CreateDimExprBuilder().constraints();
+      shape_analysis->DimExprBuilder().constraints();
   const cinn::common::UnionFindSet<symbol::DimExpr>& union_find_set = [&]() {
     cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
     for (const auto& constraint : dim_expr_constraints) {

@@ -65,7 +65,7 @@ void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
   }
 }
 
-symbol::DimExprBuilder ShapeConstraintIRAnalysis::CreateDimExprBuilder() {
+symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
   return symbol::DimExprBuilder(&constraints_);
 }
 
@@ -224,6 +224,12 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
       }
     }
     printer.os << " }";
+  };
+  print_hook.value_print_hook = [&](Value value, IrPrinter& printer) {
+    printer.IrPrinter::PrintValue(value);
+    if (this->HasShapeOrDataForValue(value)) {
+      printer.os << "<<" << this->GetShapeOrDataForValue(value) << ">>";
+    }
   };
   return print_hook;
 }

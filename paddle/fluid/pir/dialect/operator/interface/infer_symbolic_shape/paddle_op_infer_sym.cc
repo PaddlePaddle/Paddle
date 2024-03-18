@@ -682,21 +682,21 @@ bool MatmulOpInferSymbolicShape(
 
   if ((ndims_x == ndims_y) && ndims_x >= 2) {
     if (transpose_x_attr == false && transpose_y_attr == false) {
-      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 1],
-                                                    y_dims[ndims_x - 2]);
+      shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 1],
+                                              y_dims[ndims_x - 2]);
     } else if (transpose_x_attr == false && transpose_y_attr == true) {
-      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 1],
-                                                    y_dims[ndims_x - 1]);
+      shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 1],
+                                              y_dims[ndims_x - 1]);
     } else if (transpose_x_attr == true && transpose_y_attr == false) {
-      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 2],
-                                                    y_dims[ndims_x - 2]);
+      shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 2],
+                                              y_dims[ndims_x - 2]);
     } else {
-      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[ndims_x - 2],
-                                                    y_dims[ndims_x - 1]);
+      shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 2],
+                                              y_dims[ndims_x - 1]);
     }
 
     for (size_t i = 0; i < ndims_x - 2; ++i) {
-      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims[i], y_dims[i]);
+      shape_analysis->DimExprBuilder().CstrEq(x_dims[i], y_dims[i]);
     }
   }
   return true;
@@ -871,8 +871,8 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
     const bool &all_sections_sym_not_minus_one =
         All(sections_sym, IsNotMinusOne);
     if (all_sections_sym_not_minus_one) {
-      shape_analysis->CreateDimExprBuilder().CstrEq(x_dims_sym[axis],
-                                                    sum_exclude_minus_one);
+      shape_analysis->DimExprBuilder().CstrEq(x_dims_sym[axis],
+                                              sum_exclude_minus_one);
     }
 
     symbol::TensorListShapeOrDataDimExprs shape_data_list;
