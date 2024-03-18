@@ -2284,6 +2284,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
       auto dtype = x_var_desc->GetDataType();
       if (dtype != framework::proto::VarType::FP32) {
+        VLOG(1) << "The clip op only support float32 now.";
         return false;
       }
       if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.empty())) {
