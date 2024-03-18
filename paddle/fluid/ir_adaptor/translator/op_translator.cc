@@ -1498,7 +1498,7 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
   const auto& defining_info = param_map->at(name);
 
   pir::Value value = defining_info.value;
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       param_map->HasValue(value),
       true,
       phi::errors::PreconditionNotMet(
