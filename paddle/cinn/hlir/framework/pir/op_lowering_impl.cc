@@ -84,7 +84,7 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
     }
   }
 
-  BuildBroadcastInfo(group);
+  BuildBroadcastInfo(group, group_info);
 
   for (auto& op : group->output_ops) {
     group_info->direct_output_var_names.insert(ValueName(op->result(0)));
@@ -192,7 +192,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
       inner_genevalue.insert(op->result(i));
     }
   }
-  BuildBroadcastInfo(group);
 
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
@@ -446,7 +445,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
                      &group_func_args);
 }
 
-void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
+void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group,
+                                       std::shared_ptr<GroupInfo> group_info) {
   // TODO(phlrain): this is primary verion for loop aligment
   // will be update by a new method
   auto align_info = group->alignment_schedule_info;
@@ -577,7 +577,7 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         info.with_constrain = true;
       }
 
-      broadcast_info[ValueName(op_out)] = info;
+      group_info->broadcast_info[ValueName(op_out)] = info;
 
       for (auto use_it = op_out.use_begin(); use_it != op_out.use_end();
            ++use_it) {
@@ -587,8 +587,8 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         if (CompatibleInfo::OpKind(*(use_it->owner())) ==
             framework::kBroadcast) {
           if (!info.full_broadcast) {
-            broadcast_to_elementwise[ValueName(use_it->owner()->result(0))] =
-                info;
+            group_info->broadcast_to_elementwise[ValueName(
+                use_it->owner()->result(0))] = info;
           }
         }
       }
@@ -853,7 +853,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body);
     }
-    remain_ops.push_back(op);
   }
 
   VLOG(4) << "group_func_arg_tensors.size(): "

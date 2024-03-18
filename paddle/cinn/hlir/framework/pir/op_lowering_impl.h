@@ -284,19 +284,14 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
 
   common::Type GetTensorDtype(const ::pir::Value& value);
 
-  void BuildBroadcastInfo(const GroupPtr& group);
+  void BuildBroadcastInfo(const GroupPtr& group,
+                          std::shared_ptr<GroupInfo> group_info);
 
   Target target_;
 
   PrettyNamer* name_gene_;
 
-  std::unordered_map<std::string, cinn::ir::BroadcastInfo> broadcast_info;
-  std::unordered_map<std::string, cinn::ir::BroadcastInfo>
-      broadcast_to_elementwise;
-
   std::unordered_set<::pir::Operation*> erase_reshape;
-
-  std::vector<::pir::Operation*> remain_ops;
 };
 
 }  // namespace pir
