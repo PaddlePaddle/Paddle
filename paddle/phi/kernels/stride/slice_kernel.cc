@@ -95,6 +95,5 @@ void SliceStridedKernel(const Context& ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(slice,
-                                         STRIDED,
-                                         phi::SliceStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
+    slice, STRIDED, phi::SliceStridedKernel) {}

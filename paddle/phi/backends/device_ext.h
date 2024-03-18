@@ -50,7 +50,6 @@ typedef enum {
   NCHW,
   NCDHW,
   NDHWC,
-  STRIDED,
   NUM_DATA_LAYOUTS,
   ALL_LAYOUT = ANY,
 } C_DataLayout;
