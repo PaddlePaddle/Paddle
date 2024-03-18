@@ -198,11 +198,7 @@ void InferSymbolicShapeForSubgraph(
     auto infer_symbolic_shape_interface =
         op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
-      PADDLE_ENFORCE_EQ(
-          infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
-          true,
-          "InferSymbolicShape for %s failed.",
-          op->name());
+      infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
           op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
