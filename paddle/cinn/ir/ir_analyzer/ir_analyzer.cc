@@ -34,8 +34,8 @@
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/random_engine.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -78,7 +78,7 @@ std::vector<Expr> GetLoops(const std::vector<Expr>& exprs, const Expr& block) {
         std::stringstream ss;
         ss << "Find block with name: \n"
            << block_name << " appeared in more than one AST!";
-        CINN_THROW(ss.str());
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
       result = find_loops;
     }
@@ -126,7 +126,7 @@ Expr GetBlock(const std::vector<Expr>& exprs, const std::string& block_name) {
   std::stringstream ss;
   ss << "Didn't find a block with name " << block_name
      << " in this ModuleExpr!";
-  CINN_THROW(ss.str());
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr) {
@@ -146,7 +146,7 @@ Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr) {
   }
   std::stringstream ss;
   ss << "Didn't find expr \n" << expr << "in StScheduleImpl:\n" << exprs[0];
-  CINN_THROW(ss.str());
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 DeviceAPI GetDeviceAPI(const std::vector<Expr>& exprs) {
@@ -213,9 +213,10 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
     visitor.target_->As<ir::ScheduleBlock>()->body = loop;
     return loop;
   } else {
-    CINN_THROW("Can't find block's parent!");
+    PADDLE_THROW(phi::errors::InvalidArgument("Can't find block's parent!"));
   }
-  CINN_THROW("Shouldn't reach code here in AddUnitLoop");
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("Shouldn't reach code here in AddUnitLoop"));
   return Expr{nullptr};
 }
 

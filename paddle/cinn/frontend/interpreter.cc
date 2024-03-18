@@ -101,7 +101,7 @@ hlir::framework::Tensor Interpreter::GetTensor(const std::string& name) {
     ss << "No variable called [" << name
        << "] found in executor\nThe existing vars: "
        << utils::Join(impl_->scope_->var_names(), ", ");
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return impl_->scope_->GetTensor(it->second);
 }

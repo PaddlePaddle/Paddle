@@ -238,7 +238,7 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
           << "The K dimension of mul shold be equal! Please check.";
     }
   } else {
-    CINN_THROW("Unkown Matmul Setting!");
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
   CHECK_EQ(a_shape.size(), 4);
@@ -372,7 +372,7 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
           << "The K dimension of mul shold be equal! Please check.";
     }
   } else {
-    CINN_THROW("Unkown Matmul Setting!");
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
   CHECK_EQ(a_shape.size(), 4);
@@ -883,7 +883,7 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     std::stringstream ss;                                             \
     ss << "The type of \"value\" of memset custom_call not support: " \
        << #TYPE;                                                      \
-    CINN_THROW(ss.str());                                             \
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));             \
   }
 
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::string)

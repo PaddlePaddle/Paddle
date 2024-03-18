@@ -102,7 +102,7 @@ std::string GetExternFuncName(const cinn::common::Target& target,
     } else {
       std::stringstream ss;
       ss << func_name << " only supports X86 and NVGPU! Please Check.\n";
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));
     }
   }
   func_proto_name.append(func_name);
@@ -142,7 +142,7 @@ std::string GetExternFuncName(const cinn::common::Target& target,
     std::stringstream ss;
     ss << "Can not find type: " << type
        << " for extern function. Please Check.\n";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return func_proto_name;
 }

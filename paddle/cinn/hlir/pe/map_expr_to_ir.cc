@@ -160,7 +160,7 @@ class MapExprToIrTranslator {
       default:
         std::stringstream ss;
         ss << "Visit node_type = " << expr.node_type() << ", not supported!";
-        CINN_THROW(ss.str());
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
         break;
     }
   }
@@ -221,7 +221,7 @@ class MapExprToIrTranslator {
     } else {
       return NoInlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
     }
-    CINN_THROW("Dead code");
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 
   std::optional<ir::Expr> TranslateOpExprImpl(
@@ -234,7 +234,8 @@ class MapExprToIrTranslator {
   std::vector<ir::Expr> TranslateTensorIndexImpl(
       const OpCall<OpExpr>& op_call,
       const IterExprs4TensorT& IterExprs4Tensor) const {
-    CINN_THROW("Dead code, no TensorIndexExpr for OpCall");
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Dead code, no TensorIndexExpr for OpCall"));
   }
 
   std::vector<ir::Expr> TranslateTensorIndexImpl(
@@ -382,7 +383,7 @@ class MapExprToIrTranslator {
       return (this->*make_store_rvalue_expr)(
           store_rvalue, op_expr_children, IterExprs4Tensor);
     }
-    CINN_THROW("Dead code");
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 
   std::optional<ir::Expr> TranslateOpCallImpl(
@@ -686,13 +687,13 @@ class MapExprToIrTranslator {
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
   GetForTypeAndInfoImpl(const Vectorize& loop_type,
                         const LoopDescriptor& ld) const {
-    CINN_THROW("Vectorize not supported yet");
+    PADDLE_THROW(phi::errors::InvalidArgument("Vectorize not supported yet"));
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
   GetForTypeAndInfoImpl(const Unroll& loop_type,
                         const LoopDescriptor& ld) const {
-    CINN_THROW("Unroll not supported yet");
+    PADDLE_THROW(phi::errors::InvalidArgument("Unroll not supported yet"));
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo> GetForTypeAndInfo(
@@ -705,7 +706,7 @@ class MapExprToIrTranslator {
 
   ir::Expr Accumulate(const std::vector<ir::Expr>& ir_exprs) const {
     if (ir_exprs.size() == 0) {
-      CINN_THROW("Dead code");
+      PADDLE_THROW(phi::errors::Fatal("Dead code"));
     } else if (ir_exprs.size() == 1) {
       return ir_exprs.at(0);
     } else {
@@ -715,12 +716,12 @@ class MapExprToIrTranslator {
       }
       return ret;
     }
-    CINN_THROW("Dead code");
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 
   ir::Expr Multiply(const std::vector<ir::Expr>& ir_exprs) const {
     if (ir_exprs.size() == 0) {
-      CINN_THROW("Dead code");
+      PADDLE_THROW(phi::errors::Fatal("Dead code"));
     } else if (ir_exprs.size() == 1) {
       return ir_exprs.at(0);
     } else {
@@ -730,7 +731,7 @@ class MapExprToIrTranslator {
       }
       return ret;
     }
-    CINN_THROW("Dead code");
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 
   ir::Expr GetStride(const List<DimExpr>& dims, int start) const {
@@ -821,16 +822,16 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr TranslateDimExprImpl(const ::symbol::Max<DimExpr>& dim_expr) const {
-    CINN_THROW("Not Supported yet");
+    PADDLE_THROW(phi::errors::Unimplemented("Not supported yet"));
   }
 
   ir::Expr TranslateDimExprImpl(const ::symbol::Min<DimExpr>& dim_expr) const {
-    CINN_THROW("Not Supported yet");
+    PADDLE_THROW(phi::errors::Unimplemented("Not supported yet"));
   }
 
   ir::Expr TranslateDimExprImpl(
       const ::symbol::Broadcast<DimExpr>& dim_expr) const {
-    CINN_THROW("Not Supported yet");
+    PADDLE_THROW(phi::errors::Unimplemented("Not supported yet"));
   }
 
   ir::Expr TranslateDimExpr(const Value& value) const {
@@ -862,7 +863,7 @@ class MapExprToIrTranslator {
     } else {
       std::stringstream ss;
       ss << "Not supported yet! " << ToTxtString(value);
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
 

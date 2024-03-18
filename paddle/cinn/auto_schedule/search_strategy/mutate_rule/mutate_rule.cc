@@ -25,7 +25,7 @@ std::unique_ptr<MutateRule> MutateRule::Make(const std::string& name) {
   } else {
     std::stringstream ss;
     ss << "MutateRule " << name << " is not supported.";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return nullptr;
 }

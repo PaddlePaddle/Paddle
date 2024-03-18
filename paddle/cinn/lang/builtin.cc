@@ -221,7 +221,7 @@ Expr Abs(Expr e) {
   } else {
     std::stringstream ss;
     ss << "Abs Not support data type " << type;
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return e;
 }
@@ -239,7 +239,7 @@ Expr IsNan(Expr e) {
   } else {
     std::stringstream ss;
     ss << type << "is not supported for isnan op.";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     return e;
   }
 }
@@ -257,7 +257,7 @@ Expr Infinity(const Type& type) {
   }
   std::stringstream ss;
   ss << "Cannot decide infinity for type " << type;
-  CINN_THROW(ss.str());
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return Expr();
 }
 
@@ -274,7 +274,7 @@ Expr IsInf(Expr e) {
   } else {
     std::stringstream ss;
     ss << type << "is not supported for isinf op.";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     return e;
   }
 }

@@ -268,7 +268,7 @@ std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
         continue;
         std::stringstream ss;
         ss << "Didn't find node with name " << compute_at.stage->id() << " !";
-        CINN_THROW(ss.str());
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
       auto* node1 = name2node[compute_at.stage->id()];
       VLOG(3) << "a -> b: " << node0->id() << " -> " << node1->id();

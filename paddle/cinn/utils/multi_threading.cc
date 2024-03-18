@@ -20,8 +20,8 @@
 #include <thread>
 #include <utility>
 #include <vector>
-#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace utils {
@@ -88,7 +88,7 @@ void parallel_run(const WorkerFuncType& fn,
   } catch (const std::exception& e) {
     std::stringstream ss;
     ss << "parallel_run incurs error: " << e.what();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::Fatal(ss.str()));
   }
 
   // join threads

@@ -121,7 +121,7 @@ class PackedStepContext {
       ss << "Attribute cast error, idx:" << idx
          << ", get type:" << typeid(AttrType).name()
          << ", real index:" << attrs_.at(idx).index();
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       throw ex;
     }
   }
@@ -605,7 +605,7 @@ void AttrVariantToProto(const utils::Attribute& attr,
     default:
       std::stringstream ss;
       ss << "Invalid index:" << attr.index();
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
 #undef SET_DESC_SINGLE_ITEM
@@ -641,7 +641,7 @@ utils::Attribute AttrProtoToVariant(const proto::ScheduleDesc_Attr& attr) {
     default:
       std::stringstream ss;
       ss << "Invalid type:" << attr.DebugString();
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
 #undef PARSE_DESC_SINGLE_ITEM

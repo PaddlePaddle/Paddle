@@ -92,7 +92,7 @@ std::string Type2StrForReduce(cinn::common::Type type) {
   }
   std::stringstream ss;
   ss << "Reduce Not Support " << type;
-  CINN_THROW(ss.str());
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return "";
 }
 
@@ -1122,7 +1122,7 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
   } else {
     std::stringstream ss;
     ss << "Reduce type: " << op << " Not supported yet!";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return "";
 }

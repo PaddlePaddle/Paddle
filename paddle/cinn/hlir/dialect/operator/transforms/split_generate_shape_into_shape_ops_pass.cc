@@ -18,8 +18,8 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/cinn/utils/error.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -129,16 +129,16 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(
       const symbol::Negative<symbol::DimExpr>& dim_expr) {
-    CINN_THROW(
-        "Dead code. This logical should handled by "
-        "ConvertToValueImpl(symbol::Add<symbol::DimExpr>)");
+    PADDLE_THROW(
+        phi::errors::Fatal("Dead code. This logical should handled by "
+                           "ConvertToValueImpl(symbol::Add<symbol::DimExpr>)"));
   }
 
   pir::Value ConvertToValueImpl(
       const symbol::Reciprocal<symbol::DimExpr>& dim_expr) {
-    CINN_THROW(
-        "Dead code. This logical should handled by "
-        "ConvertToValueImpl(symbol::Mul<symbol::DimExpr>)");
+    PADDLE_THROW(
+        phi::errors::Fatal("Dead code. This logical should handled by "
+                           "ConvertToValueImpl(symbol::Mul<symbol::DimExpr>)"));
   }
 
   pir::Value ConvertToValueImpl(const symbol::Add<symbol::DimExpr>& dim_expr) {

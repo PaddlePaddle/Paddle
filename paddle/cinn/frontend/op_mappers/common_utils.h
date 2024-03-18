@@ -66,7 +66,7 @@ inline T GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
             ss << "Op \"" << op_desc.Type() << "\"'s attribute \"" << name   \
                << "\" should be " << #ATTR_TYPE << "S. But here "            \
                << static_cast<int>(attr_type) << " Please Check!";           \
-            CINN_THROW(ss.str());                                            \
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));            \
           }                                                                  \
       }                                                                      \
     }                                                                        \
@@ -98,7 +98,7 @@ inline bool GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
         std::stringstream ss;
         ss << "Op " << op_desc.Type() << "'s attribute " << name
            << " should be BOOLEAN. Please Check!";
-        CINN_THROW(ss.str());
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   return default_value;
@@ -120,7 +120,7 @@ inline int64_t GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
         std::stringstream ss;
         ss << "Op " << op_desc.Type() << "'s attribute " << name
            << " should be LONG. Please Check!";
-        CINN_THROW(ss.str());
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   return default_value;
@@ -158,7 +158,7 @@ inline std::vector<int64_t> GetAttrOrDefault(
         std::stringstream ss;
         ss << "Op " << op_desc.Type() << "'s attribute " << name
            << " should be LONGS. Please Check!";
-        CINN_THROW(ss.str());
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   return default_value;

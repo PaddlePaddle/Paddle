@@ -19,7 +19,7 @@
 #include <vector>
 #include "paddle/cinn/common/bfloat16.h"
 #include "paddle/cinn/common/float16.h"
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace common {
@@ -30,7 +30,7 @@ namespace common {
     if (status != cudaSuccess) {                           \
       std::stringstream ss;                                \
       ss << "CUDA Error : " << cudaGetErrorString(status); \
-      CINN_THROW(ss.str());                                \
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));          \
     }                                                      \
   }
 

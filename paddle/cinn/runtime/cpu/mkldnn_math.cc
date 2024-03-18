@@ -52,7 +52,7 @@ void cinn_cpu_mkldnn_softmax_fp32(int batch,
     default:
       std::stringstream ss;
       ss << "wrong dim: " << size;
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       break;
   }
 

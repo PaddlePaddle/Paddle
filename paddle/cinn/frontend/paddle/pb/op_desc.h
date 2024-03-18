@@ -17,7 +17,7 @@
 
 #include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
 #include "paddle/cinn/frontend/paddle/framework.pb.h"
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::frontend::paddle::pb {
 
@@ -107,7 +107,7 @@ class OpDesc : public cpp::OpDescAPI {
       DEF_ONE(BLOCKS);
       DEF_ONE(LONGS);
       default:
-        CINN_THROW("Unknown attribute type");
+        PADDLE_THROW(phi::errors::InvalidArgument("Unknown attribute type"));
         return static_cast<AttrType>(-1);
     }
 #undef DEF_ONE

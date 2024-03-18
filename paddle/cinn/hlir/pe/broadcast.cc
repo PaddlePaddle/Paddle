@@ -150,7 +150,7 @@ void GetBroadcastShape(const std::vector<Expr>& shape1,
         ss << "Incompatible broadcast dims " << shape1_new[size1 - i] << " and "
            << shape2_new[size2 - i] << " in: " << shape1_new << " and "
            << shape2_new << std::endl;
-        CINN_THROW(ss.str());
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
     }
   }
@@ -369,7 +369,7 @@ Tensor BroadcastTo(const Tensor& A,
             std::stringstream ss;
             ss << "fail to broad cast input shape " << a_shape_i
                << " to output shape " << out_shape[axes[idx]];
-            CINN_THROW(ss.str());
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
           }
         }
         return A(broadcast_indice);
@@ -403,7 +403,7 @@ Tensor BroadcastTo(const Tensor& A,
             std::stringstream ss;
             ss << "fail to broad cast input shape " << a_shape_i
                << " to output shape " << out_shape[idx];
-            CINN_THROW(ss.str());
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
           }
         }
         return A(broadcast_indice);

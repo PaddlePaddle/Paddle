@@ -23,7 +23,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -472,9 +472,9 @@ static utils::Attribute ConvertArrayAttribute(
               element.dyn_cast<::pir::StrAttribute>().AsString());
         }
       } else {
-        CINN_THROW(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "only support bool/int32/int64/float/double/string attribute in "
-            "ArrayAttribute");
+            "ArrayAttribute"));
       }
     }
   } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
@@ -482,7 +482,7 @@ static utils::Attribute ConvertArrayAttribute(
   } else {
     std::stringstream ss;
     ss << "unknown Attribute: " << src_attr;
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return dst_attr;
 }
@@ -553,7 +553,7 @@ cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
 
   std::stringstream ss;
   ss << "unknown ir::Type " << type;
-  CINN_THROW(ss.str());
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 #undef CASE_TYPE
 

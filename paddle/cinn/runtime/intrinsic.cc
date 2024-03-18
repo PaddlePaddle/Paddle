@@ -53,7 +53,7 @@ cinn_type_t ToRuntimeType(Type type) {
 
   std::stringstream ss;
   ss << "Not supported type " << type;
-  CINN_THROW(ss.str());
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return cinn_unk_t();
 #undef SET_TYPE_CASE_ITEM
 }

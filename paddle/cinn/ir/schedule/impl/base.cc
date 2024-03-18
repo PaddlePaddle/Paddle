@@ -26,10 +26,11 @@
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
-  }                                                            \
-  catch (const utils::ErrorHandler& err_handler) {             \
-    CINN_THROW(err_handler.FormatErrorMessage(err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)              \
+  }                                                      \
+  catch (const utils::ErrorHandler& err_handler) {       \
+    PADDLE_THROW(phi::errors::InvalidArgument(           \
+        err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 namespace cinn {
@@ -667,7 +668,7 @@ void StScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
     ss << "Cannot CopyTransformAndLoopInfo since shape[0] of source "
           "and target is not equal! "
        << vars[0]->upper_bound << " v.s " << vars_target[0]->upper_bound;
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   int changed_loop_num = new_iter_values.size();

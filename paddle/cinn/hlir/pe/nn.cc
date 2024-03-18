@@ -56,7 +56,7 @@ std::string Type2StrForNN(cinn::common::Type type) {
   }
   std::stringstream ss;
   ss << "NN Not Support " << type;
-  CINN_THROW(ss.str());
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return "";
 }
 
@@ -1401,7 +1401,7 @@ std::vector<Tensor> Pool1d(const Tensor &tensor,
   } else {
     std::stringstream ss;
     ss << "Unsupported data format: " << data_format << std::endl;
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   CHECK_EQ(tensor->shape.size(), 3U)
       << "pool1d requires tensor's shape_size to be 3\n";
@@ -1463,7 +1463,7 @@ std::vector<Tensor> GlobalPool2d(const Tensor &tensor,
         UniqName(output_name));
     return {ret, temp};
   } else {
-    CINN_THROW("unsupported pooling type.");
+    PADDLE_THROW(phi::errors::InvalidArgument("unsupported pooling type."));
   }
   return {};
 }
@@ -1492,7 +1492,7 @@ std::vector<Tensor> Pool2d(const Tensor &tensor,
   } else {
     std::stringstream ss;
     ss << "Unsupported data format: " << data_format << std::endl;
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   CHECK(tensor->shape.size() == 4U || tensor->shape.size() == 5U)
       << "pool2d requires tensor's shape_size to be 4 or 5\n";
@@ -1532,7 +1532,7 @@ std::vector<Tensor> Pool3d(const Tensor &tensor,
   } else {
     std::stringstream ss;
     ss << "Unsupported data format: " << data_format << std::endl;
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   CHECK_EQ(tensor->shape.size(), 5U)
       << "pool1d requires tensor's shape_size to be 5\n";
@@ -1566,9 +1566,9 @@ Tensor DropoutInfer(const ir::Tensor &tensor,
     // fusion schedule.
     return Identity(tensor, output_name).front();
   } else {
-    CINN_THROW(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "dropout_implementation attr must be 'downgrade_in_infer' or "
-        "'upscale_in_train'\n");
+        "'upscale_in_train'\n"));
   }
 }
 

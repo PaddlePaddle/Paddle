@@ -37,7 +37,7 @@ std::unique_ptr<RuleSampler> RuleSampler::Make(
 
   std::stringstream ss;
   ss << "Unimplemented strategy:" << strategy;
-  CINN_THROW(ss.str());
+  PADDLE_THROW(phi::errors::Unimplemented(ss.str()));
   return nullptr;
 }
 

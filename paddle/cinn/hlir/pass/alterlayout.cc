@@ -264,7 +264,7 @@ void AlterLayoutPass(Graph* graph) {
             std::stringstream ss;
             ss << "conv2d's input shape should be 4D/5D. Wrong input shape: "
                << utils::Join(input_shape, ", ");
-            CINN_THROW(ss.str());
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
           }
 
           if (weight_shape.size() == 4) {
@@ -277,7 +277,7 @@ void AlterLayoutPass(Graph* graph) {
             std::stringstream ss;
             ss << "conv2d's weight shape should be 4D/6D. Wrong weight shape: "
                << utils::Join(weight_shape, ", ");
-            CINN_THROW(ss.str());
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
           }
           VLOG(3) << "oc: " << oc;
           VLOG(3) << "ic: " << ic;

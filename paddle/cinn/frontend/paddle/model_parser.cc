@@ -44,7 +44,7 @@ int SizeOfType(framework_proto::VarType::Type type) {
     default:
       std::stringstream ss;
       ss << "unknown data type " << type;
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return -1;
 }
@@ -94,14 +94,15 @@ void TensorFromStream(std::istream &is,
       default:
         std::stringstream ss;
         ss << "unknown type " << desc.data_type();
-        CINN_THROW(ss.str());
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
     // tensor->set_persistable(true);
     is.read(static_cast<char *>(buf), size);
   } else if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
     if (desc.data_type() != Type::VarType_Type_FP32)
-      CINN_THROW("[CUDA] The type is not fp32!!");
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("[CUDA] The type is not fp32!!"));
     auto *data = tensor->mutable_data<float>(target);
     tensor->set_type(Float(32));
     std::vector<float> temp(tensor->shape().numel());
@@ -112,7 +113,8 @@ void TensorFromStream(std::istream &is,
                          tensor->shape().numel() * sizeof(float),
                          cudaMemcpyHostToDevice));
 #else
-    CINN_THROW("To use CUDA backends, you need to set WITH_CUDA ON!");
+    PADDLE_THROW(phi::errors::Fatal(
+        "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
   } else {
     CINN_NOT_IMPLEMENTED
@@ -285,7 +287,7 @@ void LoadModelPb(const std::string &model_dir,
                         target);
           break;
         default:
-          CINN_THROW("unknown weight type");
+          PADDLE_THROW(phi::errors::InvalidArgument("unknown weight type"));
       }
     }
   }

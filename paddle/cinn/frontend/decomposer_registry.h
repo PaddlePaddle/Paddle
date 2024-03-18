@@ -43,14 +43,14 @@ class DecomposerContext {
          << new_var->id << ".shape=[" << utils::Join(new_var->shape, ", ")
          << "] and the original var " << ori_var->id << ".shape=["
          << utils::Join(ori_var->shape, ", ") << "].";
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
     if (new_var->type != ori_var->type) {
       std::stringstream ss;
       ss << "The output type should be equal to the original. But received : "
          << new_var->id << ".type=" << new_var->type << " and the original var "
          << ori_var->id << ".type=" << ori_var->type;
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
     (*var_map_)[new_var->id] = ori_var;
   }

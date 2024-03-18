@@ -47,8 +47,8 @@ ScheduleParam::ScheduleParam(cinn::common::Target::Arch arch) {
       break;
     }
     default: {
-      CINN_THROW(
-          "Schedule params must be initialized with target x86 or nvgpu.");
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Schedule params must be initialized with target x86 or nvgpu."));
     }
   }
 }
@@ -2456,7 +2456,7 @@ void CudaScheduleConv2(poly::StageMap stages,
   } else {
     std::stringstream ss;
     ss << "PR number of output dims is wrong: " << stages[PR]->n_out_dims();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   if (stages[KR]->n_out_dims() == 18) {
@@ -2466,7 +2466,7 @@ void CudaScheduleConv2(poly::StageMap stages,
   } else {
     std::stringstream ss;
     ss << "KR number of output dims is wrong: " << stages[KR]->n_out_dims();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   int thread_z = f_param[2];
   int thread_x = x_param[2];
@@ -2773,7 +2773,7 @@ void CudaScheduleInjective(poly::Stage *stage,
   if (new_num_thread == 1) {
     std::stringstream ss;
     ss << "prod_size out of range: " << prod_size;
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   CHECK_GT(prod_size, new_num_thread);

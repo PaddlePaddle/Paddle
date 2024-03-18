@@ -130,7 +130,7 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   } else {
     std::stringstream ss;
     ss << "Not support " << type;
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return shape_v;
 }

@@ -62,7 +62,7 @@ void IrPrinter::Visit(const IntImm *x) {
   } else {
     std::stringstream ss;
     ss << "Not support int type: " << x->type();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 void IrPrinter::Visit(const UIntImm *x) {
@@ -86,7 +86,7 @@ void IrPrinter::Visit(const UIntImm *x) {
   } else {
     std::stringstream ss;
     ss << "Not support uint type: " << x->type();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 void IrPrinter::Visit(const FloatImm *x) {
@@ -125,7 +125,7 @@ void IrPrinter::Visit(const FloatImm *x) {
   } else {
     std::stringstream ss;
     ss << "Not support float type: " << x->type();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   str_ += ss.str();
 }

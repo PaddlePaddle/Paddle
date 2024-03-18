@@ -292,7 +292,7 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    CINN_THROW("Not supported OutputKind");
+    PADDLE_THROW(phi::errors::InvalidArgument("Not supported OutputKind"));
   }
 
   if (for_nvrtc_) {
@@ -375,7 +375,7 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     std::stringstream ss;
     ss << "CUDA device codegen not support memory " << buffer->name << ", type "
        << buffer->memory_type;
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 

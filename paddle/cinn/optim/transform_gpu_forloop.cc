@@ -261,7 +261,7 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(&for_ir->body, &for_ir->body);
   }
   void Visit(const ir::PolyFor *op, Expr *expr) override {
-    CINN_THROW("Unkown PolyFor!");
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown PolyFor!"));
   }
 };
 

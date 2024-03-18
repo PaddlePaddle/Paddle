@@ -38,12 +38,12 @@ void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
 
 void CollectTensorIndexIteratorsImpl(const Undefined& tensor_index_expr,
                                      std::unordered_set<Iterator>* ret) {
-  CINN_THROW("Not Implemented");
+  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
 }
 
 void CollectTensorIndexIteratorsImpl(const Ok& ok,
                                      std::unordered_set<Iterator>* ret) {
-  CINN_THROW("Not Implemented");
+  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
 }
 
 void CollectTensorIndexIteratorsImpl(const Iterator& iterator,
@@ -134,7 +134,7 @@ LoopIterators GetAnchorTensorLoopIterators(
 namespace {
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const Undefined& undefined) {
-  CINN_THROW("position not found");
+  PADDLE_THROW(phi::errors::Fatal("position not found"));
 }
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const tIn<std::size_t>& pos) {

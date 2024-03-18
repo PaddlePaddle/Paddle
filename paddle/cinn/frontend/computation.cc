@@ -255,7 +255,7 @@ hlir::framework::Tensor CinnComputation::GetTensor(const std::string &tname) {
     ss << "No variable called [" << tname
        << "] found in computation\nThe existing vars: "
        << utils::Join(context_->scope->var_names(), ", ");
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return context_->scope->GetTensor(it->second);
 }

@@ -61,7 +61,7 @@ Layout::Layout(const std::string& name) {
     } else {
       std::stringstream ss;
       ss << "Invalid layout: " << name;
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   name_ = name;

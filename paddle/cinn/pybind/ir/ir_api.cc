@@ -750,7 +750,7 @@ auto PackedFuncCall(lang::PackedFunc &self, py::args args) {  // NOLINT
     } else {
       std::stringstream ss;
       ss << "unsupported type: " << std::string(py::str(handle.get_type()));
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   lang::RetValue ret_value;

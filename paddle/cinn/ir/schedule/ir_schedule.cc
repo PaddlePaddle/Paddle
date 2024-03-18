@@ -85,10 +85,11 @@ std::unique_ptr<ScheduleBase> ScheduleBase::Make(ModuleExpr&& module_expr,
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
-  }                                                            \
-  catch (const utils::ErrorHandler& err_handler) {             \
-    CINN_THROW(err_handler.FormatErrorMessage(err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
+  }                                                                         \
+  catch (const utils::ErrorHandler& err_handler) {                          \
+    PADDLE_THROW(                                                           \
+        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 void BaseInliner::operator()(Expr* expr) {
@@ -665,7 +666,7 @@ void IRSchedule::Annotate(const Expr& block,
 
   std::stringstream ss;
   ss << "Value of attribute:" << key << " input unsupported data type";
-  CINN_THROW(ss.str());
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 void IRSchedule::Unannotate(Expr& block, const std::string& key) {

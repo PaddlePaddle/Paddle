@@ -18,7 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -602,7 +602,7 @@ std::string Type2Str(const Type &type) {
     default:
       std::stringstream ss;
       ss << "Not support type [" << type << "] ! Please Check.\n";
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return "unk";
 }

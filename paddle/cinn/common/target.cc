@@ -24,7 +24,7 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace common {
@@ -52,7 +52,7 @@ int Target::runtime_arch() const {
     case Arch::ARM:
       return cinn_arm_device;
     default:
-      CINN_THROW("Not supported arch");
+      PADDLE_THROW(phi::errors::InvalidArgument("Not supported arch"));
   }
   return -1;
 }
@@ -107,7 +107,7 @@ int Target::get_target_bits() const {
     case Bit::Unk:
       return 0;
     default:
-      CINN_THROW("Not supported Bit");
+      PADDLE_THROW(phi::errors::InvalidArgument("Not supported Bit"));
   }
   return -1;
 }

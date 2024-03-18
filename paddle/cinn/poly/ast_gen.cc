@@ -361,7 +361,7 @@ void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
     default:
       std::stringstream ss;
       ss << "Unexpected ISL node type " << isl_ast_node_get_type(node.get());
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       break;
   }
 }
@@ -569,7 +569,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
         default:
           std::stringstream ss;
           ss << "unsupported op " << op_type;
-          CINN_THROW(ss.str());
+          PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
     } break;
     default:

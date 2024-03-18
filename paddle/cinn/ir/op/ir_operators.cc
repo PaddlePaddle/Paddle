@@ -90,7 +90,7 @@ Expr operator|(Expr a, Expr b) {
   } else {
     std::stringstream ss;
     ss << "Unsupport arch: " << target.arch_str() << " for bitwise_or.";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -115,7 +115,7 @@ Expr operator&(Expr a, Expr b) {
   } else {
     std::stringstream ss;
     ss << "Unsupport arch: " << target.arch_str() << " for bitwise_and.";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -140,7 +140,7 @@ Expr operator^(Expr a, Expr b) {
   } else {
     std::stringstream ss;
     ss << "Unsupport arch: " << target.arch_str() << " for bitwise_xor.";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -155,7 +155,7 @@ Expr operator~(Expr a) {
   } else {
     std::stringstream ss;
     ss << "Unsupport arch: " << target.arch_str() << " for bitwise_not.";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 

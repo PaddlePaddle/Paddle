@@ -30,7 +30,7 @@
 #include "paddle/common/flags.h"
 
 #include "paddle/cinn/common/is_reachable_predicator.h"
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
@@ -1297,7 +1297,7 @@ class GeneralFusionMergePassHelper {
         }
       }
       if (is_ring) {
-        CINN_THROW("Exists Ring, Please Check!");
+        PADDLE_THROW(phi::errors::Fatal("Exists Ring, Please Check!"));
       }
     }
   }

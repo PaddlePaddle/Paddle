@@ -145,7 +145,7 @@ void MemoryCopy(const float* src, float* dst, int numel, std::string type) {
       dst[i] = src[i];
     }
   } else {
-    CINN_THROW("Unknown memory copy type");
+    PADDLE_THROW(phi::errors::InvalidArgument("Unknown memory copy type"));
   }
 }
 

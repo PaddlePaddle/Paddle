@@ -174,7 +174,7 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
       } else {
         std::stringstream ss;
         ss << "Pass " << pass << " unsupported in CINN! Please check.\n";
-        CINN_THROW(ss.str());
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
     }
 

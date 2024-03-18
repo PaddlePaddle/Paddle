@@ -86,7 +86,7 @@ inline cinn::common::Type CppVarType2CommonType(
       std::stringstream ss;
       ss << "Unknown VarDesc type: " << var_type_names_[static_cast<int>(type)]
          << "(" << static_cast<int>(type) << ")";
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 #undef SET_DATA_TYPE_CASE_ITEM
   return cinn::common::Type();

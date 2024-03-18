@@ -17,7 +17,7 @@
 #include <optional>
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/tags.h"
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::adt {
 
@@ -144,7 +144,7 @@ List<typename TreeMergerT::tree_type> MergeTwoInnerTreeImpl(
                                                List<TreeT>{new_lhs, new_rhs});
     return List<TreeT>{ret};
   } else {
-    CINN_THROW("Dead code");
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 }
 

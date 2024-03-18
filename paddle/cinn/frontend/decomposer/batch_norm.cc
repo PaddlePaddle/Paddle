@@ -44,7 +44,7 @@ struct BatchNormHelper {
     } else {
       std::stringstream ss;
       ss << data_layout << " setting is not support!";
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
 
     num_instructions = builder->size();

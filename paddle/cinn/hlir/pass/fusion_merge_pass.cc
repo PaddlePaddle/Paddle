@@ -170,7 +170,7 @@ class FusionMergePassHelper : public FusionHelperBase {
         }
       }
       if (is_ring) {
-        CINN_THROW("Exists Ring, Please Check!");
+        PADDLE_THROW(phi::errors::Fatal("Exists Ring, Please Check!"));
       }
     }
   }
