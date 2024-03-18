@@ -16,7 +16,7 @@ import os
 
 from ..pass_base import PassContext, new_pass
 from .pipeline_1f1b import Pipeline1F1BPass, PipelineEager1F1BPass
-from .pipeline_f_then_b import PipelineFThenBPass
+from .pipeline_fthenb import PipelineFThenBPass
 from .pipeline_vpp import PipelineVirtualPipelinePass
 
 __all__ = [
