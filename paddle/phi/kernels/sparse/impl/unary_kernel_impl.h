@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include "glog/logging.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -74,6 +74,7 @@ namespace sparse {
                                     out->mutable_non_zero_elements()); \
   }
 
+// DEFINE_SPARSE_UNARY_KERNEL(Abs)
 DEFINE_SPARSE_UNARY_KERNEL(Sin)
 DEFINE_SPARSE_UNARY_KERNEL(Tan)
 DEFINE_SPARSE_UNARY_KERNEL(Asin)
@@ -95,15 +96,18 @@ template <typename T, typename Context>
 void AbsCooKernel(const Context& dev_ctx,
                   const SparseCooTensor& x,
                   SparseCooTensor* out) {
+  VLOG(8) << "rabit3" << out->dtype();
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+  VLOG(8) << "rabit final" << out->dtype();
   phi::AbsKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
+
   out->SetIndicesDict(x.GetIndicesDict());
-  if (out->dtype() == DataType::COMPLEX64 ||
-      out->dtype() == DataType::COMPLEX128) {
-    DenseTensor* out_values = out->mutable_non_zero_elements();
-    out->set_type(out_values->dtype());
-  }
+  // if (out->dtype() == DataType::COMPLEX64 ||
+  //     out->dtype() == DataType::COMPLEX128) {
+  //   DenseTensor* out_values = out->mutable_non_zero_elements();
+  //   out->set_type(out_values->dtype());
+  // }
 }
 
 template <typename T, typename Context>

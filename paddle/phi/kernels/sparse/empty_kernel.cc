@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -26,13 +27,17 @@ template <typename T, typename Context>
 void EmptyLikeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         SparseCooTensor* out) {
+  VLOG(8) << "rabit4" << out->dtype();
   *(out->mutable_indices()) = x.indices();
 
   const DenseTensor& x_values = x.values();
   DenseTensor* out_values = out->mutable_values();
   out_values->Resize(x_values.dims());
+  VLOG(8) << "rabit5" << out->dtype();
   out->set_meta(x.meta());
+  VLOG(8) << "rabit6" << out->dtype();
   dev_ctx.template Alloc<T>(out_values);
+  VLOG(8) << "rabit7" << out->dtype();
 }
 
 template <typename T, typename Context>
