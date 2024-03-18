@@ -915,7 +915,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
-                TypeError("Shape only supports OpResult, or list, or tuple.")
+                TypeError("Shape only supports Value, or list, or tuple.")
 
         if out is None:
             out = _C_ops.full(shape, value, dtype, place)
