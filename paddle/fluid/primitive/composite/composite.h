@@ -1008,6 +1008,7 @@ Tensor mean_all_decomp(const Tensor& x) {
   }
 }
 
+template <typename T>
 Tensor embedding_decomp(const Tensor& x,
                         const Tensor& weight,
                         const int64_t padding_idx,
