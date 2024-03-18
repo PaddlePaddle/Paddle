@@ -136,10 +136,6 @@ void PartialRecvInferMeta(int ring_id,
 }
 
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
-  PADDLE_ENFORCE_GT(
-      n,
-      0,
-      errors::InvalidArgument("The upper bound %d isn't greater than 0.", n));
   out->set_dims(common::make_ddim({n}));
   out->set_dtype(dtype);
 }

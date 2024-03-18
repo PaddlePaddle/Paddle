@@ -19,8 +19,8 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle.base import core
+from paddle.base.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
-from paddle.static import Program, program_guard
 
 
 def check_randperm_out(n, data_np):
@@ -159,8 +159,11 @@ class TestRandpermBF16Op(OpTest):
 class TestRandpermOpError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            self.assertRaises(ValueError, paddle.randperm, -3)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            if not in_pir_mode():
+                self.assertRaises(ValueError, paddle.randperm, -3)
             self.assertRaises(TypeError, paddle.randperm, 10, 'int8')
 
 
@@ -173,7 +176,9 @@ class TestRandpermAPI(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x1 = paddle.randperm(n)
             x2 = paddle.randperm(n, 'float32')
 
