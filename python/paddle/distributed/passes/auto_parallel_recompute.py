@@ -603,16 +603,10 @@ class RecomputePass(PassBase):
         assert op_dist_attr is not None
         for input in op.input_arg_names:
             if input in var_name_dict.keys():
-                in_dist_attr = op_dist_attr.get_input_dist_attr(input)
-                op_dist_attr.set_input_dist_attr(
-                    var_name_dict[input], in_dist_attr
-                )
+                op_dist_attr.rename_input(input, var_name_dict[input])
         for output in op.output_arg_names:
             if output in var_name_dict.keys():
-                out_dist_attr = op_dist_attr.get_output_dist_attr(output)
-                op_dist_attr.set_output_dist_attr(
-                    var_name_dict[output], out_dist_attr
-                )
+                op_dist_attr.rename_output(output, var_name_dict[output])
 
     def set_op_dist_attr(self, op, old_dist_attr, var_name_dict):
         new_dist_attr = OperatorDistAttr()

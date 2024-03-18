@@ -67,7 +67,7 @@ class PipelinePassBase(PassBase):
 
         for i in range(len(job_types)):
             logger.debug(
-                f"sub_program type: {job_types[i]}, sum_program:\n{sub_programs[i]}"
+                f"sub_program type: {job_types[i]}, sub_program:\n{sub_programs[i]}"
             )
 
         jobs = self._create_job_list()

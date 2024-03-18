@@ -17,7 +17,7 @@ import logging
 
 from ..auto_parallel.static.utils import (
     get_logger,
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    naive_set_dist_op_attr_for_program_by_mesh,
 )
 from .pass_base import PassBase, register_pass
 from .pass_utils import AutoParallelStreamType
@@ -84,22 +84,33 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                         matmul_grad_id_to_allreduce_id[i] = j
         return matmul_grad_id_to_allreduce_id
 
-    def _insert_reshape_op(self, block, index, x, shape, op_role, out=None):
-        var_x = block.var(x[0])
+    def _insert_reshape_op(
+        self, block, index, x, shape, op_role, chunk_id, var_out=None
+    ):
+        var_x = block.var(x)
         x_dist_attr = self.dist_context.get_tensor_dist_attr_for_program(var_x)
 
-        if out is None:
-            out = block.create_var(
-                name=f"{x[0]}@reshape.out",
+        if var_out is None:
+            var_out = block.create_var(
+                name=f"{x}@reshape.out",
                 dtype=var_x.dtype,
+                shape=shape,
                 persistable=False,
             )
-            self.dist_context.set_tensor_dist_attr_for_program(out, x_dist_attr)
+            ref_dist_attr = x_dist_attr
+            ref_dist_attr.dims_mapping = x_dist_attr.dims_mapping[
+                -len(shape) :
+            ]  # unused
+            self.dist_context.set_tensor_dist_attr_for_program(
+                var_out, ref_dist_attr
+            )
 
-        x_shape = block.create_var(
-            name=f"{x[0]}@reshape.xshape", dtype=var_x.dtype
+        out = var_out.name
+        x_shape = f"{x}@reshape.xshape"
+        var_x_shape = block.create_var(name=x_shape, dtype=var_x.dtype)
+        self.dist_context.set_tensor_dist_attr_for_program(
+            var_x_shape, x_dist_attr
         )
-        self.dist_context.set_tensor_dist_attr_for_program(x_shape, x_dist_attr)
 
         reshape_op = block._insert_op_without_sync(
             index=index,
@@ -112,12 +123,11 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 'op_namescope': self.op_namescope,
             },
         )
-        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+        naive_set_dist_op_attr_for_program_by_mesh(
             reshape_op,
             process_mesh=x_dist_attr.process_mesh,
-            ref_mapping=x_dist_attr.dims_mapping,
             ctx=self.dist_context,
-            chunk_id=x_dist_attr.chunk_id,
+            chunk_id=chunk_id,
         )
 
         return out
@@ -193,20 +203,20 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 AutoParallelStreamType.MP_STREAM.value
             )
 
-            x = matmul_grad_op.input("X")
-            y = matmul_grad_op.input("Y")
-            out_grad = matmul_grad_op.input("Out@GRAD")
-            x_grad = matmul_grad_op.output("X@GRAD")
-            y_grad = matmul_grad_op.output("Y@GRAD")
+            x = matmul_grad_op.input("X")[0]
+            y = matmul_grad_op.input("Y")[0]
+            out_grad = matmul_grad_op.input("Out@GRAD")[0]
+            x_grad = matmul_grad_op.output("X@GRAD")[0]
+            y_grad = matmul_grad_op.output("Y@GRAD")[0]
             op_role = matmul_grad_op.attr("op_role")
 
             # NOTE(Ruibiao): Required OP scheduling order: matmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
             # c_allreduce_sum(dX) and matmul(X^T, dOut) cannot be swapped. Otherwise, after buffer_shared_inplace_pass
             # adding share_buffer OP before c_allreduce_sum, c_allreduce_sum will synchronous with comp-stream, and then
             # the matmul op before it cannot be overlapped.
-            var_x = block.var(x[0])
-            var_out_grad = block.var(out_grad[0])
-            var_y_grad = block.var(y_grad[0])
+            var_x = block.var(x)
+            var_out_grad = block.var(out_grad)
+            var_y_grad = block.var(y_grad)
 
             x_dims = var_x.shape
             out_grad_dims = var_out_grad.shape
@@ -228,25 +238,32 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             # When the rank of input matrix is 3, MatmulGradKernel use reshape to fold the first two dimensions of x and out_grad (see FoldInitDims in matmul_grad_kernel_impl.h), and then calls blas.Matmul to calculate y_grad.
             # If we directly append matmul op to calculate y_grad without FoldInitDims, blas.BatchedGEMM is actually called in MatmulKernel, which has a larger cost than using blas.Matmul after dimension folding.
             # Therefore, we imitate MatmulGradKernel here by inserting reshape op before matmul.
+            chunk_id = self.dist_context.get_op_dist_attr_for_program(
+                matmul_grad_op
+            ).chunk_id
             new_x = self._insert_reshape_op(
-                block, allreduce_id + 1, x, new_x_dims, op_role
+                block, allreduce_id + 1, x, new_x_dims, op_role, chunk_id
             )
             new_out_grad = self._insert_reshape_op(
-                block, allreduce_id + 2, out_grad, new_out_grad_dims, op_role
+                block,
+                allreduce_id + 2,
+                out_grad,
+                new_out_grad_dims,
+                op_role,
+                chunk_id,
             )
-            new_y_grad = block.create_var(
-                name=f"{y_grad[0]}@reshape.out",
+
+            new_y_grad = f"{y_grad}@reshape.out"
+            new_var_y_grad = block.create_var(
+                name=new_y_grad,
                 dtype=var_y_grad.dtype,
                 persistable=False,
             )
             self.dist_context.set_tensor_dist_attr_for_program(
-                new_y_grad,
+                new_var_y_grad,
                 self.dist_context.get_tensor_dist_attr_for_program(var_y_grad),
             )
 
-            matmul_grad_dist_attr = (
-                self.dist_context.get_op_dist_attr_for_program(matmul_grad_op)
-            )
             matmul_op = block._insert_op_without_sync(
                 index=allreduce_id + 3,
                 type="matmul_v2",
@@ -259,17 +276,25 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                     'op_namescope': self.op_namescope,
                 },
             )
-            self.dist_context.set_op_dist_attr_for_program(
-                matmul_op, matmul_grad_dist_attr
+
+            ref_op_dist_attr = self.dist_context.get_op_dist_attr_for_program(
+                matmul_grad_op
+            )
+            naive_set_dist_op_attr_for_program_by_mesh(
+                matmul_op,
+                ref_op_dist_attr.process_mesh,
+                self.dist_context,
+                chunk_id=ref_op_dist_attr.chunk_id,
             )
 
             self._insert_reshape_op(
                 block,
                 allreduce_id + 4,
-                [new_y_grad.name],
+                new_y_grad,
                 y_grad_dims,
                 op_role,
-                y_grad,
+                chunk_id,
+                var_y_grad,
             )
 
             matmul_op = block._insert_op_without_sync(
@@ -284,8 +309,11 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                     'op_namescope': self.op_namescope,
                 },
             )
-            self.dist_context.set_op_dist_attr_for_program(
-                matmul_op, matmul_grad_dist_attr
+            naive_set_dist_op_attr_for_program_by_mesh(
+                matmul_op,
+                ref_op_dist_attr.process_mesh,
+                self.dist_context,
+                chunk_id=ref_op_dist_attr.chunk_id,
             )
 
             block._remove_op(matmul_grad_id, sync=False)

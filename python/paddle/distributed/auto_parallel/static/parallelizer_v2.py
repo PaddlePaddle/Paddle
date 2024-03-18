@@ -345,6 +345,31 @@ class Parallelizer:
                         f"There is not dist_attr for op[{op.type}]."
                     )
 
+                # TODO(Ruibiao): Fix args dist_attr for amp and grad clip
+                if op.type in [
+                    "check_finite_and_unscale",
+                    "update_loss_scaling",
+                ]:
+                    continue
+                if op.has_attr("op_namescope"):
+                    if "gradient_clip" in op.attr(
+                        "op_namescope"
+                    ) or "optimizer" in op.attr("op_namescope"):
+                        continue
+
+                input_args = set(op.input_arg_names)
+                input_args_in_dist_attr = op_dist_attr.inputs_dist_attrs.keys()
+                output_args = set(op.output_arg_names)
+                output_args_in_dist_attr = (
+                    op_dist_attr.outputs_dist_attrs.keys()
+                )
+                assert (
+                    input_args == input_args_in_dist_attr
+                ), f"input_arg verify faield, op:{op}\n inputs in dist_attrs:{input_args_in_dist_attr}\n diff: {(input_args | input_args_in_dist_attr) - (input_args & input_args_in_dist_attr)}"
+                assert (
+                    output_args == output_args_in_dist_attr
+                ), f"output_arg verfiy failed, op:{op}\n outputs in dist_attrs:{output_args_in_dist_attr}\n diff: {(output_args | output_args_in_dist_attr) - (output_args & output_args_in_dist_attr)}"
+
     def _apply_post_optimization(
         self, main_program, startup_program, rank, params_grads
     ):

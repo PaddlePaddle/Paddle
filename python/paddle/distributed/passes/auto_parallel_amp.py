@@ -538,12 +538,7 @@ class AMPState:
                         # it should be renamed and reset dist_attr.
                         cast_name = self._var_name_dict[fwd_op_id][in_var_name]
                         op.desc._rename_input(in_var_name, cast_name)
-                        in_var_dist_attr = consume_op_attr.get_input_dist_attr(
-                            in_var_name
-                        )
-                        consume_op_attr.set_input_dist_attr(
-                            cast_name, in_var_dist_attr
-                        )
+                        consume_op_attr.rename_input(in_var_name, cast_name)
                     else:
                         assert (
                             in_var.dtype == dst_dtype
@@ -590,6 +585,9 @@ class AMPState:
                         cast_var = block.vars.get(cast_name)
                         if cast_var is None or cast_var.dtype != dst_dtype:
                             op.desc._rename_output(out_var_name, cast_name)
+                            consume_op_attr.rename_output(
+                                out_var_name, cast_name
+                            )
                             out_var_dist_attr = (
                                 consume_op_attr.get_output_dist_attr(
                                     out_var_name
@@ -598,7 +596,6 @@ class AMPState:
                             ref_mesh = out_var_dist_attr.process_mesh
                             ref_mapping = out_var_dist_attr.dims_mapping
                             ref_chunk_id = consume_op_attr.chunk_id
-
                             out_var_dist_attr.chunk_id = ref_chunk_id
                             consume_op_attr.set_output_dist_attr(
                                 cast_name, out_var_dist_attr
