@@ -22,9 +22,9 @@ if(WITH_MKLDNN)
 endif()
 add_subdirectory(nccl)
 
-#if(WITH_DISTRIBUTE)
-#  add_subdirectory(distributed)
-#endif()
+if(WITH_DISTRIBUTE)
+  add_subdirectory(distributed)
+endif()
 
 if(WITH_PSCORE)
   add_subdirectory(pscore)
