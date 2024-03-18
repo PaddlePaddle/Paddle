@@ -738,12 +738,16 @@ class Engine:
         # TODO(zhiqiu): distributed_context is no longer used in pir_program
         # so, just return here and need to reimplement the logics below
         if self._in_pir_mode:
-            if mode != "train":
-                self._fwd_main_progs[mode] = serial_main_prog.clone(
-                    for_test=True
-                )
-            else:
-                self._fwd_main_progs[mode] = serial_main_prog
+            # TODO(ljz): pir not support clone_for_test,
+            # so we need to update the method to create eval/test program in engine.
+
+            # if mode != "train":
+            #     self._fwd_main_progs[mode] = serial_main_prog.clone(
+            #         for_test=True
+            #     )
+            # else:
+
+            self._fwd_main_progs[mode] = serial_main_prog
             return
 
         default_ctx = get_default_distributed_context()

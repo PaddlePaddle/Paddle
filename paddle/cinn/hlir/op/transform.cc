@@ -27,6 +27,9 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -1072,6 +1075,84 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
   return strategy;
 }
 
+std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  // check output shape
+  PADDLE_ENFORCE_EQ(output_shapes.empty(),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Output shape is empty! Please check.\n"));
+  PADDLE_ENFORCE_EQ(output_shapes[0].empty(),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Output shape is empty! Please check.\n"));
+
+  std::vector<int> axis;
+  auto input_shape = inputs[0]->shape;
+  if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
+    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    PADDLE_ENFORCE_EQ(axis.size(),
+                      output_shapes[0].size(),
+                      ::common::errors::InvalidArgument(
+                          "axis size is not equal output_shapes size! Please "
+                          "check setting.\n"));
+    // check axis and shape
+    for (int idx = 0; idx < axis.size(); ++idx) {
+      PADDLE_ENFORCE(axis[idx] >= 0 && axis[idx] < axis.size(),
+                     ::common::errors::InvalidArgument(
+                         "axis is not in the tensor shape."));
+      for (int idy = idx + 1; idy < axis.size(); ++idy) {
+        PADDLE_ENFORCE_NE(axis[idx],
+                          axis[idy],
+                          ::common::errors::InvalidArgument(
+                              "The same axis parameter exists!"));
+      }
+    }
+  } else {
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("axis is not be set! Please check."));
+  }
+
+  framework::CINNCompute transpose_compute([=](lang::Args args,
+                                               lang::RetValue *ret) {
+    PADDLE_ENFORCE(
+        !args.empty(),
+        ::common::errors::InvalidArgument("The input argument of transpose "
+                                          "compute is empty! Please check.\n"));
+    CINNValuePack input_args = args[0];
+    PADDLE_ENFORCE(!input_args.empty(),
+                   ::common::errors::InvalidArgument(
+                       "at least one input tensor for transpose compute.\n"));
+    Expr A = input_args[0];
+    PADDLE_ENFORCE(
+        A.as_tensor(),
+        ::common::errors::InvalidArgument("The input argument is not Tensor."));
+    PADDLE_ENFORCE_EQ(input_args.size(),
+                      2,
+                      ::common::errors::InvalidArgument(
+                          "The input args size must be equal to 2."));
+    PADDLE_ENFORCE(
+        input_args[1].is_string(),
+        ::common::errors::InvalidArgument(
+            "The second argument must be of type string and is the name "
+            "of the output tensor."));
+    std::string tensor_name = input_args[1].operator std::string();
+
+    auto out = pe::Transpose(A.as_tensor_ref(), axis, tensor_name);
+    auto stages = CreateStages({out});
+    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      transpose_compute, lang::PackedFunc(), "strategy.transpose.x86", 1);
+  return strategy;
+}
+
 std::vector<framework::shape_t> InferShapeForTranspose(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
@@ -2010,6 +2091,8 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForTranspose)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForTransposeSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForTranspose))
       .set_attr("inferdtype",

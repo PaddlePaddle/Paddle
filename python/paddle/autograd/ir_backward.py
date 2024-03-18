@@ -40,6 +40,7 @@ from paddle.autograd.backward_utils import (
     return_map_value_list,
     some_in_set,
     update_no_grad_set_by_stopgradient,
+    while_prune_check,
 )
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
@@ -597,6 +598,7 @@ def append_backward_ops(
         if op.name() != "builtin.combine" and op.name() != "builtin.split":
             clear_effective_forward_ops.append(op)
     with bwd_block:
+        while_tuple_ops = []
         for op in clear_effective_forward_ops:
             if paddle.framework.core.has_vjp(op):
                 # prepare output_grad
@@ -611,6 +613,7 @@ def append_backward_ops(
                 ) = make_input_with_input_stopgradient(op)
 
                 if op.name() == "cf.tuple_push":
+                    stackop = op.operand_source(0).get_defining_op()
                     with dynamic_shape_prim_vjp_guard(op, inputs):
                         copy_out = paddle.framework.core.call_vjp(
                             op,
@@ -621,6 +624,9 @@ def append_backward_ops(
                         )
 
                     pop_op = bwd_block.ops[-1]
+                    while_tuple_ops.append(pop_op)
+                    while_tuple_ops.append(op)
+                    while_tuple_ops.append(stackop)
                     bwd_ops = [pop_op]
                     for output, copy_output in zip(inputs[1:], copy_out[1:]):
                         control_flow_value_to_copyvalue_map[
@@ -818,6 +824,15 @@ def append_backward_ops(
                     state.op_to_opgrad[op] = []
 
         if fwd_block != bwd_block:
+            if while_prune_check(while_tuple_ops):
+                remove_op(bwd_block, while_tuple_ops[0], state)
+                while_tuple_ops[1].get_parent_block().remove_op(
+                    while_tuple_ops[1]
+                )
+                while_tuple_ops[2].get_parent_block().remove_op(
+                    while_tuple_ops[2]
+                )
+
             append_yield(
                 bwd_block,
                 base_op,

@@ -736,31 +736,65 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
         "end_axis must be greater than or equal to start_axis."));
   }
 
-  std::vector<int64_t> tmp_shape(x_dim);
-  tmp_shape.insert(tmp_shape.begin(), 0);
-  auto xshape = full<T>(tmp_shape, 0.0, DataType::FLOAT32);
-  if (x_dim.size() == 0) {
-    std::vector<int64_t> res_shape(1, 1);
-    return std::make_tuple(reshape<T>(x, res_shape), xshape);
-  }
-  if (end_axis == start_axis) {
-    return std::make_tuple(reshape<T>(x, x_dim), xshape);
-  }
+  if (has_dynamic_shape(x.shape())) {
+    auto x_shape = shape<T>(x);
+    Tensor x_shape_tensor = full<T>({1}, 0, x_shape.dtype());
+    std::vector<Tensor> tmp_shape;
+    tmp_shape.push_back(x_shape_tensor);
+    for (size_t i = 0; i < x_dim.size(); i++) {
+      tmp_shape.push_back(get_slice<T>(x_shape, i));
+    }
+    x_shape_tensor = concat<T>(tmp_shape);
+    x_shape_tensor =
+        backend::full_with_tensor<T>(x_shape_tensor, 0.0, DataType::FLOAT32);
+    if (end_axis == start_axis) {
+      return std::make_tuple(backend::reshape<T>(x, x_shape), x_shape_tensor);
+    }
+    std::vector<Tensor> out_shape;
 
-  int slice_numel = 1;
-  for (int i = start_axis; i <= end_axis; ++i) {
-    slice_numel *= x_dim[i];
-  }
-  std::vector<int64_t> out_shape;
-  for (int i = 0; i < start_axis; ++i) {
-    out_shape.push_back(x_dim[i]);
-  }
-  out_shape.push_back(slice_numel);
-  for (size_t i = end_axis + 1; i < x_dim.size(); ++i) {
-    out_shape.push_back(x_dim[i]);
-  }
+    for (size_t i = 0; i < x_dim.size();) {
+      if (i == static_cast<size_t>(start_axis)) {
+        Tensor flat =
+            slice<T>(x_shape, {0}, {start_axis}, {end_axis + 1}, {1}, {});
+        flat = prod<T>(flat, {0}, false, false);
+        out_shape.push_back(reshape<T>(flat, {1}));
+        i = end_axis + 1;
+      } else {
+        out_shape.push_back(get_slice<T>(x_shape, i));
+        i++;
+      }
+    }
 
-  return std::make_tuple(reshape<T>(x, out_shape), xshape);
+    Tensor out_shape_tensor = concat<T>(out_shape);
+    return std::make_tuple(backend::reshape<T>(x, out_shape_tensor),
+                           x_shape_tensor);
+  } else {
+    std::vector<int64_t> tmp_shape(x_dim);
+    tmp_shape.insert(tmp_shape.begin(), 0);
+    auto xshape = full<T>(tmp_shape, 0.0, DataType::FLOAT32);
+    if (x_dim.size() == 0) {
+      std::vector<int64_t> res_shape(1, 1);
+      return std::make_tuple(reshape<T>(x, res_shape), xshape);
+    }
+    if (end_axis == start_axis) {
+      return std::make_tuple(reshape<T>(x, x_dim), xshape);
+    }
+
+    int slice_numel = 1;
+    for (int i = start_axis; i <= end_axis; ++i) {
+      slice_numel *= x_dim[i];
+    }
+    std::vector<int64_t> out_shape;
+    for (int i = 0; i < start_axis; ++i) {
+      out_shape.push_back(x_dim[i]);
+    }
+    out_shape.push_back(slice_numel);
+    for (size_t i = end_axis + 1; i < x_dim.size(); ++i) {
+      out_shape.push_back(x_dim[i]);
+    }
+
+    return std::make_tuple(reshape<T>(x, out_shape), xshape);
+  }
 }
 
 template <typename T>
