@@ -1498,9 +1498,9 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
   const auto& defining_info = param_map->at(name);
 
   pir::Value value = defining_info.value;
-  PADDLE_ENFORCE_EQ(
-      param_map->Has(value),
-      true,
+  PADDLE_ENFORCE_NE(
+      value,
+      nullptr,
       phi::errors::PreconditionNotMet(
           "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
   const pir::Type& type = value.type();
@@ -1886,8 +1886,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
       pir::Value value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
-      PADDLE_ENFORCE_EQ(operation->HasAttribute(value_res),
-                        true,
+      PADDLE_ENFORCE_NE(value_res,
+                        nullptr,
                         phi::errors::PreconditionNotMet(
                             "Expected op[%s]'s input %s is not null",
                             op_desc.Type(),
@@ -2452,9 +2452,9 @@ struct ElementwiseTranscriber : public OpTranscriber {
       x_defining_info = param_map->at(x_name);
     }
     pir::Value x_value = x_defining_info.value;
-    PADDLE_ENFORCE_EQ(
-        param_map->Has(x_value),
-        true,
+    PADDLE_ENFORCE_NE(
+        x_value,
+        nullptr,
         phi::errors::PreconditionNotMet(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), x_name));
     pir::Type x_type = x_value.type();
@@ -2492,9 +2492,9 @@ struct ElementwiseTranscriber : public OpTranscriber {
       y_defining_info = param_map->at(y_name);
     }
     pir::Value y_value = y_defining_info.value;
-    PADDLE_ENFORCE_EQ(
-        param_map->Has(y_value),
-        true,
+    PADDLE_ENFORCE_NE(
+        y_value,
+        nullptr,
         phi::errors::PreconditionNotMet(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
@@ -2624,9 +2624,9 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
                           y_name));
     auto y_defining_info = param_map->at(y_name);
     pir::Value y_value = y_defining_info.value;
-    PADDLE_ENFORCE_EQ(
-        param_map->Has(y_value),
-        true,
+    PADDLE_ENFORCE_NE(
+        y_value,
+        nullptr,
         phi::errors::PreconditionNotMet(
             "Expected op[%s]'s input %s is not null", op_desc.Type(), y_name));
     pir::Type y_type = y_value.type();
