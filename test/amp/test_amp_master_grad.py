@@ -157,8 +157,6 @@ class TestMasterGrad(unittest.TestCase):
             int(op_list['pd_op.adam_'].split(',')[0]),
             2 * total_steps,
         )
-        # Since two additional casts are called when constructing master grad,
-        # the number of operators of this type +2
         self.assertEqual(
             int(op_list['pd_op.cast'].split(',')[0]),
             total_steps * 3,
