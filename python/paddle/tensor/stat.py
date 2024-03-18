@@ -302,10 +302,7 @@ def nanmedian(x, axis=None, keepdim=False, mode='avg', name=None):
         If ``mode`` == 'min' and ``axis`` is int, the result will be a tuple of two tensors
             containing nanmedian values and their indices.
 
-        When ``mode`` == 'avg', the output dtype is the same as `x`.
-        When ``mode`` == 'min', the data type of nanmedian values will be the same as ``x``.
-            If indices are retured, the data type will be int64.
-
+        The data type of nanmedian values is the same as ``x``.
     Examples:
         .. code-block:: python
 
