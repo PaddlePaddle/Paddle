@@ -129,7 +129,7 @@ struct ScheduleInfoNode {
   // representing the iteration space
   std::vector<int64_t> factor_info;
 
-  std::string DebugStr() {
+  std::string DebugStr() const {
     std::stringstream ss;
 
     ss << "type  " << static_cast<int>(type) << "| axis info ";

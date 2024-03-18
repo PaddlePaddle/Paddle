@@ -225,9 +225,7 @@ void TileFirstGeneralTactic::ReorderFlattenInnerWithReduceAxis(
   // re-order flatten inner num with last dim
   auto loops = sch->GetLoops(block_id);
   if (IsInnerThreadSpatialLoopGT(context_->config, 1) &&
-      HasReduceAxis(context_->config) &&
-      !IsPerThreadReduceGELoopExtent(context_->config,
-                                     loops[reduce_current_axis_])) {
+      HasReduceAxis(context_->config)) {
     sch->Reorder({loops[2], loops[1]});
     if (IsReduceBlock(context_->config, block_id) &&
         sch->HasBlock(block_id + "_rf")) {
