@@ -70,7 +70,7 @@ class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
           auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
           if (!(w_dims.size() == 2 && x_dims.size() >= 2 &&
-                bias_dims.size() == 3)) {
+                bias_dims.size() == x_dims.size())) {
             return false;
           }
 
