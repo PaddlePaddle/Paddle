@@ -17,6 +17,10 @@ exclude = [
 line-length = 80
 target-version = "py38"
 
+[tool.ruff.format]
+# Prevent change to double quotes by some users use ruff format
+quote-style = "preserve"
+
 [tool.ruff.lint]
 select = [
     # Pycodestyle
