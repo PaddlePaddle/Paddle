@@ -25,6 +25,7 @@ from .parallel_layers import (  # noqa: F401
     model_parallel_random_seed,
 )
 from .pipeline_parallel import (  # noqa: F401
+    PipelineParallelMicroStepLocations,
     PipelineParallel,
     PipelineParallelWithInterleave,
     PipelineParallelWithInterleaveFthenB,
