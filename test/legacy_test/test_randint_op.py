@@ -225,6 +225,7 @@ class TestRandintAPI_ZeroDim(unittest.TestCase):
         self.assertEqual(x.shape, [])
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -232,12 +233,12 @@ class TestRandintAPI_ZeroDim(unittest.TestCase):
             x = paddle.randint(-10, 10, [])
 
             # Test compile shape
-            self.assertEqual(x.shape, ())
+            self.assertEqual(tuple(x.shape), ())
 
             # Test runtime shape
             exe = paddle.static.Executor()
             result = exe.run(fetch_list=[x])
-            self.assertEqual(result[0].shape, ())
+            self.assertEqual(tuple(result[0].shape), ())
 
         paddle.enable_static()
 
