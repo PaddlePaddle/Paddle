@@ -319,13 +319,13 @@ std::unordered_map<Node*, Node*> BuildVirtualConsumer(
 
     auto output_shape = GetOutputShape(t_node, shape_dict);
     if (!found && t_node != e_node && e_node) {
-      auto enode_output_shape = GetOutputShape(e_node, shape_dict);
+      auto e_node_output_shape = GetOutputShape(e_node, shape_dict);
       if (std::accumulate(output_shape.begin(),
                           output_shape.end(),
                           1,
                           std::multiplies<int>()) ==
-          std::accumulate(enode_output_shape.begin(),
-                          enode_output_shape.end(),
+          std::accumulate(e_node_output_shape.begin(),
+                          e_node_output_shape.end(),
                           1,
                           std::multiplies<int>())) {
         virtual_consumers[t_node] = e_node;
