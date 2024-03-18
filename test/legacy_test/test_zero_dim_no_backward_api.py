@@ -260,10 +260,9 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
-        self.shape = []
 
-    def init_data(self):
-        self.shape = [
+    def create_dynamic_shape(self):
+        return [
             paddle.full([], 2, 'int32'),
             paddle.full([], 3, 'int32'),
             paddle.full([], 4, 'int32'),
@@ -315,12 +314,11 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(res, [1.0, 2.0, 3.0, 4.0, 5.0])
 
     def test_normal(self):
-        self.init_data()
         mean = paddle.full([], 0.0)
         std = paddle.full([], 0.0)
         out1 = paddle.normal(mean, std)
         out2 = paddle.normal(0.0, 1.0, [])
-        out3 = paddle.normal(0.0, 1.0, self.shape)
+        out3 = paddle.normal(0.0, 1.0, self.create_dynamic_shape())
 
         res = self.exe.run(
             paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
@@ -334,9 +332,8 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            self.init_data()
             out1 = paddle.rand([])
-            out2 = paddle.rand(self.shape)
+            out2 = paddle.rand(self.create_dynamic_shape())
 
             res = paddle.static.Executor().run(
                 main_program, fetch_list=[out1, out2]
@@ -349,9 +346,8 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            self.init_data()
             out1 = paddle.randn([])
-            out2 = paddle.randn(self.shape)
+            out2 = paddle.randn(self.create_dynamic_shape())
 
             res = paddle.static.Executor().run(
                 main_program, fetch_list=[out1, out2]
@@ -400,9 +396,8 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            self.init_data()
             out1 = paddle.standard_normal([])
-            out2 = paddle.standard_normal(self.shape)
+            out2 = paddle.standard_normal(self.create_dynamic_shape())
 
             res = paddle.static.Executor().run(
                 main_program, fetch_list=[out1, out2]
@@ -415,9 +410,8 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            self.init_data()
             out1 = paddle.uniform([])
-            out2 = paddle.uniform(self.shape)
+            out2 = paddle.uniform(self.create_dynamic_shape())
 
             res = paddle.static.Executor().run(
                 main_program, fetch_list=[out1, out2]
@@ -430,10 +424,9 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            self.init_data()
             out1 = paddle.empty([])
             out2 = paddle.empty_like(out1)
-            out3 = paddle.empty(self.shape)
+            out3 = paddle.empty(self.create_dynamic_shape())
 
             res = paddle.static.Executor().run(
                 main_program, fetch_list=[out1, out2, out3]
@@ -447,11 +440,12 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            self.init_data()
             out1 = paddle.full([], 0.5)
             out2 = paddle.full_like(out1, 0.5)
-            out3 = paddle.full(self.shape, 0.5)
-            out4 = paddle.full(self.shape, paddle.full([], 0.5))
+            out3 = paddle.full(self.create_dynamic_shape(), 0.5)
+            out4 = paddle.full(
+                self.create_dynamic_shape(), paddle.full([], 0.5)
+            )
 
             res = paddle.static.Executor().run(
                 main_program,
@@ -467,10 +461,9 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            self.init_data()
             out1 = paddle.ones([])
             out2 = paddle.ones_like(out1)
-            out3 = paddle.ones(self.shape)
+            out3 = paddle.ones(self.create_dynamic_shape())
 
             res = paddle.static.Executor().run(
                 main_program, fetch_list=[out1, out2, out3]
@@ -484,10 +477,9 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            self.init_data()
             out1 = paddle.zeros([])
             out2 = paddle.zeros_like(out1)
-            out3 = paddle.zeros(self.shape)
+            out3 = paddle.zeros(self.create_dynamic_shape())
 
             res = paddle.static.Executor().run(
                 main_program, fetch_list=[out1, out2, out3]
