@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 paddle.enable_static()
@@ -54,6 +55,7 @@ class TestRandintOp(OpTest):
 
 
 class TestRandintOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             self.assertRaises(TypeError, paddle.randint, 5, shape=np.array([2]))
@@ -66,14 +68,6 @@ class TestRandintOpError(unittest.TestCase):
             self.assertRaises(
                 TypeError, paddle.randint, 5, shape=[shape_tensor]
             )
-
-    def test_pir_error(self):
-        with paddle.pir_utils.IrGuard():
-            self.assertRaises(TypeError, paddle.randint, 5, shape=np.array([2]))
-            self.assertRaises(TypeError, paddle.randint, 5, dtype='float32')
-            self.assertRaises(ValueError, paddle.randint, 5, 5)
-            self.assertRaises(ValueError, paddle.randint, -5)
-            self.assertRaises(TypeError, paddle.randint, 5, shape=['2'])
 
 
 class TestRandintOp_attr_tensorlist(OpTest):
