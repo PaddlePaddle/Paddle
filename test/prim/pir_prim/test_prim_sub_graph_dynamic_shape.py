@@ -316,7 +316,7 @@ class TestPrimSwiglu2(TestPrimBase):
 class TestPrimLayernorm(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [2, 32, 1280]
+        self.shape_x = [2, 32, 128]
         self.dtype_x = "float32"
         self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)

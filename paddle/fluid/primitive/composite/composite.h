@@ -440,36 +440,29 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     auto difference = x_cast - mean_;
     auto var_tmp1 = difference * difference;
     auto variance = mean_decomp<T>(var_tmp1, axis, true);
-    VLOG(0) << "=========================0";
     auto var_tmp3 = variance + full<T>(empty_shape, epsilon, variance.dtype());
-    VLOG(0) << "=========================1";
     auto rsqrt_var = elementwise_pow<T>(
         var_tmp3, full<T>(empty_shape, -0.5, var_tmp3.dtype()));
     auto out = difference * rsqrt_var;
-
-    auto scale_ptr = scale.get_ptr();
-    auto bias_ptr = bias.get_ptr();
 
     Tensor slice_shape_l = get_slice_vec<T>(shape<T>(x), 0, begin_norm_axis);
     Tensor slice_shape_r =
         get_slice_vec<T>(shape<T>(x), begin_norm_axis, x_dim.size());
     Tensor scale_cast;
-    if (scale_ptr) {
-      scale_cast = reshape<T>(*scale_ptr, slice_shape_r);
+    if (scale) {
+      scale_cast = reshape<T>(scale.get(), slice_shape_r);
       if (need_cast) {
         scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
       }
       out = out * scale_cast;
     }
     Tensor bias_cast;
-    if (bias_ptr) {
-      bias_cast = backend::reshape_with_tensor<T>(*bias_ptr, slice_shape_r);
+    if (bias) {
+      bias_cast = backend::reshape_with_tensor<T>(bias.get(), slice_shape_r);
       if (need_cast) {
         bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
       }
-      VLOG(0) << "=========================2";
       out = out + bias_cast;
-      VLOG(0) << "=========================3";
     }
     mean_ = backend::reshape_with_tensor<T>(mean_, slice_shape_l);
     variance = backend::reshape_with_tensor<T>(variance, slice_shape_l);
