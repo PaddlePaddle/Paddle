@@ -22,6 +22,8 @@
 
 namespace paddle {
 namespace dialect {
+class TensorDistAttribute;
+
 class ShardTensorOp : public pir::Op<ShardTensorOp> {
  public:
   using Op::Op;
@@ -46,7 +48,7 @@ class ReShardOp : public pir::Op<ReShardOp> {
   TEST_API static void Build(pir::Builder& builder,             // NOLINT
                              pir::OperationArgument& argument,  // NOLINT
                              pir::Value input,
-                             pir::AttributeMap attributes);
+                             TensorDistAttribute tensor_dist_attr);
   void VerifySig();
 };
 }  // namespace dialect
