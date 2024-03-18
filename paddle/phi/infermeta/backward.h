@@ -372,6 +372,9 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             bool keep_dim,
                             MetaTensor* x_grad);
 
+void PartialConcatGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                                std::vector<MetaTensor*> x_grads);
+
 void NceGradInferMeta(const MetaTensor& input,
                       const MetaTensor& bias,
                       const MetaTensor& weight,

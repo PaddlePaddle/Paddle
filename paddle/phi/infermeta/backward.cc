@@ -849,6 +849,16 @@ void NanmedianGradInferMeta(const MetaTensor& x,
   x_grad->set_dtype(x.dtype());
 }
 
+void PartialConcatGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                                std::vector<MetaTensor*> x_grads) {
+  auto input_num = xs.size();
+  for (size_t i = 0; i < input_num; i++) {
+    auto x_dims = xs[i]->dims();
+    x_grads[i]->set_dims(x_dims);
+    x_grads[i]->set_dtype(xs[i]->dtype());
+  }
+}
+
 void NceGradInferMeta(const MetaTensor& input,
                       const MetaTensor& bias,
                       const MetaTensor& weight,

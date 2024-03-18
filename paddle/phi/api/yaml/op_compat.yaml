@@ -2469,6 +2469,15 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : partial_concat
+  backward : partial_concat_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : partial_recv
   outputs :
     out : Out
