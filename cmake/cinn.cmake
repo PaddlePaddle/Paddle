@@ -218,7 +218,6 @@ function(gen_cinncore LINKTYPE)
     ${LINKTYPE}
     SRCS
     ${core_src}
-    ${group_pattern_util}
     DEPS
     glog
     ${llvm_libs}
