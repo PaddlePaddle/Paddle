@@ -44,7 +44,7 @@ class TestBinaryCrossEntropyWithLogits(unittest.TestCase):
             paddle.core._set_prim_all_enabled(True)
             static_result = paddle.jit.to_static(
                 paddle.nn.functional.binary_cross_entropy_with_logits,
-                full_graph=True
+                full_graph=True,
             )(
                 self.logits,
                 self.labels,
@@ -66,23 +66,20 @@ class TestBinaryCrossEntropyWithLogits(unittest.TestCase):
 class TestBinaryCrossEntropyWithLogits1(TestBinaryCrossEntropyWithLogits):
     def setUp(self):
         super().setUp()
-        self.weight = paddle.to_tensor(
-            np.random.randn(10, 5).astype("float32"))
+        self.weight = paddle.to_tensor(np.random.randn(10, 5).astype("float32"))
+
 
 class TestBinaryCrossEntropyWithLogits2(TestBinaryCrossEntropyWithLogits):
     def setUp(self):
         super().setUp()
-        self.pos_weight = paddle.to_tensor(
-            np.random.randn(5).astype("float32"))
+        self.pos_weight = paddle.to_tensor(np.random.randn(5).astype("float32"))
 
 
 class TestBinaryCrossEntropyWithLogits3(TestBinaryCrossEntropyWithLogits):
     def setUp(self):
         super().setUp()
-        self.weight = paddle.to_tensor(
-            np.random.randn(10, 5).astype("float32"))
-        self.pos_weight = paddle.to_tensor(
-            np.random.randn(5).astype("float32"))
+        self.weight = paddle.to_tensor(np.random.randn(10, 5).astype("float32"))
+        self.pos_weight = paddle.to_tensor(np.random.randn(5).astype("float32"))
 
 
 if __name__ == "__main__":
