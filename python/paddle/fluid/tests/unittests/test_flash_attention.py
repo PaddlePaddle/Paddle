@@ -25,6 +25,7 @@ from paddle.fluid import core
 from paddle.nn.functional.flash_attention import (
     flash_attention,
     flash_attention_with_mask,
+    flash_attention_with_sparse_mask,
     flash_attn_unpadded,
 )
 
@@ -321,9 +322,7 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
             mask, place=self.place, dtype=self.dtype, stop_gradient=False
         )
 
-        out = flash_attention_with_mask(
-            q, k, v, m, dropout=self.dropout, causal=self.causal
-        )
+        out = flash_attention_with_mask(q, k, v, m, self.dropout, self.causal)
         out_ = attention_naive_with_mask(q_, k_, v_, m)
         out.backward()
         out_.backward()
@@ -478,7 +477,7 @@ class TestFlashAttentionWithSparseMaskAPI(unittest.TestCase):
             start_row_indices, dtype=paddle.int32
         )
 
-        out = flash_attention_with_mask(
+        out = flash_attention_with_sparse_mask(
             q,
             k,
             v,
@@ -500,6 +499,17 @@ class TestFlashAttenionWithSparseMaskAPITest(
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = True
+
+
+class TestFlashAttenionWithSparseMaskBF16APITest(
+    TestFlashAttentionWithSparseMaskAPI
+):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = 'bfloat16'
         self.dropout = 0.0
         self.causal = True
 
