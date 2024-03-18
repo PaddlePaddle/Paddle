@@ -114,7 +114,7 @@ std::string BuildGroupId(const ::pir::GroupOpsVec& ops_list) {
 struct GroupClusterNode {
   // all the ops in each Node
   std::vector<::pir::Operation*> ops;
-  ::pir::Value output_value;
+  std::vector<::pir::Value> output_values;
   // group kind
   cinn::hlir::framework::OpPatternKind group_kind{
       cinn::hlir::framework::kElementWise};
@@ -162,7 +162,9 @@ struct GroupClusterNode {
     return ss.str();
   }
 
-  void SetOutputValue(const ::pir::Value value) { output_value = value; }
+  void AddOutputValue(const ::pir::Value value) {
+    output_values.emplace_back(value);
+  }
 
   void MergeNode(const GroupClusterNode& node,
                  const ScheduleInfoNode& inner_sch_node) {
@@ -710,6 +712,8 @@ GroupClusterNode HorizontalMerge(const GroupClusterNode& a,
                                  const GroupClusterNode& b) {
   GroupClusterNode res = a;
   res.MergeNode(b, ScheduleInfoNode());
+  res.output_values.insert(
+      res.output_values.end(), b.output_values.begin(), b.output_values.end());
   return res;
 }
 
@@ -910,7 +914,7 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
   auto yield_op = op_list.back();
   for (size_t i = 0; i < yield_op->num_operands(); ++i) {
     yield_output_ops.insert(yield_op->operand_source(i).defining_op());
-    op_path[yield_op->operand_source(i).defining_op()].SetOutputValue(
+    op_path[yield_op->operand_source(i).defining_op()].AddOutputValue(
         yield_op->operand_source(i));
   }
 
@@ -1058,7 +1062,7 @@ class CinnGroupClusterPattern
       if (node.ops.size() == 0) {
         continue;
       }
-      auto output_values = std::vector<::pir::Value>({node.output_value});
+      auto output_values = std::vector<::pir::Value>(node.output_values);
       auto uniq_ops = SortByOriginalOrderAndUniq(group_op, node.ops);
 
       auto new_group_op = ReplaceWithGroupOp(
