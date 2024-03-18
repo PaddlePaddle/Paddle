@@ -20,7 +20,6 @@
 
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/common/broadcast_tree.h"
-#include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -38,6 +37,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
@@ -514,7 +514,7 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
   VLOG(6) << "Before simply condition block: " << *program;
 
   SimplyConditionBlock(rewriter, &group_map);
-  VLOG(6) << "After simply condition block: " << *program;
+  VLOG(1) << "After simply condition block: " << *program;
 
   // 3. compile condition block to jit_kernel_op
   CompileGroupToJitKernelOp(group_inputs, pir_compiler, rewriter, &group_map);
@@ -690,7 +690,7 @@ symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
     std::vector<symbol::DimExpr> simplified_dim_expr{};
     for (const symbol::DimExpr& dim_expr : original_dim_expr) {
       simplified_dim_expr.push_back(symbol::SimplifyDimExpr(
-          cinn::common::SubstituteDimExpr(dim_expr, dim_expr_map)));
+          symbol::SubstituteDimExpr(dim_expr, dim_expr_map)));
     }
     return simplified_dim_expr;
   };
@@ -732,6 +732,8 @@ symbol::ShapeOrDataDimExprs TrySubstitute(
   if (!IsShapeOrDataNeedSubstitute(shape_or_data, dim_expr_map)) {
     return shape_or_data;
   }
+  VLOG(0) << "##### Needs Substitute : " << shape_or_data << " -> "
+          << SubstituteShapeOrData(shape_or_data, dim_expr_map);
   return SubstituteShapeOrData(shape_or_data, dim_expr_map);
 }
 
@@ -828,6 +830,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
       const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
       pir::PatternRewriter& rewriter) const {  // NOLINT
+    VLOG(0) << "###### ProcessGroup Static ######";
     auto group_inputs = GetBlockOutsideInput(group->ops);
     // compile group to jit_kernel_op
     auto op_attr_map = CompileGroupAsOpAttribute(pir_compiler, {group});
