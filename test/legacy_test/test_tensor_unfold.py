@@ -39,7 +39,7 @@ class TestTensorUnfold(unittest.TestCase):
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
                 a = paddle.unfold(x, 0, 5, 1)
-                self.assertTrue(np.allclose(a.numpy(), x_np.T))
+                np.testing.assert_allclose(a.numpy()[0], x_np.T)
 
     def test_tensor_unfold_backward(self):
         for idx, p in enumerate(self.places):
@@ -79,7 +79,7 @@ class TestTensorUnfold2(unittest.TestCase):
                 x = paddle.to_tensor(x_np, place=p)
                 a = paddle.unfold(x, -1, 2, 5)
                 target = np.stack((x_np[0:2], x_np[5:7], x_np[10:12]))
-                self.assertTrue(np.allclose(a.numpy(), target))
+                np.testing.assert_allclose(a.numpy(), target)
 
     def test_tensor_unfold_backward(self):
         for idx, p in enumerate(self.places):

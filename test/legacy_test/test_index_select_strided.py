@@ -47,13 +47,13 @@ class TestIndexSelectStrided(unittest.TestCase):
                 # check inplace
                 row0[0] = 0
                 x_np[0][0] = 0
-                self.assertTrue(np.allclose(x.numpy(), x_np))
-                self.assertTrue(np.allclose(row0.numpy(), x_np[0]))
-                self.assertTrue(np.allclose(row1.numpy(), x_np[1]))
-                self.assertTrue(np.allclose(row2.numpy(), x_np[2]))
-                self.assertTrue(np.allclose(col0.numpy(), x_np[:, 0]))
-                self.assertTrue(np.allclose(col1.numpy(), x_np[:, 1]))
-                self.assertTrue(np.allclose(col2.numpy(), x_np[:, 2]))
+                np.testing.assert_allclose(x.numpy(), x_np)
+                np.testing.assert_allclose(row0.numpy(), x_np[0])
+                np.testing.assert_allclose(row1.numpy(), x_np[1])
+                np.testing.assert_allclose(row2.numpy(), x_np[2])
+                np.testing.assert_allclose(col0.numpy(), x_np[:, 0])
+                np.testing.assert_allclose(col1.numpy(), x_np[:, 1])
+                np.testing.assert_allclose(col2.numpy(), x_np[:, 2])
 
     def test_index_select_strided_backward(self):
         for idx, p in enumerate(self.places):

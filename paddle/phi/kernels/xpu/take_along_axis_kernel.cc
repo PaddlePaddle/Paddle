@@ -33,45 +33,45 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
 
   if (x.numel() == 0 || index.numel() == 0) return;
 
-  const auto& index_type = index.dtype();
-  bool index_type_match =
-      index_type == DataType::INT32 || index_type == DataType::INT64;
-  PADDLE_ENFORCE_EQ(index_type_match,
+  const auto& index_dtype = index.dtype();
+  bool index_dtype_match =
+      index_dtype == DataType::INT32 || index_dtype == DataType::INT64;
+  PADDLE_ENFORCE_EQ(index_dtype_match,
                     true,
                     errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        DataTypeToString(index_type),
+                        DataTypeToString(index_dtype),
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
-  std::vector<int64_t> xshape(x.dims().size());
+  std::vector<int64_t> x_shape(x.dims().size());
   for (int i = 0; i < x.dims().size(); ++i) {
-    xshape[i] = x.dims()[i];
+    x_shape[i] = x.dims()[i];
   }
-  std::vector<int64_t> idxshape(index.dims().size());
+  std::vector<int64_t> index_shape(index.dims().size());
   for (int i = 0; i < index.dims().size(); ++i) {
-    idxshape[i] = index.dims()[i];
+    index_shape[i] = index.dims()[i];
   }
 
-  if (xshape.size() <= 1 && idxshape.size() <= 1) {
-    for (int i = xshape.size(); i < 2; ++i) {
-      xshape.push_back(1);
-      idxshape.push_back(1);
+  if (x_shape.size() <= 1 && index_shape.size() <= 1) {
+    for (int i = x_shape.size(); i < 2; ++i) {
+      x_shape.push_back(1);
+      index_shape.push_back(1);
     }
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
   int r = XPU_SUCCESS;
 #ifndef PADDLE_WITH_XPU_PLUGIN
-  if (index_type == DataType::INT32) {
+  if (index_dtype == DataType::INT32) {
     r = xpu::gather_element<XPUType, int>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         index.data<int>(),
         reinterpret_cast<XPUType*>(out->data<T>()),
-        xshape,
-        idxshape,
+        x_shape,
+        index_shape,
         axis);
   } else {
     r = xpu::gather_element<XPUType, int64_t>(
@@ -79,20 +79,20 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
         reinterpret_cast<const XPUType*>(x.data<T>()),
         index.data<int64_t>(),
         reinterpret_cast<XPUType*>(out->data<T>()),
-        xshape,
-        idxshape,
+        x_shape,
+        index_shape,
         axis);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather_element");
 #else
-  if (index_type == DataType::INT32) {
+  if (index_dtype == DataType::INT32) {
     r = xpu::plugin::take_along_axis<XPUType, int>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         index.data<int>(),
         reinterpret_cast<XPUType*>(out->data<T>()),
-        xshape,
-        idxshape,
+        x_shape,
+        index_shape,
         axis);
   } else {
     r = xpu::plugin::take_along_axis<XPUType, int64_t>(
@@ -100,8 +100,8 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
         reinterpret_cast<const XPUType*>(x.data<T>()),
         index.data<int64_t>(),
         reinterpret_cast<XPUType*>(out->data<T>()),
-        xshape,
-        idxshape,
+        x_shape,
+        index_shape,
         axis);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "take_along_axis");

@@ -152,9 +152,9 @@ class PADDLE_API DeviceContext {
                       bool fake_alloc = false) const;
 
   template <typename T>
-  T* Alloc(TensorBase* tensor,
-           size_t requested_size = 0,
-           bool pinned = false) const;
+  TEST_API T* Alloc(TensorBase* tensor,
+                    size_t requested_size = 0,
+                    bool pinned = false) const;
 
   /**
    * @brief Allocate host memory for tensor.

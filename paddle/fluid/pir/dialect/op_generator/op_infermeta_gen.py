@@ -49,8 +49,8 @@ CREATE_INPUT_VALUE_TEMPLATE = """
   pir::Value {input_name}_ = input_values[{index}]; (void){input_name}_;"""
 
 ENFORCE_INPUT_NUM_TEMPLATE = """
-  IR_ENFORCE(input_values.size() == {op_input_name_list_size},
-      "Num of inputs is expected to be {op_input_name_list_size} but got %d.", input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size() == {op_input_name_list_size}, true, phi::errors::InvalidArgument(
+      "Num of inputs is expected to be {op_input_name_list_size} but got %d.", input_values.size()));
 """
 
 GET_INPUT_TYPE_TEMPLATE = """
@@ -492,36 +492,46 @@ def GetAttributes(
     attr_args_is_map,
 ):
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<{attr_ir_type}>().data();
 """
     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<pir::StrAttribute>().AsString();
 """
     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name};
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
     {attribute_name}.push_back(attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().at(i).dyn_cast<{inner_type}>().{data_name}());
   }}
 """
     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
 """
     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{attr_type}>();
 """
 
@@ -667,7 +677,7 @@ def GenDistBranch(args, op_info):
 """
             dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
     TEMPLATE = """
-    attributes[kAttrOpDistAttrs] = OperationDistAttribute::get(
+    attributes[kAttrOpDistAttr] = OperationDistAttribute::get(
         pir::IrContext::Instance(),
         op_mesh,
         operand_dist_attrs,

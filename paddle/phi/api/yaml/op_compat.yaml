@@ -3712,6 +3712,12 @@
   outputs :
     {out : Out}
 
+- op: fused_token_prune
+  inputs :
+    {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
+  outputs :
+    {slimmed_x : SlimmedX, cls_inds : CLSInds}
+
 - op: fusion_squared_mat_sub
   inputs :
     x : X
@@ -3802,6 +3808,12 @@
 - op: partial_send
   inputs :
     x : X
+
+- op: prune_gate_by_capacity
+  inputs:
+    {gate_idx: GateIdx, expert_count: ExpertCount}
+  outputs:
+    new_gate_idx: NewGateIdx
 
 - op: random_routing
   inputs:

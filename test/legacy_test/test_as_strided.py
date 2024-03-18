@@ -39,7 +39,7 @@ class TestAsStrided(unittest.TestCase):
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
                 a = paddle.as_strided(x, shape=(3, 4), stride=(32, 1))
-                self.assertTrue(np.allclose(a.numpy(), x_np[:3, :4]))
+                np.testing.assert_allclose(a.numpy(), x_np[:3, :4])
 
     def test_as_strided_backward(self):
         for idx, p in enumerate(self.places):

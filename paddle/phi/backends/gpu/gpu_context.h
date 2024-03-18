@@ -69,7 +69,7 @@ class DnnWorkspaceHandle {
 
   void ResetWorkspace();
 
-  void ReallocWorkspace(size_t required_workspace_bytes);
+  TEST_API void ReallocWorkspace(size_t required_workspace_bytes);
 
   DnnWorkspaceHandle(DnnWorkspaceHandle&&) = default;
   DnnWorkspaceHandle& operator=(DnnWorkspaceHandle&&) = delete;
