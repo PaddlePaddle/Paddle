@@ -197,12 +197,16 @@ Transformer WrapForTransformer(const ir::Var& v);
 
 Transformer WrapForsTransformer(const std::vector<ir::Var>& vs);
 Transformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
-                                        const ir::Expr dst_load);
+                                        const ir::Expr& dst_load);
 
 void ReplaceTarget(ir::Expr* e, const ir::Expr& t, const ir::Expr dst);
 
 Transformer WrapStoreTransformer(const ir::Tensor& tensor,
                                  const std::vector<ir::Expr>& indices);
+
+Transformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
+                                const ir::Tensor& tensor,
+                                const std::vector<ir::Expr>& axis_exprs);
 
 std::vector<ir::Var> CreateInnerBlockVars(
     const std::vector<ir::Var>& block_vars);

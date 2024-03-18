@@ -181,6 +181,7 @@ ir::Expr Mapping::GetSingle(const ir::Expr& x) const {
   }
   return *o.begin();
 }
+
 Mapping Mapping::operator*(Mapping x) const {
   auto new_f = [self = *this, x = x](const ir::Expr& e) -> ExprSet {
     const auto& rs = self.f_(e);
@@ -198,6 +199,7 @@ Mapping Mapping::operator*(Mapping x) const {
   };
   return Mapping(std::function(new_f), x.name + "*" + this->name);
 }
+
 Mapping Mapping::GetIdentity() {
   return Mapping([](const ir::Expr& e) { return std::vector<ir::Expr>{e}; },
                  "identity");
@@ -369,7 +371,7 @@ Transformer WrapForsTransformer(const std::vector<ir::Var>& vs) {
 }
 
 Transformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
-                                        const ir::Expr dst_load) {
+                                        const ir::Expr& dst_load) {
   const auto& f = [&](const ir::Expr& e) -> ir::Expr {
     auto copied_e = ir::ir_utils::IRCopy(e);
     const auto& load = (SearchUtils::ChildTensorLoads *
@@ -410,6 +412,32 @@ Transformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
         e,
         target_vars,
         std::vector<ir::Expr>(dest_vars.begin(), dest_vars.end()));
+  };
+  return Transformer(f);
+}
+
+Transformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
+                                const ir::Tensor& tensor,
+                                const std::vector<ir::Expr>& axis_exprs) {
+  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+    switch (reduce_type) {
+      case ir::Reduce::kSum:
+        return ir::Store::Make(tensor, tensor(axis_exprs) + e, axis_exprs);
+      case ir::Reduce::kMul:
+        return ir::Store::Make(tensor, tensor(axis_exprs) * e, axis_exprs);
+      case ir::Reduce::kMax:
+        return ir::Store::Make(
+            tensor, ir::Max::Make(tensor(axis_exprs), e), axis_exprs);
+      case ir::Reduce::kMin:
+        return ir::Store::Make(
+            tensor, ir::Min::Make(tensor(axis_exprs), e), axis_exprs);
+      case ir::Reduce::kAll:
+        return ir::Store::Make(tensor, tensor(axis_exprs) && e, axis_exprs);
+      case ir::Reduce::kAny:
+        return ir::Store::Make(tensor, tensor(axis_exprs) || e, axis_exprs);
+      default:
+        CINN_NOT_IMPLEMENTED
+    };
   };
   return Transformer(f);
 }

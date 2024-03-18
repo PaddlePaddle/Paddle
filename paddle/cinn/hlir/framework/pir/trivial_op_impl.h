@@ -105,8 +105,8 @@ ir::Expr CreateReduceExpr(
 ir::Expr CreateTrivialExpr(const std::vector<ir::Var>& output_iters,
                            const ir::Expr& function_body,
                            const ir::Tensor& new_write_tensor);
-ir::Expr CreateExprWithNewComputeBody(FusibleOp fusible_op,
-                                      ir::Expr new_compute_body);
+ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
+                                      const ir::Expr& new_compute_body);
 struct FusionNode {
   FusibleOp fusible_op;
   ::pir::Operation* expr_related_op;
@@ -173,6 +173,8 @@ struct FusionGraph {
   void DoTrivialFusion();
 
   void ReduceLoopTranform();
+
+  void SplitReduceTransform();
 
   std::vector<ir::Expr> GetExprResults();
 

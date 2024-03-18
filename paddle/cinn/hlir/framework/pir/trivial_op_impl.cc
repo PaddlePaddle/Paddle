@@ -280,8 +280,8 @@ ir::Expr CreateTrivialExpr(const std::vector<ir::Var>& output_iters,
       ir::Block::Make({compute_body_schedule_block}))});
 }
 
-ir::Expr CreateExprWithNewComputeBody(FusibleOp fusible_op,
-                                      ir::Expr new_compute_body) {
+ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
+                                      const ir::Expr& new_compute_body) {
   struct Visitor {
     ir::Expr operator()(const ReduceOp& op) {
       return CreateReduceExpr(GetOutputIters(op),
@@ -543,11 +543,89 @@ FusionGraph::~FusionGraph() {
   }
 }
 
+std::vector<ir::Expr> GetShapeFromVars(const std::vector<ir::Var>& vars) {
+  std::vector<ir::Expr> res;
+  for (const auto& v : vars) {
+    res.emplace_back(v->upper_bound);
+  }
+  return res;
+}
+
+void FusionGraph::SplitReduceTransform() {
+  VLOG(4) << "SplitReduceTransform";
+  std::vector<FusibleOp> result;
+  for (const auto& fop : fusion_results_) {
+    if (std::holds_alternative<ReduceOp>(fop)) {
+      ReduceOp reduce_op = std::get<ReduceOp>(fop);
+      ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
+      // substitude compute_body with a new init value.
+      ir::Expr trivial_compute_body =
+          TransformerUtils::ChangeTensorLoadTransformer(
+              GetOutputTensor(fop),
+              GetInitExpr(reduce_op))(GetComputeBody(reduce_op));
+
+      const std::vector<ir::Var>& all_iters = ComposeUtils::ConcatVector(
+          GetOutputIters(reduce_op), GetReduceIters(reduce_op));
+      VLOG(4) << "Trivial Compute Body is " << trivial_compute_body;
+      ir::Tensor new_trivial_tensor =
+          ir::Tensor(reduce_out_tensor->name + "_split_transform",
+                     reduce_out_tensor->type(),
+                     GetShapeFromVars(all_iters),
+                     GetShapeFromVars(all_iters),
+                     ir::ComputeOp::Make(
+                         reduce_out_tensor->name + "_split_transform",
+                         [body = trivial_compute_body](
+                             const std::vector<Expr>& indices) { return body; },
+                         GetShapeFromVars(all_iters),
+                         GetShapeFromVars(all_iters),
+                         {}),
+                     {});
+      new_trivial_tensor->WithBuffer();
+      VLOG(4) << "Created Tensor is: " << new_trivial_tensor;
+      VLOG(4) << "Load Expr is: "
+              << new_trivial_tensor(ComposeUtils::VarVec2ExprVec(all_iters));
+
+      // push trivial op
+      VLOG(4) << "Splited TrivialOp is "
+              << CreateTrivialExpr(
+                     all_iters, trivial_compute_body, new_trivial_tensor);
+
+      result.emplace_back(TrivialOp(CreateTrivialExpr(
+          all_iters, trivial_compute_body, new_trivial_tensor)));
+
+      // push reduce op, change compute_body to
+      VLOG(4)
+          << "WrapReduceOperation start: with reduce_type: "
+          << GetOutputTensor(reduce_op)->body().As<ir::Reduce>()->reduce_type;
+      VLOG(4) << "WrapReduceOperation new_trivial_tensor: "
+              << new_trivial_tensor(ComposeUtils::VarVec2ExprVec(all_iters));
+      const ir::Expr& new_reduce_body = TransformerUtils::WrapReduceOperation(
+          GetOutputTensor(reduce_op)->body().As<ir::Reduce>()->reduce_type,
+          GetOutputTensor(reduce_op),
+          ComposeUtils::VarVec2ExprVec(GetOutputIters(reduce_op)))(
+          new_trivial_tensor(ComposeUtils::VarVec2ExprVec(all_iters)));
+      VLOG(4) << "Splited ReduceOp body is " << new_reduce_body;
+      VLOG(4) << "Splited ReduceOp is "
+              << CreateExprWithNewComputeBody(
+                     fop, SearchUtils::Store2Value.GetSingle(new_reduce_body));
+      result.emplace_back(ReduceOp(CreateExprWithNewComputeBody(
+          fop, SearchUtils::Store2Value.GetSingle(new_reduce_body))));
+    } else {
+      result.emplace_back(fop);
+    }
+  }
+  fusion_results_ = result;
+  VLOG(4) << "SplitReduceTransform End~";
+}
+
 std::vector<ir::Expr> FusionGraph::DoFusion() {
   VLOG(4) << "Start Trivial Fusion";
   DoTrivialFusion();
   VLOG(4) << "Start R + T and R + R Fusion";
   ReduceLoopTranform();
+  // TODO(@xubin): remove this when backend support arbitrary reduce.
+  VLOG(4) << "Split Reduce Transform into a tmp tensor to keep reduce clean.";
+  SplitReduceTransform();
   return GetExprResults();
 }
 
