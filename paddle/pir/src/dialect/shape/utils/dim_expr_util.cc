@@ -46,7 +46,7 @@ struct SimplifyOneOperand {
     } else {
       return Op<DimExpr>{ret_operand};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
@@ -71,7 +71,7 @@ struct SimplifyUnitOneOperand {
     } else {
       return expr;
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
@@ -123,7 +123,7 @@ struct SimplifyOperands {
     } else {
       return Op<DimExpr>{mut_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
@@ -388,7 +388,7 @@ struct GetInversed<Mul> {
 template <>
 struct GetInversed<Broadcast> {
   static DimExpr Call(const DimExpr& expr) {
-    LOG(FATAL) << "Broadcast is not a group in math.";
+    PADDLE_THROW(phi::errors::Fatal("Broadcast is not a group in math."));
   }
 };
 
@@ -461,7 +461,7 @@ struct FoldUnitConstant {
     } else {
       return Op<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
@@ -500,7 +500,7 @@ struct FoldConstants {
     } else {
       return Op<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
@@ -557,7 +557,7 @@ ConstRational SimplifiedConstRational(int64_t num, int64_t dem) {
 
 template <typename T>
 std::optional<ConstRational> GetConstRationalImpl(const T& expr) {
-  LOG(FATAL) << "not supported.";
+  PADDLE_THROW(phi::errors::Fatal("not supported."));
   return std::nullopt;
 }
 
@@ -722,7 +722,7 @@ struct FoldInversedPairToUnit {
     } else {
       return Op<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 
   std::optional<SearchResult> SearchInversedPair(
@@ -776,7 +776,7 @@ struct FoldRedundantSymbolicBroadcast {
     } else {
       return Broadcast<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 
   std::optional<MaxInt64> SearchMaxInt64(const List<DimExpr>& operands) {
@@ -835,7 +835,7 @@ struct FoldRedundantBroadcast {
     } else {
       return Broadcast<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 
   std::optional<SearchResult> SearchInversedPair(
