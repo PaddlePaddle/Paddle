@@ -761,11 +761,18 @@ bool WhileOp::InferSymbolicShape(
         shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
     for (size_t j = 0; j < input_arg_shape.size(); ++j) {
       if (!input_arg_shape[j].isa<int64_t>() &&
-          (input_arg_shape[j] == yield_value_shape[j] ||
-           original_input_shape[j] ==
-               yield_value_shape[j])) {  // Dim isn't changed in while
+          input_arg_shape[j] ==
+              yield_value_shape[j]) {  // Dim isn't changed in while
         shape_analysis->CreateDimExprBuilder().CstrEq(original_input_shape[j],
                                                       input_arg_shape[j]);
+        continue;
+      }
+      if (original_input_shape.size() == yield_value_shape.size() &&
+          !original_input_shape[j].isa<int64_t>() &&
+          original_input_shape[j] == yield_value_shape[j]) {
+        shape_analysis->CreateDimExprBuilder().CstrEq(original_input_shape[j],
+                                                      input_arg_shape[j]);
+        continue;
       }
     }
   }
