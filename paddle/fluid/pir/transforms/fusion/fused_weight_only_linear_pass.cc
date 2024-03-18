@@ -216,6 +216,17 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
     return ps;
   }
 
+  pir::GreedyRewriteConfig InitializeConfig() override {
+    pir::GreedyRewriteConfig config;
+
+    // NOTE(liuyuanle): Ensure that WithBiasPattern is executed before
+    // NoBiasPattern.
+    config.use_top_down_traversal = false;
+
+    config.max_iterations = 10;
+    return config;
+  }
+
   bool CanApplyOn(pir::Operation *op) const override {
     int sm_version = getSMVersion();
     if (sm_version != 70 && sm_version != 75 && sm_version != 80 &&
