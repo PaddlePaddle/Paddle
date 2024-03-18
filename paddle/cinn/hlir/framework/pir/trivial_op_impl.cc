@@ -193,6 +193,7 @@ std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
   for (auto& iter_var : all_iter_vars) {
     if (!(std::find(outer_iter_vars.begin(), outer_iter_vars.end(), iter_var) !=
           outer_iter_vars.end())) {
+      iter_var->is_reduce_axis = true;
       reduce_iter_vars.push_back(iter_var);
     }
   }

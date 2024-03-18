@@ -866,7 +866,7 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
 
 std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   // stage 1
-  auto first_stage_output = OpMergeWithOp(group_op);
+  const auto& first_stage_output = OpMergeWithOp(group_op);
 
   if (first_stage_output.size() <= 1) {
     return first_stage_output;
@@ -877,6 +877,7 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   if (second_stage_output.size() == 1) {
     return second_stage_output;
   }
+  const auto& second_stage_output = first_stage_output;
 
   // stage 3
   auto third_stage_output =
