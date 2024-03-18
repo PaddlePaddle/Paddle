@@ -18,10 +18,8 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle import base
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
-from paddle.static import Program, program_guard
 
 paddle.enable_static()
 
@@ -57,7 +55,9 @@ class TestRandintOp(OpTest):
 class TestRandintOpError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             self.assertRaises(TypeError, paddle.randint, 5, shape=np.array([2]))
             self.assertRaises(TypeError, paddle.randint, 5, dtype='float32')
             self.assertRaises(ValueError, paddle.randint, 5, 5)
@@ -119,7 +119,9 @@ class TestRandint_attr_tensor(OpTest):
 # Test python API
 class TestRandintAPI(unittest.TestCase):
     def test_api(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # results are from [0, 5).
             out1 = paddle.randint(5)
             # shape is a list and dtype is 'int32'
@@ -224,14 +226,16 @@ class TestRandintAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
     def test_static(self):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.randint(-10, 10, [])
 
             # Test compile shape
             self.assertEqual(x.shape, ())
 
             # Test runtime shape
-            exe = base.Executor()
+            exe = paddle.static.Executor()
             result = exe.run(fetch_list=[x])
             self.assertEqual(result[0].shape, ())
 
