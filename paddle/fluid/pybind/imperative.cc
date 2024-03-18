@@ -651,10 +651,6 @@ void BindImperative(py::module *m_ptr) {
         *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
         *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
   });
-  py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
-      .def("create_program_desc",
-           &imperative::jit::ProgramDescTracer::CreateProgramDesc)
-      .def("reset", &imperative::jit::ProgramDescTracer::Reset);
 
   py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
       .value("O0", paddle::imperative::AmpLevel::O0)
@@ -679,9 +675,6 @@ void BindImperative(py::module *m_ptr) {
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
       .def(py::init([]() { return std::make_unique<imperative::Tracer>(); }))
-      .def_property("_enable_program_desc_tracing",
-                    &imperative::Tracer::IsProgramDescTracingEnabled,
-                    &imperative::Tracer::SetEnableProgramDescTracing)
       .def_property("_use_promote",
                     &imperative::Tracer::GetUsePromote,
                     &imperative::Tracer::SetUsePromote)
@@ -745,9 +738,6 @@ void BindImperative(py::module *m_ptr) {
                   "but got Unknown Type!"));
             }
           })
-      .def("_get_program_desc_tracer",
-           &imperative::Tracer::GetProgramDescTracer,
-           py::return_value_policy::reference)
       .def("_generate_unique_name",
            &imperative::Tracer::GenerateUniqueName,
            py::arg("key") = "dygraph_tmp")
