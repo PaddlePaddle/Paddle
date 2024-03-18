@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature SoftmaxMaskFuseGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
-      "fused_softmax_mask_grad", {"Out", "Out@GRAD"}, {}, {"X@GRAD"});
+      "fused_softmax_mask_grad", {"Softmax", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi
