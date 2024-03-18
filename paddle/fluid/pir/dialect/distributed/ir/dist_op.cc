@@ -142,27 +142,12 @@ void ShardTensorOp::Build(pir::Builder& builder,
                      "dims_mapping size %d does not match input size %d",
                      dims_mapping.size(),
                      global_dims.size()));
-  std::vector<int> local_shape(global_dims.size());
-  for (int i = 0; i < global_dims.size(); ++i) {
-    if (dims_mapping[i] == -1) {
-      local_shape[i] = global_dims[i];
-    } else {
-      auto shard_size = process_mesh_shape[dims_mapping[i]];
-      PADDLE_ENFORCE(
-          global_dims[i] % shard_size == 0,
-          common::errors::PreconditionNotMet(
-              "global_dims size %d can't be evenly devided by shard_size %d",
-              global_dims[i],
-              shard_size));
-      local_shape[i] = global_dims[i] / shard_size;
-    }
-  }
-
+  auto local_shape = InferLocalDDim(global_dims, tensor_dist_attr);
   pir::Type out_dist_tensor_type =
       paddle::dialect::DistDenseTensorType::get(pir::IrContext::Instance(),
                                                 input_tensor_type,
                                                 tensor_dist_attr,
-                                                phi::make_ddim(local_shape));
+                                                local_shape);
   argument.AddOutput(out_dist_tensor_type);
 }
 
@@ -265,27 +250,13 @@ void ReShardOp::Build(pir::Builder& builder,
                      "dst dims_mapping size %d does not match input size %d",
                      dims_mapping.size(),
                      global_dims.size()));
-  std::vector<int> local_shape(global_dims.size());
-  for (int i = 0; i < global_dims.size(); ++i) {
-    if (dims_mapping[i] == -1) {
-      local_shape[i] = global_dims[i];
-    } else {
-      auto shard_size = process_mesh_shape[dims_mapping[i]];
-      PADDLE_ENFORCE(
-          global_dims[i] % shard_size == 0,
-          common::errors::PreconditionNotMet(
-              "global_dims size %d can't be evenly devided by shard_size %d",
-              global_dims[i],
-              shard_size));
-      local_shape[i] = global_dims[i] / shard_size;
-    }
-  }
 
+  auto local_shape = InferLocalDDim(global_dims, tensor_dist_attr);
   pir::Type out_dist_tensor_type = paddle::dialect::DistDenseTensorType::get(
       pir::IrContext::Instance(),
       input_tensor_type.dense_tensor_type(),
       tensor_dist_attr,
-      phi::make_ddim(local_shape));
+      local_shape);
   argument.AddOutput(out_dist_tensor_type);
 }
 
