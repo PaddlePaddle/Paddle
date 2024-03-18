@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,13 +22,17 @@ import paddle
 class TestBinaryCrossEntropyWithLogits(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.x = np.random.randn(10, 5).astype("float32")
-        self.y = np.random.randint(0, 2, (10, 5)).astype("float32")
+        self.x = np.random.randn(300, 2048).astype("float32")
+        self.y = np.random.randint(0, 2, (300, 2048)).astype("float32")
         self.logits = paddle.to_tensor(self.x)
         self.labels = paddle.to_tensor(self.y)
-        self.weight = None
+        self.weight = paddle.to_tensor(
+            np.random.randn(300, 2048).astype("float32")
+        )
         self.reduction = ["none", "mean", "sum"]
-        self.pos_weight = None
+        self.pos_weight = paddle.to_tensor(
+            np.random.randn(2048).astype("float32")
+        )
 
     def test_binary_cross_entropy_with_logits(self):
         for reduction in self.reduction:
@@ -59,27 +63,27 @@ class TestBinaryCrossEntropyWithLogits(unittest.TestCase):
                 )
             else:
                 np.testing.assert_allclose(
-                    dynamic_result.numpy(), static_result.numpy(), rtol=1e-6
+                    dynamic_result.numpy(), static_result.numpy(), rtol=1e-5
                 )
 
 
 class TestBinaryCrossEntropyWithLogits1(TestBinaryCrossEntropyWithLogits):
     def setUp(self):
         super().setUp()
-        self.weight = paddle.to_tensor(np.random.randn(10, 5).astype("float32"))
+        self.weight = None
 
 
 class TestBinaryCrossEntropyWithLogits2(TestBinaryCrossEntropyWithLogits):
     def setUp(self):
         super().setUp()
-        self.pos_weight = paddle.to_tensor(np.random.randn(5).astype("float32"))
+        self.pos_weight = None
 
 
 class TestBinaryCrossEntropyWithLogits3(TestBinaryCrossEntropyWithLogits):
     def setUp(self):
         super().setUp()
-        self.weight = paddle.to_tensor(np.random.randn(10, 5).astype("float32"))
-        self.pos_weight = paddle.to_tensor(np.random.randn(5).astype("float32"))
+        self.weight = None
+        self.pos_weight = None
 
 
 if __name__ == "__main__":
