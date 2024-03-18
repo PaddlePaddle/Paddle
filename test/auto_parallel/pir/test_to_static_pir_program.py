@@ -100,10 +100,12 @@ class TestToStaticPirProgramEval(unittest.TestCase):
             tensor = op.result(0)
             if op.name() == 'pd_op.data':
                 self.assertTrue(tensor.is_dist_dense_tensor_type())
-                self.assertEqual(tensor.process_mesh.shape, [2])
-                self.assertEqual(tensor.process_mesh.process_ids, [0, 1])
-                self.assertEqual(tensor.dims_mapping, [-1, -1])
-                self.assertEqual(tensor.partial_dims, set())
+                self.assertEqual(tensor.dist_attr().process_mesh.shape, [2])
+                self.assertEqual(
+                    tensor.dist_attr().process_mesh.process_ids, [0, 1]
+                )
+                self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                self.assertEqual(tensor.dist_attr().partial_dims, set())
             elif op.name() == "builtin.parameter":
                 pass  # TODO check
 

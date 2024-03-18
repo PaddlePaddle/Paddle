@@ -1139,11 +1139,11 @@ class GeneralFusionMergePassHelper {
 
     while (DoGeneralRecomputeAndVerticalFusion()) {
     }
-    DoPrologueGenerateShapeOpGroupFustion();
+    DoPrologueGenerateShapeOpGroupFusion();
   }
 
-  void DoPrologueGenerateShapeOpGroupFustion() {
-    VLOG(3) << "DoPrologueGenerateShapeOpGroupFustion...!";
+  void DoPrologueGenerateShapeOpGroupFusion() {
+    VLOG(3) << "DoPrologueGenerateShapeOpGroupFusion...!";
     bool updated = false;
     for (size_t idx = 0; idx < fusion_groups_.size(); ++idx) {
       auto producer = fusion_groups_[idx];
