@@ -41,20 +41,21 @@ void ShardTensorOp::VerifySig() {
         common::errors::PreconditionNotMet(
             "The size %d of inputs must be equal to 1.", input_size));
     PADDLE_ENFORCE_EQ((*this)
-                       ->operand_source(0)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(), true
-                   common::errors::PreconditionNotMet(
-                       "Type validation failed for the 0th input."));
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                           true, common::errors::PreconditionNotMet(
+                          "Type validation failed for the 0th input."));
   }
   VLOG(4) << "Verifying attributes:";
   {
     auto& attributes = this->attributes();
     PADDLE_ENFORCE_EQ((attributes.count("op_dist_attr") > 0 &&
                        attributes.at("op_dist_attr")
-                           .isa<paddle::dialect::OperationDistAttribute>()), true,
-                   common::errors::PreconditionNotMet(
-                       "Type of attribute: op_dist_attr is not right."));
+                           .isa<paddle::dialect::OperationDistAttribute>()),
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "Type of attribute: op_dist_attr is not right."));
   }
   VLOG(4) << "Verifying outputs:";
   {
@@ -114,9 +115,11 @@ void ShardTensorOp::Build(pir::Builder& builder,
         "Only support paddle::dialect::DenseTensorType"));
   }
 
-  PADDLE_ENFORCE_NE(attributes.find("tensor_dist_attr"), attributes.end(),
-                 common::errors::NotFound(
-                     "'tensor_dist_attr' Attribute is expected for ShardOp"));
+  PADDLE_ENFORCE_NE(
+      attributes.find("tensor_dist_attr"),
+      attributes.end(),
+      common::errors::NotFound(
+          "'tensor_dist_attr' Attribute is expected for ShardOp"));
   paddle::dialect::TensorDistAttribute tensor_dist_attr =
       attributes.at("tensor_dist_attr")
           .dyn_cast<paddle::dialect::TensorDistAttribute>();
@@ -138,11 +141,12 @@ void ShardTensorOp::Build(pir::Builder& builder,
   VLOG(4) << "Builder construction outputs";
   auto global_dims = input_tensor_type.dims();
   auto process_mesh_shape = process_mesh_attr.shape();
-  PADDLE_ENFORCE_EQ(static_cast<int>(dims_mapping.size()), global_dims.size(),
-                 common::errors::PreconditionNotMet(
-                     "dims_mapping size %d does not match input size %d",
-                     dims_mapping.size(),
-                     global_dims.size()));
+  PADDLE_ENFORCE_EQ(static_cast<int>(dims_mapping.size()),
+                    global_dims.size(),
+                    common::errors::PreconditionNotMet(
+                        "dims_mapping size %d does not match input size %d",
+                        dims_mapping.size(),
+                        global_dims.size()));
   auto local_shape = InferLocalDDim(global_dims, tensor_dist_attr);
   pir::Type out_dist_tensor_type =
       paddle::dialect::DistDenseTensorType::get(pir::IrContext::Instance(),
@@ -163,12 +167,12 @@ void ReShardOp::VerifySig() {
         common::errors::PreconditionNotMet(
             "The size %d of inputs must be equal to 1.", input_size));
     PADDLE_ENFORCE_EQ((*this)
-                       ->operand_source(0)
-                       .type()
-                       .isa<paddle::dialect::DistDenseTensorType>(),
-                       true,
-                   common::errors::PreconditionNotMet(
-                       "Type validation failed for the 0th input."));
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DistDenseTensorType>(),
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "Type validation failed for the 0th input."));
   }
   VLOG(4) << "Verifying attributes:";
   {
@@ -176,9 +180,9 @@ void ReShardOp::VerifySig() {
     PADDLE_ENFORCE_EQ((attributes.count("op_dist_attr") > 0 &&
                        attributes.at("op_dist_attr")
                            .isa<paddle::dialect::OperationDistAttribute>()),
-                        true,
-                   common::errors::PreconditionNotMet(
-                       "Type of attribute: op_dist_attr is not right."));
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "Type of attribute: op_dist_attr is not right."));
   }
   VLOG(4) << "Verifying outputs:";
   {
@@ -249,11 +253,12 @@ void ReShardOp::Build(pir::Builder& builder,
   auto dims_mapping = tensor_dist_attr.dims_mapping();
 
   auto process_mesh_shape = process_mesh_attr.shape();
-  PADDLE_ENFORCE_EQ(static_cast<int>(dims_mapping.size()), global_dims.size(),
-                 common::errors::PreconditionNotMet(
-                     "dst dims_mapping size %d does not match input size %d",
-                     dims_mapping.size(),
-                     global_dims.size()));
+  PADDLE_ENFORCE_EQ(static_cast<int>(dims_mapping.size()),
+                    global_dims.size(),
+                    common::errors::PreconditionNotMet(
+                        "dst dims_mapping size %d does not match input size %d",
+                        dims_mapping.size(),
+                        global_dims.size()));
 
   auto local_shape = InferLocalDDim(global_dims, tensor_dist_attr);
   pir::Type out_dist_tensor_type = paddle::dialect::DistDenseTensorType::get(
