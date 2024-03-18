@@ -502,6 +502,8 @@ bool AnalysisPredictor::Init(
   }
 #endif
 
+  TryShrinkMemory();
+
   inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
 }
