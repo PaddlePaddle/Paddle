@@ -631,7 +631,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
 
-    VLOG(1) << "Program before lowering: \n"
+    VLOG(4) << "Program before lowering: \n"
             << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
 
     auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
