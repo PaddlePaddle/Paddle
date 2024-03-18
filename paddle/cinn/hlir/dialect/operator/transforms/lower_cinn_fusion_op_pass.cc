@@ -740,7 +740,9 @@ symbol::ShapeOrDataDimExprs TrySubstitute(
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
     const GroupPtr& group,
-    pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
+    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    std::unordered_map<symbol::DimExpr, symbol::DimExpr>*
+        update_map) {  // NOLINT
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map =
       CollectSubstituteDimExprMap(group, shape_analysis);
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
@@ -749,10 +751,15 @@ CreateGroupShapeOrDataExprs(
       auto operand = op->operand_source(i);
       if (operand && value2shape.find(operand) == value2shape.end() &&
           shape_analysis.HasShapeOrDataForValue(operand)) {
-        value2shape.insert(
-            {operand,
-             TrySubstitute(shape_analysis.GetShapeOrDataForValue(operand),
-                           dim_expr_map)});
+        auto res = TrySubstitute(shape_analysis.GetShapeOrDataForValue(operand),
+                                 dim_expr_map);
+        value2shape.insert({operand, res});
+        auto base = shape_analysis.GetShapeOrDataForValue(operand).shape();
+        for (size_t i = 0; i < res.shape().size(); ++i) {
+          if (base[i] != res.shape()[i]) {
+            update_map->emplace(base[i], res.shape()[i]);
+          }
+        }
       }
     }
     for (size_t i = 0; i < op->num_results(); ++i) {
@@ -794,8 +801,16 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
     // so a mapping is required.
 
+    std::unordered_map<symbol::DimExpr, symbol::DimExpr> update_map;
     group->set_value_to_shape_or_data_exprs(
-        CreateGroupShapeOrDataExprs(group, shape_analysis));
+        CreateGroupShapeOrDataExprs(group, shape_analysis, &update_map));
+
+    for (size_t i = 0; i < group->loop_ranges_expr.size(); ++i) {
+      if (update_map.count(group->loop_ranges_expr[i])) {
+        group->loop_ranges_expr[i] = update_map.at(group->loop_ranges_expr[i]);
+      }
+    }
+
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }
