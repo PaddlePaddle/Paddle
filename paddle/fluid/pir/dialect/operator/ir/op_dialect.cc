@@ -46,10 +46,9 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     const auto shape_data_list = [&] {
       symbol::TensorListShapeOrDataDimExprs shape_data_list;
       for (size_t i = 0; i < op->num_operands(); ++i) {
-        PADDLE_ENFORCE_EQ(
+        PADDLE_ENFORCE(
             op->operand(i).type().dyn_cast<DenseTensorType>(),
-            paddle::dialect::DenseTensorType,
-            phi::errors::InvalidArgument(
+            phi::errors::Unimplemented(
                 "Currently InferSymbolicShape of CombineOp only support "
                 "DenseTensorType."));
 
@@ -73,10 +72,9 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE(
         op->result(0).type().dyn_cast<DenseTensorType>(),
-        paddle::dialect::DenseTensorType,
-        phi::errors::InvalidArgument(
+        phi::errors::Unimplemented(
             "Currently InferSymbolicShape of ConstantOp only support "
             "DenseTensorType result."));
 
