@@ -138,8 +138,6 @@
   output : Tensor(out)
   kernel :
     func : barrier
-    data_type : x
-  inplace : (x -> out)
 
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)

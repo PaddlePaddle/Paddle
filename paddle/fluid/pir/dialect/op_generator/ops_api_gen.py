@@ -123,7 +123,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'all_reduce',
     'all_reduce_',
     'barrier',
-    'barrier_',
     'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_avg_',
