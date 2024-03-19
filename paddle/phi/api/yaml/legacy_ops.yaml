@@ -568,7 +568,7 @@
   kernel :
     func : fused_adam
     data_type : params
-  optional : skip_update, master_params, master_params_out
+  optional : skip_update, master_params
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
 - op : fused_batch_norm_act
