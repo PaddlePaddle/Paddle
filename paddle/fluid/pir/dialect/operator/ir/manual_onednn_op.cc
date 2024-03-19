@@ -266,7 +266,7 @@ void ExpandOp::InferMeta(phi::InferMetaContext* infer_meta) {
 
 std::vector<pir::Type> ExpandOp::InferMeta(
     const std::vector<pir::Value>& input_values,
-    pir::AttributeMap* p_attributes) { {  // NOLINT
+    pir::AttributeMap* p_attributes) {  // NOLINT
   PADDLE_ENFORCE_EQ(input_values.size(),
                     2UL,
                     phi::errors::InvalidArgument(
@@ -275,7 +275,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
 
   pir::Value x_ = input_values[0];
   pir::Value shape_ = input_values[1];
