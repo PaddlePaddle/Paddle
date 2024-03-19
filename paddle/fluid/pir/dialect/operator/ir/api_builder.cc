@@ -23,15 +23,15 @@ ApiBuilder::ApiBuilder()
     : ctx_(pir::IrContext::Instance()),
       builder_(std::make_shared<pir::Builder>(ctx_)) {
   PADDLE_ENFORCE_NE(
-      builder_,
+      builder_.get(),
       nullptr,
       phi::errors::InvalidArgument("api builder construct error!"));
 }
 
 void ApiBuilder::SetProgram(pir::Program* program) {
   PADDLE_ENFORCE_NE(
-      program,
-      nullptr,
+      program->parameters().empty(),
+      true,
       phi::errors::InvalidArgument("argument of program is nullptr"));
   builder_->SetInsertionPointToBlockEnd(program->block());
 }
