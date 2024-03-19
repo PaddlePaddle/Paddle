@@ -5580,6 +5580,50 @@ void ArrayPopInferMeta(const MetaTensor& array,
   out->set_dtype(array.dtype());
 }
 
+void FakeQuantizeInferMeta(const MetaTensor& x,
+                           MetaTensor* out,
+                           MetaTensor* out_scale) {
+  UnchangedInferMeta(x, out);
+  out_scale->set_dims({1});
+}
+
+void FakeChannelWiseQuantizeInferMeta(const MetaTensor& x,
+                                      int quant_axis,
+                                      MetaTensor* out,
+                                      MetaTensor* out_scale) {
+  UnchangedInferMeta(x, out);
+  auto in_dims = x.dims();
+  out_scale->set_dims({in_dims[quant_axis]});
+}
+
+void FakeQuantizeRangeInferMeta(const MetaTensor& x,
+                                int window_size,
+                                MetaTensor* out,
+                                MetaTensor* out_scale,
+                                MetaTensor* out_scales) {
+  UnchangedInferMeta(x, out);
+  if (out_scales != nullptr) {
+    out_scale->set_dims({window_size});
+  }
+  out_scale->set_dims({1});
+}
+
+void FakeQuantizeMovingAverageInferMeta(const MetaTensor& x,
+                                        MetaTensor* out,
+                                        MetaTensor* out_scale,
+                                        MetaTensor* out_state,
+                                        MetaTensor* out_accum) {
+  UnchangedInferMeta(x, out);
+  out_scale->set_dims({1});
+  if (out_state != nullptr) {
+    out_state->set_dims({1});
+  }
+
+  if (out_accum != nullptr) {
+    out_accum->set_dims({1});
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);

@@ -847,4 +847,25 @@ void ArrayPopInferMeta(const MetaTensor& array,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
+void FakeQuantizeInferMeta(const MetaTensor& x,
+                           MetaTensor* out,
+                           MetaTensor* out_scale);
+
+void FakeChannelWiseQuantizeInferMeta(const MetaTensor& x,
+                                      int quant_axis,
+                                      MetaTensor* out,
+                                      MetaTensor* out_scale);
+
+void FakeQuantizeRangeInferMeta(const MetaTensor& x,
+                                int window_size,
+                                MetaTensor* out,
+                                MetaTensor* out_scale,
+                                MetaTensor* out_scales);
+
+void FakeQuantizeMovingAverageInferMeta(const MetaTensor& x,
+                                        MetaTensor* out,
+                                        MetaTensor* out_scale,
+                                        MetaTensor* out_state,
+                                        MetaTensor* out_accum);
+
 }  // namespace phi

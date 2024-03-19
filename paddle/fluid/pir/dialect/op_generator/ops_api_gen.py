@@ -185,6 +185,10 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_recv',
     'nop',
     'nop_',
+    'fake_quantize_abs_max',
+    'fake_channel_wise_quantize_abs_max',
+    'fake_quantize_range_abs_max',
+    'fake_quantize_moving_average_abs_max',
 ]
 
 
