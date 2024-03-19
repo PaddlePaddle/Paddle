@@ -750,10 +750,10 @@ std::vector<ir::Expr> OperationFusion(
   return output;
 }
 
-GroupInfo GetGroupInfo(const std::vector<ir::Expr>& op_compute_bodies) {
+FusionGroupInfo GetFusionGroupInfo(const std::vector<ir::Expr>& op_compute_bodies) {
   using namespace trivial_fusion_detail;
 
-  GroupInfo group_info = GroupInfo();
+  FusionGroupInfo group_info = FusionGroupInfo();
 
   const auto IsReduceBody = [](const ir::Expr& expr_body) {
     return !(SearchUtils::ChildScheduleBlockRealizes *

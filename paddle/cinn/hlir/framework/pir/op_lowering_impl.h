@@ -260,11 +260,9 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
                                const ::pir::Value& value);
 
   std::shared_ptr<GroupInfo> GetGroupInfo(
+      const FusionGroupInfo& fusion_group_info,
       const GroupPtr& group,
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
-
-  std::shared_ptr<cinn::ir::GroupTileInfo> GetGroupTileInfo(
-      const GroupInfo& group_info, const GroupPtr& group);
 
   void CollectOutputInfo(::pir::Operation* op,
                          std::vector<Type>* out_types,

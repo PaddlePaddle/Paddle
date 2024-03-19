@@ -74,16 +74,16 @@ NodeAttr CollectAttrs(const ::pir::Operation& op) {
 }  // namespace details
 
 std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
+    const FusionGroupInfo& fusion_group_info,
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
   std::shared_ptr<GroupInfo> group_info = std::make_shared<GroupInfo>();
-  group_info->data_space = group->loop_ranges;
-  group_info->reduce_axis = group->reduce_axis;
-  for (auto op : group->ops) {
-    if (CompatibleInfo::OpKind(*op) == OpPatternKind::kReduction) {
-      group_info->reduce_var_names.insert(ValueName(op->result(0)));
-    }
-  }
+  group_info->data_space = fusion_group_info.loop_ranges;
+  group_info->reduce_axis = fusion_group_info.reduce_axis;
+  group_info->reduce_var_names = std::set<std::string>(
+    fusion_group_info.reduce_var_name.begin(),
+    fusion_group_info.reduce_var_name.end()
+  );
 
   for (auto& op : group->output_ops) {
     group_info->direct_output_var_names.insert(ValueName(op->result(0)));
@@ -105,13 +105,7 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
   }
 
   for (auto& val : group->output_values) {
-    if (val.defining_op()->name() == "cinn_op.reshape" &&
-        erase_reshape.count(val.defining_op())) {
-      group_info->direct_output_var_names.insert(
-          ValueName(val.defining_op()->operand_source(0)));
-    } else {
-      group_info->direct_output_var_names.insert(ValueName(val));
-    }
+    group_info->direct_output_var_names.insert(ValueName(val));
   }
   return group_info;
 }
@@ -182,7 +176,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   // =========== OpFusion ============
 
   func_bodies = OperationFusion(ops, func_bodies);
-  const auto& fusion_group_info = GetGroupInfo(func_bodies);
+  const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
 
   // =========== CodeGen And Optimizer ================
 
@@ -208,7 +202,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
       output_tensor_names.insert(ValueName(value));
     }
 
-    std::shared_ptr<GroupInfo> group_info = GetGroupInfo(group, tensor_map);
+    std::shared_ptr<GroupInfo> group_info = GetGroupInfo(fusion_group_info, group, tensor_map);
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
         ir::GroupScheduler::Make(&ir_sch,
                                  output_tensor_names,

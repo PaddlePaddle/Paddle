@@ -195,7 +195,7 @@ struct FusionGraph {
 
 }  // namespace trivial_fusion_detail
 
-struct GroupInfo {
+struct FusionGroupInfo {
   std::vector<int64_t> loop_ranges;
   std::vector<int64_t> reduce_axis;
   std::vector<std::string> reduce_var_name;
@@ -207,7 +207,7 @@ struct GroupInfo {
   }
 };
 
-GroupInfo GetGroupInfo(const std::vector<ir::Expr>& op_compute_bodies);
+FusionGroupInfo GetFusionGroupInfo(const std::vector<ir::Expr>& op_compute_bodies);
 
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
