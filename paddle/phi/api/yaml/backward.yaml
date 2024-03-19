@@ -2405,6 +2405,7 @@
   infer_meta:
     func: SwiGLUGradInferMeta
     param: [x, y]
+    spmd_rule: SwiGLUGradInferSpmd
   kernel:
     func: swiglu_grad
   optional: y

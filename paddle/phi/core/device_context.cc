@@ -415,7 +415,7 @@ T* DeviceContext::HostAlloc(TensorBase* tensor, size_t requested_size) const {
 }
 
 #define DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(dtype)              \
-  template dtype* DeviceContext::Alloc(                              \
+  template TEST_API dtype* DeviceContext::Alloc(                     \
       TensorBase* tensor, size_t requested_size, bool pinned) const; \
   template dtype* DeviceContext::HostAlloc(TensorBase* tensor,       \
                                            size_t requested_size) const;

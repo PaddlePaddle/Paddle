@@ -3443,6 +3443,8 @@ class TestELU(TestActivation):
         self.init_dtype()
         self.init_shape()
         self.python_api = paddle.nn.functional.elu
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.nn.functional.elu
 
         np.random.seed(1024)
         x = np.random.uniform(-3, 3, self.shape).astype(self.dtype)
@@ -3463,7 +3465,16 @@ class TestELU(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
+
+    def test_check_output(self):
+        self.check_output(
+            check_prim_pir=True, check_pir_onednn=self.check_pir_onednn
         )
 
     def get_alpha(self):
@@ -5320,7 +5331,7 @@ create_test_act_fp16_class(
 create_test_act_fp16_class(TestBRelu, check_pir=True)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
-create_test_act_fp16_class(TestELU, check_pir=True)
+create_test_act_fp16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestCELU, check_pir=True)
 create_test_act_fp16_class(TestReciprocal, check_pir=True)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
@@ -5492,7 +5503,7 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(TestBRelu, check_pir=True)
 create_test_act_bf16_class(TestRelu6)
 create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
-create_test_act_bf16_class(TestELU, check_pir=True)
+create_test_act_bf16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestCELU, check_pir=True)
 create_test_act_bf16_class(TestReciprocal, check_pir=True)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)
