@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import os
 import queue
 import sys
 from collections import defaultdict
@@ -38,11 +37,9 @@ from .pp_utils import p2p_communication as p2p
 
 __all__ = []
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
-
 
 def get_action(is_dp, shard_split_param=False):
-    if is_dp or not g_shard_use_reduce:
+    if is_dp:
         return HOOK_ACTION.ALL_REDUCE
     if shard_split_param:
         return HOOK_ACTION.REDUCE_SCATTER
