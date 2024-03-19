@@ -150,7 +150,7 @@ class TestProcessGroup(TestMultipleCustomCPU):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
         cmd = 'cd {} \
-            && git clone --depth 1 {} \
+            && git clone --depth 1 {} -b {} \
             && cd PaddleCustomDevice \
             && git fetch origin \
             && git checkout {} -b dev \
@@ -158,6 +158,7 @@ class TestProcessGroup(TestMultipleCustomCPU):
             && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} -DWITH_TESTING=OFF && make -j8'.format(
             self.temp_dir.name,
             os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'),
             os.getenv('PLUGIN_TAG'),
             sys.executable,
         )
