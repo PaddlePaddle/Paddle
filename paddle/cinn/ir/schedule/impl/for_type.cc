@@ -15,6 +15,7 @@
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
+#include "paddle/cinn/runtime/flags.h"
 
 namespace cinn {
 namespace ir {
@@ -89,8 +90,8 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   CHECK(thread_axes.count(thread_axis))
       << "thread_axis " << thread_axis << " is not supported";
   int offset = thread_axis.back() - 'x';
-  const std::array<int, 3> kMaxBlockDims = Target::get_now_target()->get_max_block_dims();
-  const std::array<int, 3> kMaxGridDims = Target::get_now_target()->get_max_grid_dims();
+  const std::array<int, 3> kMaxBlockDims = runtime::CurrentTarget::GetCurrentTarget().get_max_block_dims();
+  const std::array<int, 3> kMaxGridDims = runtime::CurrentTarget::GetCurrentTarget().get_max_grid_dims();
   auto check_offset = [&](const char& c) -> bool {
     auto extent = loop.As<ir::For>()->extent.as_int32();
     return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);

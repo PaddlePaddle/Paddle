@@ -69,7 +69,9 @@ inline const char* SYCLGetErrorString(std::error_code error_code) {
     try{                                                                      \
       func;                                                                   \
     }catch(const sycl::exception &e){                                         \
-      CHECK(e.code() == sycl::errc::success) << "SYCL Error, code=" << ": " << SYCLGetErrorString(e.code()) <<", message:"<< e.what();;\
+      if(e.code() != sycl::errc::success){                                    \
+        LOG(FATAL) << "SYCL Error, error code" << " = " << SYCLGetErrorString(e.code())<<", message:"<< e.what();\
+      }                                                                       \
     }                                                                         \
   }
 

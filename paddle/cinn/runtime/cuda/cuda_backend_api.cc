@@ -11,7 +11,6 @@ CUDABackendAPI* CUDABackendAPI::Global() {
 
 void CUDABackendAPI::set_device(int device_id) {
   CUDA_CALL(cudaSetDevice(device_id));
-  this->now_device_id = device_id;
 }
 int CUDABackendAPI::get_device() {
   int device_id = 0;
@@ -21,7 +20,9 @@ int CUDABackendAPI::get_device() {
 
 std::variant<int, std::array<int, 3>> CUDABackendAPI::get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id) {
-  int dev_index = device_id.value_or(this->now_device_id);
+  // get device index
+  int dev_index = device_id.value_or(get_device());
+  // get device property
   std::variant<int, std::array<int, 3>> rv_variant;
   int rv = -1;
   switch (device_property) {
@@ -44,6 +45,7 @@ std::variant<int, std::array<int, 3>> CUDABackendAPI::get_device_property(Device
     }
     case DeviceProperty::MaxThreadsPerBlock: {
       CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxThreadsPerBlock, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty::MaxThreadsPerSM: {

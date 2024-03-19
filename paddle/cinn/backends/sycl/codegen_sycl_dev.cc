@@ -127,9 +127,9 @@ void CodeGenSYCL_Dev::Visit(const ir::_LoweredFunc_ *op) {
 void CodeGenSYCL_Dev::Visit(const ir::_Var_ *op) {
   if (utils::Startswith(op->name, "threadIdx") || utils::Startswith(op->name, "blockIdx")) {
     if (utils::Startswith(op->name, "threadIdx")){
-      str_ += "item.get_local_id(";
+      str_ += "(int)item.get_local_id(";
     }else{
-      str_ += "item.get_group(";
+      str_ += "(int)item.get_group(";
     }
     if (utils::Endswith(op->name, "x")) {
       str_ += std::to_string(2);

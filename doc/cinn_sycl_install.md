@@ -103,7 +103,7 @@ export PYTHONPATH=$PADDLE_PATH/build/python:${PYTHONPATH}
 import numpy as np
 from numpy import testing
 from cinn import frontend,common
-from cinn.common import SYCLTarget
+from cinn.common import SYCLTarget,set_target
 
 A_data = np.random.random([1, 3, 224, 224]).astype("float32")
 B_data = np.random.random([1, 3, 224, 224]).astype("float32")
@@ -124,6 +124,7 @@ def build_run(target:common.Target):
     res = builder.relu(y)
 
     # Specify target and generate the computation
+    set_target(target)
     computation = frontend.Computation.build_and_compile(target, builder)
     computation.get_tensor("A").from_numpy(A_data, target)
     computation.get_tensor("B").from_numpy(B_data, target)

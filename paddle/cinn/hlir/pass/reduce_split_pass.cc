@@ -18,6 +18,7 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/pass/infershape.h"
 #include "paddle/cinn/hlir/pe/nn_util.h"
+#include "paddle/cinn/runtime/flags.h"
 
 namespace cinn {
 namespace hlir {
@@ -73,7 +74,7 @@ class ReduceSplitPass {
  public:
   // Find the reduce op with nwhc format and large shape, split it into two ops
   static int Apply(framework::Graph* graph) {
-    int MAX_NUM_THREADS = common::Target::get_now_target()->max_num_threads();
+    int MAX_NUM_THREADS = runtime::CurrentTarget::GetCurrentTarget().max_num_threads();
     constexpr int MAX_ITER_PER_THREAD = 32;  // empirical value
 
     int cnt = 0;

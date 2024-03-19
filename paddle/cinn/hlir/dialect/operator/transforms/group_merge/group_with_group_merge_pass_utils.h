@@ -139,7 +139,7 @@ static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
     for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {
       lane = inshape[idx];
     }
-    int max_num_threads = common::Target::get_now_target()->max_num_threads();
+    int max_num_threads = runtime::CurrentTarget::GetCurrentTarget().max_num_threads();
     if (lane > max_num_threads / 2) {
       return 0;
     }

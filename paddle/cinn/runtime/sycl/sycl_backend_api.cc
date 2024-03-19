@@ -105,7 +105,7 @@ std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(Device
     }
     case DeviceProperty::MaxGridDims: {
       //sycl::id<3> grid_dims = this->devices[index].get_info<sycl::ext::oneapi::experimental::info::device::max_work_groups<3>>() / this->devices[index].get_info<sycl::info::device::max_work_item_sizes<3>>();
-      rv = std::array<int, 3>{2097151, 1024, 1024};
+      rv = std::array<int, 3>{2097151, 2097151, 2097151};
       break;
     }
     case DeviceProperty::MaxSharedMemoryPerBlock: {
@@ -191,6 +191,7 @@ void SYCLBackendAPI::device_sync() {
   if (now_device_id == -1) set_device(0);
   for (auto queues_in_one_device : this->queues) {
     for (auto queue : queues_in_one_device) {
+      //LOG(INFO) << "sycl stream sync";
       SYCL_CALL(queue->wait_and_throw());
     }
   }

@@ -34,9 +34,6 @@ class CUDABackendAPI final : public BackendAPI {
   void memcpy(void* dest, const void* src, size_t numBytes, MemcpyType type) final;
   void device_sync() final;
   void stream_sync(void* stream) final;
- private:
-  // now_device_id, change by set_device()
-  int now_device_id = 0;
 };
 }  // namespace cuda
 }  // namespace runtime

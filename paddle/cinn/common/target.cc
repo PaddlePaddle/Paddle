@@ -37,14 +37,6 @@ using cinn::runtime::CheckCompileWith;
 namespace cinn {
 namespace common {
 
-Target* Target::now_target = new Target(Target::OS::Linux, Target::Arch::NVGPU, Target::Language::sycl, Target::Bit::k64, {}, {});;
-void Target::set_now_target(Target * target){
-  now_target = target;
-}
-Target* Target::get_now_target(){
-  return now_target;
-}
-
 Target::Target(OS o,
                Arch a,
                Language l,
