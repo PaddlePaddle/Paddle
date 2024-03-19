@@ -60,7 +60,7 @@ class PRChecker:
         for filename in file_dict:
             if not (
                 filename.startswith(PADDLE_ROOT + 'python/')
-                and filename.endwith('.py')
+                and filename.endswith('.py')
             ):
                 return False
         return True
