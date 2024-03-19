@@ -763,8 +763,8 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         if shape is not None:
             check_shape(shape, 'normal')
 
-    if isinstance(mean, Variable):
-        if isinstance(std, Variable):
+    if isinstance(mean, (Variable, paddle.pir.Value)):
+        if isinstance(std, (Variable, paddle.pir.Value)):
             if std.dtype != mean.dtype:
                 std = paddle.cast(std, mean.dtype)
             mean_shape = paddle.shape(mean)
@@ -772,7 +772,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         else:
             std = float(std)
         out = standard_normal(paddle.shape(mean), mean.dtype, name)
-    elif isinstance(std, Variable):
+    elif isinstance(std, (Variable, paddle.pir.Value)):
         mean = float(mean)
         out = standard_normal(paddle.shape(std), std.dtype, name)
     else:
