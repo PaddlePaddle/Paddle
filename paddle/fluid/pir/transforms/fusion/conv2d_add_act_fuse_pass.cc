@@ -43,7 +43,11 @@ class Conv2dAddActFusePattern
     if (!conv2d_out.HasOneUse()) return false;
 
     pir::Value add_input = op.x();
-    IR_ENFORCE(add_input == conv2d_out);
+    PADDLE_ENFORCE_EQ(
+        add_input && conv2d_out,
+        true,
+        phi::errors::PreconditionNotMet("The type of add input should be the "
+                                        "same as the type of conv2d's out."));
 
     if (!pir::ValueIsPersistable(op.y())) return false;
 
