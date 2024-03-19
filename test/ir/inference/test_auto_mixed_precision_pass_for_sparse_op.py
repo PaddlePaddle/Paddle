@@ -87,9 +87,8 @@ class AutoMixedPrecisionPassForSparseOp(InferencePassTest):
         )
         if precision == "fp16":
             config.enable_use_gpu(100, 0, PrecisionType.Half)
-            config.exp_enable_mixed_precision_ops(
-                set("sparse_conv3d", "sparse_batch_norm")
-            )
+            white_list = ["sparse_conv3d", "sparse_batch_norm"]
+            config.exp_enable_mixed_precision_ops(set(white_list))
         else:
             config.enable_use_gpu(100, 0, PrecisionType.Float32)
 
