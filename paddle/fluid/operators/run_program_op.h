@@ -196,7 +196,7 @@ static cudaStreamCaptureMode StringToCUDAGraphCaptureMode(
         "Unsupported CUDA Graph capture mode %s", mode));
   }
 }
-#else  // PADDLE_WITH_HIP
+#elif defined(PADDLE_WITH_HIP)
 static hipStreamCaptureMode StringToCUDAGraphCaptureMode(
     const std::string &mode) {
   if (mode == "global") {
