@@ -72,7 +72,6 @@ std::ostream& operator<<(std::ostream& os, const PatternGraph& pattern_graph);
 
 class SourcePatternGraph : public PatternGraph {
  public:
-
   std::unordered_set<const OpCall*> OutputNodes() const;
 
  private:

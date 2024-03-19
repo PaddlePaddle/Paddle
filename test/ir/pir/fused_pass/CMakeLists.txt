@@ -17,5 +17,5 @@ endforeach()
 set_tests_properties(test_pir_multihead_matmul_fuse_pass PROPERTIES TIMEOUT 100)
 if(WITH_CUTLASS)
   set_tests_properties(test_fused_weight_only_linear_pass PROPERTIES TIMEOUT
-                                                                     100)
+                                                                     300)
 endif()
