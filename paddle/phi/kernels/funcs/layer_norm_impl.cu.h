@@ -217,8 +217,13 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
   Vec_scale beta[LDGS];
 #pragma unroll
   for (int it = 0, col = c; it < LDGS; it++) {
-    phi::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
-    phi::Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
+    if (col < cols) {
+      phi::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
+      phi::Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
+    } else {
+      gamma[it] = Vec_scale{};
+      beta[it] = Vec_scale{};
+    }
     col += THREADS_PER_ROW;
   }
 
@@ -227,7 +232,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
     Vec x[LDGS];
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      phi::Load<T, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize, &x[it]);
+      if (col < cols) {
+        phi::Load<T, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize,
+                              &x[it]);
+      } else {
+        x[it] = Vec{};
+      }
       col += THREADS_PER_ROW;
     }
     U xf[LDGS * VecSize];
@@ -258,10 +268,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
         for (int it = 0; it < WARPS_N; ++it) {
           mu_local += smem[warp_m * WARPS_N + it];
         }
-        smem[warp_m] = mu_local;
+        smem[warp_m * WARPS_N] = mu_local;
       }
       __syncthreads();
-      mu_local = smem[warp_m];
+      mu_local = smem[warp_m * WARPS_N];
     }
 
     mu_local *= rn;
@@ -285,6 +295,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
     }
 
     if (WARPS_N > 1) {
+      __syncthreads();
       if (lane == 0) {
         smem[warp_m * WARPS_N + warp_n] = var_local;
       }
@@ -295,10 +306,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
         for (int it = 0; it < WARPS_N; ++it) {
           var_local += smem[warp_m * WARPS_N + it];
         }
-        smem[warp_m] = var_local;
+        smem[warp_m * WARPS_N] = var_local;
       }
       __syncthreads();
-      var_local = smem[warp_m];
+      var_local = smem[warp_m * WARPS_N];
     }
 
     // Note: to assure if it is right for double
@@ -324,7 +335,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      phi::Store<T, VecSize>(x[it], y_ptr + row * ELTS_PER_ROW + col * VecSize);
+      if (col < cols) {
+        phi::Store<T, VecSize>(x[it],
+                               y_ptr + row * ELTS_PER_ROW + col * VecSize);
+      }
       col += THREADS_PER_ROW;
     }
   }
