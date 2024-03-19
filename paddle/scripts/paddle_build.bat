@@ -84,8 +84,8 @@ if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined WIN_UNITTEST_LEVEL set WIN_UNITTEST_LEVEL=0
 rem LEVEL 0: run all test 
-rem LEVEL 1: skip all speed up tests besides single_card_tests_mem0
-rem LEVEL 2: skip all
+rem LEVEL 1: skip tests unrelated to cuda or trt 
+rem LEVEL 2: skip tests unrelated to cuda or trt and skip tests without GPU memory
 if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python38
