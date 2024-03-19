@@ -67,7 +67,8 @@ using Attribute = paddle::variant<paddle::blank,
                                   paddle::experimental::Scalar,
                                   std::vector<paddle::experimental::Scalar>,
                                   ::pir::Block*,
-                                  std::vector<::pir::Value>>;
+                                  std::vector<::pir::Value>,
+                                  std::shared_ptr<::pir::Program>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 using OpCreator =

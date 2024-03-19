@@ -977,6 +977,9 @@ struct SetAttrDescVisitor {
   void operator()(const std::vector<pir::Block *> &v) const {
     // just do nothing.
   }
+  void operator()(const std::shared_ptr<pir::Program> &v) const {
+    // just do nothing.
+  }
   void operator()(const std::vector<VarDesc *> &v) const {
     std::vector<std::string> var_names;
     for (auto var : v) {
