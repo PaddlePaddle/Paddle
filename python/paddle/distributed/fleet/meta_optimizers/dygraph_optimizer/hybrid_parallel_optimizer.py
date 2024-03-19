@@ -56,6 +56,11 @@ class HybridParallelClipGrad:
         )
         self._timers = timers
 
+        if hasattr(self._clip, "clip_norm") and self._clip.clip_norm <= 0:
+            raise ValueError(
+                "It's not supported when clip_norm of grad clip is set to 0 or negative number."
+            )
+
     def _get_vpp_chunk_num(self, params_grads):
         chunk_num = -1
         for p, g in params_grads:
