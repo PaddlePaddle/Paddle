@@ -1272,7 +1272,7 @@ PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
 
 PADDLE_DEFINE_EXPORTED_bool(
     use_auto_growth_pinned_allocator,
-    false,
+    true,
     "Whether to use the auto_growth CUDA pinned allocator.");
 
 PADDLE_DEFINE_EXPORTED_bool(
