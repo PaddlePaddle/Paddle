@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/tree.h"
-#include "paddle/cinn/adt/tree_util.h"
 
 #include "gtest/gtest.h"
 

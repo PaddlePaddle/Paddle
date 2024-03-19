@@ -80,10 +80,9 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
   std::shared_ptr<GroupInfo> group_info = std::make_shared<GroupInfo>();
   group_info->data_space = fusion_group_info.loop_ranges;
   group_info->reduce_axis = fusion_group_info.reduce_axis;
-  group_info->reduce_var_names = std::set<std::string>(
-    fusion_group_info.reduce_var_name.begin(),
-    fusion_group_info.reduce_var_name.end()
-  );
+  group_info->reduce_var_names =
+      std::set<std::string>(fusion_group_info.reduce_var_name.begin(),
+                            fusion_group_info.reduce_var_name.end());
 
   for (auto& op : group->output_ops) {
     group_info->direct_output_var_names.insert(ValueName(op->result(0)));
@@ -106,6 +105,51 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
 
   for (auto& val : group->output_values) {
     group_info->direct_output_var_names.insert(ValueName(val));
+  }
+  return group_info;
+}
+
+std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
+    const GroupPtr& group,
+    const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
+  std::shared_ptr<GroupInfo> group_info = std::make_shared<GroupInfo>();
+  group_info->data_space = group->loop_ranges;
+  group_info->reduce_axis = group->reduce_axis;
+  for (auto op : group->ops) {
+    if (CompatibleInfo::OpKind(*op) == OpPatternKind::kReduction) {
+      group_info->reduce_var_names.insert(ValueName(op->result(0)));
+    }
+  }
+
+  BuildBroadcastInfo(group, group_info);
+
+  for (auto& op : group->output_ops) {
+    group_info->direct_output_var_names.insert(ValueName(op->result(0)));
+    // collect all output tensor.
+    if (op->name() == "cinn_op.yield_store") {
+      auto input_var_name = ValueName(op->operand_source(0));
+      if (group_info->broadcast_info.count(input_var_name)) {
+        auto base_info = group_info->broadcast_info[input_var_name];
+        base_info.with_constrain = true;
+        group_info->broadcast_info[ValueName(op->result(0))] = base_info;
+      }
+    }
+    for (auto opresult : op->results()) {
+      if (tensor_map.count(opresult) == 0) {
+        continue;
+      }
+      group_info->direct_output_var_names.insert(ValueName(opresult));
+    }
+  }
+
+  for (auto& val : group->output_values) {
+    if (val.defining_op()->name() == "cinn_op.reshape" &&
+        erase_reshape.count(val.defining_op())) {
+      group_info->direct_output_var_names.insert(
+          ValueName(val.defining_op()->operand_source(0)));
+    } else {
+      group_info->direct_output_var_names.insert(ValueName(val));
+    }
   }
   return group_info;
 }
@@ -202,7 +246,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
       output_tensor_names.insert(ValueName(value));
     }
 
-    std::shared_ptr<GroupInfo> group_info = GetGroupInfo(fusion_group_info, group, tensor_map);
+    std::shared_ptr<GroupInfo> group_info =
+        GetGroupInfo(fusion_group_info, group, tensor_map);
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
         ir::GroupScheduler::Make(&ir_sch,
                                  output_tensor_names,

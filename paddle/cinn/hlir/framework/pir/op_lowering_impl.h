@@ -260,6 +260,10 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
                                const ::pir::Value& value);
 
   std::shared_ptr<GroupInfo> GetGroupInfo(
+      const GroupPtr& group,
+      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
+
+  std::shared_ptr<GroupInfo> GetGroupInfo(
       const FusionGroupInfo& fusion_group_info,
       const GroupPtr& group,
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);

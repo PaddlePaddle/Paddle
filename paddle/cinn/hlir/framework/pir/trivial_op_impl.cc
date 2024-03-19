@@ -489,25 +489,41 @@ FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern) {
   }
 }
 
+template <typename T, typename F>
+std::vector<T> FilterVector(const std::vector<T>& ops, const F& f) {
+  std::vector<T> res;
+  for (const auto& op : ops) {
+    if (f(op)) {
+      res.push_back(op);
+    }
+  }
+  return res;
+}
+
 FusionGraph::FusionGraph(const std::vector<::pir::Operation*>& ops,
                          const std::vector<ir::Expr>& op_compute_bodies) {
   // shardable_axes_ = InferShardableAxes(ops);
   VLOG(4) << "CreateFusionGraph";
-
-  const auto& op_patterns = GetOpPatternKindVector(ops);
+  const auto& filtered_ops = FilterVector(ops, [](const ::pir::Operation* op) {
+    if (op->name() == "cinn_op.generate_shape") {
+      return false;
+    }
+    return true;
+  });
+  const auto& op_patterns = GetOpPatternKindVector(filtered_ops);
   CheckFusionInputValid(op_compute_bodies, op_patterns);
 
   std::unordered_map<::pir::Operation*, FusionNode*> op_to_node_map;
 
-  for (int i = 0; i < ops.size(); ++i) {
+  for (int i = 0; i < filtered_ops.size(); ++i) {
     FusionNode* node =
         new FusionNode(CreateFusibleOp(op_compute_bodies[i], op_patterns[i]));
-    op_to_node_map[ops[i]] = node;
+    op_to_node_map[filtered_ops[i]] = node;
     all_fusion_nodes_.emplace(node);
-    node->expr_related_op = ops[i];
+    node->expr_related_op = filtered_ops[i];
   }
 
-  for (::pir::Operation* op : ops) {
+  for (::pir::Operation* op : filtered_ops) {
     FusionNode* cur_node = op_to_node_map[op];
 
     // add upstream nodes
@@ -750,7 +766,8 @@ std::vector<ir::Expr> OperationFusion(
   return output;
 }
 
-FusionGroupInfo GetFusionGroupInfo(const std::vector<ir::Expr>& op_compute_bodies) {
+FusionGroupInfo GetFusionGroupInfo(
+    const std::vector<ir::Expr>& op_compute_bodies) {
   using namespace trivial_fusion_detail;
 
   FusionGroupInfo group_info = FusionGroupInfo();

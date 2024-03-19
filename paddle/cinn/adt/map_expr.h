@@ -26,7 +26,6 @@
 #include "paddle/cinn/adt/schedule_mesh.h"
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/adt/tree.h"
-#include "paddle/cinn/adt/tree_util.h"
 
 namespace pir {
 class Operation;
