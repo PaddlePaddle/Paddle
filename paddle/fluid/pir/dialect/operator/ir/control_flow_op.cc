@@ -540,14 +540,20 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   pir::detail::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
-      [&](pir::Value v) { printer.PrintValue(v); },
+      [&](pir::Value v) {
+        printer.PrintValue(v);
+        os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+      },
       [&]() { os << ", "; });
   os << ") { \n";
   os << printer.indentation() << "^";
   pir::detail::PrintInterleave(
       body().args_begin(),
       body().args_end(),
-      [&](pir::Value v) { printer.PrintValue(v); },
+      [&](pir::Value v) {
+        printer.PrintValue(v);
+        os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+      },
       [&]() { os << ", "; });
   os << "\n";
   printer.AddIndentation();
@@ -739,7 +745,55 @@ bool WhileOp::InferSymbolicShape(
   pir::InferSymExprForBlock(body(), shape_analysis);
 
   // add constraints for args
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr>
+      args_expr_map;  // args -> original value
   const auto &body_args = block_args();
+  for (size_t i = 0; i < body_args.size(); ++i) {
+    const auto &input_arg_shape =
+        shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
+    const auto &original_input_shape =
+        shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    if (input_arg_shape.size() != original_input_shape.size()) {
+      continue;
+    }
+    for (size_t j = 0; j < input_arg_shape.size(); ++j) {
+      if (input_arg_shape[j].isa<int64_t>()) {
+        continue;
+      }
+      args_expr_map.emplace(input_arg_shape[j], original_input_shape[j]);
+    }
+  }
+  for (const auto &[k, v] : args_expr_map) {
+    VLOG(0) << "##### args_expr_map: " << k << " --> " << v;
+  }
+
+  auto IsSameWithDimExprBeforeWhile = [&](const symbol::DimExpr &before_expr,
+                                          const symbol::DimExpr &yield_expr) {
+    if (before_expr == yield_expr) return true;
+    VLOG(0) << "##### before_expr: " << before_expr
+            << " vs. yield_expr: " << yield_expr;
+    if (args_expr_map.count(yield_expr) &&
+        args_expr_map[yield_expr] == before_expr) {
+      return true;
+    }
+    if (yield_expr.isa<symbol::Broadcast<symbol::DimExpr>>()) {
+      for (const auto &expr :
+           *yield_expr.Get<symbol::Broadcast<symbol::DimExpr>>().operands) {
+        if (expr == before_expr) {
+          continue;
+        }
+        if (args_expr_map.count(expr) && args_expr_map[expr] == before_expr) {
+          continue;
+        }
+        VLOG(0) << "##### expr is false: " << expr;
+        return false;
+      }
+      VLOG(0) << "##### expr is true: " << yield_expr;
+      return true;
+    }
+    return false;
+  };
+
   for (size_t i = 0; i < body_args.size(); ++i) {
     const auto &input_arg_shape =
         shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
@@ -760,12 +814,21 @@ bool WhileOp::InferSymbolicShape(
     const auto &original_input_shape =
         shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
     for (size_t j = 0; j < input_arg_shape.size(); ++j) {
-      if (!input_arg_shape[j].isa<int64_t>() &&
-          (input_arg_shape[j] == yield_value_shape[j] ||
-           original_input_shape[j] ==
-               yield_value_shape[j])) {  // Dim isn't changed in while
+      if (input_arg_shape[j].isa<int64_t>()) {
+        continue;
+      }
+      if (input_arg_shape[j] ==
+          yield_value_shape[j]) {  // Dim isn't changed in while
         shape_analysis->CreateDimExprBuilder().CstrEq(original_input_shape[j],
                                                       input_arg_shape[j]);
+        continue;
+      }
+      if (original_input_shape.size() == yield_value_shape.size() &&
+          IsSameWithDimExprBeforeWhile(original_input_shape[j],
+                                       yield_value_shape[j])) {
+        shape_analysis->CreateDimExprBuilder().CstrEq(original_input_shape[j],
+                                                      input_arg_shape[j]);
+        continue;
       }
     }
   }
