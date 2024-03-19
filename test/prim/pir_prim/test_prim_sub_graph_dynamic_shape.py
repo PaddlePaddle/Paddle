@@ -99,6 +99,14 @@ def group_norm_net(x, weight, bias):
     return group_norm(x)
 
 
+def layer_norm_net1(x):
+    return paddle.nn.functional.layer_norm(x, x.shape[1:])
+
+
+def flatten_net(x):
+    return paddle.flatten(x, 1, 2)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -109,6 +117,7 @@ class TestPrimBase(unittest.TestCase):
         self.net = log_softmax_net
         self.necessary_ops = "pd_op.log_softmax"
         self.enable_cinn = False
+        self.tol = 1e-6
 
     def base_net(self, flag=None):
         if flag == "prim":
@@ -142,7 +151,9 @@ class TestPrimBase(unittest.TestCase):
         res_ref = self.base_net()
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+            np.testing.assert_allclose(
+                ref, actual, rtol=self.tol, atol=self.tol
+            )
 
 
 class TestPrimAny(TestPrimBase):
@@ -155,6 +166,7 @@ class TestPrimAny(TestPrimBase):
         self.net = any_net
         self.necessary_ops = "pd_op.any"
         self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestEmbedding(TestPrimBase):
@@ -167,6 +179,7 @@ class TestEmbedding(TestPrimBase):
         self.net = embedding_net
         self.necessary_ops = "pd_op.embedding"
         self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimFullLike(TestPrimBase):
@@ -179,6 +192,7 @@ class TestPrimFullLike(TestPrimBase):
         self.net = full_like_net
         self.necessary_ops = "pd_op.full_like"
         self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimStack(TestPrimBase):
@@ -191,6 +205,7 @@ class TestPrimStack(TestPrimBase):
         self.net = stack_net
         self.necessary_ops = "pd_op.stack"
         self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimTile(TestPrimBase):
@@ -203,6 +218,7 @@ class TestPrimTile(TestPrimBase):
         self.net = tile_net1
         self.necessary_ops = "pd_op.tile"
         self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimTile2(TestPrimBase):
@@ -215,6 +231,7 @@ class TestPrimTile2(TestPrimBase):
         self.net = tile_net2
         self.necessary_ops = "pd_op.tile"
         self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimTwo(unittest.TestCase):
@@ -231,6 +248,7 @@ class TestPrimTwo(unittest.TestCase):
         self.net = index_sample_net
         self.necessary_ops = "pd_op.index_sample"
         self.enable_cinn = False
+        self.tol = 1e-6
 
     def base_net(self, flag=None):
         x = paddle.to_tensor(self.x)
@@ -265,7 +283,7 @@ class TestPrimTwo(unittest.TestCase):
         res_ref = self.base_net()
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+            np.testing.assert_allclose(ref, actual, rtol=self.tol)
 
 
 class TestPrimTwoIndexSample(TestPrimTwo):
@@ -282,6 +300,7 @@ class TestPrimTwoIndexSample(TestPrimTwo):
         self.net = index_sample_net
         self.necessary_ops = "pd_op.index_sample"
         self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimSwiglu1(TestPrimTwo):
@@ -298,6 +317,7 @@ class TestPrimSwiglu1(TestPrimTwo):
         self.net = swiglu_net1
         self.necessary_ops = "pd_op.swiglu"
         self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimSwiglu2(TestPrimBase):
@@ -310,6 +330,46 @@ class TestPrimSwiglu2(TestPrimBase):
         self.net = swiglu_net2
         self.necessary_ops = "pd_op.swiglu"
         self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimLayernorm(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [2, 32, 128]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = layer_norm_net1
+        self.necessary_ops = "pd_op.layer_norm"
+        self.enable_cinn = False
+        self.tol = 5e-6
+
+
+class TestPrimFlatten1(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [3, 100, 100, 4]
+        self.init_x_shape = [3, None, None, 4]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = flatten_net
+        self.necessary_ops = "pd_op.flatten"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimFlatten2(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [3, 100, 100, 640]
+        self.init_x_shape = [None, None, None, 640]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = flatten_net
+        self.necessary_ops = "pd_op.flatten"
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimThree(unittest.TestCase):

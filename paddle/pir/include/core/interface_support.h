@@ -26,31 +26,31 @@ class ConstructInterfacesOrTraits {
   /// Construct method for interfaces.
   static void interface(InterfaceSet &interface_set) {  // NOLINT
     (void)std::initializer_list<int>{
-        0, (ConstrctInterface<Args>(interface_set), 0)...};
+        0, (ConstructInterface<Args>(interface_set), 0)...};
   }
 
   /// Construct method for traits.
   static TypeId *trait(TypeId *p_trait) {
     (void)std::initializer_list<int>{
-        0, (PlacementConstrctTrait<Args>(p_trait), 0)...};
+        0, (PlacementConstructTrait<Args>(p_trait), 0)...};
     return p_trait;
   }
 
  private:
   /// Placement new interface.
   template <typename T>
-  static void ConstrctInterface(InterfaceSet &interface_set) {  // NOLINT
+  static void ConstructInterface(InterfaceSet &interface_set) {  // NOLINT
     InterfaceValue val =
         InterfaceValue::Get<T, typename T::template Model<ConcreteT>>();
-    auto suceess = interface_set.insert(std::move(val)).second;
-    IR_ENFORCE(suceess,
+    auto success = interface_set.insert(std::move(val)).second;
+    IR_ENFORCE(success,
                "Interface: id[%u] is already registered. inset failed",
                TypeId::get<T>());
   }
 
   /// Placement new trait.
   template <typename T>
-  static void PlacementConstrctTrait(pir::TypeId *&p_trait) {  // NOLINT
+  static void PlacementConstructTrait(pir::TypeId *&p_trait) {  // NOLINT
     *p_trait = TypeId::get<T>();
     ++p_trait;
   }

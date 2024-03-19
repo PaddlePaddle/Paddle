@@ -1269,7 +1269,8 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
   } else if (target.arch == cinn::common::Target::Arch::X86) {
     extern_fun_name.assign("cinn_host_find_int");
   } else {
-    LOG(FATAL) << "ScatterAssign only support X86 and NVGPU ! Please Check.\n";
+    PADDLE_THROW(phi::errors::Fatal(
+        "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
   }
 
   auto pos_axis = axis;

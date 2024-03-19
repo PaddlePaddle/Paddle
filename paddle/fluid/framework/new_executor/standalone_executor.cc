@@ -119,7 +119,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                             shared_program->block(),
                                             micro_batch_scopes_[micro_batch_id],
                                             execution_config));
-      // Note(lizhiyu): Add mannual event info
+      // Note(lizhiyu): Add manual event info
       auto pir_inter = const_cast<PirInterpreter*>(
           static_cast<const PirInterpreter*>(interpretercores_.back()->Impl()));
       pir_inter->SetForceEventsToWaitInfo(
@@ -132,7 +132,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                             execution_config));
       interpretercores_.back()->SetCopyProgram(program);
 
-      // Note(lizhiyu): Add mannual event info
+      // Note(lizhiyu): Add manual event info
       auto prog_inter = const_cast<ProgramInterpreter*>(
           static_cast<const ProgramInterpreter*>(
               interpretercores_.back()->Impl()));

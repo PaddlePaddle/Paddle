@@ -107,7 +107,7 @@ OperationDistAttribute OperationDistAttribute::get(
         mesh,
         iter.process_mesh_attr(),
         phi::errors::PreconditionNotMet(
-            "operand_dist_attrs element's mesh(%s) not euqal to input mesh(%s)",
+            "operand_dist_attrs element's mesh(%s) not equal to input mesh(%s)",
             iter.process_mesh_attr(),
             mesh));
   }
@@ -116,7 +116,7 @@ OperationDistAttribute OperationDistAttribute::get(
         mesh,
         iter.process_mesh_attr(),
         phi::errors::PreconditionNotMet(
-            "operand_dist_attrs element's mesh(%s) not euqal to input mesh(%s)",
+            "operand_dist_attrs element's mesh(%s) not equal to input mesh(%s)",
             iter.process_mesh_attr(),
             mesh));
   }
