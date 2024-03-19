@@ -372,7 +372,12 @@ std::vector<pir::Type> BuildOutType(
 
 bool CanFuse(const GroupClusterNode& first,
              const GroupClusterNode& second,
-             ScheduleInfoNode* sch_node) {
+             ScheduleInfoNode* sch_node,
+             const std::unordered_set<::pir::Operation*>& all_yield_ops) {
+  if (first.HasYieldOp(all_yield_ops)) {
+    return false;
+  }
+
   if (!first.ops.empty() &&
       (first.ops.front()->name() == "cinn_op.generate_shape")) {
     return true;
@@ -647,7 +652,8 @@ bool CanOpMergeNode(
   const auto& node1 = op_path_info.at(pre_op);
   const auto& node2 = op_path_info.at(cur_op);
 
-  if (node1.HasYieldOp(all_yield_ops) && node2.HasYieldOp(all_yield_ops)) {
+  if (node1.HasYieldOp(all_yield_ops) ||
+      all_yield_ops.find(pre_op) != all_yield_ops.end()) {
     return false;
   }
 
@@ -739,7 +745,8 @@ std::vector<GroupClusterNode> HorizontalMergePass(
 }  // namespace horizontal_merge_detail
 
 std::vector<GroupClusterNode> NodeMergeWithNode(
-    const std::vector<GroupClusterNode>& first_stage_output) {
+    const std::vector<GroupClusterNode>& first_stage_output,
+    const std::unordered_set<::pir::Operation*>& all_yield_ops) {
   // stage 2 merge
   // for now we merge node in same pass
   // only for vertical fuse
@@ -774,7 +781,7 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
         const auto& pre_node = second_stage_output[pre_id];
 
         ScheduleInfoNode sch_node;
-        auto can_fuse = CanFuse(pre_node, new_node, &sch_node);
+        auto can_fuse = CanFuse(pre_node, new_node, &sch_node, all_yield_ops);
 
         if (can_fuse) {
           // merge pre node to new_node
@@ -924,9 +931,7 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
   auto yield_op = op_list.back();
   for (size_t i = 0; i < yield_op->num_operands(); ++i) {
     all_yield_ops.insert(yield_op->operand_source(i).defining_op());
-    if (yield_op->operand_source(i).defining_op()->result(0).use_count() == 1) {
-      yield_output_ops.insert(yield_op->operand_source(i).defining_op());
-    }
+    yield_output_ops.insert(yield_op->operand_source(i).defining_op());
   }
 
   // first stage op fuse op
@@ -985,7 +990,13 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   }
 
   // stage 2
-  auto second_stage_output = NodeMergeWithNode(first_stage_output);
+  auto yield_op = group_op.GetOperators().back();
+  std::unordered_set<::pir::Operation*> all_yield_ops;
+  for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+    all_yield_ops.insert(yield_op->operand_source(i).defining_op());
+  }
+  auto second_stage_output =
+      NodeMergeWithNode(first_stage_output, all_yield_ops);
   if (second_stage_output.size() == 1) {
     return second_stage_output;
   }
