@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,8 +33,15 @@ def TopPProcess(probs, top_p):
     sorted_indices_to_remove = paddle.cast(
         sorted_indices_to_remove, dtype='int64'
     )
-    sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
-    sorted_indices_to_remove[:, 0] = 0
+
+    sorted_indices_to_remove = paddle.static.setitem(
+        sorted_indices_to_remove,
+        (slice(None), slice(1, None)),
+        sorted_indices_to_remove[:, :-1].clone(),
+    )
+    sorted_indices_to_remove = paddle.static.setitem(
+        sorted_indices_to_remove, (slice(None), 0), 0
+    )
 
     # Scatter sorted tensors to original indexing
     sorted_indices = (
@@ -75,9 +82,29 @@ class TestTopPAPI(unittest.TestCase):
                 * self.batch_size,
                 self.dtype,
             ).reshape((-1, 1))
+
             # test case for basic test case 1
             paddle_result = paddle.top_p_sampling(
                 input_tensor, topp_tensor, seed=self.seed
+            )
+            ref_res = TopPProcess(input_tensor, self.topp)
+
+            np.testing.assert_allclose(
+                paddle_result[0].numpy(), ref_res[0].numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                paddle_result[1].numpy().flatten(),
+                ref_res[1].numpy().flatten(),
+                rtol=0,
+            )
+
+            # test case for basic test case 1
+            paddle_result = paddle.top_p_sampling(
+                input_tensor,
+                topp_tensor,
+                seed=-1,
+                mode="default",
+                return_top=True,
             )
             ref_res = TopPProcess(input_tensor, self.topp)
 
@@ -132,10 +159,11 @@ class TestTopPAPI(unittest.TestCase):
             )
 
     def test_cases(self):
-        places = [core.CUDAPlace(0)]
-        for place in places:
-            self.run_dygraph(place)
-            self.run_static(place)
+        if core.is_compiled_with_cuda():
+            places = [core.CUDAPlace(0)]
+            for place in places:
+                self.run_dygraph(place)
+                self.run_static(place)
 
 
 if __name__ == "__main__":
