@@ -22,8 +22,11 @@
 namespace cinn {
 namespace dialect {
 
-const char* JitKernelOp::attributes_name[attributes_num] = {
-    kAttrName, kKernelTensorNumber, "input_dim_exprs", "symbol_bindings"};
+const char* JitKernelOp::attributes_name[attributes_num] = {kAttrName,
+                                                            kKernelTensorNumber,
+                                                            "input_dim_exprs",
+                                                            "symbol_bindings",
+                                                            "output_dim_exprs"};
 
 void JitKernelOp::Build(::pir::Builder& builder,
                         pir::OperationArgument& argument,

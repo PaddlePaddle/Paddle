@@ -161,8 +161,17 @@ std::shared_ptr<::pir::Program> BuildReshapeSumProgram() {
                                                  std::vector<int64_t>({}))
                 .result(0);
 
+  auto s2 = builder
+                .Build<paddle::dialect::FullOp>(std::vector<int64_t>({1}),
+                                                -1,
+                                                phi::DataType::INT64,
+                                                phi::CPUPlace())
+                .result(0);
+  auto combine =
+      builder.Build<pir::CombineOp>(std::vector<pir::Value>({s1, s2}))
+          .result(0);
   //  auto s2 = builder.Build<paddle::dialect::AddOp>( s1, s1 ).result(0);
-  auto out = builder.Build<paddle::dialect::ReshapeOp>(x, s1).result(0);
+  auto out = builder.Build<paddle::dialect::ReshapeOp>(x, combine).result(0);
 
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
   return program;

@@ -59,6 +59,11 @@ inline void CheckAndUpdateSliceAttrs(
       end_i = ends[i].Get<int64_t>();
     }
 
+    if (start_i == -1 && IsMaxInt(ends[i])) {
+      ends[i] = 1;
+      starts[i] = 0;
+      continue;
+    }
     // For both start and end can be negative or positive, we need to handle the
     // following different arrangements.
     ends[i] = IsMaxInt(ends[i]) ? in_dims[axis] : ends[i];

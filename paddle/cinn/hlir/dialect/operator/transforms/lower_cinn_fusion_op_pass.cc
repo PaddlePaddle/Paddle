@@ -539,7 +539,8 @@ std::vector<::pir::Value> GetInputDims(
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     pir::PatternRewriter& rewriter,                  // NOLINT
     std::vector<pir::Attribute>* input_dims_attr,
-    cinn::dialect::GenerateShapeOp::SymbolBindings* symbol_bindings) {
+    cinn::dialect::GenerateShapeOp::SymbolBindings* symbol_bindings,
+    std::vector<pir::Attribute>* out_dims_attr) {
   std::vector<::pir::Value> output;
   std::unordered_set<symbol::DimExpr> insert_map;
   std::vector<symbol::DimExpr> input_dims;
@@ -547,53 +548,61 @@ std::vector<::pir::Value> GetInputDims(
   std::unordered_map<::pir::Value, std::vector<int64_t>> generate_shape_index;
 
   std::unordered_set<::pir::Value> gs_values;
-  for (auto& op : group->ops) {
-    if (op->name() == "cinn_op.generate_shape") {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        gs_values.insert(op->operand_source(i));
-      }
+  // for (auto& op : group->ops) {
+  //   if (op->name() == "cinn_op.generate_shape") {
 
-      auto* Convert =
-          &cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings;
-      const auto& symbol_bindings = Convert(op->attribute("symbol_bindings"));
+  //     auto* Convert =
+  //         &cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings;
+  //     const auto& symbol_bindings =
+  //     Convert(op->attribute("symbol_bindings"));
 
-      PADDLE_ENFORCE(
-          symbol_bindings.has_value(),
-          phi::errors::PreconditionNotMet("attr symbol_bindings in op [%s] can "
-                                          "not be converted to symbol bindings",
-                                          op->name()));
+  //     PADDLE_ENFORCE(
+  //         symbol_bindings.has_value(),
+  //         phi::errors::PreconditionNotMet("attr symbol_bindings in op [%s]
+  //         can "
+  //                                         "not be converted to symbol
+  //                                         bindings", op->name()));
+  //     bool with_binding = false;
+  //     for (const auto& symbol_binding : symbol_bindings.value()) {
+  //       std::cerr << "11\n";
+  //       auto t =
+  //       std::get<cinn::dialect::GenerateShapeOp::ShapeSymbolBinding>(
+  //           symbol_binding);
+  //       std::cerr << "symbolic bind" << t.symbol_name << "\t"
+  //                 << t.input_tensor_dim_idx << std::endl;
 
-      for (const auto& symbol_binding : symbol_bindings.value()) {
-        std::cerr << "11\n";
-        auto t = std::get<cinn::dialect::GenerateShapeOp::ShapeSymbolBinding>(
-            symbol_binding);
-        std::cerr << "symbolic bind" << t.symbol_name << "\t"
-                  << t.input_tensor_dim_idx << std::endl;
+  //       auto dim_expr = symbol::DimExpr{t.symbol_name};
+  //       with_binding = true;
+  //       if (!insert_map.count(dim_expr)) {
+  //         insert_map.insert(dim_expr);
+  //         auto value = rewriter
+  //                          .Build<paddle::dialect::SliceDimOp>(
+  //                              op->operand_source(t.input_tensor_idx),
+  //                              t.input_tensor_dim_idx)
+  //                          .result(0);
+  //         output.push_back(value);
 
-        auto dim_expr = symbol::DimExpr{t.symbol_name};
+  //         input_dims.push_back(dim_expr);
+  //       }
+  //     }
 
-        if (!insert_map.count(dim_expr)) {
-          insert_map.insert(dim_expr);
-          auto value = rewriter
-                           .Build<paddle::dialect::SliceDimOp>(
-                               op->operand_source(t.input_tensor_idx),
-                               t.input_tensor_dim_idx)
-                           .result(0);
-          output.push_back(value);
-
-          input_dims.push_back(dim_expr);
-        }
-      }
-    }
-  }
+  //     if( with_binding )
+  //     {
+  //       for (size_t i = 0; i < op->num_operands(); ++i) {
+  //         gs_values.insert(op->operand_source(i));
+  //       }
+  //     }
+  //   }
+  // }
 
   auto group_inputs = GetBlockOutsideInput(group->ops);
 
   for (auto& val : group_inputs) {
-    if (gs_values.count(val)) {
-      continue;
-    }
-    auto shape_or_data = shape_analysis.GetShapeOrDataForValue(val);
+    // if (gs_values.count(val)) {
+    //   continue;
+    // }
+    // auto shape_or_data = shape_analysis.GetShapeOrDataForValue(val);
+    auto shape_or_data = group->GetShapeOrDataExprs(val);
 
     std::cerr << "shape or data " << shape_or_data << std::endl;
     for (int i = 0; i < shape_or_data.shape().size(); ++i) {
@@ -626,17 +635,29 @@ std::vector<::pir::Value> GetInputDims(
 
   // Get output shape
 
+  int index = 0;
   for (int64_t i = 0; i < group->output_values.size(); ++i) {
-    auto shape_or_data =
-        shape_analysis.GetShapeOrDataForValue(group->output_values[i]);
+    // auto shape_or_data =
+    //     shape_analysis.GetShapeOrDataForValue(group->output_values[i]);
+    auto shape_or_data = group->GetShapeOrDataExprs(group->output_values[i]);
 
+    std::cerr << "output dim " << shape_or_data << std::endl;
     for (int64_t j = 0; j < shape_or_data.shape().size(); ++j) {
       auto dim_expr = shape_or_data.shape()[j];
+      std::cerr << "dim expr " << dim_expr << std::endl;
       if (!dim_expr.isa<int64_t>()) {
         // PADDLE_ENFORCE_EQ(symbol::IsAtomic(dim_expr), true,
         // phi::errors::Unimplemented("only support atomic expr"));
-        if (!dim_expr.isa<std::string>()) continue;
-        const auto& sym_name = dim_expr.dyn_cast<std::string>();
+        // if (!dim_expr.isa<std::string>()) continue;
+        std::string sym_name;
+        if (dim_expr.isa<std::string>()) {
+          sym_name = dim_expr.dyn_cast<std::string>();
+        } else {
+          sym_name = "ST" + std::to_string(index++);
+          out_dims_attr->push_back(cinn::dialect::ConvertDimExprToAttribute(
+              pir::IrContext::Instance(), dim_expr));
+        }
+        std::cerr << "sym name " << std::endl;
         symbol_bindings->emplace_back(
             cinn::dialect::GenerateShapeOp::ShapeSymbolBinding{
                 /*.symbol_name=*/sym_name,
@@ -709,9 +730,14 @@ pir::Operation* ProcessDyShapeGroup(
     // compile group to jit_kernel_op
 
     std::vector<pir::Attribute> input_dims_attr;
+    std::vector<pir::Attribute> output_dims_attr;
     cinn::dialect::GenerateShapeOp::SymbolBindings symbol_bindings;
-    auto slice_val = GetInputDims(
-        group, shape_analysis, rewriter, &input_dims_attr, &symbol_bindings);
+    auto slice_val = GetInputDims(group,
+                                  shape_analysis,
+                                  rewriter,
+                                  &input_dims_attr,
+                                  &symbol_bindings,
+                                  &output_dims_attr);
     int64_t kernel_tensor_number = group_inputs.size();
     std::cerr << "slice val " << slice_val.size() << std::endl;
     for (auto& val : slice_val) {
@@ -726,9 +752,7 @@ pir::Operation* ProcessDyShapeGroup(
       auto t = group_output_values[i].type().dyn_cast<::pir::DenseTensorType>();
       auto new_dim = t.dims();
       if (shape_analysis.HasShapeOrDataForValue(group_output_values[i])) {
-        auto shape =
-            shape_analysis.GetShapeOrDataForValue(group_output_values[i])
-                .shape();
+        auto shape = group->GetShapeOrDataExprs(group_output_values[i]).shape();
         for (size_t k = 0; k < shape.size(); ++k) {
           if (shape[k].isa<int64_t>()) {
             new_dim[k] = shape[k].Get<int64_t>();
@@ -756,7 +780,7 @@ pir::Operation* ProcessDyShapeGroup(
         "symbol_bindings",
         cinn::dialect::GenerateShapeOp::ConvertSymbolBindingsToAttribute(
             rewriter, symbol_bindings));
-
+    attr_map.emplace("output_dim_exprs", rewriter.array_attr(output_dims_attr));
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, attr_map, output_types);
     return jit_kernel_op;

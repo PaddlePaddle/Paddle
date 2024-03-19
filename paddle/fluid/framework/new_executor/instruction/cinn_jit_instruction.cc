@@ -34,6 +34,33 @@ namespace framework {
 typedef void (*lower_func_ptr_g)(void*, int32_t, void*);
 typedef void (*infer_shape_func_ptr_g)(void*, int32_t, int64_t**);
 
+class ExprEval {
+ public:
+  symbol::DimExpr expr;
+  std::vector<phi::DenseTensor*> tensor_list;
+  std::vector<symbol::DimExpr> expr_list;
+
+  int64_t Eval() {
+    std::unordered_map<symbol::DimExpr, symbol::DimExpr> in_map;
+    std::cerr << "begin to eval " << tensor_list.size() << std::endl;
+    for (size_t i = 0; i < expr_list.size(); ++i) {
+      std::cerr << i << "\t info " << tensor_list[i]->data<int64_t>()[0]
+                << std::endl;
+      in_map.emplace(expr_list[i], tensor_list[i]->data<int64_t>()[0]);
+    }
+
+    auto res = symbol::SubstituteDimExpr(expr, in_map);
+    auto out = symbol::SimplifyDimExpr(res);
+
+    std::cerr << "evap res " << out << std::endl;
+    if (out.isa<int64_t>()) {
+      return out.Get<int64_t>();
+    } else {
+      return -1;
+    }
+  }
+};
+
 class CinnJitInstruction::FnPtrImpl {
   using CINNKernelInfo = cinn::hlir::framework::pir::CINNKernelInfo;
 
@@ -140,12 +167,13 @@ CinnJitInstruction::CinnJitInstruction(
   op_ = op;
 
   std::unordered_map<symbol::DimExpr, int64_t> dim_expr_2_id;
-  const auto& output_dim_exprs =
+  const auto& input_dim_exprs =
       op->attribute("input_dim_exprs").dyn_cast<pir::ArrayAttribute>();
-  for (int i = 0; i < output_dim_exprs.size(); ++i) {
-    const auto& attr = output_dim_exprs.at(i);
+  for (int i = 0; i < input_dim_exprs.size(); ++i) {
+    const auto& attr = input_dim_exprs.at(i);
     const auto& opt_dim_expr = cinn::dialect::ConvertAttributeToDimExpr(attr);
     CHECK(opt_dim_expr.has_value());
+    std::cerr << "in_dim_expr.value() " << opt_dim_expr.value() << std::endl;
     dim_expr_2_id.emplace(opt_dim_expr.value(), i);
   }
 
@@ -172,6 +200,32 @@ CinnJitInstruction::CinnJitInstruction(
     }
   }
 
+  const auto& output_dim_exprs =
+      op->attribute("output_dim_exprs").dyn_cast<pir::ArrayAttribute>();
+
+  for (int i = 0; i < output_dim_exprs.size(); ++i) {
+    const auto& attr = output_dim_exprs.at(i);
+    const auto& opt_dim_expr = cinn::dialect::ConvertAttributeToDimExpr(attr);
+    CHECK(opt_dim_expr.has_value());
+    std::cerr << "out_dim_expr.value() " << opt_dim_expr.value() << std::endl;
+
+    auto res = symbol::CollectDimExprSymbols(opt_dim_expr.value());
+
+    std::shared_ptr<ExprEval> node = std::make_shared<ExprEval>();
+    node->expr = opt_dim_expr.value();
+    for (auto& val : res) {
+      std::cerr << "EEEEEE " << val << std::endl;
+      symbol::DimExpr expr1(val);
+      CHECK(dim_expr_2_id.count(expr1));
+      node->tensor_list.push_back(dim_args_[dim_expr_2_id.at(expr1)]);
+      node->expr_list.push_back(expr1);
+    }
+
+    std::cerr << "info" << node->expr_list.size() << "\t"
+              << node->tensor_list.size() << std::endl;
+    expr_eval_list_.push_back(node);
+  }
+
   auto* Convert =
       &cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings;
   const auto& symbol_bindings = Convert(op->attribute("symbol_bindings"));
@@ -186,7 +240,7 @@ CinnJitInstruction::CinnJitInstruction(
     std::cerr << "11\n";
     auto t = std::get<cinn::dialect::GenerateShapeOp::ShapeSymbolBinding>(
         symbol_binding);
-    std::cerr << "symbolic bind" << t.symbol_name << "\t"
+    std::cerr << "symbolic bind " << t.symbol_name << "\t"
               << t.input_tensor_dim_idx << std::endl;
     auto expr = symbol::DimExpr(t.symbol_name);
     if (dim_expr_2_id.count(expr)) {
@@ -194,7 +248,18 @@ CinnJitInstruction::CinnJitInstruction(
           UpdateDimNode{t.input_tensor_idx,
                         t.input_tensor_dim_idx,
                         dim_args_[dim_expr_2_id.at(expr)]});
+    } else if (t.symbol_name.substr(0, 2) == "ST") {
+      int index = std::atol(t.symbol_name.substr(2).c_str());
+
+      std::cerr << "insert evaler" << index << "\n";
+
+      output_dim_info.emplace_back(UpdateDimNode{t.input_tensor_idx,
+                                                 t.input_tensor_dim_idx,
+                                                 nullptr,
+                                                 expr_eval_list_[index].get()});
+
     } else {
+      std::cerr << "cant not found " << t.symbol_name << std::endl;
       throw std::runtime_error("can not find expr");
     }
   }
@@ -237,14 +302,22 @@ void CinnJitInstruction::Run() {
   //   std::endl;
   // }
   std::cerr << "out dim info " << output_dim_info.size() << std::endl;
+  for (auto& dim : all_dim_info_) {
+    std::cerr << "dims " << dim << std::endl;
+  }
   for (size_t i = 0; i < output_dim_info.size(); ++i) {
     auto node = output_dim_info[i];
 
-    std::cerr << node.out_tensor_idx << "\t" << node.out_tensor_dim_idx << "\t"
-              << node.tensor->data<int64_t>()[0] << std::endl;
-
-    all_dim_info_[node.out_tensor_idx][node.out_tensor_dim_idx] =
-        node.tensor->data<int64_t>()[0];
+    if (node.tensor != nullptr) {
+      std::cerr << node.out_tensor_idx << "\t" << node.out_tensor_dim_idx
+                << "\t" << node.tensor->data<int64_t>()[0] << std::endl;
+      all_dim_info_[node.out_tensor_idx][node.out_tensor_dim_idx] =
+          node.tensor->data<int64_t>()[0];
+    } else {
+      std::cerr << "call eval " << (node.expr_eval != nullptr) << std::endl;
+      auto eval_res = node.expr_eval->Eval();
+      all_dim_info_[node.out_tensor_idx][node.out_tensor_dim_idx] = eval_res;
+    }
   }
   for (size_t i = 0; i < output_tensor_size; ++i) {
     std::cerr << "dims " << all_dim_info_[i] << std::endl;

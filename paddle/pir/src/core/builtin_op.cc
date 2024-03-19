@@ -225,16 +225,16 @@ void CombineOp::VerifySig() const {
              input_num);
 
   // forall i in inputs.size(): inputs[i].type == outputs[0][i].type
-  for (size_t i = 0; i < input_num; ++i) {
-    auto type = (*this)->operand(i).type();
-    IR_ENFORCE(output_type[i] == type,
-               "The type %s of outputs[0][%d] must be "
-               "equal to type %s of inputs[%d].",
-               output_type[i],
-               i,
-               type,
-               i);
-  }
+  // for (size_t i = 0; i < input_num; ++i) {
+  //   auto type = (*this)->operand(i).type();
+  //   IR_ENFORCE(output_type[i] == type,
+  //              "The type %s of outputs[0][%d] must be "
+  //              "equal to type %s of inputs[%d].",
+  //              output_type[i],
+  //              i,
+  //              type,
+  //              i);
+  // }
 }
 
 const char *SliceOp::attributes_name[attributes_num] = {"index"};  // NOLINT

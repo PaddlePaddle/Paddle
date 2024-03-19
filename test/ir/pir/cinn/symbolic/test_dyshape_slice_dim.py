@@ -36,7 +36,7 @@ class BroadcastSubgraph(nn.Layer):
         return y - x
 
     def forward(self, x, y):
-        return x.reshape([y.shape[0]])
+        return x.reshape([y.shape[0], -1])
 
 
 class TestIfSubgraph(unittest.TestCase):
