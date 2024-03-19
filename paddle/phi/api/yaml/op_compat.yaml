@@ -3809,6 +3809,12 @@
   inputs :
     x : X
 
+- op: prune_gate_by_capacity
+  inputs:
+    {gate_idx: GateIdx, expert_count: ExpertCount}
+  outputs:
+    new_gate_idx: NewGateIdx
+
 - op: random_routing
   inputs:
     {prob : Prob, topk_value : TopK_Value, topk_idx : TopK_Idx}

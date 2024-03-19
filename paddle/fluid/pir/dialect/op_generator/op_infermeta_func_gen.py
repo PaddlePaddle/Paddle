@@ -19,8 +19,8 @@ from op_build_gen import (
 from utils import to_pascal_case
 
 OP_INFERMETA_DECL_STRING = (
-    "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
-    "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, pir::AttributeMap& attributes );"
+    "  static void InferMeta(phi::InferMetaContext *infer_meta );\n"
+    "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, pir::AttributeMap* p_attributes );"
 )
 
 OP_INFERMETA_IMPL_TEMPLATE_1 = """
@@ -31,7 +31,10 @@ void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
 """
 
 OP_INFERMETA_IMPL_TEMPLATE_2 = """
-std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, pir::AttributeMap& attributes) {{
+std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, pir::AttributeMap* p_attributes) {{
+  PADDLE_ENFORCE_NOT_NULL(
+        p_attributes, common::errors::Fatal("AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto& attributes = *p_attributes; (void)attributes;
 {infermeta_inputs}
 {get_attributes_str}
 {infermeta_outputs}
@@ -40,7 +43,7 @@ std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input
 """
 
 OP_INFERMETA_IMPL_TEMPLATE_2_BY_INVOKE = """
-std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, pir::AttributeMap& attributes) {{
+std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, pir::AttributeMap* attributes) {{
   return {invoke_class}::InferMeta(input_values, attributes);
 }}
 """
@@ -613,7 +616,11 @@ def GenDistBranch(args, op_info):
         return ""
     TEMPLATE = """
   // Auto Parallel condition
-  if(!input_values.empty() && AllInputAreDist(input_values)) {{
+  if(HasDistInput(input_values)) {{
+    if(!AllInputAreDist(input_values)) {{
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Mixed inputs with DenseTensor and DistDenseTensor are not supported yet."));
+    }}
     ProcessMeshAttribute op_mesh = input_values[0].type().dyn_cast<DistDenseTensorType>().process_mesh_attr();
     std::vector<TensorDistAttribute> operand_dist_attrs, result_dist_attrs;"""
     dist_branch_str = TEMPLATE.format()
@@ -677,7 +684,7 @@ def GenDistBranch(args, op_info):
 """
             dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
     TEMPLATE = """
-    attributes[kAttrOpDistAttrs] = OperationDistAttribute::get(
+    attributes[kAttrOpDistAttr] = OperationDistAttribute::get(
         pir::IrContext::Instance(),
         op_mesh,
         operand_dist_attrs,

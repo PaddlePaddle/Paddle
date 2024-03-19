@@ -2778,6 +2778,7 @@
   output : Tensor(out)
   infer_meta:
      func: SwiGLUInferMeta
+     spmd_rule: SwiGLUInferSpmd
   kernel:
      func : swiglu
   optional : y

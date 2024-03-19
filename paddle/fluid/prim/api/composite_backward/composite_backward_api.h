@@ -220,9 +220,9 @@ void subtract_grad(const Tensor& x,
                    Tensor* dy) {
   if (dy) {
     auto scale_out_grad = scale<T>(out_grad, -1.0, 0.0, true);
-    if (x.dims() != y.dims()) {
+    if (out_grad.dims() != y.dims()) {
       // Maybe need reduce here
-      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         by_pass<T>(scale_out_grad, dy);
       } else {
@@ -236,9 +236,9 @@ void subtract_grad(const Tensor& x,
     }
   }
   if (dx) {
-    if (y.dims() != x.dims()) {
+    if (out_grad.dims() != x.dims()) {
       // Maybe need reduce here
-      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      auto reduce_dim = get_reduce_dims(x.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         by_pass<T>(out_grad, dx);
       } else {
@@ -261,9 +261,9 @@ void add_grad(const Tensor& x,
               Tensor* dx,
               Tensor* dy) {
   if (dy) {
-    if (x.dims() != y.dims()) {
+    if (out_grad.dims() != y.dims()) {
       // Maybe need reduce here
-      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         by_pass<T>(out_grad, dy);
       } else {
@@ -277,9 +277,9 @@ void add_grad(const Tensor& x,
     }
   }
   if (dx) {
-    if (y.dims() != x.dims()) {
+    if (out_grad.dims() != x.dims()) {
       // Maybe need reduce here
-      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      auto reduce_dim = get_reduce_dims(x.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         by_pass<T>(out_grad, dx);
       } else {
@@ -371,9 +371,9 @@ void divide_grad(const Tensor& x,
   if (dx) {
     // dx = (1/y) * dout = dout / y
     auto dx_res = out_grad / y;
-    if (y.dims() != x.dims()) {
+    if (out_grad.dims() != x.dims()) {
       // Maybe need reduce here
-      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      auto reduce_dim = get_reduce_dims(x.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         set_output<T>(dx_res, dx);
       } else {
@@ -399,9 +399,9 @@ void elementwise_pow_grad(const Tensor& x,
     auto lnx = log<T>(x);
     auto x_pow_y = elementwise_pow<T>(x, y);
     auto dy_res = lnx * x_pow_y * out_grad;
-    if (x.dims() != y.dims()) {
+    if (out_grad.dims() != y.dims()) {
       // Maybe need reduce here
-      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         set_output<T>(dy_res, dy);
       } else {
@@ -419,9 +419,9 @@ void elementwise_pow_grad(const Tensor& x,
     auto tmp_z = y - 1.0;
     auto x_pow_z = elementwise_pow<T>(x, tmp_z);
     auto dx_res = y * x_pow_z * out_grad;
-    if (y.dims() != x.dims()) {
+    if (out_grad.dims() != x.dims()) {
       // Maybe need reduce here
-      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      auto reduce_dim = get_reduce_dims(x.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         set_output<T>(dx_res, dx);
       } else {
@@ -1138,9 +1138,9 @@ void maximum_grad(const Tensor& x,
   if (x_grad) {
     auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
     auto dx_res = out_grad * x_tmp;
-    if (y.dims() != x.dims()) {
+    if (out_grad.dims() != x.dims()) {
       // Maybe need reduce here
-      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      auto reduce_dim = get_reduce_dims(x.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         set_output<T>(dx_res, x_grad);
       } else {
@@ -1157,9 +1157,9 @@ void maximum_grad(const Tensor& x,
   if (y_grad) {
     auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
     auto dy_res = out_grad * y_tmp;
-    if (x.dims() != y.dims()) {
+    if (out_grad.dims() != y.dims()) {
       // Maybe need reduce here
-      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         set_output<T>(dy_res, y_grad);
       } else {
