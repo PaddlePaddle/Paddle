@@ -41,9 +41,11 @@ const std::unordered_set<std::string> LegacyOpList = {
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
+    DistributedPushSparseOp::name(),
     FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
+    FusedTokenPruneOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
@@ -94,6 +96,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceMaxOp::name(),
     CReduceMinOp::name(),
     CReduceProdOp::name(),
+    CScatterOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
     PartialRecvOp::name()};
@@ -312,7 +315,9 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
       data_type.insert(phi::DataTypeToString(info_pair.first.dtype()));
     }
   }
-
+  if (data_type.empty()) {
+    VLOG(6) << "No data type is registered for " << op_name;
+  }
   return data_type;
 }
 

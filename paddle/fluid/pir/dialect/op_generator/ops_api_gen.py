@@ -69,6 +69,9 @@ OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
 NEED_GEN_STATIC_ONLY_APIS = [
+    'c_allreduce_avg_',
+    'c_allreduce_min_',
+    'c_allreduce_prod_',
     'distributed_fused_lamb_init',
     'distributed_fused_lamb_init_',
     'fetch',
@@ -120,15 +123,14 @@ NEED_GEN_STATIC_ONLY_APIS = [
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
+    'all_reduce',
+    'all_reduce_',
     'c_allgather',
     'c_allreduce_avg',
-    'c_allreduce_avg_',
     'c_allreduce_max',
     'c_allreduce_min',
-    'c_allreduce_min_',
     'c_allreduce_sum',
     'c_allreduce_prod',
-    'c_allreduce_prod_',
     'c_embedding',
     'c_identity',
     'c_reduce_sum',
@@ -136,6 +138,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_softmax_with_cross_entropy',
     'c_split',
     'decayed_adagrad',
+    'distributed_push_sparse',
     'distributed_lookup_table',
     'dpsgd',
     'embedding_grad_sparse',
@@ -145,6 +148,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_elemwise_add_activation',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
+    'fused_token_prune',
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
     'nce',
@@ -173,6 +177,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_min_',
     'c_reduce_prod',
     'c_reduce_prod_',
+    'c_scatter',
+    'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',
     'partial_send',

@@ -16,10 +16,10 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraints_pass.h"
 
-#include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/cinn/common/union_find.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace cinn {
 namespace dialect {
@@ -55,7 +55,7 @@ symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
     std::vector<symbol::DimExpr> substituted_dim_expr{};
     for (const symbol::DimExpr& dim_expr : original_dim_expr) {
       const auto& tmp_dim_expr =
-          cinn::common::SubstituteDimExpr(dim_expr, substitution_pattern);
+          symbol::SubstituteDimExpr(dim_expr, substitution_pattern);
       substituted_dim_expr.push_back(symbol::SimplifyDimExpr(tmp_dim_expr));
     }
     return substituted_dim_expr;
