@@ -36,7 +36,7 @@ python3.8  ${compile_file}     \
 -o ${wint8_dir}/wint8     \
 --out-name wint8_kernel     \
 -w ${num_warps}   -ns ${num_stages} \
--s   "*fp16:16, *u8:16, *fp16:16, *fp16:16, *fp16:16, i32,i32:16,i32:16,  i32:16,i32:1,  i32:16,i32:1, i32:16,i32:1, ${block_m}, ${block_n}, ${block_k}, 1, ${split_k}"\
+-s   "*fp16:16, *u8:16, *fp16:16, *fp16:16, *fp16:16, i32,i32:16,i32:16,  i32:16,i32:1,  i32:1,i32:16, i32:16,i32:1, ${block_m}, ${block_n}, ${block_k}, 1, ${split_k}"\
  -g   "((M+${block_m}-1)/${block_m}) * ((N+${block_n}-1)/${block_n}), ${split_k}, 1" \
 '''
 

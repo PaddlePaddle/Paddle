@@ -44,7 +44,7 @@ print("paddle cutlass The whoel end to end time : ", time_ms, "ms")
 
 
 # 下面是triton的计算代码
-bool_trans_w_triton = False
+bool_trans_w_triton = True
 
 if bool_trans_w_triton:
     no_perm_qweight = no_perm_qweight.transpose([1,0]).contiguous()

@@ -11,6 +11,9 @@ activation = (paddle.randn((M, K), dtype=paddle.float32) * 100).astype("int8")
 # 下面是triton的计算代码
 
 qweight = (paddle.randn((K // 8, N), dtype=paddle.float32) * 100 - 2).astype("int32")
+#qweight = (paddle.randn((K // 2, N), dtype=paddle.float32) * 100 - 2).astype("int8")
+ele_per_btype = 8
+
 bool_trans_w = False
 
 if bool_trans_w:
@@ -41,9 +44,9 @@ qweight = qweight.numpy()
 unpack_qweight = paddle.zeros((K, N), dtype=paddle.int8).numpy()
 for i in range(K):
     for j in range(N):
-        int4_id = i % 8
-        int32 = qweight[i // 8, j]
-        int32 = int32 >> (int4_id * 4) & 0b1111
+        int4_id = i % ele_per_btype
+        int32 = qweight[i // ele_per_btype, j]
+        int32 = (int32 >> (int4_id * 4) << 4) & 0b11110000
         unpack_qweight[i, j] = int32
 
 unpack_qweight = paddle.to_tensor(unpack_qweight)

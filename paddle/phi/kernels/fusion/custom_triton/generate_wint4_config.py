@@ -31,12 +31,12 @@ def SubstituteTemplate(template, values):
 
 template = '''
 python3.8  ${compile_file}     \
-/zhoukangkang/triton/python/paddle_tutorials/w4a8.py    \
--n w4a8_kernel   \
--o ${w4a8_dir}/w4a8     \
---out-name w4a8_kernel     \
+/zhoukangkang/triton/python/paddle_tutorials/weight-only-int4.py    \
+-n wint4_kernel   \
+-o ${wint4_dir}/wint4     \
+--out-name wint4_kernel     \
 -w ${num_warps}   -ns ${num_stages} \
--s   "*i8:16, *i32:16, *i32:16, i32,i32:16,i32:16,  i32:16,i32:1,  i32:16,i32:1, i32:16,i32:1, ${block_m}, ${block_n}, ${block_k}, ${group_size_m}, ${split_k}"\
+-s   "*fp16:16, *u8:16, *fp16:16, *fp16:16, *fp16:16, i32,i32:16,i32:16,  i32:16,i32:1,  i32:16,i32:1, i32:16,i32:1, ${block_m}, ${block_n}, ${block_k}, 1, ${split_k}"\
  -g   "((M+${block_m}-1)/${block_m}) * ((N+${block_n}-1)/${block_n}), ${split_k}, 1" \
 '''
 
@@ -50,21 +50,18 @@ for num_stages in [2, 3, 4, 5, 6]:
                 if block_m * block_n >= 128 * 256:
                     num_warps = 8
                 for split_k in [1, 2, 4, 8]:
-                    for group_size_m in [1]:
-                        values = {
-                            "num_stages": str(num_stages),
-                            "block_m": str(block_m),
-                            "block_n": str(block_n),
-                            "block_k": str(block_k),
-                            "split_k": str(split_k),
-                            "num_warps": str(num_warps),
-                            "group_size_m" : str(group_size_m)
-                        }
-                        result = SubstituteTemplate(template, values)
-                        config_num += 1
-                        result += " &"
-                        if config_num % thread_num == 0:
-                            result += "\nwait"
-                        print(result)
+                    values = {
+                        "num_stages": str(num_stages),
+                        "block_m": str(block_m),
+                        "block_n": str(block_n),
+                        "block_k": str(block_k),
+                        "split_k": str(split_k),
+                        "num_warps": str(num_warps),
+                    }
+                    result = SubstituteTemplate(template, values)
+                    config_num += 1
+                    result += " &"
+                    if config_num % thread_num == 0:
+                        result += "\nwait"
+                    print(result)
 print("wait")
-

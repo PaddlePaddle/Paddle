@@ -14,47 +14,51 @@
 
 #include <cuda_fp16.h>
 #include <vector>
-#include "generated/w4a8/w4a8.h"
+#include "generated/wint4/wint4.h"
 #include "paddle/extension.h"
 
-std::map<std::vector<int>, int> map_problem_triton_w4a8;
+std::map<std::vector<int>, int> map_problem_triton_wint4;
 
-std::vector<paddle::Tensor> TritonW4a8(const paddle::Tensor& x,
-                                        const paddle::Tensor& qweight,
-                                        bool bool_trans_w) {
+std::vector<paddle::Tensor> TritonWint4(
+    const paddle::Tensor& x,
+    const paddle::Tensor& qweight,
+    const paddle::Tensor& scales,
+    paddle::optional<paddle::Tensor>& bias,
+    bool bool_trans_w,
+    bool with_bias) {
   int m = x.shape()[0];
   int k = x.shape()[1];
-  int n = qweight.shape()[1];
-  if (bool_trans_w) {
-    n = qweight.shape()[0];
-  }
-  
-  std::cout << "TritonW4a8: m=" << m << ", k=" << k << ", n=" << n << std::endl;
-  auto c_out = paddle::full({m, n}, 0, paddle::DataType::INT32, x.place());
+  int n = scales.shape()[0];
 
-  auto dev_x = x.data<int8_t>();
-  //auto dev_weight = qweight.data<int8_t>();
-  auto dev_weight = qweight.data<int32_t>();
-  auto dev_c = c_out.data<int32_t>();
+  auto c_out = paddle::full({m, n}, 0, x.dtype(), x.place());
+
+  auto dev_x = x.data<phi::dtype::float16>();
+  auto dev_weight = qweight.data<uint8_t>();
+  auto dev_c = c_out.data<phi::dtype::float16>();
+  auto dev_scales = scales.data<phi::dtype::float16>();
+  phi::dtype::float16* dev_bias = nullptr;
+  if (with_bias) {
+    dev_bias = bias->data<phi::dtype::float16>();
+  }
 
   int stride_bk = n;
   int stride_bn = 1;
 
   if (bool_trans_w) {
     stride_bk = 1;
-    //stride_bn = k / 8;
-    stride_bn = k / 4; 
+    stride_bn = k;
   }
 
   std::vector<int> problem_size = {m, k, n};
 
-  if (map_problem_triton_w4a8.count(problem_size)) {
-    int algo_id = map_problem_triton_w4a8[problem_size];
-    printf("TritonW4a8: %d\n", algo_id);
-    auto status = w4a8_kernel(c_out.stream(),
+  if (map_problem_triton_wint4.count(problem_size)) {
+    int algo_id = map_problem_triton_wint4[problem_size];
+    auto status = wint4_kernel(c_out.stream(),
                                (CUdeviceptr)(dev_x),
                                (CUdeviceptr)(dev_weight),
                                (CUdeviceptr)(dev_c),
+                               (CUdeviceptr)(dev_scales),
+                               (CUdeviceptr)(dev_bias),
                                m,
                                n,
                                k,
@@ -74,7 +78,7 @@ std::vector<paddle::Tensor> TritonW4a8(const paddle::Tensor& x,
   constexpr int WARMUP = 5;
   constexpr int REPEAT = 10;
 
-  for (int algo_id = 0; algo_id < w4a8_kernel_get_num_algos(); ++algo_id) {
+  for (int algo_id = 0; algo_id < wint4_kernel_get_num_algos(); ++algo_id) {
     cudaEvent_t beg[REPEAT];
     cudaEvent_t end[REPEAT];
     float elapsed_times[REPEAT];
@@ -95,10 +99,12 @@ std::vector<paddle::Tensor> TritonW4a8(const paddle::Tensor& x,
       // std::cout << &flush_l2_cache  << std::endl;
 
       cudaMemset(dev_c, 0, sizeof(phi::dtype::float16) * m * n);
-      status = w4a8_kernel(c_out.stream(),
+      status = wint4_kernel(c_out.stream(),
                             (CUdeviceptr)(dev_x),
                             (CUdeviceptr)(dev_weight),
                             (CUdeviceptr)(dev_c),
+                            (CUdeviceptr)(dev_scales),
+                            (CUdeviceptr)(dev_bias),
                             m,
                             n,
                             k,
@@ -130,15 +136,14 @@ std::vector<paddle::Tensor> TritonW4a8(const paddle::Tensor& x,
     }
   }
 
-  map_problem_triton_w4a8[problem_size] = select_id;
+  map_problem_triton_wint4[problem_size] = select_id;
   std::cout << "select algo id: " << select_id << std::endl;
 
   return {c_out};
 }
 
-PD_BUILD_OP(triton_w4a8)
-    .Inputs({"x", "qweight"})
+PD_BUILD_OP(triton_wint4)
+    .Inputs({"x", "qweight", "scales", paddle::Optional("bias")})
     .Outputs({"out"})
-    .SetKernelFn(PD_KERNEL(TritonW4a8))
-    .Attrs({"bool_trans_w: bool"});
-
+    .SetKernelFn(PD_KERNEL(TritonWint4))
+    .Attrs({"bool_trans_w: bool", "with_bias: bool"});
