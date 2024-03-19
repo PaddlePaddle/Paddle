@@ -27,7 +27,7 @@ class MatmulElementwiseAddFusePattern : public paddle::drr::DrrPatternBase {
   std::string matmul_name_;
   std::string fused_matmul_name_;
   uint32_t benefit_;
-  bool as_x_;
+  bool as_x_;  // Decide input direction of add
 
  public:
   MatmulElementwiseAddFusePattern(const std::string &matmul_name,
@@ -106,8 +106,8 @@ class FusedMatmulElementwiseAddFusePattern
   std::string matmul_name_;
   std::string fused_matmul_name_;
   uint32_t benefit_;
-  bool as_x_;
-  bool as_x2_;
+  bool as_x_;   // Decide input direction of 1st add
+  bool as_x2_;  // Decide input direction of 2nd add
 
  public:
   FusedMatmulElementwiseAddFusePattern(const std::string &matmul_name,
