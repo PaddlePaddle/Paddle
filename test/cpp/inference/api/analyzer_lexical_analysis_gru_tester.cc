@@ -49,7 +49,7 @@ std::vector<size_t> ReadSentenceLod(std::ifstream &file,
   file.clear();
   file.seekg(offset);
   file.read(reinterpret_cast<char *>(sentence_lod.data()),
-            total_sentences_num * sizeof(size_t));
+            total_sentences_num * sizeof(size_t));  // NOLINT
 
   if (file.eof()) LOG(ERROR) << "Reached end of stream";
   if (file.fail()) throw std::runtime_error("Failed reading file.");

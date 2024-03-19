@@ -117,6 +117,7 @@ struct GroupClusterNode {
   // if kind is reduce, loop ranges equal input dim
   // if kind id elementwise or broadcast, loop ranges equal output dim
   std::vector<int64_t> loop_ranges;
+  std::vector<symbol::DimExpr> loop_rangs_expr;
 
   std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>
       alignment_schedule_info;
@@ -182,6 +183,7 @@ struct GroupClusterNode {
     if ((node.group_kind == cinn::hlir::framework::kReduction) ||
         (node.group_kind == cinn::hlir::framework::kBroadcast)) {
       this->loop_ranges = node.loop_ranges;
+      this->loop_rangs_expr = node.loop_rangs_expr;
     }
     if (node.group_kind == cinn::hlir::framework::kReduction) {
       this->reduce_axis = node.reduce_axis;
@@ -189,6 +191,7 @@ struct GroupClusterNode {
 
     if ((ops.size() == 1) && (ops.front()->name() == "cinn_op.reshape")) {
       this->loop_ranges = node.loop_ranges;
+      this->loop_rangs_expr = node.loop_rangs_expr;
     }
   }
 
@@ -252,9 +255,10 @@ cinn::dialect::GroupInfo BuildGroupInfo(
     const GroupClusterNode& node,
     const std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>&
         new_align_info) {
-  cinn::dialect::GroupInfo group_info({});
+  cinn::dialect::GroupInfo group_info(vec_new_op_list);
   group_info.group_id = BuildGroupId(vec_new_op_list);
   group_info.loop_ranges = node.loop_ranges;
+  group_info.loop_ranges_expr = node.loop_rangs_expr;
   group_info.reduce_axis = node.reduce_axis;
   group_info.op_pattern_kind = node.group_kind;
   group_info.alignment_schedule_info = new_align_info;
@@ -287,10 +291,13 @@ std::vector<pir::Type> BuildOutType(
     auto new_op = op->Clone(*ir_mapping, clone_options);
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
     for (size_t i = 0; i < op->num_results(); ++i) {
-      shape_analysis.SetShapeOrDataForValue(
-          new_op->result(i),
-          shape_analysis.GetShapeOrDataForValue(op->result(i)));
+      if (shape_analysis.HasShapeOrDataForValue(op->result(i))) {
+        shape_analysis.SetShapeOrDataForValue(
+            new_op->result(i),
+            shape_analysis.GetShapeOrDataForValue(op->result(i)));
+      }
     }
 
     vec_new_op_list.push_back(new_op);
@@ -336,6 +343,7 @@ std::vector<pir::Type> BuildOutType(
                                                 group_ops.end());
 
   std::vector<::pir::Value> new_output;
+
   for (size_t i = 0; i < output_value.size(); ++i) {
     new_output.push_back(ir_mapping->Lookup<::pir::Value>(output_value[i]));
   }
@@ -350,6 +358,10 @@ std::vector<pir::Type> BuildOutType(
 bool CanFuse(const GroupClusterNode& first,
              const GroupClusterNode& second,
              ScheduleInfoNode* sch_node) {
+  if (!first.ops.empty() &&
+      (first.ops.front()->name() == "cinn_op.generate_shape")) {
+    return true;
+  }
   if ((second.ops.size() == 1) &&
       (second.ops.front()->name() == "cinn_op.reshape") &&
       (IsLastReshape(second.ops.front()))) {
@@ -398,7 +410,13 @@ bool CanFuse(const GroupClusterNode& first,
 
     if (first.loop_ranges != second.loop_ranges) {
       sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
-      sch_node->axis_info = first.reduce_axis;
+      for (auto& d : first.reduce_axis) {
+        if (d < 0) {
+          sch_node->axis_info.push_back(d + first.loop_ranges.size());
+        } else {
+          sch_node->axis_info.push_back(d);
+        }
+      }
       sch_node->factor_info = first.loop_ranges;
     }
     return true;
@@ -513,24 +531,103 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .type()
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
+
+    pir::ShapeConstraintIRAnalysis& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    if (shape_analysis.HasShapeOrDataForValue(op->operand_source(0))) {
+      auto sym_shape =
+          shape_analysis.GetShapeOrDataForValue(op->operand_source(0)).shape();
+      cluster_node->loop_rangs_expr = sym_shape;
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
+          cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
+        }
+      }
+    }
+
+    if (cluster_node->reduce_axis.size() == 0) {
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        cluster_node->reduce_axis.push_back(i);
+      }
+    }
+
   } else if (cluster_node->group_kind == cinn::hlir::framework::kElementWise) {
     cluster_node->loop_ranges =
         phi::vectorize(op->result(0)
                            .type()
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
+    pir::ShapeConstraintIRAnalysis& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+      auto sym_shape =
+          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+      cluster_node->loop_rangs_expr = sym_shape;
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
+          cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
+        }
+      }
+    }
 
   } else if (cluster_node->group_kind == cinn::hlir::framework::kBroadcast) {
-    cluster_node->loop_ranges =
-        phi::vectorize(op->result(0)
-                           .type()
-                           .dyn_cast<paddle::dialect::DenseTensorType>()
-                           .dims());
+    const std::vector<int64_t> output_shape = [&] {
+      auto output_shape =
+          phi::vectorize(op->result(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims());
+      pir::ShapeConstraintIRAnalysis& shape_analysis =
+          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
+      if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+        auto shape_info =
+            shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+        cluster_node->loop_rangs_expr = shape_info;
+        for (size_t i = 0; i < shape_info.size(); ++i) {
+          if (shape_info[i].isa<int64_t>()) {
+            output_shape[i] = shape_info[i].Get<int64_t>();
+          }
+        }
+      }
+      return output_shape;
+    }();
+    cluster_node->loop_ranges = output_shape;
     sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
-    sch_node->axis_info =
-        cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
-    sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
+    sch_node->axis_info = [&] {
+      int x_rank = op->operand_source(0)
+                       .type()
+                       .dyn_cast<pir::DenseTensorType>()
+                       .dims()
+                       .size();
+      int out_rank =
+          op->result(0).type().dyn_cast<pir::DenseTensorType>().dims().size();
+      std::vector<int64_t> broadcast_axes(x_rank, 0);
+      size_t index_gap = out_rank - x_rank;
+      for (size_t i = 0; i < x_rank; ++i) {
+        broadcast_axes[i] = i + index_gap;
+      }
+      return broadcast_axes;
+    }();
+    sch_node->factor_info = output_shape;
+
+    pir::ShapeConstraintIRAnalysis& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+      auto sym_shape =
+          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
+          cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
+        }
+
+        if (sch_node->factor_info[i] < 0 && sym_shape[i].isa<int64_t>()) {
+          sch_node->factor_info[i] = sym_shape[i].Get<int64_t>();
+        }
+      }
+    }
+  } else if (op->name() == "cinn_op.generate_shape") {
+    // do nothing for now
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "only support elementwise, broadcast, reduce type"));
@@ -562,6 +659,19 @@ bool CanOpMergeNode(
     return false;
   }
 
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) ==
+      cinn::hlir::framework::kReduction) {
+    if (cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() == 0 ||
+        cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() ==
+            cur_op->operand_source(0)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size()) {
+      return false;
+    }
+  }
+
   // TODO(phlrain): need update here
   // different loop range can merge, like [128, 128, 1], with [128, 128]
   if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
@@ -581,6 +691,19 @@ bool ShouldOutputPreNode(
   if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
       cinn::hlir::framework::kReduction) {
     return false;
+  }
+
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) ==
+      cinn::hlir::framework::kReduction) {
+    if (cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() == 0 ||
+        cinn::dialect::ir::GetVectorAttr(cur_op, "dim").size() ==
+            cur_op->operand_source(0)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dims()
+                .size()) {
+      return true;
+    }
   }
 
   // TODO(phlrain): need update here
@@ -717,7 +840,7 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
     if (yield_output_ops.count(op) ||
         cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
             cinn::hlir::framework::kReduction) {
-      // TODO(phlrain): yiled output no nedd to push into first stage output,
+      // TODO(phlrain): yield output no need to push into first stage output,
       // Update here
       if (!first_output_ops.count(op)) {
         first_stage_output.push_back(op_path[op]);
@@ -820,22 +943,33 @@ class CinnGroupClusterPattern
     auto all_output_values = BuildValueOrderByYieldOp(split_res, group_op);
 
     for (auto& node : split_res) {
+      if (node.ops.size() == 0) {
+        continue;
+      }
       auto output_values = GenerateOutputValue(node.ops, all_output_values);
       auto uniq_ops = SortByOriginalOrderAndUniq(group_op, node.ops);
 
       auto new_group_op = ReplaceWithGroupOp(
           &rewriter, uniq_ops, node, output_values, &ir_mapping);
 
+      auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+          group_op->GetParentProgram());
       // update ir mapping
       for (size_t i = 0; i < output_values.size(); ++i) {
         ir_mapping.Add(output_values[i], new_group_op->result(i));
+
+        if (shape_analysis.HasShapeOrDataForValue(output_values[i])) {
+          shape_analysis.SetShapeOrDataForValue(
+              new_group_op->result(i),
+              shape_analysis.GetShapeOrDataForValue(output_values[i]));
+        }
       }
 
       for (size_t i = 0; i < output_values.size(); ++i) {
         auto find_it = all_output_values.find(output_values[i]);
         if ((find_it != all_output_values.end()) &&
             (find_it->second < group_op->num_results())) {
-          // id < num_results means yiled input
+          // id < num_results means yield input
           rewriter.ReplaceAllUsesWith(group_op.result(find_it->second),
                                       new_group_op->result(i));
         }
@@ -861,7 +995,7 @@ class CinnGroupClusterPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 

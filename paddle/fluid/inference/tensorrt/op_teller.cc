@@ -40,6 +40,43 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+// Check if it is a dynamic shape. If it is a dynamic shape, return true;
+// otherwise, return false
+bool IsDynamicShapeOp(const framework::OpDesc& desc) {
+  VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
+  auto* block = desc.Block();
+  auto inputs = desc.Inputs();
+  for (auto iter : inputs) {
+    for (auto var_name : iter.second) {
+      if (block) {
+        auto* var_desc = block->FindVar(var_name);
+        const auto shape = var_desc->GetShape();
+        for (auto ele : shape) {
+          if (ele < 0) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  auto outputs = desc.Outputs();
+  for (auto iter : outputs) {
+    for (auto var_name : iter.second) {
+      if (block) {
+        auto* var_desc = block->FindVar(var_name);
+        const auto shape = var_desc->GetShape();
+        for (auto ele : shape) {
+          if (ele < 0) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {  // NOLINT
@@ -95,6 +132,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
+                  bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
@@ -128,40 +166,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
       return false;
     }
-
-
-  if(FLAGS_forbid_dynamic_op_enter_into_trt) {
-    std::cout << "FLAGS_forbid_dynamic_op_enter_into_trt is open!" << std::endl;
-      auto* block = desc.Block();
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
-
-      auto outputs = desc.Outputs();
-      for (auto iter : outputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+      return false;
     }
 
 
@@ -1524,7 +1530,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       if (desc.Output("Out").size() != 1) {
         VLOG(3) << "The input op's Output(\"Out\").size() "
-                   "should equal to 1, but reveceid Output(\"Out\").size() = "
+                   "should equal to 1, but received Output(\"Out\").size() = "
                 << desc.Output("Out").size() << ".";
         return false;
       }
@@ -2144,20 +2150,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto inputs = desc.Inputs();
       bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
       if (has_bias_qk) {
-        auto* biasqk_desc =
+        auto* bias_qk_desc =
             block->FindVarRecursive(desc.Input("BiasQK").front());
-        const auto biasqk_shape = biasqk_desc->GetShape();
+        const auto bias_qk_shape = bias_qk_desc->GetShape();
         // The BiasQK's shape requires to be
         // [batch, 1, 1, length] or [batch, head, length, length].
-        bool has_same_shape = head_number == biasqk_shape[1] &&
-                              input_shape[1] == biasqk_shape[2] &&
-                              input_shape[1] == biasqk_shape[3];
-        bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
-                                input_shape[1] == biasqk_shape[3];
-        is_broadcastable =
-            is_broadcastable || (biasqk_shape[0] == 1 && biasqk_shape[1] == 1 &&
-                                 input_shape[1] == biasqk_shape[2] &&
-                                 input_shape[1] == biasqk_shape[3]);
+        bool has_same_shape = head_number == bias_qk_shape[1] &&
+                              input_shape[1] == bias_qk_shape[2] &&
+                              input_shape[1] == bias_qk_shape[3];
+        bool is_broadcastable = bias_qk_shape[1] == 1 &&
+                                bias_qk_shape[2] == 1 &&
+                                input_shape[1] == bias_qk_shape[3];
+        is_broadcastable = is_broadcastable ||
+                           (bias_qk_shape[0] == 1 && bias_qk_shape[1] == 1 &&
+                            input_shape[1] == bias_qk_shape[2] &&
+                            input_shape[1] == bias_qk_shape[3]);
         if (!(has_same_shape || is_broadcastable)) {
           VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
                   << ", 1, 1, " << input_shape[1] << "] "
@@ -2165,8 +2172,9 @@ struct SimpleOpTypeSetTeller : public Teller {
                   << input_shape[1] << ", " << input_shape[1] << "] "
                   << "or [" << input_shape[0] << "/1, " << 1 << ", "
                   << input_shape[1] << ", " << input_shape[1] << "] "
-                  << "but got [" << biasqk_shape[0] << ", " << biasqk_shape[1]
-                  << ", " << biasqk_shape[2] << ", " << biasqk_shape[3] << "].";
+                  << "but got [" << bias_qk_shape[0] << ", " << bias_qk_shape[1]
+                  << ", " << bias_qk_shape[2] << ", " << bias_qk_shape[3]
+                  << "].";
           return false;
         }
       } else {
@@ -2204,23 +2212,24 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto inputs = desc.Inputs();
       bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
       if (has_bias_qk) {
-        auto* biasqk_desc =
+        auto* bias_qk_desc =
             block->FindVarRecursive(desc.Input("BiasQK").front());
-        const auto biasqk_shape = biasqk_desc->GetShape();
+        const auto bias_qk_shape = bias_qk_desc->GetShape();
         // The BiasQK's shape requires to be
         // [batch, 1, 1, length] or [batch, head, length, length].
-        bool has_same_shape = head_number == biasqk_shape[1] &&
-                              input_shape[1] == biasqk_shape[2] &&
-                              input_shape[1] == biasqk_shape[3];
-        bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
-                                input_shape[1] == biasqk_shape[3];
+        bool has_same_shape = head_number == bias_qk_shape[1] &&
+                              input_shape[1] == bias_qk_shape[2] &&
+                              input_shape[1] == bias_qk_shape[3];
+        bool is_broadcastable = bias_qk_shape[1] == 1 &&
+                                bias_qk_shape[2] == 1 &&
+                                input_shape[1] == bias_qk_shape[3];
         if (!(has_same_shape || is_broadcastable)) {
           VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
                   << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
                   << ", " << head_number << ", " << input_shape[1] << ", "
-                  << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
-                  << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
-                  << biasqk_shape[3] << "].";
+                  << input_shape[1] << "] but [" << bias_qk_shape[0] << ", "
+                  << bias_qk_shape[1] << ", " << bias_qk_shape[2] << ", "
+                  << bias_qk_shape[3] << "].";
           return false;
         }
       } else {
@@ -3316,57 +3325,10 @@ struct GenericPluginTeller : public Teller {
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
+                  bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
-
-
-    std::unordered_set<std::string> control_set = {"conditional_block",
-                                                   "while"};
-    std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
-    if (control_set.find(op_type) != control_set.end()) {
-      return false;
-    }
-
-    if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
-      return false;
-    }
-
-
-  if(FLAGS_forbid_dynamic_op_enter_into_trt) {
-    std::cout << "FLAGS_forbid_dynamic_op_enter_into_trt_plugin is open!" << std::endl;
-      auto* block = desc.Block();
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
-
-      auto outputs = desc.Outputs();
-      for (auto iter : outputs) {
-        for (auto var_name : iter.second) {
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            const auto shape = var_desc->GetShape();
-            for (auto ele : shape) {
-              if (ele < 0) {
-                return false;
-              }
-            }
-          }
-        }
-      }
-    }
-    
     // only consider dynamic_shape mode
     if (!with_dynamic_shape) {
       return false;
@@ -3424,6 +3386,9 @@ struct GenericPluginTeller : public Teller {
         VLOG(3) << op_type << " has no DynamicMetaFn.";
         return false;
       }
+      if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+        return false;
+      }
       return true;
     }
   }
@@ -3435,6 +3400,7 @@ struct CustomPluginTeller : public Teller {
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
+                  bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     std::string expect_plugin_name;
@@ -3453,6 +3419,9 @@ struct CustomPluginTeller : public Teller {
         return true;
     }
     return false;
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+      return false;
+    }
   }
 };
 
@@ -3461,8 +3430,10 @@ struct CustomGenericPluginTeller : public Teller {
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
+                  bool forbid_dynamic_op_enter_into_trt = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
+
     auto& op_meta_info_map = OpMetaInfoMap::Instance();
     const auto& meta_info_map = op_meta_info_map.GetMap();
     if (meta_info_map.count(op_type) > 0) {
@@ -3487,15 +3458,20 @@ struct CustomGenericPluginTeller : public Teller {
     }
     VLOG(3) << op_type << " has no meta info";
     return false;
+    if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
+      return false;
+    }
   }
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
                     bool with_dynamic_shape,
+                    bool forbid_dynamic_op_enter_into_trt,
                     bool use_explicit_quantization) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
+
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
        PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
@@ -3506,6 +3482,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   if ((*default_teller)(desc,
                         use_no_calib_int8,
                         with_dynamic_shape,
+                        forbid_dynamic_op_enter_into_trt,
                         use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::Default);
     return true;
@@ -3514,6 +3491,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   if ((*generic_plugin_teller)(desc,
                                use_no_calib_int8,
                                with_dynamic_shape,
+                               forbid_dynamic_op_enter_into_trt,
                                use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::GenericPluginCreater);
     return true;
@@ -3522,6 +3500,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   if ((*custom_plugin_teller)(desc,
                               use_no_calib_int8,
                               with_dynamic_shape,
+                              forbid_dynamic_op_enter_into_trt,
                               use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
@@ -3530,6 +3509,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   if ((*custom_generic_plugin_teller)(desc,
                                       use_no_calib_int8,
                                       with_dynamic_shape,
+                                      forbid_dynamic_op_enter_into_trt,
                                       use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::CustomGenericPluginCreater);
     return true;

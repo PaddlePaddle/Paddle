@@ -70,7 +70,7 @@ class OpConverter {
                             1UL,
                             platform::errors::InvalidArgument(
                                 "The input op's Input(\"Y\")."
-                                "size() should equal to 1, but reveceid "
+                                "size() should equal to 1, but received "
                                 "Input(\"Y\").size() = %u.",
                                 op_desc.Input("Y").size()));
           int op_type_len = op_desc.Type().size();
@@ -182,6 +182,14 @@ class OpConverter {
       }
     }
     all_outpus_name += ")";
+
+    it->SetEngine(engine);
+    engine->SetScope(&scope);
+    it->SetBlockDesc(block);
+    (*it)(op, scope, test_mode);
+
+    all_outpus_name += ",";
+                         
     for(auto it1 : op_desc.InputNames()) {
       for (auto it2 : op_desc.Input(it1)) {
         all_inpus_name += it2;
@@ -189,6 +197,20 @@ class OpConverter {
       }
     }
     all_inpus_name += ")";
+
+    // // outs SetTensorDynamicRange
+    // for (size_t i = 0; i < output_num; ++i) {
+    //   if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
+    //     float out_scale = PADDLE_GET_CONST(
+    //         float, op_desc.GetAttr("out_" + std::to_string(i) + "_threshold"));
+    //     std::string output_name =
+    //         op_desc.Output(op_desc.OutputNames()[i]).front();
+    //     auto* output_itensor = engine->GetITensor(output_name);
+    //     engine->SetTensorDynamicRange(output_itensor, out_scale);
+    //     VLOG(1) << "Set out scale = " << out_scale << " for tensor "
+    //             << output_name << ".";
+    //   }
+    // }
 
     std::cout << op_desc.Type() << all_inpus_name << all_outpus_name << " are to be converted to TensorRT layer." << std::endl;
 

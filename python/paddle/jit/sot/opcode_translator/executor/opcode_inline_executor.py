@@ -17,6 +17,7 @@ from __future__ import annotations
 import contextlib
 import inspect
 import re
+import sys
 from typing import TYPE_CHECKING
 
 from ...profiler import event_register
@@ -316,6 +317,9 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
                 self.stack.pop()
                 assert isinstance(instr.jump_to, Instruction)
                 self._lasti = self.indexof(instr.jump_to)
+                if sys.version_info >= (3, 12):
+                    assert self._instructions[self._lasti].opname == "END_FOR"
+                    self._lasti += 1
 
         else:
             self._graph.remove_global_guarded_variable(iterator)

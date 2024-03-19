@@ -51,7 +51,8 @@ class OpHelper;
 class SubgraphHelper;
 
 // VarHelper is used to represent a variable node.
-struct VarHelper {
+class VarHelper {
+ public:
   enum class Type { kInput, kOutput };
 
   explicit VarHelper(const char* name);

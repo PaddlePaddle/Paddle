@@ -23,6 +23,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
+PD_DECLARE_int32(cinn_parallel_compile_thread);
 
 namespace cinn {
 namespace hlir {
@@ -103,8 +104,9 @@ std::unique_ptr<Program> PirCompiler::Build(
       task();
       instructions[index] = task.BuildInstruction();
     };
-    utils::parallel_run(
-        worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+    utils::parallel_run(worker_fn,
+                        utils::SequenceDispatcher(0, groups.size()),
+                        FLAGS_cinn_parallel_compile_thread);
   } else {
     auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 

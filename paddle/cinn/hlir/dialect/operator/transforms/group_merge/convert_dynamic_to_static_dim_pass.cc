@@ -24,15 +24,14 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
-
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 PD_DECLARE_string(cinn_convert_dynamic_dim_to_static_dim);
 
 namespace {
 
 template <typename DoEachT>
-void ForEachRawDyanmicToStaticDimPair(const DoEachT& DoEach) {
+void ForEachRawDynamicToStaticDimPair(const DoEachT& DoEach) {
   const std::string& env_var = FLAGS_cinn_convert_dynamic_dim_to_static_dim;
   size_t start = 0;
   while (true) {
@@ -43,7 +42,7 @@ void ForEachRawDyanmicToStaticDimPair(const DoEachT& DoEach) {
   }
 }
 
-std::optional<std::pair<std::string, int64_t>> ParseRawDyanmicToStaticDimPair(
+std::optional<std::pair<std::string, int64_t>> ParseRawDynamicToStaticDimPair(
     const std::string& raw_pair) {
   size_t pos = raw_pair.find(":", 0);
   if (pos == std::string::npos) return std::nullopt;
@@ -70,8 +69,8 @@ std::optional<std::pair<std::string, int64_t>> ParseRawDyanmicToStaticDimPair(
 
 std::unordered_map<std::string, int64_t> GetDynamicToStaticDimFlag() {
   std::unordered_map<std::string, int64_t> map;
-  ForEachRawDyanmicToStaticDimPair([&](const std::string& raw_pair) {
-    if (auto pair = ParseRawDyanmicToStaticDimPair(raw_pair)) {
+  ForEachRawDynamicToStaticDimPair([&](const std::string& raw_pair) {
+    if (auto pair = ParseRawDynamicToStaticDimPair(raw_pair)) {
       map.insert(pair.value());
     }
   });

@@ -41,7 +41,7 @@ class IR_API ShapeConstraintIRAnalysis {
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
-  symbol::DimExprBuilder CreateDimExprBuilder();
+  symbol::DimExprBuilder DimExprBuilder();
 
   // Used to debug
   void PrintShapeOrDatas() const;
@@ -99,5 +99,9 @@ class IR_API ShapeAnalysisManager {
   ShapeAnalysisManager() {}
   std::unordered_map<uint64_t, ShapeConstraintIRAnalysis> tables_;
 };
+
+#define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \
+  bool name##OpInferSymbolicShape(            \
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis);
 
 }  // namespace pir

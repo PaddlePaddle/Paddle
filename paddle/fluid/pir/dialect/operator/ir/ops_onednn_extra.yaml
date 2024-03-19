@@ -15,7 +15,8 @@
 
 - op : abs_grad
 
-# - op : add_n
+- op : add_n
+  extra_args : str mkldnn_data_type="float32"
 
 - op : batch_norm
   extra_args : bool fuse_with_relu=false
@@ -51,6 +52,14 @@
   extra_args : bool is_test=false
   data_format_tensors : input, out_grad
 
+- op : conv2d_transpose
+  extra_args : bool is_test=false
+  data_format_tensors : x
+
+- op : conv2d_transpose_bias
+  extra_args : bool is_test=false, bool force_fp32_output = false, str mkldnn_data_type = "float32", bool fuse_relu = false, str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f
+  data_format_tensors : x
+
 - op : conv3d
   extra_args : bool is_test=false
   data_format_tensors : input
@@ -61,9 +70,11 @@
 
 - op : depthwise_conv2d
   extra_args : bool is_test=false, bool fuse_relu_before_depthwise_conv=false, bool use_quantizer=false, str mkldnn_data_type="float32", bool fuse_relu=false, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, bool use_addto=false, bool fuse_residual_connection=false, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}, bool force_fp32_output=false
+  data_format_tensors : input
 
 - op : depthwise_conv2d_grad
   extra_args : bool is_test=false, bool fuse_relu_before_depthwise_conv=false, bool use_quantizer=false, str mkldnn_data_type="float32", bool fuse_relu=false, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, bool use_addto=false, bool fuse_residual_connection=false, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}, bool force_fp32_output=false
+  data_format_tensors : input, out_grad
 
 - op : divide
 
@@ -86,13 +97,11 @@
 - op : fc
   extra_args : bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE=true, bool use_quantizer=false, str mkldnn_data_type="float32", float scale_in=1.0, float[] scale_weights={1.0f}, float scale_out=1.0, bool force_fp32_output=false
 
-# - op : flatten
+- op : flatten
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : flatten_grad
-
-# - op : flatten2
-
-# - op : flatten2_grad
+- op : flatten_grad
+  extra_args : str mkldnn_data_type="float32"
 
 - op : full
 
@@ -104,24 +113,27 @@
   extra_args : float fuse_alpha = 0.0, float fuse_beta = 0.0, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}
   data_format_tensors : input
 
-# - op : fused_elementwise_add
+- op : fused_elementwise_add
 
-# - op : fused_elementwise_div
+- op : fused_elementwise_div
 
-# - op : fused_elementwise_mul
+- op : fused_elementwise_mul
 
-# - op : fused_elementwise_sub
+- op : fused_elementwise_sub
 
-# - op : fused_matmul
+- op : fused_matmul
 
-# - op : fused_softplus
+- op : fused_softplus
 
-# - op : fused_transpose
+- op : fused_transpose
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32"
+  data_format_tensors : x
 
 - op : fusion_gru
   extra_args : str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=0.0, float[] scale_weights={1.0f}
 
-# - op : fusion_lstm
+- op : fusion_lstm
+  extra_args : str mkldnn_data_type="float32"
 
 - op : gaussian
 
@@ -189,17 +201,24 @@
 - op : multiply_grad
 
 - op : nearest_interp
+  data_format_tensors : x
 
-# - op : pad
+- op : pad
 
 - op : pad3d
   extra_args :
   data_format_tensors : x
   dynamic_fallback : True
 
-# - op : pool2d
+- op : pool2d
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x
+  dynamic_fallback : True
 
-# - op : pool2d_grad
+- op : pool2d_grad
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x, out, out_grad
+  dynamic_fallback : True
 
 - op : prelu
   extra_args : bool is_test=false, str mkldnn_data_type="float32"
@@ -220,21 +239,17 @@
 - op : relu6_grad
   extra_args : float threshold=6.0
 
-# - op : reshape
+- op : reshape
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false
 
-# - op : reshape_grad
-
-# - op : reshape_infer
-
-# - op : reshape2_grad
+- op : reshape_grad
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false
 
 - op : round
 
 - op : scale
 
-- op : sgd
-
-# - op : sgd_dense_param_sparse_grad
+- op : sgd_
 
 - op : shape
   extra_args : str mkldnn_data_type="float32"
@@ -245,9 +260,11 @@
 
 - op : sigmoid_grad
 
-# - op : slice
+- op : slice
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : slice_grad
+- op : slice_grad
+  extra_args : str mkldnn_data_type="float32"
 
 - op : softmax
   extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32", bool is_test=false
@@ -259,21 +276,22 @@
 
 - op : softplus
 
-# - op : split
+- op : split
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : split_with_num
+- op : split_with_num
 
 - op : sqrt
 
 - op : sqrt_grad
 
-# - op : squeeze
+- op : squeeze
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : squeeze_grad
+- op : squeeze_grad
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : squeeze_infer
-
-# - op : stack
+- op : stack
 
 - op : subtract
 
@@ -295,6 +313,10 @@
 
 - op : tanh_grad
 
-# - op : transpose
+- op : transpose
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32"
+  data_format_tensors : x
 
-# - op : transpose_grad
+- op : transpose_grad
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32"
+  data_format_tensors : out_grad

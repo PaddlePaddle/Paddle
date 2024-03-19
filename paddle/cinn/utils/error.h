@@ -113,14 +113,15 @@ struct EnforceNotMet : public std::exception {
   std::string err_str_;
 };
 
-#define CINN_THROW(...)                                                     \
-  do {                                                                      \
-    try {                                                                   \
-      throw utils::enforce::EnforceNotMet(__VA_ARGS__, __FILE__, __LINE__); \
-    } catch (const std::exception& e) {                                     \
-      std::cout << e.what() << std::endl;                                   \
-      throw;                                                                \
-    }                                                                       \
+#define CINN_THROW(...)                          \
+  do {                                           \
+    try {                                        \
+      throw cinn::utils::enforce::EnforceNotMet( \
+          __VA_ARGS__, __FILE__, __LINE__);      \
+    } catch (const std::exception& e) {          \
+      std::cout << e.what() << std::endl;        \
+      throw;                                     \
+    }                                            \
   } while (0)
 }  // namespace enforce
 
