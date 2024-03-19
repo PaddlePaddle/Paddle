@@ -129,6 +129,7 @@ class TestConv2dAddFusePassAsY(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+
 @unittest.skipIf(
     not paddle.base.core.is_compiled_with_mkldnn(),
     "Test case only for OneDNN pass.",
@@ -170,7 +171,10 @@ class TestConv2dBiasAddFusePass(PassTest):
                 conv2d_out = paddle.add(conv2d(x), bias)
                 out = paddle.add(conv2d_out, residual_data)
                 out = paddle.assign(out)
-                self.pass_list = ['conv2d_bias_fuse_pass', 'conv_elementwise_add_mkldnn_fuse_pass']
+                self.pass_list = [
+                    'conv2d_bias_fuse_pass',
+                    'conv_elementwise_add_mkldnn_fuse_pass',
+                ]
 
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
