@@ -172,10 +172,10 @@ class OpConverter {
         it,
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
-    
+
     std::string all_outpus_name = "(Outputs:";
     std::string all_inpus_name = "(Inputs:";
-    for(auto it1 : op_desc.OutputNames()) {
+    for (auto it1 : op_desc.OutputNames()) {
       for (auto it2 : op_desc.Output(it1)) {
         all_outpus_name += it2;
         all_outpus_name += ",";
@@ -183,108 +183,88 @@ class OpConverter {
     }
     all_outpus_name += ")";
 
-    it->SetEngine(engine);
-    engine->SetScope(&scope);
-    it->SetBlockDesc(block);
-    (*it)(op, scope, test_mode);
-
     all_outpus_name += ",";
-                         
-    for(auto it1 : op_desc.InputNames()) {
+
+    for (auto it1 : op_desc.InputNames()) {
       for (auto it2 : op_desc.Input(it1)) {
         all_inpus_name += it2;
         all_inpus_name += ",";
       }
     }
-    all_inpus_name += ")";
 
-    // // outs SetTensorDynamicRange
-    // for (size_t i = 0; i < output_num; ++i) {
-    //   if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
-    //     float out_scale = PADDLE_GET_CONST(
-    //         float, op_desc.GetAttr("out_" + std::to_string(i) + "_threshold"));
-    //     std::string output_name =
-    //         op_desc.Output(op_desc.OutputNames()[i]).front();
-    //     auto* output_itensor = engine->GetITensor(output_name);
-    //     engine->SetTensorDynamicRange(output_itensor, out_scale);
-    //     VLOG(1) << "Set out scale = " << out_scale << " for tensor "
-    //             << output_name << ".";
-    //   }
-    // }
-
-    std::cout << op_desc.Type() << all_inpus_name << all_outpus_name << " are to be converted to TensorRT layer." << std::endl;
+    std::cout << op_desc.Type() << all_inpus_name << all_outpus_name
+              << " are to be converted to TensorRT layer." << std::endl;
 
     it->SetEngine(engine);
     engine->SetScope(&scope);
     it->SetBlockDesc(block);
     (*it)(op, scope, test_mode);
 
-    
-    // size_t output_num = op_desc.OutputNames().size();
-    // // only one out settensordynamicRange
-    // if (op_desc.HasAttr("out_threshold")) {
-    //   float out_scale =
-    //       PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
-    //   std::string output_name = "";
-    //   if (op_desc.HasOutput("Output")) {
-    //     output_name = op_desc.Output("Output").front();
-    //   } else if (op_desc.HasOutput("Out")) {
-    //     output_name = op_desc.Output("Out").front();
-    //   } else if (op_desc.HasOutput("Y")) {
-    //     output_name = op_desc.Output("Y").front();
-    //   } else {
-    //     PADDLE_THROW(
-    //         platform::errors::NotFound("Op %s has out threshold but doesn't "
-    //                                    "have an output named \"Output\", "
-    //                                    "\"Out\" or \"Y\".",
-    //                                    op_desc.Type()));
-    //   }
-    //   auto* output_itensor = engine->GetITensor(output_name);
-    //   engine->SetTensorDynamicRange(output_itensor, out_scale);
-    //   VLOG(1) << "Set out scale = " << out_scale << " for tensor "
-    //           << output_name << ".";
-    // }
-    // // outs settensordynamicRange
-    // for (size_t i = 0; i < output_num; ++i) {
-    //   if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
-    //     float out_scale = PADDLE_GET_CONST(
-    //         float, op_desc.GetAttr("out_" + std::to_string(i) + "_threshold"));
-    //     std::string output_name =
-    //         op_desc.Output(op_desc.OutputNames()[i]).front();
-    //     auto* output_itensor = engine->GetITensor(output_name);
-    //     engine->SetTensorDynamicRange(output_itensor, out_scale);
-    //     VLOG(1) << "Set out scale = " << out_scale << " for tensor "
-    //             << output_name << ".";
-    //   }
-    // }
+    size_t output_num = op_desc.OutputNames().size();
+    // only one out SetTensorDynamicRange
+    if (op_desc.HasAttr("out_threshold")) {
+      float out_scale =
+          PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      std::string output_name = "";
+      if (op_desc.HasOutput("Output")) {
+        output_name = op_desc.Output("Output").front();
+      } else if (op_desc.HasOutput("Out")) {
+        output_name = op_desc.Output("Out").front();
+      } else if (op_desc.HasOutput("Y")) {
+        output_name = op_desc.Output("Y").front();
+      } else {
+        PADDLE_THROW(
+            platform::errors::NotFound("Op %s has out threshold but doesn't "
+                                       "have an output named \"Output\", "
+                                       "\"Out\" or \"Y\".",
+                                       op_desc.Type()));
+      }
+      auto* output_itensor = engine->GetITensor(output_name);
+      engine->SetTensorDynamicRange(output_itensor, out_scale);
+      VLOG(1) << "Set out scale = " << out_scale << " for tensor "
+              << output_name << ".";
+    }
+    // outs SetTensorDynamicRange
+    for (size_t i = 0; i < output_num; ++i) {
+      if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
+        float out_scale = PADDLE_GET_CONST(
+            float, op_desc.GetAttr("out_" + std::to_string(i) + "_threshold"));
+        std::string output_name =
+            op_desc.Output(op_desc.OutputNames()[i]).front();
+        auto* output_itensor = engine->GetITensor(output_name);
+        engine->SetTensorDynamicRange(output_itensor, out_scale);
+        VLOG(1) << "Set out scale = " << out_scale << " for tensor "
+                << output_name << ".";
+      }
+    }
 
-    // // quant_dequant_linear support for paddle trt
+    // quant_dequant_linear support for paddle trt
 
-    // std::vector<std::string> inputs_name = op_desc.InputNames();
-    // std::vector<std::string> outputs_name = op_desc.OutputNames();
+    std::vector<std::string> inputs_name = op_desc.InputNames();
+    std::vector<std::string> outputs_name = op_desc.OutputNames();
 
-    // for (size_t i = 0; i < inputs_name.size(); i++) {
-    //   if (op_desc.HasAttr(inputs_name[i])) {
-    //     std::string input_tensor_name = op_desc.Input(inputs_name[i])[0];
-    //     auto* input_itensor = engine->GetITensor(input_tensor_name);
-    //     float input_scale =
-    //         PADDLE_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
-    //     engine->SetTensorDynamicRange(input_itensor, input_scale);
-    //     VLOG(1) << "Set input tensor scale = " << input_scale
-    //             << " for tensor: " << input_tensor_name << ".";
-    //   }
-    // }
-    // for (size_t i = 0; i < outputs_name.size(); i++) {
-    //   if (op_desc.HasAttr(outputs_name[i])) {
-    //     std::string output_tensor_name = op_desc.Output(outputs_name[i])[0];
-    //     auto* output_itensor = engine->GetITensor(output_tensor_name);
-    //     float output_scale =
-    //         PADDLE_GET_CONST(float, op_desc.GetAttr(outputs_name[i]));
-    //     engine->SetTensorDynamicRange(output_itensor, output_scale);
-    //     VLOG(1) << "Set output tensor scale = " << output_scale
-    //             << " for tensor: " << output_tensor_name << ".";
-    //   }
-    // }
+    for (size_t i = 0; i < inputs_name.size(); i++) {
+      if (op_desc.HasAttr(inputs_name[i])) {
+        std::string input_tensor_name = op_desc.Input(inputs_name[i])[0];
+        auto* input_itensor = engine->GetITensor(input_tensor_name);
+        float input_scale =
+            PADDLE_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
+        engine->SetTensorDynamicRange(input_itensor, input_scale);
+        VLOG(1) << "Set input tensor scale = " << input_scale
+                << " for tensor: " << input_tensor_name << ".";
+      }
+    }
+    for (size_t i = 0; i < outputs_name.size(); i++) {
+      if (op_desc.HasAttr(outputs_name[i])) {
+        std::string output_tensor_name = op_desc.Output(outputs_name[i])[0];
+        auto* output_itensor = engine->GetITensor(output_tensor_name);
+        float output_scale =
+            PADDLE_GET_CONST(float, op_desc.GetAttr(outputs_name[i]));
+        engine->SetTensorDynamicRange(output_itensor, output_scale);
+        VLOG(1) << "Set output tensor scale = " << output_scale
+                << " for tensor: " << output_tensor_name << ".";
+      }
+    }
   }
 
   // Convert a fluid block to tensorrt network, NOTE it just convert operators,
@@ -293,7 +273,6 @@ class OpConverter {
                     const std::unordered_set<std::string>& parameters,
                     const framework::Scope& scope,
                     TensorRTEngine* engine) {
-
     std::cout << "Convert a fluid block to tensorrt network" << std::endl;
 
     std::unique_lock<std::mutex> lk(mut_);
@@ -831,8 +810,9 @@ class OpConverter {
       for (int i = 0; i < tmp_dims.nbDims; i++)
         tmp_vec.push_back(tmp_dims.d[i]);
 
-      std::cout << "Paddle-TRT inferred " << output_tensor_names[i] << "'s dimension is :["
-              << string::join_strings(tmp_vec, ',') << "]" << std::endl;
+      std::cout << "Paddle-TRT inferred " << output_tensor_names[i]
+                << "'s dimension is :[" << string::join_strings(tmp_vec, ',')
+                << "]" << std::endl;
       // The following check may cause errors in CI, but is necessary in the
       // // latest version.
       // PADDLE_ENFORCE_GE(
