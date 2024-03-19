@@ -114,7 +114,6 @@ std::string BuildGroupId(const ::pir::GroupOpsVec& ops_list) {
 struct GroupClusterNode {
   // all the ops in each Node
   std::vector<::pir::Operation*> ops;
-  std::vector<::pir::Value> output_values;
   // group kind
   cinn::hlir::framework::OpPatternKind group_kind{
       cinn::hlir::framework::kElementWise};
@@ -162,8 +161,14 @@ struct GroupClusterNode {
     return ss.str();
   }
 
-  void AddOutputValue(const ::pir::Value value) {
-    output_values.emplace_back(value);
+  bool HasYieldOp(
+      const std::unordered_set<::pir::Operation*>& all_yield_ops) const {
+    for (const auto& op : ops) {
+      if (all_yield_ops.find(op) != all_yield_ops.end()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void MergeNode(const GroupClusterNode& node,
@@ -637,9 +642,15 @@ std::vector<::pir::Operation*> GetPreOps(
 bool CanOpMergeNode(
     const std::unordered_map<::pir::Operation*, GroupClusterNode>& op_path_info,
     ::pir::Operation* pre_op,
-    ::pir::Operation* cur_op) {
+    ::pir::Operation* cur_op,
+    const std::unordered_set<::pir::Operation*>& all_yield_ops) {
   const auto& node1 = op_path_info.at(pre_op);
   const auto& node2 = op_path_info.at(cur_op);
+
+  if (node1.HasYieldOp(all_yield_ops) && node2.HasYieldOp(all_yield_ops)) {
+    return false;
+  }
+
   // reduce can not fuse with any op in first stage
   if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
       cinn::hlir::framework::kReduction) {
@@ -712,8 +723,6 @@ GroupClusterNode HorizontalMerge(const GroupClusterNode& a,
                                  const GroupClusterNode& b) {
   GroupClusterNode res = a;
   res.MergeNode(b, ScheduleInfoNode());
-  res.output_values.insert(
-      res.output_values.end(), b.output_values.begin(), b.output_values.end());
   return res;
 }
 
@@ -911,11 +920,13 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
 
   std::unordered_set<::pir::Operation*> yield_output_ops;
   std::unordered_set<::pir::Operation*> first_output_ops;
+  std::unordered_set<::pir::Operation*> all_yield_ops;
   auto yield_op = op_list.back();
   for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-    yield_output_ops.insert(yield_op->operand_source(i).defining_op());
-    op_path[yield_op->operand_source(i).defining_op()].AddOutputValue(
-        yield_op->operand_source(i));
+    all_yield_ops.insert(yield_op->operand_source(i).defining_op());
+    if (yield_op->operand_source(i).defining_op()->result(0).use_count() == 1) {
+      yield_output_ops.insert(yield_op->operand_source(i).defining_op());
+    }
   }
 
   // first stage op fuse op
@@ -938,7 +949,7 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
         continue;
       }
 
-      if (CanOpMergeNode(op_path, pre_op, op)) {
+      if (CanOpMergeNode(op_path, pre_op, op, all_yield_ops)) {
         cluster_node.MergePreNode(op_path.at(pre_op), sch_node);
       }
     }
@@ -1062,7 +1073,8 @@ class CinnGroupClusterPattern
       if (node.ops.size() == 0) {
         continue;
       }
-      auto output_values = std::vector<::pir::Value>(node.output_values);
+      auto output_values = GenerateOutputValue(node.ops, all_output_values);
+      VLOG(4) << "cluster node output size: " << output_values.size();
       auto uniq_ops = SortByOriginalOrderAndUniq(group_op, node.ops);
 
       auto new_group_op = ReplaceWithGroupOp(
