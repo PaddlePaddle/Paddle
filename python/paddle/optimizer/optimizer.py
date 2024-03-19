@@ -813,8 +813,7 @@ class Optimizer:
                     )
                     var = paddle.cast(startup_param, 'float32')
                     var.persistable = True
-                    paddle._pir_ops.set_parameter(var, var_name)
-                main_program.set_parameters_from(startup_program)
+                    paddle._pir_ops.set_persistable_value(var, var_name)
                 with paddle.static.program_guard(main_program):
                     paddle.pir.reset_insertion_point_to_start()
                     var = paddle.static.data(

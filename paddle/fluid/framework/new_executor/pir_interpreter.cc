@@ -1716,6 +1716,21 @@ void PirInterpreter::RunNextInstructions(InstructionBase* instr,
   }
 }
 
+void RecordLowPrecisionOp(const InstructionBase* instr_node) {
+  if (FLAGS_low_precision_op_list) {
+    std::string op_name = instr_node->Name();
+    ::pir::Operation* op = instr_node->Operation();
+    if (op->HasAttribute("kernel_key")) {
+      phi::KernelKey kernel_key =
+          op->attribute("kernel_key")
+              .dyn_cast<paddle::dialect::KernelAttribute>()
+              .data();
+      phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
+          op_name, kernel_key.dtype());
+    }
+  }
+}
+
 void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   platform::RecordEvent instruction_event(
       instr_node->Name(), platform::TracerEventType::Operator, 1);
@@ -1737,18 +1752,8 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     }
 #endif
 
-    if (FLAGS_low_precision_op_list) {
-      std::string op_name = instr_node->Name();
-      ::pir::Operation* op = instr_node->Operation();
-      if (op->HasAttribute("kernel_key")) {
-        phi::KernelKey kernel_key =
-            op->attribute("kernel_key")
-                .dyn_cast<paddle::dialect::KernelAttribute>()
-                .data();
-        phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
-            op_name, kernel_key.dtype());
-      }
-    }
+    RecordLowPrecisionOp(instr_node);
+
     VLOG(2) << "\nbegin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"
             << (instr_node->KernelType() == OpFuncType::kCpuSync
