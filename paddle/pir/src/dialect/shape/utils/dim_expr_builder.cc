@@ -45,10 +45,16 @@ DimExpr DimExprBuilder::Div(const DimExpr& lhs, const DimExpr& rhs) {
 }
 
 DimExpr DimExprBuilder::Max(const DimExpr& lhs, const DimExpr& rhs) {
+  if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
+    return std::max(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
+  }
   return SimplifyDimExpr(MaxDimExpr{List<DimExpr>{lhs, rhs}});
 }
 
 DimExpr DimExprBuilder::Min(const DimExpr& lhs, const DimExpr& rhs) {
+  if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
+    return std::min(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
+  }
   return SimplifyDimExpr(MinDimExpr{List<DimExpr>{lhs, rhs}});
 }
 
