@@ -108,17 +108,17 @@ class ConvElementwiseAddPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class ConvElementwiseAddYPattern : public paddle::drr::DrrPatternBase {
+class ConvElementwiseAddAsYPattern : public paddle::drr::DrrPatternBase {
  private:
   std::string conv_name_;
   std::string fused_conv_name_;
 
  public:
-  ConvElementwiseAddYPattern(const std::string &conv_name,
-                             const std::string &fused_conv_name)
+  ConvElementwiseAddAsYPattern(const std::string &conv_name,
+                               const std::string &fused_conv_name)
       : conv_name_(conv_name), fused_conv_name_(fused_conv_name) {}
 
-  std::string name() const override { return "ConvElementwiseAddYPattern"; }
+  std::string name() const override { return "ConvElementwiseAddAsYPattern"; }
 
   uint32_t benefit() const override { return 2; }
 
@@ -192,6 +192,176 @@ class ConvElementwiseAddYPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
+class FusedConvBiasElementwiseAddPattern : public paddle::drr::DrrPatternBase {
+ private:
+  std::string conv_name_;
+  std::string fused_conv_name_;
+
+ public:
+  FusedConvBiasElementwiseAddPattern(const std::string &conv_name,
+                                     const std::string &fused_conv_name)
+      : conv_name_(conv_name), fused_conv_name_(fused_conv_name) {}
+
+  std::string name() const override {
+    return "FusedConvBiasElementwiseAddPattern";
+  }
+
+  uint32_t benefit() const override { return 2; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &conv =
+        pat.Op(conv_name_,
+               {{
+                   {"strides", pat.Attr("strides")},
+                   {"paddings", pat.Attr("paddings")},
+                   {"padding_algorithm", pat.Attr("padding_algorithm")},
+                   {"dilations", pat.Attr("dilations")},
+                   {"groups", pat.Attr("groups")},
+                   {"data_format", pat.Attr("data_format")},
+               }});
+
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
+    conv({&pat.Tensor("input"), &pat.Tensor("filter"), &pat.Tensor("bias")},
+         {&pat.Tensor("conv2d_out")});
+
+    pat.Tensor("add_out") =
+        add(pat.Tensor("conv2d_out"), pat.Tensor("residual_param"));
+    pat.RequireNativeCall(
+        [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          auto padding_algorithm =
+              match_ctx.Attr<std::string>("padding_algorithm");
+          if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+              padding_algorithm != "VALID") {
+            return false;
+          }
+          auto groups = match_ctx.Attr<int>("groups");
+          if (groups < 1) {
+            return false;
+          }
+          auto data_format = match_ctx.Attr<std::string>("data_format");
+          if (data_format != "NCHW" && data_format != "AnyLayout") {
+            return false;
+          }
+          return true;
+        });
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    const auto &fused_conv2d_add =
+        res.Op(fused_conv_name_,
+               {{
+                   {"strides", pat.Attr("strides")},
+                   {"paddings", pat.Attr("paddings")},
+                   {"padding_algorithm", pat.Attr("padding_algorithm")},
+                   {"dilations", pat.Attr("dilations")},
+                   {"groups", pat.Attr("groups")},
+                   {"data_format", pat.Attr("data_format")},
+                   {"mkldnn_data_type", res.StrAttr("float32")},
+                   {"fuse_activation", res.StrAttr("")},
+                   {"fuse_residual_connection", res.BoolAttr(true)},
+                   {"force_fp32_output", res.BoolAttr(false)},
+                   {"fuse_alpha", res.Float32Attr(0.0f)},
+                   {"fuse_beta", res.Float32Attr(0.0f)},
+                   {"scale_in", res.Float32Attr(1.0f)},
+                   {"scale_out", res.Float32Attr(1.0f)},
+                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
+                   {"scale_weights", res.VectorFloatAttr({1.0f})},
+               }});
+
+    fused_conv2d_add({&res.Tensor("input"),
+                      &res.Tensor("filter"),
+                      &res.Tensor("bias"),
+                      &res.Tensor("residual_param")},
+                     {&res.Tensor("add_out")});
+  }
+};
+
+class FusedConvBiasElementwiseAddAsYPattern
+    : public paddle::drr::DrrPatternBase {
+ private:
+  std::string conv_name_;
+  std::string fused_conv_name_;
+
+ public:
+  FusedConvBiasElementwiseAddAsYPattern(const std::string &conv_name,
+                                        const std::string &fused_conv_name)
+      : conv_name_(conv_name), fused_conv_name_(fused_conv_name) {}
+
+  std::string name() const override {
+    return "FusedConvBiasElementwiseAddAsYPattern";
+  }
+
+  uint32_t benefit() const override { return 2; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+
+    const auto &conv =
+        pat.Op(conv_name_,
+               {{
+                   {"strides", pat.Attr("strides")},
+                   {"paddings", pat.Attr("paddings")},
+                   {"padding_algorithm", pat.Attr("padding_algorithm")},
+                   {"dilations", pat.Attr("dilations")},
+                   {"groups", pat.Attr("groups")},
+                   {"data_format", pat.Attr("data_format")},
+               }});
+
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
+    conv({&pat.Tensor("input"), &pat.Tensor("filter"), &pat.Tensor("bias")},
+         {&pat.Tensor("conv2d_out")});
+
+    pat.Tensor("add_out") =
+        add(pat.Tensor("residual_param"), pat.Tensor("conv2d_out"));
+    pat.RequireNativeCall(
+        [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          auto padding_algorithm =
+              match_ctx.Attr<std::string>("padding_algorithm");
+          if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+              padding_algorithm != "VALID") {
+            return false;
+          }
+          auto groups = match_ctx.Attr<int>("groups");
+          if (groups < 1) {
+            return false;
+          }
+          auto data_format = match_ctx.Attr<std::string>("data_format");
+          if (data_format != "NCHW" && data_format != "AnyLayout") {
+            return false;
+          }
+          return true;
+        });
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    const auto &fused_conv2d_add =
+        res.Op(fused_conv_name_,
+               {{
+                   {"strides", pat.Attr("strides")},
+                   {"paddings", pat.Attr("paddings")},
+                   {"padding_algorithm", pat.Attr("padding_algorithm")},
+                   {"dilations", pat.Attr("dilations")},
+                   {"groups", pat.Attr("groups")},
+                   {"data_format", pat.Attr("data_format")},
+                   {"mkldnn_data_type", res.StrAttr("float32")},
+                   {"fuse_activation", res.StrAttr("")},
+                   {"fuse_residual_connection", res.BoolAttr(true)},
+                   {"force_fp32_output", res.BoolAttr(false)},
+                   {"fuse_alpha", res.Float32Attr(0.0f)},
+                   {"fuse_beta", res.Float32Attr(0.0f)},
+                   {"scale_in", res.Float32Attr(1.0f)},
+                   {"scale_out", res.Float32Attr(1.0f)},
+                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
+                   {"scale_weights", res.VectorFloatAttr({1.0f})},
+               }});
+
+    fused_conv2d_add({&res.Tensor("input"),
+                      &res.Tensor("filter"),
+                      &res.Tensor("bias"),
+                      &res.Tensor("residual_param")},
+                     {&res.Tensor("add_out")});
+  }
+};
+
 class ConvElementwiseAddFusePass : public pir::PatternRewritePass {
  public:
   ConvElementwiseAddFusePass()
@@ -203,10 +373,19 @@ class ConvElementwiseAddFusePass : public pir::PatternRewritePass {
         context,
         paddle::dialect::Conv2dOp::name(),
         paddle::onednn::dialect::FusedConv2dOp::name()));
-    ps.Add(paddle::drr::Create<ConvElementwiseAddYPattern>(
+    ps.Add(paddle::drr::Create<ConvElementwiseAddAsYPattern>(
         context,
         paddle::dialect::Conv2dOp::name(),
         paddle::onednn::dialect::FusedConv2dOp::name()));
+    ps.Add(paddle::drr::Create<FusedConvBiasElementwiseAddPattern>(
+        context,
+        paddle::onednn::dialect::FusedConv2dOp::name(),
+        paddle::onednn::dialect::FusedConv2dOp::name()));
+    ps.Add(paddle::drr::Create<FusedConvBiasElementwiseAddAsYPattern>(
+        context,
+        paddle::onednn::dialect::FusedConv2dOp::name(),
+        paddle::onednn::dialect::FusedConv2dOp::name()));
+
     return ps;
   }
 };
