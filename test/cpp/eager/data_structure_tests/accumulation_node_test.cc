@@ -75,23 +75,34 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et0.impl())
           ->value()
           .data<float>();
-  CHECK_EQ(ret_et0_ptr[0], static_cast<float>(10.0f));
+  PADDLE_ENFORCE_EQ(
+      ret_et0_ptr[0] == static_cast<float>(10.0f),
+      true,
+      phi::errors::InvalidArgument("ret_et0_ptr[0] should be equal to 10.0f"));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et1.impl())
           ->data<float>();
-  CHECK_EQ(ret_et1_ptr[0], static_cast<float>(20.0f));
+  PADDLE_ENFORCE_EQ(
+      ret_et1_ptr[0] == static_cast<float>(20.0f),
+      true,
+      phi::errors::InvalidArgument("ret_et1_ptr[0] should be equal to 20.0f"));
   // Check Retain Grad
-  CHECK_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
-               ->value()
-               .data<float>()[0],
-           static_cast<float>(10.0f));
+  PADDLE_ENFORCE_EQ(
+      std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
+              ->value()
+              .data<float>()[0] == static_cast<float>(10.0f),
+      true,
+      phi::errors::InvalidArgument("et0 should be equal to 10.0f"));
   paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())->data<float>();
-  CHECK_EQ(grad_ptr[0], static_cast<float>(30.0f));
+  PADDLE_ENFORCE_EQ(
+      grad_ptr[0] == static_cast<float>(30.0f),
+      true,
+      phi::errors::InvalidArgument("grad_ptr[0] should be equal to 30.0f"));
 }
 
 TEST(AccumulationNode, SelectedRowsMerge) {
