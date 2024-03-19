@@ -19,6 +19,7 @@ from .pipeline_1f1b import Pipeline1F1BPass
 from .pipeline_eager_1f1b import PipelineEager1F1BPass
 from .pipeline_fthenb import PipelineFThenBPass
 from .pipeline_vpp import PipelineVirtualPipelinePass
+from .pipeline_zero_bubble import PipelineZeroBubblePipelinePass
 
 __all__ = [
     "apply_pass",
@@ -26,6 +27,7 @@ __all__ = [
     "Pipeline1F1BPass",
     "PipelineEager1F1BPass",
     "PipelineVirtualPipelinePass",
+    "PipelineZeroBubblePipelinePass",
 ]
 
 

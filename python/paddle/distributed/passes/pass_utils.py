@@ -771,6 +771,119 @@ def _program_for_vpp(
     return list(type_to_program.keys()), list(type_to_program.values())
 
 
+def _get_backward_op_type(block, op):
+    input_vars = [
+        block.var(name.replace('@GRAD', '')) for name in op.input_arg_names
+    ]
+    for var in input_vars:
+        if var.is_parameter:
+            return "backward_w"
+    return "backward_b"
+
+
+def _program_zero_bubble(program):
+    _insert_sync_for_fthenb_1f1b(program)
+
+    oprole_type = {
+        0: "forward",
+        1: "backward_b",
+        2: 'backward_w',
+        3: "optimizer",
+    }
+
+    def _split_ops(block):
+        # split the program based on the op_role
+        type_to_ops = OrderedDict()
+        for type in oprole_type.values():
+            type_to_ops[type] = []
+
+        for op in block.ops:
+            if _is_fetch_op(op):
+                type_to_ops["fetch"].append(op)
+            elif is_forward_op(op):
+                type_to_ops["forward"].append(op)
+            elif is_backward_op(op):
+                type = _get_backward_op_type(op)
+                type_to_ops[type].append(op)
+            elif is_optimize_op(op):
+                type_to_ops["optimizer"].append(op)
+            else:
+                raise ValueError(
+                    "The op role: "
+                    + str(op.attr('op_role'))
+                    + " isn't one of Forward, Backward or Optimizer."
+                )
+        return type_to_ops
+
+    type_to_program = OrderedDict()
+    for type in oprole_type.values():
+        type_to_program[type] = Program()
+
+    for idx, src_block in enumerate(program.blocks):
+        type_to_ops = _split_ops(src_block)
+        fwd_ops, bwd_b_ops, bwd_w_ops, opt_ops, fetch_ops = (
+            type_to_ops["forward"],
+            type_to_ops["backward_b"],
+            type_to_ops["backward_w"],
+            type_to_ops["optimizer"],
+            type_to_ops["fetch"],
+        )
+        if idx == 0:
+            fwd_block = type_to_program["forward"].block(0)
+            _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            bwd_block_b = type_to_program["backward_b"].block(0)
+            _add_ops_into_block(src_block, bwd_block_b, bwd_b_ops)
+
+            bwd_block_w = type_to_program["backward_w"].block(0)
+            _add_ops_into_block(src_block, bwd_block_w, bwd_w_ops)
+
+            opt_block = type_to_program["optimizer"].block(0)
+            _add_ops_into_block(src_block, opt_block, opt_ops)
+        else:
+            if len(fwd_ops):
+                fwd_block = type_to_program["forward"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                fwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            if len(bwd_b_ops):
+                bwd_block_b = type_to_program["backward_b"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block_b._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block_b, bwd_b_ops)
+
+            if len(bwd_w_ops):
+                bwd_block_w = type_to_program["backward_w"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block_w._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block_w, bwd_w_ops)
+
+            if len(opt_ops):
+                opt_block = type_to_ops["optimizer"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                opt_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, opt_block, opt_ops)
+
+        for fetch_op in fetch_ops:
+            in_name = fetch_op.input_arg_names[0]
+            dst_block = None
+            for block in [fwd_block, bwd_block_b, bwd_block_w, opt_block]:
+                if block._find_var_recursive(in_name):
+                    dst_block = block
+                    break
+            if dst_block:
+                _create_program(src_block, dst_block, fetch_op)
+
+    for prog in type_to_program.values():
+        prog._sync_with_cpp()
+        prog._roll_to_global_block()
+
+
 def _add_event_dependency(recorder_op, waiter_op):
     '''
     Add the extra event dependency of the two operators.
