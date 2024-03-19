@@ -903,12 +903,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
 
-        paddle.utils.check_shape(shape)
         if in_dynamic_mode():
             value = float(value)
             if isinstance(shape, (list, tuple)):
                 shape = paddle.utils.convert_shape_to_list(shape)
         else:
+            paddle.utils.check_shape(shape)
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
                     shape = paddle.utils.get_int_tensor_list(shape, place)
