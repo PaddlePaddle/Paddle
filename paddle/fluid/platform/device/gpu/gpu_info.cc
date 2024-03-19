@@ -30,8 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
-#include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
@@ -370,8 +370,12 @@ class RecordedGpuMallocHelper {
 #ifdef PADDLE_WITH_TESTING
     gpu_ptrs.erase(ptr);
 #endif
-  }
 
+#else
+    PADDLE_THROW(phi::errors::Unavailable(
+        "FreeAsync is not supported in this version of CUDA."));
+#endif
+  }
   void *GetBasePtr(void *ptr) {
 #ifdef PADDLE_WITH_TESTING
     auto it = gpu_ptrs.upper_bound(ptr);
@@ -384,11 +388,6 @@ class RecordedGpuMallocHelper {
         "The RecordedGpuMallocHelper::GetBasePtr is only implemented with "
         "testing, should not use for release."));
     return nullptr;
-#endif
-
-#else
-    PADDLE_THROW(phi::errors::Unavailable(
-        "FreeAsync is not supported in this version of CUDA."));
 #endif
   }
 
@@ -592,7 +591,7 @@ int GetGPUMaxThreadsPerBlock(int id) {
 
 int GetCurrentDeviceId() { return phi::backends::gpu::GetCurrentDeviceId(); }
 
-std::array<int, 3> GetGpuMaxGridDimSize(int id) {
+std::array<unsigned int, 3> GetGpuMaxGridDimSize(int id) {
   return phi::backends::gpu::GetGpuMaxGridDimSize(id);
 }
 

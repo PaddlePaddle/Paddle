@@ -850,8 +850,8 @@ void EagerReducer::MarkVarReady(const size_t var_index,
           auto dense_tensor =
               std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
           if (!dense_tensor->meta().is_contiguous()) {
-            grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
-                paddle::experimental::Trans2Contiguous(*dense_tensor))));
+            grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(
+                paddle::experimental::Trans2Contiguous(*dense_tensor)));
           }
         }
 
@@ -884,8 +884,8 @@ void EagerReducer::MarkVarReady(const size_t var_index,
           auto dense_tensor =
               std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
           if (!dense_tensor->meta().is_contiguous()) {
-            grad_tensor->set_impl(std::make_shared<phi::DenseTensor>(std::move(
-                paddle::experimental::Trans2Contiguous(*dense_tensor))));
+            grad_tensor->set_impl(std::make_shared<phi::DenseTensor>(
+                paddle::experimental::Trans2Contiguous(*dense_tensor)));
           }
         }
 

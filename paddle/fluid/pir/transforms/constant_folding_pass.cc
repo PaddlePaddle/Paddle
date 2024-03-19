@@ -27,7 +27,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 
 #include "paddle/common/errors.h"
 #include "paddle/phi/common/place.h"
@@ -468,14 +468,20 @@ class ConstantFoldingPass : public pir::Pass {
 
  private:
   bool Initialize(pir::IrContext* context) override {
-    IR_ENFORCE(Has(pir::kPlaceAttr),
-               "Pass initialize failed."
-               "When using ConstantFoldingPass, place attribute is required!"
-               "Use Set method to set the place attribute.");
-    IR_ENFORCE(Has(pir::kParamScopeAttr),
-               "Pass initialize failed."
-               "When using ConstantFoldingPass, scope attribute is required!"
-               "Use Set method to set the scope attribute.");
+    PADDLE_ENFORCE_EQ(
+        Has(pir::kPlaceAttr),
+        true,
+        phi::errors::InvalidArgument(
+            "Pass initialize failed."
+            "When using ConstantFoldingPass, place attribute is required!"
+            "Use Set method to set the place attribute."));
+    PADDLE_ENFORCE_EQ(
+        Has(pir::kParamScopeAttr),
+        true,
+        phi::errors::InvalidArgument(
+            "Pass initialize failed."
+            "When using ConstantFoldingPass, scope attribute is required!"
+            "Use Set method to set the scope attribute."));
 
     place_ = Get<phi::Place>(pir::kPlaceAttr);
     scope_ = &Get<paddle::framework::Scope>(pir::kParamScopeAttr);

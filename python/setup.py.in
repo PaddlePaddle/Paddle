@@ -222,6 +222,21 @@ def mkl():
     return with_mkl
 
 def nccl():
+    """Get nccl version of paddle package.
+
+    Returns:
+        string: Return the version information of cuda nccl. If paddle package is CPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.nccl()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '2804'
+
+    """
     return nccl_version    
 
 def cuda():
@@ -890,7 +905,7 @@ headers = (
     # init headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/drr/include')) +  # drr init headers
     # init headers
-    list(find_files('transform_general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/transforms')))  # pass utils init headers
+    list(find_files('general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/utils')))  # pass utils init headers
 
 jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'function.h']
 for f in jit_layer_headers:

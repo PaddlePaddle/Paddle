@@ -1262,7 +1262,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
-    if in_pir_mode():
+    if use_pir_api():
         return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
@@ -1350,11 +1350,15 @@ def _create_tensor(
     **kwargs,
 ):
     if dtype is not None:
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
+        if isinstance(dtype, core.DataType):
+            dtype = paddle_type_to_proto_type[dtype]
+    else:
+        dtype = core.VarDesc.VarType.FP32
 
     eager_tensor = core.eager.Tensor(
-        dtype if dtype else core.VarDesc.VarType.FP32,
+        dtype,
         list(shape) if shape else [],
         name,
         type if type else core.VarDesc.VarType.LOD_TENSOR,
@@ -7588,8 +7592,12 @@ class EagerParamBase(core.eager.Tensor):
                 )
 
         if dtype is not None:
-            if not isinstance(dtype, core.VarDesc.VarType):
+            if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
                 dtype = convert_np_dtype_to_dtype_(dtype)
+            if isinstance(dtype, core.DataType):
+                dtype = paddle_type_to_proto_type[dtype]
+        else:
+            dtype = core.VarDesc.VarType.FP32
 
         name = kwargs.get('name', unique_name.generate('_eager_param_base'))
 
@@ -7597,7 +7605,7 @@ class EagerParamBase(core.eager.Tensor):
             shape = shape.numpy()
 
         super().__init__(
-            dtype if dtype else core.VarDesc.VarType.FP32,
+            dtype,
             list(shape) if shape else [],
             name,
             core.VarDesc.VarType.LOD_TENSOR,

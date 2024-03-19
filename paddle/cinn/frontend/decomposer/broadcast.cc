@@ -129,8 +129,9 @@ void elementwise_add_grad(const Instruction& instr,
   auto dy = instr->outputs[1];
   int axis = instr.GetAttrs<int>("axis");
   if (axis < 0 && dx->shape.size() < dy->shape.size()) {
-    LOG(FATAL) << "Please make sure x'rank greater than or equal to y'rank "
-                  "when axis = -1";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Please make sure x'rank greater than or equal to y'rank "
+        "when axis = -1"));
   }
   axis = axis >= 0 ? axis : dx->shape.size() - dy->shape.size();
   auto* builder = context.builder();

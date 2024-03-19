@@ -2855,6 +2855,35 @@ void PriorBoxInferMeta(const MetaTensor& input,
   var->set_dims(common::make_ddim(dim_vec));
 }
 
+void PruneGateByCapacityInferMeta(const MetaTensor& gate_idx,
+                                  const MetaTensor& expert_count,
+                                  int64_t n_expert,
+                                  int64_t n_worker,
+                                  MetaTensor* new_gate_idx) {
+  auto expert_count_dims = expert_count.dims();
+
+  int64_t expert_count_num_ele = 1;
+  for (int i = 0; i < static_cast<int>(expert_count_dims.size()); i++) {
+    expert_count_num_ele *= expert_count_dims[i];
+  }
+
+  PADDLE_ENFORCE_EQ(
+      expert_count_num_ele,
+      n_expert * n_worker,
+      phi::errors::Unavailable(
+          "The number of elements for expert_count is ( %ld ) incorrect. "
+          "Because the number of expert_count must equal the "
+          "product of n_worker ( %ld ) and n_expert ( %ld ). "
+          "Please input appropriate expert_count again!",
+          expert_count_num_ele,
+          n_worker,
+          n_expert));
+
+  auto gate_idx_in_dims = gate_idx.dims();
+  new_gate_idx->set_dims(gate_idx_in_dims);
+  new_gate_idx->set_dtype(gate_idx.dtype());
+}
+
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,

@@ -47,6 +47,17 @@
   kernel :
     func : all
 
+- op : all_reduce
+  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param: [x]
+  kernel :
+    func : all_reduce
+    param: [x, reduce_type]
+  inplace : (x -> out)
+
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -107,6 +118,7 @@
     param : [shape, dtype, values]
     backend: place>
     data_type : dtype
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : assign_value_
   args : (Tensor output, int[] shape, DataType dtype, Scalar[] values, Place place = {})
@@ -292,6 +304,15 @@
     func : reduce_scatter
     param: [x, nranks]
 
+- op : c_scatter
+  args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
+  output : Tensor(out)
+  infer_meta :
+    func : CScatterInferMeta
+    param : [x, nranks]
+  kernel :
+    func : c_scatter
+
 - op : c_split
   args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true)
   output : Tensor(out)
@@ -471,6 +492,15 @@
     func : DistributeLookupTableInferMeta
   kernel :
     func : distributed_lookup_table
+    data_type : dtype
+
+- op : distributed_push_sparse
+  args : (Tensor[] ids, Tensor[] shows, Tensor[] clicks, int table_id = 0, int size = 8, bool is_distributed = false, str push_sparse_version = "push_sparse", int64_t padding_idx = -1, DataType dtype=DataType::FLOAT32, bool is_test = false, bool use_cvm_op = false)
+  output : Tensor[](output){ids.size()}
+  infer_meta :
+    func : DistributedPushSparseInferMeta
+  kernel :
+    func: distributed_push_sparse
     data_type : dtype
 
 - op : divide
@@ -774,6 +804,14 @@
   kernel:
     func : fused_softmax_mask_upper_triangle
   backward: fused_softmax_mask_upper_triangle_grad
+
+- op : fused_token_prune
+  args : (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token = true, bool keep_order = false)
+  output : Tensor(slimmed_x), Tensor(cls_inds)
+  infer_meta :
+    func : FusedTokenPruneInferMeta
+  kernel:
+    func : fused_token_prune
 
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
@@ -1142,6 +1180,15 @@
   backward : pad_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : partial_recv
+  args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
+  output : Tensor(out)
+  infer_meta :
+    func: PartialRecvInferMeta
+  kernel :
+    func : partial_recv
+    data_type : dtype
+
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
@@ -1185,6 +1232,15 @@
   backward : prod_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : prune_gate_by_capacity
+  args : (Tensor gate_idx, Tensor expert_count, int64_t n_expert, int64_t n_worker)
+  output : Tensor(new_gate_idx)
+  infer_meta :
+    func : PruneGateByCapacityInferMeta
+  kernel :
+    func : prune_gate_by_capacity
+    data_type : gate_idx
+
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
   output : Tensor[](out_grad_out){out_grad_in.size()}
@@ -1221,6 +1277,15 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : random_routing
+  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomRoutingInferMeta
+  kernel :
+    func : random_routing
+    data_type : dtype
 
 - op : randperm
   args : (int n, DataType dtype, Place place={})
@@ -1397,6 +1462,16 @@
     func: shadow_feed
     param: [x]
 
+- op : shadow_feed_tensors
+  args : (Tensor[] x)
+  output : Tensor[](out){x.size()}
+  infer_meta:
+    func: UnchangedVectorInferMeta
+    param: [x]
+  kernel:
+    func: shadow_feed_tensors
+    param: [x]
+
 - op : share_data
   args : (Tensor x)
   output : Tensor(out)
@@ -1447,6 +1522,7 @@
     func : softmax
   inplace : (x -> out)
   backward : softmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)
@@ -1602,6 +1678,7 @@
     func : triu
   inplace: (x -> out)
   backward : triu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : triu_indices
   args : (int row, int col, int offset, DataType dtype, Place place={})

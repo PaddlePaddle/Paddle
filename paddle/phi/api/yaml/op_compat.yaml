@@ -843,6 +843,10 @@
     out : Out
 
 - op : distributed_push_sparse
+  inputs :
+    {ids : Ids, shows : Shows, clicks: Clicks}
+  outputs :
+    output : Outputs
   extra :
     attrs : ['int[] slots = {}']
 
@@ -2465,6 +2469,10 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : partial_recv
+  outputs :
+    out : Out
+
 - op : partial_sum
   backward : partial_sum_grad
   extra :
@@ -3611,6 +3619,12 @@
   outputs :
     out: Out
 
+- op: c_scatter
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_sync_calc_stream
   inputs :
     x : X
@@ -3697,6 +3711,12 @@
     {x: X}
   outputs :
     {out : Out}
+
+- op: fused_token_prune
+  inputs :
+    {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
+  outputs :
+    {slimmed_x : SlimmedX, cls_inds : CLSInds}
 
 - op: fusion_squared_mat_sub
   inputs :
@@ -3788,6 +3808,18 @@
 - op: partial_send
   inputs :
     x : X
+
+- op: prune_gate_by_capacity
+  inputs:
+    {gate_idx: GateIdx, expert_count: ExpertCount}
+  outputs:
+    new_gate_idx: NewGateIdx
+
+- op: random_routing
+  inputs:
+    {prob : Prob, topk_value : TopK_Value, topk_idx : TopK_Idx}
+  outputs:
+    out : Out
 
 - op: read_from_array
   inputs:

@@ -90,7 +90,9 @@ std::string Type2StrForReduce(cinn::common::Type type) {
   } else if (type.is_bool()) {
     return "";
   }
-  LOG(FATAL) << "Reduce Not Support " << type;
+  std::stringstream ss;
+  ss << "Reduce Not Support " << type;
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return "";
 }
 
@@ -1096,9 +1098,15 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
                                               const ir::Expr& tensor) {
   CHECK_NOTNULL(tensor.as_tensor());
   if (op.As<ir::Add>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_block_reduce_any_internal_shm";
+    }
     return "cinn_block_reduce_sum" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Mul>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_block_reduce_all_internal_shm";
+    }
     return "cinn_block_reduce_prod" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Max>()) {
@@ -1112,7 +1120,9 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
   } else if (op.As<ir::Or>()) {
     return "cinn_block_reduce_any_internal_shm";
   } else {
-    LOG(FATAL) << "Reduce type: " << op << " Not supported yet!";
+    std::stringstream ss;
+    ss << "Reduce type: " << op << " Not supported yet!";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return "";
 }
