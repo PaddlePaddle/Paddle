@@ -105,7 +105,9 @@ class TestToStaticPirProgramEval(unittest.TestCase):
                     tensor.dist_attr().process_mesh.process_ids, [0, 1]
                 )
                 self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
-                self.assertEqual(tensor.dist_attr().partial_dims, set())
+                self.assertEqual(
+                    tensor.dist_attr().dist_attr().partial_dims, set()
+                )
             elif op.name() == "builtin.parameter":
                 pass  # TODO check
 
@@ -132,12 +134,14 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
         for op in main_program.global_block().ops:
             tensor = op.result(0)
             self.assertTrue(tensor.is_dist_dense_tensor_type())
-            self.assertEqual(tensor.process_mesh.shape, [2])
-            self.assertEqual(tensor.process_mesh.process_ids, [0, 1])
+            self.assertEqual(tensor.dist_attr().process_mesh.shape, [2])
+            self.assertEqual(
+                tensor.dist_attr().process_mesh.process_ids, [0, 1]
+            )
 
             if op.name() == 'pd_op.data':
-                self.assertEqual(tensor.dims_mapping, [-1, -1])
-                self.assertEqual(tensor.partial_dims, set())
+                self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                self.assertEqual(tensor.dist_attr().partial_dims, set())
             elif op.name() == 'builtin.parameter':
                 self.assertTrue(tensor.is_dense_tensor_type())
                 self.assertTrue(tensor.is_dist_dense_tensor_type())
@@ -147,40 +151,40 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
                 self.assertEqual(tensor.process_mesh.shape, [2])
                 self.assertEqual(tensor.process_mesh.process_ids, [0, 1])
                 if tensor.shape == [IMAGE_SIZE, IMAGE_SIZE]:
-                    self.assertEqual(tensor.dims_mapping, [-1, 0])
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
                 elif tensor.shape == [IMAGE_SIZE, CLASS_NUM]:
-                    self.assertEqual(tensor.dims_mapping, [0, -1])
-                self.assertEqual(tensor.partial_dims, set())
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [0, -1])
+                self.assertEqual(tensor.dist_attr().partial_dims, set())
             if op.name() == 'pd_op.relu':
                 if relu_idx == 0:
-                    self.assertEqual(tensor.dims_mapping, [-1, -1])
-                    self.assertEqual(tensor.partial_dims, set())
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
                     self.assertEqual(
                         tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE]
                     )
                 elif relu_idx == 1:
-                    self.assertEqual(tensor.dims_mapping, [-1, 0])
-                    self.assertEqual(tensor.partial_dims, set())
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
                     self.assertEqual(
                         tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE // 2]
                     )
                 elif relu_idx == 2:
-                    self.assertEqual(tensor.dims_mapping, [-1, -1])
-                    self.assertEqual(tensor.partial_dims, set())
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
                     self.assertEqual(
                         tensor._local_shape, [BATCH_SIZE, CLASS_NUM]
                     )
                 relu_idx += 1
             if op.name() == 'pd_op.matmul':
                 if matmul_idx == 0:
-                    self.assertEqual(tensor.dims_mapping, [-1, 0])
-                    self.assertEqual(tensor.partial_dims, set())
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
                     self.assertEqual(
                         tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE // 2]
                     )
                 elif matmul_idx == 1:
-                    self.assertEqual(tensor.dims_mapping, [-1, -1])
-                    self.assertEqual(tensor.partial_dims, {0})
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, {0})
                     self.assertEqual(
                         tensor._local_shape, [BATCH_SIZE, CLASS_NUM]
                     )
