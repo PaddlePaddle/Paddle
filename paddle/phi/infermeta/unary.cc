@@ -4507,13 +4507,6 @@ void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
     start_index += input_len;
   }
 
-  if (length > 0) {
-    PADDLE_ENFORCE_GE(input_len,
-                      start_index + length,
-                      phi::errors::OutOfRange(
-                          "start_index + length is larger than input length"));
-  }
-
   std::vector<int64_t> out_dims(2);
   out_dims[0] = batch_size;
   // colnum = input_num * length
