@@ -909,12 +909,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             value = float(value)
             if isinstance(shape, (list, tuple)):
                 shape = paddle.utils.convert_shape_to_list(shape)
-            elif isinstance(shape, core.eager.Tensor):
-                pass
-            else:
-                raise TypeError(
-                    "Shape only supports Tensor, or list, or tuple."
-                )
         else:
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
@@ -922,7 +916,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
-                TypeError("Shape only supports Value, or list, or tuple.")
+                raise TypeError("Shape only supports Value, or list, or tuple.")
 
         if out is None:
             out = _C_ops.full(shape, value, dtype, place)
