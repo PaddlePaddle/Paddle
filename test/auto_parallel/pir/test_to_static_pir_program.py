@@ -105,9 +105,7 @@ class TestToStaticPirProgramEval(unittest.TestCase):
                     tensor.dist_attr().process_mesh.process_ids, [0, 1]
                 )
                 self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
-                self.assertEqual(
-                    tensor.dist_attr().dist_attr().partial_dims, set()
-                )
+                self.assertEqual(tensor.dist_attr().partial_dims, set())
             elif op.name() == "builtin.parameter":
                 pass  # TODO check
 
@@ -148,8 +146,10 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
                 self.assertTrue(tensor.has_one_use())
 
                 self.assertTrue(tensor.is_dist_dense_tensor_type())
-                self.assertEqual(tensor.process_mesh.shape, [2])
-                self.assertEqual(tensor.process_mesh.process_ids, [0, 1])
+                self.assertEqual(tensor.dist_attr().process_mesh.shape, [2])
+                self.assertEqual(
+                    tensor.dist_attr().process_mesh.process_ids, [0, 1]
+                )
                 if tensor.shape == [IMAGE_SIZE, IMAGE_SIZE]:
                     self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
                 elif tensor.shape == [IMAGE_SIZE, CLASS_NUM]:
