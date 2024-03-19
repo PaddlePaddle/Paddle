@@ -1865,7 +1865,7 @@ class DistModel:
                     )
                     lodtensor.set(
                         tensor_np_value,
-                        paddle.framework._current_expected_place(),
+                        paddle.CPUPlace(),  # No need to use GPU memory.
                     )
             else:
                 lodtensor._share_data_with(tensor.get_tensor())
@@ -2381,6 +2381,8 @@ class ShardDataloader:
                 worker_init_fn=dataloader.worker_init_fn,
                 persistent_workers=dataloader._persistent_workers,
             )
+        # Note(lizhiyu): In dygraph mode, the flag "pin_memory" is defualt "True", but it decrease the speed of `AutoParallel`
+        self._dataloader.pin_memory = False
 
     def _process_shard_dims(self, shard_dims):
         if isinstance(shard_dims, (int, str)) or shard_dims is None:
