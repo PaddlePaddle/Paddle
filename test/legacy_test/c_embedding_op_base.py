@@ -178,9 +178,7 @@ class TestCEmbeddingOpComplex64(TestCEmbeddingOpBase):
         self.outputs = {'Out': np_out.reshape((2, 4, 64))}
         self.attrs = {'start_index': self.start_index}
 
-        if core.is_compiled_with_xpu():
-            self.__class__.use_xpu = True
-        elif core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             self.__class__.exist_fp64_check_grad = True
 
     def init_dtype(self):
@@ -214,9 +212,7 @@ class TestCEmbeddingOpComplex128(TestCEmbeddingOpBase):
         self.outputs = {'Out': np_out.reshape((2, 4, 64))}
         self.attrs = {'start_index': self.start_index}
 
-        if core.is_compiled_with_xpu():
-            self.__class__.use_xpu = True
-        elif core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             self.__class__.exist_fp64_check_grad = True
 
     def init_dtype(self):

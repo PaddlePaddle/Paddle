@@ -18,6 +18,7 @@ from c_embedding_op_base import (
     TestCEmbeddingCPU,
     TestCEmbeddingOpBase,
     TestCEmbeddingOpComplex64,
+    TestCEmbeddingOpComplex128,
     TestCEmbeddingOpFP32,
 )
 
@@ -29,7 +30,7 @@ TestCEmbeddingOpFP32()
 
 TestCEmbeddingOpComplex64()
 
-TestCEmbeddingOpComplex64()
+TestCEmbeddingOpComplex128()
 
 if __name__ == "__main__":
     unittest.main()
