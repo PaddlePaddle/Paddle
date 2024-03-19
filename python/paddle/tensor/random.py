@@ -741,10 +741,14 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             [0.48646951, 0.00815189, 3.74022293])
             >>> # doctest: -SKIP
     """
-    if not in_dynamic_or_pir_mode():
-        check_type(mean, 'mean', (int, float, Variable), 'normal')
-        check_type(std, 'std', (int, float, Variable), 'normal')
-        if isinstance(mean, Variable):
+    if not in_dynamic_mode():
+        check_type(
+            mean, 'mean', (int, float, Variable, paddle.pir.Value), 'normal'
+        )
+        check_type(
+            std, 'std', (int, float, Variable, paddle.pir.Value), 'normal'
+        )
+        if isinstance(mean, (Variable, paddle.pir.Value)):
             check_dtype(
                 mean.dtype,
                 'mean',
@@ -752,7 +756,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
                 'normal',
                 "If mean is Tensor, it's data type only support float32, float64.",
             )
-        if isinstance(std, Variable):
+        if isinstance(std, (Variable, paddle.pir.Value)):
             check_dtype(
                 std.dtype,
                 'std',
