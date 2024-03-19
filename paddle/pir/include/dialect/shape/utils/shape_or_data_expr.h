@@ -150,8 +150,8 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
         true,
         phi::errors::PreconditionNotMet(
             "Data of ShapeOrData is not a vector, check whether the value is a "
-            "tensor-list or not.");
-        return std::get<TensorShapeOrDataDimExprs>(*this).data());
+            "tensor-list or not."));
+    return std::get<TensorShapeOrDataDimExprs>(*this).data();
   }
 
   void SetData(const std::vector<DimExpr>& data) {
@@ -160,9 +160,9 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
         true,
         phi::errors::PreconditionNotMet(
             "Data of ShapeOrData is not a vector, check whether the value is a "
-            "tensor-list or not.");
+            "tensor-list or not."));
 
-        std::get<TensorShapeOrDataDimExprs>(*this).SetData(data));
+    std::get<TensorShapeOrDataDimExprs>(*this).SetData(data);
   }
 };
 
