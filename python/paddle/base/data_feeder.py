@@ -434,6 +434,7 @@ class DataFeeder:
                     raise TypeError("Feed list should contain a list of Value")
                 self.feed_dtypes.append(each_var.dtype)
                 self.feed_names.append(each_var.name)
+                self.feed_lod_level.append(0)
                 self.feed_shapes.append(each_var.shape)
         else:
             if program is None:
