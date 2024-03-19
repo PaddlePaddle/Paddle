@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/frontend/decomposer_registry.h"
 #include "paddle/cinn/frontend/syntax.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {
