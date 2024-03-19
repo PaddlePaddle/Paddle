@@ -908,9 +908,11 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_by_stopgradient(block, no_grad_set)
     with block:
-        grad_outputs, complete_outputs, backward_ops = prepare_grad_outputs(
-            grad_outputs, outputs, state
-        )
+        (
+            complete_grad_outputs,
+            complete_outputs,
+            backward_ops,
+        ) = prepare_grad_outputs(grad_outputs, outputs, state)
 
     inputs_set = ValueSet(inputs)
     stop_gradient_false_outputs = []
@@ -964,12 +966,11 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
                 remove_useless_full_like_ops(sub_block, sub_block.ops, state)
 
     for bwd_op in inverse_sort_op(remove_ops):
-        if bwd_op.result(0) in ValueSet(grad_outputs):
+        if bwd_op.result(0) in ValueSet(complete_grad_outputs):
             continue
         if bwd_op.result(0).use_empty():
             remove_op(block, bwd_op, state)
     state.turn_map()
-
     input_grad_map = state.value_to_valuegrad
 
     return input_grad_map
