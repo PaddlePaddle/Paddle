@@ -133,7 +133,7 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      AddNOp::InferMeta(argument_inputs, argument_attributes);
+      AddNOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -146,7 +146,7 @@ void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AddNOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AddNOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -229,7 +229,7 @@ void AddN_Op::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      AddN_Op::InferMeta(argument_inputs, argument_attributes);
+      AddN_Op::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
@@ -292,7 +292,7 @@ void AddN_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AddN_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AddN_Op";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -428,9 +428,10 @@ void AddNArrayOp::Build(pir::Builder &builder,             // NOLINT
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      AddNArrayOp::InferMeta(argument_inputs, argument_attributes);
+      AddNArrayOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
@@ -441,7 +442,7 @@ void AddNArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AddNArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AddNArrayOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -583,7 +584,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
   argument.AddAttribute("activation", attr_activation);
   argument_attributes.insert({"activation", attr_activation});
   std::vector<pir::Type> argument_outputs =
-      FusedGemmEpilogueOp::InferMeta(argument_inputs, argument_attributes);
+      FusedGemmEpilogueOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
@@ -662,7 +663,12 @@ void FusedGemmEpilogueOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta FusedGemmEpilogueOp";
   IR_ENFORCE(input_values.size() == 3,
              "Num of inputs is expected to be 3 but got %d.",
@@ -893,7 +899,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   argument.AddAttribute("activation_grad", attr_activation_grad);
   argument_attributes.insert({"activation_grad", attr_activation_grad});
   std::vector<pir::Type> argument_outputs =
-      FusedGemmEpilogueGradOp::InferMeta(argument_inputs, argument_attributes);
+      FusedGemmEpilogueGradOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
@@ -907,7 +913,12 @@ void FusedGemmEpilogueGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
   IR_ENFORCE(input_values.size() == 4,
              "Num of inputs is expected to be 4 but got %d.",
              input_values.size());
@@ -1120,7 +1131,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      SplitGradOp::InferMeta(argument_inputs, argument_attributes);
+      SplitGradOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -1139,7 +1150,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      SplitGradOp::InferMeta(argument_inputs, argument_attributes);
+      SplitGradOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -1204,7 +1215,7 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> SplitGradOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta SplitGradOp";
 
   IR_ENFORCE(input_values.size() == 2,
@@ -1297,7 +1308,7 @@ void CreateArrayOp::Build(pir::Builder &builder,
   argument.AddAttribute("dtype", attr_dtype);
   argument_attributes.insert({"dtype", attr_dtype});
   std::vector<pir::Type> argument_outputs =
-      CreateArrayOp::InferMeta(argument_inputs, argument_attributes);
+      CreateArrayOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -1343,7 +1354,12 @@ void CreateArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> CreateArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta CreateArrayOp";
 
   PADDLE_ENFORCE(
@@ -1415,7 +1431,7 @@ void CreateArrayLikeOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddAttribute("val", attr_val);
   argument_attributes.insert({"val", attr_val});
   std::vector<pir::Type> argument_outputs =
-      CreateArrayLikeOp::InferMeta(argument_inputs, argument_attributes);
+      CreateArrayLikeOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -1461,7 +1477,7 @@ void CreateArrayLikeOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta CreateArrayLikeOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -1534,7 +1550,7 @@ void ArrayLengthOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      ArrayLengthOp::InferMeta(argument_inputs, argument_attributes);
+      ArrayLengthOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
@@ -1582,7 +1598,7 @@ void ArrayLengthOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayLengthOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ArrayLengthOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -1666,7 +1682,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      ArrayReadOp::InferMeta(argument_inputs, argument_attributes);
+      ArrayReadOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -1683,7 +1699,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      ArrayReadOp::InferMeta(argument_inputs, argument_attributes);
+      ArrayReadOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -1738,7 +1754,7 @@ void ArrayReadOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayReadOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ArrayLengthOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -1838,7 +1854,7 @@ void ArrayWrite_Op::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      ArrayWrite_Op::InferMeta(argument_inputs, argument_attributes);
+      ArrayWrite_Op::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   constexpr char kStopGradientAttrName[] = "stop_gradient";
@@ -1906,7 +1922,7 @@ void ArrayWrite_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayWrite_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ArrayWrite_Op";
   IR_ENFORCE(input_values.size() == 3,
              "Num of inputs is expected to be 3 but got %d.",
@@ -2037,7 +2053,7 @@ void ArrayToTensorOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddAttribute("use_stack", attr_use_stack);
   argument_attributes.insert({"use_stack", attr_use_stack});
   std::vector<pir::Type> argument_outputs =
-      ArrayToTensorOp::InferMeta(argument_inputs, argument_attributes);
+      ArrayToTensorOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -2098,7 +2114,12 @@ void ArrayToTensorOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayToTensorOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayToTensorOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -2224,7 +2245,7 @@ void TensorToArrayOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddAttribute("use_stack", attr_use_stack);
   argument_attributes.insert({"use_stack", attr_use_stack});
   std::vector<pir::Type> argument_outputs =
-      TensorToArrayOp::InferMeta(argument_inputs, argument_attributes);
+      TensorToArrayOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -2287,7 +2308,12 @@ void TensorToArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> TensorToArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta TensorToArrayOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -2487,7 +2513,7 @@ void SliceArrayOp::Build(pir::Builder &builder,             // NOLINT
   pir::AttributeMap argument_attributes = {};
   VLOG(4) << "Builder construction outputs";
   std::vector<pir::Type> argument_outputs =
-      SliceArrayOp::InferMeta(argument_inputs, argument_attributes);
+      SliceArrayOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
 }
@@ -2499,7 +2525,7 @@ void SliceArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> SliceArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta SliceArrayOp";
   IR_ENFORCE(input_values.size() == 3,
              "Num of inputs is expected to be 3 but got %d.",
@@ -2637,7 +2663,7 @@ void SliceArrayDenseOp::Build(pir::Builder &builder,             // NOLINT
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      SliceArrayDenseOp::InferMeta(argument_inputs, argument_attributes);
+      SliceArrayDenseOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -2650,7 +2676,7 @@ void SliceArrayDenseOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta SliceArrayDenseOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -2735,7 +2761,7 @@ void AssignArrayOp::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   std::vector<pir::Type> argument_outputs =
-      AssignArrayOp::InferMeta(argument_inputs, argument_attributes);
+      AssignArrayOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
 }
@@ -2789,7 +2815,7 @@ phi::DataType AssignArrayOp::GetKernelTypeForVar(
 
 std::vector<pir::Type> AssignArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AssignArrayOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -2890,7 +2916,7 @@ void AssignArray_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AssignArray_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AssignArray_Op";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -2984,7 +3010,7 @@ void ExpandOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      ExpandOp::InferMeta(argument_inputs, argument_attributes);
+      ExpandOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -3017,7 +3043,7 @@ void ExpandOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      ExpandOp::InferMeta(argument_inputs, argument_attributes);
+      ExpandOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -3036,7 +3062,7 @@ void ExpandOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      ExpandOp::InferMeta(argument_inputs, argument_attributes);
+      ExpandOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -3156,7 +3182,7 @@ void ExpandOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ExpandOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ExpandOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -3303,7 +3329,7 @@ void IncrementOp::Build(pir::Builder &builder,
   argument.AddAttribute("value", attr_value);
   argument_attributes.insert({"value", attr_value});
   std::vector<pir::Type> argument_outputs =
-      IncrementOp::InferMeta(argument_inputs, argument_attributes);
+      IncrementOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -3330,7 +3356,7 @@ void IncrementOp::Build(pir::Builder &builder,
   argument.AddAttribute("value", attr_value);
   argument_attributes.insert({"value", attr_value});
   std::vector<pir::Type> argument_outputs =
-      IncrementOp::InferMeta(argument_inputs, argument_attributes);
+      IncrementOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -3378,7 +3404,12 @@ void IncrementOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> IncrementOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta IncrementOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -3483,7 +3514,7 @@ void Increment_Op::Build(pir::Builder &builder,
   argument.AddAttribute("value", attr_value);
   argument_attributes.insert({"value", attr_value});
   std::vector<pir::Type> argument_outputs =
-      Increment_Op::InferMeta(argument_inputs, argument_attributes);
+      Increment_Op::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -3510,7 +3541,7 @@ void Increment_Op::Build(pir::Builder &builder,
   argument.AddAttribute("value", attr_value);
   argument_attributes.insert({"value", attr_value});
   std::vector<pir::Type> argument_outputs =
-      Increment_Op::InferMeta(argument_inputs, argument_attributes);
+      Increment_Op::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -3559,7 +3590,12 @@ void Increment_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> Increment_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta Increment_Op";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -3664,7 +3700,7 @@ void AssignOut_Op::Build(pir::Builder &builder,
   pir::AttributeMap argument_attributes = {};
 
   std::vector<pir::Type> argument_outputs =
-      AssignOut_Op::InferMeta(argument_inputs, argument_attributes);
+      AssignOut_Op::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   constexpr char kStopGradientAttrName[] = "stop_gradient";
   auto stop_gradient0 =
@@ -3719,7 +3755,7 @@ void AssignOut_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AssignOut_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
              input_values.size());
@@ -3785,7 +3821,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      ShapeBroadcastOp::InferMeta(argument_inputs, argument_attributes);
+      ShapeBroadcastOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -3798,7 +3834,7 @@ void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ShapeBroadcastOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -4008,7 +4044,7 @@ void MemcpyD2hMultiIoOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> MemcpyD2hMultiIoOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
              input_values.size());
@@ -4142,7 +4178,7 @@ void ArrayPopOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddAttribute("index", attr_index);
   argument_attributes.insert({"index", attr_index});
   std::vector<pir::Type> argument_outputs =
-      ArrayPopOp::InferMeta(argument_inputs, argument_attributes);
+      ArrayPopOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -4155,7 +4191,12 @@ void ArrayPopOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> ArrayPopOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap &attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayPopOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
