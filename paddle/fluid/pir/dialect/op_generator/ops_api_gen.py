@@ -143,7 +143,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'dpsgd',
     'embedding_grad_sparse',
     'ftrl',
-    'fused_adam',
+    'fused_adam_',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
     'fused_elemwise_add_activation',
