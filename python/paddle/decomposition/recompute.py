@@ -378,6 +378,7 @@ def auto_recompute(
         cut_value_nodes.add(value_node)
 
     saved_values = cut_value_nodes
+    # (TODO: wanghao107): remove it and fix model
     saved_values = cut_value_nodes | inputs
     # 2.patition the joint graph by saved values.
     (
@@ -720,14 +721,15 @@ def find_parent_ops(value):
     visited = backward_utils.ValueSet()
 
     def _find_parent_ops(value):
-        visited.add(value)
         parent_ops = set()
+        if value in visited:
+            return parent_ops
+        visited.add(value)
         parent_op = value.get_defining_op()
         parent_ops.add(parent_op)
         op_inputs = parent_op.operands_source()
         for op_input in op_inputs:
-            if op_input not in visited:
-                parent_ops = parent_ops | _find_parent_ops(op_input)
+            parent_ops = parent_ops | _find_parent_ops(op_input)
         return parent_ops
 
     return _find_parent_ops(value)
@@ -737,16 +739,17 @@ def find_child_ops(value):
     visited = backward_utils.ValueSet()
 
     def _find_child_ops(value):
-        visited.add(value)
         child_ops = set()
+        if value in visited:
+            return child_ops
+        visited.add(value)
         used_ops = value.all_used_ops()
         child_ops |= set(used_ops)
         op_results = backward_utils.ValueSet()
         for used_op in used_ops:
             op_results = op_results | backward_utils.ValueSet(used_op.results())
         for op_result in op_results:
-            if op_result not in visited:
-                child_ops = child_ops | _find_child_ops(op_result)
+            child_ops = child_ops | _find_child_ops(op_result)
         return child_ops
 
     return _find_child_ops(value)
