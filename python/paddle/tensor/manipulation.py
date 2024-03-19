@@ -4248,7 +4248,7 @@ def expand(x, shape, name=None):
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils.get_int_tensor_list(shape)
         else:
-            raise TypeError("Shape only supports OpResult, or list, or tuple.")
+            raise TypeError("Shape only supports Value, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
