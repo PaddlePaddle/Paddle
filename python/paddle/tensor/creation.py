@@ -25,7 +25,6 @@ from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
     check_dtype,
-    check_shape,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
@@ -904,7 +903,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
 
-        check_shape(shape, 'fill_constant')
+        paddle.utils.check_shape(shape)
         if in_dynamic_mode():
             value = float(value)
             if isinstance(shape, (list, tuple)):
