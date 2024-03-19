@@ -3914,11 +3914,6 @@ class TestLog2_Complex64(TestLog2):
     def init_dtype(self):
         self.dtype = np.complex64
 
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
-
     def test_check_output(self):
         self.check_output(
             check_pir=True, check_pir_onednn=self.check_pir_onednn
@@ -4010,16 +4005,6 @@ class TestLog10(TestActivation):
 class TestLog10_Complex64(TestLog10):
     def init_dtype(self):
         self.dtype = np.complex64
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
-
-    def test_check_output(self):
-        self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
 
     def test_api_complex(self):
         paddle.disable_static()
@@ -4141,16 +4126,6 @@ class TestLog1p(TestActivation):
 class TestLog1p_Complex64(TestLog1p):
     def init_dtype(self):
         self.dtype = np.complex64
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
-
-    def test_check_output(self):
-        self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
 
     def test_api_complex(self):
         paddle.disable_static()
