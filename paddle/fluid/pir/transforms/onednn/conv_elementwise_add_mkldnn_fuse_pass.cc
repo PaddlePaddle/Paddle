@@ -377,6 +377,7 @@ class ConvElementwiseAddFusePass : public pir::PatternRewritePass {
         context,
         paddle::dialect::Conv2dOp::name(),
         paddle::onednn::dialect::FusedConv2dOp::name()));
+    // conv + bias -> fused_conv2d, fused_conv2d + residual -> fused_conv2d
     ps.Add(paddle::drr::Create<FusedConvBiasElementwiseAddPattern>(
         context,
         paddle::onednn::dialect::FusedConv2dOp::name(),

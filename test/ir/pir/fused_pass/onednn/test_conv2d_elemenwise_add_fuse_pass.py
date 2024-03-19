@@ -27,6 +27,13 @@ paddle.enable_static()
     "Test case only for OneDNN pass.",
 )
 class TestConv2dAddFusePass(PassTest):
+    """
+    x_var   filter
+      \      /      
+        conv2d   residual
+           \      /
+              out  
+    """
     def is_program_valid(self, program=None):
         return True
 
@@ -81,6 +88,13 @@ class TestConv2dAddFusePass(PassTest):
     "Test case only for OneDNN pass.",
 )
 class TestConv2dAddFusePassAsY(PassTest):
+    """
+            x_var   filter
+              \      /      
+    residual    conv2d   
+           \      /
+              out  
+    """
     def is_program_valid(self, program=None):
         return True
 
@@ -135,6 +149,15 @@ class TestConv2dAddFusePassAsY(PassTest):
     "Test case only for OneDNN pass.",
 )
 class TestConv2dBiasAddFusePass(PassTest):
+    """
+    x_var   filter
+      \      /      
+        conv2d   bias
+           \      /
+            conv2d_bias   residual
+                  \       /
+                     out
+    """
     def is_program_valid(self, program=None):
         return True
 
