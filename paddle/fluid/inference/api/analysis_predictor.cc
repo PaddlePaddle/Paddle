@@ -123,6 +123,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/matmul_transpose_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/transpose_flatten_concat_fuse_pass.h"
@@ -134,6 +135,7 @@
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 
@@ -894,8 +896,23 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
     if (config_.new_ir_enabled()) {
-      pir_program_ = std::move(
-          paddle::TranslateLegacyProgramToProgram(*inference_program_));
+      pir_program_ =
+          paddle::TranslateLegacyProgramToProgram(*inference_program_);
+
+      if (!config_.custom_passes_.empty()) {
+        ::pir::PassManager custom_pm(::pir::IrContext::Instance(), 2);
+        for (const auto &custom_pass : config_.custom_passes_) {
+          custom_pm.AddPass(
+              std::move(pir::PassRegistry::Instance().Get(custom_pass)));
+        }
+        if (!config_.glog_info_disabled()) {
+          custom_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          custom_pm.EnableIRPrinting();
+        }
+        custom_pm.Run(pir_program_.get());
+      }
 
 #ifdef PADDLE_WITH_CINN
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
@@ -948,6 +965,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
+        gpu_pm.AddPass(::pir::CreateMatmulTransposeFusePass());
         gpu_pm.AddPass(::pir::CreateTransposeFlattenConcatFusePass());
         //----------------------------------------------------------------------------------------------//
 
@@ -1020,8 +1038,8 @@ bool AnalysisPredictor::PrepareExecutor() {
         cpu_pm.Run(pir_program_.get());
       }
 
-      pir_program_ = std::move(
-          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
+      pir_program_ =
+          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
       if (FLAGS_pir_apply_inplace_pass) {

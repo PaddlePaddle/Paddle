@@ -55,16 +55,6 @@ inline std::string demangle(std::string name) {
 inline std::string demangle(std::string name) { return name; }
 #endif
 
-class CommonNotMetException : public std::exception {
- public:
-  explicit CommonNotMetException(const std::string& str) : err_str_(str) {}
-
-  const char* what() const noexcept override { return err_str_.c_str(); }
-
- private:
-  std::string err_str_;
-};
-
 namespace enforce {
 
 TEST_API void SkipPaddleFatal(bool skip = true);
@@ -274,15 +264,12 @@ template <typename T1, typename T2>
 using CommonType2 = typename std::add_lvalue_reference<
     typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
 
-#define COMMON_THROW(...)                                               \
-  do {                                                                  \
-    HANDLE_THE_ERROR                                                    \
-    throw common::CommonNotMetException(                                \
-        paddle::string::Sprintf("Error occurred at: %s:%d :\n%s",       \
-                                __FILE__,                               \
-                                __LINE__,                               \
-                                paddle::string::Sprintf(__VA_ARGS__))); \
-    END_HANDLE_THE_ERROR                                                \
+#define PADDLE_THROW(...)                                         \
+  do {                                                            \
+    HANDLE_THE_ERROR                                              \
+    throw ::common::enforce::EnforceNotMet(                       \
+        ::common::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                          \
   } while (0)
 
 #define PADDLE_FATAL(...)                                          \

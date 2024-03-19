@@ -85,7 +85,7 @@ void CustomKernelInstruction::BuildCustomContext(
         input_name2id_map_[t] = input_index;
         input_index++;
         input_ptrs_.emplace_back(nullptr);
-        custom_kernel_ctx_.EmplaceBackInput(std::move(paddle::Tensor()));
+        custom_kernel_ctx_.EmplaceBackInput(paddle::Tensor());
       }
       VLOG(8) << "ctx->EmplaceBackInput : an optional input " << t;
       continue;
@@ -280,7 +280,7 @@ void CustomKernelInstruction::BuildCustomContext(
               out_name));
       VLOG(3) << "Custom Operator: BuildContext - inplace optional outputs : "
               << out_name << " is None.";
-      custom_kernel_ctx_.EmplaceBackOutput(std::move(paddle::Tensor()));
+      custom_kernel_ctx_.EmplaceBackOutput(paddle::Tensor());
 
       VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;

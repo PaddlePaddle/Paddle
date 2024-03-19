@@ -41,9 +41,11 @@ const std::unordered_set<std::string> LegacyOpList = {
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
+    DistributedPushSparseOp::name(),
     FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
+    FusedTokenPruneOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
@@ -94,6 +96,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceMaxOp::name(),
     CReduceMinOp::name(),
     CReduceProdOp::name(),
+    CScatterOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
     PartialRecvOp::name()};
@@ -312,7 +315,9 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
       data_type.insert(phi::DataTypeToString(info_pair.first.dtype()));
     }
   }
-
+  if (data_type.empty()) {
+    VLOG(6) << "No data type is registered for " << op_name;
+  }
   return data_type;
 }
 
@@ -483,5 +488,20 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
   }
   return vec_shape;
 }
+
+const std::unordered_map<std::string, std::string>& AttrTypeMap() {
+  static const std::unordered_map<std::string, std::string> attr_type_map = {
+      {"bool", "pir::BoolAttribute"},
+      {"int", "pir::Int32Attribute"},
+      {"float", "pir::FloatAttribute"},
+      {"int64_t", "pir::Int64Attribute"},
+      {"std::string", "pir::StrAttribute"},
+      {"std::vector<int>", "pir::ArrayAttribute<pir::Int32Attribute>"},
+      {"std::vector<float>", "pir::ArrayAttribute<pir::FloatAttribute>"},
+      {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
+      {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
+  return attr_type_map;
+}
+
 }  // namespace dialect
 }  // namespace paddle

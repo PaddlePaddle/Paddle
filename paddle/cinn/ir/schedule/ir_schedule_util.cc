@@ -113,7 +113,8 @@ void SetCudaAxisInfo(Expr* lowered_func) {
           info.set_grid_dim(bind_info.offset, range);
         }
       } else {
-        LOG(FATAL) << "The for loop's bind info should be gpu block or thread!";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "The for loop's bind info should be gpu block or thread!"));
       }
     }
     return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
@@ -338,10 +339,11 @@ std::vector<Expr> GetLoopsOfExpr(const Expr& expr, const Expr& root) {
       root,
       [&](const Expr* x) { return x->As<ir::For>() && Contains(*x, expr); });
   std::vector<Expr> result(loop_nodes.begin(), loop_nodes.end());
-  if (result.empty())
-    LOG(FATAL) << "Didn't find expr's : \n"
-               << expr << "\n loops in root : \n"
-               << root;
+  if (result.empty()) {
+    std::stringstream ss;
+    ss << "Didn't find expr's : \n" << expr << "\n loops in root : \n" << root;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  }
   std::sort(result.begin(), result.end(), [&](Expr i, Expr j) {
     return (utils::GetStreamCnt(i).size() > utils::GetStreamCnt(j).size());
   });
@@ -589,8 +591,8 @@ const std::set<Expr, CompExpr> CollectLoopsToSet(
     CHECK(i.As<ir::For>()) << "loops should be For node! Please check.";
     auto inserted = for_loops.insert(i);
     if (!inserted.second) {
-      LOG(FATAL)
-          << "There should be no duplicate elements in loops! Please check.";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "There should be no duplicate elements in loops! Please check."));
     }
   }
   return for_loops;
@@ -616,8 +618,9 @@ std::pair<Expr, Expr> GetBoundaryOfReorderRange(
       // Then loop_i should be the new top
       if (visited.count(v_for)) {
         if (v_for != top) {
-          LOG(FATAL) << "Loops in GetBoundaryOfReorderRange is not a chain! "
-                        "Please check.";
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Loops in GetBoundaryOfReorderRange is not a chain! "
+              "Please check."));
         }
         top = loop_i;
         break;
@@ -646,8 +649,8 @@ std::vector<Expr> GetLoopsInRange(const Expr& top, const Expr& bottom) {
   for (auto loop_iter = top; loop_iter != bottom;) {
     Expr tmp = GetNextForLoop(loop_iter);
     if (!tmp.defined())
-      LOG(FATAL)
-          << "Loops in GetLoopsInReorderRange is not a chain! Please check.";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Loops in GetLoopsInReorderRange is not a chain! Please check."));
     chain.push_back(loop_iter);
     loop_iter = tmp;
   }

@@ -35,11 +35,13 @@ limitations under the License. */
 #if CPP_STANDARD >= 201703L && !defined(__clang__)
 // pir&pass headers
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #endif
 

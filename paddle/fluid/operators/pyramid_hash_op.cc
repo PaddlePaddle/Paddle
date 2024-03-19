@@ -354,8 +354,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
                                 ilayer + 1)) {
               if (_is_training != 0) {
                 unsigned int rand_val = rand_r(&_seed);
-                float rate =
-                    static_cast<float>(rand_val) / (RAND_MAX);  // NOLINT
+                double rate = static_cast<double>(rand_val) / (RAND_MAX);
                 *(iter_end++) = (rate < _drop_out_percent ? 0 : 1);
               } else {
                 *(iter_end++) = 1;
