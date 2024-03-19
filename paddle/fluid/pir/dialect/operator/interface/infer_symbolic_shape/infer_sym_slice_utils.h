@@ -64,11 +64,6 @@ inline void CheckAndUpdateSliceAttrs(
     std::vector<int64_t> *infer_flags = nullptr) {
   ExprVec &starts = *starts_p;
   ExprVec &ends = *ends_p;
-  auto IsMaxInt = [](const symbol::DimExpr &expr) {
-    return expr.isa<int64_t>() &&
-           expr.Get<int64_t>() ==
-               static_cast<int64_t>(std::numeric_limits<int>::max());
-  };
 
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes[i];
