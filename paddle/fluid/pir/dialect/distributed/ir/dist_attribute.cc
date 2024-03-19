@@ -111,15 +111,6 @@ OperationDistAttribute OperationDistAttribute::get(
             iter.process_mesh_attr(),
             mesh));
   }
-  for (const auto& iter : result_dist_attrs) {
-    PADDLE_ENFORCE_EQ(
-        mesh,
-        iter.process_mesh_attr(),
-        phi::errors::PreconditionNotMet(
-            "operand_dist_attrs element's mesh(%s) not equal to input mesh(%s)",
-            iter.process_mesh_attr(),
-            mesh));
-  }
   return Base::get(ctx, mesh, operand_dist_attrs, result_dist_attrs);
 }
 

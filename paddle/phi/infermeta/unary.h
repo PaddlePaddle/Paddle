@@ -396,6 +396,7 @@ void MultinomialInferMeta(const MetaTensor& x,
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,
+                        const std::string& mode,
                         MetaTensor* out,
                         MetaTensor* median_index);
 
