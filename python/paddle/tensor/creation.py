@@ -25,6 +25,7 @@ from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
     check_dtype,
+    check_shape,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
@@ -903,11 +904,17 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
 
+        check_shape(shape, 'fill_constant')
         if in_dynamic_mode():
             value = float(value)
             if isinstance(shape, (list, tuple)):
                 shape = paddle.utils.convert_shape_to_list(shape)
-
+            elif isinstance(shape, core.eager.Tensor):
+                pass
+            else:
+                raise TypeError(
+                    "Shape only supports Tensor, or list, or tuple."
+                )
         else:
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
@@ -915,7 +922,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
-                TypeError("Shape only supports OpResult, or list, or tuple.")
+                TypeError("Shape only supports Value, or list, or tuple.")
 
         if out is None:
             out = _C_ops.full(shape, value, dtype, place)
