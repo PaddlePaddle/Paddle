@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 from paddle import base
 
 
@@ -24,6 +25,7 @@ from paddle import base
 class TestExpandOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand"
+        self.python_api = paddle.expand
         self.init_data()
         self.dtype = (
             "float32" if base.core.is_compiled_with_rocm() else "float64"
@@ -79,6 +81,7 @@ class TestExpandOpRank4(TestExpandOpRank1):
 class TestExpandOpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "expand"
+        self.python_api = paddle.expand
         self.init_data()
         self.dtype = (
             "float32" if base.core.is_compiled_with_rocm() else "float64"
@@ -128,6 +131,7 @@ class TestExpandOpRank2_attr_tensor(TestExpandOpRank1_tensor_attr):
 class TestExpandOpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "expand"
+        self.python_api = paddle.expand
         self.init_data()
         self.dtype = (
             "float32" if base.core.is_compiled_with_rocm() else "float64"
@@ -162,6 +166,7 @@ class TestExpandOpRank2_tensor(TestExpandOpRank1_tensor):
 class TestExpandOpInteger(OpTest):
     def setUp(self):
         self.op_type = "expand"
+        self.python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int32")
         }
@@ -177,6 +182,7 @@ class TestExpandOpInteger(OpTest):
 class TestExpandOpBoolean(OpTest):
     def setUp(self):
         self.op_type = "expand"
+        self.python_api = paddle.expand
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'expand_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
@@ -190,6 +196,7 @@ class TestExpandOpBoolean(OpTest):
 class TestExpandOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand"
+        self.python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
