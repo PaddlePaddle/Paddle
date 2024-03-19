@@ -27,46 +27,25 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-// TODO(Aurelius84): Need abstract this logic to implement Proxy for
-// the co-existence with GraphCompiler.
 class PirCompiler final {
  public:
-  PirCompiler(const ::pir::Program& prog,
-              const Target& target,
-              const std::shared_ptr<Scope>& scope)
-      : program_(prog),
-        m_builder_("Pir", target),
-        target_(target),
-        scope_(scope) {}
+  using CompileResult = std::vector<pir::CINNKernelInfo>;
+  PirCompiler(const Target& target)
+      : m_builder_("Pir", target), target_(target) {}
 
-  std::unique_ptr<Program> Build();
-
-  std::vector<pir::CINNKernelInfo> BuildCUDAJITInfo(
-      const std::vector<pir::GroupPtr>& groups);
-
-  std::unique_ptr<Program> Build(const std::vector<pir::GroupPtr>& groups);
+  CompileResult Build(const std::vector<pir::GroupPtr>& groups);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);
 
-  std::vector<ir::LoweredFunc> GetOpFunc(const ::pir::Operation& op, int idx);
+  CompileResult BucketBuild(const std::vector<pir::GroupPtr>& groups);
+  CompileResult StaticBuild(const std::vector<pir::GroupPtr>& groups);
 
-  void ProcessFunction(const std::vector<ir::LoweredFunc>& lowered_funcs);
-
-  std::vector<std::unique_ptr<Instruction>> BuildInstructions(
-      const std::vector<pir::GroupPtr>& groups);
-
-  const ::pir::Program& program_;
   ir::Module::Builder m_builder_;
   std::unique_ptr<backends::Compiler> compiler_{nullptr};
   Target target_;
-  std::shared_ptr<Scope> scope_;
-  std::unordered_map<std::string, std::string> func_names_;
   std::vector<GroupCompilationContext> group_compilation_contexts_;
 };
-
-// TODO(phlrain): pir compiler don't need Scope, need to remove this
-std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);
 
 class PirCompilerManager {
  public:
@@ -75,12 +54,9 @@ class PirCompilerManager {
     return instance;
   }
 
-  static std::shared_ptr<PirCompiler> Create(
-      const ::pir::Program& prog,
-      const Target& target,
-      const std::shared_ptr<Scope>& scope) {
+  static std::shared_ptr<PirCompiler> Create(const Target& target) {
     std::shared_ptr<PirCompiler> compiler =
-        std::make_shared<PirCompiler>(prog, target, scope);
+        std::make_shared<PirCompiler>(target);
     PirCompilerManager::Instance().insert(compiler);
     return compiler;
   }
