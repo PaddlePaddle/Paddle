@@ -220,6 +220,17 @@ void FlashAttnV1Kernel(const Context& ctx,
   int64_t num_heads = dims[2];
   int64_t head_size = dims[3];
 
+  PADDLE_ENFORCE_EQ(
+      num_heads,
+      k.dims()[2],
+      phi::errors::InvalidArgument(
+          "Only MHA is supported in FlashAttention V1 operator."));
+  PADDLE_ENFORCE_EQ(
+      num_heads,
+      v.dims()[2],
+      phi::errors::InvalidArgument(
+          "Only MHA is supported in FlashAttention V1 operator."));
+
   int64_t seq_len_k = k.dims()[1];
 
   int64_t total_q = batch_size * seq_len_q;
