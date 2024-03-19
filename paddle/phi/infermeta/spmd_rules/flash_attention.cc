@@ -21,6 +21,7 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
+const int kNumHeadsDimIndex = 2;
 
 #define LOG_SPMD_INPUT(name)                                                  \
   do {                                                                        \
@@ -132,6 +133,14 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
                                    k_ndim,
                                    k_dims_mapping_size));
 
+  bool is_divisible = true;
+  int64_t num_head_mesh_dim = k_dist_attr.dims_mapping()[kNumHeadsDimIndex];
+  if (num_head_mesh_dim != -1) {
+    int64_t num_head_split_size =
+        k_dist_attr.process_mesh().dim_size(num_head_mesh_dim);
+    is_divisible = k_num_heads % num_head_split_size == 0;
+  }
+
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
   auto v_shape = common::vectorize(v.dims());
@@ -232,7 +241,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   auto k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
   auto v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
 
-  if (!is_same_num_heads) {
+  if (!is_same_num_heads && !is_divisible) {
     q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {2});
     k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {2});
     v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {2});
@@ -332,8 +341,6 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   // [batch_size, seq_len_kv, num_heads, head_dim]
   auto v_shape = common::vectorize(v.dims());
   auto v_dist_attr = v.dist_attr();
-
-  bool is_same_num_heads = q_shape[2] == k_shape[2];
 
   // fixed_seed_offset
   // TODO(liuzhenhai): process fixed_seed_offset、seed_offset、 and attn_mask
@@ -464,7 +471,16 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   auto softmax_lse_dist_attr_dst =
       UnShardTensorDims(softmax_lse_dist_attr, {2});
 
-  if (!is_same_num_heads) {
+  bool is_same_num_heads = q_shape[2] == k_shape[2];
+  bool is_divisible = true;
+  int64_t num_head_mesh_dim = k_dist_attr.dims_mapping()[kNumHeadsDimIndex];
+  if (num_head_mesh_dim != -1) {
+    int64_t num_head_split_size =
+        k_dist_attr.process_mesh().dim_size(num_head_mesh_dim);
+    is_divisible = k_shape[2] % num_head_split_size == 0;
+  }
+
+  if (!is_same_num_heads && !is_divisible) {
     out_dist_attr_dst = UnShardTensorDims(out_dist_attr_dst, {2});
     softmax_lse_dist_attr_dst =
         UnShardTensorDims(softmax_lse_dist_attr_dst, {1});
@@ -637,8 +653,6 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
           num_heads,
           v_num_heads));
 
-  bool is_same_num_heads = num_heads == v_num_heads;
-
   PADDLE_ENFORCE_EQ(
       k_seq_len,
       v_seq_len,
@@ -718,7 +732,15 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   auto softmax_lse_dist_attr_dst =
       UnShardTensorDims(softmax_lse_dist_attr, {2});
 
-  if (!is_same_num_heads) {
+  bool is_same_num_heads = num_heads == v_num_heads;
+  bool is_divisible = true;
+  int64_t num_head_mesh_dim = k_dist_attr.dims_mapping()[kNumHeadsDimIndex];
+  if (num_head_mesh_dim != -1) {
+    int64_t num_head_split_size =
+        k_dist_attr.process_mesh().dim_size(num_head_mesh_dim);
+    is_divisible = k_shape[2] % num_head_split_size == 0;
+  }
+  if (!is_same_num_heads && !is_divisible) {
     q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {2});
     k_dist_attr_dst = UnShardTensorDims(k_dist_attr_dst, {2});
     v_dist_attr_dst = UnShardTensorDims(v_dist_attr_dst, {2});
