@@ -372,20 +372,22 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   }
   std::vector<ir::Tensor> group_func_arg_tensors_copy = group_func_arg_tensors;
   std::vector<ir::Argument> group_func_args;
+  std::vector<ir::Tensor> infer_shape_tensor_args;
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
                                                    apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
-                                                   &group_func_args);
+                                                   &group_func_args,
+                                                   &infer_shape_tensor_args);
   CHECK_EQ(funcs.size(), cond2func_bodies.size());
   BucketLoweredFuncsWrapper funcs_wrapper;
   for (int i = 0; i < funcs.size(); ++i) {
     funcs_wrapper.predicate2funcs.emplace_back(cond2func_bodies[i].first,
                                                funcs[i]);
   }
-  funcs_wrapper.infer_shape_func = GenerateInferShapeFunc(
-      group, group_func_arg_tensors_copy, group_func_args);
+  funcs_wrapper.infer_shape_func =
+      GenerateInferShapeFunc(group, infer_shape_tensor_args, group_func_args);
 
   return funcs_wrapper;
 }
@@ -508,12 +510,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   // including preparing function args and temporary variables,
   // applying low-level optimization passes, etc.
   std::vector<ir::Argument> group_func_args;
+  std::vector<ir::Tensor> infer_shape_args;
   return PostProcess(group,
                      *tensor_map,
                      apply_op_schedule,
                      {ir_sch.GetModule().GetExprs()[0]},
                      group_func_arg_tensors,
-                     &group_func_args);
+                     &group_func_args,
+                     &infer_shape_args);
 }
 
 std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
@@ -605,12 +609,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   // including preparing function args and temporary variables,
   // applying low-level optimization passes, etc.
   std::vector<ir::Argument> group_func_args;
+  std::vector<ir::Tensor> infer_shape_args;
   return PostProcess(group,
                      tensor_map,
                      do_op_schedule,
                      {ir_sch->GetModule().GetExprs().at(0)},
                      &group_func_arg_tensors,
-                     &group_func_args);
+                     &group_func_args,
+                     &infer_shape_args);
 }
 
 void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
@@ -817,7 +823,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     bool done_op_schedule,
     std::vector<ir::Expr> func_bodies,
     std::vector<ir::Tensor>* group_func_arg_tensors,
-    std::vector<ir::Argument>* group_func_args) {
+    std::vector<ir::Argument>* group_func_args,
+    std::vector<ir::Tensor>* infer_shape_arg_tensor) {
   // 1.Prepare function args
   group->input_names.clear();
   std::unordered_set<std::string> arg_name_set;
@@ -838,6 +845,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       continue;
     }
     auto tensor = tensor_map.at(op_result);
+    infer_shape_arg_tensor->push_back(tensor);
+
     if ((op_result.defining_op()->name() == "cinn_op.reshape") &&
         erase_reshape.count(op_result.defining_op())) {
       tensor = tensor_map.at(op_result.defining_op()->operand_source(0));
@@ -1338,9 +1347,6 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
   int output_tensor_idx = 0;
   for (int tensor_arg_idx = 0; tensor_arg_idx < group_func_arg_tensors.size();
        ++tensor_arg_idx) {
-    if (group_func_args[tensor_arg_idx].is_input()) {
-      continue;
-    }
     auto tensor_dim = group_func_arg_tensors[tensor_arg_idx]->sym_shape;
     int tensor_dim_size = tensor_dim.size();
     auto tensor_shape = group_func_arg_tensors[tensor_arg_idx]->shape;

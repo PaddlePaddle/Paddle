@@ -256,9 +256,7 @@ void SimplifyUnionSet(
 
 std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
-      shape_analysis->DimExprBuilder().constraints();
-  const cinn::common::UnionFindSet<symbol::DimExpr>& union_find_set = [&]() {
+  const std::vector<std::vector<symbol::DimExpr>>& dim_expr_clusters = [&]() {
     cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
     auto AddEqualCstr = [&](const symbol::DimExprConstraint& constraint) {
       if (!std::holds_alternative<symbol::Equal<symbol::DimExpr>>(constraint)) {
@@ -274,7 +272,7 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
       union_find_set.Union(data->lhs, data->rhs);
     };
     const auto& shape_analysis_constraints =
-        shape_analysis->CreateDimExprBuilder().constraints();
+        shape_analysis->DimExprBuilder().constraints();
     for (const auto& constraint : shape_analysis_constraints) {
       AddEqualCstr(constraint);
     }
