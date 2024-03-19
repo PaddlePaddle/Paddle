@@ -746,7 +746,11 @@ GroupInfo GetGroupInfo(const std::vector<ir::Expr>& op_compute_bodies) {
                        [](const ir::Var var) {
                          VLOG(4) << "Var is : : " << var;
                          VLOG(4) << "Var->upper_bound: " << var->upper_bound;
-                         return var->upper_bound.as_int64();
+                         if (var->upper_bound.is_constant()) {
+                           return var->upper_bound.as_int64();
+                         } else {
+                           return (int64_t)-1;
+                         }
                        });
         std::vector<ir::Var> reduce_iters = GetReduceIters(op);
         for (int64_t i = all_iters.size() - reduce_iters.size();
@@ -762,11 +766,16 @@ GroupInfo GetGroupInfo(const std::vector<ir::Expr>& op_compute_bodies) {
   if (group_info.reduce_var_name.empty()) {
     TrivialOp op = TrivialOp(*(op_compute_bodies.begin()));
     std::vector<ir::Var> iters = GetOutputIters(op);
-    std::transform(
-        iters.begin(),
-        iters.end(),
-        std::back_inserter(group_info.loop_ranges),
-        [](const ir::Var var) { return var->upper_bound.as_int64(); });
+    std::transform(iters.begin(),
+                   iters.end(),
+                   std::back_inserter(group_info.loop_ranges),
+                   [](const ir::Var var) {
+                     if (var->upper_bound.is_constant()) {
+                       return var->upper_bound.as_int64();
+                     } else {
+                       return (int64_t)-1;
+                     }
+                   });
   }
   VLOG(4) << group_info.DebugPrint();
   return group_info;
