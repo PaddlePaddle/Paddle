@@ -153,7 +153,6 @@ struct SliceOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    // auto input_type = op->operand(0).type().dyn_cast<pir::VectorType>();
     const auto index =
         op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
     const auto output_value =
