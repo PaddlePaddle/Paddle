@@ -196,10 +196,8 @@ void FusedConv2dAddActKernel(const Context& ctx,
 
   void* dlhandler = phi::dynload::GetCutlassConv2dHandle();
   func conv_func = NULL;
-  PADDLE_ENFORCE_NE(
-      dlhandler,
-      NULL,
-      phi::errors::InvalidArgument("The handler of dynload can't be NULL."));
+  PADDLE_ENFORCE_NOT_NULL(
+      dlhandler, phi::errors::NotFound("Fail to get CutlassConv2d handler."));
 
   // conv2d_depthwise
   if (groups == ic && ic == oc) {
