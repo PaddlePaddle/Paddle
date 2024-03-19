@@ -840,7 +840,7 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
     if (yield_output_ops.count(op) ||
         cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
             cinn::hlir::framework::kReduction) {
-      // TODO(phlrain): yield output no nedd to push into first stage output,
+      // TODO(phlrain): yield output no need to push into first stage output,
       // Update here
       if (!first_output_ops.count(op)) {
         first_stage_output.push_back(op_path[op]);

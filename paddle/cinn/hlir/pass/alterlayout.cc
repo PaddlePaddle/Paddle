@@ -139,7 +139,7 @@ std::vector<framework::shape_t> UpdateInferInfos(
 }
 
 void AlterLayoutPass(Graph* graph) {
-  // alterlayout only in X86 for it's specific layout requirements
+  // alter layout only in X86 for it's specific layout requirements
   if (graph->target_.arch == Target::Arch::X86) {
     auto store_nodes = std::get<0>(graph->topological_order());
     auto& shape_dict = graph->GetMutableAttrs<
@@ -603,7 +603,7 @@ void AlterLayoutPass(Graph* graph) {
               } else if (input_shape_size == 5 &&
                          new_input_layouts[i].size() == 4) {
                 // NCHWxc -> NCHW
-                // insert layout tranfrom
+                // insert layout transform
                 auto source = inlinks[i]->source();
                 auto src_layout = input_layouts[i];
                 layout_dict[source->id()] = src_layout;
