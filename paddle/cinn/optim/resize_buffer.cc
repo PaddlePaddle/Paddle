@@ -20,6 +20,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_mod_to_max.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
@@ -142,6 +143,38 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
     }
     VLOG(6) << "buffer_name = " << buffer_name << ", indice_extent = "
             << buffer_name_to_indice_extent[buffer_name];
+
+    buffer_name_to_size[buffer_name] = AnalyzeBufferSize(indices);
+    VLOG(6) << "buffer_name = " << buffer_name
+            << ", size = " << buffer_name_to_size[buffer_name];
+  }
+
+  ir::Expr AnalyzeBufferSize(const std::vector<ir::Expr>& shape) {
+    const auto GetIterVarNames =
+        [](const std::vector<ir::Expr>& shape) -> std::set<std::string> {
+      std::set<std::string> iter_var_names;
+      for (const ir::Expr& e : shape) {
+        ir::ir_utils::CollectIRNodes(e, [&](const ir::Expr* x) {
+          if (x->as_var() && !x->as_var()->is_symbolic_constant) {
+            iter_var_names.insert(x->as_var()->name);
+          }
+          return false;
+        });
+      }
+      return iter_var_names;
+    };
+
+    std::set<std::string> iter_var_names = GetIterVarNames(shape);
+    ir::Expr size(1);
+    for (const std::string& var_name : iter_var_names) {
+      PADDLE_ENFORCE_GT(var_name_to_extent_.count(var_name),
+                        0,
+                        ::common::errors::PreconditionNotMet(
+                            "Cannot find the extent of var %s", var_name));
+      size = common::AutoSimplify(size * var_name_to_extent_.at(var_name));
+    }
+
+    return size;
   }
 
   // A recursion function to calculate the max index range
@@ -188,6 +221,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
  public:
   std::unordered_map<std::string, std::vector<ir::Expr>>
       buffer_name_to_indice_extent;
+  std::unordered_map<std::string, ir::Expr> buffer_name_to_size;
 
  private:
   std::unordered_map<std::string, ir::Expr> var_name_to_extent_;
@@ -197,8 +231,10 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
  public:
   ResizeBufferFromAnalyzedRange(
       const std::unordered_map<std::string, std::vector<ir::Expr>>&
-          buffer_name_to_shape)
-      : buffer_name_to_shape_(buffer_name_to_shape) {}
+          buffer_name_to_shape,
+      const std::unordered_map<std::string, ir::Expr>& buffer_name_to_size)
+      : buffer_name_to_shape_(buffer_name_to_shape),
+        buffer_name_to_size_(buffer_name_to_size) {}
 
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -245,17 +281,21 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
       const std::vector<ir::Expr>& analyzed_shape =
           buffer_name_to_shape_.at(buffer_name);
       VLOG(6) << "Replacing shape of tensor " << (*tensor_ptr)->name
-              << ", buffer " << buffer->name << ", with shape "
-              << analyzed_shape;
-
+              << " with shape " << analyzed_shape;
       (*tensor_ptr)->shape = analyzed_shape;
-      buffer->shape = analyzed_shape;
+    }
+    if (buffer_name_to_size_.count(buffer_name)) {
+      const ir::Expr& analyzed_size = buffer_name_to_size_.at(buffer_name);
+      VLOG(6) << "Replacing shape of buffer " << buffer->name << " with shape "
+              << analyzed_size;
+      buffer->shape = {analyzed_size};
     }
   }
 
  private:
   const std::unordered_map<std::string, std::vector<ir::Expr>>&
       buffer_name_to_shape_;
+  const std::unordered_map<std::string, ir::Expr>& buffer_name_to_size_;
 };
 
 void ResizeBufferToMaxVarRange(ir::Expr* expr) {
@@ -263,7 +303,8 @@ void ResizeBufferToMaxVarRange(ir::Expr* expr) {
   AnalyzeLoopVarRange analyze_functor;
   analyze_functor(expr);
   ResizeBufferFromAnalyzedRange resize_functor(
-      analyze_functor.buffer_name_to_indice_extent);
+      analyze_functor.buffer_name_to_indice_extent,
+      analyze_functor.buffer_name_to_size);
   resize_functor(expr);
   VLOG(6) << "After ResizeBufferToMaxVarRange, Expr = \n" << *expr;
 }
