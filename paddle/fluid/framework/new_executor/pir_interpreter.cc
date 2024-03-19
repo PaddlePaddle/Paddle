@@ -90,6 +90,21 @@ COMMON_DECLARE_int32(low_precision_op_list);
 namespace paddle {
 namespace framework {
 
+void RecordLowPrecisionOp(const InstructionBase* instr_node) {
+  if (FLAGS_low_precision_op_list) {
+    std::string op_name = instr_node->Name();
+    ::pir::Operation* op = instr_node->Operation();
+    if (op->HasAttribute("kernel_key")) {
+      phi::KernelKey kernel_key =
+          op->attribute("kernel_key")
+              .dyn_cast<paddle::dialect::KernelAttribute>()
+              .data();
+      phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
+          op_name, kernel_key.dtype());
+    }
+  }
+}
+
 PirInterpreter::PirInterpreter(const platform::Place& place,
                                const std::vector<std::string>& fetch_var_names,
                                const ::pir::Block* ir_block,
@@ -1712,21 +1727,6 @@ void PirInterpreter::RunNextInstructions(InstructionBase* instr,
   for (size_t next_instr_id : instr->NextInstrsInSameThread()) {
     if (IsReady(next_instr_id)) {
       reserved_next_ops->push(next_instr_id);
-    }
-  }
-}
-
-void RecordLowPrecisionOp(const InstructionBase* instr_node) {
-  if (FLAGS_low_precision_op_list) {
-    std::string op_name = instr_node->Name();
-    ::pir::Operation* op = instr_node->Operation();
-    if (op->HasAttribute("kernel_key")) {
-      phi::KernelKey kernel_key =
-          op->attribute("kernel_key")
-              .dyn_cast<paddle::dialect::KernelAttribute>()
-              .data();
-      phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
-          op_name, kernel_key.dtype());
     }
   }
 }
