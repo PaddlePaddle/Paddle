@@ -905,11 +905,7 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     var_ = maximum<T>(
         var_tmp_,
         backend::full_with_tensor<T>(shape<T>(var_tmp_), 0, var_tmp_.dtype()));
-    std::cout << "step6_______________________________________________"
-              << std::endl;
     Tensor var_inv = 1 / sqrt_decomp<T>(var_ + epsilon);
-    std::cout << "step7_______________________________________________"
-              << std::endl;
     Tensor res = (x_cast - mean_) * var_inv;
     out = backend::reshape<T>(res, x_dim);
   } else {
