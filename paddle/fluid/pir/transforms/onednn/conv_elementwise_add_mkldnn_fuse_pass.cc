@@ -58,9 +58,6 @@ class ConvElementwiseAddPattern : public paddle::drr::DrrPatternBase {
         add(pat.Tensor("conv2d_out"), pat.Tensor("residual_param"));
     pat.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          if (!pir::ValueIsPersistable(match_ctx.Tensor("residual_param"))) {
-            return false;
-          }
           auto padding_algorithm =
               match_ctx.Attr<std::string>("padding_algorithm");
           if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
@@ -142,9 +139,6 @@ class ConvElementwiseAddAsYPattern : public paddle::drr::DrrPatternBase {
 
     pat.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          if (!pir::ValueIsPersistable(match_ctx.Tensor("residual_param"))) {
-            return false;
-          }
           auto padding_algorithm =
               match_ctx.Attr<std::string>("padding_algorithm");
           if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
