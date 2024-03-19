@@ -4468,6 +4468,10 @@ void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,
                         "ShapeError: Input tensors count should > 0. But "
                         "received inputs' length is 0."));
 
+  if (inputs_num == 1) {
+    VLOG(3) << "Warning: partial_sum op have only one input, may be useless";
+  }
+
   // Only support two dimensions now, should be extended later
   // when length is -1, need make sure all dimensions to be added are the same
   for (size_t i = 0; i < inputs_num; i++) {
