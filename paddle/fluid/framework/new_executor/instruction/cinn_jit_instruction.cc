@@ -295,33 +295,36 @@ CinnJitInstruction::CinnJitInstruction(
 void CinnJitInstruction::Run() {
 #if defined(PADDLE_WITH_CUDA)
   auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
-  std::cerr << "dim args size " << dim_args_.size() << std::endl;
-  // for( size_t i = 0; i < dim_args_.size(); ++i )
-  // {
-  //   std::cerr << "dim info " << dim_args_[i]->data<int64_t>()[0] <<
-  //   std::endl;
-  // }
-  std::cerr << "out dim info " << output_dim_info.size() << std::endl;
-  for (auto& dim : all_dim_info_) {
-    std::cerr << "dims " << dim << std::endl;
-  }
-  for (size_t i = 0; i < output_dim_info.size(); ++i) {
-    auto node = output_dim_info[i];
 
-    if (node.tensor != nullptr) {
-      std::cerr << node.out_tensor_idx << "\t" << node.out_tensor_dim_idx
-                << "\t" << node.tensor->data<int64_t>()[0] << std::endl;
-      all_dim_info_[node.out_tensor_idx][node.out_tensor_dim_idx] =
-          node.tensor->data<int64_t>()[0];
-    } else {
-      std::cerr << "call eval " << (node.expr_eval != nullptr) << std::endl;
-      auto eval_res = node.expr_eval->Eval();
-      all_dim_info_[node.out_tensor_idx][node.out_tensor_dim_idx] = eval_res;
+  if (need_update_shape) {
+    std::cerr << "dim args size " << dim_args_.size() << std::endl;
+    // for( size_t i = 0; i < dim_args_.size(); ++i )
+    // {
+    //   std::cerr << "dim info " << dim_args_[i]->data<int64_t>()[0] <<
+    //   std::endl;
+    // }
+    std::cerr << "out dim info " << output_dim_info.size() << std::endl;
+    for (auto& dim : all_dim_info_) {
+      std::cerr << "dims " << dim << std::endl;
     }
-  }
-  for (size_t i = 0; i < output_tensor_size; ++i) {
-    std::cerr << "dims " << all_dim_info_[i] << std::endl;
-    tensor_args_[input_tensor_size + i]->Resize(all_dim_info_[i]);
+    for (size_t i = 0; i < output_dim_info.size(); ++i) {
+      auto node = output_dim_info[i];
+
+      if (node.tensor != nullptr) {
+        std::cerr << node.out_tensor_idx << "\t" << node.out_tensor_dim_idx
+                  << "\t" << node.tensor->data<int64_t>()[0] << std::endl;
+        all_dim_info_[node.out_tensor_idx][node.out_tensor_dim_idx] =
+            node.tensor->data<int64_t>()[0];
+      } else {
+        std::cerr << "call eval " << (node.expr_eval != nullptr) << std::endl;
+        auto eval_res = node.expr_eval->Eval();
+        all_dim_info_[node.out_tensor_idx][node.out_tensor_dim_idx] = eval_res;
+      }
+    }
+    for (size_t i = 0; i < output_tensor_size; ++i) {
+      std::cerr << "dims " << all_dim_info_[i] << std::endl;
+      tensor_args_[input_tensor_size + i]->Resize(all_dim_info_[i]);
+    }
   }
   auto stream = gpu_ctx->stream();
 

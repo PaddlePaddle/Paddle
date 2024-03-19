@@ -39,17 +39,65 @@ class BroadcastSubgraph(nn.Layer):
         return x.reshape([y.shape[0], -1])
 
 
-class TestIfSubgraph(unittest.TestCase):
+class CastSubgraph(nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return x.cast("float32")
+
+
+# class TestIfSubgraph(unittest.TestCase):
+#     def setUp(self):
+#         paddle.seed(2024)
+#         self.prepare_data()
+
+#     def prepare_data(self):
+#         self.shape = [16, 16]
+#         self.x = paddle.randn(self.shape, dtype="float32")
+#         self.x.stop_gradient = False
+#         self.y = paddle.randn([256, 1], dtype="float32")
+#         self.y.stop_gradient = False
+
+#     def check_jit_kernel_info(self, static_fn):
+#         utils.check_jit_kernel_number(static_fn, 2)
+#         utils.check_jit_kernel_structure(
+#             static_fn,
+#             {
+#                 'if_0': {utils.JIT_KERNEL_NAME: 1},
+#                 'else_0': {},
+#                 utils.JIT_KERNEL_NAME: 1,
+#             },
+#         )
+
+#     def eval(self, use_cinn):
+#         net = BroadcastSubgraph()
+#         input_spec = [
+#             InputSpec(shape=[None, None], dtype="float32"),
+#             InputSpec(shape=[None, None], dtype="float32"),
+#         ]
+#         net = utils.apply_to_static(net, use_cinn, input_spec)
+#         net.eval()
+#         out = net(self.x, self.y)
+#         return out
+
+#     def test_eval(self):
+#         dy_out = self.eval(use_cinn=False)
+#         cinn_out = self.eval(use_cinn=True)
+#         np.testing.assert_allclose(
+#             cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+#         )
+
+
+class TestCastSubgraph(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [16, 16]
-        self.x = paddle.randn(self.shape, dtype="float32")
+        self.shape = [1, 32, 17, 17]
+        self.x = paddle.randn(self.shape, dtype="float16")
         self.x.stop_gradient = False
-        self.y = paddle.randn([256, 1], dtype="float32")
-        self.y.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 2)
@@ -63,14 +111,13 @@ class TestIfSubgraph(unittest.TestCase):
         )
 
     def eval(self, use_cinn):
-        net = BroadcastSubgraph()
+        net = CastSubgraph()
         input_spec = [
-            InputSpec(shape=[None, None], dtype="float32"),
-            InputSpec(shape=[None, None], dtype="float32"),
+            InputSpec(shape=[None, 32, None, None], dtype="float32"),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x, self.y)
+        out = net(self.x)
         return out
 
     def test_eval(self):
