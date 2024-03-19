@@ -2469,6 +2469,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : partial_allgather
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : partial_recv
   outputs :
     out : Out
@@ -3705,6 +3711,13 @@
     {out : Out}
   attrs :
     {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, fused_reshape_x : fused_reshape_X, fused_transpose_x : fused_transpose_X, fused_reshape_y : fused_reshape_Y, fused_transpose_y : fused_transpose_Y, fused_reshape_out : fused_reshape_Out, fused_transpose_out : fused_transpose_Out}
+
+- op: fused_softmax_mask
+  backward : fused_softmax_mask_grad
+  inputs :
+    {x: X, mask: Mask}
+  outputs :
+    {out : Out}
 
 - op: fused_softplus
   inputs :

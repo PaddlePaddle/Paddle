@@ -131,7 +131,7 @@ struct GroupClusterNode {
     return GetListOutsideInput(ops);
   }
 
-  std::string DebugStr() {
+  std::string DebugStr() const {
     std::stringstream ss;
     ::pir::IrPrinter printer(ss);
 
