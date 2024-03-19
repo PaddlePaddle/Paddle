@@ -966,7 +966,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Deserialize CPU lod tensor from shared memory.
 
            Params:
-               tuple: contrains ipc file name, data size, data type,
+               tuple: contains ipc file name, data size, data type,
                       tensor dims and lod information.
 
            Examples:
