@@ -45,5 +45,19 @@ pir::Value shard_tensor(const pir::Value& x,
   return shard_tensor_op.out();
 }
 
+pir::Value reshard(const pir::Value& x,
+                   const phi::distributed::ProcessMesh& process_mesh,
+                   const std::vector<int64_t>& dims_mapping) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  // TODO(ywt01) get partial_status by func parameter
+  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
+  TensorDistAttribute tensor_dist_attr =
+      TensorDistAttribute::get(ctx, process_mesh, dims_mapping, partial_status);
+
+  auto reshard_op = ApiBuilder::Instance().GetBuilder()->Build<ReShardOp>(
+      x, tensor_dist_attr);
+  return reshard_op.result(0);
+}
+
 }  // namespace dialect
 }  // namespace paddle
