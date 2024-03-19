@@ -140,6 +140,7 @@
     func : BatchFCInferMeta
   kernel :
     func : batch_fc
+    data_type: input
 
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
