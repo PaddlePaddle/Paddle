@@ -54,13 +54,15 @@ void FusedConv2dAddActKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
       4UL,
-      phi::errors::InvalidArgument("The size of in_dims must be 4, but got %d.",
-                                   in_dims.size()));
-  PADDLE_ENFORCE_EQ(filter_dims.size(),
-                    4UL,
-                    phi::errors::InvalidArgument(
-                        "The size of filter_dims must be 4, but got %d.",
-                        filter_dims.size()));
+      phi::errors::InvalidArgument(
+          "The input tensor X's dimensions should be 4, but got %d.",
+          in_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      filter_dims.size(),
+      4UL,
+      phi::errors::InvalidArgument(
+          "The input tensor filter's dimensions must be 4, but got %d.",
+          filter_dims.size()));
   PADDLE_ENFORCE_EQ(
       strides.size(),
       2UL,
@@ -90,11 +92,12 @@ void FusedConv2dAddActKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       ic,
       groups * filter_dims[3],
-      phi::errors::InvalidArgument("The in_dims[3] (%d) must be equal to "
-                                   "groups (%d) * filter_dims[3] (%d).",
-                                   ic,
-                                   groups,
-                                   filter_dims[3]));
+      phi::errors::InvalidArgument(
+          "The last dimension of X (%d) must be equal to "
+          "groups (%d) multiply the last dimension of filter (%d).",
+          ic,
+          groups,
+          filter_dims[3]));
   int pad_h0 = 0;
   int pad_h1 = 0;
   int pad_w0 = 0;
@@ -129,7 +132,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
       out_dims.size(),
       4UL,
       phi::errors::InvalidArgument(
-          "The size of out_dims must be 4, but got %d.", out_dims.size()));
+          "The output's dimensions must be 4, but got %d.", out_dims.size()));
   const int oh = out_dims[1];
   const int ow = out_dims[2];
 
