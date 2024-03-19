@@ -21,8 +21,6 @@ brpc_library(
   ps_framework_proto
   ${BRPC_DEPS})
 
-#set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
-
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 
 proto_library(simple_brpc_proto SRCS simple_brpc.proto)

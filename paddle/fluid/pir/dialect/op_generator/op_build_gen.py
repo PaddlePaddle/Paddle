@@ -386,7 +386,7 @@ def GenBuildAttributes(
                 op_attribute_type=op_non_mutable_attribute_type_list[idx],
                 attr=op_non_mutable_attribute_name_list[idx],
             )
-        attr_str += """  argument.AddAttribute("{attr_name}", attr_{attr_name});\n  argument_attributes.insert({{"{attr_name}", attr_{attr_name}}});\n""".format(
+        attr_str += """  argument_attributes.insert({{"{attr_name}", attr_{attr_name}}});\n""".format(
             attr_name=op_non_mutable_attribute_name_list[idx]
         )
 
@@ -748,6 +748,7 @@ def GenBuildOutputs(
                     type=op_output_type_list[idx], name=output_name
                 )
 
+    build_output_str += "  argument.AddAttributes(argument_attributes);\n"
     build_output_str += "  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"
     # NOTE(Aurelius84): PassStopGradients must be placed after argument.AddOutputs.
     build_output_str += "  ::pir::PassStopGradientsDefaultly(argument);\n"
@@ -831,43 +832,54 @@ def gen_build_func_str(
     )
 
     build_outputs_str = """
-  std::vector<pir::Type> argument_outputs = {op_name}::InferMeta(argument_inputs, argument_attributes);
+  std::vector<pir::Type> argument_outputs = {op_name}::InferMeta(argument_inputs, &argument_attributes);
+  argument.AddAttributes(argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);""".format(
         op_name=op_class_name
     )
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<{attr_ir_type}>().data();
 """
     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<pir::StrAttribute>().AsString();
 """
     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name};
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
     {attribute_name}.push_back(attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().at(i).dyn_cast<{inner_type}>().{data_name}());
   }}
 """
     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
 """
     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  IR_ENFORCE(
-      attributes.find("{attribute_name}") != attributes.end(),
-          "'{attribute_name}' Attribute is expected for {op_name}. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("{attribute_name}"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{attr_type}>();
 """
 

@@ -78,6 +78,7 @@ struct SimplifyUnitOneOperand {
 /*
  * Simplify Example:
  * Negative(Negative(dim_expr)) => dim_expr
+ * Negative(int) => -int
  */
 struct SimplifyDoubleNeg {
   using dim_expr_type = Negative<DimExpr>;
@@ -87,6 +88,8 @@ struct SimplifyDoubleNeg {
     if (inner_expr.Has<Negative<DimExpr>>()) {
       const auto& ret_expr = inner_expr.Get<Negative<DimExpr>>()->data;
       return ret_expr;
+    } else if (inner_expr.Has<std::int64_t>()) {
+      return -inner_expr.Get<std::int64_t>();
     } else {
       return expr;
     }

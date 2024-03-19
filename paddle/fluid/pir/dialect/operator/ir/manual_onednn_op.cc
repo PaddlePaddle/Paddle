@@ -113,7 +113,7 @@ void ExpandOp::Build(pir::Builder& builder,
   argument_attributes.insert({"mkldnn_data_type", attr_mkldnn_data_type});
 
   std::vector<pir::Type> argument_outputs =
-      ExpandOp::InferMeta(argument_inputs, argument_attributes);
+      ExpandOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
 }
@@ -161,7 +161,7 @@ void ExpandOp::Build(pir::Builder& builder,
   argument_attributes.insert({"mkldnn_data_type", attr_mkldnn_data_type});
 
   std::vector<pir::Type> argument_outputs =
-      ExpandOp::InferMeta(argument_inputs, argument_attributes);
+      ExpandOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
 }
@@ -185,7 +185,7 @@ void ExpandOp::Build(pir::Builder& builder,
   argument_attributes.insert({"mkldnn_data_type", attr_mkldnn_data_type});
 
   std::vector<pir::Type> argument_outputs =
-      ExpandOp::InferMeta(argument_inputs, argument_attributes);
+      ExpandOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
 }
@@ -266,12 +266,16 @@ void ExpandOp::InferMeta(phi::InferMetaContext* infer_meta) {
 
 std::vector<pir::Type> ExpandOp::InferMeta(
     const std::vector<pir::Value>& input_values,
-    pir::AttributeMap& attributes) {  // NOLINT
+    pir::AttributeMap* p_attributes) { {  // NOLINT
   PADDLE_ENFORCE_EQ(input_values.size(),
                     2UL,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 2 but got %d.",
                         input_values.size()));
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
 
   pir::Value x_ = input_values[0];
   pir::Value shape_ = input_values[1];
