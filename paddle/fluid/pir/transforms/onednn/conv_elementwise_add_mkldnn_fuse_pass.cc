@@ -216,7 +216,10 @@ class FusedConvBiasElementwiseAddPattern : public paddle::drr::DrrPatternBase {
                }});
 
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
-    conv({&pat.Tensor("input"), &pat.Tensor("filter"), &pat.Tensor("bias")},
+    conv({&pat.Tensor("input"),
+          &pat.Tensor("filter"),
+          &pat.Tensor("bias"),
+          &pat.Tensor("__@input_none_tensor@__")},
          {&pat.Tensor("conv2d_out")});
 
     pat.Tensor("add_out") =
@@ -302,7 +305,10 @@ class FusedConvBiasElementwiseAddAsYPattern
                }});
 
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
-    conv({&pat.Tensor("input"), &pat.Tensor("filter"), &pat.Tensor("bias")},
+    conv({&pat.Tensor("input"),
+          &pat.Tensor("filter"),
+          &pat.Tensor("bias"),
+          &pat.Tensor("__@input_none_tensor@__")},
          {&pat.Tensor("conv2d_out")});
 
     pat.Tensor("add_out") =
