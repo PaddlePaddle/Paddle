@@ -199,6 +199,7 @@ class TestNormalAlias(unittest.TestCase):
 
 
 class TestNormalErrors(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
