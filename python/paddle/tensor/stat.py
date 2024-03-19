@@ -295,12 +295,9 @@ def nanmedian(x, axis=None, keepdim=False, mode='avg', name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor or tuple of Tensor.
-        If ``mode`` == 'avg', the result will be the tensor of nanmedian values;
-        If ``mode`` == 'min' and ``axis`` is not int (None or list or tuple), the result will
-            be the tensor of nanmedian values;
-        If ``mode`` == 'min' and ``axis`` is int, the result will be a tuple of two tensors
-            containing nanmedian values and their indices.
+        Tensor or tuple of Tensor. If ``mode`` == 'min' and ``axis`` is int, the result
+        will be a tuple of two tensors (nanmedian value and nanmedian index). Otherwise,
+        only nanmedian value will be returned.
 
     Examples:
         .. code-block:: python
