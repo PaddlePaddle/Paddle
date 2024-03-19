@@ -20,8 +20,8 @@ cutlass::Status ${kernel_func_name}(const FcAllParams& params) {
         cutlass::gemm::GemmShape<${Wshape}>,
         cutlass::gemm::GemmShape<${Ishape}>,
         ${epi_part},
-        ${swizzling_functor},
-        ${stages},          // num_stage
+        cutlass::gemm::threadblock::${swizzling_functor},
+        ${stages},           // num_stage
         ${align_a},         // AlignA
         ${align_b},         // AlignB
         ${math_operator}    // Operation performed by GEMM
@@ -59,8 +59,7 @@ CommonCutlassFcKernelArguments = '''
         lda,
         ldb,
         ldc_bias,
-        ldd,
-        ${avail_sms}
+        ldd
     };
 '''
 
@@ -121,9 +120,9 @@ void ${func_name}(FcAllParams params) {
 
 CommonTail = '''
 
-// }  // namespace cutlass_internal
-// }  // namespace fusion
-// }  // namespace phi
+}  // namespace cutlass_internal
+}  // namespace fusion
+}  // namespace phi
 '''
 
 

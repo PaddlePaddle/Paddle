@@ -7,8 +7,11 @@
 // namespace fusion{
 // namespace cutlass_internal{
 
-using DataType_ = __nv_bfloat16;
-// using DataType_ = half;
+// using DataType_ = __nv_bfloat16;
+using DataType_ = half;
+
+cutlass::Status fc_bias_relu_sm80_fp16_35(const FcAllParams& params);
+
 typedef void (*func)(FcAllParams);
 
 void InitMatrix(DataType_ *matrix, int rows, int cols);
@@ -62,33 +65,38 @@ void EnumParamList_MNK_Act(int M_, int N_, int K_, OpType op_type, std::string a
     FcAllParams params{
         input, weight, bias, output, M, N, K, lda, ldb, ldd, stream, date_type, sm_version, leaky_alpha
     };
-    void* dlhandler = GetDsoHandle();
-    func fc_func = NULL;
-    if(dlhandler == NULL){
-        throw std::runtime_error("failed to load .so dynamically");
-    }
+    // void* dlhandler = GetDsoHandle();
+    // func fc_func = NULL;
+    // if(dlhandler == NULL){
+    //     throw std::runtime_error("failed to load .so dynamically");
+    // }
     
-    if (activation == "fc_bias_relu") {
-        fc_func = (func)(dlsym(dlhandler, "FcBiasRelu"));
-    } else if (activation == "fc_bias_silu") {
-        fc_func = (func)(dlsym(dlhandler, "FcBiasSilu"));
-    } else if (activation == "fc_bias") {
-        fc_func = (func)(dlsym(dlhandler, "FcBias"));
-    } else if (activation == "fc_bias_leaky_relu") {
-        fc_func = (func)(dlsym(dlhandler, "FcBiasLeakyRelu"));
-    } else if (activation == "fc_bias_sigmoid") {
-        fc_func = (func)(dlsym(dlhandler, "FcBiasSigmoid"));
-    } else {
-        throw "Cutlass does not support current activation!";
-    }
-    fc_func(params);
+    // if (activation == "fc_bias_relu") {
+    //     fc_func = (func)(dlsym(dlhandler, "FcBiasRelu"));
+    // } else if (activation == "fc_bias_silu") {
+    //     fc_func = (func)(dlsym(dlhandler, "FcBiasSilu"));
+    // } else if (activation == "fc_bias") {
+    //     fc_func = (func)(dlsym(dlhandler, "FcBias"));
+    // } else if (activation == "fc_bias_leaky_relu") {
+    //     fc_func = (func)(dlsym(dlhandler, "FcBiasLeakyRelu"));
+    // } else if (activation == "fc_bias_sigmoid") {
+    //     fc_func = (func)(dlsym(dlhandler, "FcBiasSigmoid"));
+    // } else {
+    //     throw "Cutlass does not support current activation!";
+    // }
+    // fc_func(params);
+
+    cutlass::Status status = fc_bias_relu_sm80_fp16_35(params);
+    
+    CUTLASS_CHECK(status);
     CUDA_CHECK(cudaDeviceSynchronize());
+    
 
     // navie and diff
     float max_diff = fc_diff_gpu<DataType_>(params, op_type);
     std::cout << max_diff << std::endl;
 
-    dlclose(dlhandler);
+    // dlclose(dlhandler);
     CUDA_CHECK(cudaStreamDestroy(stream));
     CUDA_CHECK(cudaFree(input));
     CUDA_CHECK(cudaFree(weight));
@@ -106,11 +114,13 @@ int main(){
                     OpType::FC_BIAS_SILU,
                     OpType::FC_BIAS_LEAKY_RELU,
                     OpType::FC_BIAS_SIGMOID};
+    ///
+    /*
     // mod
-    int op_idx = 1;
+    int op_idx = 0;
     std::string activation = OpType2String(ops[op_idx]);
     if(activation == "fc_bias_leaky_relu")
-        leaky_alpha = 0.3;
+        leaky_alpha = 0.01;
     for(int i = 0; i < 100; i+=7){
         int M = u(e);               // 
         int N = 8*(i+1);            // u(e);
@@ -118,16 +128,18 @@ int main(){
         std::cout << "MNK= [" << M << ", " <<  N << ", " << K << "], Act: " << activation << std::endl;
         EnumParamList_MNK_Act(M, N, K, ops[op_idx], activation, leaky_alpha);
     }
+    */
+    
 
     /// 
-    /*
-    int M = 1024;
-    int N = 1024;
-    int K = 4096;
-    OpType op_type = OpType::FC_BIAS_LEAKY_RELU;
+    /**/
+    int M = 64;
+    int N = 64;
+    int K = 64;
+    OpType op_type = OpType::FC_BIAS_RELU;
     std::string activation = OpType2String(op_type);
-    EnumParamList_MNK_Act(M, N, K, op_type, activation, 0.3);
-    */
+    EnumParamList_MNK_Act(M, N, K, op_type, activation, 1.f);
+    
     return 0;
 }
 

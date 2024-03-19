@@ -19,8 +19,8 @@
 namespace phi {
 namespace dynload {
 
-std::once_flag cutlass_dso_flag;
-void* cutlass_dso_handle;
+extern std::once_flag cutlass_dso_flag;
+void *cutlass_fc_dso_handle;
 
 void* GetCutlassFcHandle() {
   std::string dso_name = "libCutlassFc.so";
@@ -32,10 +32,10 @@ void* GetCutlassFcHandle() {
   int dynload_flags = 0;
 #endif  // !_WIN32
 
-    cutlass_dso_handle = dlopen(dso_name.c_str(), dynload_flags);
+    cutlass_fc_dso_handle = dlopen(dso_name.c_str(), dynload_flags);
 
     PADDLE_ENFORCE_NOT_NULL(
-        cutlass_dso_handle,
+        cutlass_fc_dso_handle,
         phi::errors::NotFound(
             "libCutlassFc.so is needed, "
             "but libCutlassFc.so is not found.\n"
@@ -50,7 +50,7 @@ void* GetCutlassFcHandle() {
             "DYLD_LIBRARY_PATH=...`\n"));
   });
 
-  return cutlass_dso_handle;
+  return cutlass_fc_dso_handle;
 }
 
 }  // namespace dynload

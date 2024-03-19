@@ -20,9 +20,9 @@
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm.h"
 
-// namespace phi {
-// namespace fusion {
-// namespace cutlass_internal {
+namespace phi {
+namespace fusion {
+namespace cutlass_internal {
 
 #define CUTLASS_CHECK(status)                                                                    \
   {                                                                                              \
@@ -47,12 +47,9 @@
 typedef enum {
   FC_BIAS,
   FC_BIAS_RELU,
-  FC_BIAS_ADD_RELU,
-  FC_BIAS_ADD,
   FC_BIAS_SILU,
   FC_BIAS_LEAKY_RELU,
   FC_BIAS_SIGMOID,
-  FC_BIAS_SILU_ADD,
 } OpType;
 
 // fc_diff_gpu calculate diff of cutlass output and baseline output, you can
@@ -68,6 +65,6 @@ int ProfileToGetBestConfig(
     const FcAllParams& params,
     OpType op_type);
 
-// }  // namespace cutlass_internal
-// }  // namespace fusion
-// }  // namespace phi
+}  // namespace cutlass_internal
+}  // namespace fusion
+}  // namespace phi

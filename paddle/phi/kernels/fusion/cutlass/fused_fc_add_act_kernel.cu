@@ -21,6 +21,8 @@
 #include "paddle/phi/kernels/fusion/cutlass/fully_connected/fc_decl.h"
 
 #include "paddle/phi/backends/dynload/cutlass_fc.h"
+#include <iostream>
+#include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
 namespace fusion {
@@ -32,15 +34,36 @@ template <typename T, typename Context>
 void FusedFcAddActKernel(const Context& ctx,
                              const DenseTensor& input,
                              const DenseTensor& weight,
-                             const DenseTensor& bias,
-                             const std::string& data_format,
+                             const paddle::optional<DenseTensor>& bias,
+                             const int in_num_col_dims,
                              const std::string& activation,
-                             float alpha,
-                             DenseTensor* output) {
-  ctx.template Alloc<T>(output);
+                             const bool padding_weights,
+                             DenseTensor* output
+                             ) {
+  // 暂时把下两个参数从参数列表移到这里, 以对齐FCKernel
+  // const std::string& data_format,
+  // float leaky_alpha,
+  const std::string data_format("RRR");
+  float leaky_alpha = 0.01;
+
   auto input_dims = input.dims();
   auto weight_dims = weight.dims();
-  auto bias_dims = bias.dims();
+  ///
+  std::vector<int64_t> output_dims;
+  phi::funcs::FCOutputSize(
+      input_dims, weight_dims, output_dims, in_num_col_dims, padding_weights);
+  output->Resize(common::make_ddim(output_dims));
+  output->set_lod(input.lod());
+  ///
+
+  ctx.template Alloc<T>(output);
+
+  if(!bias){
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "bias is needed!!!"));
+    return;
+  }
+  auto bias_dims = bias->dims();
   auto out_dims = output->dims();
 
   CHECK_EQ(input_dims.size() == 2UL, true);
@@ -69,7 +92,6 @@ void FusedFcAddActKernel(const Context& ctx,
         "  returning kErrorMisalignedOperand for input operand"));
     return;
   }
-
   if (isBMisaligned) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "  returning kErrorMisalignedOperand for weight operand"));
@@ -79,7 +101,6 @@ void FusedFcAddActKernel(const Context& ctx,
   int64_t device_id = ctx.GetPlace().GetDeviceId();
   int sm_version = backends::gpu::GetGPUComputeCapability(device_id);
 
-  // 这里是否考虑 output和weight的数据类型？
   auto get_fc_dtype = [&](decltype(input.dtype()) input_type)
       -> phi::fusion::cutlass_internal::FcDataType {
     switch (input_type) {
@@ -110,7 +131,7 @@ void FusedFcAddActKernel(const Context& ctx,
   FcAllParams params = {
       reinterpret_cast<const void*>(input.data<T>()),
       reinterpret_cast<const void*>(weight.data<T>()),
-      reinterpret_cast<const void*>(bias.data<T>()),
+      reinterpret_cast<const void*>(bias->data<T>()),
       reinterpret_cast<void*>(output->data<T>()),
       M,
       N,
@@ -118,11 +139,10 @@ void FusedFcAddActKernel(const Context& ctx,
       lda, 
       ldb,
       ldd,
-      alpha,    // alpha
       ctx.stream(),
       get_fc_dtype(input.dtype()),
       cutlass_dispatch_sm_version(sm_version),
-      0.,       // beta
+      leaky_alpha,       // for leaky_relu
   };
 
   void* dlhandler = phi::dynload::GetCutlassFcHandle();
@@ -137,7 +157,6 @@ void FusedFcAddActKernel(const Context& ctx,
     fc_func = (func)(dlsym(dlhandler, "FcBias"));
   } else if (activation == "leaky_relu") {
     fc_func = (func)(dlsym(dlhandler, "FcBiasLeakyRelu"));
-    params.alpha = fuse_alpha;
   } else if (activation == "sigmoid") {
     fc_func = (func)(dlsym(dlhandler, "FcBiasSigmoid"));
   } else {
@@ -150,7 +169,7 @@ void FusedFcAddActKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_fc_add_act,
+PD_REGISTER_KERNEL(fc,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::FusedFcAddActKernel,

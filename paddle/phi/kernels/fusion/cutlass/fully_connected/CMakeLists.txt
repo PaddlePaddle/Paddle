@@ -2,7 +2,7 @@ project (FC)
 cmake_minimum_required(VERSION 3.23)
 
 set(fileList)
-list(APPEND fileList "main.cu" "fc_bias_act_generate_example.cu" "fc_util.cu" "fc_util.h" "fc_decl.h")
+list(APPEND fileList "main.cu" "fc_util.cu" "fc_util.h" "fc_decl.h" "fc_bias_relu_sm80_fp16_35.cu")
 
 find_package(CUDA)
 

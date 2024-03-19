@@ -17,9 +17,9 @@
 #include <map>
 #include <vector>
 
-// namespace phi {
-// namespace fusion {
-// namespace cutlass_internal {
+namespace phi {
+namespace fusion {
+namespace cutlass_internal {
 
 typedef enum {
   fp32,
@@ -51,6 +51,6 @@ extern "C" void FcBiasSilu(FcAllParams params);
 extern "C" void FcBias(FcAllParams params);
 extern "C" void FcBiasSigmoid(FcAllParams params);
 
-// }  // namespace cutlass_internal
-// }  // namespace fusion
-// }  // namespace phi
+}  // namespace cutlass_internal
+}  // namespace fusion
+}  // namespace phi

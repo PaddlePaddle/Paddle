@@ -1,9 +1,9 @@
 #include "paddle/phi/kernels/fusion/cutlass/fully_connected/fc_util.h"
 
 
-// namespace phi {
-// namespace fusion {
-// namespace cutlass_internal {
+namespace phi {
+namespace fusion {
+namespace cutlass_internal {
 
 template <typename T>
 float diff(const T *C_cutlass, const T *C_naive, int n) {
@@ -12,7 +12,6 @@ float diff(const T *C_cutlass, const T *C_naive, int n) {
     float cutlass_value = static_cast<float>(C_cutlass[i]);
     float naive_value = static_cast<float>(C_naive[i]);
     if (std::abs(naive_value - cutlass_value) > max_diff) {
-      std::cout << cutlass_value << "-" << naive_value << ";  ";
       max_diff = std::abs(naive_value - cutlass_value);
     }
   }
@@ -40,7 +39,6 @@ __global__ void naive_fc_kernel(
       float input_ele = static_cast<float>(input[i * lda + k]);
       float weight_ele = static_cast<float>(weight[k * ldb + j]);
       accumulator += input_ele * weight_ele;
-      // accumulator += float(input[i * lda + k] * weight[k * ldb + j]);
     }
     accumulator += static_cast<float>(bias[j]);
 
@@ -53,19 +51,6 @@ __global__ void naive_fc_kernel(
         case FC_BIAS_SILU:
             accumulator = accumulator * (1.f / (1 + exp(-accumulator)));
             break;
-        // case FC_BIAS_SILU_ADD:
-        //   accumulator = accumulator * (1.f / (1 + exp(-accumulator)));
-        //   accumulator += static_cast<float>(*(residual + out_offset));
-        //   output[i * ldd + j] = accumulator;
-        //   break;
-        // case FC_BIAS_ADD_RELU:
-        //   accumulator += static_cast<float>(*(residual + out_offset));
-        //   output[i * ldd + j] = accumulator > 0 ? accumulator : 0;
-        //   break;
-        // case FC_BIAS_ADD:
-        //   // accumulator += static_cast<float>(*(residual + out_offset));
-        //   output[i * ldd + j] = accumulator;
-        //   break;
         case FC_BIAS_LEAKY_RELU:
           accumulator = accumulator > 0 ? accumulator : (accumulator * leaky_alpha);
           break;
@@ -126,15 +111,6 @@ std::string OpType2String(OpType op_type) {
     case FC_BIAS_SIGMOID:
       return "fc_bias_sigmoid";
       break;
-    case FC_BIAS_ADD_RELU:
-      return "fc_bias_add_relu";
-      break;
-    case FC_BIAS_ADD:
-      return "fc_bias_add";
-      break;
-    case FC_BIAS_SILU_ADD:
-      return "fc_bias_silu_add";
-      break;
     case FC_BIAS_LEAKY_RELU:
       return "fc_bias_leaky_relu";
     default:
@@ -157,7 +133,7 @@ int ProfileToGetBestConfig(
       auto func = all_func[i];
       // When func has large diff, we will make it nullptr.
       if (!func) continue;
-      // 这里写死了sizeof(half) 注意
+      // 这里写死了sizeof(half) 注意！！
       CUDA_CHECK(cudaMemset(params.output,
                 0,
                 sizeof(half) * params.m * params.n));
@@ -225,6 +201,6 @@ template float fc_diff_gpu<float>(const FcAllParams& params, OpType op_type);
 template float fc_diff_gpu<half>(const FcAllParams& params, OpType op_type);
 template float fc_diff_gpu<__nv_bfloat16>(const FcAllParams& params, OpType op_type);
 
-// }
-// }
-// }
+}
+}
+}
