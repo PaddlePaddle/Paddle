@@ -13,6 +13,7 @@ gather_srcs(
   optimize.cc)
 
 gather_srcs(group_pattern_util SRCS group_pattern_util.cc)
+cc_library(group_pattern_util SRCS ${group_pattern_util})
 
 if(NOT WITH_CUDA)
   cinn_cc_test(

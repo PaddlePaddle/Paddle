@@ -978,7 +978,6 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   if (second_stage_output.size() == 1) {
     return second_stage_output;
   }
-  const auto& second_stage_output = first_stage_output;
 
   // stage 3
   auto third_stage_output =
