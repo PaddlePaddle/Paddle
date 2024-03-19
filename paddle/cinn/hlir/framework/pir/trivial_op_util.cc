@@ -401,6 +401,7 @@ std::vector<ir::Var> CreateInnerBlockVars(
   std::vector<ir::Var> vars;
   for (const auto& v : block_vars) {
     vars.emplace_back("inner_block_" + std::to_string(i++));
+    vars.back()->is_reduce_axis = v->is_reduce_axis;
   }
   return vars;
 }

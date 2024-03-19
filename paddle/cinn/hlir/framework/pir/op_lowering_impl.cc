@@ -481,8 +481,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
     }
   }
 
-  // BuildBroadcastInfo(group);
-
   for (auto& op : group->output_ops) {
     // collect all output tensor.
     if (op->name() == "cinn_op.yield_store") {
@@ -509,6 +507,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
 
     std::shared_ptr<cinn::ir::GroupTileInfo> group_tile_info =
         GetGroupTileInfo(fusion_group_info, group);
+    VLOG(4) << "Start DynamicShapeGroupScheduler::Init";
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
         ir::GroupScheduler::Make(&ir_sch,
                                  output_tensor_names,
@@ -516,9 +515,12 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
                                  /* is_dy_shape = */ true,
                                  group_tile_info);
 
+    VLOG(4) << "Start apply group_scheduler->Schedule()";
     group_scheduler->Schedule();
+    VLOG(4) << "End   apply group_scheduler->Schedule()";
 
     cond2func_bodies = group_scheduler->GetIRs();
+    VLOG(4) << "End   group_scheduler->GetIRs";
   } else {
     cond2func_bodies.emplace_back(ir::Expr(true),
                                   ir_sch.GetModule().GetExprs()[0]);
@@ -534,12 +536,17 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   }
   std::vector<ir::Tensor> group_func_arg_tensors_copy = group_func_arg_tensors;
   std::vector<ir::Argument> group_func_args;
+  VLOG(4) << "Start PostProcess.";
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
                                                    apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args);
+  VLOG(4) << "End   PostProcess.";
+  for (const auto& f : funcs) {
+    VLOG(4) << "Function is: " << f;
+  }
   CHECK_EQ(funcs.size(), cond2func_bodies.size());
   BucketLoweredFuncsWrapper funcs_wrapper;
   for (int i = 0; i < funcs.size(); ++i) {
@@ -549,6 +556,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   funcs_wrapper.infer_shape_func = GenerateInferShapeFunc(
       group, group_func_arg_tensors_copy, group_func_args);
 
+  VLOG(4) << "End This function.";
   return funcs_wrapper;
 }
 

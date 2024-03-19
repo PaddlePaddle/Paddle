@@ -143,7 +143,8 @@ std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
                    (SearchUtils::ChildFors * SearchUtils::IsForIterVar(v) *
                     SearchUtils::For2Max)
                        .GetSingle(root),
-                   v->name);
+                   v->name,
+                   v->is_reduce_axis);
   });
 }
 
@@ -268,16 +269,27 @@ ir::Expr CreateReduceExpr(
 ir::Expr CreateTrivialExpr(const std::vector<ir::Var>& output_iters,
                            const ir::Expr& function_body,
                            const ir::Tensor& new_write_tensor) {
-  VLOG(4) << "CreateTrivialExpr Start.";
+  const auto& RemoveReduceAxisFromVar =
+      [](const std::vector<ir::Var>& vars) -> std::vector<ir::Var> {
+    std::vector<ir::Var> result;
+    for (auto& var : vars) {
+      auto new_var = ir::ir_utils::IRCopy(var).as_var_ref();
+      new_var->is_reduce_axis = false;
+      result.push_back(new_var);
+    }
+    return result;
+  };
+  auto trivial_iters = RemoveReduceAxisFromVar(output_iters);
   const std::vector<ir::Expr> indice_expr =
-      std::vector<ir::Expr>(output_iters.begin(), output_iters.end());
+      std::vector<ir::Expr>(trivial_iters.begin(), trivial_iters.end());
   const auto& compute_body_schedule_block =
       (TransformerUtils::WrapStoreTransformer(new_write_tensor, indice_expr) *
        TransformerUtils::WrapScheduleRealizer(
-           output_iters, new_write_tensor->name))(function_body);
-  return ir::Block::Make({(TransformerUtils::WrapForsTransformer(output_iters) *
-                           TransformerUtils::WrapScheduleRealizer({}, "root"))(
-      ir::Block::Make({compute_body_schedule_block}))});
+           trivial_iters, new_write_tensor->name))(function_body);
+  return ir::Block::Make(
+      {(TransformerUtils::WrapForsTransformer(trivial_iters) *
+        TransformerUtils::WrapScheduleRealizer({}, "root"))(
+          ir::Block::Make({compute_body_schedule_block}))});
 }
 
 ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
@@ -551,11 +563,26 @@ std::vector<ir::Expr> GetShapeFromVars(const std::vector<ir::Var>& vars) {
   return res;
 }
 
+void DebugPrintReduceVar(const FusibleOp& op) {
+  VLOG(4) << "DebugPrint Op: " << GetOutputTensor(op);
+  VLOG(4) << "DebugPrint Op: " << GetComputeBody(op);
+  const auto& block = (SearchUtils::ChildScheduleBlockRealizes *
+                       SearchUtils::ScheduleBlockRealizeIsNotInit *
+                       SearchUtils::Realizer2ScheduleBlock)
+                          .GetSingle(_GetRootExpr(op));
+  const std::vector<ir::Var>& iter_vars =
+      block.As<ir::ScheduleBlock>()->iter_vars;
+  for (const auto& v : iter_vars) {
+    VLOG(4) << "Var: " << v << "  is_reduce_axis=" << v->is_reduce_axis;
+  }
+}
+
 void FusionGraph::SplitReduceTransform() {
-  VLOG(4) << "SplitReduceTransform";
+  VLOG(4) << "SplitReduceTransform Start.";
   std::vector<FusibleOp> result;
   for (const auto& fop : fusion_results_) {
     if (std::holds_alternative<ReduceOp>(fop)) {
+      VLOG(4) << "DebugPrint Op Origin: ";
       ReduceOp reduce_op = std::get<ReduceOp>(fop);
       ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
       // substitude compute_body with a new init value.
