@@ -813,6 +813,10 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
 // For Reduce patterns, the operator list is the concatenation of reduce op and
 // its inputs.
 struct GetPatternOpList {
+  std::vector<const pir::Operation*> operator()(const std::monostate& pattern) {
+    return {};
+  }
+
   std::vector<const pir::Operation*> operator()(
       const api::InjectiveSourcePattern<frontend::FrontendPattern>& pattern) {
     return pattern.ops;
@@ -825,28 +829,10 @@ struct GetPatternOpList {
 
   std::vector<const pir::Operation*> operator()(
       const api::ReductionPattern<frontend::FrontendPattern>& pattern) {
-    struct InputOpsVisitor {
-      std::vector<const pir::Operation*> operator()(
-          const api::InjectiveSourcePattern<frontend::FrontendPattern>& input) {
-        return input.ops;
-      }
-
-      std::vector<const pir::Operation*> operator()(
-          const api::PartialShardablePattern<frontend::FrontendPattern>&
-              input) {
-        return input.ops;
-      }
-
-      std::vector<const pir::Operation*> operator()(
-          const std::monostate& input) {
-        return {};
-      }
-    };
-
     std::vector<const pir::Operation*> ops_list = {
         pattern.reduce_op_pattern.reduce_op};
     std::vector<const pir::Operation*> input_ops =
-        std::visit(InputOpsVisitor(), pattern.input);
+        std::visit(GetPatternOpList(), pattern.input);
     ops_list.insert(ops_list.end(), input_ops.begin(), input_ops.end());
 
     return ops_list;
