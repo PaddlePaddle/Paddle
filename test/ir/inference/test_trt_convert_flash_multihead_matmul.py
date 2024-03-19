@@ -24,6 +24,10 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.optimization_level = 5
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8520:

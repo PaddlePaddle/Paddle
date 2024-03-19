@@ -125,9 +125,19 @@ struct ElementWise : public PatternBase {
 
   void operator()();
 
-  PATTERN_DECL_NODE(elementwise_input);
+  PATTERN_DECL_NODE(elementwise_x);
+  PATTERN_DECL_NODE(elementwise_y);
   PATTERN_DECL_NODE(elementwise_op);
   PATTERN_DECL_NODE(elementwise_out);
+};
+
+struct LayerNormInference : public PatternBase {
+  LayerNormInference(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "layernorm") {}
+  void operator()();
+  PATTERN_DECL_NODE(layernorm_input);
+  PATTERN_DECL_NODE(layernorm_op);
+  PATTERN_DECL_NODE(layernorm_output);
 };
 }  // namespace patterns
 
