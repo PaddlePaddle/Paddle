@@ -402,7 +402,7 @@ class TestPrimGroupNorm1(unittest.TestCase):
         self.init_x_shape = [None, 640, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net1
-        self.necessary_ops = "pd_op.flatten"
+        self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
         self.tol = 1e-6
 
@@ -415,7 +415,7 @@ class TestPrimGroupNorm2(unittest.TestCase):
         self.init_x_shape = [None, 640, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net2
-        self.necessary_ops = "pd_op.flatten"
+        self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
         self.tol = 1e-6
 
@@ -428,7 +428,7 @@ class TestPrimGroupNorm3(unittest.TestCase):
         self.init_x_shape = [None, 640, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net3
-        self.necessary_ops = "pd_op.flatten"
+        self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
         self.tol = 1e-6
 
@@ -441,7 +441,7 @@ class TestPrimGroupNorm4(unittest.TestCase):
         self.init_x_shape = [None, 640, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net4
-        self.necessary_ops = "pd_op.flatten"
+        self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
         self.tol = 1e-6
 
