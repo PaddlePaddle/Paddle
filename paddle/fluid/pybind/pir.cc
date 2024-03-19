@@ -108,6 +108,9 @@ using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
 
+using paddle::dialect::OperationDistAttribute;
+using paddle::dialect::TensorDistAttribute;
+
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
@@ -533,8 +536,13 @@ void BindOperation(py::module *m) {
              for (auto &pair : self.attributes()) {
                // SymbolAttribute is only used in PIR, no need to pass to Python
                if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
-               attrs_dict[pair.first.c_str()] =
-                   paddle::dialect::GetAttributeData(pair.second);
+               if (pair.first == kAttrOpDistAttr) {
+                 attrs_dict[pair.first.c_str()] =
+                     pair.second.dyn_cast<OperationDistAttribute>();
+               } else {
+                 attrs_dict[pair.first.c_str()] =
+                     paddle::dialect::GetAttributeData(pair.second);
+               }
              }
              return attrs_dict;
            })
@@ -691,7 +699,15 @@ void BindOperation(py::module *m) {
                     OpCreationCallstackAttrName(),
                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                          op_callstack_infos));
-          });
+          })
+      .def("dist_attr", [](Operation &self) {
+        if (self.HasAttribute(kAttrOpDistAttr)) {
+          return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+        } else {
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("dist_attr is only for dist op."));
+        }
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -959,51 +975,13 @@ void BindValue(py::module *m) {
              return out;
            })
       .def("__repr__", &Value2String)
-      .def_property(
-          "dims_mapping",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "dims_mapping is only for distdense tensor."));
-            }
-            return self.type().dyn_cast<DistDenseTensorType>().dims_mapping();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set dims_mapping when building static graph is un-supported "
-                "now."));
-          })
-      .def_property(
-          "partial_dims",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "partial_dims is only for distdense tensor."));
-            }
-            return self.type().dyn_cast<DistDenseTensorType>().partial_dims();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set partial_dims when building static graph is un-supported "
-                "now."));
-          })
-      .def_property(
-          "process_mesh",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "process_mesh is only for distdense tensor."));
-            }
-            return self.type()
-                .dyn_cast<DistDenseTensorType>()
-                .process_mesh_attr()
-                .process_mesh();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set process_mesh when building static graph is un-supported "
-                "now."));
-          });
+      .def("dist_attr", [](Value &self) {
+        if (!self.type().isa<DistDenseTensorType>()) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "dist_attr is only for distdense tensor."));
+        }
+        return self.type().dyn_cast<DistDenseTensorType>().tensor_dist_attr();
+      });
 }
 
 void BindOpOperand(py::module *m) {

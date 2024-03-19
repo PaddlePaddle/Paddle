@@ -50,7 +50,9 @@ void cinn_cpu_mkldnn_softmax_fp32(int batch,
       format_tag = tag::abcd;
       break;
     default:
-      LOG(FATAL) << "wrong dim: " << size;
+      std::stringstream ss;
+      ss << "wrong dim: " << size;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       break;
   }
 
