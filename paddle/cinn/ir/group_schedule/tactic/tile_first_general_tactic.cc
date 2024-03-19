@@ -238,6 +238,9 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
           std::ceil(context_->group_tile_info->reduce_numel * 1.0 /
                     context_->group_tile_info->reduce_inner_num));
       split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
+    } else if (IsWarpReduce(context_->group_tile_info)) {
+      split_factors.emplace_back(32);
+      split_factors.emplace_back(context_->group_tile_info->reduce_inner_num);
     } else {
       split_factors.emplace_back(
           std::ceil(context_->group_tile_info->reduce_block * 1.0 /
