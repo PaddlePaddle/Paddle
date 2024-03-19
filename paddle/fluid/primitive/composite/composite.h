@@ -603,6 +603,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
 
 template <typename T>
 Tensor sqrt_decomp(const Tensor& x) {
+  // print std::cout
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 
@@ -611,8 +612,7 @@ Tensor sqrt_decomp(const Tensor& x) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
 
-  auto ans =
-      elementwise_pow<T>(x_cast, full<T>(empty_shape, 0.5, x_cast.dtype()));
+  auto ans = 1.0 / rsqrt<T>(x_cast);
   if (need_cast) {
     return cast<T>(ans, org_dtype);
   } else {
