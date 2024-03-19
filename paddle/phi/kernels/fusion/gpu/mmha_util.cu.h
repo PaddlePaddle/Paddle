@@ -2863,6 +2863,103 @@ __inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
   return abs_max_val;
 }
 
+/// kai mod
+template <typename T, typename StoreT=T, bool Smooth=false>
+struct MMHAStore_kai{
+  explicit MMHAStore_kai(StoreT* dst) : dst_(dst){}
+  
+  __device__ void store(T& src, int idx){
+    *reinterpret_cast<T*>(dst_ + idx) = src;
+  }
+
+  StoreT* dst_;
+};
+
+template <typename T>
+struct MMHAStore_kai<T, T, true>{
+  MMHAStore_kai(T* dst, const T* shift, const T* smooth, const int cols)
+      : dst_(dst), shift_(shift), smooth_(smooth), cols_(cols) {}
+
+  __device__ void store(T& src, int idx) {
+    T shift_val = *(shift_ + idx % cols_);
+    T smooth_val = *(smooth_ + idx % cols_); 
+    *(dst_ + idx) = (src + shift_val) * smooth_val;
+  }
+
+  T* dst_;
+  const T* shift_;
+  const T* smooth_;
+  const int cols_;
+};
+
+template <typename T>
+struct MMHAStore_kai<T, int8_t>{
+  MMHAStore_kai(int8_t* dst,
+            const int quant_round_type,
+            const float quant_scale,
+            const float quant_max_bound,
+            const float quant_min_bound)
+      : dst_(dst),
+        quant_round_type_(quant_round_type),
+        quant_scale_(quant_scale),
+        quant_max_bound_(quant_max_bound),
+        quant_min_bound_(quant_min_bound) {}
+
+  __device__ void store(T& src, int idx) {  // NOLINT
+    *(dst_ + idx) = QuantHelperFunc<float, int8_t>(static_cast<float>(src), 
+                                        quant_scale_,
+                                        quant_round_type_,
+                                        quant_max_bound_,
+                                        quant_min_bound_);
+  }
+
+  int8_t* dst_;
+  const int quant_round_type_;
+  const float quant_scale_;
+  const float quant_max_bound_;
+  const float quant_min_bound_;
+};
+
+template <typename T>
+struct MMHAStore_kai<T, int8_t, true>{
+  MMHAStore_kai(int8_t* dst,
+            const T* shift,
+            const T* smooth,
+            const int cols,
+            const int quant_round_type,
+            const float quant_scale,
+            const float quant_max_bound,
+            const float quant_min_bound)
+      : dst_(dst),
+        quant_round_type_(quant_round_type),
+        quant_scale_(quant_scale),
+        quant_max_bound_(quant_max_bound),
+        quant_min_bound_(quant_min_bound),
+        shift_(shift),
+        smooth_(smooth),
+        cols_(cols) {}
+
+  __device__ void store(T& src, int idx) {  // NOLINT
+    T shift_val = *(shift_ + idx % cols_);
+    T smooth_val = *(smooth_ + idx % cols_); 
+    T src_val = (src + shift_val) * smooth_val;
+    *(dst_ + idx) = QuantHelperFunc<float, int8_t>(static_cast<float>(src_val), 
+                                        quant_scale_,
+                                        quant_round_type_,
+                                        quant_max_bound_,
+                                        quant_min_bound_);
+  }
+
+  int8_t* dst_;
+  const T* shift_;
+  const T* smooth_;
+  const int cols_;
+  const int quant_round_type_;
+  const float quant_scale_;
+  const float quant_max_bound_;
+  const float quant_min_bound_;
+};
+
 }  // namespace fusion
 }  // namespace phi
 
