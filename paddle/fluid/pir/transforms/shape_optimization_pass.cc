@@ -245,7 +245,7 @@ class ShapeOptimizationPass : public pir::Pass {
         << "===================== ShapeOptimizationPass Run start... "
            "=====================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    PADDLE_ENFORCE_EQ(module_op.name(),
+    PADDLE_ENFORCE_NE(module_op.name(),
                       "builtin.module",
                       phi::errors::InvalidArgument(
                           "ShapeOptimizationPass should run on module op."));
