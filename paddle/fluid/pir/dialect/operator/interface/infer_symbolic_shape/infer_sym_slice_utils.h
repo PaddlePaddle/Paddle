@@ -34,6 +34,28 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
   }
 }
 
+inline bool IsLessThanZero(const symbol::DimExpr &val) {
+  return val.isa<int64_t>() && val.Get<int64_t>() < 0;
+}
+
+inline bool IsZero(const symbol::DimExpr &val) {
+  return val.isa<int64_t>() && val.Get<int64_t>() == 0;
+}
+
+inline symbol::DimExpr FormatSliceStart(const symbol::DimExpr &start,
+                                        const symbol::DimExpr &dim_value) {
+  symbol::DimExprBuilder builder{nullptr};
+  symbol::DimExpr new_start = IsLessThanZero(start) ? start + dim_value : start;
+  return builder.Min(builder.Max(new_start, 0), dim_value);
+}
+
+inline symbol::DimExpr FormatSliceEnd(const symbol::DimExpr &end,
+                                      const symbol::DimExpr &dim_value) {
+  symbol::DimExprBuilder builder{nullptr};
+  symbol::DimExpr new_end = IsLessThanZero(end) ? end + dim_value : end;
+  return builder.Max(builder.Min(new_end, dim_value), 0);
+}
+
 inline void CheckAndUpdateSliceAttrs(
     const ExprVec &in_dims,
     const std::vector<int64_t> &axes,
@@ -42,41 +64,18 @@ inline void CheckAndUpdateSliceAttrs(
     std::vector<int64_t> *infer_flags = nullptr) {
   ExprVec &starts = *starts_p;
   ExprVec &ends = *ends_p;
-  auto IsMaxInt = [](const symbol::DimExpr &expr) {
-    return expr.isa<int64_t>() &&
-           expr.Get<int64_t>() ==
-               static_cast<int64_t>(std::numeric_limits<int>::max());
-  };
 
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes[i];
-    int64_t start_i = 0;
-    if (starts[i].isa<int64_t>()) {
-      start_i = starts[i].Get<int64_t>();
-    }
-    int64_t end_i = 0;
-    if (ends[i].isa<int64_t>()) {
-      end_i = ends[i].Get<int64_t>();
-    }
-
-    // For both start and end can be negative or positive, we need to handle the
-    // following different arrangements.
-    ends[i] = IsMaxInt(ends[i]) ? in_dims[axis] : ends[i];
-
-    bool both_negative_or_positive =
-        (start_i >= 0 && end_i >= 0) || (start_i <= 0 && end_i <= 0);
-    bool start_negative_end_positive = start_i <= 0 && end_i >= 0;
-    bool start_positive_end_negative = start_i >= 0 && end_i <= 0;
-
-    if (both_negative_or_positive) {
+    auto &dim_value = in_dims[axis];
+    if (IsZero(dim_value)) {
+      starts[i] = 0;
+      ends[i] = 0;
       continue;
-    } else if (start_negative_end_positive) {
-      starts[i] = starts[i] + in_dims[axis];
-    } else if (start_positive_end_negative) {
-      starts[i] = starts[i] - in_dims[axis];
-    } else {
-      LOG(FATAL) << "Dead code";
     }
+
+    starts[i] = FormatSliceStart(starts[i], dim_value);
+    ends[i] = FormatSliceEnd(ends[i], dim_value);
   }
 }
 

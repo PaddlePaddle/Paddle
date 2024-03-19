@@ -67,14 +67,26 @@ class SliceNet(paddle.nn.Layer):
         super().__init__()
 
     def forward(self, x):
-        out = x[:, -1, :]
-        return out
+        out0 = x[:, :-1, :]
+        out1 = x[:, -1, :]
+        out2 = x[1:3, 0:2, 2:4]
+
+        axes = [0, 1, 2]
+        starts = [-3, 0, 2]
+        ends = [3, 2, 4]
+        out3 = paddle.slice(x, axes=axes, starts=starts, ends=ends)
+        return out0, out1, out2, out3
 
 
 class SliceOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
         self.cases = [np.random.rand(4, 5, 6)]
-        self.expected = ['shape[S0, S2], data[NULL]']
+        self.expected = [
+            'shape[S0, Add(-Min(Max(0, 0), S1), Max(Min(Add(S1, -1), S1), 0)), S2], data[NULL]',
+            'shape[S0, S2], data[NULL]',
+            'shape[Add(-Min(Max(1, 0), S0), Max(Min(3, S0), 0)), Add(-Min(Max(0, 0), S1), Max(Min(2, S1), 0)), Add(-Min(Max(2, 0), S2), Max(Min(4, S2), 0))], data[NULL]',
+            'shape[Add(-Min(Max(Add(S0, -3), 0), S0), Max(Min(3, S0), 0)), Add(-Min(Max(0, 0), S1), Max(Min(2, S1), 0)), Add(-Min(Max(2, 0), S2), Max(Min(4, S2), 0))], data[NULL]',
+        ]
 
     def test_eval_symbolic(self):
         net = SliceNet()
