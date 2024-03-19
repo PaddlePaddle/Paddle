@@ -71,7 +71,7 @@ class TestMatmulSparseDense(unittest.TestCase):
             sp_out.backward()
             np.testing.assert_allclose(
                 sp_x.grad.to_dense().numpy(),
-                (dense_x.grad * mask).numpy(),
+                (dense_x.grad * mask.astype(dense_x.dtype)).numpy(),
                 rtol=1e-05,
             )
             np.testing.assert_allclose(
