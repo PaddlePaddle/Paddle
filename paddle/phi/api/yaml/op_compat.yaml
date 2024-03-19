@@ -296,6 +296,12 @@
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
 
+- op : assign_pos
+  inputs :
+    {x : X, cum_count : cum_count, eff_num_len : eff_num_len}
+  outputs :
+    out : Out
+
 - op : assign_value
   outputs :
     out : Out

@@ -146,6 +146,25 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void AssignPosInferMeta(const MetaTensor& x,
+                        const MetaTensor& cum_count,
+                        const MetaTensor& eff_num_len,
+                        MetaTensor* out) {
+  phi::DataType X_dtype = x.dtype();
+  phi::DataType cum_count_dtype = cum_count.dtype();
+
+  PADDLE_ENFORCE_EQ(cum_count_dtype,
+                    X_dtype,
+                    phi::errors::InvalidArgument(
+                        "The dtype of the cum_count and X should be same"));
+  PADDLE_ENFORCE_EQ(cum_count_dtype,
+                    phi::DataType::INT64,
+                    phi::errors::InvalidArgument(
+                        "The dtype of the cum_count_dtype, eff_num_len and "
+                        "X should be same as int64"));
+  out->set_dtype(X_dtype);
+}
+
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,
                        const MetaTensor& target_box,
