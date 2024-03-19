@@ -1001,16 +1001,17 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
     return second_stage_output;
   }
 
-  // stage 3
-  auto third_stage_output =
-      horizontal_merge_detail::HorizontalMergePass(second_stage_output);
+  // Note: horizontal merge will make loop in graph, skip it
+  // // stage 3
+  // auto third_stage_output =
+  //     horizontal_merge_detail::HorizontalMergePass(second_stage_output);
 
   std::vector<std::vector<int>> pre_ids_info;
-  auto out_id_list = SortNodeList(&third_stage_output, &pre_ids_info);
+  auto out_id_list = SortNodeList(&second_stage_output, &pre_ids_info);
 
   std::vector<GroupClusterNode> sorted_out;
   for (auto id : out_id_list) {
-    sorted_out.push_back(third_stage_output[id]);
+    sorted_out.push_back(second_stage_output[id]);
   }
 
   return sorted_out;
