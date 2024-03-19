@@ -15,6 +15,11 @@ if(WITH_PYTHON)
   set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
 endif()
 
+if(WIN32 AND NOT WITH_GPU)
+  # disable on Windows CPU CI for timeout
+  list(REMOVE_ITEM TEST_OPS test_resnet_amp)
+endif()
+
 if(NOT WITH_GPU)
   # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
   # We should remove this after fix the performance issue.
@@ -22,7 +27,6 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
   # disable some model test on CPU to avoid timeout
   list(REMOVE_ITEM TEST_OPS test_resnet)
-  list(REMOVE_ITEM TEST_OPS test_resnet_amp)
   list(REMOVE_ITEM TEST_OPS test_build_strategy)
   list(REMOVE_ITEM TEST_OPS test_bert)
   list(REMOVE_ITEM TEST_OPS test_transformer)
@@ -43,6 +47,10 @@ set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
 set_tests_properties(test_loop PROPERTIES TIMEOUT 180)
 set_tests_properties(test_mnist_amp PROPERTIES TIMEOUT 240)
+
+if(TEST test_resnet_amp)
+  set_tests_properties(test_resnet_amp PROPERTIES TIMEOUT 240)
+endif()
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
