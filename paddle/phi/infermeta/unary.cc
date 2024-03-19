@@ -2932,6 +2932,29 @@ void Pad3dInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void PartialAllgatherInferMeta(const MetaTensor& x,
+                               int nranks,
+                               int rank,
+                               int ring_id,
+                               bool use_calc_stream,
+                               MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      nranks,
+      2,
+      phi::errors::InvalidArgument("The value of nranks should be >=2."));
+  PADDLE_ENFORCE_EQ(
+      (rank >= 0 && rank < nranks),
+      true,
+      phi::errors::InvalidArgument(
+          "The rank (%d) for partial_allgather op must >=0 and <nranks (%d)",
+          rank,
+          nranks));
+
+  auto x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+}
+
 void PartialSendInferMeta(const MetaTensor& x,
                           int ring_id,
                           int peer,

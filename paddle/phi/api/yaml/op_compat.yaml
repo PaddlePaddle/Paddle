@@ -2469,6 +2469,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : partial_allgather
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : partial_recv
   outputs :
     out : Out
