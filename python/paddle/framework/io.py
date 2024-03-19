@@ -14,10 +14,10 @@
 
 import collections
 import copyreg
+import multiprocessing
 import os
 import pickle
 import sys
-import threading
 import warnings
 from collections.abc import Iterable
 
@@ -49,17 +49,16 @@ from .io_utils import (
 )
 
 __all__ = []
-async_save_queue = []
+async_save_queue = multiprocessing.Queue()
 
 
 def clear_async_save_task_queue():
     '''
     wait until all async save task to be done.
     '''
-    while len(async_save_queue) > 0:
-        task = async_save_queue.pop()
-        if task and task.is_alive():
-            task.join()
+    while not async_save_queue.empty():
+        id = async_save_queue.get()
+        os.waitpid(id, 0)
 
 
 def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
@@ -121,9 +120,9 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
         )
     if sync_other_task:
         clear_async_save_task_queue()
-    t = threading.Thread(target=save, args=(obj, path, protocol))
+    t = multiprocessing.Process(target=save, args=(obj, path, protocol))
     t.start()
-    async_save_queue.append(t)
+    async_save_queue.put(t.pid)
 
 
 def _build_saved_state_dict(state_dict):
