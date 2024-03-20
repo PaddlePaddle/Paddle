@@ -12,16 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/cinn/frontend/group_pattern/cluster_policy.h"
+#include "paddle/cinn/frontend/cluster_ops/cluster_policy.h"
 
 namespace cinn::frontend {
-
-std::shared_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
-    const pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  return std::make_shared<LoopAlignableClusteringPolicy>(shape_analysis);
-}
 
 class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
  public:
@@ -233,8 +226,13 @@ class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
       return GetRank(reduce_op->result(result_idx)) == shardable_axes.size();
     }
   }
-
   const pir::ShapeConstraintIRAnalysis* shape_analysis_;
 };
+
+std::shared_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  return std::make_shared<LoopAlignableClusteringPolicy>(shape_analysis);
+}
+
 
 }  // namespace cinn::frontend
