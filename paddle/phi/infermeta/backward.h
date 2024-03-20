@@ -375,6 +375,7 @@ void NanmedianGradInferMeta(const MetaTensor& x,
 
 void PartialConcatGradInferMeta(const std::vector<const MetaTensor*>& xs,
                                 std::vector<MetaTensor*> x_grads);
+                                
 void PartialSumGradInferMeta(const std::vector<const MetaTensor*>& xs,
                              std::vector<MetaTensor*> x_grads);
 
