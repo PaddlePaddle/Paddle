@@ -1855,31 +1855,30 @@ class DistModel:
                         tensor._local_value().get_tensor()
                     )
                 else:
-                    # infer dtype from tensor
-                    if tensor.is_integer():
-                        dtype = paddle.iinfo(tensor.dtype).dtype
-                    else:
-                        dtype = paddle.finfo(tensor.dtype).dtype
-                    tensor_np_value = np.zeros(
-                        tensor._local_value().shape, dtype=dtype
-                    )
-                    lodtensor.set(
-                        tensor_np_value,
-                        paddle.CPUPlace(),  # No need to use GPU memory.
-                    )
+                    lodtensor = None
             else:
                 lodtensor._share_data_with(tensor.get_tensor())
 
             return lodtensor
 
         feed_list = []
-        for data in data_list:
+        no_data_ids = []
+        # If the feed_var is None, its feed_name should be deleted.
+        # This scenario is very common if using `PipeLine Parallelism`.
+        for idx, data in enumerate(data_list):
             if isinstance(data, paddle.Tensor):
-                feed_list.append(_to_lodtensor(data))
+                feed_var = _to_lodtensor(data)
+                if feed_var is None:
+                    no_data_ids.append(idx)
+                else:
+                    feed_list.append(_to_lodtensor(data))
             else:
                 feed_list.append(data)
-
-        return dict(zip(feed_name_list, feed_list))
+        feed_name_list_with_data = []
+        for idx, feed_name in enumerate(feed_name_list):
+            if idx not in no_data_ids:
+                feed_name_list_with_data.append(feed_name)
+        return dict(zip(feed_name_list_with_data, feed_list))
 
     def __convert_strategy(self, strategy):
         import copy
