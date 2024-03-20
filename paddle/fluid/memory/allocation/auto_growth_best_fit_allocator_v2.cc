@@ -18,6 +18,7 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -72,14 +73,14 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
     } else {
       size_t actual_avail, actual_total;
       {
-        CUDADeviceGuard guard(place_.device);
+        platform::CUDADeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
-        auto result = hipMemGetInfo(actual_avail, actual_total);
+        auto result = hipMemGetInfo(&actual_avail, &actual_total);
 #else
-        auto result = cudaMemGetInfo(actual_avail, actual_total);
+        auto result = cudaMemGetInfo(&actual_avail, &actual_total);
 #endif
         if (result != gpuSuccess) {
-          *actual_avail = 0;
+          actual_avail = 0;
         }
       }
 
