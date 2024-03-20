@@ -14,13 +14,36 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/group_pattern.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/frontend/cluster_ops/common_utils.h"
+#include "paddle/cinn/adt/adt.h"
+
+namespace cinn::frontend::cluster_ops {
+
+struct OpAndOperandIndex {
+  const pir::Operation* op;
+  const int operand_index;
+
+  bool operator==(const OpAndOperandIndex& other) const {
+    return this->op == other.op && this->operand_index == other.operand_index;
+  }
+};
+
+}
+namespace std {
+
+template <>
+struct hash<cinn::frontend::cluster_ops::OpAndOperandIndex> {
+  size_t operator()(const cinn::frontend::cluster_ops::OpAndOperandIndex& op_operand) const {
+    return cinn::adt::hash_combine(
+        std::hash<const pir::Operation*>()(op_operand.op),
+        op_operand.operand_index);
+  }
+};
+
+}  // namespace std
 
 
-
-namespace cinn::frontend {
-
+namespace cinn::frontend::cluster_ops {
 struct ShardableAxis {
   int axis;
   std::string axis_name;
@@ -60,6 +83,7 @@ class ShardableAxesProvider {
 std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
     const pir::ShapeConstraintIRAnalysis* shape_analysis);
 
+int GetOutputShardableAxesResultIdx(const pir::Operation* op) { return 0; }
 class ShardableAxesInferer {
  public:
   explicit ShardableAxesInferer(

@@ -12,33 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace cinn::frontend {
-struct OpAndOperandIndex {
-  const pir::Operation* op;
-  const int operand_index;
+#include <optional>
+#include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 
-  bool operator==(const OpAndOperandIndex& other) const {
-    return this->op == other.op && this->operand_index == other.operand_index;
-  }
-};
-
-}
-
-namespace std {
-
-template <>
-struct hash<cinn::frontend::OpAndOperandIndex> {
-  size_t operator()(const cinn::frontend::OpAndOperandIndex& op_operand) const {
-    return cinn::adt::hash_combine(
-        std::hash<const pir::Operation*>()(op_operand.op),
-        op_operand.operand_index);
-  }
-};
-
-}  // namespace std
-
-namespace cinn::frontend {
-
+namespace cinn::frontend::cluster_ops {
 
 struct ShardableAxesUtil {
   using OldName2NewName = std::unordered_map<std::string, std::string>;
@@ -109,7 +86,7 @@ struct ShardableAxesUtil {
     for (int64_t i = 0; i < input_rank; ++i) {
       if (IsReduceAxis(i)) continue;
       ret.emplace_back(ShardableAxis{
-          .axis = i,
+          .axis = static_cast<int>(i),
           .axis_name =
               std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo()),
       });
@@ -131,7 +108,7 @@ struct ShardableAxesUtil {
     for (int64_t i = 0; i < input_rank; ++i) {
       if (IsBroadcastAxis(i)) continue;
       ret.emplace_back(ShardableAxis{
-          .axis = i,
+          .axis = static_cast<int>(i),
           .axis_name =
               std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo()),
       });
@@ -146,6 +123,9 @@ std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
 }
 
 class DefaultShardableAxesProvider final : public ShardableAxesProvider {
+ private:
+  const pir::ShapeConstraintIRAnalysis* shape_analysis_;
+
  public:
   explicit DefaultShardableAxesProvider(
       const pir::ShapeConstraintIRAnalysis* shape_analysis)
@@ -270,6 +250,21 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
     };
   }
 
+
+  std::optional<std::tuple<pir::Value, /*input_dix*/ int, pir::Value>>
+  GetGetBroadcastOpInputOuputValue(const pir::Operation* op) {
+    auto* mut_op = const_cast<pir::Operation*>(op);
+    if (op->isa<paddle::dialect::ExpandOp>()) {
+      auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
+      return std::tuple{expand_op.x(), 0, expand_op.out()};
+    }
+    if (op->isa<cinn::dialect::BroadcastOp>()) {
+      auto broadcast_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
+      return std::tuple{broadcast_op.x(), 0, broadcast_op.out()};
+    }
+    return std::nullopt;
+  }
+
   ShardableAxesSignature MakeShardableAxesSignature4BroadcastOp(
       const pir::Operation* op) {
     const auto& input_output_pair = GetGetBroadcastOpInputOuputValue(op);
@@ -314,22 +309,6 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
             },
     };
   }
-
-  std::optional<std::tuple<pir::Value, /*input_dix*/ int, pir::Value>>
-  GetGetBroadcastOpInputOuputValue(const pir::Operation* op) {
-    auto* mut_op = const_cast<pir::Operation*>(op);
-    if (op->isa<paddle::dialect::ExpandOp>()) {
-      auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
-      return std::tuple{expand_op.x(), 0, expand_op.out()};
-    }
-    if (op->isa<cinn::dialect::BroadcastOp>()) {
-      auto broadcast_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
-      return std::tuple{broadcast_op.x(), 0, broadcast_op.out()};
-    }
-    return std::nullopt;
-  }
-
-  const pir::ShapeConstraintIRAnalysis* shape_analysis_;
 };
 
 

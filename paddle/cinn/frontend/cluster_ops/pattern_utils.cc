@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "paddle/cinn/frontend/cluster_ops/pattern_utils.h"
 
 namespace cinn::frontend::cluster_ops {
