@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
+#include <limits>
 #include <numeric>
 
 namespace symbol {
