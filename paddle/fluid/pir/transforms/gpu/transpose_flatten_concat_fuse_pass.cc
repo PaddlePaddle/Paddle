@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/fusion/transpose_flatten_concat_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/transpose_flatten_concat_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
