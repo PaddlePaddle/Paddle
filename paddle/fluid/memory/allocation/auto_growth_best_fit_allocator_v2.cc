@@ -70,9 +70,19 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
       VLOG(10) << "Allocate " << size << " bytes from chunk size "
                << block_it->size_ << " by strict_matching_state.";
     } else {
-      size_t avail, total, actual_avail, actual_total;
-      platform::RecordedGpuMemGetInfo(
-          &avail, &total, &actual_avail, &actual_total, place_.device);
+      size_t actual_avail, actual_total;
+      {
+        CUDADeviceGuard guard(place_.device);
+#ifdef PADDLE_WITH_HIP
+        auto result = hipMemGetInfo(actual_avail, actual_total);
+#else
+        auto result = cudaMemGetInfo(actual_avail, actual_total);
+#endif
+        if (result != gpuSuccess) {
+          *actual_avail = 0;
+        }
+      }
+
       if (actual_avail < size) {
         FreeIdleChunks();
       }
