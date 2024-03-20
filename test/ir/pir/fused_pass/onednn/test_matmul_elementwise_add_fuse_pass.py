@@ -27,13 +27,14 @@ paddle.enable_static()
     "Test case only for OneDNN pass.",
 )
 class TestMatmulAddFusePattern(PassTest):
-    r'''x     y
-    \   /
-    matmul  resdual(parameter)
-       \   /
-        add
-         |
-        out
+    r'''
+    x     y
+     \   /
+     matmul  resdual(parameter)
+        \   /
+         add
+          |
+         out
     '''
 
     def is_program_valid(self, program=None):
@@ -85,13 +86,14 @@ class TestMatmulAddFusePattern(PassTest):
     "Test case only for OneDNN pass.",
 )
 class TestMatmulAddFusePatternCase2(PassTest):
-    r'''x     y
-    \   /
-    matmul  resdual(data)
-       \   /
-        add
-         |
-        out
+    r'''
+    x     y
+     \   /
+     matmul  resdual(data)
+        \   /
+         add
+          |
+         out
     '''
 
     def is_program_valid(self, program=None):
@@ -143,7 +145,8 @@ class TestMatmulAddFusePatternCase2(PassTest):
     "Test case only for OneDNN pass.",
 )
 class TestMatmulAddFusePatternCase3(PassTest):
-    r'''x     y
+    r'''
+                       x     y
                         \   /
     resdual(parameter)  matmul
                     \   /
@@ -201,7 +204,8 @@ class TestMatmulAddFusePatternCase3(PassTest):
     "Test case only for OneDNN pass.",
 )
 class TestMatmulAddFusePatternCase4(PassTest):
-    r'''x     y
+    r'''
+                   x     y
                     \   /
     resdual(data)  matmul
                 \   /
@@ -259,7 +263,8 @@ class TestMatmulAddFusePatternCase4(PassTest):
     "Test case only for OneDNN pass.",
 )
 class TestFusedMatmulAddFusePattern(PassTest):
-    r'''x     y
+    r'''
+                   x     y
                     \   /
     resdual(data)  matmul
                 \   /
