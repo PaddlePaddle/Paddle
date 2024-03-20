@@ -258,63 +258,66 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 360)
       set_tests_properties(test_layernorm_shift_partition_pass
                            PROPERTIES TIMEOUT 360)
-    elseif(WIN_UNITTEST_LEVEL EQUAL 0)
-      set_tests_properties(test_onednn_conv_bias_fuse_pass PROPERTIES TIMEOUT
-                                                                      300)
-      set_tests_properties(test_onednn_conv_concat_activation_fuse_pass
-                           PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_onednn_multi_gru_fuse_pass PROPERTIES TIMEOUT
-                                                                      120)
-      set_tests_properties(test_onednn_multi_gru_seq_fuse_pass
+      if(WIN_UNITTEST_LEVEL EQUAL 0)
+        set_tests_properties(test_onednn_conv_bias_fuse_pass PROPERTIES TIMEOUT
+                                                                        300)
+        set_tests_properties(test_onednn_conv_concat_activation_fuse_pass
+                             PROPERTIES TIMEOUT 300)
+        set_tests_properties(test_onednn_multi_gru_fuse_pass PROPERTIES TIMEOUT
+                                                                        120)
+        set_tests_properties(test_onednn_multi_gru_seq_fuse_pass
+                             PROPERTIES TIMEOUT 120)
+      endif()
+    endif()
+    if(WIN32 AND WIN_UNITTEST_LEVEL GREATER 0)
+      message(STATUS "Skip tests unrelated to CUDA/TRT")
+    else()
+      set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 60)
+      set_tests_properties(test_matmul_v2_scale_fuse_pass PROPERTIES TIMEOUT 60)
+      set_tests_properties(test_map_matmul_v2_to_matmul_pass PROPERTIES TIMEOUT
+                                                                        120)
+      set_tests_properties(test_map_matmul_v2_to_mul_pass PROPERTIES TIMEOUT
+                                                                     120)
+      set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 120)
+      set_tests_properties(test_element_groupnorm_act_fuse_pass
                            PROPERTIES TIMEOUT 120)
+      set_tests_properties(test_preln_groupnorm_act_fuse_pass PROPERTIES TIMEOUT
+                                                                         120)
+      set_tests_properties(test_groupnorm_act_pass_fuse_pass PROPERTIES TIMEOUT
+                                                                        120)
+      set_tests_properties(test_split_layernorm_to_math_ops_pass
+                           PROPERTIES TIMEOUT 240)
+      set_tests_properties(test_onednn_conv_bn_fuse_pass PROPERTIES TIMEOUT 120)
+      set_tests_properties(test_onednn_conv_elementwise_add_fuse_pass
+                           PROPERTIES TIMEOUT 120)
+      set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT
+                                                                      120)
+      set_tests_properties(test_onednn_reshape_transpose_matmul_fuse_pass
+                           PROPERTIES TIMEOUT 100)
+      set_tests_properties(test_mkldnn_mish_op PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_mkldnn_conv3d_op PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_mkldnn_prelu_op PROPERTIES TIMEOUT 300)
+
+      set_tests_properties(test_onednn_matmul_transpose_reshape_fuse_pass
+                           PROPERTIES TIMEOUT 100)
+      set_tests_properties(test_conv_transpose_bn_fuse_pass PROPERTIES TIMEOUT
+                                                                       300)
+      set_tests_properties(test_mkldnn_conv_hard_sigmoid_fuse_pass
+                           PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_mkldnn_conv_hard_swish_fuse_pass
+                           PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_onednn_batch_norm_act_fuse_pass
+                           PROPERTIES TIMEOUT 100)
+      set_tests_properties(test_mkldnn_matmul_v2_transpose_reshape_fuse_pass
+                           PROPERTIES TIMEOUT 100)
+      set_tests_properties(test_mkldnn_conv_transpose_bias_fuse_pass
+                           PROPERTIES TIMEOUT 100)
+      set_tests_properties(test_mkldnn_conv_mish_fuse_pass PROPERTIES TIMEOUT
+                                                                      300)
+      set_tests_properties(test_onednn_fc_activation_fuse_pass
+                           PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass
+                           PROPERTIES TIMEOUT 60)
     endif()
   endif()
-  if(WIN32 AND WIN_UNITTEST_LEVEL GREATER 0)
-    message(STATUS "Skip tests unrelated to CUDA/TRT")
-  else()
-    set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 60)
-    set_tests_properties(test_matmul_v2_scale_fuse_pass PROPERTIES TIMEOUT 60)
-    set_tests_properties(test_map_matmul_v2_to_matmul_pass PROPERTIES TIMEOUT
-                                                                      120)
-    set_tests_properties(test_map_matmul_v2_to_mul_pass PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_element_groupnorm_act_fuse_pass PROPERTIES TIMEOUT
-                                                                         120)
-    set_tests_properties(test_preln_groupnorm_act_fuse_pass PROPERTIES TIMEOUT
-                                                                       120)
-    set_tests_properties(test_groupnorm_act_pass_fuse_pass PROPERTIES TIMEOUT
-                                                                      120)
-    set_tests_properties(test_split_layernorm_to_math_ops_pass
-                         PROPERTIES TIMEOUT 240)
-    set_tests_properties(test_onednn_conv_bn_fuse_pass PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_onednn_conv_elementwise_add_fuse_pass
-                         PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_onednn_reshape_transpose_matmul_fuse_pass
-                         PROPERTIES TIMEOUT 100)
-    set_tests_properties(test_mkldnn_mish_op PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_mkldnn_conv3d_op PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_mkldnn_prelu_op PROPERTIES TIMEOUT 300)
-
-    set_tests_properties(test_onednn_matmul_transpose_reshape_fuse_pass
-                         PROPERTIES TIMEOUT 100)
-    set_tests_properties(test_conv_transpose_bn_fuse_pass PROPERTIES TIMEOUT
-                                                                     300)
-    set_tests_properties(test_mkldnn_conv_hard_sigmoid_fuse_pass
-                         PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_mkldnn_conv_hard_swish_fuse_pass
-                         PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_onednn_batch_norm_act_fuse_pass PROPERTIES TIMEOUT
-                                                                         100)
-    set_tests_properties(test_mkldnn_matmul_v2_transpose_reshape_fuse_pass
-                         PROPERTIES TIMEOUT 100)
-    set_tests_properties(test_mkldnn_conv_transpose_bias_fuse_pass
-                         PROPERTIES TIMEOUT 100)
-    set_tests_properties(test_mkldnn_conv_mish_fuse_pass PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_onednn_fc_activation_fuse_pass PROPERTIES TIMEOUT
-                                                                        300)
-    set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass
-                         PROPERTIES TIMEOUT 60)
-  endif()
-endif()
 endif()
