@@ -300,6 +300,7 @@ void PrintOperationImpl(pir::Operation* op,
 void OperatorDialect::initialize() {
   RegisterTypes<paddle::dialect::SelectedRowsType,
                 paddle::dialect::SparseCooTensorType,
+                paddle::dialect::SparseCsrTensorType,
                 paddle::dialect::DenseTensorArrayType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
