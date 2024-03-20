@@ -4614,8 +4614,6 @@ void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
   out->set_dtype(xs[0]->dtype());
 }
 
-
-
 void SvdInferMeta(const MetaTensor& x,
                   bool full_matrices,
                   MetaTensor* u,
