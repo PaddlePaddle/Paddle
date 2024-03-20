@@ -469,10 +469,10 @@ class TestMathOpPatchesPir(unittest.TestCase):
             _, _, program_guard = new_program()
             with program_guard:
                 x = paddle.static.data('x', [2, 3])
-                hash_map = {}
-                key = hash(x)
-                hash_map[key] = True
-                self.assertTrue(hash_map[x])
+            hash_map = {}
+            key = hash(x)
+            hash_map[key] = True
+            self.assertTrue(hash_map[x])
 
     def test_clone(self):
         x_np = np.random.random(size=[100, 10]).astype('float64')
