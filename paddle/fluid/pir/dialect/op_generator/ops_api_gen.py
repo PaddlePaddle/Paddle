@@ -120,6 +120,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
+    'all_reduce',
+    'all_reduce_',
     'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_avg_',
@@ -136,6 +138,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_softmax_with_cross_entropy',
     'c_split',
     'decayed_adagrad',
+    'distributed_push_sparse',
     'distributed_lookup_table',
     'dpsgd',
     'embedding_grad_sparse',
@@ -145,6 +148,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_elemwise_add_activation',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
+    'fused_token_prune',
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
     'nce',
@@ -173,6 +177,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_min_',
     'c_reduce_prod',
     'c_reduce_prod_',
+    'c_scatter',
+    'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',
     'partial_send',

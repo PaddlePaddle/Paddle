@@ -414,7 +414,7 @@ class FusionMergePassHelper : public FusionHelperBase {
     std::unordered_set<GroupPtr, Hasher, Comparator> fuse_consumers_unsafe;
     std::unordered_set<GroupPtr, Hasher, Comparator> fuse_consumers;
     for (const auto& consumer : consumers) {
-      VLOG(4) << "Check consuemr " << consumer->group_id
+      VLOG(4) << "Check consumer " << consumer->group_id
               << " can fuse to producer " << producer->group_id;
       // if can't fuse
       if (!relation.vertical_relation.count(consumer->op_pattern_kind)) {
@@ -1081,7 +1081,7 @@ class FusionMergePassHelper : public FusionHelperBase {
 
 void FusionMergePassInternal(Graph* graph) {
   if (graph->fusion_groups.size() <= 1) {
-    VLOG(3) << "Don't do Fusoin Merge Pass...!";
+    VLOG(3) << "Don't do Fusion Merge Pass...!";
     return;
   }
 

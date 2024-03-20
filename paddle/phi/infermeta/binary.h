@@ -492,6 +492,12 @@ void PriorBoxInferMeta(const MetaTensor& input,
                        MetaTensor* out,
                        MetaTensor* var);
 
+void PruneGateByCapacityInferMeta(const MetaTensor& gate_idx,
+                                  const MetaTensor& expert_count,
+                                  int64_t n_expert,
+                                  int64_t n_worker,
+                                  MetaTensor* new_gate_idx);
+
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
                            bool out_int32,

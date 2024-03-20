@@ -1,3 +1,5 @@
+add_subdirectory(onednn)
+
 file(
   GLOB TEST_INTERP_CASES
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
