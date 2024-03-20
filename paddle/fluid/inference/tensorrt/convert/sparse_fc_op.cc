@@ -116,7 +116,7 @@ class SparseFcOpConverter : public OpConverter {
     PADDLE_ENFORCE_NOT_NULL(
         Y_v,
         platform::errors::NotFound(
-            "Can not find %s presistale var of sparse_fc in scope.", w_name));
+            "Can not find %s presistable var of sparse_fc in scope.", w_name));
     auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")

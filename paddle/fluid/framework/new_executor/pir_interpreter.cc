@@ -81,6 +81,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
+COMMON_DECLARE_int32(low_precision_op_list);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -88,6 +89,21 @@ COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 
 namespace paddle {
 namespace framework {
+
+void RecordLowPrecisionOp(const InstructionBase* instr_node) {
+  if (FLAGS_low_precision_op_list) {
+    std::string op_name = instr_node->Name();
+    ::pir::Operation* op = instr_node->Operation();
+    if (op->HasAttribute("kernel_key")) {
+      phi::KernelKey kernel_key =
+          op->attribute("kernel_key")
+              .dyn_cast<paddle::dialect::KernelAttribute>()
+              .data();
+      phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
+          op_name, kernel_key.dtype());
+    }
+  }
+}
 
 PirInterpreter::PirInterpreter(const platform::Place& place,
                                const std::vector<std::string>& fetch_var_names,
@@ -145,7 +161,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
 #endif
 }
@@ -299,7 +315,7 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
 
 std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
   double start_time = 0, end_time = 0;
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   start_time = calculate_stream_timer_->StartTime();
   end_time = calculate_stream_timer_->EndTime();
 #endif
@@ -337,7 +353,7 @@ std::shared_ptr<interpreter::AsyncWorkQueue> PirInterpreter::GetWorkQueue() {
 
 void PirInterpreter::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       platform::IsCUDAGraphCapturing(),
       false,
@@ -362,7 +378,7 @@ void PirInterpreter::PrepareForCUDAGraphCapture() {
 
 void PirInterpreter::CheckCUDAGraphBeforeRun(
     const std::vector<std::string>& feed_names) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::IsCUDAGraphCapturing()) {
     PADDLE_ENFORCE_EQ(
         feed_names.empty(),
@@ -439,10 +455,12 @@ void PirInterpreter::UpdateNcclOpNum() {
   static std::set<std::string> nccl_op_set = {
       "pd_op.c_softmax_with_cross_entropy",
       "pd_op.c_allgather",
+      "pd_op.c_allreduce_avg",
       "pd_op.c_allreduce_max",
       "pd_op.c_allreduce_min",
       "pd_op.c_allreduce_sum",
       "pd_op.c_allreduce_prod",
+      "pd_op.c_reduce_avg",
       "pd_op.c_reduce_max",
       "pd_op.c_reduce_min",
       "pd_op.c_reduce_prod",
@@ -509,10 +527,12 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.reduce_grad",
       "pd_op.c_softmax_with_cross_entropy_",
       "pd_op.c_allgather_",
+      "pd_op.c_allreduce_avg_",
       "pd_op.c_allreduce_max_",
       "pd_op.c_allreduce_min_",
       "pd_op.c_allreduce_sum_",
       "pd_op.c_allreduce_prod_",
+      "pd_op.c_reduce_avg_",
       "pd_op.c_reduce_max_",
       "pd_op.c_reduce_min_",
       "pd_op.c_reduce_prod_",
@@ -861,7 +881,7 @@ std::string PirInterpreter::DebugValueInfo() {
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
-                       "vlaue(%s) should not be nullptr", kv.second));
+                       "var(%s) should not be nullptr", kv.second));
     PADDLE_ENFORCE(value_exe_info_->HasVar(kv.second),
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
@@ -1720,7 +1740,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
   try {
     instr_node->WaitEvent(cur_place);
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (enable_job_schedule_profiler_) {
       std::string op_name = instr_node->Name();
       ::pir::Operation* op = instr_node->Operation();
@@ -1731,6 +1751,9 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       }
     }
 #endif
+
+    RecordLowPrecisionOp(instr_node);
+
     VLOG(2) << "\nbegin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"
             << (instr_node->KernelType() == OpFuncType::kCpuSync
@@ -1768,7 +1791,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     }
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(cur_place);
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (enable_job_schedule_profiler_) {
       if (instr_node->Id() == last_calculate_instr_id_ &&
           calculate_stream_timer_->IsStarted()) {
@@ -1785,13 +1808,13 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     framework::InsertCallStackInfo(op->name(), op_callstack_attr, &ex);
     LOG(WARNING) << " OP id:" << instr_node->Id() << " " << instr_node->Name()
                  << " raises an EnforceNotMet exception "
-                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+                 << platform::demangle(typeid(ex).name());
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
     LOG(WARNING) << instr_node->Name() << " raises an exception "
-                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+                 << platform::demangle(typeid(ex).name());
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
     LOG(WARNING) << instr_node->Name() << " raises an unknown exception";

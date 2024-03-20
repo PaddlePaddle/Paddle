@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/utils/string/printf.h"
 
 #define Conn(x, y) x##y
 
