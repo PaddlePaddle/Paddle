@@ -31,7 +31,6 @@ from paddle.base.dygraph.base import (
     _convert_into_variable,
     in_declarative_mode,  # noqa: F401
     in_to_static_mode,
-    program_desc_tracing_guard,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
 from paddle.base.executor import Executor, global_scope
@@ -1396,8 +1395,7 @@ class Layer:
                 inputs = hook_result
 
         if not self._built:
-            with program_desc_tracing_guard(False):
-                self._build_once(*inputs, **kwargs)
+            self._build_once(*inputs, **kwargs)
 
             self._built = True
 

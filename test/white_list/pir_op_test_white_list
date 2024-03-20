@@ -117,6 +117,7 @@ test_fused_fc_elementwise_layernorm_op
 test_fused_feedforward_op
 test_fused_gate_attention_op
 test_fused_multihead_matmul_op
+test_fused_token_prune_op
 test_fusion_seqexpand_concat_fc_op
 test_fusion_transpose_flatten_concat_op
 test_gather_nd_op
@@ -201,6 +202,7 @@ test_one_hot_v2_op
 test_one_hot_v2_op_static_build
 test_overlap_add_op
 test_pad3d_op
+test_partial_sum_op
 test_pass_quantization
 test_pixel_shuffle_op
 test_poisson_op
@@ -245,6 +247,7 @@ test_sigmoid_cross_entropy_with_logits_op
 test_sign_op
 test_size_op
 test_slice_op
+test_softmax_mask_fuse_op
 test_softmax_mask_fuse_upper_triangle_op
 test_softmax_op
 test_solve_op

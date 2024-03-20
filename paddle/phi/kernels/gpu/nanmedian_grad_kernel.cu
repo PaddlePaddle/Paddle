@@ -30,17 +30,13 @@ inline int GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__global__ void KernelNanmedianGrad(const T* x_data,
-                                    const int64_t* medians_ptr,
-                                    const T* out_grad_ptr,
-                                    T* dx_data,
-                                    int64_t stride,
-                                    int64_t pre_dim) {
+__global__ void KernelNanmedianMeanGrad(const int64_t* medians_ptr,
+                                        const T* out_grad_ptr,
+                                        T* dx_data,
+                                        int64_t stride,
+                                        int64_t pre_dim) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t offset = index * stride;
-    printf("index: %d\n", index);
-    printf("medians_ptr[2 * index]: %d\n", medians_ptr[2 * index]);
-    printf("medians_ptr[2 * index+1]: %d\n", medians_ptr[2 * index + 1]);
 
     if (medians_ptr[2 * index] >= 0) {
       if (medians_ptr[2 * index] == medians_ptr[2 * index + 1]) {
@@ -55,18 +51,34 @@ __global__ void KernelNanmedianGrad(const T* x_data,
   }
 }
 
+template <typename T>
+__global__ void KernelNanmedianMinGrad(const int64_t* medians_ptr,
+                                       const T* out_grad_ptr,
+                                       T* dx_data,
+                                       int64_t stride,
+                                       int64_t pre_dim) {
+  CUDA_KERNEL_LOOP(index, pre_dim) {
+    int64_t offset = index * stride;
+
+    if (medians_ptr[index] >= 0) {
+      dx_data[offset + medians_ptr[index]] = out_grad_ptr[index];
+    }
+  }
+}
+
 template <typename T, typename Context>
 void CalcMedianGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& median_index,
                           const DenseTensor& out_grad,
+                          const std::string& mode,
                           DenseTensor* x_grad) {
   T* dx_data = dev_ctx.template Alloc<T>(x_grad);
   if (!dx_data) return;
 
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
-  VLOG(0) << "x_grad->dims():  " << x_grad->dims();
+  // VLOG(0) << "x_grad->dims():  " << x_grad->dims();
 
   auto stream = dev_ctx.stream();
   const T* x_data = x.data<T>();
@@ -79,9 +91,15 @@ void CalcMedianGradKernel(const Context& dev_ctx,
   int64_t stride = x_dim[x_rank - 1];
   int64_t pre_dim = numel / stride;
 
-  KernelNanmedianGrad<T>
-      <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          x_data, m_data, out_grad_ptr, dx_data, stride, pre_dim);
+  if (mode == "avg") {
+    KernelNanmedianMeanGrad<T>
+        <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+            m_data, out_grad_ptr, dx_data, stride, pre_dim);
+  } else {  // mode == "min"
+    KernelNanmedianMinGrad<T>
+        <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+            m_data, out_grad_ptr, dx_data, stride, pre_dim);
+  }
 }
 
 template <typename T, typename Context>
@@ -91,6 +109,7 @@ void NanmedianGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const IntArray& axes,
                          bool keepdim UNUSED,
+                         const std::string& mode,
                          DenseTensor* x_grad) {
   DenseTensor tmp_x;
   auto rank = x.dims().size();
@@ -98,14 +117,14 @@ void NanmedianGradKernel(const Context& dev_ctx,
     tmp_x = x;
     tmp_x.Resize({x.numel()});
     CalcMedianGradKernel<T, Context>(
-        dev_ctx, tmp_x, median_index, out_grad, x_grad);
+        dev_ctx, tmp_x, median_index, out_grad, mode, x_grad);
   } else {
     funcs::PreprocessMedianKernel<T, Context>(dev_ctx, x, axes, &tmp_x);
 
     DenseTensor tmp_x_grad;
     tmp_x_grad.Resize(x_grad->dims());
     CalcMedianGradKernel<T, Context>(
-        dev_ctx, tmp_x, median_index, out_grad, &tmp_x_grad);
+        dev_ctx, tmp_x, median_index, out_grad, mode, &tmp_x_grad);
 
     dev_ctx.template Alloc<T>(x_grad);
     funcs::PostprocessMedianGradKernel<T, Context>(

@@ -22,6 +22,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 
 #ifdef CINN_WITH_CUDNN
@@ -294,7 +295,8 @@ bool GetCinnCudnnDeterministic() {
 #ifdef CINN_WITH_CUDNN
   return FLAGS_cinn_cudnn_deterministic;
 #else
-  LOG(FATAL) << "CINN is compiled without cuDNN, this api is invalid!";
+  PADDLE_THROW(phi::errors::Fatal(
+      "CINN is compiled without cuDNN, this api is invalid!"));
   return false;
 #endif
 }
@@ -341,8 +343,9 @@ cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
   if (!IsCompiledWithCUDA() &&
       target.arch == cinn::common::Target::Arch::NVGPU) {
-    LOG(FATAL) << "Current CINN version does not support NVGPU, please try to "
-                  "recompile with -DWITH_CUDA.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "Current CINN version does not support NVGPU, please try to "
+        "recompile with -DWITH_CUDA."));
   } else {
     target_ = target;
   }

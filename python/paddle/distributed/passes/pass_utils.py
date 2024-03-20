@@ -26,6 +26,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
     is_optimize_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     use_new_executor,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -785,3 +786,172 @@ def _add_event_dependency(recorder_op, waiter_op):
     if recorder_op.dist_attr.event_to_record not in waiter_wait_list:
         waiter_wait_list.append(recorder_op.dist_attr.event_to_record)
         waiter_op.dist_attr.events_to_wait = waiter_wait_list
+
+
+def _insert_reshape_op(
+    block,
+    index,
+    x,
+    shape,
+    op_role,
+    dist_context,
+    out=None,
+    op_namescope="/",
+):
+    var_x = block.var(x[0])
+    x_dist_attr = dist_context.get_tensor_dist_attr_for_program(var_x)
+
+    if out is None:
+        out = block.create_var(
+            name=f"{x[0]}@reshape.out",
+            dtype=var_x.dtype,
+            persistable=False,
+        )
+        dist_context.set_tensor_dist_attr_for_program(out, x_dist_attr)
+
+    x_shape = block.create_var(name=f"{x[0]}@reshape.xshape", dtype=var_x.dtype)
+    dist_context.set_tensor_dist_attr_for_program(x_shape, x_dist_attr)
+
+    reshape_op = block._insert_op_without_sync(
+        index=index,
+        type="reshape2",
+        inputs={"X": x},
+        outputs={"Out": out, "XShape": x_shape},
+        attrs={
+            "shape": shape,
+            "op_role": op_role,
+            'op_namescope': op_namescope,
+        },
+    )
+
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+        reshape_op,
+        process_mesh=x_dist_attr.process_mesh,
+        ref_mapping=x_dist_attr.dims_mapping,
+        ctx=dist_context,
+        chunk_id=x_dist_attr.chunk_id,
+    )
+
+    return out
+
+
+def split_matmul_grad_to_matmul(
+    block, matmul_grad_id, dist_context, op_namescope="/"
+):
+    ops = block.ops
+    matmul_grad_op = ops[matmul_grad_id]
+
+    tran_x = matmul_grad_op.attr("trans_x")
+    assert (
+        not tran_x
+    ), f"matmul_grad(id={matmul_grad_id}) with tran_x == True is not supported for spliting matmul_grad to matmul"
+    tran_y = matmul_grad_op.attr("trans_y")
+    assert (
+        not tran_y
+    ), f"matmul_grad(id={matmul_grad_id}) with tran_y == True is not supported for spliting matmul_grad to matmul"
+
+    x = matmul_grad_op.input("X")
+    y = matmul_grad_op.input("Y")
+    out_grad = matmul_grad_op.input("Out@GRAD")
+    x_grad = matmul_grad_op.output("X@GRAD")
+    y_grad = matmul_grad_op.output("Y@GRAD")
+    op_role = matmul_grad_op.attr("op_role")
+
+    var_x = block.var(x[0])
+    var_out_grad = block.var(out_grad[0])
+    var_y_grad = block.var(y_grad[0])
+
+    x_dims = var_x.shape
+    out_grad_dims = var_out_grad.shape
+    y_grad_dims = var_y_grad.shape
+
+    assert len(x_dims) == len(
+        out_grad_dims
+    ), f"The rank of x must be equal to that of out_grad, but got x rank = {len(x_dims)} and out_grad rank = {len(out_grad_dims)}."
+    if len(x_dims) > 2:
+        assert (
+            x_dims[0:2] == out_grad_dims[0:2]
+        ), f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
+    new_x_dims = [x_dims[0] * x_dims[1]] + list(x_dims[2:])
+    new_out_grad_dims = [out_grad_dims[0] * out_grad_dims[1]] + list(
+        out_grad_dims[2:]
+    )
+
+    # NOTE(Ruibiao): Why insert reshape op here?
+    # When the rank of input matrix is 3, MatmulGradKernel use reshape to fold the first two dimensions of x and out_grad (see FoldInitDims in matmul_grad_kernel_impl.h), and then calls blas.Matmul to calculate y_grad.
+    # If we directly append matmul op to calculate y_grad without FoldInitDims, blas.BatchedGEMM is actually called in MatmulKernel, which has a larger cost than using blas.Matmul after dimension folding.
+    # Therefore, we imitate MatmulGradKernel here by inserting reshape op before matmul.
+    new_x = _insert_reshape_op(
+        block,
+        matmul_grad_id + 1,
+        x,
+        new_x_dims,
+        op_role,
+        dist_context=dist_context,
+        op_namescope=op_namescope,
+    )
+    new_out_grad = _insert_reshape_op(
+        block,
+        matmul_grad_id + 2,
+        out_grad,
+        new_out_grad_dims,
+        op_role,
+        dist_context=dist_context,
+        op_namescope=op_namescope,
+    )
+    new_y_grad = block.create_var(
+        name=f"{y_grad[0]}@reshape.out",
+        dtype=var_y_grad.dtype,
+        persistable=False,
+    )
+
+    dist_context.set_tensor_dist_attr_for_program(
+        new_y_grad,
+        dist_context.get_tensor_dist_attr_for_program(var_y_grad),
+    )
+
+    matmul_grad_dist_attr = dist_context.get_op_dist_attr_for_program(
+        matmul_grad_op
+    )
+
+    matmul_op = block._insert_op_without_sync(
+        index=matmul_grad_id + 3,
+        type="matmul_v2",
+        inputs={"X": new_x, "Y": new_out_grad},
+        outputs={"Out": new_y_grad},
+        attrs={
+            "trans_x": True,
+            "trans_y": False,
+            "op_role": op_role,
+            'op_namescope': op_namescope,
+        },
+    )
+
+    dist_context.set_op_dist_attr_for_program(matmul_op, matmul_grad_dist_attr)
+    _insert_reshape_op(
+        block,
+        matmul_grad_id + 4,
+        [new_y_grad.name],
+        y_grad_dims,
+        op_role,
+        dist_context=dist_context,
+        out=y_grad,
+        op_namescope=op_namescope,
+    )
+
+    matmul_op = block._insert_op_without_sync(
+        index=matmul_grad_id + 1,
+        type="matmul_v2",
+        inputs={"X": out_grad, "Y": y},
+        outputs={"Out": x_grad},
+        attrs={
+            "trans_x": False,
+            "trans_y": True,
+            "op_role": op_role,
+            'op_namescope': op_namescope,
+        },
+    )
+
+    dist_context.set_op_dist_attr_for_program(matmul_op, matmul_grad_dist_attr)
+
+    block._remove_op(matmul_grad_id, sync=False)

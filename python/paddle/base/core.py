@@ -546,6 +546,14 @@ def _enable_prim_dynamic_shape():
         return False
 
 
+def _enable_auto_recompute():
+    flag = os.getenv("FLAGS_enable_auto_recompute")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
 def _set_prim_forward_blacklist(*args):
     for item in args:
         if not isinstance(item, str):

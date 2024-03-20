@@ -139,7 +139,7 @@ std::vector<framework::shape_t> UpdateInferInfos(
 }
 
 void AlterLayoutPass(Graph* graph) {
-  // alterlayout only in X86 for it's specific layout requirements
+  // alter layout only in X86 for it's specific layout requirements
   if (graph->target_.arch == Target::Arch::X86) {
     auto store_nodes = std::get<0>(graph->topological_order());
     auto& shape_dict = graph->GetMutableAttrs<
@@ -261,9 +261,10 @@ void AlterLayoutPass(Graph* graph) {
           } else if (input_shape.size() == 5) {
             ic = input_shape[1] * input_shape[4];
           } else {
-            LOG(FATAL)
-                << "conv2d's input shape should be 4D/5D. Wrong input shape: "
-                << utils::Join(input_shape, ", ");
+            std::stringstream ss;
+            ss << "conv2d's input shape should be 4D/5D. Wrong input shape: "
+               << utils::Join(input_shape, ", ");
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
           }
 
           if (weight_shape.size() == 4) {
@@ -273,9 +274,10 @@ void AlterLayoutPass(Graph* graph) {
             oc = weight_shape[0] * weight_shape[5];
             fc = weight_shape[1] * weight_shape[4];
           } else {
-            LOG(FATAL)
-                << "conv2d's weight shape should be 4D/6D. Wrong weight shape: "
-                << utils::Join(weight_shape, ", ");
+            std::stringstream ss;
+            ss << "conv2d's weight shape should be 4D/6D. Wrong weight shape: "
+               << utils::Join(weight_shape, ", ");
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
           }
           VLOG(3) << "oc: " << oc;
           VLOG(3) << "ic: " << ic;
@@ -603,7 +605,7 @@ void AlterLayoutPass(Graph* graph) {
               } else if (input_shape_size == 5 &&
                          new_input_layouts[i].size() == 4) {
                 // NCHWxc -> NCHW
-                // insert layout tranfrom
+                // insert layout transform
                 auto source = inlinks[i]->source();
                 auto src_layout = input_layouts[i];
                 layout_dict[source->id()] = src_layout;
