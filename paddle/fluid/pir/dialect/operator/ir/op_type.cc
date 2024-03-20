@@ -104,7 +104,9 @@ bool SparseCooTensorType::coalesced() const { return storage()->coalesced_; }
 
 bool SparseCooTensorType::classof(Type type) {
   if (type) {
-    if (type.type_id() == type_id()) return true;
+    if (type.type_id() == type_id()) {
+      return true;
+    }
     if (auto wrap_type = type.dyn_cast<pir::WrapTypeInterface>()) {
       return classof(wrap_type.prim_type());
     }
