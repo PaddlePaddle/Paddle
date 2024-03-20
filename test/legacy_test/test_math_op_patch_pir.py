@@ -464,12 +464,15 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     (output_x,) = exe.run(main_program, fetch_list=[x_T])
                     self.assertEqual(output_x.shape, tuple(out_shape))
 
-    def test_hash_error(self):
+    def test_hash(self):
         with paddle.pir_utils.IrGuard():
             _, _, program_guard = new_program()
             with program_guard:
                 x = paddle.static.data('x', [2, 3])
-                self.assertRaises(NotImplementedError, hash, x)
+                hash_map = {}
+                key = hash(x)
+                hash_map[key] = True
+                self.assertTrue(hash_map[x])
 
     def test_clone(self):
         x_np = np.random.random(size=[100, 10]).astype('float64')
