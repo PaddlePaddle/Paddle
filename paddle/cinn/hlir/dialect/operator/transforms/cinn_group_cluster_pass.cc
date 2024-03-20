@@ -841,17 +841,8 @@ struct GetPatternOpList {
 
 std::vector<GroupClusterNode> NewOpMergeWithOp(
     cinn::dialect::GroupOp group_op) {
-  const auto& ops = [&] {
-    std::vector<const pir::Operation*> ops;
-    for (const auto& op : *group_op.block()) {
-      ops.push_back(&op);
-    }
-    return ops;
-  }();
-
   VLOG(4) << "Start Clustering Ops!";
-  const auto cluster_result = frontend::ClusterOps(
-      ops, std::move(shardable_axes_provider), std::move(cluster_policy));
+  const auto cluster_result = frontend::ClusterOps(group_op);
   VLOG(4) << "Finished Clustering Ops!";
 
   // Each stmts corresponds to each fusion op(cluster node).

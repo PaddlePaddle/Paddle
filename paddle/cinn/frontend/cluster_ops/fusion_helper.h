@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/cluster_ops/common_utils.h"
 #include "paddle/cinn/frontend/cluster_ops/group_pattern.h"
 #include "paddle/cinn/frontend/cluster_ops/pattern_utils.h"
-#include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 
 namespace cinn::frontend::cluster_ops {
 
@@ -110,10 +108,9 @@ class StmtFusionHelper {
   std::optional<ErrorGroupPattern> FuseFilteredStmtPatterns(
       std::vector<StmtPattern>* stmt_patterns)
 
-  ShardableAxesSignature GetShardableAxesSignature(const OpTopo& op_topo)
+      ShardableAxesSignature GetShardableAxesSignature(const OpTopo& op_topo)
 
- private:
-  std::vector<const pir::Operation*> ops_;
+          private : std::vector<const pir::Operation*> ops_;
   ShardableAxesInferer shardable_axes_inferer_;
   OpTopo op_topo_;
   std::function<bool(const pir::Operation*)> IsInThisOpList;
@@ -121,4 +118,4 @@ class StmtFusionHelper {
   std::function<size_t(const pir::Operation*)> GetOrderValue4Op;
 };
 
-} // namespace cinn::frontend::cluster_ops
+}  // namespace cinn::frontend::cluster_ops

@@ -12,33 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/cinn/frontend/cluster_ops/clustering_engine.h"
+
 namespace cinn::api {
 
-
+frontend::cluster_ops::ClusteringResult ClusterOps(
+    const cinn::dialect::GroupOp& group_op) {
+  const auto& ops = [&] {
+    std::vector<const pir::Operation*> ops;
+    for (const auto& op : *group_op.block()) {
+      ops.push_back(&op);
+    }
+    return ops;
+  }();
 
   auto shardable_axes_provider = [&] {
     auto* program = group_op->GetParentProgram();
     const auto* shape_analysis =
         &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::MakeDefaultShardableAxesProvider(shape_analysis);
+    return frontend::cluster_ops::MakeDefaultShardableAxesProvider(
+        shape_analysis);
   }();
 
   auto cluster_policy = [&] {
     auto* program = group_op->GetParentProgram();
     const auto* shape_analysis =
         &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::MakeLoopAlignableClusteringPolicy(shape_analysis);
+    return frontend::cluster_ops::MakeLoopAlignableClusteringPolicy(
+        shape_analysis);
   }();
 
-ClusteringResult ClusterOps(
-    const std::vector<const pir::Operation*>& ops,
-    const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider,
-    const std::shared_ptr<ClusteringPolicy>& clustering_policy) {
-  VLOG(4) << "Initializing Inferer";
-  ShardableAxesInferer inferer(shardable_axes_provider);
-  VLOG(4) << "Initializing Clustering Engine";
-  ClusteringEngine engine(ops, inferer, clustering_policy);
-  VLOG(4) << "Engine calls ClusterOps()";
+  frontend::cluster_ops::ShardableAxesInferer inferer(shardable_axes_provider);
+  frontend::cluster_ops::ClusteringEngine engine(ops, inferer, cluster_policy);
+
   return engine.ClusterOps();
 }
-}
+}  // namespace cinn::api

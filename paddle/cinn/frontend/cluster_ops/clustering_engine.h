@@ -19,22 +19,29 @@
 #include "paddle/cinn/frontend/cluster_ops/pattern_utils.h"
 #include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 
-
 namespace cinn::frontend::cluster_ops {
+
+struct LoopAlignableStmtsPattern {
+  std::vector<api::StmtPattern<FrontendPattern>> stmts;
+};
+
+struct ClusteringResult {
+  std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
+};
 
 class ClusteringEngine {
  public:
   ClusteringEngine(const std::vector<const pir::Operation*>& ops,
                    const ShardableAxesInferer& shardable_axes_inferer,
                    const std::shared_ptr<ClusteringPolicy>& clustering_policy);
-               
+
   ClusteringResult ClusterOps();
 
  private:
   void SortStmtsList(
       std::vector<std::vector<const StmtPattern*>>* stmt_ptrs,
       const std::function<size_t(const pir::Operation*)>& OrderValue4Op);
-      
+
   template <typename DoEachComponentT>
   void VisitConnectedComponent(
       const common::BfsWalker<const StmtPattern*>& walker,
@@ -117,4 +124,4 @@ class ClusteringEngine {
   const OpTopo op_topo_;
 };
 
-} // namespace cinn::frontend::cluster_ops
+}  // namespace cinn::frontend::cluster_ops

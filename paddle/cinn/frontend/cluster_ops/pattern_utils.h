@@ -14,9 +14,7 @@
 
 #prgama once
 
-#include "paddle/cinn/frontend/cluster_ops/common_utils.h"
 #include "paddle/cinn/frontend/cluster_ops/group_pattern.h"
-#include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 
 namespace cinn::frontend::cluster_ops {
 
@@ -94,7 +92,6 @@ pir::Value GetStmtBigestShapeValue(const StmtPattern& stmt) {
       stmt);
 }
 
-
 const pir::Operation* GetStmtSoleSinkImpl(const IS& injective_source) {
   return injective_source.sole_sink;
 }
@@ -120,6 +117,6 @@ common::TopoWalker<const StmtPattern*> MakeTopoWalker(
     const OpTopo& op_topo, const std::vector<StmtPattern>& stmt_patterns);
 
 std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
-  const OpTopo& op_topo);
+    const OpTopo& op_topo);
 
-} // namespace cinn::frontend::cluster_ops
+}  // namespace cinn::frontend::cluster_ops

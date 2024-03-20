@@ -14,13 +14,18 @@
 
 #prgama once
 
-#include "paddle/cinn/common/bfs_walker.h"
-#include "paddle/cinn/common/topo_walker.h"
-
 #include <algorithm>
+#include <atomic>
 #include <optional>
 #include <typeinfo>
+#include <unordered_map>
 #include <variant>
+#include <vector>
+
+#include "glog/logging.h"
+
+#include "paddle/cinn/common/bfs_walker.h"
+#include "paddle/cinn/common/topo_walker.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -33,7 +38,6 @@ using OpSet = std::unordered_set<const pir::Operation*>;
 using OpSetPtr = std::shared_ptr<OpSet>;
 using OpVisitor = std::function<void(const pir::Operation*)>;
 using OpPatternKind = cinn::hlir::framework::OpPatternKind;
-
 
 OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
   return hlir::framework::pir::CompatibleInfo::OpKind(*node);
@@ -103,4 +107,4 @@ struct OpTopo {
 std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
     const std::vector<const pir::Operation*>& ops);
 
-} // namespace cinn::frontend::cluster_ops
+}  // namespace cinn::frontend::cluster_ops
