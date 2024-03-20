@@ -24,8 +24,8 @@ bool ShouldUseData(pir::Value val) {
 }
 
 bool InferSymbolicShapeElementWiseBinary(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &x_shapeordata =
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  const auto& x_shapeordata =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   std::vector<symbol::DimExpr> shape_0;
   // For ElementWiseBinary ops, if the input tensor is from full op, the value
@@ -37,7 +37,7 @@ bool InferSymbolicShapeElementWiseBinary(
     shape_0 = x_shapeordata.shape();
   }
 
-  const auto &y_shapeordata =
+  const auto& y_shapeordata =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
   std::vector<symbol::DimExpr> shape_1;
   if (ShouldUseData(op->operand_source(1)) &&
@@ -64,9 +64,11 @@ bool InferSymbolicShapeElementWiseBinary(
     for (size_t i = 0; i < shape_0.size(); i++) {
       if (shape_0[i] == shape_1[i]) {
         shapes.emplace_back(shape_0[i]);
-      } else if (shape_0[i] == 1) {
+      } else if (shape_0[i] == 1 ||
+                 symbol::IsDimExprGreaterThanOne(shape_1[i])) {
         shapes.emplace_back(shape_1[i]);
-      } else if (shape_1[i] == 1) {
+      } else if (shape_1[i] == 1 ||
+                 symbol::IsDimExprGreaterThanOne(shape_0[i])) {
         shapes.emplace_back(shape_0[i]);
       } else {
         shapes.emplace_back(builder.Broadcast(shape_0[i], shape_1[i]));
@@ -86,7 +88,7 @@ bool InferSymbolicShapeElementWiseBinary(
 
 #define OP_ELEMENT_WISE_BINARY(name)                                        \
   bool name##OpInferSymbolicShape(                                          \
-      pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) { \
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) { \
     return InferSymbolicShapeElementWiseBinary(op, shape_analysis);         \
   }
 

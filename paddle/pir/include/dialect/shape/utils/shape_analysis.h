@@ -25,6 +25,18 @@
 
 namespace pir {
 
+class UnionFindSet {
+ public:
+  const symbol::DimExpr& Find(const symbol::DimExpr& x);
+
+  void Union(const symbol::DimExpr& p, const symbol::DimExpr& q);
+
+  std::vector<std::vector<symbol::DimExpr>> Clusters();
+
+ private:
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> parent_;
+};
+
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
@@ -58,6 +70,12 @@ class IR_API ShapeConstraintIRAnalysis {
                       Value rhs,
                       const std::vector<int>& rhs_dim_idxs) const;
 
+  void AddEqCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
+  bool IsDimExprEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
+  void PrintDimExprClusters();
+
   // Returns true if:
   //    lhs.shape[lhs_from] * ... lhs.shape[lhs_to-1] ==
   //    rhs.shape[rhs_from] * ... rhs.shape[rhs_to-1]
@@ -77,12 +95,12 @@ class IR_API ShapeConstraintIRAnalysis {
                                     const std::vector<int>& lhs_dim_idxs) const;
 
  private:
-  ModuleOp m_;
-
   int64_t next_sym_idx_ = 0;
 
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_;
+
+  UnionFindSet eq_cstr_set;
 
   std::vector<symbol::DimExprConstraint> constraints_;
 };
