@@ -5583,7 +5583,8 @@ void ArrayPopInferMeta(const MetaTensor& array,
 void FakeQuantizeInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaTensor* out_scale) {
-  UnchangedInferMeta(x, out);
+  // UnchangedInferMeta(x, out);
+  out->set_dims(x.dims());
   out_scale->set_dims({1});
 }
 

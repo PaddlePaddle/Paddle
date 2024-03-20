@@ -1795,7 +1795,7 @@
     data_type: x
 
 - op: fake_quantize_abs_max
-  args: (Tensor x, int bit_length = 8)
+  args: (Tensor x, int bit_length = 8, int round_type = 0)
   output: Tensor(out), Tensor(out_scale)
   infer_meta:
     func: FakeQuantizeInferMeta
@@ -1803,6 +1803,17 @@
   kernel:
     func: fake_quantize_abs_max
     data_type: x
+
+- op: fake_quantize_dequantize_abs_max
+  args: (Tensor x, int bit_length = 8, int round_type = 0)
+  output: Tensor(out), Tensor(out_scale)
+  infer_meta:
+    func: FakeQuantizeInferMeta
+    param: [x]
+  kernel:
+    func: fake_quantize_dequantize_abs_max
+    data_type: x
+  backward : straight_through_estimator_grad
 
 - op: fake_quantize_moving_average_abs_max
   args: (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false)
