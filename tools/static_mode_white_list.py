@@ -341,7 +341,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_norm_all',
     'test_norm_nn_grad',
     'test_norm_op',
-    'test_normal',
+    'test_normal1',
     'test_normalization_wrapper',
     'test_npair_loss_op',
     'test_numel_op',
