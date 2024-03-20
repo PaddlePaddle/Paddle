@@ -54,13 +54,13 @@ void elementwise_add(const Instruction& instr,
                      const DecomposerContext& context) {
   PADDLE_ENFORCE_EQ(instr->inputs.size(),
                     2UL,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of inputs in elementwise_add is incorrect. "
                         "Expected size is 2, but receive %d. ",
                         instr->inputs.size()));
   PADDLE_ENFORCE_EQ(instr->outputs.size(),
                     1UL,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of outputs in elementwise_add is incorrect. "
                         "Expected size is 1, but receive %d. ",
                         instr->outputs.size()));
@@ -132,14 +132,14 @@ void elementwise_add_grad(const Instruction& instr,
   PADDLE_ENFORCE_EQ(
       instr->inputs.size(),
       3UL,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of inputs in elementwise_add_grad is incorrect. "
           "Expected size is 3, but receive %d. ",
           instr->inputs.size()));
   PADDLE_ENFORCE_EQ(
       instr->outputs.size(),
       2UL,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of outputs in elementwise_add_grad is incorrect. "
           "Expected size is 2, but receive %d. ",
           instr->outputs.size()));
