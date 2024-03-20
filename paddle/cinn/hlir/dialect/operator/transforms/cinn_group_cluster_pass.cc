@@ -28,8 +28,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 
-#include "paddle/cinn/frontend/group_pattern.h"
-#include "paddle/cinn/frontend/group_pattern_util.h"
+#include "paddle/cinn/frontend/cluster_ops/cluster_ops.h"
+#include "paddle/cinn/frontend/cluster_ops/group_pattern.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
