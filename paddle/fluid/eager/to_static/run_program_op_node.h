@@ -201,8 +201,8 @@ static void ShareTensorsIntoScopeWithName(
     const std::vector<std::string> &tensor_names,
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
-    VLOG(4) << "Share Tensor Into Scope: " << i;
     auto name = tensor_names[i];
+    VLOG(4) << "Share Tensor Into Scope: " << name;
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
       continue;
@@ -235,6 +235,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
       [&](const std::vector<Tensor> &tensors) {
         std::vector<std::string> names;
         for (auto &t : tensors) {
+          VLOG(0) << "Tensor name is: " << t.name();
           names.push_back(t.name());
         }
         return names;
@@ -622,6 +623,9 @@ inline void RunProgramAPI(
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
     const int64_t &place_hash_key) {
+  for (auto p : params) {
+    VLOG(0) << "param name: " << p.name();
+  }
   VLOG(2) << "RunProgramOpKernel Compute";
   // In the original run_program OP, the default value of the is_test
   // attribute is false, we should check if there is is_test parameter
