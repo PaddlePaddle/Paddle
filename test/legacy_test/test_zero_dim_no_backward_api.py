@@ -260,7 +260,9 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
-        self.shape = [
+
+    def create_dynamic_shape(self):
+        return [
             paddle.full([], 2, 'int32'),
             paddle.full([], 3, 'int32'),
             paddle.full([], 4, 'int32'),
@@ -316,7 +318,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         std = paddle.full([], 0.0)
         out1 = paddle.normal(mean, std)
         out2 = paddle.normal(0.0, 1.0, [])
-        out3 = paddle.normal(0.0, 1.0, self.shape)
+        out3 = paddle.normal(0.0, 1.0, self.create_dynamic_shape())
 
         res = self.exe.run(
             paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
@@ -325,25 +327,33 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_rand(self):
-        out1 = paddle.rand([])
-        out2 = paddle.rand(self.shape)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            out1 = paddle.rand([])
+            out2 = paddle.rand(self.create_dynamic_shape())
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2]
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, (2, 3, 4))
+            res = paddle.static.Executor().run(
+                main_program, fetch_list=[out1, out2]
+            )
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_randn(self):
-        out1 = paddle.randn([])
-        out2 = paddle.randn(self.shape)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            out1 = paddle.randn([])
+            out2 = paddle.randn(self.create_dynamic_shape())
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2]
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, (2, 3, 4))
+            res = paddle.static.Executor().run(
+                main_program, fetch_list=[out1, out2]
+            )
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, (2, 3, 4))
 
     @test_with_pir_api
     def test_randint(self):
@@ -381,76 +391,102 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
+    @test_with_pir_api
     def test_standard_normal(self):
-        out1 = paddle.standard_normal([])
-        out2 = paddle.standard_normal(self.shape)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            out1 = paddle.standard_normal([])
+            out2 = paddle.standard_normal(self.create_dynamic_shape())
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2]
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, (2, 3, 4))
+            res = paddle.static.Executor().run(
+                main_program, fetch_list=[out1, out2]
+            )
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_uniform(self):
-        out1 = paddle.uniform([])
-        out2 = paddle.uniform(self.shape)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            out1 = paddle.uniform([])
+            out2 = paddle.uniform(self.create_dynamic_shape())
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2]
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, (2, 3, 4))
+            res = paddle.static.Executor().run(
+                main_program, fetch_list=[out1, out2]
+            )
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_empty_and_empty_like(self):
-        out1 = paddle.empty([])
-        out2 = paddle.empty_like(out1)
-        out3 = paddle.empty(self.shape)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            out1 = paddle.empty([])
+            out2 = paddle.empty_like(out1)
+            out3 = paddle.empty(self.create_dynamic_shape())
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, (2, 3, 4))
+            res = paddle.static.Executor().run(
+                main_program, fetch_list=[out1, out2, out3]
+            )
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, ())
+            self.assertEqual(res[2].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_full_and_full_like(self):
-        out1 = paddle.full([], 0.5)
-        out2 = paddle.full_like(out1, 0.5)
-        out3 = paddle.full(self.shape, 0.5)
-        out4 = paddle.full(self.shape, paddle.full([], 0.5))
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            out1 = paddle.full([], 0.5)
+            out2 = paddle.full_like(out1, 0.5)
+            out3 = paddle.full(self.create_dynamic_shape(), 0.5)
+            out4 = paddle.full(
+                self.create_dynamic_shape(), paddle.full([], 0.5)
+            )
 
-        res = self.exe.run(
-            paddle.static.default_main_program(),
-            fetch_list=[out1, out2, out3, out4],
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, (2, 3, 4))
-        self.assertEqual(res[3].shape, (2, 3, 4))
+            res = paddle.static.Executor().run(
+                main_program,
+                fetch_list=[out1, out2, out3, out4],
+            )
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, ())
+            self.assertEqual(res[2].shape, (2, 3, 4))
+            self.assertEqual(res[3].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_ones_and_ones_like(self):
-        out1 = paddle.ones([])
-        out2 = paddle.ones_like(out1)
-        out3 = paddle.ones(self.shape)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            out1 = paddle.ones([])
+            out2 = paddle.ones_like(out1)
+            out3 = paddle.ones(self.create_dynamic_shape())
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, (2, 3, 4))
+            res = paddle.static.Executor().run(
+                main_program, fetch_list=[out1, out2, out3]
+            )
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, ())
+            self.assertEqual(res[2].shape, (2, 3, 4))
 
+    @test_with_pir_api
     def test_zeros_and_zeros_like(self):
-        out1 = paddle.zeros([])
-        out2 = paddle.zeros_like(out1)
-        out3 = paddle.zeros(self.shape)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            out1 = paddle.zeros([])
+            out2 = paddle.zeros_like(out1)
+            out3 = paddle.zeros(self.create_dynamic_shape())
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, (2, 3, 4))
+            res = paddle.static.Executor().run(
+                main_program, fetch_list=[out1, out2, out3]
+            )
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, ())
+            self.assertEqual(res[2].shape, (2, 3, 4))
 
     @test_with_pir_api
     def test_embedding(self):
