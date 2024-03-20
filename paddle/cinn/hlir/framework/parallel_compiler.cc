@@ -40,6 +40,7 @@
 
 #ifdef CINN_WITH_ROCM
 #include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#include "paddle/cinn/backends/hip/compiler_hip.h"
 #endif
 
 PD_DECLARE_int32(cinn_parallel_compile_thread);
@@ -363,7 +364,26 @@ void ParallelCompiler::Task::CodegenAndJit() {
 
     cinn::backends::SourceCodePrint::GetInstance()->write(hip_c);
     VLOG(4) << "[HIP]:\n" << hip_c;
-    
+    LOG(INFO) << "[HIP]:\n" << hip_c;
+    using runtime::hip::HIPModule;
+    backends::hiprtc::Compiler compiler;
+    auto hsaco = compiler(hip_c);
+    CHECK(!hsaco.empty()) << "Compile hsaco failed from source code:\n" << hip_c;
+    //backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
+    //    ptx, group_id, device_id);
+    //pcompiler->result_.SetSourcePtx(group_id, ptx);
+    // load cumodule
+    hip_module = std::make_unique<HIPModule>(hsaco, HIPModule::Kind::GCN);
+    // register kernel
+    backends::RuntimeSymbols symbols;
+    for (auto& fn : device_module.functions()) {
+      auto hip_func = hip_module->GetFunction(device_id, fn->name);
+      CHECK(hip_func);
+      symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(hip_func));
+    }
+    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
+                                               std::move(symbols));
+    engine->Link<backends::CodeGenCUDA_Host>(host_module);
 #endif
   } else {
     engine = backends::ExecutionEngine::Create(backends::ExecutionOptions());

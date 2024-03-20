@@ -29,11 +29,10 @@ namespace cinn {
 namespace backends {
 
 const std::string CodeGenHIP_Dev::source_header_ =  // NOLINT
-    R"(#include <cstdint>
-#include <hip/hip_runtime.h>
-
-#include "cinn_hip_runtime_source.h"
+    R"(#include <hip/hip_runtime.h>
 )";
+
+// #include "cinn_hip_runtime_source.h"
 
 const std::string &CodeGenHIP_Dev::GetSourceHeader() { return source_header_; }
 

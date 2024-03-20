@@ -169,10 +169,11 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
   }
 
   ir::Expr updated_body = ir_sch.GetModule().GetExprs()[0];
-  if(target.arch_is_gpu()){
+#ifdef CINN_WITH_GPU
+  if (target.arch_is_gpu()) {
     optim::OptimizeExprGPU(&updated_body);
   }
-
+#endif
   // Get new temp bufs by analyzing.
   std::vector<ir::Buffer> new_temp_bufs =
       lang::GetTempBuffers(old_func->args, updated_body);

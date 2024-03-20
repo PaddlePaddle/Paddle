@@ -103,7 +103,7 @@ export PYTHONPATH=$PADDLE_PATH/build/python:${PYTHONPATH}
 import numpy as np
 from numpy import testing
 from cinn import frontend,common
-from cinn.common import SYCLTarget,set_target
+from cinn.common import SYCLTarget, DefaultROCMTarget, set_target
 
 A_data = np.random.random([1, 3, 224, 224]).astype("float32")
 B_data = np.random.random([1, 3, 224, 224]).astype("float32")

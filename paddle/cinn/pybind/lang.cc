@@ -156,7 +156,9 @@ void BindModule(py::module *m) {
              if (self.GetTargetArch() == Target::Arch::NVGPU || self.GetTargetArch() == Target::Arch::AMDGPU || self.GetTargetArch() == Target::Arch::IntelGPU) {
                auto func_expr = Expr(func);
                ir::SetCudaAxisInfo(&func_expr);
+#ifdef CINN_WITH_GPU
                optim::OptimizeExprGPU(&(func->body));
+#endif
              }
              self.AddFunction(func);
            })

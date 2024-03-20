@@ -13,7 +13,6 @@ HIPBackendAPI* HIPBackendAPI::Global() {
 
 void HIPBackendAPI::set_device(int device_id) {
   HIP_CALL(hipSetDevice(device_id));
-  this->now_device_id = device_id;
 }
 
 int HIPBackendAPI::get_device() {
@@ -24,7 +23,7 @@ int HIPBackendAPI::get_device() {
 
 std::variant<int, std::array<int, 3>> HIPBackendAPI::get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id) {
-  int dev_index = device_id.value_or(this->now_device_id);
+  int dev_index = device_id.value_or(get_device());
   std::variant<int, std::array<int, 3>> rv_variant;
   int rv = -1;
   switch (device_property) {

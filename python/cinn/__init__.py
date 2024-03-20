@@ -188,13 +188,15 @@ from .lang import (  # noqa: F401
     reduce_sum,
 )
 
-cinndir = os.path.dirname(os.path.abspath(__file__))
-runtime_include_dir = os.path.join(cinndir, "libs")
-if is_compiled_with_cuda():
-    hfile = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
-elif is_compiled_with_sycl():
-    hfile = os.path.join(runtime_include_dir, "cinn_sycl_runtime_source.h")
-elif is_compiled_with_hip():
-    hfile = os.path.join(runtime_include_dir, "cinn_hip_runtime_source.h")
-if os.path.exists(hfile):
-    os.environ.setdefault('runtime_include_dir', runtime_include_dir)
+is_compile_with_gpu = is_compiled_with_cuda() or is_compiled_with_sycl() or is_compiled_with_hip()
+if is_compile_with_gpu:
+    cinndir = os.path.dirname(os.path.abspath(__file__))
+    runtime_include_dir = os.path.join(cinndir, "libs")
+    if is_compiled_with_cuda():
+        hfile = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
+    elif is_compiled_with_sycl():
+        hfile = os.path.join(runtime_include_dir, "cinn_sycl_runtime_source.h")
+    elif is_compiled_with_hip():
+        hfile = os.path.join(runtime_include_dir, "cinn_hip_runtime_source.h")
+    if os.path.exists(hfile):
+        os.environ.setdefault('runtime_include_dir', runtime_include_dir)

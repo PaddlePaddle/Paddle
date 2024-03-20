@@ -25,7 +25,7 @@
 #include <iostream>
 
 #include "paddle/cinn/backends/cuda_util.h"
-#include "paddle/cinn/backends/header_generator.h"
+//#include "paddle/cinn/backends/header_generator.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
@@ -36,7 +36,7 @@ namespace hiprtc {
 
 std::string Compiler::operator()(const std::string& code,
                                  bool include_headers) {
-  if (runtime::CanUseHipccCompiler) {
+  if (runtime::CanUseHipccCompiler()) {
     return CompileWithHipcc(code);
   }
   return CompileHipSource(code, include_headers);
@@ -75,13 +75,12 @@ std::vector<std::string> Compiler::FindCINNRuntimeIncludePaths() {
 
 std::string Compiler::CompileHipSource(const std::string& code,
                                         bool include_headers) {
-  const auto& header_gen = JitSafeHeaderGenerator::GetInstance();
+  //const auto& header_gen = JitSafeHeaderGenerator::GetInstance();
   std::vector<std::string> compile_options;
   std::vector<const char*> param_cstrings{};
   hiprtcProgram prog;
   compile_options.push_back(std::string("--gpu-architecture=") + GetDeviceArch());
   compile_options.push_back("-std=c++14");
-  compile_options.push_back("-default-device");
 
   if (include_headers) {  // prepare include headers
     auto hip_headers = FindHIPIncludePaths();
@@ -104,9 +103,9 @@ std::string Compiler::CompileHipSource(const std::string& code,
   HIPRTC_CALL(hiprtcCreateProgram(&prog,
                                 code.c_str(),
                                 nullptr,
-                                header_gen.size(),
-                                    const_cast<const char**>(header_gen.headers().data()),
-                                    const_cast<const char**>(header_gen.include_names().data())));
+                                0,
+                                    nullptr,
+                                    nullptr));
   hiprtcResult compile_res =
       hiprtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
 
@@ -131,6 +130,7 @@ std::string Compiler::CompileHipSource(const std::string& code,
 
 std::string Compiler::CompileWithHipcc(const std::string& hip_c) {
   //todo，参考hipcc_test.cc
+  return "";
 }
 
 

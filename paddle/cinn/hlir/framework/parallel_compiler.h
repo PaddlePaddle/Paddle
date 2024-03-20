@@ -28,6 +28,9 @@
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/runtime/sycl/sycl_module.h"
 #endif
+#ifdef CINN_WITH_ROCM
+#include "paddle/cinn/runtime/hip/hip_module.h"
+#endif
 #include "paddle/cinn/utils/error.h"
 
 PD_DECLARE_int32(cinn_error_message_level);
@@ -66,6 +69,9 @@ class ParallelCompiler {
 #endif
 #ifdef CINN_WITH_SYCL
     std::unique_ptr<runtime::Sycl::SYCLModule> sycl_module;
+#endif
+#ifdef CINN_WITH_ROCM
+    std::unique_ptr<runtime::hip::HIPModule> hip_module;
 #endif
   };
 
