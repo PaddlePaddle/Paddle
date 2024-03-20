@@ -18,7 +18,7 @@
 #include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 
-namespace cinn::frontend {
+namespace cinn::frontend::cluster_ops {
 
 class ClusteringPolicy {
  public:
@@ -44,4 +44,4 @@ class ClusteringPolicy {
 
 std::shared_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
     const pir::ShapeConstraintIRAnalysis* shape_analysis);
-}  // namespace cinn::frontend
+} // namespace cinn::frontend::cluster_ops

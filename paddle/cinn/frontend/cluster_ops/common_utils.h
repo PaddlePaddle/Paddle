@@ -100,4 +100,10 @@ struct OpTopo {
   }
 };
 
-}
+std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
+    const std::vector<const pir::Operation*>& ops);
+
+std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
+    const OpTopo& op_topo);
+
+} // namespace cinn::frontend::cluster_ops

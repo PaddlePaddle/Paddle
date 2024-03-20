@@ -20,7 +20,7 @@
 #include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 
 
-namespace cinn::frontend {
+namespace cinn::frontend::cluster_ops {
 
 class ClusteringEngine {
  public:
@@ -117,4 +117,4 @@ class ClusteringEngine {
   const OpTopo op_topo_;
 };
 
-} // namespace cinn::frontend
+} // namespace cinn::frontend::cluster_ops
