@@ -370,6 +370,7 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             const MetaTensor& out_grad,
                             const IntArray& axes,
                             bool keep_dim,
+                            const std::string& mode,
                             MetaTensor* x_grad);
 
 void NceGradInferMeta(const MetaTensor& input,
