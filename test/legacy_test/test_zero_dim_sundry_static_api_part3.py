@@ -373,9 +373,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             feed={
                 "x1": np.array(1.0, dtype='float32'),
             },
-            fetch_list=[
-                x1,
-            ],
+            fetch_list=[x1],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], np.array(1.0))
@@ -390,9 +388,7 @@ class TestSundryAPIStatic(unittest.TestCase):
                 "x2": 100.5,
                 "x3": 200.5,
             },
-            fetch_list=[
-                y,
-            ],
+            fetch_list=[y],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 301.0)
