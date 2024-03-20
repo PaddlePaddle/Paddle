@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include <algorithm>
 #include "paddle/cinn/common/bfs_walker.h"
+#include "paddle/cinn/common/topo_walker.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -124,6 +125,134 @@ bool MakeGenerateShapeOpAttribute(
                                       symbol_bindings);
 }
 
+std::unordered_set<pir::Operation*> GetOpSetFromOutputToInputsValue(
+    const std::vector<pir::Value>& input_values, pir::Value output_value) {
+  std::unordered_set<pir::Operation*> op_set;
+  const std::unordered_set<pir::Value> input_value_set(input_values.begin(),
+                                                       input_values.end());
+  common::BfsWalker<pir::Operation*> walker(
+      [&](pir::Operation* node,
+          const std::function<void(pir::Operation*)>& NodeHandler) {
+        for (uint32_t i = 0; i < node->num_operands(); ++i) {
+          pir::Value in_value = node->operand_source(i);
+          if (!in_value || !in_value.type()) continue;
+          if (input_value_set.count(in_value) == 0 &&
+              op_set.count(in_value.defining_op()) == 0) {
+            NodeHandler(in_value.defining_op());
+          }
+        }
+      });
+  walker(output_value.defining_op(), [&](pir::Operation* op) {
+    if (!op) return;
+    op_set.insert(op);
+  });
+  return op_set;
+}
+
+std::vector<pir::Operation*> GetSubGraphFromOutputToInputsValue(
+    const std::vector<pir::Value>& input_values, pir::Value output_value) {
+  const std::unordered_set<pir::Operation*>& op_set =
+      GetOpSetFromOutputToInputsValue(input_values, output_value);
+  common::TopoWalker<pir::Operation*> visitor(
+      [&](pir::Operation* node,
+          const std::function<void(pir::Operation*)>& NodeHandler) {
+        for (uint32_t i = 0; i < node->num_operands(); ++i) {
+          pir::Value in_value = node->operand_source(i);
+          if (in_value && in_value.defining_op()) {
+            NodeHandler(in_value.defining_op());
+          }
+        }
+      },
+      [&](pir::Operation* node,
+          const std::function<void(pir::Operation * node)>& NodeHandler) {
+        for (uint32_t i = 0; i < node->num_results(); ++i) {
+          for (auto iter = node->result(i).use_begin();
+               iter != node->result(i).use_end();
+               ++iter) {
+            if (op_set.count(iter->owner())) {
+              NodeHandler(iter->owner());
+            }
+          }
+        }
+      });
+
+  const std::vector<pir::Operation*> input_ops = [&] {
+    const std::unordered_set<pir::Value> input_value_set(input_values.begin(),
+                                                         input_values.end());
+    std::vector<pir::Operation*> input_ops;
+    for (auto* op : op_set) {
+      for (uint32_t i = 0; i < op->num_operands(); ++i) {
+        if (input_value_set.count(op->operand_source(i)) == 0) continue;
+      }
+      input_ops.push_back(op);
+    }
+    return input_ops;
+  }();
+  std::vector<pir::Operation*> ops;
+  visitor(input_ops.begin(), input_ops.end(), [&](pir::Operation* node) {
+    if (!node) return;
+    ops.push_back(node);
+  });
+  return ops;
+}
+
+void InferSymbolicShapeForSubgraph(
+    const std::vector<pir::Operation*>& ops,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  for (auto* op : ops) {
+    auto infer_symbolic_shape_interface =
+        op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+    if (infer_symbolic_shape_interface) {
+      infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+    }
+  }
+}
+
+void UpdateLocalShapeAnalysis(
+    const std::vector<pir::Value>& input_tensors,
+    pir::Value shape,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map,
+    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  // init inputs value's dim expr
+  auto CreateExprsByExprMap =
+      [&](const std::vector<symbol::DimExpr>& dim_exprs) {
+        std::vector<symbol::DimExpr> new_shape;
+        new_shape.reserve(dim_exprs.size());
+        for (const auto& dim_expr : dim_exprs) {
+          auto iter = dim_expr_map.find(dim_expr);
+          if (iter == dim_expr_map.end()) {
+            new_shape.push_back(dim_expr);
+          } else {
+            new_shape.push_back(iter->second);
+          }
+        }
+        return new_shape;
+      };
+
+  for (const auto& input_tensor : input_tensors) {
+    const auto& shape_or_data = ShapeOrDataDimExprs4Value(input_tensor);
+    std::vector<symbol::DimExpr> new_shape =
+        CreateExprsByExprMap(shape_or_data.shape());
+    if (shape_or_data.data()) {
+      std::vector<symbol::DimExpr> new_data =
+          CreateExprsByExprMap(shape_or_data.data().value());
+      shape_analysis->SetShapeOrDataForValue(
+          input_tensor, symbol::TensorShapeOrDataDimExprs(new_shape, new_data));
+    } else {
+      shape_analysis->SetShapeOrDataForValue(
+          input_tensor, symbol::TensorShapeOrDataDimExprs(new_shape));
+    }
+  }
+  // infer new symbol shape for shape value
+  std::vector<pir::Operation*> sub_graph_ops =
+      GetSubGraphFromOutputToInputsValue(input_tensors, shape);
+  InferSymbolicShapeForSubgraph(sub_graph_ops, shape_analysis);
+}
+
 std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
     pir::Value shape,
     pir::PatternRewriter* rewriter,
@@ -131,10 +260,61 @@ std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
   std::vector<pir::Value> input_tensors =
       FindSourceDenseTensorOfDimTensor(shape, ShapeOrDataDimExprs4Value);
   if (input_tensors.empty()) return std::nullopt;
+  const std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map =
+      [&] {
+        std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map;
+        int64_t local_dim_expr_id = 0;
+        for (auto input_tensor : input_tensors) {
+          const auto& shape_or_data = ShapeOrDataDimExprs4Value(input_tensor);
+          for (const auto& dim_expr : shape_or_data.shape()) {
+            if (!dim_expr.isa<int64_t>() && dim_expr_map.count(dim_expr) == 0) {
+              dim_expr_map[dim_expr] =
+                  symbol::DimExpr("SS" + std::to_string(local_dim_expr_id++));
+            }
+          }
+          if (shape_or_data.data()) {
+            for (const auto& dim_expr : shape_or_data.data().value()) {
+              if (!dim_expr.isa<int64_t>() &&
+                  dim_expr_map.count(dim_expr) == 0) {
+                dim_expr_map[dim_expr] =
+                    symbol::DimExpr("SS" + std::to_string(local_dim_expr_id++));
+              }
+            }
+          }
+        }
+        return dim_expr_map;
+      }();
+
+  const bool has_complex_dim_expr = [&]() {
+    bool has_complex_dim_expr = false;
+    for (const auto& kv : dim_expr_map) {
+      if (!kv.first.isa<int64_t>() && !kv.first.isa<std::string>()) {
+        has_complex_dim_expr = true;
+        break;
+      }
+    }
+    return has_complex_dim_expr;
+  }();
+  pir::ShapeConstraintIRAnalysis shape_analysis;
+  if (has_complex_dim_expr) {
+    UpdateLocalShapeAnalysis(input_tensors,
+                             shape,
+                             dim_expr_map,
+                             ShapeOrDataDimExprs4Value,
+                             &shape_analysis);
+  }
+
+  auto LocalDimExprs4Value = [&](pir::Value value) {
+    if (has_complex_dim_expr) {
+      return shape_analysis.GetShapeOrDataForValue(value);
+    }
+    return ShapeOrDataDimExprs4Value(value);
+  };
+
   std::vector<pir::Attribute> output_dim_expr_attrs{};
   GenerateShapeOp::SymbolBindings symbol_bindings{};
   bool success = MakeGenerateShapeOpAttribute(rewriter->ir_context(),
-                                              ShapeOrDataDimExprs4Value,
+                                              LocalDimExprs4Value,
                                               shape,
                                               /*origin inputs*/ input_tensors,
                                               /*minimal inputs*/ &input_tensors,

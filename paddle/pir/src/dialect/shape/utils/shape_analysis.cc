@@ -26,8 +26,6 @@ static std::string GetValueId(Value val) {
          std::to_string(val_idx);
 }
 
-ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m) : m_(m) {}
-
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
@@ -240,7 +238,7 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   if (it == tables_.end()) {
     it = tables_
              .emplace(program->module_op().operation()->id(),
-                      ShapeConstraintIRAnalysis(program->module_op()))
+                      ShapeConstraintIRAnalysis())
              .first;
   }
 
