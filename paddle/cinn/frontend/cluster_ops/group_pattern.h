@@ -71,8 +71,6 @@ struct ClusteringResult {
 };
 
 namespace cluster_ops {
-using OpPatternKind = cinn::hlir::framework::OpPatternKind;
-
 using IS = api::InjectiveSourcePattern<frontend::FrontendPattern>;
 using R = api::ReductionPattern<frontend::FrontendPattern>;
 using PS = api::PartialShardablePattern<frontend::FrontendPattern>;
