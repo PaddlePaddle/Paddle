@@ -21,27 +21,22 @@
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
 namespace phi {
-
-template <typename Context>
-inline void StridedTensorCopy(const phi::DataType input_dtype,
-                              std::string kernel_name,
-                              const Context& dev_ctx,
+template <typename T, typename Context>
+inline void StridedTensorCopy(const Context& dev_ctx,
                               const phi::DenseTensor& input,
                               const std::vector<int64_t>& dims,
                               const std::vector<int64_t>& out_stride,
                               int64_t offset,
                               phi::DenseTensor* out) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-  PD_VISIT_ALL_TYPES(input_dtype, kernel_name, ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx, input, dims, out_stride, offset, out);
-                     }));
+  phi::StridedCopyKernel<T, Context>(
+      dev_ctx, input, dims, out_stride, offset, out);
+
 #else
-  (void)kernel_name;
   const phi::KernelKey& strided_copy_key = {
       phi::TransToPhiBackend(dev_ctx.GetPlace()),
       phi::DataLayout::ALL_LAYOUT,
-      input_dtype};
+      input.dtype()};
   using strided_copy_signature = void (*)(const phi::DeviceContext&,
                                           const phi::DenseTensor&,
                                           const std::vector<int64_t>&,
@@ -61,22 +56,17 @@ inline void StridedTensorCopy(const phi::DataType input_dtype,
 #endif
 }
 
-template <typename Context>
-inline void StridedTensorFill(const phi::DataType input_dtype,
-                              std::string kernel_name,
-                              const Context& dev_ctx,
+template <typename T, typename Context>
+inline void StridedTensorFill(const Context& dev_ctx,
                               const phi::DenseTensor& x,
                               const phi::Scalar& value,
                               phi::DenseTensor* out) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-  PD_VISIT_ALL_TYPES(input_dtype, kernel_name, ([&] {
-                       phi::FillKernel<data_t, Context>(dev_ctx, x, value, out);
-                     }));
+  phi::FillKernel<T, Context>(dev_ctx, x, value, out);
 #else
-  (void)kernel_name;
   const phi::KernelKey& fill_key = {phi::TransToPhiBackend(dev_ctx.GetPlace()),
                                     phi::DataLayout::ALL_LAYOUT,
-                                    input_dtype};
+                                    x.dtype()};
   using fill_signature = void (*)(const phi::DeviceContext&,
                                   const phi::DenseTensor&,
                                   const phi::Scalar&,
@@ -87,23 +77,17 @@ inline void StridedTensorFill(const phi::DataType input_dtype,
 #endif
 }
 
-template <typename Context>
-inline void StridedTensorContiguous(const phi::DataType input_dtype,
-                                    std::string kernel_name,
-                                    const Context& dev_ctx,
+template <typename T, typename Context>
+inline void StridedTensorContiguous(const Context& dev_ctx,
                                     const phi::DenseTensor& input,
                                     phi::DenseTensor* out) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-  PD_VISIT_ALL_TYPES(input_dtype, kernel_name, ([&] {
-                       phi::ContiguousKernel<data_t, Context>(
-                           dev_ctx, input, out);
-                     }));
+  phi::ContiguousKernel<T, Context>(dev_ctx, input, out);
 #else
-  (void)kernel_name;
   const phi::KernelKey& contiguous_key = {
       phi::TransToPhiBackend(dev_ctx.GetPlace()),
       phi::DataLayout::ALL_LAYOUT,
-      input_dtype};
+      input.dtype()};
   using contiguous_signature = void (*)(
       const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
 

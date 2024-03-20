@@ -26,19 +26,22 @@ void RealGradStridedKernel(const Context& dev_ctx,
                            DenseTensor* dx) {
   dev_ctx.Alloc(dx, dx->dtype());
   dx->set_strides(DenseTensorMeta::calc_strides(dx->dims()));
-  phi::StridedTensorFill<Context>(
-      dx->dtype(), "RealGradStridedKernel", dev_ctx, *dx, 0, dx);
+  PD_VISIT_ALL_TYPES(dx->dtype(), "RealGradStridedKernel", ([&] {
+                       phi::StridedTensorFill<data_t, Context>(
+                           dev_ctx, *dx, 0, dx);
+                     }));
   DenseTensor tmp;
   tmp.set_meta(dout.meta());
   RealStridedKernel<T, Context>(dev_ctx, *dx, &tmp);
-  phi::StridedTensorCopy<Context>(dout.dtype(),
-                                  "RealGradStridedKernel",
-                                  dev_ctx,
-                                  dout,
-                                  common::vectorize<int64_t>(tmp.dims()),
-                                  common::vectorize<int64_t>(tmp.strides()),
-                                  tmp.offset(),
-                                  &tmp);
+  PD_VISIT_ALL_TYPES(dout.dtype(), "RealGradStridedKernel", ([&] {
+                       phi::StridedTensorCopy<data_t, Context>(
+                           dev_ctx,
+                           dout,
+                           common::vectorize<int64_t>(tmp.dims()),
+                           common::vectorize<int64_t>(tmp.strides()),
+                           tmp.offset(),
+                           &tmp);
+                     }));
 }
 
 template <typename T, typename Context>
@@ -47,20 +50,25 @@ void ImagGradStridedKernel(const Context& dev_ctx,
                            DenseTensor* dx) {
   dev_ctx.Alloc(dx, dx->dtype());
   dx->set_strides(DenseTensorMeta::calc_strides(dx->dims()));
-  phi::StridedTensorFill<Context>(
-      dx->dtype(), "ImagGradStridedKernel", dev_ctx, *dx, 0, dx);
+  PD_VISIT_ALL_TYPES(dx->dtype(), "ImagGradStridedKernel", ([&] {
+                       phi::StridedTensorFill<data_t, Context>(
+                           dev_ctx, *dx, 0, dx);
+                     }));
+
   DenseTensor tmp;
   tmp.set_meta(dout.meta());
   ImagStridedKernel<T, Context>(dev_ctx, *dx, &tmp);
-  phi::StridedTensorCopy<Context>(dout.dtype(),
-                                  "ImagGradStridedKernel",
-                                  dev_ctx,
-                                  dout,
-                                  common::vectorize<int64_t>(tmp.dims()),
-                                  common::vectorize<int64_t>(tmp.strides()),
-                                  tmp.offset(),
-                                  &tmp);
+  PD_VISIT_ALL_TYPES(dout.dtype(), "ImagGradStridedKernel", ([&] {
+                       phi::StridedTensorCopy<data_t, Context>(
+                           dev_ctx,
+                           dout,
+                           common::vectorize<int64_t>(tmp.dims()),
+                           common::vectorize<int64_t>(tmp.strides()),
+                           tmp.offset(),
+                           &tmp);
+                     }));
 }
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(real_grad,

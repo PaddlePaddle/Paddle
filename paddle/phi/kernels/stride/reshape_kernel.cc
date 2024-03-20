@@ -48,8 +48,10 @@ void ReshapeStridedKernel(const Context& dev_ctx,
     tmp_x.Resize(x_dims);
     tmp_x.set_strides(x_stride);
     tmp.set_meta(tmp_x.meta());
-    StridedTensorContiguous<Context>(
-        x.dtype(), "ReshapeStridedKernel", dev_ctx, tmp_x, &tmp);
+    PD_VISIT_ALL_TYPES(x.dtype(), "ReshapeStridedKernel", ([&] {
+                         phi::StridedTensorContiguous<data_t, Context>(
+                             dev_ctx, tmp_x, &tmp);
+                       }));
     out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
     out->set_offset(0);
     out->ResetHolder(tmp.Holder());

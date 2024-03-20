@@ -240,6 +240,8 @@ if(WIN32)
         "${${flag_var}} /ignore:4049 /ignore:4217 /ignore:4006 /ignore:4221")
     if(MSVC_STATIC_CRT)
       set(${flag_var} "${${flag_var}} /NODEFAULTLIB:MSVCRT.LIB")
+    else()
+      set(${flag_var} "${${flag_var}} /NODEFAULTLIB:LIBCMT.LIB")
     endif()
   endforeach()
 

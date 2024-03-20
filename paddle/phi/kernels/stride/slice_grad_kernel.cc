@@ -32,12 +32,10 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                             DenseTensor* input_grad) {
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
-  phi::StridedTensorFill<Context>(input.dtype(),
-                                  "SliceGradStridedKernel",
-                                  dev_ctx,
-                                  *input_grad,
-                                  0,
-                                  input_grad);
+  PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
+                       phi::StridedTensorFill<data_t, Context>(
+                           dev_ctx, *input_grad, 0, input_grad);
+                     }));
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   SliceStridedKernel<Context>(dev_ctx,
@@ -48,14 +46,15 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                               infer_flags,
                               decrease_axis,
                               &tmp);
-  phi::StridedTensorCopy<Context>(input.dtype(),
-                                  "SliceGradStridedKernel",
-                                  dev_ctx,
-                                  out_grad,
-                                  common::vectorize<int64_t>(tmp.dims()),
-                                  common::vectorize<int64_t>(tmp.strides()),
-                                  tmp.offset(),
-                                  &tmp);
+  PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
+                       phi::StridedTensorCopy<data_t, Context>(
+                           dev_ctx,
+                           out_grad,
+                           common::vectorize<int64_t>(tmp.dims()),
+                           common::vectorize<int64_t>(tmp.strides()),
+                           tmp.offset(),
+                           &tmp);
+                     }));
 }
 }  // namespace phi
 

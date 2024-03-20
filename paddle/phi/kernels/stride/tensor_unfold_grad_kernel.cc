@@ -33,12 +33,10 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
   if (out_grad.numel() < input.numel()) {
-    phi::StridedTensorFill<Context>(input_grad->dtype(),
-                                    "TensorUnfoldGradKernel",
-                                    dev_ctx,
-                                    *input_grad,
-                                    0,
-                                    input_grad);
+    PD_VISIT_ALL_TYPES(input_grad->dtype(), "TensorUnfoldGradKernel", ([&] {
+                         phi::StridedTensorFill<data_t, Context>(
+                             dev_ctx, *input_grad, 0, input_grad);
+                       }));
   }
   DenseTensor tmp;
   tmp.set_layout(out_grad.layout());
@@ -47,14 +45,15 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
   tmp.Resize(out_grad.dims());
 
   TensorUnfoldKernel<Context>(dev_ctx, *input_grad, axis, size, step, &tmp);
-  phi::StridedTensorCopy<Context>(out_grad.dtype(),
-                                  "TensorUnfoldGradKernel",
-                                  dev_ctx,
-                                  out_grad,
-                                  common::vectorize<int64_t>(tmp.dims()),
-                                  common::vectorize<int64_t>(tmp.strides()),
-                                  tmp.offset(),
-                                  &tmp);
+  PD_VISIT_ALL_TYPES(out_grad.dtype(), "TensorUnfoldGradKernel", ([&] {
+                       phi::StridedTensorCopy<data_t, Context>(
+                           dev_ctx,
+                           out_grad,
+                           common::vectorize<int64_t>(tmp.dims()),
+                           common::vectorize<int64_t>(tmp.strides()),
+                           tmp.offset(),
+                           &tmp);
+                     }));
 }
 
 }  // namespace phi

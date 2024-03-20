@@ -30,12 +30,10 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
                                DenseTensor* in_grad) {
   dev_ctx.Alloc(in_grad, in_grad->dtype());
   in_grad->set_strides(DenseTensorMeta::calc_strides(in_grad->dims()));
-  phi::StridedTensorFill<Context>(in_grad->dtype(),
-                                  "DiagonalGradStridedKernel",
-                                  dev_ctx,
-                                  *in_grad,
-                                  0,
-                                  in_grad);
+  PD_VISIT_ALL_TYPES(in_grad->dtype(), "DiagonalGradStridedKernel", ([&] {
+                       phi::StridedTensorFill<data_t, Context>(
+                           dev_ctx, *in_grad, 0, in_grad);
+                     }));
   DenseTensor tmp;
   tmp.set_layout(out_grad.layout());
   tmp.set_lod(out_grad.lod());
@@ -43,15 +41,17 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
   tmp.Resize(out_grad.dims());
 
   DiagonalStridedKernel<Context>(dev_ctx, *in_grad, offset, axis1, axis2, &tmp);
-  phi::StridedTensorCopy<Context>(out_grad.dtype(),
-                                  "DiagonalGradStridedKernel",
-                                  dev_ctx,
-                                  out_grad,
-                                  common::vectorize<int64_t>(tmp.dims()),
-                                  common::vectorize<int64_t>(tmp.strides()),
-                                  tmp.offset(),
-                                  &tmp);
+  PD_VISIT_ALL_TYPES(out_grad.dtype(), "DiagonalGradStridedKernel", ([&] {
+                       phi::StridedTensorCopy<data_t, Context>(
+                           dev_ctx,
+                           out_grad,
+                           common::vectorize<int64_t>(tmp.dims()),
+                           common::vectorize<int64_t>(tmp.strides()),
+                           tmp.offset(),
+                           &tmp);
+                     }));
 }
+
 }  // namespace phi
 
 #ifndef PADDLE_WITH_CUSTOM_DEVICE

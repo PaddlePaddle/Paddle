@@ -29,12 +29,10 @@ void IndexSelectGradStridedKernel(const Context& dev_ctx,
                                   DenseTensor* x_grad) {
   dev_ctx.Alloc(x_grad, x_grad->dtype());
   x_grad->set_strides(DenseTensorMeta::calc_strides(x_grad->dims()));
-  phi::StridedTensorFill<Context>(x_grad->dtype(),
-                                  "IndexSelectGradStridedKernel",
-                                  dev_ctx,
-                                  *x_grad,
-                                  0,
-                                  x_grad);
+  PD_VISIT_ALL_TYPES(x_grad->dtype(), "IndexSelectGradStridedKernel", ([&] {
+                       phi::StridedTensorFill<data_t, Context>(
+                           dev_ctx, *x_grad, 0, x_grad);
+                     }));
   DenseTensor tmp;
   tmp.set_layout(out_grad.layout());
   tmp.set_lod(out_grad.lod());
@@ -42,14 +40,15 @@ void IndexSelectGradStridedKernel(const Context& dev_ctx,
   tmp.Resize(out_grad.dims());
 
   IndexSelectStridedKernel<Context>(dev_ctx, *x_grad, index, dim, &tmp);
-  phi::StridedTensorCopy<Context>(out_grad.dtype(),
-                                  "IndexSelectGradStridedKernel",
-                                  dev_ctx,
-                                  out_grad,
-                                  common::vectorize<int64_t>(tmp.dims()),
-                                  common::vectorize<int64_t>(tmp.strides()),
-                                  tmp.offset(),
-                                  &tmp);
+  PD_VISIT_ALL_TYPES(out_grad.dtype(), "IndexSelectGradStridedKernel", ([&] {
+                       phi::StridedTensorCopy<data_t, Context>(
+                           dev_ctx,
+                           out_grad,
+                           common::vectorize<int64_t>(tmp.dims()),
+                           common::vectorize<int64_t>(tmp.strides()),
+                           tmp.offset(),
+                           &tmp);
+                     }));
 }
 
 }  // namespace phi

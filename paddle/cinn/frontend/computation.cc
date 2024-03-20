@@ -251,9 +251,11 @@ hlir::framework::Tensor CinnComputation::GetTensor(const std::string &tname) {
   }
   auto it = context_->varmap_paddle2program.find(tname);
   if (it == context_->varmap_paddle2program.end()) {
-    LOG(FATAL) << "No variable called [" << tname
-               << "] found in computation\nThe existing vars: "
-               << utils::Join(context_->scope->var_names(), ", ");
+    std::stringstream ss;
+    ss << "No variable called [" << tname
+       << "] found in computation\nThe existing vars: "
+       << utils::Join(context_->scope->var_names(), ", ");
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return context_->scope->GetTensor(it->second);
 }
