@@ -589,7 +589,12 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
         }
       }
     }
-
+  } else if (cluster_node->group_kind == cinn::hlir::framework::kInjective) {
+    cluster_node->loop_ranges =
+        phi::vectorize(op->result(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims());
   } else if (cluster_node->group_kind == cinn::hlir::framework::kBroadcast) {
     const std::vector<int64_t> output_shape = [&] {
       auto output_shape =
