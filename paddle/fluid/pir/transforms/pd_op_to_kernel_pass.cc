@@ -806,7 +806,7 @@ std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(pir::Operation* op) {
   std::unique_ptr<OpYamlInfoParser> op_info_parser(nullptr);
   if (op_info_interface) {
     op_info_parser = std::make_unique<OpYamlInfoParser>(
-        op_info_interface.GetOpInfo(), IsLegacyOp(op->name()));
+        op_info_interface.GetOpInfo(), IsLegacyOp(op));
   }
 
   return op_info_parser;
@@ -2069,8 +2069,7 @@ std::vector<pir::Type> BuildOutputs(
   auto args_def = phi_kernel.args_def();
   auto output_defs = args_def.output_defs();
 
-  if (!UnchangeOutputOps.count(op_item->name()) &&
-      !IsLegacyOp(op_item->name())) {
+  if (!UnchangeOutputOps.count(op_item->name()) && !IsLegacyOp(op_item)) {
     PADDLE_ENFORCE_EQ(
         op_item->num_results(),
         output_defs.size(),
@@ -2118,7 +2117,7 @@ std::vector<pir::Type> BuildOutputs(
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
       if ((!UnchangeOutputOps.count(op_item->name())) &&
-          (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
+          (!IsLegacyOp(op_item)) && phi_kernel.IsValid()) {
         out_place = phi::TransToPhiPlace(output_defs[i].backend);
       }
       PushBackOutputTypes(ctx,
@@ -2139,7 +2138,7 @@ std::vector<pir::Type> BuildOutputs(
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
       if ((!UnchangeOutputOps.count(op_item->name())) &&
-          (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
+          (!IsLegacyOp(op_item)) && phi_kernel.IsValid()) {
         out_place = phi::TransToPhiPlace(output_defs[i].backend);
       }
       PushBackOutputTypes(
@@ -2550,7 +2549,7 @@ pir::Operation* BuildKernelOp(
         pir::BoolAttribute::get(
             ctx, op_info_parser->OpRuntimeInfo().dynamic_fallback));
 
-    if (IsLegacyOp(op_item->name())) {
+    if (IsLegacyOp(op_item)) {
       VLOG(4) << "choose OneDNNLegacyKernelOp";
       pir::OpInfo legacy_kernel_op_info =
           ctx->GetRegisteredOpInfo(OneDNNLegacyKernelOp::name());
@@ -2576,7 +2575,7 @@ pir::Operation* BuildKernelOp(
   } else  // NOLINT
 #endif
   {
-    if (IsLegacyOp(op_item->name())) {
+    if (IsLegacyOp(op_item)) {
       pir::OpInfo legacy_kernel_op_info =
           ctx->GetRegisteredOpInfo(LegacyKernelOp::name());
 
