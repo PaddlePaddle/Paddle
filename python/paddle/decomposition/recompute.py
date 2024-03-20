@@ -318,7 +318,7 @@ def auto_recompute(
 
         if (
             len(value_node.all_used_ops()) == 1
-            and value_node.all_used_ops()[0] == "builtin.split"
+            and value_node.all_used_ops()[0].name() == "builtin.split"
         ):
             continue
 
@@ -378,7 +378,8 @@ def auto_recompute(
         cut_value_nodes.add(value_node)
 
     saved_values = cut_value_nodes
-
+    # (TODO: wanghao107): remove it and fix model
+    saved_values = cut_value_nodes | inputs
     # 2.patition the joint graph by saved values.
     (
         program_after_recompute,
@@ -593,7 +594,7 @@ def find_value_node_users(value_node):
                 for result in results:
                     if (
                         len(result.all_used_ops()) == 1
-                        and result.all_used_ops()[0] == "builtin.split"
+                        and result.all_used_ops()[0].name() == "builtin.split"
                     ):
                         split_results = result.all_used_ops()[0].results()
                         users |= backward_utils.ValueSet(split_results)
@@ -604,7 +605,7 @@ def find_value_node_users(value_node):
             for result in results:
                 if (
                     len(result.all_used_ops()) == 1
-                    and result.all_used_ops()[0] == "builtin.split"
+                    and result.all_used_ops()[0].name() == "builtin.split"
                 ):
                     split_results = result.all_used_ops()[0].results()
                     users |= backward_utils.ValueSet(split_results)
@@ -717,22 +718,38 @@ def clone_graph(program, origin_ops, graph_inputs, clone_insertion_op):
 
 
 def find_parent_ops(value):
-    parent_ops = set()
-    parent_op = value.get_defining_op()
-    parent_ops.add(parent_op)
-    op_inputs = parent_op.operands_source()
-    for op_input in op_inputs:
-        parent_ops = parent_ops | find_parent_ops(op_input)
-    return parent_ops
+    visited = backward_utils.ValueSet()
+
+    def _find_parent_ops(value):
+        parent_ops = set()
+        if value in visited:
+            return parent_ops
+        visited.add(value)
+        parent_op = value.get_defining_op()
+        parent_ops.add(parent_op)
+        op_inputs = parent_op.operands_source()
+        for op_input in op_inputs:
+            parent_ops = parent_ops | _find_parent_ops(op_input)
+        return parent_ops
+
+    return _find_parent_ops(value)
 
 
 def find_child_ops(value):
-    child_ops = set()
-    used_ops = value.all_used_ops()
-    child_ops |= set(used_ops)
-    op_results = backward_utils.ValueSet()
-    for used_op in used_ops:
-        op_results = op_results | backward_utils.ValueSet(used_op.results())
-    for op_result in op_results:
-        child_ops = child_ops | find_child_ops(op_result)
-    return child_ops
+    visited = backward_utils.ValueSet()
+
+    def _find_child_ops(value):
+        child_ops = set()
+        if value in visited:
+            return child_ops
+        visited.add(value)
+        used_ops = value.all_used_ops()
+        child_ops |= set(used_ops)
+        op_results = backward_utils.ValueSet()
+        for used_op in used_ops:
+            op_results = op_results | backward_utils.ValueSet(used_op.results())
+        for op_result in op_results:
+            child_ops = child_ops | _find_child_ops(op_result)
+        return child_ops
+
+    return _find_child_ops(value)

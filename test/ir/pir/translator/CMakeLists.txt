@@ -5,6 +5,7 @@ file(
 string(REPLACE ".py" "" TEST_INTERP_CASES "${TEST_INTERP_CASES}")
 
 set(DISTRIBUTED_OP_TRANSLATOR_TEST test_all_reduce_translator)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_barrier_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_reduce_min_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_allreduce_min_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_allreduce_prod_translator)
@@ -19,6 +20,7 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_distributed_push_sparse_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_distributed_fused_lamb_init)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_nop_translator)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_allgather_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_send_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_recv_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST

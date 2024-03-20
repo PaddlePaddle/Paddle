@@ -508,7 +508,9 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else if (memory_type == "global") {
       this->buffer->memory_type = MemoryType::Heap;
     } else {
-      LOG(FATAL) << "Not supported memory type " << memory_type;
+      std::stringstream ss;
+      ss << "Not supported memory type " << memory_type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   } else {
     lang::Buffer buf(buf_type, buffer_name);
@@ -522,7 +524,9 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else if (memory_type == "global") {
       buf->memory_type = MemoryType::Heap;
     } else {
-      LOG(FATAL) << "Not supported memory type " << memory_type;
+      std::stringstream ss;
+      ss << "Not supported memory type " << memory_type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
 }

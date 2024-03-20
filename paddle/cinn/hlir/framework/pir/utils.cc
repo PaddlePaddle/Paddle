@@ -23,6 +23,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -129,6 +130,8 @@ class OpTransInfo {
       "fetch",
       "conv2d",
       "conv2d_grad",
+      "depthwise_conv2d",
+      "depthwise_conv2d_grad",
       "dropout",
       "slice",
       "concat",
@@ -471,15 +474,17 @@ static utils::Attribute ConvertArrayAttribute(
               element.dyn_cast<::pir::StrAttribute>().AsString());
         }
       } else {
-        LOG(FATAL)
-            << "only support bool/int32/int64/float/double/string attribute in "
-               "ArrayAttribute";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "only support bool/int32/int64/float/double/string attribute in "
+            "ArrayAttribute"));
       }
     }
   } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
     // do nothing for now
   } else {
-    LOG(FATAL) << "unknown Attribute: " << src_attr;
+    std::stringstream ss;
+    ss << "unknown Attribute: " << src_attr;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return dst_attr;
 }
@@ -548,7 +553,9 @@ cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
   CASE_TYPE(IndexType, I32)
   CASE_TYPE(BoolType, UI1)
 
-  LOG(FATAL) << "unknown ir::Type " << type;
+  std::stringstream ss;
+  ss << "unknown ir::Type " << type;
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 #undef CASE_TYPE
 

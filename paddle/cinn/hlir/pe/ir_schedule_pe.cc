@@ -784,7 +784,8 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
       }
       return loop_var_count;
     }
-    LOG(FATAL) << "Can't find var in tensor indexes!";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Can't find var in tensor indexes!"));
   };
   auto loop_var_count = get_loop_index(ir_sch.GetLoops(reduce_out->name).back(),
                                        ir_sch.GetBlock(reduce_out->name));

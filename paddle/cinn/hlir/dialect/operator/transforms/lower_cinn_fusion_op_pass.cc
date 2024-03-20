@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
@@ -583,7 +584,25 @@ pir::Operation* ProcessDyShapeGroup(
     std::vector<pir::Type> output_types;
     const auto& group_output_values = group->output_values;
     for (size_t i = 0; i < group_output_values.size(); ++i) {
-      output_types.push_back(group_output_values[i].type());
+      auto base_type =
+          group_output_values[i].type().dyn_cast<::pir::DenseTensorType>();
+      auto dim_info = base_type.dims();
+      if (shape_analysis.HasShapeOrDataForValue(group_output_values[i])) {
+        auto shape = group->GetShapeOrDataExprs(group_output_values[i]).shape();
+        for (size_t k = 0; k < shape.size(); ++k) {
+          if (shape[k].isa<int64_t>()) {
+            dim_info[k] = shape[k].Get<int64_t>();
+          }
+        }
+      }
+      auto new_type = ::pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                                  base_type.dtype(),
+                                                  dim_info,
+                                                  base_type.data_layout(),
+                                                  base_type.lod(),
+                                                  base_type.offset());
+
+      output_types.push_back(new_type);
     }
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
@@ -932,6 +951,7 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
 
     pir::RewritePatternSet ps(context);
     ps.Add<DyShapeFusionOpPattern>(context);
+    ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;
   }
