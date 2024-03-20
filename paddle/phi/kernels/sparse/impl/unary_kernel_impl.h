@@ -73,7 +73,6 @@ namespace sparse {
                                     out->mutable_non_zero_elements()); \
   }
 
-// DEFINE_SPARSE_UNARY_KERNEL(Abs)
 DEFINE_SPARSE_UNARY_KERNEL(Sin)
 DEFINE_SPARSE_UNARY_KERNEL(Tan)
 DEFINE_SPARSE_UNARY_KERNEL(Asin)
