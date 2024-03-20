@@ -7,8 +7,8 @@ set(cinn_transforms_deps
     cinn_op_dialect
     op_dialect_vjp
     cinn_runtime_dialect
-    pir_compiler
-    cluster_ops)
+    cluster_ops
+    pir_compiler)
 
 cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs} DEPS
                 ${cinn_transforms_deps})

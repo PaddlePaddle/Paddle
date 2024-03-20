@@ -1,5 +1,3 @@
-core_gather_headers()
-
 gather_srcs(
   cluster_ops_src
   SRCS
