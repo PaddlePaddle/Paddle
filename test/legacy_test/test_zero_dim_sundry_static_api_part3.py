@@ -343,7 +343,9 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         if paddle.framework.in_pir_mode():
             res = self.exe.run(
-                prog, feed={}, fetch_list=[out, grad_list[0], grad_list[1]]
+                prog,
+                feed={},
+                fetch_list=[out, grad_list[0][1], grad_list[1][1]],
             )
         else:
             res = self.exe.run(
