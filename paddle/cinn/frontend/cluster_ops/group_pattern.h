@@ -66,12 +66,6 @@ using StmtPattern = api::StmtPattern<frontend::FrontendPattern>;
 using StmtPatternVec = api::StmtPatternVec<frontend::FrontendPattern>;
 using StmtVisitor = std::function<void(const StmtPattern*)>;
 
-using IsAcyclicConnectedT =
-    std::function<bool(const StmtPattern* src, const StmtPattern* dst)>;
-
-using ClusterRoot4StmtT =
-    std::function<const StmtPattern*(const StmtPattern*)>;
-
 struct LoopAlignableStmtPatternVec {
   std::vector<StmtPattern> stmts;
 };

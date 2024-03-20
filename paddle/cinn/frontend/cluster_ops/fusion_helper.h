@@ -22,7 +22,7 @@ namespace cinn::frontend::cluster_ops {
 class StmtFusionHelper {
  public:
   explicit StmtFusionHelper(const std::vector<const pir::Operation*>& ops,
-                   const ShardableAxesInferer& shardable_axes_inferer);
+                            const ShardableAxesInferer& shardable_axes_inferer);
 
   GroupPattern FuseToGroupPattern();
 
@@ -38,20 +38,20 @@ class StmtFusionHelper {
 
   struct FusePolicy_IS_x_PS_2_PS {
     bool FuseCondition(const StmtPattern& upstream,
-                              const StmtPattern& downstream);
+                       const StmtPattern& downstream);
     std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
         const StmtPattern& upstream, const StmtPattern& downstream);
     std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
         const IS& upstream, const PS& downstream);
-    ShardableAxesSignature MergeShardableAxesSignature(
-        const IS& upstream, const PS& downstream);
+    ShardableAxesSignature MergeShardableAxesSignature(const IS& upstream,
+                                                       const PS& downstream);
   };
 
   std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(
       std::vector<StmtPattern>* stmt_patterns);
   struct FusePolicy_IS_x_R_2_R {
     bool FuseCondition(const StmtPattern& upstream,
-                              const StmtPattern& downstream);
+                       const StmtPattern& downstream);
     std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
         const StmtPattern& upstream, const StmtPattern& downstream);
     std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
@@ -63,7 +63,7 @@ class StmtFusionHelper {
 
   struct FusePolicy_PS_x_R_2_R {
     bool FuseCondition(const StmtPattern& upstream,
-                              const StmtPattern& downstream);
+                       const StmtPattern& downstream);
     std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
         const StmtPattern& upstream, const StmtPattern& downstream);
     std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
@@ -78,11 +78,11 @@ class StmtFusionHelper {
 
   R ConvertReductionOpToReductionPattern(const pir::Operation* op);
 
-  PS ConvertOpToPS(const pir::Operation* op);
   using StmtPtr4OpT =
       std::function<std::optional<StmtPattern*>(const pir::Operation*)>;
-  StmtPtr4OpT MakeStmtFinderFromOp(std::vector<StmtPattern>* stmts);
 
+  PS ConvertOpToPS(const pir::Operation* op);
+  StmtPtr4OpT MakeStmtFinderFromOp(std::vector<StmtPattern>* stmts);
 
   template <typename IsChozenPatternT, typename ConstructPatternT>
   std::optional<ErrorGroupPattern> MultiFuse(
@@ -186,14 +186,13 @@ class StmtFusionHelper {
     return std::nullopt;
   }
 
-
   template <typename FusionPolicy>
   std::optional<ErrorGroupPattern> FuseFilteredStmtPatterns(
       std::vector<StmtPattern>* stmt_patterns);
 
   ShardableAxesSignature GetShardableAxesSignature(const OpTopo& op_topo);
 
- private : 
+ private:
   std::vector<const pir::Operation*> ops_;
   ShardableAxesInferer shardable_axes_inferer_;
   OpTopo op_topo_;

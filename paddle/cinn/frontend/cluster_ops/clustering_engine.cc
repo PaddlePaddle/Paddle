@@ -17,9 +17,10 @@
 
 namespace cinn::frontend::cluster_ops {
 
-ClusteringEngine::ClusteringEngine(const std::vector<const pir::Operation*>& ops,
-                  const ShardableAxesInferer& shardable_axes_inferer,
-                  const std::shared_ptr<ClusteringPolicy>& clustering_policy)
+ClusteringEngine::ClusteringEngine(
+    const std::vector<const pir::Operation*>& ops,
+    const ShardableAxesInferer& shardable_axes_inferer,
+    const std::shared_ptr<ClusteringPolicy>& clustering_policy)
     : ops_(ops),
       op_topo_(OpTopo::Make(ops)),
       shardable_axes_inferer_(shardable_axes_inferer),
@@ -55,7 +56,6 @@ ClusteringResult ClusteringEngine::ClusterOps() {
   return clustering_policy_->MakeClusteringResult(stmts_list);
 }
 
-
 void ClusteringEngine::SortStmtsList(
     std::vector<std::vector<const StmtPattern*>>* stmt_ptrs,
     const std::function<size_t(const pir::Operation*)>& OrderValue4Op) {
@@ -69,7 +69,8 @@ void ClusteringEngine::SortStmtsList(
   std::sort(stmt_ptrs->begin(), stmt_ptrs->end(), Cmp);
 }
 
-common::BfsWalker<const StmtPattern*> ClusteringEngine::MakeAcyclicSameClusterBfsWalker(
+common::BfsWalker<const StmtPattern*>
+ClusteringEngine::MakeAcyclicSameClusterBfsWalker(
     const std::vector<StmtPattern>& stmt_patterns) {
   const auto entire_topo_walk = MakeTopoWalker(op_topo_, stmt_patterns);
   const auto ClusterRoot4Stmt =
@@ -81,7 +82,7 @@ common::BfsWalker<const StmtPattern*> ClusteringEngine::MakeAcyclicSameClusterBf
       entire_topo_walk, stmt_patterns, ClusterRoot4Stmt);
   using NodeVisitor = std::function<void(const StmtPattern*)>;
   const auto VisitAcyclicClusterNext = [=](const StmtPattern* stmt,
-                                            const NodeVisitor& DoEach) {
+                                           const NodeVisitor& DoEach) {
     entire_topo_walk.VisitPrevNodes(stmt, [&](const StmtPattern* input) {
       if (!IsInSameCluster(input, stmt)) return;
       if (!IsAcyclicConnected(input, stmt)) return;
@@ -107,19 +108,20 @@ ShardableAxes4ValueT ClusteringEngine::MakeInferedShardableAxes4Value(
   }();
   auto value2shardable_axes = shardable_axes_inferer_.InferShardableAxes(ops);
   return [map = std::move(value2shardable_axes)](
-              pir::Value value) -> std::optional<const ShardableAxes*> {
+             pir::Value value) -> std::optional<const ShardableAxes*> {
     const auto& iter = map.find(value);
     if (iter == map.end()) return std::nullopt;
     return &iter->second;
   };
 }
 
-IsAcyclicConnectedT ClusteringEngine::MakePredicatorIsAcyclicConnected(
+ClusteringEngine::IsAcyclicConnectedT
+ClusteringEngine::MakePredicatorIsAcyclicConnected(
     const common::TopoWalker<const StmtPattern*>& walker,
     const std::vector<StmtPattern>& stmt_patterns,
-    const ClusterRoot4StmtT& ClusterRoot4Stmt) {
-  const auto AllTopClosureUpstreams4Stmt = MakeAllTopClosureUpstreams4Stmt(
-      walker, stmt_patterns, ClusterRoot4Stmt);
+    const ClusteringEngine::ClusterRoot4StmtT& ClusterRoot4Stmt) {
+  const auto AllTopClosureUpstreams4Stmt =
+      MakeAllTopClosureUpstreams4Stmt(walker, stmt_patterns, ClusterRoot4Stmt);
   const auto IsSrcAcyclicConnectedToDst = [&](const auto* src,
                                               const auto* dst) {
     // return true if there exist no other clusters's node in
@@ -153,18 +155,19 @@ IsAcyclicConnectedT ClusteringEngine::MakePredicatorIsAcyclicConnected(
       }
     });
   }
-  return [map = std::move(src2acyclic_connected_dst)](
-              const StmtPattern* src, const StmtPattern* dst) {
+  return [map = std::move(src2acyclic_connected_dst)](const StmtPattern* src,
+                                                      const StmtPattern* dst) {
     const auto& iter = map.find(src);
     if (iter == map.end()) return false;
     return iter->second.count(dst) > 0;
   };
 }
 
-AllTopClosureUpstreams4StmtT ClusteringEngine::MakeAllTopClosureUpstreams4Stmt(
+ClusteringEngine::AllTopClosureUpstreams4StmtT
+ClusteringEngine::MakeAllTopClosureUpstreams4Stmt(
     const common::TopoWalker<const StmtPattern*>& entire_topo_walker,
     const std::vector<StmtPattern>& stmt_patterns,
-    const ClusterRoot4StmtT& ClusterRoot4Stmt) {
+    const ClusteringEngine::ClusterRoot4StmtT& ClusterRoot4Stmt) {
   const auto TopoClosure4RootStmt = MakeTopoClosure4RootStmt(
       entire_topo_walker, stmt_patterns, ClusterRoot4Stmt);
   using NodeVisitor = std::function<void(const StmtPattern*)>;
@@ -186,7 +189,7 @@ AllTopClosureUpstreams4StmtT ClusteringEngine::MakeAllTopClosureUpstreams4Stmt(
         });
   }
   return [map = std::move(stmt2all_topo_closure_upstreams)](
-              const StmtPattern* stmt) {
+             const StmtPattern* stmt) {
     const auto iter = map.find(stmt);
     if (iter == map.end()) {
       static const std::set<const StmtPattern*> empty;
@@ -196,13 +199,14 @@ AllTopClosureUpstreams4StmtT ClusteringEngine::MakeAllTopClosureUpstreams4Stmt(
   };
 }
 
-TopoClosure4RootStmtT ClusteringEngine::MakeTopoClosure4RootStmt(
+ClusteringEngine::TopoClosure4RootStmtT
+ClusteringEngine::MakeTopoClosure4RootStmt(
     const common::TopoWalker<const StmtPattern*>& entire_topo_walker,
     const std::vector<StmtPattern>& stmt_patterns,
-    const ClusterRoot4StmtT& ClusterRoot4Stmt) {
+    const ClusteringEngine::ClusterRoot4StmtT& ClusterRoot4Stmt) {
   using NodeVisitor = std::function<void(const StmtPattern*)>;
   auto VisitClusterInput = [&](const StmtPattern* stmt,
-                                const NodeVisitor& DoEach) {
+                               const NodeVisitor& DoEach) {
     entire_topo_walker.VisitPrevNodes(stmt, [&](const auto* input) {
       if (ClusterRoot4Stmt(stmt) == ClusterRoot4Stmt(input)) {
         DoEach(input);
@@ -254,16 +258,17 @@ TopoClosure4RootStmtT ClusteringEngine::MakeTopoClosure4RootStmt(
                                                   topo_closure->sinks);
   }
   return [map = std::move(root_stmt2topo_closure)](
-              const StmtPattern* stmt) -> std::optional<const TopoClosure*> {
+             const StmtPattern* stmt) -> std::optional<const TopoClosure*> {
     const auto iter = map.find(stmt);
     if (iter == map.end()) return std::nullopt;
     return &iter->second;
   };
 }
 
-std::unordered_set<const StmtPattern*> ClusteringEngine::CollectSubGraphAllStmts(
+std::unordered_set<const StmtPattern*>
+ClusteringEngine::CollectSubGraphAllStmts(
     const common::TopoWalker<const StmtPattern*>& entire_topo_walker,
-    const IsReachableT& IsReachable,
+    const ClusteringEngine::IsReachableT& IsReachable,
     const std::list<const StmtPattern*> sources,
     const std::list<const StmtPattern*> sinks) {
   auto IsConnectedToOneSource = [&](const auto* stmt) {
@@ -305,7 +310,7 @@ std::unordered_set<const StmtPattern*> ClusteringEngine::CollectSubGraphAllStmts
   return ret;
 }
 
-IsReachableT ClusteringEngine::MakeIsReachable(
+ClusteringEngine::IsReachableT ClusteringEngine::MakeIsReachable(
     const common::TopoWalker<const StmtPattern*>& walker,
     const std::vector<StmtPattern>& stmt_patterns) {
   const auto& sources = [&] {
@@ -332,7 +337,7 @@ IsReachableT ClusteringEngine::MakeIsReachable(
     });
   });
   return [map = std::move(stmt2upstreams)](const StmtPattern* src,
-                                            const StmtPattern* dst) {
+                                           const StmtPattern* dst) {
     if (src == dst) return true;
     const auto iter = map.find(dst);
     if (iter == map.end()) return false;
@@ -340,11 +345,11 @@ IsReachableT ClusteringEngine::MakeIsReachable(
   };
 }
 
-std::function<const StmtPattern*(const StmtPattern*)> ClusteringEngine::MakeClusterRoot4Stmt(
+std::function<const StmtPattern*(const StmtPattern*)>
+ClusteringEngine::MakeClusterRoot4Stmt(
     const common::TopoWalker<const StmtPattern*>& topo_walker,
     const std::vector<StmtPattern>& stmt_patterns) {
-  std::unordered_map<const StmtPattern*, const StmtPattern*>
-      stmt2cluster_root;
+  std::unordered_map<const StmtPattern*, const StmtPattern*> stmt2cluster_root;
   VisitClusterStmts(topo_walker, stmt_patterns, [&](const auto& stmt_ptrs) {
     CHECK(!stmt_ptrs.empty());
     const auto* root = *stmt_ptrs.begin();

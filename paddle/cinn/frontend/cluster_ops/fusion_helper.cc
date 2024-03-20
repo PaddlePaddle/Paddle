@@ -16,8 +16,9 @@
 
 namespace cinn::frontend::cluster_ops {
 
-StmtFusionHelper::StmtFusionHelper(const std::vector<const pir::Operation*>& ops,
-                  const ShardableAxesInferer& shardable_axes_inferer)
+StmtFusionHelper::StmtFusionHelper(
+    const std::vector<const pir::Operation*>& ops,
+    const ShardableAxesInferer& shardable_axes_inferer)
     : ops_(ops), shardable_axes_inferer_(shardable_axes_inferer) {
   this->op_topo_ = OpTopo::Make(ops);
   this->IsInThisOpList = MakePredicatorIsInThisFusionOp(ops);
@@ -33,10 +34,8 @@ GroupPattern StmtFusionHelper::FuseToGroupPattern() {
     return error.value();
   if (const auto& error = Fuse_IS_x_PS_2_PS(&stmt_patterns))
     return error.value();
-  if (const auto& error = Fuse_IS_x_R_2_R(&stmt_patterns))
-    return error.value();
-  if (const auto& error = Fuse_PS_x_R_2_R(&stmt_patterns))
-    return error.value();
+  if (const auto& error = Fuse_IS_x_R_2_R(&stmt_patterns)) return error.value();
+  if (const auto& error = Fuse_PS_x_R_2_R(&stmt_patterns)) return error.value();
   SortStmtPatterns(&stmt_patterns);
   return stmt_patterns;
 }
@@ -50,7 +49,8 @@ std::vector<StmtPattern> StmtFusionHelper::ConvertToStmtPatternVec() {
   return ret;
 }
 
-void StmtFusionHelper::SortStmtPatterns(std::vector<StmtPattern>* stmt_patterns) {
+void StmtFusionHelper::SortStmtPatterns(
+    std::vector<StmtPattern>* stmt_patterns) {
   std::vector<const StmtPattern*> stmt_ptr_patterns = [&] {
     std::vector<const StmtPattern*> stmt_ptr_patterns;
     stmt_ptr_patterns.reserve(stmt_patterns->size());
@@ -105,7 +105,6 @@ std::optional<ErrorGroupPattern> StmtFusionHelper::Fuse_IS_x_R_2_R(
   return FuseFilteredStmtPatterns<FusePolicy_IS_x_R_2_R>(stmt_patterns);
 }
 
-
 std::optional<ErrorGroupPattern> StmtFusionHelper::Fuse_PS_x_R_2_R(
     std::vector<StmtPattern>* stmt_patterns) {
   return FuseFilteredStmtPatterns<FusePolicy_PS_x_R_2_R>(stmt_patterns);
@@ -137,7 +136,8 @@ IS StmtFusionHelper::ConvertToIS(const pir::Operation* op) {
   };
 }
 
-R StmtFusionHelper::ConvertReductionOpToReductionPattern(const pir::Operation* op) {
+R StmtFusionHelper::ConvertReductionOpToReductionPattern(
+    const pir::Operation* op) {
   VLOG(4) << "Converting Op to R";
   return R{{}, {op}};
 }
@@ -154,24 +154,24 @@ PS StmtFusionHelper::ConvertOpToPS(const pir::Operation* op) {
   };
 }
 
-
-StmtPtr4OpT StmtFusionHelper::MakeStmtFinderFromOp(std::vector<StmtPattern>* stmts) {
+StmtFusionHelper::StmtPtr4OpT StmtFusionHelper::MakeStmtFinderFromOp(
+    std::vector<StmtPattern>* stmts) {
   std::unordered_map<const pir::Operation*, StmtPattern*> op2stmt_ptr;
   for (auto& stmt : *stmts) {
     VisitStmtOp(stmt, [&](const auto* op) { op2stmt_ptr[op] = &stmt; });
   }
   return [map = std::move(op2stmt_ptr)](
-              const pir::Operation* op) -> std::optional<StmtPattern*> {
+             const pir::Operation* op) -> std::optional<StmtPattern*> {
     const auto iter = map.find(op);
     if (iter == map.end()) return std::nullopt;
     return iter->second;
   };
 }
 
-
-bool StmtFusionHelper::IsConnected(const StmtPtr4OpT& StmtFinder,
-                  const StmtPattern* upstream,
-                  const StmtPattern* downstream) {
+bool StmtFusionHelper::IsConnected(
+    const StmtFusionHelper::StmtPtr4OpT& StmtFinder,
+    const StmtPattern* upstream,
+    const StmtPattern* downstream) {
   const auto VisitInputStmt = [&](const StmtPattern* stmt,
                                   const StmtVisitor& DoEach) {
     VisitStmtOp(*stmt, [&](const auto* op) {
@@ -192,8 +192,8 @@ bool StmtFusionHelper::IsConnected(const StmtPtr4OpT& StmtFinder,
   return found;
 }
 
-
-ShardableAxesSignature StmtFusionHelper::GetShardableAxesSignature(const OpTopo& op_topo) {
+ShardableAxesSignature StmtFusionHelper::GetShardableAxesSignature(
+    const OpTopo& op_topo) {
   const pir::Operation* sink = [&] {
     const auto& sinks = GetSinks(*op_topo.ops);
     CHECK_EQ(sinks.size(), 1) << "ops must have only one sink node.";
@@ -203,8 +203,7 @@ ShardableAxesSignature StmtFusionHelper::GetShardableAxesSignature(const OpTopo&
       shardable_axes_inferer_.InferShardableAxesFromSink(sink, op_topo);
   const auto& IsInputOpOperand = [&](const auto* op, int input_idx) {
     const auto& defining_op = op->operand_source(input_idx).defining_op();
-    return IsInThisOpList(defining_op) &&
-            op_topo.ops->count(defining_op) == 0;
+    return IsInThisOpList(defining_op) && op_topo.ops->count(defining_op) == 0;
   };
   const auto& input_op_operands = [&] {
     std::vector<OpAndOperandIndex> op_operands;
@@ -231,4 +230,4 @@ ShardableAxesSignature StmtFusionHelper::GetShardableAxesSignature(const OpTopo&
   }();
   return shardable_axes_sig;
 }
-} // namespace cinn::frontend::cluster_ops
+}  // namespace cinn::frontend::cluster_ops
