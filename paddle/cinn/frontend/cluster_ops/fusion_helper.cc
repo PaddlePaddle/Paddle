@@ -26,7 +26,7 @@ StmtFusionHelper::StmtFusionHelper(const std::vector<const pir::Operation*>& ops
 }
 
 GroupPattern StmtFusionHelper::FuseToGroupPattern() {
-  std::vector<StmtPattern> stmt_patterns = ConvertToStmtsPattern();
+  std::vector<StmtPattern> stmt_patterns = ConvertToStmtPatternVec();
   if (const auto& error = Fuse_IS_x_IS_2_IS(&stmt_patterns))
     return error.value();
   if (const auto& error = Fuse_PS_x_PS_2_PS(&stmt_patterns))
@@ -41,7 +41,7 @@ GroupPattern StmtFusionHelper::FuseToGroupPattern() {
   return stmt_patterns;
 }
 
-std::vector<StmtPattern> StmtFusionHelper::ConvertToStmtsPattern() {
+std::vector<StmtPattern> StmtFusionHelper::ConvertToStmtPatternVec() {
   std::vector<StmtPattern> ret;
   for (const auto* op : ops_) {
     if (!IsInThisOpList(op)) continue;

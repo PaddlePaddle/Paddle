@@ -27,7 +27,7 @@ class StmtFusionHelper {
   GroupPattern FuseToGroupPattern();
 
  private:
-  std::vector<StmtPattern> ConvertToStmtsPattern();
+  std::vector<StmtPattern> ConvertToStmtPatternVec();
   void SortStmtPatterns(std::vector<StmtPattern>* stmt_patterns);
 
   std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(

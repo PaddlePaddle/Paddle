@@ -39,10 +39,10 @@ class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
 
   ClusteringResult MakeClusteringResult(
       const std::vector<StmtPatternPtrs>& stmts_list) {
-    std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
+    std::vector<LoopAlignableStmtPatternVec> loop_alignable_list;
     for (const auto& stmt_ptrs : stmts_list) {
       loop_alignable_list.emplace_back(
-          MakeLoopAlignableStmtsPattern(stmt_ptrs));
+          MakeLoopAlignableStmtPatternVec(stmt_ptrs));
     }
     return ClusteringResult{
         .loop_alignable_list = std::move(loop_alignable_list),
@@ -50,9 +50,9 @@ class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
   }
 
  private:
-  LoopAlignableStmtsPattern MakeLoopAlignableStmtsPattern(
+  LoopAlignableStmtPatternVec MakeLoopAlignableStmtPatternVec(
       const std::vector<const StmtPattern*>& stmt_ptrs) {
-    LoopAlignableStmtsPattern loop_alignable;
+    LoopAlignableStmtPatternVec loop_alignable;
     loop_alignable.stmts.reserve(stmt_ptrs.size());
     for (const StmtPattern* stmt : stmt_ptrs) {
       loop_alignable.stmts.push_back(*stmt);

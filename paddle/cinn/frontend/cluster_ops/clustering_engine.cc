@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/frontend/cluster_ops/clustering_engine.h"
+#include "paddle/cinn/frontend/cluster_ops/fusion_helper.h"
 
 namespace cinn::frontend::cluster_ops {
 

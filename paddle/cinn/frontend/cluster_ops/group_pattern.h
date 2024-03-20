@@ -63,14 +63,14 @@ using IS = api::InjectiveSourcePattern<frontend::FrontendPattern>;
 using R = api::ReductionPattern<frontend::FrontendPattern>;
 using PS = api::PartialShardablePattern<frontend::FrontendPattern>;
 using StmtPattern = api::StmtPattern<frontend::FrontendPattern>;
-using StmtsPattern = api::StmtsPattern<frontend::FrontendPattern>;
+using StmtPatternVec = api::StmtPatternVec<frontend::FrontendPattern>;
 using StmtVisitor = std::function<void(const StmtPattern*)>;
 
-struct LoopAlignableStmtsPattern {
+struct LoopAlignableStmtPatternVec {
   std::vector<StmtPattern> stmts;
 };
 
 struct ClusteringResult {
-  std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
+  std::vector<LoopAlignableStmtPatternVec> loop_alignable_list;
 };
 }  // namespace cinn::frontend::cluster_ops
