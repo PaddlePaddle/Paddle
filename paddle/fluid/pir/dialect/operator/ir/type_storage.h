@@ -174,20 +174,19 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   using Dim = common::DDim;
   using DataLayout = common::DataLayout;
   using DataType = pir::Type;
-  using DenseTensorType = pir::DenseTensorType;
   using ParamKey = std::tuple<DataType,
                               Dim,
                               Dim,
                               DataLayout,
-                              DenseTensorType,
-                              DenseTensorType,
+                              pir::DenseTensorType,
+                              pir::DenseTensorType,
                               bool>;
   SparseCooTensorTypeStorage(DataType dtype,
                              Dim dims,
                              Dim meta_dims,
                              DataLayout layout,
-                             DenseTensorType non_zero_indices,
-                             DenseTensorType non_zero_elements,
+                             pir::DenseTensorType non_zero_indices,
+                             pir::DenseTensorType non_zero_elements,
                              bool coalesced = false)
       : dtype_(dtype),
         dims_(dims),
@@ -286,8 +285,8 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   Dim dims_;
   Dim meta_dims_;
   DataLayout layout_{DataLayout::NCHW};
-  DenseTensorType non_zero_indices_;
-  DenseTensorType non_zero_elements_;
+  pir::DenseTensorType non_zero_indices_;
+  pir::DenseTensorType non_zero_elements_;
   bool coalesced_ = false;
 };
 }  // namespace dialect

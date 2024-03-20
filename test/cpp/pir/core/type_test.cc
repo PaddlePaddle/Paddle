@@ -274,10 +274,9 @@ TEST(type_test, sparse_coo) {
                                                 coalesced);
 
   paddle::dialect::SparseCooTensorType sparse_coo_tensor_type =
-      paddle::dialect::SparseCooTensorType::dyn_cast_impl(pir_type);
+      paddle::dialect::SparseCooTensorType::dyn_cast(pir_type);
+  EXPECT_EQ(pir_type.isa<paddle::dialect::SparseCooTensorType>(), true);
 
-  EXPECT_EQ(sparse_coo_tensor_type.isa<paddle::dialect::SparseCooTensorType>(),
-            true);
   EXPECT_EQ(sparse_coo_tensor_type.dims(), dims);
   EXPECT_EQ(sparse_coo_tensor_type.meta_dims(), meta_ddims);
   EXPECT_EQ(sparse_coo_tensor_type.data_layout(), data_layout);

@@ -80,16 +80,15 @@ class IR_API SparseCooTensorType
  public:
   using Base::Base;
   using Type = pir::Type;
-  using Dim = SparseCooTensorTypeStorage::Dim;
+  using Dim = common::Dim;
   using DataLayout = common::DataLayout;
-  using DenseTensorType = pir::DenseTensorType;
 
   Type dtype() const;
   const Dim &dims() const;
   const Dim &meta_dims() const;
   DataLayout data_layout() const;
-  DenseTensorType non_zero_indices() const;
-  DenseTensorType non_zero_elements() const;
+  pir::DenseTensorType non_zero_indices() const;
+  pir::DenseTensorType non_zero_elements() const;
   bool coalesced() const;
 
   ///
@@ -105,8 +104,8 @@ class IR_API SparseCooTensorType
                                  const Dim &dims,
                                  const Dim &meta_dims,
                                  DataLayout layout,
-                                 DenseTensorType non_zero_indices,
-                                 DenseTensorType non_zero_elements,
+                                 pir::DenseTensorType non_zero_indices,
+                                 pir::DenseTensorType non_zero_elements,
                                  bool coalesced = false) {
     return Base::get(ctx,
                      dtype,
