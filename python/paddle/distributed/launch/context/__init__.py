@@ -165,6 +165,14 @@ class Context:
         except:
             ip_list = self.args.ips.split(",")
 
+        if len(ip_list) == 1:
+            self.args.master = None
+            self.args.ips = None
+            print(
+                "LAUNCH WARNNING only one node in ips, it will launch in standalone mode.."
+            )
+            return
+
         if self.has_set("nnodes"):
             nnodes = int(self.args.nnodes)
             if nnodes < len(ip_list):
