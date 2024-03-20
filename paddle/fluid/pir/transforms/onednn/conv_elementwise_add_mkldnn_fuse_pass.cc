@@ -365,7 +365,7 @@ class FusedConvBiasElementwiseAddAsYPattern
 class ConvElementwiseAddFusePass : public pir::PatternRewritePass {
  public:
   ConvElementwiseAddFusePass()
-      : pir::PatternRewritePass("conv_elementwise_add_mkldnn_fuse_pass", 2) {}
+      : pir::PatternRewritePass("conv_elementwise_add_mkldnn_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
