@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "paddle/cinn/frontend/cluster_ops/clustering_engine.h"
 
-namespace cinn::api {
+namespace cinn::frontend {
 
-frontend::cluster_ops::ClusteringResult ClusterOps(
+cluster_ops::ClusteringResult ClusterOps(
     const cinn::dialect::GroupOp& group_op) {
   const auto& ops = [&] {
     std::vector<const pir::Operation*> ops;
@@ -30,21 +32,19 @@ frontend::cluster_ops::ClusteringResult ClusterOps(
     auto* program = group_op->GetParentProgram();
     const auto* shape_analysis =
         &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::cluster_ops::MakeDefaultShardableAxesProvider(
-        shape_analysis);
+    return cluster_ops::MakeDefaultShardableAxesProvider(shape_analysis);
   }();
 
   auto cluster_policy = [&] {
     auto* program = group_op->GetParentProgram();
     const auto* shape_analysis =
         &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::cluster_ops::MakeLoopAlignableClusteringPolicy(
-        shape_analysis);
+    return cluster_ops::MakeLoopAlignableClusteringPolicy(shape_analysis);
   }();
 
-  frontend::cluster_ops::ShardableAxesInferer inferer(shardable_axes_provider);
-  frontend::cluster_ops::ClusteringEngine engine(ops, inferer, cluster_policy);
+  cluster_ops::ShardableAxesInferer inferer(shardable_axes_provider);
+  cluster_ops::ClusteringEngine engine(ops, inferer, cluster_policy);
 
   return engine.ClusterOps();
 }
-}  // namespace cinn::api
+}  // namespace cinn::frontend

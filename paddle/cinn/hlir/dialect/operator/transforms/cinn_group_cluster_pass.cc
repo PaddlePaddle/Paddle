@@ -842,7 +842,7 @@ struct GetPatternOpList {
 std::vector<GroupClusterNode> NewOpMergeWithOp(
     cinn::dialect::GroupOp group_op) {
   VLOG(4) << "Start Clustering Ops!";
-  const auto cluster_result = cinn::api::ClusterOps(group_op);
+  const auto cluster_result = cinn::frontend::ClusterOps(group_op);
   VLOG(4) << "Finished Clustering Ops!";
 
   // Each stmts corresponds to each fusion op(cluster node).
