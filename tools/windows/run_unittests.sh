@@ -484,7 +484,7 @@ long_time_test="^test_gru_op$|\
 ^test_nearest_interp_v2_op$|\
 ^test_nn_grad$|\
 ^test_norm_nn_grad$|\
-^test_normal1$|\
+^test_normal$|\
 ^test_pool3d_op$|\
 ^test_static_save_load$|\
 ^test_trilinear_interp_op$|\
