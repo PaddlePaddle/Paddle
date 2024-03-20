@@ -96,6 +96,7 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/conv_activation_mkldnn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/conv_elementwise_add_mkldnn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/matmul_elementwise_add_fuse_pass.h"
 #endif
@@ -157,6 +158,7 @@ USE_PIR_PASS(fused_dot_product_attention_pass);
 USE_PIR_PASS(batch_norm_act_fuse_pass);
 USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
 USE_PIR_PASS(conv_elementwise_add_mkldnn_fuse_pass);
+USE_PIR_PASS(conv_activation_mkldnn_fuse_pass);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
