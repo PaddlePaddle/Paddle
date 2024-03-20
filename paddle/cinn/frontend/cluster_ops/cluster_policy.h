@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/group_pattern.h"
+#include "paddle/cinn/frontend/cluster_ops/group_pattern.h"
+#include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 
 namespace cinn::frontend {
@@ -43,9 +44,4 @@ class ClusteringPolicy {
 
 std::shared_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
     const pir::ShapeConstraintIRAnalysis* shape_analysis);
-
-GroupPattern GenerateGroupPatternFromOpList(
-    const std::vector<const pir::Operation*>& ops,
-    const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider);
-
 }  // namespace cinn::frontend

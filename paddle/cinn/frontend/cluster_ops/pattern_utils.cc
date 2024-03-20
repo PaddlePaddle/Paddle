@@ -106,3 +106,78 @@ void SortStmtPtrs(
   };
   std::sort(stmt_ptrs->begin(), stmt_ptrs->end(), Cmp);
 }
+common::TopoWalker<const StmtPattern*> MakeTopoWalker(
+    const OpTopo& op_topo, const std::vector<StmtPattern>& stmt_patterns) {
+using StmtPtrs = std::vector<const StmtPattern*>;
+using Op2OwnerStmtPtrs =
+    std::unordered_map<const pir::Operation*, StmtPtrs>;
+auto op2owner_stmt_ptr = std::make_shared<Op2OwnerStmtPtrs>();
+for (const auto& stmt : stmt_patterns) {
+    VisitStmtOp(stmt, [&](const pir::Operation* op) {
+    (*op2owner_stmt_ptr)[op].push_back(&stmt);
+    });
+}
+using NodeVisitor = std::function<void(const StmtPattern*)>;
+auto VisitInput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+    VisitStmtOp(*stmt, [&](const auto* op) {
+    op_topo.VisitInputOp(op, [&](const auto* input_op) {
+        const auto& owners_iter = op2owner_stmt_ptr->find(input_op);
+        if (owners_iter == op2owner_stmt_ptr->end()) return;
+        if (owners_iter->second.size() != 1) return;
+        const auto* owner_stmt = *owners_iter->second.begin();
+        if (owner_stmt == stmt) return;
+        DoEach(owner_stmt);
+    });
+    });
+};
+auto VisitOutput = [=](const StmtPattern* stmt, const NodeVisitor& DoEach) {
+    const auto* sink = GetStmtSoleSinkOp(*stmt);
+    op_topo.VisitOutputOp(sink, [&](const pir::Operation* op) {
+    const auto& owners_iter = op2owner_stmt_ptr->find(op);
+    if (owners_iter == op2owner_stmt_ptr->end()) return;
+    for (const StmtPattern* stmt : owners_iter->second) {
+        DoEach(stmt);
+    }
+    });
+};
+const auto& TryPushBack = [](const auto* stmt, auto* stmts) {
+    if (std::find(stmts->begin(), stmts->end(), stmt) == stmts->end()) {
+    stmts->push_back(stmt);
+    }
+};
+using EdgeCache =
+    std::unordered_map<const StmtPattern*, std::vector<const StmtPattern*>>;
+auto stmt2inputs = std::make_shared<EdgeCache>();
+auto stmt2outputs = std::make_shared<EdgeCache>();
+for (const auto& stmt : stmt_patterns) {
+    (void)(*stmt2inputs)[&stmt];
+    VisitInput(&stmt, [&](const auto* input) {
+    TryPushBack(input, &(*stmt2inputs)[&stmt]);
+    });
+    (void)(*stmt2outputs)[&stmt];
+    VisitOutput(&stmt, [&](const auto* output) {
+    TryPushBack(output, &(*stmt2outputs)[&stmt]);
+    });
+}
+
+auto VisitCachedInput = [stmt2inputs](const auto* stmt,
+                                        const NodeVisitor& DoEach) {
+    const auto& map = (*stmt2inputs);
+    const auto& iter = map.find(stmt);
+    if (iter == map.end()) return;
+    for (const auto* input : iter->second) {
+    DoEach(input);
+    }
+};
+auto VisitCachedOutput = [stmt2outputs](const auto* stmt,
+                                        const NodeVisitor& DoEach) {
+    const auto& map = (*stmt2outputs);
+    const auto& iter = map.find(stmt);
+    if (iter == map.end()) return;
+    for (const auto* output : iter->second) {
+    DoEach(output);
+    }
+};
+return common::TopoWalker<const StmtPattern*>(VisitCachedInput,
+                                                VisitCachedOutput);
+}
