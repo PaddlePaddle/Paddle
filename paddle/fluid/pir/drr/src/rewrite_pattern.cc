@@ -34,7 +34,7 @@ DrrRewritePattern::DrrRewritePattern(
     pir::PatternBenefit benefit,
     const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner)
     : pir::RewritePattern(
-          drr_context.source_pattern_graph()->AnchorNode()->name(),
+          (*drr_context.source_pattern_graph()->OutputNodes().begin())->name(),
           benefit,
           context,
           {}),
@@ -68,7 +68,7 @@ bool DrrRewritePattern::MatchAndRewrite(
 bool DrrRewritePattern::PatternGraphMatch(
     pir::Operation* op, MatchContextImpl* source_pattern_match_ctx) const {
   VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
-  const OpCall* anchor = source_pattern_graph_->AnchorNode();
+  const OpCall* anchor = *source_pattern_graph_->OutputNodes().begin();
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
       bind_map =
           FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));

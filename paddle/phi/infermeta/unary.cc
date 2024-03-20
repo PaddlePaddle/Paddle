@@ -2202,7 +2202,7 @@ void KthvalueInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   indices->set_dims(dims);
   indices->share_lod(x);
-  indices->set_dtype(x.dtype());
+  indices->set_dtype(DataType::INT64);
 }
 
 void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out) {

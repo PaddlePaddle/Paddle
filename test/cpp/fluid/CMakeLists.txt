@@ -21,11 +21,6 @@ if(WITH_MKLDNN)
   add_subdirectory(mkldnn)
 endif()
 add_subdirectory(nccl)
-
-if(WITH_DISTRIBUTE)
-  add_subdirectory(distributed)
-endif()
-
 if(WITH_PSCORE)
   add_subdirectory(pscore)
 endif()
