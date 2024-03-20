@@ -26,7 +26,7 @@ class TestPushDenseOpTranslator(test_op_translator.TestOpTranslator):
         ids = paddle.ones(shape=(100, 2, 3), dtype='float32')
         input_names = []
         attrs = {
-            'table_id': -1,
+            'table_id': 1,
             'scale_data_norm': -1,
             'input_names': input_names,
         }
