@@ -363,6 +363,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={"x": x_tensor}, fetch_list=[out])
         self.assertEqual(res[0].shape, (3, 4, 2))
 
+    @test_with_pir_api
     @prog_scope()
     def test_static_data(self):
         x1 = paddle.static.data(name="x1", shape=[])
@@ -373,7 +374,7 @@ class TestSundryAPIStatic(unittest.TestCase):
                 "x1": np.array(1.0, dtype='float32'),
             },
             fetch_list=[
-                x1.name,
+                x1,
             ],
         )
         self.assertEqual(res[0].shape, ())
@@ -390,7 +391,7 @@ class TestSundryAPIStatic(unittest.TestCase):
                 "x3": 200.5,
             },
             fetch_list=[
-                y.name,
+                y,
             ],
         )
         self.assertEqual(res[0].shape, ())
