@@ -133,6 +133,12 @@
     data_type : dtype
     backend : place > output
 
+- op : barrier
+  args : (Tensor x, int ring_id=0)
+  output : Tensor(out)
+  kernel :
+    func : barrier
+
 - op : batch_fc
   args : (Tensor input, Tensor w, Tensor bias)
   output : Tensor(out)
@@ -141,12 +147,6 @@
   kernel :
     func : batch_fc
     data_type: input
-
-- op : barrier
-  args : (Tensor x, int ring_id=0)
-  output : Tensor(out)
-  kernel :
-    func : barrier
 
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)

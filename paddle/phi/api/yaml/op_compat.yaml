@@ -329,16 +329,16 @@
   outputs :
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
-- op : batch_fc
-  backward : batch_fc_grad
-  inputs :
-    {input : Input, w : W, bias : Bias}
-
 - op : barrier
   inputs :
     {x : X}
   outputs :
     out : Out
+
+- op : batch_fc
+  backward : batch_fc_grad
+  inputs :
+    {input : Input, w : W, bias : Bias}
 
 - op : batch_norm
   backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
