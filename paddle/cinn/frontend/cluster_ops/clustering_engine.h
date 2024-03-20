@@ -36,7 +36,7 @@ class ClusteringEngine {
       const std::function<size_t(const pir::Operation*)>& OrderValue4Op);
 
     template <typename DoEachComponentT>
-    void ClusteringEngine::VisitConnectedComponent(
+    void VisitConnectedComponent(
         const common::BfsWalker<const StmtPattern*>& walker,
         const std::vector<StmtPattern>& stmt_patterns,
         const DoEachComponentT& DoEachComponent) {
@@ -97,7 +97,7 @@ class ClusteringEngine {
       const std::list<const StmtPattern*> sinks);
 
     template <typename DoEachStmtAndTopoClosureUpstreamsT>
-    void ClusteringEngine::VisitStmtTopoClosureUpstreams(
+    void VisitStmtTopoClosureUpstreams(
         const common::TopoWalker<const StmtPattern*>& entire_topo_walker,
         const TopoClosure& topo_closure,
         const DoEachStmtAndTopoClosureUpstreamsT&
@@ -147,7 +147,7 @@ class ClusteringEngine {
       const std::vector<StmtPattern>& stmt_patterns);
 
     template <typename DoEachComponentT>
-    void ClusteringEngine::VisitClusterStmts(const common::TopoWalker<const StmtPattern*>& walker,
+    void VisitClusterStmts(const common::TopoWalker<const StmtPattern*>& walker,
                             const std::vector<StmtPattern>& stmt_patterns,
                             const DoEachComponentT& DoEachComponent) {
     std::vector<const StmtPattern*> stmt_ptrs = [&] {
@@ -179,7 +179,7 @@ class ClusteringEngine {
     }
 
     template <typename DoEachComponentT>
-    void ClusteringEngine::VisitInferedClusterStmts(
+    void VisitInferedClusterStmts(
         const common::TopoWalker<const StmtPattern*>& entire_topo_walker,
         const std::vector<const StmtPattern*>& stmt_ptrs,
         const DoEachComponentT& DoEachComponent) {
