@@ -65,4 +65,12 @@ using PS = api::PartialShardablePattern<frontend::FrontendPattern>;
 using StmtPattern = api::StmtPattern<frontend::FrontendPattern>;
 using StmtsPattern = api::StmtsPattern<frontend::FrontendPattern>;
 using StmtVisitor = std::function<void(const StmtPattern*)>;
+
+struct LoopAlignableStmtsPattern {
+  std::vector<StmtsPattern> stmts;
+};
+
+struct ClusteringResult {
+  std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
+};
 }  // namespace cinn::frontend::cluster_ops

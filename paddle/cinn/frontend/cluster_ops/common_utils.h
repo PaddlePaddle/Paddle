@@ -39,34 +39,6 @@ using OpSetPtr = std::shared_ptr<OpSet>;
 using OpVisitor = std::function<void(const pir::Operation*)>;
 using OpPatternKind = cinn::hlir::framework::OpPatternKind;
 
-OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
-  return hlir::framework::pir::CompatibleInfo::OpKind(*node);
-}
-
-bool IsGeneralInjective(const pir::Operation* op) {
-  hlir::framework::OpPatternKind op_pattern_kind = GetOpPatternKind(op);
-  return op_pattern_kind == hlir::framework::kElementWise ||
-         op_pattern_kind == hlir::framework::kBroadcast ||
-         op_pattern_kind == hlir::framework::kInjective;
-}
-
-size_t GetRank(pir::Value value) {
-  return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
-}
-
-std::list<const pir::Operation*> GetSinks(const OpSet& ops);
-
-const pir::Operation* GetSoleSink(const OpSet& ops);
-
-common::TopoWalker<const pir::Operation*> GetOpsReversedTopoWalker(
-    const OpTopo& op_topo);
-
-std::vector<int64_t> GetReduceAxes(const pir::Operation* reduce_op);
-
-bool GetReduceOpKeepDims(const pir::Operation* reduce_op);
-
-std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
-    const std::vector<const pir::Operation*>& ops);
 
 struct OpTopo {
   OpSetPtr ops;
@@ -103,6 +75,36 @@ struct OpTopo {
     }
   }
 };
+
+
+OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
+  return hlir::framework::pir::CompatibleInfo::OpKind(*node);
+}
+
+bool IsGeneralInjective(const pir::Operation* op) {
+  hlir::framework::OpPatternKind op_pattern_kind = GetOpPatternKind(op);
+  return op_pattern_kind == hlir::framework::kElementWise ||
+         op_pattern_kind == hlir::framework::kBroadcast ||
+         op_pattern_kind == hlir::framework::kInjective;
+}
+
+size_t GetRank(pir::Value value) {
+  return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
+}
+
+std::list<const pir::Operation*> GetSinks(const OpSet& ops);
+
+const pir::Operation* GetSoleSink(const OpSet& ops);
+
+common::TopoWalker<const pir::Operation*> GetOpsReversedTopoWalker(
+    const OpTopo& op_topo);
+
+std::vector<int64_t> GetReduceAxes(const pir::Operation* reduce_op);
+
+bool GetReduceOpKeepDims(const pir::Operation* reduce_op);
+
+std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
+    const std::vector<const pir::Operation*>& ops);
 
 std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
     const std::vector<const pir::Operation*>& ops);

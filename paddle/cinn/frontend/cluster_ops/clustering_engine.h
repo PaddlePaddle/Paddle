@@ -21,13 +21,6 @@
 
 namespace cinn::frontend::cluster_ops {
 
-struct LoopAlignableStmtsPattern {
-  std::vector<api::StmtPattern<FrontendPattern>> stmts;
-};
-
-struct ClusteringResult {
-  std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
-};
 
 class ClusteringEngine {
  public:
