@@ -499,7 +499,7 @@ def check_shape(shape):
     """
     if isinstance(shape, (Variable, Value)):
         check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
-    else:
+    elif isinstance(shape, (list, tuple)):
         for ele in shape:
             if not isinstance(ele, (Variable, Value)):
                 if ele < 0:
