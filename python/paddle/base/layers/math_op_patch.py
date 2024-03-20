@@ -594,6 +594,9 @@ def monkey_patch_variable():
                     and self.dtype in _supported_int_dtype_
                 ):
                     self = astype(self, 'float32')
+                # bool(tensor) + int(scalar) will do type promotion to int64
+                if self.dtype == core.VarDesc.VarType.BOOL:
+                    self = astype(self, 'int64')
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:

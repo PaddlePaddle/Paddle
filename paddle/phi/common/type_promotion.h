@@ -104,7 +104,7 @@ inline bool is_support_complex(DataType dtype) {
 inline bool is_support_int(DataType dtype) {
   if (dtype == DataType::UINT8 || dtype == DataType::INT8 ||
       dtype == DataType::INT16 || dtype == DataType::INT32 ||
-      dtype == DataType::INT64 || dtype == DataType::BOOL) {
+      dtype == DataType::INT64) {
     return true;
   } else {
     return false;

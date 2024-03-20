@@ -220,6 +220,10 @@ static PyObject* tensor__add__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other = CastPyArg2Double(other_obj, "__add__", 0);
     }
 
@@ -353,6 +357,10 @@ static PyObject* tensor__sub__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other = CastPyArg2Double(other_obj, "__sub__", 0);
     }
     {
@@ -482,6 +490,10 @@ static PyObject* tensor__rsub__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other = CastPyArg2Double(other_obj, "__rsub__", 0);
     }
     {
@@ -613,6 +625,10 @@ static PyObject* tensor__mul__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other = CastPyArg2Double(other_obj, "__mul__", 0);
     }
     {
@@ -748,6 +764,10 @@ static PyObject* tensor__div__method(TensorObject* self,
     if (PyFloat_Check(other_obj)) {
       other = CastPyArg2Double(other_obj, "__div__", 0);
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other = CastPyArg2Double(other_obj, "__div__", 0);
     }
     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
@@ -894,6 +914,10 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
       has_other_double = true;
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {  // NOLINT
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
       has_other_double = true;
     }
@@ -1336,6 +1360,10 @@ static PyObject* tensor__mod__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
       has_other_double = true;
     }
@@ -1891,6 +1919,10 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other_double = CastPyArg2Double(other_obj, "__floordiv__", 0);
       has_other_double = true;
     }
@@ -2030,6 +2062,10 @@ static PyObject* tensor__pow__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other = CastPyArg2Double(other_obj, "__pow__", 0);
     }
     {
@@ -2168,6 +2204,10 @@ static PyObject* tensor__rpow__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::INT64);
+      }
       other_double = CastPyArg2Double(other_obj, "__rpow__", 0);
       has_other_double = true;
     }
