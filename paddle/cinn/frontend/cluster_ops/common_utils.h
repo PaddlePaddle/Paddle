@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#prgama once
 
 #include "paddle/cinn/common/bfs_walker.h"
 #include "paddle/cinn/common/topo_walker.h"
@@ -20,7 +21,6 @@
 #include <optional>
 #include <typeinfo>
 #include <variant>
-
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
