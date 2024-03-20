@@ -19,16 +19,6 @@
 
 namespace cinn::frontend {
 
-class ShardableAxesProvider {
- public:
-  ~ShardableAxesProvider() = default;
-
-  virtual ShardableAxesSignature MakeShardableAxesSignature4Op(const pir::Operation* op) = 0;
-
- protected:
-  ShardableAxesProvider() = default;
-};
-
 std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
     const pir::ShapeConstraintIRAnalysis* shape_analysis);
 
@@ -38,15 +28,13 @@ class ClusteringPolicy {
 
   using ShardableAxes4ValueT =
       std::function<std::optional<const ShardableAxes*>(pir::Value)>;
- 
-  virtual bool CanActAsSink(
-    const ShardableAxes4ValueT& ShardableAxes4Value,
-    const api::StmtPattern<FrontendPattern>& node) = 0;
- 
-  virtual bool IsEdgeFusible(
-    const ShardableAxes4ValueT& ShardableAxes4Value,
-    const api::StmtPattern<FrontendPattern>& src,
-    const api::StmtPattern<FrontendPattern>& dst) = 0;
+
+  virtual bool CanActAsSink(const ShardableAxes4ValueT& ShardableAxes4Value,
+                            const api::StmtPattern<FrontendPattern>& node) = 0;
+
+  virtual bool IsEdgeFusible(const ShardableAxes4ValueT& ShardableAxes4Value,
+                             const api::StmtPattern<FrontendPattern>& src,
+                             const api::StmtPattern<FrontendPattern>& dst) = 0;
 
   using StmtPatternPtrs = std::vector<const api::StmtPattern<FrontendPattern>*>;
   virtual ClusteringResult MakeClusteringResult(
@@ -58,11 +46,6 @@ class ClusteringPolicy {
 
 std::shared_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
     const pir::ShapeConstraintIRAnalysis* shape_analysis);
-
-ClusteringResult ClusterOps(
-    const std::vector<const pir::Operation*>& ops,
-    const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider,
-    const std::shared_ptr<ClusteringPolicy>& clustering_policy);
 
 GroupPattern GenerateGroupPatternFromOpList(
     const std::vector<const pir::Operation*>& ops,

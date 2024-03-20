@@ -1,17 +1,21 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
-#include <unordered_map>
-#include <atomic>
-#include <vector>
-#include <unordered_map>
-#include <variant>
-#include "paddle/cinn/api/op_topo_pattern.h"
-#include "paddle/pir/include/core/operation.h"
-#include "glog/logging.h"
-#include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/adt/logical.h"
-#include "paddle/cinn/adt/tree.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/cinn/frontend/group_pattern.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 
 namespace cinn::frontend {
 
@@ -24,19 +28,20 @@ struct OpAndOperandIndex {
   }
 };
 
-}
+}  // namespace cinn::frontend
 
 namespace std {
 
-template<>
+template <>
 struct hash<cinn::frontend::OpAndOperandIndex> {
-
   size_t operator()(const cinn::frontend::OpAndOperandIndex& op_operand) const {
-    return cinn::adt::hash_combine(std::hash<const pir::Operation*>()(op_operand.op), op_operand.operand_index);
+    return cinn::adt::hash_combine(
+        std::hash<const pir::Operation*>()(op_operand.op),
+        op_operand.operand_index);
   }
 };
 
-}
+}  // namespace std
 
 namespace cinn::frontend {
 
@@ -61,7 +66,8 @@ using ShardableAxes = std::vector<ShardableAxis>;
 struct ShardableAxesUtil {
   using OldName2NewName = std::unordered_map<std::string, std::string>;
 
-  static OldName2NewName GetOldName2NewName(const ShardableAxes& old_sa, const ShardableAxes& new_sa) {
+  static OldName2NewName GetOldName2NewName(const ShardableAxes& old_sa,
+                                            const ShardableAxes& new_sa) {
     OldName2NewName old_name2new_name;
     for (const auto& [old_axis, old_name] : old_sa) {
       for (const auto& [new_axis, new_name] : new_sa) {
@@ -73,19 +79,21 @@ struct ShardableAxesUtil {
     return old_name2new_name;
   }
 
-  static void UpdateShardableAxes(const OldName2NewName& old2new, ShardableAxes* sa) {
+  static void UpdateShardableAxes(const OldName2NewName& old2new,
+                                  ShardableAxes* sa) {
     for (auto iter = sa->begin(); iter != sa->end();) {
       const auto& pair_it = old2new.find(iter->axis_name);
       if (pair_it != old2new.end()) {
         iter->axis_name = pair_it->second;
-        ++iter; 
+        ++iter;
       } else {
-        iter = sa->erase(iter); 
+        iter = sa->erase(iter);
       }
     }
   }
 
-  static ShardableAxes GetCommonShardableAxes(const ShardableAxes& lhs, const ShardableAxes& rhs) {
+  static ShardableAxes GetCommonShardableAxes(const ShardableAxes& lhs,
+                                              const ShardableAxes& rhs) {
     ShardableAxes ret;
     for (const auto& lhs_axis : lhs) {
       for (const auto& rhs_axis : rhs) {
@@ -101,13 +109,14 @@ struct ShardableAxesUtil {
     ShardableAxes ret;
     for (int i = 0; i < rank; ++i) {
       ret.emplace_back(ShardableAxis{
-        .axis=i,
-        .axis_name=std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo()),
+          .axis = i,
+          .axis_name =
+              std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo()),
       });
     }
     return ret;
   }
-  
+
   static ShardableAxes MakeReduceOpInputShardableAxes(
       const size_t input_rank, const std::vector<int64_t>& reduce_axes) {
     if (reduce_axes.empty()) return ShardableAxes{};
@@ -116,19 +125,21 @@ struct ShardableAxesUtil {
       CHECK_LT(reduce_axis, input_rank);
     }
     const auto IsReduceAxis = [&](int64_t i) {
-      return std::find(reduce_axes.begin(), reduce_axes.end(), i) != reduce_axes.end();
+      return std::find(reduce_axes.begin(), reduce_axes.end(), i) !=
+             reduce_axes.end();
     };
     ShardableAxes ret;
     for (int64_t i = 0; i < input_rank; ++i) {
       if (IsReduceAxis(i)) continue;
       ret.emplace_back(ShardableAxis{
-        .axis=i,
-        .axis_name=std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo()),
+          .axis = i,
+          .axis_name =
+              std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo()),
       });
     }
     return ret;
   }
-  
+
   static ShardableAxes MakeBroadcastOpInputShardableAxes(
       const size_t input_rank, const std::vector<int64_t>& broadcast_axes) {
     for (int64_t axis : broadcast_axes) {
@@ -136,14 +147,16 @@ struct ShardableAxesUtil {
       CHECK_LT(axis, input_rank);
     }
     const auto IsBroadcastAxis = [&](int64_t i) {
-      return std::find(broadcast_axes.begin(), broadcast_axes.end(), i) != broadcast_axes.end();
+      return std::find(broadcast_axes.begin(), broadcast_axes.end(), i) !=
+             broadcast_axes.end();
     };
     ShardableAxes ret;
     for (int64_t i = 0; i < input_rank; ++i) {
       if (IsBroadcastAxis(i)) continue;
       ret.emplace_back(ShardableAxis{
-        .axis=i,
-        .axis_name=std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo()),
+          .axis = i,
+          .axis_name =
+              std::string("D") + std::to_string(ShardableAxis::UnqiueSeqNo()),
       });
     }
     return ret;
@@ -159,46 +172,21 @@ struct ShardableAxesSignature {
   std::unordered_map<OpAndOperandIndex, ShardableAxes> input_shardable_axes;
 };
 
-}
-
-namespace cinn::api {
-
-template<>
-struct ErrorPattern<frontend::FrontendPattern> {
-  std::vector<const pir::Operation*> ops;
-  std::string error_string;
-};
-
-template<>
-struct InjectiveSourcePattern<frontend::FrontendPattern> {
-  std::vector<const pir::Operation*> ops;
-  const pir::Operation* sole_sink;
-};
-
-template<>
-struct SingleReductionOpPattern<frontend::FrontendPattern> {  
-  const pir::Operation* reduce_op;
-};
-template<>
-struct PartialShardablePattern<frontend::FrontendPattern> {
-  std::vector<const pir::Operation*> ops;
-  const pir::Operation* sole_sink;
-  frontend::ShardableAxesSignature shardable_axes_signature;
-};
-
-}
+}  // namespace cinn::frontend
 
 namespace cinn::frontend {
 
-using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
-using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
+class ShardableAxesProvider {
+ public:
+  ~ShardableAxesProvider() = default;
 
-struct LoopAlignableStmtsPattern {
-  std::vector<api::StmtPattern<frontend::FrontendPattern>> stmts;
+  virtual ShardableAxesSignature MakeShardableAxesSignature4Op(
+      const pir::Operation* op) = 0;
+
+ protected:
+  ShardableAxesProvider() = default;
 };
 
-struct ClusteringResult {
-  std::vector<LoopAlignableStmtsPattern> loop_alignable_list;
-};
-
-}
+std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis);
+}  // namespace cinn::frontend
