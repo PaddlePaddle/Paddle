@@ -432,4 +432,25 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
   const pir::ShapeConstraintIRAnalysis* shape_analysis_;
 };
 
+
+using ShardableAxes4ValueT =
+    std::function<std::optional<const ShardableAxes*>(pir::Value)>;
+ShardableAxes4ValueT MakeInferedShardableAxes4Value(
+    const std::vector<const StmtPattern*>& stmt_ptrs) {
+  const OpSetPtr ops = [&] {
+    auto ops = std::make_shared<OpSet>();
+    for (const auto* stmt_ptr : stmt_ptrs) {
+      VisitStmtOp(*stmt_ptr, [&](const auto* op) { ops->insert(op); });
+    }
+    return ops;
+  }();
+  auto value2shardable_axes = shardable_axes_inferer_.InferShardableAxes(ops);
+  return [map = std::move(value2shardable_axes)](
+              pir::Value value) -> std::optional<const ShardableAxes*> {
+    const auto& iter = map.find(value);
+    if (iter == map.end()) return std::nullopt;
+    return &iter->second;
+  };
+}
+
 }  // namespace cinn::frontend

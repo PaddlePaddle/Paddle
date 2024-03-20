@@ -11,18 +11,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-namespace cinn::api {
-
-ClusteringResult ClusterOps(
-    const std::vector<const pir::Operation*>& ops,
-    const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider,
-    const std::shared_ptr<ClusteringPolicy>& clustering_policy) {
-  VLOG(4) << "Initializing Inferer";
-  ShardableAxesInferer inferer(shardable_axes_provider);
-  VLOG(4) << "Initializing Clustering Engine";
-  ClusteringEngine engine(ops, inferer, clustering_policy);
-  VLOG(4) << "Engine calls ClusterOps()";
-  return engine.ClusterOps();
-}
-}
