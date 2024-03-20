@@ -64,6 +64,50 @@ class TestPirAMPProgram(unittest.TestCase):
             np.testing.assert_equal(len(_white_list), 0)
             np.testing.assert_equal(len(_black_list), 0)
 
+    def test_linear_amp_o2(self):
+        if not core.is_compiled_with_cuda():
+            return
+        with paddle.pir_utils.IrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data('x', [3, 4], 'float32')
+                linear = paddle.nn.Linear(4, 5)
+                optimizer = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=linear.parameters()
+                )
+                linear, optimizer = paddle.amp.decorate(
+                    models=linear,
+                    optimizers=optimizer,
+                    level='O2',
+                    master_weight=True,
+                    master_grad=True,
+                )
+                scaler = paddle.amp.GradScaler(
+                    init_loss_scaling=2.0**16, use_dynamic_loss_scaling=True
+                )
+
+                with paddle.amp.auto_cast(
+                    level='O2', dtype='float16', use_promote=True
+                ):
+                    out = linear(x)
+                    loss = paddle.mean(out)
+                scaled = scaler.scale(loss)
+                scaler.minimize(optimizer, scaled, startup_program=startup)
+            cast_op_count = 0
+            for op in main.global_block().ops:
+                if op.name() == 'pd_op.cast':
+                    cast_op_count += 1
+            np.testing.assert_equal(cast_op_count, 5)
+            place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            exe.run(startup)
+            result = exe.run(
+                main,
+                feed={'x': np.random.rand(3, 4).astype('float32')},
+                fetch_list=[loss],
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

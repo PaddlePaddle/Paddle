@@ -49,5 +49,5 @@ class TestChecker(unittest.TestCase):
         checker.check_speed()
 
 
-# if __name__ == "__main__":
-# unittest.main()
+if __name__ == "__main__":
+    unittest.main()

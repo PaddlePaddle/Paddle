@@ -31,7 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -60,15 +60,21 @@ class AutoMixedPrecisionPass : public pir::Pass {
         precision_mode_(phi::DataType::FLOAT16) {}
 
   bool Initialize(pir::IrContext* context) override {
-    IR_ENFORCE(Has(pir::kPlaceAttr),
-               "Pass initialize failed."
-               "When using AutoMixedPrecisionPass, place attribute is required!"
-               "Use Set method to set the place attribute.");
-    IR_ENFORCE(Has("__mixed_precision_mode__"),
-               "Pass initialize failed."
-               "When using AutoMixedPrecisionPass, precision_mode attribute is "
-               "required!"
-               "Use Set method to set the scope attribute.");
+    PADDLE_ENFORCE_EQ(
+        Has(pir::kPlaceAttr),
+        true,
+        phi::errors::InvalidArgument(
+            "Pass initialize failed."
+            "When using AutoMixedPrecisionPass, place attribute is required!"
+            "Use Set method to set the place attribute."));
+    PADDLE_ENFORCE_EQ(
+        Has("__mixed_precision_mode__"),
+        true,
+        phi::errors::InvalidArgument(
+            "Pass initialize failed."
+            "When using AutoMixedPrecisionPass, precision_mode attribute is "
+            "required!"
+            "Use Set method to set the scope attribute."));
 
     place_ = Get<phi::Place>(pir::kPlaceAttr);
     precision_mode_ = Get<phi::DataType>("__mixed_precision_mode__");

@@ -738,6 +738,14 @@ void CropInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  dim[0] = dim[0] / nranks;
+  if (dim[0] < 0) dim[0] = -1;
+  out->set_dims(dim);
+  out->set_dtype(x.dtype());
+}
+
 void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
   phi::DDim dim = x.dims();
   dim[dim.size() - 1] = dim[dim.size() - 1] / nranks;
@@ -2576,14 +2584,12 @@ void MultinomialInferMeta(const MetaTensor& x,
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,
+                        const std::string& mode,
                         MetaTensor* out,
                         MetaTensor* median_index) {
   std::vector<int64_t> axis_list = axes.GetData();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
-  out->set_dtype(x.dtype());
-  median_index->set_dtype(DataType::INT64);
-  median_index->set_dims(common::make_ddim({x.numel() * 2}));
 
   std::vector<int32_t> out_dim;
   if (axis_list.empty()) {
@@ -2638,8 +2644,15 @@ void NanmedianInferMeta(const MetaTensor& x,
       }
     }
   }
+  out->set_dtype(x.dtype());
+  out->set_dims(make_ddim(out_dim));
 
-  out->set_dims(common::make_ddim(out_dim));
+  auto median_dim = out_dim;
+  if (mode == "avg") {
+    median_dim.push_back(2);
+  }
+  median_index->set_dtype(DataType::INT64);
+  median_index->set_dims(make_ddim(median_dim));
 }
 
 void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
@@ -2924,6 +2937,29 @@ void Pad3dInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void PartialAllgatherInferMeta(const MetaTensor& x,
+                               int nranks,
+                               int rank,
+                               int ring_id,
+                               bool use_calc_stream,
+                               MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      nranks,
+      2,
+      phi::errors::InvalidArgument("The value of nranks should be >=2."));
+  PADDLE_ENFORCE_EQ(
+      (rank >= 0 && rank < nranks),
+      true,
+      phi::errors::InvalidArgument(
+          "The rank (%d) for partial_allgather op must >=0 and <nranks (%d)",
+          rank,
+          nranks));
+
+  auto x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+}
+
 void PartialSendInferMeta(const MetaTensor& x,
                           int ring_id,
                           int peer,
@@ -3168,7 +3204,7 @@ void Pool2DInferMeta(const MetaTensor& x,
                             (data_format == "NHWC" || data_format == "NDHWC");
   if (!config.is_runtime && kernel_size.FromTensor()) {
     auto x_dims = x.dims();
-    std::vector<int64_t> output_shape = std::move(common::vectorize(x_dims));
+    std::vector<int64_t> output_shape = common::vectorize(x_dims);
     // set dims of HW -1
     output_shape[x_dims.size() - 2] = -1;
     if (channel_last) {  // for NHWC, NDHWC
@@ -3857,7 +3893,6 @@ void SliceArrayDenseInferMeta(const MetaTensor& input,
   if (config.is_runtime) {
     return;
   }
-  // out->set_dims(input.dims());
   out->set_dtype(input.dtype());
   out->set_dims(input.dims());
 }
@@ -4883,6 +4918,14 @@ void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void UnchangedVectorInferMeta(const std::vector<const MetaTensor*>& xs,
+                              std::vector<MetaTensor*> outs) {
+  for (size_t i = 0; i < xs.size(); ++i) {
+    outs[i]->set_dtype(xs[i]->dtype());
+    outs[i]->set_layout(xs[i]->layout());
+  }
 }
 
 // meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
