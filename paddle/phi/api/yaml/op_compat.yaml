@@ -1260,6 +1260,15 @@
       data_type : float
       support_tensor : true
 
+- op : fused_adam_(fused_adam)
+  inputs :
+    {params : Params, grads : Grads, learning_rate : LearningRate, moments1 : Moments1,
+     moments2 : Moments2, beta1_pows : Beta1Pows, beta2_pows : Beta2Pows, master_params : MasterParams,
+     skip_update : SkipUpdate}
+  outputs :
+    {params_out : ParamsOut, moments1_out : Moments1Out, moments2_out : Moments2Out,
+     beta1_pows_out : Beta1PowsOut, beta2_pows_out : Beta2PowsOut, master_params_out : MasterParamsOut}
+
 - op : fused_attention
   backward: fused_attention_grad
   inputs:
