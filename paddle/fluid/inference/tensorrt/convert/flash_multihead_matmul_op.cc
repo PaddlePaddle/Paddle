@@ -24,11 +24,12 @@ namespace tensorrt {
 
 class FlashMultiheadMatMulOpConverter : public OpConverter {
  public:
-  void flash_multihead_mamul_trt(const framework::proto::OpDesc& op,
-                                 const framework::Scope& scope,
-                                 bool test_mode) {
-    VLOG(3) << "convert a flash_multihead_mamul op to a corresponding tensorrt "
-               "network structure\n";
+  void flash_multihead_matmul_trt(const framework::proto::OpDesc& op,
+                                  const framework::Scope& scope,
+                                  bool test_mode) {
+    VLOG(3)
+        << "convert a flash_multihead_matmul op to a corresponding tensorrt "
+           "network structure\n";
 
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (engine_->precision() == phi::DataType::INT8) {
@@ -138,7 +139,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                                       weight,
                                       bias);
       fc_layer->setName(
-          ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+          ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
       // add shuffle for fc layer
       reshape_before_mha_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
@@ -243,10 +244,10 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         layer, "flash_multihead_matmul", {output_name}, test_mode);
   }
 
-  void flash_multihead_mamul(const framework::proto::OpDesc& op,
-                             const framework::Scope& scope,
-                             bool test_mode) {
-    VLOG(3) << "convert a flash_multihead_mamul op to a "
+  void flash_multihead_matmul(const framework::proto::OpDesc& op,
+                              const framework::Scope& scope,
+                              bool test_mode) {
+    VLOG(3) << "convert a flash_multihead_matmul op to a "
                "MemoryEfficientAttention OP "
                "network structure\n";
     framework::OpDesc op_desc(op, nullptr);
@@ -310,7 +311,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                                  hidden_out,
                                  weight,
                                  bias);
-        qkv_fc_layers[i]->setName(("multihead_mamul_fc_" + std::to_string(i) +
+        qkv_fc_layers[i]->setName(("multihead_matmul_fc_" + std::to_string(i) +
                                    "_(Output: " + output_name + ")")
                                       .c_str());
       } else {
@@ -334,7 +335,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                                  matrix_operation_x,
                                  *weight_reshape_before_mm[i]->getOutput(0),
                                  matrix_operation_y);
-        qkv_fc_layers[i]->setName(("multihead_mamul_matmul_" +
+        qkv_fc_layers[i]->setName(("multihead_matmul_matmul_" +
                                    std::to_string(i) +
                                    "_(Output: " + output_name + ")")
                                       .c_str());
@@ -499,9 +500,9 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     bool use_trt_fma = PADDLE_GET_CONST(bool, op_desc.GetAttr("use_trt_fma"));
     if (use_trt_fma) {
-      flash_multihead_mamul_trt(op, scope, test_mode);
+      flash_multihead_matmul_trt(op, scope, test_mode);
     } else {
-      flash_multihead_mamul(op, scope, test_mode);
+      flash_multihead_matmul(op, scope, test_mode);
     }
   }
 };

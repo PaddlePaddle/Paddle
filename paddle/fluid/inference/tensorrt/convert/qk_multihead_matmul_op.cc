@@ -23,7 +23,7 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a qk_multihead_mamul op to a corresponding tensorrt "
+    VLOG(3) << "convert a qk_multihead_matmul op to a corresponding tensorrt "
                "network structure";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -142,7 +142,7 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
                                                   *bias_qk_tensor,
                                                   elementwise_operation);
     merge_qk_element_layer->setName(
-        ("multihead_mamul_fc_qk(Output: " + output_name + ")").c_str());
+        ("multihead_matmul_fc_qk(Output: " + output_name + ")").c_str());
 
     auto* reshape_after_fc_qk_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Shuffle, *merge_qk_element_layer->getOutput(0));
@@ -232,7 +232,7 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
                                                  *bias_v_tensor,
                                                  elementwise_operation);
     merge_v_element_layer->setName(
-        ("multihead_mamul_fc_v(Output: " + output_name + ")").c_str());
+        ("multihead_matmul_fc_v(Output: " + output_name + ")").c_str());
 
     // add shuffle for fc layer
     auto* reshape_after_fc_v_layer = TRT_ENGINE_ADD_LAYER(

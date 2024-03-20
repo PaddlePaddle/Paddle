@@ -33,7 +33,8 @@ set(paddle_inference_api_deps
     trainer_desc_proto
     custom_operator
     lod_tensor
-    scope)
+    scope
+    drr)
 
 if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps framework_io)
