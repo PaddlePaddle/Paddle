@@ -149,6 +149,26 @@ struct ShadowOutputOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct SliceOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    const auto index =
+        op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
+    const auto output_value =
+        (op->operand(0).type().dyn_cast<pir::VectorType>())[index]
+            .dyn_cast<pir::Value>();
+
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(0), shape_analysis->GetShapeOrDataForValue(output_value));
+
+    return true;
+  }
+
+  SliceOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 struct SplitOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(

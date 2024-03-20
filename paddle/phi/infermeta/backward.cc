@@ -877,6 +877,16 @@ void NceGradInferMeta(const MetaTensor& input,
   }
 }
 
+void PartialSumGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                             std::vector<MetaTensor*> x_grads) {
+  auto input_num = xs.size();
+  for (size_t i = 0; i < input_num; i++) {
+    auto x_dims = xs[i]->dims();
+    x_grads[i]->set_dims(x_dims);
+    x_grads[i]->set_dtype(xs[i]->dtype());
+  }
+}
+
 void NllLossGradInferMeta(const MetaTensor& x,
                           const MetaTensor& label,
                           const MetaTensor& weight,

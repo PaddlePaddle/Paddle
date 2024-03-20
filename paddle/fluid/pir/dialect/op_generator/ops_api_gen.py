@@ -125,6 +125,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'all_reduce',
     'all_reduce_',
+    'barrier',
     'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_max',
@@ -155,6 +156,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'lars_momentum',
     'lars_momentum_',
     'max_pool2d_v2',
+    'partial_sum',
     'random_routing',
     'recv_v2',
     'rnn_',
@@ -187,6 +189,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_allgather_',
     'nop',
     'nop_',
+    'limit_by_capacity',
+    'global_scatter',
 ]
 
 

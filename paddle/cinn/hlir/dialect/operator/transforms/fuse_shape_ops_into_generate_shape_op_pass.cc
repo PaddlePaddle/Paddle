@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include <algorithm>
 #include "paddle/cinn/common/bfs_walker.h"
+#include "paddle/cinn/common/topo_walker.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -127,67 +128,82 @@ bool MakeGenerateShapeOpAttribute(
 std::unordered_set<pir::Operation*> GetOpSetFromOutputToInputsValue(
     const std::vector<pir::Value>& input_values, pir::Value output_value) {
   std::unordered_set<pir::Operation*> op_set;
-  std::queue<pir::Operation*> op_queue;
-  op_queue.push(output_value.defining_op());
-  op_set.insert(output_value.defining_op());
-  std::unordered_set<pir::Value> visited_input_value;
   const std::unordered_set<pir::Value> input_value_set(input_values.begin(),
                                                        input_values.end());
-  while (!op_queue.empty()) {
-    auto* op = op_queue.front();
-    op_queue.pop();
-    for (uint32_t i = 0; i < op->num_operands(); ++i) {
-      pir::Value value = op->operand_source(i);
-      if (input_value_set.count(value)) {
-        visited_input_value.insert(value);
-        continue;
-      }
-      if (!value || !value.type() || op_set.count(value.defining_op())) {
-        continue;
-      }
-      op_queue.push(value.defining_op());
-      op_set.insert(value.defining_op());
+  auto VisitNextOp = [&](pir::Operation* node,
+                         const std::function<void(pir::Operation*)>& Visit) {
+    for (uint32_t i = 0; i < node->num_operands(); ++i) {
+      pir::Value in_value = node->operand_source(i);
+      if (!in_value || !in_value.type()) continue;
+      if (input_value_set.count(in_value)) continue;
+      if (op_set.count(in_value.defining_op())) continue;
+
+      Visit(in_value.defining_op());
     }
-  }
+  };
+  common::BfsWalker<pir::Operation*> walker(VisitNextOp);
+  walker(output_value.defining_op(), [&](pir::Operation* op) {
+    if (!op) return;
+    op_set.insert(op);
+  });
   return op_set;
 }
 
 std::vector<pir::Operation*> GetSubGraphFromOutputToInputsValue(
     const std::vector<pir::Value>& input_values, pir::Value output_value) {
-  std::unordered_set<pir::Value> visited_value(input_values.begin(),
-                                               input_values.end());
-  auto HasVisitAllInputs = [&](pir::Operation* op) {
-    for (uint32_t i = 0; i < op->num_operands(); ++i) {
-      if (!visited_value.count(op->operand_source(i))) return false;
-    }
-    return true;
-  };
   const std::unordered_set<pir::Operation*>& op_set =
       GetOpSetFromOutputToInputsValue(input_values, output_value);
-  std::queue<pir::Operation*> op_queue;
-  for (auto* op : op_set) {
-    if (HasVisitAllInputs(op)) {
-      op_queue.push(op);
-    }
-  }
+  auto VisitUpstreamOp =
+      [&](pir::Operation* node,
+          const std::function<void(pir::Operation*)>& Visit) {
+        for (uint32_t i = 0; i < node->num_operands(); ++i) {
+          pir::Value in_value = node->operand_source(i);
+          if (!in_value || !in_value.type()) continue;
+          if (in_value.defining_op() == nullptr) continue;
+          if (op_set.count(in_value.defining_op()) == 0) continue;
+          Visit(in_value.defining_op());
+        }
+      };
+  auto VisitDownstreamOp =
+      [&](pir::Operation* node,
+          const std::function<void(pir::Operation * node)>& Visit) {
+        for (uint32_t i = 0; i < node->num_results(); ++i) {
+          for (auto iter = node->result(i).use_begin();
+               iter != node->result(i).use_end();
+               ++iter) {
+            if (op_set.count(iter->owner())) {
+              Visit(iter->owner());
+            }
+          }
+        }
+      };
+  common::TopoWalker<pir::Operation*> walker(VisitUpstreamOp,
+                                             VisitDownstreamOp);
 
-  std::vector<pir::Operation*> ops;
-  while (!op_queue.empty()) {
-    auto* op = op_queue.front();
-    op_queue.pop();
-    ops.push_back(op);
-    for (uint32_t i = 0; i < op->num_results(); ++i) {
-      visited_value.insert(op->result(i));
-      for (auto iter = op->result(i).use_begin();
-           iter != op->result(i).use_end();
-           ++iter) {
-        auto* use_op = iter->owner();
-        if (op_set.count(use_op) && HasVisitAllInputs(use_op)) {
-          op_queue.push(use_op);
+  const std::vector<pir::Operation*> input_ops = [&] {
+    const std::unordered_set<pir::Value> input_value_set(input_values.begin(),
+                                                         input_values.end());
+    auto IsInputOp = [&](pir::Operation* op) {
+      for (uint32_t i = 0; i < op->num_operands(); ++i) {
+        if (input_value_set.count(op->operand_source(i)) == 0) {
+          return false;
         }
       }
+      return true;
+    };
+    std::vector<pir::Operation*> input_ops;
+    for (auto* op : op_set) {
+      if (IsInputOp(op)) {
+        input_ops.push_back(op);
+      }
     }
-  }
+    return input_ops;
+  }();
+  std::vector<pir::Operation*> ops;
+  walker(input_ops.begin(), input_ops.end(), [&](pir::Operation* node) {
+    if (!node) return;
+    ops.push_back(node);
+  });
   return ops;
 }
 
@@ -198,11 +214,7 @@ void InferSymbolicShapeForSubgraph(
     auto infer_symbolic_shape_interface =
         op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
-      PADDLE_ENFORCE_EQ(
-          infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
-          true,
-          "InferSymbolicShape for %s failed.",
-          op->name());
+      infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
           op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
@@ -236,8 +248,6 @@ void UpdateLocalShapeAnalysis(
     const auto& shape_or_data = ShapeOrDataDimExprs4Value(input_tensor);
     std::vector<symbol::DimExpr> new_shape =
         CreateExprsByExprMap(shape_or_data.shape());
-    // VLOG(0) << "##### set input value dim expr: " <<
-    // input_tensor.defining_op()->name() << " to " << new_shape;
     if (shape_or_data.data()) {
       std::vector<symbol::DimExpr> new_data =
           CreateExprsByExprMap(shape_or_data.data().value());

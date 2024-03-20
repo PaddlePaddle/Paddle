@@ -136,8 +136,9 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
   std::vector<symbol::DimExpr> data;
   if (operand_shape_or_data.data()) {
     for (auto &val : *(operand_shape_or_data.data())) {
+      int scale = op->attribute("scale").dyn_cast<pir::FloatAttribute>().data();
       int bias = op->attribute("bias").dyn_cast<pir::FloatAttribute>().data();
-      data.push_back(val + bias);
+      data.push_back(val * scale + bias);
     }
 
     shape_analysis->SetShapeOrDataForValue(
