@@ -772,16 +772,18 @@ def _program_for_vpp(
 
 
 def _get_backward_op_type(block, op):
-    input_vars = [
-        block.var(name.replace('@GRAD', '')) for name in op.input_arg_names
-    ]
-    for var in input_vars:
-        if var.is_parameter:
-            return "backward_w"
+    for name in op.output_arg_names:
+        name = name.split("@")[0]
+        if block._find_var_recursive(name):
+            var = block._find_var_recursive(name)
+            if var.is_parameter:
+                return "backward_w"
+            else:
+                return "backward_b"
     return "backward_b"
 
 
-def _program_zero_bubble(program):
+def _program_for_zero_bubble(program):
     _insert_sync_for_fthenb_1f1b(program)
 
     oprole_type = {
@@ -796,6 +798,7 @@ def _program_zero_bubble(program):
         type_to_ops = OrderedDict()
         for type in oprole_type.values():
             type_to_ops[type] = []
+        type_to_ops["fetch"] = []
 
         for op in block.ops:
             if _is_fetch_op(op):
@@ -803,7 +806,7 @@ def _program_zero_bubble(program):
             elif is_forward_op(op):
                 type_to_ops["forward"].append(op)
             elif is_backward_op(op):
-                type = _get_backward_op_type(op)
+                type = _get_backward_op_type(block, op)
                 type_to_ops[type].append(op)
             elif is_optimize_op(op):
                 type_to_ops["optimizer"].append(op)
@@ -863,7 +866,7 @@ def _program_zero_bubble(program):
                 _add_ops_into_block(src_block, bwd_block_w, bwd_w_ops)
 
             if len(opt_ops):
-                opt_block = type_to_ops["optimizer"]._create_block(
+                opt_block = type_to_program["optimizer"]._create_block(
                     parent_idx=src_block.parent_idx
                 )
                 opt_block._set_forward_block_idx(src_block.forward_block_idx)
@@ -882,6 +885,8 @@ def _program_zero_bubble(program):
     for prog in type_to_program.values():
         prog._sync_with_cpp()
         prog._roll_to_global_block()
+
+    return list(type_to_program.keys()), list(type_to_program.values())
 
 
 def _add_event_dependency(recorder_op, waiter_op):

@@ -18,7 +18,7 @@ from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
-from ..pass_utils import _program_for_zero_bubble
+from ..pass_utils import _program_for_zero_bubble, split_matmul_grad_to_matmul
 from .pipeline_pass_base import PipelinePassBase
 
 FORWARD = "forward"
@@ -84,9 +84,21 @@ class PipelineZeroBubblePipelinePass(PipelinePassBase):
         job_list.append(opt_job)
         return job_list
 
+    def _split_matmul_grad_ops_to_matmul(self, program, dist_context):
+        for block in program.blocks:
+            matmul_grad_op_idx = []
+            ops = block.ops
+            for i, op_i in enumerate(ops):
+                if op_i.type == "matmul_v2_grad":
+                    matmul_grad_op_idx.append(i)
+
+            for matmul_grad_id in reversed(matmul_grad_op_idx):
+                split_matmul_grad_to_matmul(
+                    block, matmul_grad_id, dist_context=dist_context
+                )
+
     def _partial_programs(self, program):
         dist_context = self.get_attr("dist_context")
-        types, sub_program_list = _program_for_zero_bubble(
-            program, dist_context
-        )
+        self._split_matmul_grad_ops_to_matmul(program, dist_context)
+        types, sub_program_list = _program_for_zero_bubble(program)
         return types, sub_program_list
