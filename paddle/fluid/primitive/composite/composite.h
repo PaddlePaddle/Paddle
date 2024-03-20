@@ -603,7 +603,6 @@ std::tuple<Tensor, Tensor> dropout_decomp(
 
 template <typename T>
 Tensor sqrt_decomp(const Tensor& x) {
-  // print std::cout
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 

@@ -64,7 +64,7 @@ from paddle.tensor import (  # noqa: F401
     uniform,
     zeros,
 )
-from paddle.tensor.creation import assign, ones_like, zeros_like  # noqa: F401
+from paddle.tensor.creation import assign, zeros_like  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
 from paddle.tensor.math import maximum, minimum  # noqa: F401
 
