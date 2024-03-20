@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
@@ -749,22 +750,23 @@ pir::Operation* ProcessDyShapeGroup(
     // update output type here
 
     for (size_t i = 0; i < group_output_values.size(); ++i) {
-      auto t = group_output_values[i].type().dyn_cast<::pir::DenseTensorType>();
-      auto new_dim = t.dims();
+      auto base_type =
+          group_output_values[i].type().dyn_cast<::pir::DenseTensorType>();
+      auto dim_info = base_type.dims();
       if (shape_analysis.HasShapeOrDataForValue(group_output_values[i])) {
         auto shape = group->GetShapeOrDataExprs(group_output_values[i]).shape();
         for (size_t k = 0; k < shape.size(); ++k) {
           if (shape[k].isa<int64_t>()) {
-            new_dim[k] = shape[k].Get<int64_t>();
+            dim_info[k] = shape[k].Get<int64_t>();
           }
         }
       }
       auto new_type = ::pir::DenseTensorType::get(pir::IrContext::Instance(),
-                                                  t.dtype(),
-                                                  new_dim,
-                                                  t.data_layout(),
-                                                  t.lod(),
-                                                  t.offset());
+                                                  base_type.dtype(),
+                                                  dim_info,
+                                                  base_type.data_layout(),
+                                                  base_type.lod(),
+                                                  base_type.offset());
 
       output_types.push_back(new_type);
     }
@@ -1150,6 +1152,7 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
 
     pir::RewritePatternSet ps(context);
     ps.Add<DyShapeFusionOpPattern>(context);
+    ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;
   }

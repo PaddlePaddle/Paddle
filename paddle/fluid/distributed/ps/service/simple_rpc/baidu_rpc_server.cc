@@ -114,7 +114,7 @@ class BRpcServiceImpl : public SimpleRpcService {
           phi::errors::PreconditionNotMet("Service should not be nullptr."));
       head.service->decrease_request();
     } else {
-      LOG(FATAL) << "Unknown message type";
+      PADDLE_THROW(phi::errors::InvalidArgument("Unknown message type"));
     }
     baidu_rpc_response->set_archive_size(0);
     done->Run();
@@ -188,7 +188,7 @@ void BaiduRpcServer::initialize() {
     cep.ip = butil::int2ip(_ips[i]);
     cep.port = ports[i];
     if (channel_ptr->Init(cep, &option) != 0) {
-      LOG(FATAL) << "Failed to initialize channel";
+      PADDLE_THROW(phi::errors::Fatal("Failed to initialize channel"));
     }
     LOG(INFO) << "connected to " << butil::endpoint2str(cep).c_str();
     return channel_ptr;
@@ -242,7 +242,7 @@ static void handle_baidu_rpc_response(brpc::Controller *cntl,
           phi::errors::PreconditionNotMet("Service should not be nullptr."));
       head.service->decrease_request();
     } else {
-      LOG(FATAL) << "Unknown message type";
+      PADDLE_THROW(phi::errors::InvalidArgument("Unknown message type"));
     }
   }
   delete baidu_rpc_response;

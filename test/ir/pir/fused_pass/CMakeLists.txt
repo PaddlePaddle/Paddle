@@ -13,4 +13,9 @@ endif()
 foreach(target ${TEST_INTERP_CASES})
   py_test_modules(${target} MODULES ${target})
 endforeach()
+
 set_tests_properties(test_pir_multihead_matmul_fuse_pass PROPERTIES TIMEOUT 100)
+if(WITH_CUTLASS)
+  set_tests_properties(test_fused_weight_only_linear_pass PROPERTIES TIMEOUT
+                                                                     300)
+endif()

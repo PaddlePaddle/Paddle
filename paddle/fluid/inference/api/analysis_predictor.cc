@@ -2693,7 +2693,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
       } else if (platform::is_gpu_place(tensor->place())) {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         auto *dev_ctx = pool.Get(tensor->place());
         auto &int32_tensor = *tensor;
         if (tensor->dtype() == phi::DataType::INT64) {
@@ -2916,7 +2916,7 @@ bool AnalysisPredictor::LoadParameters() {
 }
 
 uint64_t AnalysisPredictor::TryShrinkMemory() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (config_.use_gpu()) {
     paddle::platform::EmptyCache();
   }
@@ -3609,44 +3609,50 @@ bool InternalUtils::RunWithRuntimeConfig(paddle_infer::Predictor *p,
 
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
                                             bool with_interleaved) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   c->trt_with_interleaved_ = with_interleaved;
 #endif
 }
 
 void InternalUtils::SetTransformerPosid(
     paddle_infer::Config *c, const std::string &tensorrt_transformer_posid) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   c->tensorrt_transformer_posid_ = tensorrt_transformer_posid;
 #endif
 }
 
 void InternalUtils::SetTransformerMaskid(
     paddle_infer::Config *c, const std::string &tensorrt_transformer_maskid) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   c->tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
 #endif
 }
 
 void InternalUtils::DisableTensorRtHalfOps(
     paddle_infer::Config *c, const std::unordered_set<std::string> &ops) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   c->trt_ops_run_float_ = ops;
 #endif
 }
 
 void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
   paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
   auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(pred->place_));
-  cudaStreamSynchronize(dev_ctx->stream());
+  paddle::gpuStreamSynchronize(dev_ctx->stream());
 #endif
 }
 void InternalUtils::SyncStream(cudaStream_t stream) {
 #ifdef PADDLE_WITH_CUDA
   cudaStreamSynchronize(stream);
+#endif
+}
+
+void InternalUtils::SyncStream(hipStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  hipStreamSynchronize(stream);
 #endif
 }
 
