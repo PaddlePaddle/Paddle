@@ -4,9 +4,6 @@ if(WITH_GPU)
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "test_*.py")
 
-  # FIXME(Aurelius84): Raising error while applying FLAGS_cinn_bucket_compile=1 by defualt.
-  list(REMOVE_ITEM CINN_PIR_TEST test_cinn_sub_graph_map_expr.py)
-
   foreach(cinn_pir_test_name ${CINN_PIR_TEST})
     string(REGEX REPLACE ".py" "" cinn_pir_test_name ${cinn_pir_test_name})
     add_test(
@@ -15,6 +12,7 @@ if(WITH_GPU)
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
         FLAGS_enable_pir_api=1 FLAGS_prim_all=True FLAGS_cinn_enable_map_expr=1
+        FLAGS_group_schedule_tiling_first=1 FLAGS_cinn_bucket_compile=1
         ${PYTHON_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/${cinn_pir_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
