@@ -510,6 +510,13 @@ def check_shape(shape):
                     raise TypeError(
                         "All elements in ``shape`` must be integers when it's a list or tuple"
                     )
+            else:
+                check_dtype(
+                    ele.dtype,
+                    'element of shape',
+                    ['int32', 'int64'],
+                    'fill_constant',
+                )
 
 
 def try_set_static_shape_tensor(tensor, shape):
