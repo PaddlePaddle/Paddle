@@ -74,8 +74,54 @@ class DenseTensorArrayType
   static DenseTensorArrayType dyn_cast_impl(Type type);
 };
 
+class IR_API SparseCooTensorType
+    : public pir::Type::
+          TypeBase<SparseCooTensorType, pir::Type, SparseCooTensorTypeStorage> {
+ public:
+  using Base::Base;
+  using Type = pir::Type;
+  using Dim = SparseCooTensorTypeStorage::Dim;
+  using DataLayout = common::DataLayout;
+  using DenseTensorType = pir::DenseTensorType;
+
+  Type dtype() const;
+  const Dim &dims() const;
+  const Dim &meta_dims() const;
+  DataLayout data_layout() const;
+  DenseTensorType non_zero_indices() const;
+  DenseTensorType non_zero_elements() const;
+  bool coalesced() const;
+
+  ///
+  /// \brief Implementation of 'classof' that compares the type id of
+  /// the provided value with the concrete type id.
+  ///
+  static bool classof(Type type);
+
+  static SparseCooTensorType dyn_cast_impl(Type type);
+
+  static SparseCooTensorType get(pir::IrContext *ctx,
+                                 Type dtype,
+                                 const Dim &dims,
+                                 const Dim &meta_dims,
+                                 DataLayout layout,
+                                 DenseTensorType non_zero_indices,
+                                 DenseTensorType non_zero_elements,
+                                 bool coalesced = false) {
+    return Base::get(ctx,
+                     dtype,
+                     dims,
+                     meta_dims,
+                     layout,
+                     non_zero_indices,
+                     non_zero_elements,
+                     coalesced);
+  }
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SparseCooTensorType)

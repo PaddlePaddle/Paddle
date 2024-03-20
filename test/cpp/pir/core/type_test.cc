@@ -21,7 +21,6 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
-#include "paddle/pir/include/core/sparse_type.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/type_base.h"
 #include "paddle/pir/include/core/type_name.h"
@@ -250,11 +249,12 @@ TEST(type_test, custom_type_dialect) {
   EXPECT_EQ(dialect_integer1, dialect_integer2);
 }
 
-TEST(type_test, sparse_dialect) {
+TEST(type_test, sparse_coo) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   common::DDim dims = {4, 4};
+  common::DDim meta_ddims = {4, 1};
   common::DataLayout data_layout = common::DataLayout::NCHW;
   pir::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
@@ -267,6 +267,7 @@ TEST(type_test, sparse_dialect) {
       paddle::dialect::SparseCooTensorType::get(ctx,
                                                 fp32_dtype,
                                                 dims,
+                                                meta_ddims,
                                                 data_layout,
                                                 none_zero_indices,
                                                 none_zero_elements,
@@ -278,9 +279,10 @@ TEST(type_test, sparse_dialect) {
   EXPECT_EQ(sparse_coo_tensor_type.isa<paddle::dialect::SparseCooTensorType>(),
             true);
   EXPECT_EQ(sparse_coo_tensor_type.dims(), dims);
+  EXPECT_EQ(sparse_coo_tensor_type.meta_dims(), meta_ddims);
   EXPECT_EQ(sparse_coo_tensor_type.data_layout(), data_layout);
-  EXPECT_EQ(sparse_coo_tensor_type.get_indices(), none_zero_indices);
-  EXPECT_EQ(sparse_coo_tensor_type.get_elements(), none_zero_elements);
+  EXPECT_EQ(sparse_coo_tensor_type.non_zero_indices(), none_zero_indices);
+  EXPECT_EQ(sparse_coo_tensor_type.non_zero_elements(), none_zero_elements);
 }
 
 TEST(type_test, pd_op_dialect) {

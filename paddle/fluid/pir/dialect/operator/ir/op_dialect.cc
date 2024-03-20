@@ -28,7 +28,6 @@
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
 #include "paddle/pir/include/core/interface_value.h"
 #include "paddle/pir/include/core/ir_printer.h"
-#include "paddle/pir/include/core/sparse_type.h"
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"

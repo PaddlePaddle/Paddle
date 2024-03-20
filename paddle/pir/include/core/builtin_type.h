@@ -129,16 +129,3 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::IndexType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Complex64Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Complex128Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::DenseTensorType)
-
-namespace std {
-template <>
-struct hash<pir::DenseTensorType> {
-  std::size_t operator()(const pir::DenseTensorType &obj) const {
-    // return
-    // pir::DenseTensorTypeStorage::HashValue(std::make_tuple(pir::Type(),
-    // pir::DDim(), pir::DataLayout(), pir::LoD(), size_t()));
-    return pir::DenseTensorTypeStorage::HashValue(std::tuple(
-        obj.dtype(), obj.dims(), obj.data_layout(), obj.lod(), obj.offset()));
-  }
-};
-}  // namespace std
