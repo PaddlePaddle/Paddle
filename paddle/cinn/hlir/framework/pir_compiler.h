@@ -15,12 +15,7 @@
 #pragma once
 
 #include <memory>
-#include <unordered_map>
 #include "paddle/cinn/common/macros.h"
-#include "paddle/pir/include/core/program.h"
-
-#include "paddle/cinn/hlir/framework/graph_compiler.h"
-#include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 
 namespace cinn {
@@ -30,19 +25,13 @@ namespace framework {
 class PirCompiler final {
  public:
   using CompileResult = std::vector<pir::CINNKernelInfo>;
-  PirCompiler(const Target& target)
-      : m_builder_("Pir", target), target_(target) {}
+  PirCompiler(const Target& target) : target_(target) {}
 
   CompileResult Build(const std::vector<pir::GroupPtr>& groups);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);
 
-  CompileResult BucketBuild(const std::vector<pir::GroupPtr>& groups);
-  CompileResult StaticBuild(const std::vector<pir::GroupPtr>& groups);
-
-  ir::Module::Builder m_builder_;
-  std::unique_ptr<backends::Compiler> compiler_{nullptr};
   Target target_;
   std::vector<GroupCompilationContext> group_compilation_contexts_;
 };
