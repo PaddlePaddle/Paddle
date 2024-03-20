@@ -53,8 +53,7 @@ class OperationTest
     fn(infer_meta);
   }
   static std::vector<pir::Type> InferMeta(
-      const std::vector<pir::Value> &input_values,
-      const pir::AttributeMap &attributes) {
+      const std::vector<pir::Value> &input_values, pir::AttributeMap *) {
     VLOG(4) << "Start infermeta OperationTest";
     std::vector<pir::Type> argument_outputs;
     return argument_outputs;

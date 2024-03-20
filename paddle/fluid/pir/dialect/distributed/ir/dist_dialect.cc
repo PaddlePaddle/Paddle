@@ -35,7 +35,7 @@ void DistDialect::initialize() {
                      TensorDistAttribute,
                      OperationDistAttribute>();
   RegisterTypes<DistDenseTensorType>();
-  RegisterOps<ShardTensorOp>();
+  RegisterOps<ShardTensorOp, ReShardOp>();
 }
 
 void DistDialect::PrintType(pir::Type type, std::ostream &os) const {
@@ -70,7 +70,6 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
                   process_mesh_attr.process_ids()) +
               "]";
   } else if (auto tensor_dist_attr = attr.dyn_cast<TensorDistAttribute>()) {
-    // Todo: Design the tensor dist attr print format.
     os << "mesh_shape:[" +
               phi::distributed::auto_parallel::str_join(
                   tensor_dist_attr.process_mesh_attr().shape()) +
@@ -91,14 +90,14 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
          << phi::distributed::auto_parallel::str_join(partial_status_strs);
     }
   } else if (auto op_dist_attr = attr.dyn_cast<OperationDistAttribute>()) {
-    os << "mesh_shape:[" +
+    os << "{mesh:{shape:[" +
               phi::distributed::auto_parallel::str_join(
                   op_dist_attr.process_mesh_attr().shape()) +
               "]";
     os << ",process_ids:[" +
               phi::distributed::auto_parallel::str_join(
                   op_dist_attr.process_mesh_attr().process_ids()) +
-              "]";
+              "]}";
     auto num_operand_dist_attrs = op_dist_attr.num_operand_dist_attrs();
     for (uint32_t i = 0; i < num_operand_dist_attrs; ++i) {
       auto dist_attr = op_dist_attr.operand_dist_attr(i);
@@ -159,6 +158,7 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
         os << "}";
       }
     }
+    os << "}";
   } else {
     os << "error_attribute_type";
   }

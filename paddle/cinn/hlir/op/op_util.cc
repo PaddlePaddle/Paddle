@@ -100,8 +100,9 @@ std::string GetExternFuncName(const cinn::common::Target& target,
     } else if (target.arch == cinn::common::Target::Arch::X86) {
       func_proto_name.append("host_");
     } else {
-      LOG(FATAL) << func_name
-                 << " only supports X86 and NVGPU! Please Check.\n";
+      std::stringstream ss;
+      ss << func_name << " only supports X86 and NVGPU! Please Check.\n";
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));
     }
   }
   func_proto_name.append(func_name);
@@ -138,8 +139,10 @@ std::string GetExternFuncName(const cinn::common::Target& target,
   } else if (type.is_uint(64)) {
     func_proto_name.append("uint64");
   } else {
-    LOG(FATAL) << "Can not find type: " << type
-               << " for extern function. Please Check.\n";
+    std::stringstream ss;
+    ss << "Can not find type: " << type
+       << " for extern function. Please Check.\n";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return func_proto_name;
 }
