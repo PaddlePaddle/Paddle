@@ -13,98 +13,71 @@
 # limitations under the License.
 
 import sys
+
+sys.path.append('../../../../legacy_test/')
 import unittest
 
 import numpy as np
-import parameterized as param
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
 
-sys.path.append('../../../../legacy_test/')
 
-from paddle import base
+class TestPowOp(OpTest):
+    def setUp(self):
+        self.op_type = "pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.dtype = self.get_dtype()
+        self.init_test_data()
+        self.if_enable_cinn()
+        self.inputs = {'X': self.x}
+        self.attrs = {'factor': self.factor}
 
+        self.outputs = {'Out': np.power(self.x, self.factor)}
 
-@param.parameterized_class(
-    ('primal', 'cotangent', 'dtype'),
-    [
-        (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
-    ],
-)
-class TestPowGradComp(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.primal = cls.primal.astype(cls.dtype)
-        if cls.cotangent is not None:
-            cls.cotangent = cls.cotangent.astype(cls.dtype)
+    def get_dtype(self):
+        return "float64"
 
-    def test_pow_grad_comp_dygraph(self):
-        def actual(primal):
-            paddle.disable_static()
-            core.set_prim_eager_enabled(True)
-            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
-            x.stop_gradient = False
-            y = paddle.pow(x, 6.9)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=True, retain_graph=True
+    def test_check_output(self):
+        if self.dtype == np.uint16:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_pir=True)
+        else:
+            self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        if self.dtype == np.uint16:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
             )
-            return x_cotangent[0]
-
-        def desired(primal):
-            paddle.disable_static()
-            core.set_prim_eager_enabled(False)
-            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
-            x.stop_gradient = False
-            y = paddle.pow(x, 6.9)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=True, retain_graph=True
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
             )
-            return x_cotangent[0]
 
-        np.testing.assert_allclose(
-            actual=actual(self.primal),
-            desired=desired(self.primal),
-            rtol=1e-6,
-            atol=0,
-        )
-        core.set_prim_eager_enabled(False)
+    def init_test_data(self):
+        if self.dtype == np.uint16:
+            x = np.random.random((5, 1, 4, 5)).astype(np.float32)
+            # x = np.array([4,5,6]).astype(np.float32)
+            self.x = convert_float_to_uint16(x)
+        else:
+            self.x = np.random.random((5, 1, 4, 5)).astype(self.dtype)
+            # self.x = np.array([4,5,6]).astype(self.dtype)
+        self.factor = 2
 
-    def test_pow_grad_comp_static(self):
-        def actual(primal):
-            paddle.disable_static()
-            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
-            x.stop_gradient = False
-            y = paddle.pow(x, 6.9)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=True, retain_graph=True
-            )
-            return x_cotangent[0]
-
-        def desired(primal):
-            paddle.enable_static()
-            core._set_prim_forward_enabled(False)
-            core._set_prim_backward_enabled(True)
-            main_prog = paddle.static.Program()
-            startup_prog = paddle.static.Program()
-            with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.assign(primal)
-                x.stop_gradient = False
-                y = paddle.pow(x, 6.9)
-                dx = paddle.static.gradients(y, x)
-
-            exe = paddle.static.Executor(base.CPUPlace())
-            exe.run(startup_prog)
-            (dx_result,) = exe.run(main_prog, fetch_list=[dx])
-            return dx_result
-
-        np.testing.assert_allclose(
-            actual=actual(self.primal),
-            desired=desired(self.primal),
-            rtol=1e-6,
-            atol=0,
-        )
-        core.set_prim_eager_enabled(False)
+    def if_enable_cinn(self):
+        pass
 
 
 if __name__ == '__main__':
