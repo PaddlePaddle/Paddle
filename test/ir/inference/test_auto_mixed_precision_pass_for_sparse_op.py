@@ -36,6 +36,7 @@ class TestNet(paddle.nn.Layer):
         self.sp_bn = paddle.sparse.nn.BatchNorm(
             3, epsilon=1e-3, momentum=1 - 0.01, data_format='NHWC'
         )
+        self.relu = paddle.sparse.nn.ReLU()
 
     def forward(self, indices, values):
         x = paddle.sparse.sparse_coo_tensor(
@@ -46,6 +47,7 @@ class TestNet(paddle.nn.Layer):
         )
         x = self.sp_conv(x)
         x = self.sp_bn(x)
+        x = self.relu(x)
         return x.to_dense()
 
 
@@ -87,7 +89,7 @@ class AutoMixedPrecisionPassForSparseOp(InferencePassTest):
         )
         if precision == "fp16":
             config.enable_use_gpu(100, 0, PrecisionType.Half)
-            white_list = ["sparse_conv3d", "sparse_batch_norm"]
+            white_list = ["sparse_batch_norm", "sparse_relu"]
             config.exp_enable_mixed_precision_ops(set(white_list))
         else:
             config.enable_use_gpu(100, 0, PrecisionType.Float32)
