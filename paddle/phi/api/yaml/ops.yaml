@@ -2034,13 +2034,12 @@
   backward : mv_grad
 
 - op : nanmedian
-  args : (Tensor x, IntArray axis = {}, bool keepdim = true)
+  args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
   output : Tensor(out), Tensor(medians)
   infer_meta :
     func : NanmedianInferMeta
   kernel :
     func : nanmedian
-  intermediate : medians
   backward : nanmedian_grad
 
 - op : nearest_interp
