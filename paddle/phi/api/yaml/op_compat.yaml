@@ -329,6 +329,12 @@
   outputs :
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
+- op : barrier
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+
 - op : batch_norm
   backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
   inputs:
@@ -1608,6 +1614,12 @@
   attrs :
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
+- op : global_scatter
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+
 - op : grad_add
   inputs :
     {x : X, y : Y}
@@ -2490,6 +2502,10 @@
 
 - op : partial_sum
   backward : partial_sum_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3767,6 +3783,10 @@
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+
+- op: limit_by_capacity
+  outputs :
+    out : Out
 
 - op: lod_array_length
   inputs :

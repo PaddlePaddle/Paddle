@@ -91,7 +91,7 @@ std::vector<Node*> FindOpNodeByInputName(Graph* graph,
 
 template <typename T>
 std::string IntTypeToString() {
-  LOG(FATAL) << "Not support type.";
+  PADDLE_THROW(phi::errors::InvalidArgument("Not support type."));
   return "";
 }
 

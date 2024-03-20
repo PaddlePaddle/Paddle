@@ -77,6 +77,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     PartialConcatGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
+    PartialSumOp::name(),
+    PartialSumGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),

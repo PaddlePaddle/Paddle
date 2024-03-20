@@ -205,9 +205,10 @@ class Engine:
             fleet.init(is_collective=True)
 
         # for compute cost
-        # TODO: remove _fwd_main_progs and _orig_optimizer
+        # TODO: remove _fwd_main_progs and _orig_optimizer and _pir_main_progs
         self._fwd_dist_contexts = {}
         self._fwd_main_progs = {}
+        self._pir_main_progs = {}
         self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         self._executor = None
@@ -618,11 +619,92 @@ class Engine:
         logs["fetches"] = logs_fetch
         return logs
 
+    def _parallel_pir(self, mode):
+        """A concise and light weight parallel transform for auto parallel in pir mode.
+        Its logic consist of Four parts:
+            1. Complete program: build a completion program with forward-backward-optimizer from a forward program. (if in train mode, maybe re-placed.)
+            2. Parallelism completion: rule-based entire-graph sharding propagation(Semi-Auto) Or algorithm/random-based parallel search(Fully-Auto).
+            3. Graph partition: Partition(Pipeline-like parallel) and Reshard Pass(SPMD parallel).
+            4. Parallel related Optimization Pass. (maybe re-placed.)
+
+        It is experimental and subject to change.
+        """
+        mix_fw_program = self._fwd_main_progs[mode]
+
+        # Part 1: Complete program
+        # Step 1.1: Mix2Dense Pass
+        # TODO(JZ-LIANG) regulization pass with pass management.
+
+        dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
+            mix_fw_program
+        )
+
+        # TODO(winter-wang) Step 1.2: pir backward
+        # with program_guard(dist_program):
+        #     params_grads = append_backward_pir(self._loss, parameter_list=self._parameter_list)
+
+        # TODO(winter-wang) Step 1.3:  adapot opt.minimize() for pir-auto-parallel
+        # with program_guard(dist_program):
+        #     ptimizer_ops = self._optimizer.apply_gradients(params_grads)
+
+        # Part 2: Parallelism search
+        # NOTE make all parallelis search logic work as Pass,
+        # and all the Pass in this Part should be optional to allow consistence in dynamic and static mode.
+        if self._strategy.auto_mode == "semi-auto":
+            # TODO(xxxx) Step 2.1 Entire Graph Completion in Pir.
+            # dist_program = apply_complition_pass(dist_program)
+            pass
+        elif self._strategy.auto_mode == "random" or "full_random":
+            # TODO(caozhou) Step 2.3 Basic Random / MCMC Algorithm for Fully Auto Parallel Search.
+            # dist_program = apply_mcmc_parallel_search_pass(dist_program)
+            pass
+        elif self._strategy.auto_mode == "pattern-based":
+            # TODO(caozhou) Step 2.3 pattern based Algorithm for Fully Auto Parallel Search.
+            # dist_program = apply_pattern_based_parallel_search_pass(dist_program)
+            pass
+        else:
+            raise ValueError("auto_mode [] is not supported yet.".format())
+
+        # Part 3: Graph partition
+        # TODO(JZ-LIANG) Step 3.1: Partition Pass
+        #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
+        #   Partition the computation graph into different pipeline stage if need.
+        # dist_program = apply_partition_pass(dist_program)
+
+        # TODO(hitywt) Step 3.2: Reshard Pass
+        #   resolute the reshard op into special collective operation.
+        #   collect the communicator created during resolution.
+        # dist_program = apply_reshard_pass(dist_program)
+
+        # Part 4: Optimization Pass
+        # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
+
+        # TODO(xxxx) Step 4.1 DP Optimization Pass
+        if self._strategy.dp_optimization.enable:
+            # dist_program = apply_dp_optimization_pass(dist_program)
+            pass
+
+        # TODO(xxxx) Step 4.2 SP Optimization Pass
+        if self._strategy.sp_optimization.enable:
+            # dist_program = apply_sp_optimization_pass(dist_program)
+            pass
+
+            # TODO(xxxx) Step 4.3 Sharding Optimization Pass
+            # if self._strategy.sharding_optimization.enable:
+            # dist_program = apply_sharding_optimization_pass(dist_program)
+            pass
+
+        # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
+        # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
+        #   dense_program = apply_dist2dense_pass_optimization_pass(dist_program)
+        self._pir_main_progs[mode] = dist_program
+
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
         self._build(mode)
         # TODO(zhiqiu): fit the processes below for pir
         if self._in_pir_mode:
+            self._parallel_pir(mode)
             return
         # Do the planning process
         self._plan(mode)
@@ -910,6 +992,12 @@ class Engine:
 
     def _init_comm(self):
         if self._nranks > 1:
+            if self._in_pir_mode:
+                # TODO(hitywt) Initialize the communicator collected in Reshard Pass.
+                # pir_init_comms()
+                pass
+                return
+
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
@@ -923,6 +1011,12 @@ class Engine:
                     process_group.instantiate()
 
     def _initialize(self, mode, init_parameters=True):
+        if self._in_pir_mode:
+            # TODO(xxxxx) Share the parameter tensor data from dygraph tensor to pir value.
+            # _pir_initialize()
+            pass
+            return
+
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(

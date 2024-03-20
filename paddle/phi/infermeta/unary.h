@@ -711,6 +711,12 @@ void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
 
+void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,
+                         int start_index,
+                         int length,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
+
 void SvdInferMeta(const MetaTensor& x,
                   bool full_matrices,
                   MetaTensor* u,
