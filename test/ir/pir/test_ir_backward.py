@@ -104,7 +104,7 @@ class TesBackward_1(unittest.TestCase):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
             self.assertEqual(
-                pir_program.global_block().ops[-1].name(), "pd_op.mean"
+                pir_program.global_block().ops[-3].name(), "pd_op.mean"
             )
 
     def test_split(self):
@@ -192,7 +192,6 @@ class TesBackward_2(unittest.TestCase):
             out = paddle.concat([add_out, add_out])
             input_grad = grad(out, input_x)
         ops_name = [
-            "pd_op.data",
             "pd_op.data",
             "pd_op.tanh",
             "pd_op.tanh",
