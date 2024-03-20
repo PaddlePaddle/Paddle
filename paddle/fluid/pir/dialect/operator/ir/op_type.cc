@@ -80,15 +80,15 @@ DenseTensorArrayType DenseTensorArrayType::dyn_cast_impl(Type type) {
 
 pir::Type SparseCooTensorType::dtype() const { return storage()->dtype_; }
 
-const SparseCooTensorType::Dim& SparseCooTensorType::dims() const {
+const common::DDim& SparseCooTensorType::dims() const {
   return storage()->dims_;
 }
 
-const SparseCooTensorType::Dim& SparseCooTensorType::meta_dims() const {
-  return storage()->meta_dims_;
+const common::DDim& SparseCooTensorType::non_zero_dims() const {
+  return storage()->non_zero_dims_;
 }
 
-DataLayout SparseCooTensorType::data_layout() const {
+common::DataLayout SparseCooTensorType::data_layout() const {
   return storage()->layout_;
 }
 
@@ -107,9 +107,6 @@ bool SparseCooTensorType::classof(Type type) {
     if (type.type_id() == type_id()) {
       return true;
     }
-    if (auto wrap_type = type.dyn_cast<pir::WrapTypeInterface>()) {
-      return classof(wrap_type.prim_type());
-    }
   }
   return false;
 }
@@ -118,9 +115,6 @@ SparseCooTensorType SparseCooTensorType::dyn_cast_impl(Type type) {
   if (type) {
     if (type.type_id() == type_id()) {
       return SparseCooTensorType(type.storage());
-    }
-    if (auto wrap_type = type.dyn_cast<pir::WrapTypeInterface>()) {
-      return dyn_cast_impl(wrap_type.prim_type());
     }
   }
   return nullptr;

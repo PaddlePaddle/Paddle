@@ -254,7 +254,7 @@ TEST(type_test, sparse_coo) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   common::DDim dims = {4, 4};
-  common::DDim meta_ddims = {4, 1};
+  common::DDim non_zero_dims = {4, 1};
   common::DataLayout data_layout = common::DataLayout::NCHW;
   pir::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
@@ -273,12 +273,12 @@ TEST(type_test, sparse_coo) {
                                                 none_zero_elements,
                                                 coalesced);
 
-  paddle::dialect::SparseCooTensorType sparse_coo_tensor_type =
-      paddle::dialect::SparseCooTensorType::dyn_cast(pir_type);
   EXPECT_EQ(pir_type.isa<paddle::dialect::SparseCooTensorType>(), true);
-
+  paddle::dialect::SparseCooTensorType sparse_coo_tensor_type =
+      pir_type.dyn_cast<paddle::dialect::SparseCooTensorType>();
+  EXPECT_EQ(sparse_coo_tensor_type, true);
   EXPECT_EQ(sparse_coo_tensor_type.dims(), dims);
-  EXPECT_EQ(sparse_coo_tensor_type.meta_dims(), meta_ddims);
+  EXPECT_EQ(sparse_coo_tensor_type.non_zero_dims(), meta_ddims);
   EXPECT_EQ(sparse_coo_tensor_type.data_layout(), data_layout);
   EXPECT_EQ(sparse_coo_tensor_type.non_zero_indices(), none_zero_indices);
   EXPECT_EQ(sparse_coo_tensor_type.non_zero_elements(), none_zero_elements);

@@ -171,26 +171,23 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using Dim = common::DDim;
-  using DataLayout = common::DataLayout;
-  using DataType = pir::Type;
-  using ParamKey = std::tuple<DataType,
-                              Dim,
-                              Dim,
-                              DataLayout,
+  using ParamKey = std::tuple<pir::Type,
+                              common::DDim,
+                              common::DDim,
+                              common::DataLayout,
                               pir::DenseTensorType,
                               pir::DenseTensorType,
                               bool>;
-  SparseCooTensorTypeStorage(DataType dtype,
-                             Dim dims,
-                             Dim meta_dims,
-                             DataLayout layout,
+  SparseCooTensorTypeStorage(pir::Type dtype,
+                             common::DDim dims,
+                             common::DDim non_zero_dims,
+                             common::DataLayout layout,
                              pir::DenseTensorType non_zero_indices,
                              pir::DenseTensorType non_zero_elements,
                              bool coalesced = false)
       : dtype_(dtype),
         dims_(dims),
-        meta_dims_(meta_dims),
+        non_zero_dims_(non_zero_dims),
         layout_(layout),
         non_zero_indices_(non_zero_indices),
         non_zero_elements_(non_zero_elements),
@@ -219,11 +216,11 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
     hash_value = pir::detail::hash_combine(
         hash_value, std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value = pir::detail::hash_combine(hash_value,
-                                           std::hash<Dim>()(std::get<1>(key)));
-    // hash meta_dims
-    hash_value = pir::detail::hash_combine(hash_value,
-                                           std::hash<Dim>()(std::get<2>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<common::DDim>()(std::get<1>(key)));
+    // hash non_zero_dims
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<common::DDim>()(std::get<2>(key)));
     // hash layout
     hash_value = pir::detail::hash_combine(
         hash_value,
@@ -259,7 +256,7 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   bool operator==(const ParamKey& key) const {
     return ParamKey(dtype_,
                     dims_,
-                    meta_dims_,
+                    non_zero_dims_,
                     layout_,
                     non_zero_indices_,
                     non_zero_elements_,
@@ -269,7 +266,7 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   ParamKey GetAsKey() const {
     return ParamKey(dtype_,
                     dims_,
-                    meta_dims_,
+                    non_zero_dims_,
                     layout_,
                     non_zero_indices_,
                     non_zero_elements_,
@@ -281,10 +278,10 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   /// layout, non_zero_indices_, non_zero_elements_,coalesced_.
   ///
 
-  DataType dtype_;
-  Dim dims_;
-  Dim meta_dims_;
-  DataLayout layout_{DataLayout::NCHW};
+  pir::Type dtype_;
+  common::DDim dims_;
+  common::DDim non_zero_dims_;
+  common::DataLayout layout_{DataLayout::NCHW};
   pir::DenseTensorType non_zero_indices_;
   pir::DenseTensorType non_zero_elements_;
   bool coalesced_ = false;

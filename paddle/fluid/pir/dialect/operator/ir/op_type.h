@@ -79,14 +79,14 @@ class IR_API SparseCooTensorType
           TypeBase<SparseCooTensorType, pir::Type, SparseCooTensorTypeStorage> {
  public:
   using Base::Base;
-  using Type = pir::Type;
-  using Dim = common::Dim;
-  using DataLayout = common::DataLayout;
+  // using Type = pir::Type;
+  // using Dim = common::DDim;
+  // using DataLayout = common::DataLayout;
 
-  Type dtype() const;
-  const Dim &dims() const;
-  const Dim &meta_dims() const;
-  DataLayout data_layout() const;
+  pir::Type dtype() const;
+  const common::DDim &dims() const;
+  const common::DDim &non_zero_dims() const;
+  common::DataLayout data_layout() const;
   pir::DenseTensorType non_zero_indices() const;
   pir::DenseTensorType non_zero_elements() const;
   bool coalesced() const;
@@ -95,22 +95,22 @@ class IR_API SparseCooTensorType
   /// \brief Implementation of 'classof' that compares the type id of
   /// the provided value with the concrete type id.
   ///
-  static bool classof(Type type);
+  static bool classof(pir::Type type);
 
-  static SparseCooTensorType dyn_cast_impl(Type type);
+  static SparseCooTensorType dyn_cast_impl(pir::Type type);
 
   static SparseCooTensorType get(pir::IrContext *ctx,
-                                 Type dtype,
-                                 const Dim &dims,
-                                 const Dim &meta_dims,
-                                 DataLayout layout,
+                                 pir::Type dtype,
+                                 const common::DDim &dims,
+                                 const common::DDim &non_zero_dims,
+                                 common::DataLayout layout,
                                  pir::DenseTensorType non_zero_indices,
                                  pir::DenseTensorType non_zero_elements,
                                  bool coalesced = false) {
     return Base::get(ctx,
                      dtype,
                      dims,
-                     meta_dims,
+                     non_zero_dims,
                      layout,
                      non_zero_indices,
                      non_zero_elements,
