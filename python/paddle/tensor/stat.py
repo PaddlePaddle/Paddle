@@ -269,7 +269,7 @@ def numel(x, name=None):
         return out
 
 
-def nanmedian(x, axis=None, keepdim=False, name=None):
+def nanmedian(x, axis=None, keepdim=False, mode='avg', name=None):
     r"""
     Compute the median along the specified axis, while ignoring NaNs.
 
@@ -288,11 +288,16 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
+        mode (str, optional): Whether to use mean or min operation to calculate
+            the nanmedian values when the input tensor has an even number of non-NaN elements
+            along the dimension ``axis``. Support 'avg' and 'min'. Default is 'avg'.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, results of median along ``axis`` of ``x``. The output dtype is the same as `x`.
+        Tensor or tuple of Tensor. If ``mode`` == 'min' and ``axis`` is int, the result
+        will be a tuple of two tensors (nanmedian value and nanmedian index). Otherwise,
+        only nanmedian value will be returned.
 
     Examples:
         .. code-block:: python
@@ -315,6 +320,26 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
             >>> y4 = x.nanmedian((0, 1))
             >>> print(y4.numpy())
             2.0
+
+            >>> y5 = x.nanmedian(mode='min')
+            >>> print(y5.numpy())
+            2.0
+
+            >>> y6, y6_index = x.nanmedian(0, mode='min')
+            >>> print(y6.numpy())
+            [0. 1. 2.]
+            >>> print(y6_index.numpy())
+            [1 1 1]
+
+            >>> y7, y7_index = x.nanmedian(1, mode='min')
+            >>> print(y7.numpy())
+            [2. 1.]
+            >>> print(y7_index.numpy())
+            [1 1]
+
+            >>> y8 = x.nanmedian((0,1), mode='min')
+            >>> print(y8.numpy())
+            2.0
     """
     if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
@@ -322,6 +347,10 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
         raise ValueError("Axis list should not be empty.")
 
+    if mode not in ('avg', 'min'):
+        raise ValueError(f"Mode {mode} is not supported. Must be avg or min.")
+
+    need_index = (axis is not None) and (not isinstance(axis, (list, tuple)))
     if axis is None:
         axis = []
     elif isinstance(axis, tuple):
@@ -330,7 +359,8 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
         axis = [axis]
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.nanmedian(x, axis, keepdim)
+        out, indices = _C_ops.nanmedian(x, axis, keepdim, mode)
+        indices.stop_gradient = True
     else:
         check_variable_and_dtype(
             x,
@@ -340,15 +370,19 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
         )
 
         helper = LayerHelper('nanmedian', **locals())
-        attrs = {'axis': axis, 'keepdim': keepdim}
+        attrs = {'axis': axis, 'keepdim': keepdim, 'mode': mode}
         out = helper.create_variable_for_type_inference(x.dtype)
-        medians = helper.create_variable_for_type_inference(x.dtype)
+        indices = helper.create_variable_for_type_inference(paddle.int64)
         helper.append_op(
             type='nanmedian',
             inputs={'X': x},
-            outputs={'Out': out, 'MedianIndex': medians},
+            outputs={'Out': out, 'MedianIndex': indices},
             attrs=attrs,
         )
+        indices.stop_gradient = True
+    if mode == 'min' and need_index:
+        return out, indices
+    else:
         return out
 
 

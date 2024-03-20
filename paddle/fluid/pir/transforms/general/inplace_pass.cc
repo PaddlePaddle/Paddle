@@ -203,8 +203,11 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
         0) {
       continue;
     }
-    IR_ENFORCE(op.attributes().count("op_name") > 0,
-               "kernel_dialect op should own an 'op_name' attribute.");
+    PADDLE_ENFORCE_GT(
+        op.attributes().count("op_name"),
+        0UL,
+        phi::errors::InvalidArgument(
+            "kernel_dialect op should own an 'op_name' attribute."));
     auto upper_op_name =
         op.attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
 
@@ -234,8 +237,11 @@ void GetEagerDelValueOfOp(
     std::string upper_op_name = op.name();
     if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
         0) {
-      IR_ENFORCE(op.attributes().count("op_name") > 0,
-                 "kernel_dialect op should own an 'op_name' attribute.");
+      PADDLE_ENFORCE_GT(
+          op.attributes().count("op_name"),
+          0UL,
+          phi::errors::InvalidArgument(
+              "kernel_dialect op should own an 'op_name' attribute."));
       upper_op_name = op.attributes()
                           .at("op_name")
                           .dyn_cast<pir::StrAttribute>()
@@ -479,9 +485,11 @@ class InplacePass : public pir::Pass {
                          .AsString();
           pir::Block::Iterator insert_pos =
               std::find(block.begin(), block.end(), *kv.first);
-          IR_ENFORCE(insert_pos != block.end(),
-                     "Operator %s not found in block.",
-                     kv.first->name());
+          PADDLE_ENFORCE_NE(
+              insert_pos,
+              block.end(),
+              phi::errors::InvalidArgument("Operator %s not found in block.",
+                                           kv.first->name()));
 
           kv.first->set_attribute(
               "op_name",

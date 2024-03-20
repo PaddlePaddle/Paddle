@@ -459,6 +459,11 @@ class ElementwisePowOpPattern
           rewriter.Build<paddle::dialect::RsqrtOp>(op->operand_source(0));
       rewriter.ReplaceAllUsesWith(op.result(0), rsqrt.result(0));
       rewriter.EraseOp(op);
+    } else if (factor == 0.5) {
+      auto sqrt =
+          rewriter.Build<paddle::dialect::SqrtOp>(op->operand_source(0));
+      rewriter.ReplaceAllUsesWith(op.result(0), sqrt.result(0));
+      rewriter.EraseOp(op);
     }
   }
 };
