@@ -12,9 +12,6 @@ gather_srcs(
   program_pass.cc
   optimize.cc)
 
-gather_srcs(group_pattern_util SRCS group_pattern_util.cc)
-cc_library(group_pattern_util SRCS ${group_pattern_util})
-
 if(NOT WITH_CUDA)
   cinn_cc_test(
     test_frontend_syntax
