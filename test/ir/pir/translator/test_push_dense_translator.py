@@ -26,9 +26,9 @@ class TestPushDenseOpTranslator(test_op_translator.TestOpTranslator):
         ids = paddle.ones(shape=(100, 2, 3), dtype='float32')
         input_names = []
         attrs = {
-            'table_id': 1,
-            'scale_data_norm': -1,
-            'input_names': input_names,
+            'TableId': 1,
+            'ScaleDataNorm': -1,
+            'InputNames': input_names,
         }
         helper = LayerHelper(self.op_type)
         helper.append_op(
