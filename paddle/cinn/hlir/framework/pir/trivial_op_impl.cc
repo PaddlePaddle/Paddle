@@ -237,13 +237,13 @@ ir::Expr CreateReduceExpr(
   VLOG(4) << "CreateReduceExpr Start.";
   const std::vector<ir::Expr> indice_expr =
       std::vector<ir::Expr>(output_iters.begin(), output_iters.end());
-  const auto& new_init_tensor =
-      ir::Tensor(new_write_tensor->name + "__reduce_init",
-                 new_write_tensor->type(),
-                 new_write_tensor->shape,
-                 new_write_tensor->domain,
-                 new_write_tensor->operation,
-                 reduce_iters);
+  auto new_init_tensor = ir::Tensor(new_write_tensor->name + "__reduce_init",
+                                    new_write_tensor->type(),
+                                    new_write_tensor->shape,
+                                    new_write_tensor->domain,
+                                    new_write_tensor->operation,
+                                    reduce_iters);
+  new_init_tensor->WithBuffer();
 
   const auto& init_schedule_block =
       (TransformerUtils::WrapStoreTransformer(new_init_tensor, indice_expr) *

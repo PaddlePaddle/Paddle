@@ -167,7 +167,7 @@ BuildStaticSpatialConfig(
         /* warp_num = */ 8,
         /* tree_reduce_num = */ 256,
         /* spatial_inner_num = */ 1,
-        /* reduce_method = */ WarpReduceMethod()};
+        /* reduce_method = */ BlockReduceMethod()};
     return {{bucket_info, tile_config}};
   } else {
     BucketInfo bucket_info_1_256{/* sp_lower_bound = */ 1,
