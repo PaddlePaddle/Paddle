@@ -14,7 +14,6 @@
 
 import logging
 import socket
-import time
 
 from paddle.distributed.launch import plugins
 
@@ -33,6 +32,9 @@ class Context:
         self.node = Node()
         self.status = Status()
 
+        self._ip = None
+        self._port = None
+
         self.update_args()
         self.logger = self.get_logger()
 
@@ -43,9 +45,6 @@ class Context:
             self._enable_plugin()
         self.max_time_per_task = -1
         self.run_best = False
-
-        self._ip = None
-        self._port = None
 
     def print(self):
         self.logger.info("-----------  Configuration  ----------------------")
@@ -209,57 +208,66 @@ class Context:
                 port = 6768
                 has_connect = False
                 if self.node.ip == master_ip:
-                    while port < 6778:
-                        ret = self.node._get_free_port(port)
-                        if ret > 0:
-                            server_socket = socket.socket(
-                                socket.AF_INET, socket.SOCK_STREAM
-                            )
-                            server_socket.bind(self.node.ip, port)
-                            server_socket.listen()
-                            connection_count = 0
-                            connections = []
+                    while port < 6779 and not has_connect:
+                        server_socket = socket.socket(
+                            socket.AF_INET, socket.SOCK_STREAM
+                        )
+                        server_socket.settimeout(30)
+                        try:
+                            server_socket.bind((self.node.ip, port))
+                            server_socket.listen(1)
+                            connected_addrs = set()
+                            connected_clients = []
+                            while len(connected_addrs) < len(ip_list) - 1:
+                                (
+                                    client_socket,
+                                    client_addr,
+                                ) = server_socket.accept()
+                                connected_addrs.add(client_addr)
+                                connected_clients.append(client_socket)
 
-                            while True:
-                                connection, address = server_socket.accept()
-                                message = connection.recv(1024).decode()
-                                if message == "connect master":
-                                    connection_count += 1
-                                    connections.append([connection])
-                                if connection_count == len(ip_list):
-                                    break
-                            for connection in connections:
+                            print(
+                                f"All clients have sent messages on port {port}"
+                            )
+                            for connection in connected_clients:
                                 response = "connect success"
                                 connection.send(response.encode())
                             has_connect = True
-                        else:
+                            server_socket.close()
+                        except OSError:
+                            print(
+                                f"Port {port} is not available for listening."
+                            )
                             port += 1
-                    server_socket.close()
                 else:
-                    while port < 6778:
+                    while port < 6779 and not has_connect:
                         has_connect = False
                         for i in range(5):
                             try:
                                 client_socket = socket.socket(
                                     socket.AF_INET, socket.SOCK_STREAM
                                 )
-                                client_socket.connect(self.node.ip, port)
+                                client_socket.settimeout(5)
+                                client_socket.connect((master_ip, port))
                                 message = "connect master"
                                 client_socket.send(message.encode())
                                 response = client_socket.recv(1024).decode()
                                 if response == "connect success":
                                     has_connect = True
                                     break
-                            except:
-                                time.sleep(2)
+                            except OSError:
+                                print(
+                                    f"Failed to connect to port {port}, Still trying"
+                                )
                         if has_connect:
                             break
                         else:
                             port += 1
-                assert has_connect
+                assert has_connect, "No available ports between 6768 and 6778."
                 self.args.master = f"{master_ip}:{port}"
                 self._ip = master_ip
                 self._port = port
+                print(f"Success found the master and port: {master_ip}, {port}")
 
     def update_args(self):
         # support master: <ip>:<port>, <ip>, :<port>
@@ -290,7 +298,7 @@ class Context:
             self.args.nnodes = "1"
 
         # update master by env
-        if "etcd" not in self.args.master:
+        if self.has_set(self.args.master) and "etcd" not in self.args.master:
             if not self._ip:
                 if self.envs.get("PADDLE_TRAINERS", None):
                     self._ip = self.envs["PADDLE_TRAINERS"].split(",")[0]
