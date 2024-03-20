@@ -23,6 +23,7 @@ from paddle.base.layer_helper import LayerHelper
 
 class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
     def setUp(self):
+        super().setUp()
         assert (
             not paddle.in_dynamic_mode()
         ), "DistributedFusedLamb does not support dygraph mode"
