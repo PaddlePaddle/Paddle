@@ -21,6 +21,19 @@ enum class Mode {
   nearest,
 };
 
+#define INT_MAX __INT_MAX__
+#define INT_MIN (-__INT_MAX__ - 1)
+
+template <typename T>
+__forceinline__ __device__ T SafeDownGradeToIntRange(T x) {
+  bool unsafe_cond =
+      x > INT_MAX - 1 || x < INT_MIN || !::isfinite(static_cast<double>(x));
+  return unsafe_cond ? static_cast<T>(-100.0) : x;
+}
+
+#undef INT_MAX
+#undef INT_MIN
+
 enum class PaddingMode { zeros, border, reflect };
 
 static __forceinline__ __device__ bool InBounds(int h, int w, int H, int W) {
