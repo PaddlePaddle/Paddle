@@ -389,7 +389,7 @@ bool CompatibleInfo::IsDeniedForCinn(const ::pir::Operation& op) {
 }
 
 bool CompatibleInfo::IsSupportForCinn(const ::pir::Operation& op) {
-  const bool not_builtin_op = !op.dialect()->isa<::pir::BuiltinDialect>();
+  const bool not_builtin_op = op.dialect() != "builtin";
   const bool flag = IsSupportInCinn(op) && not_builtin_op;
 
   VLOG(4) << "CompatibleInfo::IsSupportForCinn of " << op.name()
