@@ -52,13 +52,18 @@ class ClusteringEngine {
     }
     }
 
-  common::BfsWalker<const StmtPattern*> MakeAcyclicSameClusterBfsWalker(
-      const std::vector<StmtPattern>& stmt_patterns);
-
+  using ShardableAxes4ValueT =
+      std::function<std::optional<const ShardableAxes*>(pir::Value)>;
   using IsAcyclicConnectedT =
       std::function<bool(const StmtPattern* src, const StmtPattern* dst)>;
   using ClusterRoot4StmtT =
       std::function<const StmtPattern*(const StmtPattern*)>;
+
+  ShardableAxes4ValueT MakeInferedShardableAxes4Value(
+      const std::vector<const StmtPattern*>& stmt_ptrs);
+
+  common::BfsWalker<const StmtPattern*> MakeAcyclicSameClusterBfsWalker(
+      const std::vector<StmtPattern>& stmt_patterns);
 
   IsAcyclicConnectedT MakePredicatorIsAcyclicConnected(
       const common::TopoWalker<const StmtPattern*>& walker,
