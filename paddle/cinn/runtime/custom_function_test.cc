@@ -59,12 +59,15 @@ class CinnBufferAllocHelper {
 #ifdef CINN_WITH_CUDA
       cudaMalloc(&buffer_->memory, buffer_->num_elements() * sizeof(T));
 #else
-      LOG(FATAL) << "NVGPU Target only support on flag CINN_WITH_CUDA ON! "
-                    "Please check.";
+      PADDLE_THROW(phi::errors::Fatal(
+          "NVGPU Target only support on flag CINN_WITH_CUDA ON! "
+          "Please check."));
 #endif
     } else {
-      LOG(FATAL) << "Only support nvgpu and cpu, but here " << target
-                 << "! Please check.";
+      std::stringstream ss;
+      ss << "Only support nvgpu and cpu, but here " << target
+         << "! Please check.";
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));
     }
 
     return reinterpret_cast<T*>(buffer_->memory);
@@ -73,7 +76,7 @@ class CinnBufferAllocHelper {
   template <typename T>
   const T* data() {
     if (target_ == cinn::common::UnkTarget()) {
-      LOG(FATAL) << "No memory had alloced! Please check.";
+      PADDLE_THROW(phi::errors::Fatal("No memory had alloced! Please check."));
     }
     return reinterpret_cast<const T*>(buffer_->memory);
   }
@@ -88,12 +91,15 @@ class CinnBufferAllocHelper {
 #ifdef CINN_WITH_CUDA
         cudaFree(buffer_->memory);
 #else
-        LOG(FATAL) << "NVGPU Target only support on flag CINN_WITH_CUDA ON! "
-                      "Please check.";
+        PADDLE_THROW(phi::errors::Fatal(
+            "NVGPU Target only support on flag CINN_WITH_CUDA ON! "
+            "Please check."));
 #endif
       } else {
-        LOG(FATAL) << "Only support nvgpu and cpu, but here " << target_
-                   << "! Please check.";
+        std::stringstream ss;
+        ss << "Only support nvgpu and cpu, but here " << target_
+           << "! Please check.";
+        PADDLE_THROW(phi::errors::Fatal(ss.str()));
       }
       delete buffer_;
     }
@@ -121,8 +127,8 @@ void SetInputValue(T* input,
 #ifdef CINN_WITH_CUDA
     cudaMemcpy(input, input_h, num * sizeof(T), cudaMemcpyHostToDevice);
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
 #endif
   }
 }
@@ -233,8 +239,8 @@ TEST(CustomCallGaussianRandom, test_target_nvgpu) {
       VLOG(6) << output_data[i];
     }
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
 #endif
   }
 }
@@ -269,8 +275,8 @@ TEST(CustomCallUniformRandom, test_target_nvgpu) {
       VLOG(6) << output_data[i];
     }
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
 #endif
   }
 }

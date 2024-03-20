@@ -412,7 +412,8 @@ class GraphPartition {
       parent->master_node = child->master_node;
       if (child->pattern > framework::kBroadcast &&
           parent->pattern > framework::kBroadcast) {
-        LOG(FATAL) << "can't fuse 2 groups both with complex pattern";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "can't fuse 2 groups both with complex pattern"));
       } else {
         parent->pattern =
             child->pattern > parent->pattern ? child->pattern : parent->pattern;

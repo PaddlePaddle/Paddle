@@ -245,6 +245,7 @@ test_sigmoid_cross_entropy_with_logits_op
 test_sign_op
 test_size_op
 test_slice_op
+test_softmax_mask_fuse_op
 test_softmax_mask_fuse_upper_triangle_op
 test_softmax_op
 test_solve_op

@@ -272,7 +272,7 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
       union_find_set.Union(data->lhs, data->rhs);
     };
     const auto& shape_analysis_constraints =
-        shape_analysis->CreateDimExprBuilder().constraints();
+        shape_analysis->DimExprBuilder().constraints();
     for (const auto& constraint : shape_analysis_constraints) {
       AddEqualCstr(constraint);
     }

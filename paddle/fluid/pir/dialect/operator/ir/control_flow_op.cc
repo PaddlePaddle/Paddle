@@ -536,13 +536,19 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   os << " = \"" << name() << "\"(cond=";
   printer.PrintValue(cond());
   os << ", inputs=";
+  pir::ShapeConstraintIRAnalysis &shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   auto operands = (*this)->operands_source();
   pir::detail::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
       [&](pir::Value v) {
         printer.PrintValue(v);
-        os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+        if (shape_analysis.HasShapeOrDataForValue(v)) {
+          os << "<" << shape_analysis.GetShapeOrDataForValue(v).shape() << ">";
+        } else {
+          os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+        }
       },
       [&]() { os << ", "; });
   os << ") { \n";
@@ -552,7 +558,32 @@ void WhileOp::Print(pir::IrPrinter &printer) {
       body().args_end(),
       [&](pir::Value v) {
         printer.PrintValue(v);
-        os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+        if (shape_analysis.HasShapeOrDataForValue(v)) {
+          os << "<" << shape_analysis.GetShapeOrDataForValue(v).shape() << ">";
+        } else {
+          os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+        }
+      },
+      [&]() { os << ", "; });
+  os << "\n";
+  os << printer.indentation() << "@";
+  const auto &results = [&] {
+    std::vector<pir::Value> results;
+    for (uint32_t i = 0; i < num_results(); ++i) {
+      results.push_back(result(i));
+    }
+    return results;
+  }();
+  pir::detail::PrintInterleave(
+      results.begin(),
+      results.end(),
+      [&](pir::Value v) {
+        printer.PrintValue(v);
+        if (shape_analysis.HasShapeOrDataForValue(v)) {
+          os << "<" << shape_analysis.GetShapeOrDataForValue(v).shape() << ">";
+        } else {
+          os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+        }
       },
       [&]() { os << ", "; });
   os << "\n";
@@ -819,15 +850,15 @@ bool WhileOp::InferSymbolicShape(
       }
       if (input_arg_shape[j] ==
           yield_value_shape[j]) {  // Dim isn't changed in while
-        shape_analysis->CreateDimExprBuilder().CstrEq(original_input_shape[j],
-                                                      input_arg_shape[j]);
+        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
+                                                input_arg_shape[j]);
         continue;
       }
       if (original_input_shape.size() == yield_value_shape.size() &&
           IsSameWithDimExprBeforeWhile(original_input_shape[j],
                                        yield_value_shape[j])) {
-        shape_analysis->CreateDimExprBuilder().CstrEq(original_input_shape[j],
-                                                      input_arg_shape[j]);
+        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
+                                                input_arg_shape[j]);
         continue;
       }
     }

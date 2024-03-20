@@ -2584,14 +2584,12 @@ void MultinomialInferMeta(const MetaTensor& x,
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,
+                        const std::string& mode,
                         MetaTensor* out,
                         MetaTensor* median_index) {
   std::vector<int64_t> axis_list = axes.GetData();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
-  out->set_dtype(x.dtype());
-  median_index->set_dtype(DataType::INT64);
-  median_index->set_dims(common::make_ddim({x.numel() * 2}));
 
   std::vector<int32_t> out_dim;
   if (axis_list.empty()) {
@@ -2646,8 +2644,15 @@ void NanmedianInferMeta(const MetaTensor& x,
       }
     }
   }
+  out->set_dtype(x.dtype());
+  out->set_dims(make_ddim(out_dim));
 
-  out->set_dims(common::make_ddim(out_dim));
+  auto median_dim = out_dim;
+  if (mode == "avg") {
+    median_dim.push_back(2);
+  }
+  median_index->set_dtype(DataType::INT64);
+  median_index->set_dims(make_ddim(median_dim));
 }
 
 void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
@@ -2930,6 +2935,29 @@ void Pad3dInferMeta(const MetaTensor& x,
   out->set_dims(common::make_ddim(out_dims));
   out->set_dtype(x.dtype());
   out->share_lod(x);
+}
+
+void PartialAllgatherInferMeta(const MetaTensor& x,
+                               int nranks,
+                               int rank,
+                               int ring_id,
+                               bool use_calc_stream,
+                               MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      nranks,
+      2,
+      phi::errors::InvalidArgument("The value of nranks should be >=2."));
+  PADDLE_ENFORCE_EQ(
+      (rank >= 0 && rank < nranks),
+      true,
+      phi::errors::InvalidArgument(
+          "The rank (%d) for partial_allgather op must >=0 and <nranks (%d)",
+          rank,
+          nranks));
+
+  auto x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
 }
 
 void PartialSendInferMeta(const MetaTensor& x,
