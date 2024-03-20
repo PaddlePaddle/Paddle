@@ -14,14 +14,14 @@
 #pragma once
 
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace dialect {
 
 pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
 
-std::unique_ptr<pir::Program> PdOpLowerToKernelPass(
+TEST_API std::unique_ptr<pir::Program> PdOpLowerToKernelPass(
     pir::Program* prog, phi::Place place = phi::CPUPlace());
 
 void ProcessBlock(

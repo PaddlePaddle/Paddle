@@ -116,7 +116,8 @@ class FallbackWrapper:
                 2,
                 lambda: print("[FallbackWrapper] start run SIR: \n", self.SIR),
             )
-            args, kwargs = self.amp_cast_inputs(args, kwargs)
+            if not use_pir_api():
+                args, kwargs = self.amp_cast_inputs(args, kwargs)
             log_do(
                 4,
                 lambda: print(
@@ -175,7 +176,7 @@ class CompileSIRCache(Cache):
             The hash key of the SIR
         """
         sir = context.get_sir(sir_name)
-        # NOTE(dev): Is str(sir) a heavy opearation ?
+        # NOTE(dev): Is str(sir) a heavy operation ?
         hash_key = hash((str(sir), kwargs['training']))
         return hash_key
 

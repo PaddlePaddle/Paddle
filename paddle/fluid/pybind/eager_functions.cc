@@ -62,18 +62,18 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-PHI_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace pybind {
@@ -567,12 +567,12 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add un-initialized tensor "
                  "because the optional input is None";
-      ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+      ctx.EmplaceBackInput(paddle::Tensor());
       continue;
     }
     if (paddle::framework::detail::IsDuplicableVar(input)) {
       std::vector<paddle::Tensor> tensors =
-          std::move(CastPyArg2VectorOfTensor(obj, i + 1));  // NOLINT
+          CastPyArg2VectorOfTensor(obj, i + 1);
       ctx.EmplaceBackInputs(std::move(tensors));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add vector<Tensor> size = "
@@ -600,12 +600,12 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         VLOG(7) << "Custom operator add input " << input
                 << " to CustomOpKernelContext. Add un-initialized tensor "
                    "because the optional input is None";
-        ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+        ctx.EmplaceBackInput(paddle::Tensor());
         continue;
       }
       if (paddle::framework::detail::IsDuplicableVar(input)) {
         std::vector<paddle::Tensor> tensors =
-            std::move(CastPyArg2VectorOfTensor(obj, i + 1, mesh));  // NOLINT
+            CastPyArg2VectorOfTensor(obj, i + 1, mesh);
         ctx.EmplaceBackInputs(std::move(tensors));
         VLOG(7) << "Custom operator add input " << input
                 << " to CustomOpKernelContext. Add vector<Tensor> size = "
@@ -644,7 +644,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     } else if (attr_type_str == "std::string") {
       ctx.EmplaceBackAttr(
           CastPyArg2AttrString(obj, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "std::vector<int>") {
+    } else if (attr_type_str == "std::vector<int>") {      // NOLINT
       ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
     } else if (attr_type_str == "std::vector<float>") {
       ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
@@ -684,7 +684,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add un-initialized tensor "
                      "because the inplace optional input is None";
-          ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
+          ctx.EmplaceBackOutput(paddle::Tensor());
           continue;
         }
         /// inplace vector<Tensor>, initialized tensor.
@@ -706,7 +706,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
               << " to CustomOpKernelContext. Add initialized Tensor because "
                  "using general or inplace mechanism";
       // general Tensor or inplace Tensor, initialized tensor.
-      ctx.EmplaceBackOutput(std::move(InitializedEmptyTensor()));
+      ctx.EmplaceBackOutput(InitializedEmptyTensor());
     }
 
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;
@@ -1133,8 +1133,9 @@ static PyObject* eager_api_async_read(PyObject* self,
       auto* src_data = src_tensor.data<float>();
       auto* index_data = index_tensor.data<int64_t>();
       auto* buffer_data = buffer_tensor->data<float>();
-      const int& slice_size = src_tensor.numel() / src_tensor.dims()[0];
-      const int& copy_bytes = slice_size * sizeof(float);
+      const int& slice_size =
+          src_tensor.numel() / src_tensor.dims()[0];       // NOLINT
+      const int& copy_bytes = slice_size * sizeof(float);  // NOLINT
       int64_t c = 0;
       for (int64_t i = 0; i < index_tensor.numel(); i++) {
         std::memcpy(buffer_data + c * slice_size,
@@ -1338,8 +1339,9 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
                           "Detected nullptr grad"
                           "Please check if you have manually cleared"
                           "the grad inside autograd_meta"));
-    if ((*grad).initialized() && ((*grad).dtype() == phi::DataType::FLOAT16 ||
-                                  (*grad).dtype() == phi::DataType::BFLOAT16)) {
+    if (((*grad).initialized() || (*grad).is_dist_tensor()) &&
+        ((*grad).dtype() == phi::DataType::FLOAT16 ||
+         (*grad).dtype() == phi::DataType::BFLOAT16)) {
       auto master_grad =
           paddle::experimental::cast(*grad, phi::DataType::FLOAT32);
       grad->set_impl(master_grad.impl());
@@ -1347,6 +1349,16 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
     VLOG(6) << "finish setting master_grad for tensor: " << tensor.name();
   }
   RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager__is_run_in_backward(PyObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+
+  return ToPyObject(egr::Controller::Instance().GetIsInBackward());
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1421,6 +1433,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
     /**amp functions**/
     {"set_master_grads",
      (PyCFunction)(void (*)())eager_api_set_master_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_is_run_in_backward",
+     (PyCFunction)(void (*)())eager__is_run_in_backward,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 /**sparse functions**/

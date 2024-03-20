@@ -18,7 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -330,11 +330,11 @@ Type &Type::operator=(const Type &other) {
 }
 
 Type::Storage &Type::GetStorage() {
-  CHECK(storage_) << "The type not initializated! Please check.";
+  CHECK(storage_) << "The type not initialized! Please check.";
   return *storage_;
 }
 const Type::Storage &Type::GetStorage() const {
-  CHECK(storage_) << "The type not initializated! Please check.";
+  CHECK(storage_) << "The type not initialized! Please check.";
   return *storage_;
 }
 
@@ -600,7 +600,9 @@ std::string Type2Str(const Type &type) {
       return "unk";
 
     default:
-      LOG(FATAL) << "Not support type [" << type << "] ! Please Check.\n";
+      std::stringstream ss;
+      ss << "Not support type [" << type << "] ! Please Check.\n";
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return "unk";
 }

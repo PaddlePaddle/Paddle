@@ -161,13 +161,21 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
                                                     int throw_flag) {
   Py_ssize_t nlocalsplus_new = code->co_nlocalsplus;
   Py_ssize_t nlocalsplus_old = frame->f_code->co_nlocalsplus;
+#if PY_VERSION_HEX >= 0x030c0000
+  int size = code->co_framesize;
+#else
   // Create a new PyInterpreterFrame. Refer to CALL.
   // PyInterpreterFrame has a head section calls "specials". It follows
   // a contiguous section containing localplus and interpreter stack space.
-  size_t size = nlocalsplus_new + code->co_stacksize + FRAME_SPECIALS_SIZE;
+  int size = nlocalsplus_new + code->co_stacksize + FRAME_SPECIALS_SIZE;
+#endif
   CALL_STAT_INC(frames_pushed);
+#if PY_VERSION_HEX >= 0x030c0000
+  _PyInterpreterFrame *shadow = Internal_PyThreadState_PushFrame(tstate, size);
+#else
   _PyInterpreterFrame *shadow =
       (_PyInterpreterFrame *)malloc(sizeof(PyObject *) * size);
+#endif
   if (shadow == NULL) {
     // VLOG(7) << "Failed to allocate memory for shadow frame.";
     return NULL;
@@ -176,18 +184,23 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
   Py_INCREF(func);
-#if PY_VERSION_HEX < 0x030c0000
+#if PY_VERSION_HEX >= 0x030c0000
+  Py_XINCREF(((PyFunctionObject *)frame->f_funcobj)->func_closure);
+  func->func_closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
+  _PyFrame_Initialize(shadow, func, NULL, code, 0);
+  PyObject **fastlocals_new = shadow->localsplus;
+#else
   Py_XINCREF(frame->f_func->func_closure);
   func->func_closure = frame->f_func->func_closure;
   _PyFrame_InitializeSpecials(shadow, func, NULL, code->co_nlocalsplus);
-#endif
-
-  PyObject **fastlocals_old = frame->localsplus;
   PyObject **fastlocals_new = shadow->localsplus;
 
   for (Py_ssize_t i = 0; i < nlocalsplus_new; ++i) {
     fastlocals_new[i] = NULL;
   }
+#endif
+
+  PyObject **fastlocals_old = frame->localsplus;
 
   // The namemap to map the name to index in new frame localsplus.
   PyObject *namemap = PyDict_New();
@@ -212,10 +225,18 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   }
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
-#if PY_VERSION_HEX < 0x030c0000
+#if PY_VERSION_HEX >= 0x030c0000
+  // In Python 3.12+ believes that eval will be cleaned up, but we did not pass
+  // in the frame to _PyEval_EvalFrameDefault, so we need to clean it up.
+  // elaborate on see:
+  // https://github.com/PaddlePaddle/Paddle/pull/61703#issuecomment-1933812625
+  Internal_PyEvalFrameClearAndPop(tstate, frame);
+#else
+  // In Python 3.11 we to create our own isolated frame(namely shadow) and
+  // release it after completion
   Internal_PyFrame_Clear(shadow);
-#endif
   free(shadow);
+#endif
   Py_DECREF(func);
   Py_DECREF(namemap);
   return result;
@@ -298,11 +319,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // original frame. So we pass a PyInterpreterFrame to
   // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
   // copy many code from CPython project into our project.
-#if PY_VERSION_HEX >= 0x030c0000
-  if (true) {
-#else
   if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
-#endif
 #else
   if (frame->f_code->co_flags & 0x20) {
     out = eval_frame_default(tstate, frame, throw_flag);
@@ -317,8 +334,8 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // NOTE:(xiongkun): Handle GeneratorExit exception: (Spend a day)
   // In Python, gen close is also a Python function call that will enter this
   // function with GeneratorExit set, which will cause the PyObject_CallObject
-  // raise SystemError. So we disable the custom behavior for GeneratorExit. def
-  // func():
+  // raise SystemError. So we disable the custom behavior for GeneratorExit.
+  // def func():
   //     iter = iter([1, 2, 3])
   //     for i in iter:
   //         return i # <--- Early return, cause a GeneratorExit thrown,
@@ -349,6 +366,9 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     PyObject *result = PyObject_CallObject(callback, args);
     Py_DECREF(args);
     if (result == NULL) {
+#if PY_VERSION_HEX >= 0x030C0000
+      Internal_PyEvalFrameClearAndPop(tstate, frame);
+#endif
       return NULL;
     }
     code = PyObject_GetAttrString(result, "code");

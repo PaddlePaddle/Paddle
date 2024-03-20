@@ -63,9 +63,11 @@ option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
-option(CINN_ONLY "Compile CINN only in Paddle" OFF)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
-
+option(WITH_PIP_CUDA_LIBRARIES
+       "Paddle uses the CUDA library provided by NVIDIA" OFF)
+option(WITH_NIGHTLY_BUILD
+       "Compile nightly paddle whl package of the develop branch" OFF)
 find_package(Git REQUIRED)
 
 # config GIT_URL with github mirrors to speed up dependent repos clone
@@ -96,6 +98,18 @@ if(WITH_GPU AND WITH_ROCM)
 endif()
 
 if(WITH_GPU AND NOT APPLE)
+  #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL
+                                            "x86_64")
+    set(CUDA_USE_STATIC_CUDA_RUNTIME
+        OFF
+        CACHE BOOL "" FORCE)
+    set(CMAKE_CUDA_FLAGS "--cudart shared")
+    if(WITH_PIP_CUDA_LIBRARIES)
+      #(Note risemeup1): Flag 'WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
+      add_definitions(-DWITH_PIP_CUDA_LIBRARIES)
+    endif()
+  endif()
   enable_language(CUDA)
   message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "
                  "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
@@ -113,6 +127,7 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND CMAKE_CXX_COMPILER_VERSION
 endif()
 
 # MUSL build turn off warnings
+
 if(WITH_MUSL)
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy"
@@ -225,6 +240,8 @@ if(WIN32)
         "${${flag_var}} /ignore:4049 /ignore:4217 /ignore:4006 /ignore:4221")
     if(MSVC_STATIC_CRT)
       set(${flag_var} "${${flag_var}} /NODEFAULTLIB:MSVCRT.LIB")
+    else()
+      set(${flag_var} "${${flag_var}} /NODEFAULTLIB:LIBCMT.LIB")
     endif()
   endforeach()
 
@@ -315,8 +332,6 @@ option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
-option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
-       OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
@@ -410,16 +425,6 @@ if(NOT WITH_GPU AND WITH_NCCL)
   set(WITH_NCCL
       OFF
       CACHE STRING "Disable NCCL when compiling without GPU" FORCE)
-endif()
-
-if(NOT WITH_GPU AND WITH_CUDNN_DSO)
-  message(
-    WARNING
-      "Can't compile with cuDNN libraries when compiling without GPU. Force WITH_CUDNN_DSO=OFF."
-  )
-  set(WITH_CUDNN_DSO
-      OFF
-      CACHE STRING "Disable cuDNN libraries when compiling without GPU" FORCE)
 endif()
 
 # force WITH_XPU on when WITH_XPU_KP
@@ -622,18 +627,6 @@ if(WITH_CINN)
 
   include(cmake/cinn.cmake)
   add_definitions(-DPADDLE_WITH_CINN)
-
-  if(CINN_ONLY)
-    add_definitions(-DCINN_WITH_ONLY)
-    if(WITH_PYTHON)
-      add_subdirectory(python)
-    endif()
-    add_subdirectory(test)
-    if(NOT WITH_GFLAGS)
-      add_subdirectory(paddle/utils)
-    endif()
-    return()
-  endif()
 endif()
 
 #------------- cinn cmake config end --------------

@@ -85,7 +85,7 @@ def reduce(
 ):
     """
 
-    Perform specific reduction (for example, sum, max) on a tensor across devices and send to the destintion device.
+    Perform specific reduction (for example, sum, max) on a tensor across devices and send to the destination device.
 
     Args:
         tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support

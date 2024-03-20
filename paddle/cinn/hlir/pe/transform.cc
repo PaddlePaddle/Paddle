@@ -982,7 +982,7 @@ ir::Tensor Transpose(const ir::Tensor& input,
     output_shape.push_back(shape[axis[idx]]);
   }
 
-  // tranpose axis to map output to input
+  // transpose axis to map output to input
   // new_axis = axis(T)
   std::vector<int> new_axis;
   for (int idx = 0; idx < axis.size(); ++idx) {
@@ -1174,7 +1174,7 @@ ir::Tensor SliceAssign(const ir::Tensor& input,
       new_strides[i] = -new_strides[i];
     } else {
       CHECK_LT(new_starts[i], new_ends[i])
-          << "[ends] shoould greater than [starts] when [strides] > 0";
+          << "[ends] should greater than [starts] when [strides] > 0";
     }
   }
 
@@ -1269,7 +1269,8 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
   } else if (target.arch == cinn::common::Target::Arch::X86) {
     extern_fun_name.assign("cinn_host_find_int");
   } else {
-    LOG(FATAL) << "ScatterAssign only support X86 and NVGPU ! Please Check.\n";
+    PADDLE_THROW(phi::errors::Fatal(
+        "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
   }
 
   auto pos_axis = axis;
@@ -1287,7 +1288,7 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
         std::vector<Expr> indice_updates = indice;
         indice_updates[pos_axis] = id;
 
-        // check wheter Index[id] == cur_index and return by check result
+        // check whether Index[id] == cur_index and return by check result
         return ir::Select::Make(
             ir::EQ::Make(id, Expr(-1)), input(indice), updates(indice_updates));
       },

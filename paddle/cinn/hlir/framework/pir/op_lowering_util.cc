@@ -448,7 +448,7 @@ bool CanbeInline(::pir::Operation* op,
         done_schedule.insert(tmp);
       }
     }
-    // remove all consuemr reducer node of node from done_schedule.
+    // remove all consumer reducer node of node from done_schedule.
     std::unordered_set<::pir::Operation*> visited;
     std::queue<::pir::Operation*> candidates;
     candidates.push(op);
@@ -601,8 +601,8 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
     }
     lane *= inshape[axes[index]];
     if (index == 0 && lane <= max_num_threads) {
-      LOG(FATAL)
-          << "Error! lane is less equal than max_num_threads, Please check!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Error! lane is less equal than max_num_threads, Please check!"));
     }
     if (lane >= max_num_threads / 2) {
       if (lane <= max_num_threads) {
@@ -667,7 +667,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
       ir_sch.Fuse(block_name, {axes[index + 1], axes[index + 1] + 1});
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target, true);
-    // fuse axis before reduce to bind blockidx.
+    // fuse axis before reduce to bind block idx.
     for (int idx = 0; idx < static_cast<int>(inshape.size() - axes.size()) - 1;
          ++idx) {
       ir_sch.Fuse(block_name, {0, 1});
@@ -713,7 +713,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
                                     return left + std::to_string(right) + " ";
                                   });
 
-  VLOG(4) << "LoopAssignReduceWithoutLast: THe input shape=["
+  VLOG(4) << "LoopAssignReduceWithoutLast: The input shape=["
           << cinn::utils::Join(inshape, ", ") << "], first step reduce shape=["
           << cinn::utils::Join(shape, ", ") << "]"
           << ", axes=[" << cinn::utils::Join(axes, ", ") << "], tail=" << tail;
@@ -727,7 +727,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
           // the loop size at axis is 1, need remove
           axes_shift_num[j] = -1;
         } else if (axes[j] > idx) {
-          // the axies value need left shift
+          // the axes value need left shift
           axes_shift_num[j]++;
         }
       }
@@ -1008,7 +1008,8 @@ void MergeReduceToReduce(
                        n_loops.size() - 1);
           }
         } else {
-          LOG(FATAL) << "not support this type fusion!";
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("not support this type fusion!"));
         }
       }
     } else {
@@ -1112,7 +1113,8 @@ void MergeReduceToReduce(
         ir_sch.SimpleComputeAt(block, loops.back());
       }
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type, Please Check!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Error! Unkown Reduce Type, Please Check!"));
     }
   }
 }
@@ -1506,7 +1508,7 @@ void LoopAssignReduce(
       // copy loop info form rloops.
       copy_loop_info(nloops, rloops);
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type!";
+      PADDLE_THROW(phi::errors::InvalidArgument("Error! Unkown Reduce Type!"));
     }
   }
 }

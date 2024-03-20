@@ -72,7 +72,7 @@ void elementwise_add(const Instruction& instr,
     Variable bcast_x = x;
     Variable bcast_y = y;
 
-    // e.g., x.shape = [4, 1, 3], y.shape = [2, 3], aixs = 1 out.shape = [4, 2,
+    // e.g., x.shape = [4, 1, 3], y.shape = [2, 3], axis = 1 out.shape = [4, 2,
     // 3] bcast_axes_x = [0, 1, 2], bcast_axes_y = [1, 2]
     if (x->shape != output->shape) {
       std::vector<int> bcast_axes_x(x->shape.size());
@@ -129,8 +129,9 @@ void elementwise_add_grad(const Instruction& instr,
   auto dy = instr->outputs[1];
   int axis = instr.GetAttrs<int>("axis");
   if (axis < 0 && dx->shape.size() < dy->shape.size()) {
-    LOG(FATAL) << "Please make sure x'rank greater than or equal to y'rank "
-                  "when axis = -1";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Please make sure x'rank greater than or equal to y'rank "
+        "when axis = -1"));
   }
   axis = axis >= 0 ? axis : dx->shape.size() - dy->shape.size();
   auto* builder = context.builder();

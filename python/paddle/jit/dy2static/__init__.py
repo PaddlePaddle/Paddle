@@ -22,7 +22,6 @@ from .convert_operators import (  # noqa: F401
     convert_logical_and as And,
     convert_logical_not as Not,
     convert_logical_or as Or,
-    convert_pop as Pop,
     convert_shape as Shape,
     convert_var_dtype as AsDtype,
     convert_while_loop as While,

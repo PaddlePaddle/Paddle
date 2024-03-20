@@ -28,6 +28,7 @@ foreach(target ${TEST_IR_SYSTEM_CASES})
 endforeach()
 
 set_tests_properties(test_pd_inplace_pass PROPERTIES TIMEOUT 60)
+set_tests_properties(test_map_op_another_pass PROPERTIES TIMEOUT 60)
 
 py_test_modules(
   test_subgraph_exporter

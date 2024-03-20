@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -28,14 +29,13 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
-PHI_DECLARE_string(ir_inplace_kernel_blacklist);
+COMMON_DECLARE_string(ir_inplace_kernel_blacklist);
 
 namespace {
 
@@ -54,7 +54,7 @@ std::unordered_set<std::string> RelaxShapeCheckOps = {
 
 // NOTE(zhangbo): Which kind of value can be deleted?
 // (1) Value's type needs to be AllocatedDenseTensorType or
-// AllocatedSelectedRowsType; (2) Value's is not persisable.
+// AllocatedSelectedRowsType; (2) Value's is not persistable.
 bool CanBeDeleted(pir::Value value) {
   if (!value.type()) {
     return false;
@@ -63,7 +63,7 @@ bool CanBeDeleted(pir::Value value) {
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-  auto persist_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersisable);
+  auto persist_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersistable);
   return !(persist_attr && persist_attr.data());
 }
 
@@ -184,8 +184,8 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
           info_interface->get_op_info_(op_name),
           paddle::dialect::IsLegacyOp(op_name));
       auto& no_need_buffer_ids = info_parser.NoNeedBufferIds();
-      for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
-        if (value == op->operand_source(no_need_buffer_ids[id])) {
+      for (auto no_need_buffer_id : no_need_buffer_ids) {
+        if (value == op->operand_source(no_need_buffer_id)) {
           return true;
         }
       }
@@ -203,8 +203,11 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
         0) {
       continue;
     }
-    IR_ENFORCE(op.attributes().count("op_name") > 0,
-               "kernel_dialect op should own an 'op_name' attribute.");
+    PADDLE_ENFORCE_GT(
+        op.attributes().count("op_name"),
+        0UL,
+        phi::errors::InvalidArgument(
+            "kernel_dialect op should own an 'op_name' attribute."));
     auto upper_op_name =
         op.attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
 
@@ -213,6 +216,7 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
       skip_dels.insert(op.result(0));
       continue;
     }
+    // TODO(chenxi67) add logic for shadow_feed_tensors op
     if (upper_op_name == "pd_op.fetch" ||
         upper_op_name == "builtin.shadow_output") {
       skip_dels.insert(op.operand_source(0));
@@ -233,8 +237,11 @@ void GetEagerDelValueOfOp(
     std::string upper_op_name = op.name();
     if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
         0) {
-      IR_ENFORCE(op.attributes().count("op_name") > 0,
-                 "kernel_dialect op should own an 'op_name' attribute.");
+      PADDLE_ENFORCE_GT(
+          op.attributes().count("op_name"),
+          0UL,
+          phi::errors::InvalidArgument(
+              "kernel_dialect op should own an 'op_name' attribute."));
       upper_op_name = op.attributes()
                           .at("op_name")
                           .dyn_cast<pir::StrAttribute>()
@@ -451,7 +458,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     }
   }
   if (!FLAGS_ir_inplace_kernel_blacklist.empty()) {
-    for (auto i : inplace_ops) {
+    for (auto const& i : inplace_ops) {
       std::cout << i.second << std::endl;
     }
   }
@@ -478,9 +485,11 @@ class InplacePass : public pir::Pass {
                          .AsString();
           pir::Block::Iterator insert_pos =
               std::find(block.begin(), block.end(), *kv.first);
-          IR_ENFORCE(insert_pos != block.end(),
-                     "Operator %s not found in block.",
-                     kv.first->name());
+          PADDLE_ENFORCE_NE(
+              insert_pos,
+              block.end(),
+              phi::errors::InvalidArgument("Operator %s not found in block.",
+                                           kv.first->name()));
 
           kv.first->set_attribute(
               "op_name",

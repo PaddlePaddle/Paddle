@@ -6,8 +6,19 @@ if(NOT WITH_CINN)
     ${CMAKE_CURRENT_SOURCE_DIR}/sub_graph_detector.cc)
 endif()
 
-set(transforms_deps drr op_dialect op_dialect_vjp standalone_executor pir
-                    device_event_base)
+if(NOT WITH_MKLDNN)
+  file(GLOB_RECURSE onednn_srcs "onednn/*.cc")
+  list(REMOVE_ITEM transforms_srcs ${onednn_srcs})
+endif()
+
+set(transforms_deps
+    drr
+    op_dialect
+    op_dialect_vjp
+    standalone_executor
+    pir
+    pir_general_functions
+    device_event_base)
 
 if(WITH_CINN)
   set(transforms_deps ${transforms_deps} cinn_op_dialect cinnapi)

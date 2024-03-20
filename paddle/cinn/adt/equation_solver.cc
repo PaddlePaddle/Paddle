@@ -163,7 +163,8 @@ std::unordered_map<Variable, Value> InferValuesImpl(
 
   std::unordered_map<Variable, Value> ret{};
   for (std::size_t idx = 0; idx < out_iters.value()->size(); ++idx) {
-    ListGetItem<Value, DimExpr> list_get_item{index_undot, idx};
+    ListGetItem<Value, DimExpr> list_get_item{
+        Value{index_undot}, DimExpr(static_cast<std::int64_t>(idx))};
     ret.emplace(out_iters.value()->at(idx), list_get_item);
   }
   return ret;
@@ -272,7 +273,8 @@ void CheckEquationsSolvable(
         [&](const auto& opt_old_value, const auto& simplified_value) {
           LOG(ERROR) << "old_value: " << ToTxtString(opt_old_value);
           LOG(ERROR) << "simplified_value: " << ToTxtString(simplified_value);
-          LOG(FATAL) << "CheckEquationsSolvable Failed";
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("CheckEquationsSolvable Failed"));
           return tValueInferSuccess<bool>{false};
         });
   };

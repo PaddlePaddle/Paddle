@@ -65,6 +65,8 @@ def _get_reduce_op(reduce_op, func_name):
             return framework.core.ReduceOp.MIN
         elif reduce_op == ReduceOp.PROD:
             return framework.core.ReduceOp.PRODUCT
+        elif reduce_op == ReduceOp.AVG:
+            return framework.core.ReduceOp.AVG
     else:
         if reduce_op == ReduceOp.SUM:
             return f'c_{func_name}_sum'
@@ -78,6 +80,10 @@ def _get_reduce_op(reduce_op, func_name):
             return f'c_{func_name}'
 
     raise ValueError(f"Unknown reduce_op type for {func_name}.")
+
+
+def _to_inplace_op(op_name):
+    return f"{op_name}_"
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
@@ -96,7 +102,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         dst (int): The destination rank id.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The operation used. Default value is ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD|ReduceOp.AVG, optional): The operation used. Default value is ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global default group.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
@@ -120,6 +126,22 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
             >>> # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
             >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
+    # AVG is only supported when nccl >= 2.10
+    if op == ReduceOp.AVG and (not is_avg_reduce_op_supported()):
+        group = (
+            paddle.distributed.collective._get_global_group()
+            if group is None
+            else group
+        )
+        tensor.scale_(1.0 / group.nranks)
+        return stream.reduce(
+            tensor,
+            dst=dst,
+            op=ReduceOp.SUM,
+            group=group,
+            sync_op=sync_op,
+            use_calc_stream=False,
+        )
     return stream.reduce(
         tensor,
         dst=dst,
@@ -183,3 +205,10 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
         )
     else:
         raise ValueError(f"Unknown parameter: {op}.")
+
+
+def is_avg_reduce_op_supported():
+    if paddle.is_compiled_with_cuda():
+        return paddle.base.core.nccl_version() >= 21000
+    else:
+        return False

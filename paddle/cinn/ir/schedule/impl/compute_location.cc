@@ -26,10 +26,11 @@
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
-  }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
+  }                                                                         \
+  catch (const utils::ErrorHandler& err_handler) {                          \
+    PADDLE_THROW(                                                           \
+        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 namespace cinn {
@@ -42,11 +43,11 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   std::string primitive = "ComputeAt";
   std::ostringstream os;
   if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr prama(block) should be a ScheduleBlockRealize!\n";
+    os << "Expr param(block) should be a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (!loop.As<ir::For>()) {
-    os << "Expr prama(loop) should be a For node!\n";
+    os << "Expr param(loop) should be a For node!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   Expr root = this->GetRootBlock(block);

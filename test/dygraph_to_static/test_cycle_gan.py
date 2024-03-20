@@ -33,7 +33,6 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle.base.dygraph import to_variable
 from paddle.nn import BatchNorm
 
 # Note: Set True to eliminate randomness.
@@ -584,8 +583,8 @@ def train(args):
                 data_B = np.array(
                     [data_B[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]
                 ).astype("float32")
-                data_A = to_variable(data_A)
-                data_B = to_variable(data_B)
+                data_A = paddle.to_tensor(data_A)
+                data_B = paddle.to_tensor(data_B)
 
                 # optimize the g_A network
                 (
@@ -610,13 +609,13 @@ def train(args):
                 fake_pool_B = np.array(
                     [fake_pool_B[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]
                 ).astype("float32")
-                fake_pool_B = to_variable(fake_pool_B)
+                fake_pool_B = paddle.to_tensor(fake_pool_B)
 
                 fake_pool_A = A_pool.pool_image(fake_A).numpy()
                 fake_pool_A = np.array(
                     [fake_pool_A[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]
                 ).astype("float32")
-                fake_pool_A = to_variable(fake_pool_A)
+                fake_pool_A = paddle.to_tensor(fake_pool_A)
 
                 # optimize the d_A network
                 discriminatorA_to_static = paddle.jit.to_static(

@@ -17,7 +17,7 @@
 #include <cmath>
 #include <vector>
 
-#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/common/type.h"
@@ -109,7 +109,7 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
         auto sub = lt->a().As<ir::Sub>();
         node->condition = ir::LT::Make(sub->a(), sub->b());
       } else {
-        LOG(FATAL) << "Unkown Type!";
+        PADDLE_THROW(phi::errors::InvalidArgument("Unkown Type!"));
       }
 
       lt_n = node->condition.As<ir::LT>();

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
@@ -152,9 +152,9 @@ class PADDLE_API DeviceContext {
                       bool fake_alloc = false) const;
 
   template <typename T>
-  T* Alloc(TensorBase* tensor,
-           size_t requested_size = 0,
-           bool pinned = false) const;
+  TEST_API T* Alloc(TensorBase* tensor,
+                    size_t requested_size = 0,
+                    bool pinned = false) const;
 
   /**
    * @brief Allocate host memory for tensor.

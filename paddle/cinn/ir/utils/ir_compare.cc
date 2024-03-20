@@ -35,13 +35,13 @@ bool IrEqualVisitor::Compare(const Expr& lhs, const Expr& rhs) {
 
   if (!lhs.defined() || !rhs.defined()) {  // someone invalid
     return false;
-    VLOG(5) << "Not equal on Expr, someone not defined";
+    VLOG(7) << "Not equal on Expr, someone not defined";
   }
   bool equal = lhs->node_type() == rhs->node_type();
   equal = equal && IRVisitorRequireReImpl<bool, const Expr*>::Visit(&lhs, &rhs);
 
   if (!equal) {
-    VLOG(5) << "Not equal on Expr, lhs:[type:"
+    VLOG(7) << "Not equal on Expr, lhs:[type:"
             << kIrNodeTyReprs[static_cast<int>(lhs->node_type())] << "]\n"
             << lhs << ", \nrhs[type:"
             << kIrNodeTyReprs[static_cast<int>(rhs->node_type())] << "]\n"

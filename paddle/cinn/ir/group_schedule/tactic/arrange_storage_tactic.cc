@@ -24,6 +24,18 @@
 namespace cinn {
 namespace ir {
 
+class ArrangeStorageTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "ArrangeStorageTactic"; }
+
+ private:
+  std::unordered_set<std::string> output_names_;
+};
+
 // [block_name, [var, for_node]]
 using VarToForMap =
     std::unordered_map<std::string, std::unordered_map<ir::Var, ir::Expr>>;
@@ -41,13 +53,13 @@ struct CudaAxisSpace {
   CudaAxisType type;
 };
 
-struct CudaIterVarName {
-  static constexpr char* kCudaBlockX = "cuda_block_x";
-  static constexpr char* kCudaBlockY = "cuda_block_y";
-  static constexpr char* kCudaBlockZ = "cuda_block_z";
-  static constexpr char* kCudaThreadX = "cuda_thread_x";
-  static constexpr char* kCudaThreadY = "cuda_thread_y";
-  static constexpr char* kCudaThreadZ = "cuda_thread_z";
+struct FixedCudaIterVarName {
+  static constexpr char* kCudaBlockX = "fixed_cuda_block_x";
+  static constexpr char* kCudaBlockY = "fixed_cuda_block_y";
+  static constexpr char* kCudaBlockZ = "fixed_cuda_block_z";
+  static constexpr char* kCudaThreadX = "fixed_cuda_thread_x";
+  static constexpr char* kCudaThreadY = "fixed_cuda_thread_y";
+  static constexpr char* kCudaThreadZ = "fixed_cuda_thread_z";
 };
 
 std::optional<bool> IsSubCudaAxisSpace(const CudaAxisSpace& lhs,
@@ -173,7 +185,7 @@ std::unordered_map<ir::Var, ir::Var> GetFixedVar(
             {var2for.first,
              ir::_Var_::Make(cuda_space.x.Min(),
                              cuda_space.x.Max(),
-                             CudaIterVarName::kCudaBlockX,
+                             FixedCudaIterVarName::kCudaBlockX,
                              var2for.first->is_reduce_axis,
                              /* is_symbolic_constant = */ true)});
       } else if (for_node->bind_info().offset == 1) {
@@ -181,7 +193,7 @@ std::unordered_map<ir::Var, ir::Var> GetFixedVar(
             {var2for.first,
              ir::_Var_::Make(cuda_space.y.Min(),
                              cuda_space.y.Max(),
-                             CudaIterVarName::kCudaBlockY,
+                             FixedCudaIterVarName::kCudaBlockY,
                              var2for.first->is_reduce_axis,
                              /* is_symbolic_constant = */ true)});
       } else if (for_node->bind_info().offset == 2) {
@@ -189,7 +201,7 @@ std::unordered_map<ir::Var, ir::Var> GetFixedVar(
             {var2for.first,
              ir::_Var_::Make(cuda_space.z.Min(),
                              cuda_space.z.Max(),
-                             CudaIterVarName::kCudaBlockZ,
+                             FixedCudaIterVarName::kCudaBlockZ,
                              var2for.first->is_reduce_axis,
                              /* is_symbolic_constant = */ true)});
       }
@@ -200,7 +212,7 @@ std::unordered_map<ir::Var, ir::Var> GetFixedVar(
             {var2for.first,
              ir::_Var_::Make(cuda_space.x.Min(),
                              cuda_space.x.Max(),
-                             CudaIterVarName::kCudaThreadX,
+                             FixedCudaIterVarName::kCudaThreadX,
                              var2for.first->is_reduce_axis,
                              /* is_symbolic_constant = */ true)});
       } else if (for_node->bind_info().offset == 1) {
@@ -208,7 +220,7 @@ std::unordered_map<ir::Var, ir::Var> GetFixedVar(
             {var2for.first,
              ir::_Var_::Make(cuda_space.y.Min(),
                              cuda_space.y.Max(),
-                             CudaIterVarName::kCudaThreadY,
+                             FixedCudaIterVarName::kCudaThreadY,
                              var2for.first->is_reduce_axis,
                              /* is_symbolic_constant = */ true)});
       } else if (for_node->bind_info().offset == 2) {
@@ -216,7 +228,7 @@ std::unordered_map<ir::Var, ir::Var> GetFixedVar(
             {var2for.first,
              ir::_Var_::Make(cuda_space.z.Min(),
                              cuda_space.z.Max(),
-                             CudaIterVarName::kCudaThreadZ,
+                             FixedCudaIterVarName::kCudaThreadZ,
                              var2for.first->is_reduce_axis,
                              /* is_symbolic_constant = */ true)});
       }
@@ -385,11 +397,12 @@ void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
     } else if (cross_type.value() == CudaAxisType::kCudaThread) {
       memory_type = ir::MemoryType::GPUShared;
     } else if (cross_type.value() == CudaAxisType::kCudaBlock) {
-      LOG(FATAL) << "Fusion requires synchronization across blocks, but "
-                    "currently we do not support it.";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Fusion requires synchronization across blocks, but "
+          "currently we do not support it."));
       break;
     } else {
-      LOG(FATAL) << "dead code";
+      PADDLE_THROW(phi::errors::Fatal("Dead code"));
     }
   }
 
@@ -418,6 +431,10 @@ void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
     VLOG(6) << "Set store tensor of block " << block_id << " to register";
     sch->SetBuffer(store_block, "local");
   }
+}
+
+std::unique_ptr<ScheduleTactic> CreateArrangeStorageTactic() {
+  return std::make_unique<ArrangeStorageTactic>();
 }
 
 }  // namespace ir

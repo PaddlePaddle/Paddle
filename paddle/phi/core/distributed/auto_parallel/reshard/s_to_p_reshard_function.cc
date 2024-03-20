@@ -48,7 +48,7 @@ void SToPReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
-  VLOG(3) << "Call SToPReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
 
   // step 1, create tmp dist attr and tmp dist tensor
   TensorDistAttr tmp_attr(out_dist_attr);
@@ -85,7 +85,7 @@ void SToPReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
-  VLOG(3) << "Call SToPReshardFunctionCrossMesh Eval";
+  VLOG(3) << "Call " << Name();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
   DistTensor tmp_result;

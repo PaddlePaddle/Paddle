@@ -71,7 +71,7 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
 def all_gather_object(object_list, obj, group=None):
     """
 
-    Gather picklable objects from all participators and all get the result. Similiar to all_gather(), but python object can be passed in.
+    Gather picklable objects from all participators and all get the result. Similar to all_gather(), but python object can be passed in.
 
     Args:
         object_list (list): A list of output object. The datatype of every element in the list is same as the input obj.

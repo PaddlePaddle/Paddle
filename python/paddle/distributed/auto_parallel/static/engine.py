@@ -45,7 +45,7 @@ from .cluster import Cluster, get_default_cluster
 from .converter import Converter
 from .cost.estimate_cost import get_cost_from_engine
 from .dist_context import DistributedContext, get_default_distributed_context
-from .dist_input_spec import DistrubutedInputSpec
+from .dist_input_spec import DistributedInputSpec
 from .dist_loader import (
     DistributedDataLoader,
     DistributedDataLoaderFromGenerator,
@@ -60,7 +60,7 @@ from .process_group import get_all_process_groups, new_process_group
 
 class Engine:
     """
-    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inferenced (engine.predict).
+    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inference (engine.predict).
     Static graph mode is supported natively, Dynamic graph mode is also supported under `@to_static <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/jit/to_static_cn.html#to-static>`_ .
 
     Args:
@@ -239,6 +239,9 @@ class Engine:
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
         self._acc_steps = 1
+        self._in_pir_mode = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
         if self._strategy.gradient_merge.enable:
             self._acc_steps = self._strategy.gradient_merge.k_steps
         elif self._strategy.pipeline.enable:
@@ -256,6 +259,11 @@ class Engine:
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
+
+        if auto_utils.use_new_executor():
+            is_pir_mode = os.environ.get("FLAGS_enable_pir_in_executor", None)
+            if is_pir_mode is None:
+                paddle.framework.set_flags({'FLAGS_enable_pir_in_executor': 1})
 
         self.enable_job_schedule_profiler = False
 
@@ -294,16 +302,18 @@ class Engine:
                 assert item is not None, "Receive None input."
                 name = "input" + str(i)
                 inputs_spec.append(
-                    DistrubutedInputSpec.from_dtensor(item, name)
+                    DistributedInputSpec.from_dtensor(item, name)
                 )
         if labels is not None:
             for i, item in enumerate(labels):
                 assert item is not None, "Receive None input."
                 name = "label" + str(i)
                 labels_spec.append(
-                    DistrubutedInputSpec.from_dtensor(item, name)
+                    DistributedInputSpec.from_dtensor(item, name)
                 )
 
+        inputs_spec = self._validate_spec(inputs_spec)
+        labels_spec = self._validate_spec(labels_spec)
         return inputs_spec, labels_spec
 
     def _prepare_data_spec(self, data, split, batch_size):
@@ -611,6 +621,9 @@ class Engine:
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
         self._build(mode)
+        # TODO(zhiqiu): fit the processes below for pir
+        if self._in_pir_mode:
+            return
         # Do the planning process
         self._plan(mode)
         # Do the parallel process
@@ -619,12 +632,12 @@ class Engine:
         self._init_comm()
         # startup program
         self._initialize(mode, init_parameters)
-        # mark main program for futher decompose
+        # mark main program for further decompose
         self._mark_prim(mode)
         self._has_prepared[mode] = True
 
     def _process_dist_input_specs(self):
-        if isinstance(self._inputs_spec[0], DistrubutedInputSpec):
+        if isinstance(self._inputs_spec[0], DistributedInputSpec):
 
             def _create_dist_input_var(input_var, input_spec):
                 dist_tensor = DistributedTensor(input_var)
@@ -669,7 +682,7 @@ class Engine:
 
             self._inputs = self.program_helper.input_vars
             self._labels = self.program_helper.label_vars
-            self._process_dist_input_specs()
+            # self._process_dist_input_specs()
             outputs = self.program_helper.output_vars
             self._losses = self.program_helper.loss_vars
             metrics = self.program_helper.metric_vars
@@ -722,6 +735,21 @@ class Engine:
                 ), "the type of `loss` of the Engine arguments should be Variable."
                 self._losses = auto_utils.to_list(self._loss)
 
+        # TODO(zhiqiu): distributed_context is no longer used in pir_program
+        # so, just return here and need to reimplement the logics below
+        if self._in_pir_mode:
+            # TODO(ljz): pir not support clone_for_test,
+            # so we need to update the method to create eval/test program in engine.
+
+            # if mode != "train":
+            #     self._fwd_main_progs[mode] = serial_main_prog.clone(
+            #         for_test=True
+            #     )
+            # else:
+
+            self._fwd_main_progs[mode] = serial_main_prog
+            return
+
         default_ctx = get_default_distributed_context()
         if not default_ctx.has_annotation:
             # We build the world process group because the data parallel
@@ -772,6 +800,11 @@ class Engine:
             self._json_config,
         )
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
+        self._dist_contexts[
+            mode
+        ].gradient_scale_using_allreduce_avg = (
+            self._strategy.gradient_scale_using_allreduce_avg
+        )
         self._fwd_main_progs[mode] = serial_main_prog.clone()
 
     def _optimization_tuning(self, mode, dataset, batch_size):
@@ -924,14 +957,14 @@ class Engine:
                         if scope_var and buffer_tensor._is_initialized():
                             continue
                         # for amp
-                        if dest_type == core.VarDesc.VarType.BF16:
+                        if dest_type == paddle.bfloat16:
                             buffer_tensor.set(
                                 _convert_float_to_bfloat16(
                                     self._place, buffer.numpy()
                                 ),
                                 self._place,
                             )
-                        elif dest_type == core.VarDesc.VarType.FP16:
+                        elif dest_type == paddle.float16:
                             buffer_tensor.set(
                                 np.float16(buffer.numpy()), self._place
                             )
@@ -1814,7 +1847,7 @@ class Engine:
             return [None]
 
         if self._strategy.pipeline.enable or self._acc_steps == 1:
-            # pp with schedule or navie-pp
+            # pp with schedule or naive-pp
             return batch
         else:
             # split feed data with gradient_merge k_steps
@@ -1835,9 +1868,11 @@ class Engine:
         specs = auto_utils.to_list(specs)
         if specs is not None:
             for i, spec in enumerate(specs):
-                if not isinstance(spec, InputSpec):
+                if not isinstance(spec, InputSpec) and not isinstance(
+                    spec, DistributedInputSpec
+                ):
                     raise TypeError(
-                        "'spec' must be object of class `paddle.static.InputSpec`."
+                        "'spec' must be object of class `paddle.static.InputSpec` or `DistributedInputSpec`."
                     )
                 if spec.name is None:
                     raise ValueError(
@@ -2069,7 +2104,7 @@ class Engine:
         # Check parallel mode
         if self._strategy.auto_mode == "full":
             self._logger.info(
-                "The cost will be calcudated in the search process when the auto mode is full."
+                "The cost will be calculated in the search process when the auto mode is full."
             )
             return
 

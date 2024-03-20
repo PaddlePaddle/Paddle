@@ -220,7 +220,7 @@ def convert_call(func):
 
     if inspect.isgeneratorfunction(func):
         # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function.
-        # If we don't deal generatorfunction here, we will regard it as normal function and get errors in some
+        # If we don't deal generator function here, we will regard it as normal function and get errors in some
         # occasion.
         number_of_stars = 30
         translator_logger.warn(
@@ -304,7 +304,7 @@ def convert_call(func):
                 _, forward_func = unwrap_decorators(func.forward)
                 func._original_funcs['forward'] = forward_func.__func__
                 forward_func = convert_to_static(forward_func)
-                # Bound mothod will be convert into plain function after `convert_to_static`.
+                # Bound method will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
                 func.forward = forward_func.__get__(func)

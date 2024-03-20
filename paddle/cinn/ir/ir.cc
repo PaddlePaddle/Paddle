@@ -218,11 +218,13 @@ Expr _Var_::Make(Expr lower_bound,
                  Expr upper_bound,
                  const std::string &name,
                  bool is_reduce_axis,
-                 bool is_symbolic_constant) {
+                 bool is_symbolic_constant,
+                 bool is_keepdim) {
   auto *n = make_shared<_Var_>();
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;
   n->is_reduce_axis = is_reduce_axis;
+  n->is_keepdim = is_keepdim;
   n->is_symbolic_constant = is_symbolic_constant;
   n->name = name;
   n->set_type(lower_bound.type());
@@ -233,6 +235,7 @@ Expr _Var_::Copy() const {
   auto *n = make_shared<_Var_>();
   n->name = name;
   n->is_reduce_axis = is_reduce_axis;
+  n->is_keepdim = is_keepdim;
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;
   n->set_type(type());
@@ -756,14 +759,14 @@ Expr PrimitiveNode::Make(const std::string &name,
 Expr Reduce::Make(Reduce::ReduceType reduce_type,
                   Expr init,
                   Expr body,
-                  const std::vector<Var> &reduce_aixs) {
+                  const std::vector<Var> &reduce_axis) {
   CHECK(body.defined());
   CHECK(init.defined());
   auto n = cinn::common::make_shared<Reduce>();
   n->init = init;
   n->body = body;
   n->reduce_type = reduce_type;
-  n->reduce_axis.append(reduce_aixs.begin(), reduce_aixs.end());
+  n->reduce_axis.append(reduce_axis.begin(), reduce_axis.end());
   CHECK(body.type().valid());
   if (init.defined()) {
     CHECK(init.type().valid());

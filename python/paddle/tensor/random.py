@@ -23,6 +23,7 @@ from paddle.framework import (
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
+    use_pir_api,
 )
 
 from ..base.data_feeder import (
@@ -1023,7 +1024,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. Default is [1].
         dtype (str|np.dtype, optional): The data type of the
-            output tensor. Supported data types: int32, int64. If ``dytpe``
+            output tensor. Supported data types: int32, int64. If ``dtype``
             is None, the data type is int64. Default is None.
         name (str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
@@ -1100,9 +1101,9 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         low = 0
     if dtype is None:
         dtype = core.VarDesc.VarType.INT64
-        if in_pir_mode():
+        if use_pir_api():
             dtype = DataType.INT64
-    elif not isinstance(dtype, core.VarDesc.VarType):
+    elif not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
@@ -1111,7 +1112,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             low, high, shape, dtype, _current_expected_place()
         )
     elif in_pir_mode():
-        check_type(shape, 'shape', (list, tuple, paddle.pir.Value), 'randint')
+        check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(
@@ -1162,7 +1163,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             If ``high`` is None, the range is [0, ``low``).
         dtype (str|np.dtype, optional): The data type of the
             output tensor. Supported data types: bool, int32, int64, float16,
-            float32, float64. If ``dytpe`` is None, the data type is the
+            float32, float64. If ``dtype`` is None, the data type is the
             same as x's data type. Default is None.
         name (str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please

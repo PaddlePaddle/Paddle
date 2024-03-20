@@ -772,7 +772,6 @@ void SwitchWarpSoftmaxForward(const IndexType blocks,
     SOFTMAX_WARP_FORWARD_CASE(7, AccT);
     SOFTMAX_WARP_FORWARD_CASE(8, AccT);
     SOFTMAX_WARP_FORWARD_CASE(9, AccT);
-    SOFTMAX_WARP_FORWARD_CASE(10, AccT);
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported softmax dim: element_count=%d, log2_element_count=%d!",
@@ -815,7 +814,6 @@ void SwitchWarpSoftmaxBackward(const int blocks,
     SOFTMAX_WARP_BACKWARD_CASE(7, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(8, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(9, AccT);
-    SOFTMAX_WARP_BACKWARD_CASE(10, AccT);
     default:
       // PADDLE_THROW(phi::errors::Unimplemented(
       //     "Unsupported softmax dim: element_count=%d,
@@ -829,7 +827,7 @@ void SwitchWarpSoftmaxBackward(const int blocks,
 
 /**
  * <NormalSoftmaxKernel>
- * Better performence when axis != -1
+ * Better performance when axis != -1
  */
 
 static void GetGridDim(
@@ -1228,7 +1226,7 @@ bool UseCudnnSoftmax(const GPUContext& ctx,
 #endif
     }
   }
-  constexpr int max_dim = 1024;
+  constexpr int max_dim = 512;
   if (!cudnn_available || !last_dim ||
       (softmax_dim <= max_dim && sizeof(T) <= 4)) {
     return false;
@@ -1271,7 +1269,27 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       using T4 = typename VecT4<T>::Type;
       using T2 = typename VecT2<T>::Type;
 
-      if (std::is_same<T, float>::value) {
+      if (dim % 4 == 0) {
+        SwitchWarpSoftmaxForward<T, T4, IndexType, LogMode>(blocks,
+                                                            threads,
+                                                            dev_ctx,
+                                                            out_data,
+                                                            x.data<T>(),
+                                                            N,
+                                                            dim,
+                                                            dim,
+                                                            dim_log2);
+      } else if (dim % 2 == 0) {
+        SwitchWarpSoftmaxForward<T, T2, IndexType, LogMode>(blocks,
+                                                            threads,
+                                                            dev_ctx,
+                                                            out_data,
+                                                            x.data<T>(),
+                                                            N,
+                                                            dim,
+                                                            dim,
+                                                            dim_log2);
+      } else {
         SwitchWarpSoftmaxForward<T, T, IndexType, LogMode>(blocks,
                                                            threads,
                                                            dev_ctx,
@@ -1281,38 +1299,6 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim,
                                                            dim,
                                                            dim_log2);
-      } else {
-        if (dim % 4 == 0) {
-          SwitchWarpSoftmaxForward<T, T4, IndexType, LogMode>(blocks,
-                                                              threads,
-                                                              dev_ctx,
-                                                              out_data,
-                                                              x.data<T>(),
-                                                              N,
-                                                              dim,
-                                                              dim,
-                                                              dim_log2);
-        } else if (dim % 2 == 0) {
-          SwitchWarpSoftmaxForward<T, T2, IndexType, LogMode>(blocks,
-                                                              threads,
-                                                              dev_ctx,
-                                                              out_data,
-                                                              x.data<T>(),
-                                                              N,
-                                                              dim,
-                                                              dim,
-                                                              dim_log2);
-        } else {
-          SwitchWarpSoftmaxForward<T, T, IndexType, LogMode>(blocks,
-                                                             threads,
-                                                             dev_ctx,
-                                                             out_data,
-                                                             x.data<T>(),
-                                                             N,
-                                                             dim,
-                                                             dim,
-                                                             dim_log2);
-        }
       }
     } else {
       LaunchSoftmaxForwardCudnnKernel<T>(dev_ctx, x, axis, LogMode, out);

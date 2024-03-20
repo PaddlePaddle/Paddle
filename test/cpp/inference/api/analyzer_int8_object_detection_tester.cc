@@ -43,7 +43,7 @@ std::vector<size_t> ReadObjectsNum(std::ifstream &file,
   file.clear();
   file.seekg(offset);
   file.read(reinterpret_cast<char *>(num_objects.data()),
-            total_images * sizeof(size_t));
+            total_images * sizeof(size_t));  // NOLINT
 
   if (file.eof()) LOG(ERROR) << "Reached end of stream";
   if (file.fail()) throw std::runtime_error("Failed reading file.");

@@ -247,14 +247,14 @@ class DistributedFusedLamb(Optimizer):
         assert master_param is not None
 
         master_param_t = scope.find_var(master_param).get_tensor()
-        assert master_param_t._dtype() == core.VarDesc.VarType.FP32
+        assert master_param_t._dtype() == paddle.float32
 
         param_t = scope.find_var(name).get_tensor()
-        if param_t._dtype() == core.VarDesc.VarType.FP32:
+        if param_t._dtype() == paddle.float32:
             assert param_t._ptr() == master_param_t._ptr()
             return param_t, None
         else:
-            assert param_t._dtype() == core.VarDesc.VarType.FP16
+            assert param_t._dtype() == paddle.float16
             assert param_t.shape() == master_param_t.shape()
             return param_t, master_param_t
 

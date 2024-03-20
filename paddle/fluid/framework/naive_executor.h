@@ -29,7 +29,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace framework {
@@ -90,7 +90,7 @@ class NaiveExecutor {
 
   void ResetTrtOps(int num);
 
-  void CloneLiteEnigne(int num, void* stream);
+  void CloneLiteEngine(int num, void* stream);
 
   void RegisterOutputHook(const HookFunc& hookfunc);
   void RegisterInputHook(const HookFunc& hookfunc);

@@ -27,12 +27,12 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/packed_func.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
-// Elementwise/Broadcast/Injective,Reduce,OutEWiseFusable,NonFusible.
-// Elementwise/Broadcast/Injective Ops is with same shcedule.
-// Reduce,OutEWiseFusable,NonFusible are using different schedule.
+// Elementwise/Broadcast/Injective,Reduce,OutEWiseFusible,NonFusible.
+// Elementwise/Broadcast/Injective Ops is with same schedule.
+// Reduce,OutEWiseFusible,NonFusible are using different schedule.
 
 namespace cinn {
 namespace hlir {
@@ -46,6 +46,19 @@ using cinn::common::Target;
 class OpLowererImpl;
 
 typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(::pir::Operation*);
+
+struct GroupInfo {
+  std::vector<int64_t> data_space;
+  std::vector<int64_t> reduce_axis;
+  std::set<std::string> reduce_var_names;
+  std::set<std::string> shared_var_names;
+  std::set<std::string> direct_output_var_names;
+  std::vector<std::string> broadcast_output_names;
+
+  std::unordered_map<std::string, cinn::ir::BroadcastInfo> broadcast_info;
+  std::unordered_map<std::string, cinn::ir::BroadcastInfo>
+      broadcast_to_elementwise;
+};
 
 class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
  public:
@@ -245,6 +258,10 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   ir::Tensor GetTensorSymbolic(const GroupPtr& group,
                                const ::pir::Value& value);
 
+  std::shared_ptr<GroupInfo> GetGroupInfo(
+      const GroupPtr& group,
+      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
+
   void CollectOutputInfo(::pir::Operation* op,
                          std::vector<Type>* out_types,
                          std::vector<std::vector<int>>* out_shapes,
@@ -267,9 +284,14 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
 
   common::Type GetTensorDtype(const ::pir::Value& value);
 
+  void BuildBroadcastInfo(const GroupPtr& group,
+                          std::shared_ptr<GroupInfo> group_info);
+
   Target target_;
 
   PrettyNamer* name_gene_;
+
+  std::unordered_set<::pir::Operation*> erase_reshape;
 };
 
 }  // namespace pir

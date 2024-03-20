@@ -59,10 +59,10 @@ void CompilationTask::operator()() {
 void CompilationTask::Lowering() {
   auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(context_->target_);
   context_->SetLoweredFuncs(
-      op_lowerer.BucketLower(context_->group_, false, true, false));
-  // context_->SetLoweredFuncs(
-  //     op_lowerer.BucketLower(context_->group_, false, false, false));
-  op_lowerer.InsertNameGeneToScope(context_->scope_);
+      op_lowerer.BucketLower(context_->group_,
+                             /* apply op schedule = */ false,
+                             /* apply group schedule = */ true,
+                             /* apply pass = */ true));
 }
 
 void CompilationTask::CodegenAndJit() {
@@ -110,6 +110,7 @@ pir::CINNKernelInfo CompilationTask::BuildPirCINNKernelInfo() {
       context_->backend_compiler_->Lookup(fn_name + "_infer_shape");
   CHECK(infer_shape_fn_ptr);
   pir::CINNKernelInfo cinn_kernel_info;
+  cinn_kernel_info.fn_name = fn_name;
   cinn_kernel_info.fn_ptr = fn_ptr;
   cinn_kernel_info.infer_shape_fn_ptr = infer_shape_fn_ptr;
   cinn_kernel_info.int_args_map = context_->group_->int_args_map;

@@ -67,6 +67,18 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
         )
         self.check_placements(outputs, [dist.Shard(3)])
 
+    def test_stack_neg_axis_forward(self):
+        shapes = [[16, 4, 4], [16, 4, 4]]
+        specs = [[None, None, 'x'], [None, None, 'x']]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.stack,
+            with_backward=True,
+            axis=-1,
+        )
+        self.check_placements(outputs, [dist.Shard(2)])
+
     def test_stack_forward_0d(self):
         shapes = []
         specs = []
@@ -192,6 +204,7 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             self.test_slice_reshard()
             self.test_stride_slice_reshard()
             self.test_stack_forward_reshard()
+            self.test_stack_neg_axis_forward()
             self.test_decrease_axes_slice_shard()
 
 

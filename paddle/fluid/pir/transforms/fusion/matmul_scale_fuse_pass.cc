@@ -16,22 +16,24 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
 class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "MatmulScaleFusePattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("transpose_x")},
                                     {"transpose_y", pat.Attr("transpose_y")}});
 
-    matmul_op({&pat.Tensor("x"), &pat.Tensor("y")},
+    matmul_op({&pat.Tensor("x"), &pat.Tensor("w")},
               {&pat.Tensor("matmul_out")});
     const auto &full_op = pat.Op(paddle::dialect::FullOp::name(),
                                  {{"shape", pat.Attr("shape")},
@@ -46,6 +48,9 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
              {&pat.Tensor("scale_out")});
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
+        return false;
+      }
       return std::abs(match_ctx.Attr<float>("bias")) <= 1e-6;
     });
 
@@ -63,13 +68,11 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
         res.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", pat.Attr("transpose_x")},
                 {"transpose_y", pat.Attr("transpose_y")}});
-    scale_op_res({&res.Tensor("y"), &full_op_res()},
+    scale_op_res({&res.Tensor("w"), &full_op_res()},
                  {&res.Tensor("scale_res_out")});
     matmul_op_res({&res.Tensor("x"), &res.Tensor("scale_res_out")},
                   {&res.Tensor("scale_out")});
   }
-
-  std::string name() const override { return "MatmulScaleFusePattern"; }
 };
 
 class MatmulScaleFusePass : public pir::PatternRewritePass {
@@ -79,7 +82,7 @@ class MatmulScaleFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(MatmulScaleFusePattern().Build(context));
+    ps.Add(paddle::drr::Create<MatmulScaleFusePattern>(context));
     return ps;
   }
 };

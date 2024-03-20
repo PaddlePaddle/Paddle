@@ -117,7 +117,7 @@ void DownpourLiteWorker::Initialize(const TrainerDesc& desc) {
             << dest_table;
     copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
   }
-  for (auto& m : copy_table_config_.table_denpendency_map()) {
+  for (auto& m : copy_table_config_.table_dependency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
       // currently only support one dependency
       for (auto& value : m.values()) {
@@ -410,7 +410,8 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
         fprintf(stderr,
                 "push dense time percent: %f\n",
                 push_dense_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+        fprintf(
+            stderr, "%6.2f instances/s\n", total_inst / total_time);  // NOLINT
       }
     }
     timeline.Start();

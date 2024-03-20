@@ -18,7 +18,7 @@ if(WITH_ARM_BRPC)
     framework_proto
     sendrecv_rpc
     arm_brpc
-    ${flags_dep}
+    common
     glog
     snappy
     device_context)
@@ -36,7 +36,6 @@ else()
     framework_proto
     sendrecv_rpc
     ${EXTERNAL_BRPC_DEPS}
-    ${flags_dep}
     zlib
     device_context)
 endif()
@@ -67,9 +66,6 @@ set_source_files_properties(
   heter_listen_and_server_test.cc PROPERTIES COMPILE_FLAGS
                                              ${DISTRIBUTE_COMPILE_FLAGS})
 paddle_test(heter_listen_and_server_test SRCS heter_listen_and_server_test.cc)
-
-#set_source_files_properties(heter_cloud_comm_cpu_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-#cc_test(heter_cloud_comm_cpu_test SRCS heter_cloud_comm_cpu_test.cc DEPS executor scope proto_desc generated_static_op heter_listen_and_serv_op ${RPC_DEPS} ${DISTRIBUTE_DEPS} phi common)
 
 set_source_files_properties(
   switch_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})

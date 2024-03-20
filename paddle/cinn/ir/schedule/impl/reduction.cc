@@ -26,10 +26,11 @@
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
-  }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
+  }                                                                         \
+  catch (const utils::ErrorHandler& err_handler) {                          \
+    PADDLE_THROW(                                                           \
+        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 namespace cinn {
@@ -50,7 +51,9 @@ Expr DyScheduleImpl::Rfactor(const Expr& rf_loop, int rf_axis) {
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
-Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
+Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
+                                        int rf_axis,
+                                        bool with_write_back_block_init) {
   CINN_IR_SCHEDULE_BEGIN()
   std::string primitive = "FactorizeReduction";
   std::ostringstream os;
@@ -103,6 +106,7 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
                                   original_update_stmt,
                                   rf_tensor,
                                   var2loops,
+                                  Expr(false),
                                   rf_axis);
   rf_block_creater.CreateBlock();
   RBBlockCreater wb_block_creater(original_block,
@@ -115,7 +119,8 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
   wb_block_creater.CreateBlock();
 
   Expr rf_body = rf_block_creater.CreateLoops();
-  Expr wb_body = wb_block_creater.CreateLoops();
+  Expr wb_body = wb_block_creater.CreateLoops(
+      /* with_init = */ with_write_back_block_init);
 
   Expr new_computational_body = Block::Make({rf_body, wb_body});
 
@@ -144,7 +149,9 @@ Expr StScheduleImpl::Rfactor(const Expr& rf_loop, int rf_axis) {
   return rf_create.CreateRfAllStmts();
 }
 
-Expr StScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
+Expr StScheduleImpl::FactorizeReduction(const Expr& rf_loop,
+                                        int rf_axis,
+                                        bool with_write_back_block_init) {
   std::string primitive = "FactorizeReduction";
   // Get child block of the rf_loop and check.
   std::vector<Expr> blocks = GetChildBlocks(rf_loop);
@@ -165,6 +172,12 @@ Expr StScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
   VLOG(3) << "before FactorizeReduction, original computational body of the "
              "reduction is:\n"
           << original_loops[0];
+  Expr bound_check(false);
+  auto first_st = original_loops.back().As<For>()->body.As<Block>()->stmts[0];
+  if (first_st.As<IfThenElse>()) {
+    bound_check = first_st.As<IfThenElse>()->condition;
+  }
+
   std::map<Var, Expr, CompVar> var2loops;
   for (const Expr& loop : original_loops) {
     var2loops[loop.As<For>()->loop_var] = loop;
@@ -193,6 +206,7 @@ Expr StScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
                                   original_update_stmt,
                                   rf_tensor,
                                   var2loops,
+                                  bound_check,
                                   rf_axis);
   rf_block_creater.CreateBlock();
   RBBlockCreater wb_block_creater(original_block,
@@ -205,7 +219,8 @@ Expr StScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
   wb_block_creater.CreateBlock();
 
   Expr rf_body = rf_block_creater.CreateLoops();
-  Expr wb_body = wb_block_creater.CreateLoops();
+  Expr wb_body = wb_block_creater.CreateLoops(
+      /* with_init = */ with_write_back_block_init);
 
   Expr new_computational_body = Block::Make({rf_body, wb_body});
 
