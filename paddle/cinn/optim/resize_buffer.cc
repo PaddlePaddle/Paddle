@@ -26,6 +26,7 @@
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
 
+PD_DECLARE_bool(group_schedule_tiling_first);
 namespace cinn {
 namespace optim {
 
@@ -72,6 +73,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
     ir::Store* store = expr->As<ir::Store>();
     ir::Tensor tensor = store->tensor.as_tensor_ref();
     AnalyzeTensorRange(store->indices, tensor);
+    AnalyzeBufferSize(store->indices, tensor);
     ir::IRMutator<>::Visit(op, expr);
   }
 
@@ -143,17 +145,26 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
     }
     VLOG(6) << "buffer_name = " << buffer_name << ", indice_extent = "
             << buffer_name_to_indice_extent[buffer_name];
+  }
 
+  void AnalyzeBufferSize(const std::vector<Expr>& indices,
+                         const ir::Tensor& tensor) {
+    if (!tensor->buffer.defined() ||
+        tensor->buffer->memory_type == ir::MemoryType::Heap) {
+      return;
+    }
+
+    const std::string& buffer_name = tensor->buffer->name;
     buffer_name_to_size[buffer_name] = AnalyzeBufferSize(indices);
     VLOG(6) << "buffer_name = " << buffer_name
             << ", size = " << buffer_name_to_size[buffer_name];
   }
 
-  ir::Expr AnalyzeBufferSize(const std::vector<ir::Expr>& shape) {
+  ir::Expr AnalyzeBufferSize(const std::vector<ir::Expr>& indices) {
     const auto GetIterVarNames =
-        [](const std::vector<ir::Expr>& shape) -> std::set<std::string> {
+        [](const std::vector<ir::Expr>& indices) -> std::set<std::string> {
       std::set<std::string> iter_var_names;
-      for (const ir::Expr& e : shape) {
+      for (const ir::Expr& e : indices) {
         ir::ir_utils::CollectIRNodes(e, [&](const ir::Expr* x) {
           if (x->as_var() && !x->as_var()->is_symbolic_constant) {
             iter_var_names.insert(x->as_var()->name);
@@ -164,7 +175,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       return iter_var_names;
     };
 
-    std::set<std::string> iter_var_names = GetIterVarNames(shape);
+    std::set<std::string> iter_var_names = GetIterVarNames(indices);
     ir::Expr size(1);
     for (const std::string& var_name : iter_var_names) {
       PADDLE_ENFORCE_GT(var_name_to_extent_.count(var_name),
@@ -288,7 +299,8 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
       (*tensor_ptr)->shape = analyzed_shape;
       buffer->shape = analyzed_shape;
     }
-    if (buffer_name_to_size_.count(buffer_name)) {
+    if (FLAGS_group_schedule_tiling_first &&
+        buffer_name_to_size_.count(buffer_name) > 0) {
       const ir::Expr& analyzed_size = buffer_name_to_size_.at(buffer_name);
       VLOG(6) << "Replacing shape of buffer " << buffer->name << " with shape "
               << analyzed_size;
