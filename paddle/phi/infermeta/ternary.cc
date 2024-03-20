@@ -187,21 +187,6 @@ void BatchFCInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
-void BatchFCGradInferMeta(const MetaTensor& input,
-                          const MetaTensor& w,
-                          const MetaTensor& bias,
-                          const MetaTensor& out_grad,
-                          MetaTensor* input_grad,
-                          MetaTensor* w_grad,
-                          MetaTensor* bias_grad) {
-  input_grad->set_dims(input.dims());
-  input_grad->set_dtype(input.dtype());
-  w_grad->set_dims(w.dims());
-  w_grad->set_dtype(w.dtype());
-  bias_grad->set_dims(bias.dims());
-  bias_grad->set_dtype(bias.dtype());
-}
-
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,
                        const MetaTensor& target_box,
