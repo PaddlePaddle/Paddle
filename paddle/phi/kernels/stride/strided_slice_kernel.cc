@@ -140,13 +140,6 @@ void StridedSliceStridedKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    strided_slice_raw, STRIDED, phi::StridedSliceRawStridedKernel) {}
-
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    strided_slice, STRIDED, phi::StridedSliceStridedKernel) {}
-#else
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(strided_slice_raw,
                                          STRIDED,
                                          phi::StridedSliceRawStridedKernel) {}
@@ -154,4 +147,3 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(strided_slice_raw,
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(strided_slice,
                                          STRIDED,
                                          phi::StridedSliceStridedKernel) {}
-#endif

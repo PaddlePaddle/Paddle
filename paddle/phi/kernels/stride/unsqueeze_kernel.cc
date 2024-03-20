@@ -86,13 +86,6 @@ void UnsqueezeStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    unsqueeze_infer, STRIDED, phi::UnsqueezeInferStridedKernel) {}
-
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    unsqueeze, STRIDED, phi::UnsqueezeStridedKernel) {}
-#else
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(unsqueeze_infer,
                                          STRIDED,
                                          phi::UnsqueezeInferStridedKernel) {}
@@ -100,4 +93,3 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(unsqueeze_infer,
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(unsqueeze,
                                          STRIDED,
                                          phi::UnsqueezeStridedKernel) {}
-#endif

@@ -38,13 +38,6 @@ void ViewDtypeGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    view_shape_grad, STRIDED, phi::ViewShapeGradKernel) {}
-
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    view_dtype_grad, STRIDED, phi::ViewDtypeGradKernel) {}
-#else
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_shape_grad,
                                          STRIDED,
                                          phi::ViewShapeGradKernel) {}
@@ -52,4 +45,3 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_shape_grad,
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_dtype_grad,
                                          STRIDED,
                                          phi::ViewDtypeGradKernel) {}
-#endif

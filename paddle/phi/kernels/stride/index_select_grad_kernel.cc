@@ -30,8 +30,7 @@ void IndexSelectGradStridedKernel(const Context& dev_ctx,
   dev_ctx.Alloc(x_grad, x_grad->dtype());
   x_grad->set_strides(DenseTensorMeta::calc_strides(x_grad->dims()));
   PD_VISIT_ALL_TYPES(x_grad->dtype(), "IndexSelectGradStridedKernel", ([&] {
-                       phi::StridedTensorFill<data_t, Context>(
-                           dev_ctx, *x_grad, 0, x_grad);
+                       phi::StridedTensorFill<data_t>(*x_grad, 0, x_grad);
                      }));
   DenseTensor tmp;
   tmp.set_layout(out_grad.layout());
@@ -41,8 +40,7 @@ void IndexSelectGradStridedKernel(const Context& dev_ctx,
 
   IndexSelectStridedKernel<Context>(dev_ctx, *x_grad, index, dim, &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "IndexSelectGradStridedKernel", ([&] {
-                       phi::StridedTensorCopy<data_t, Context>(
-                           dev_ctx,
+                       phi::StridedTensorCopy<data_t>(
                            out_grad,
                            common::vectorize<int64_t>(tmp.dims()),
                            common::vectorize<int64_t>(tmp.strides()),
@@ -53,11 +51,6 @@ void IndexSelectGradStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    index_select_strided_grad, STRIDED, phi::IndexSelectGradStridedKernel) {}
-#else
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(index_select_strided_grad,
                                          STRIDED,
                                          phi::IndexSelectGradStridedKernel) {}
-#endif

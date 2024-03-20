@@ -49,8 +49,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
     tmp_x.set_strides(x_stride);
     tmp.set_meta(tmp_x.meta());
     PD_VISIT_ALL_TYPES(x.dtype(), "ReshapeStridedKernel", ([&] {
-                         phi::StridedTensorContiguous<data_t, Context>(
-                             dev_ctx, tmp_x, &tmp);
+                         phi::StridedTensorContiguous<data_t>(tmp_x, &tmp);
                        }));
     out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
     out->set_offset(0);
@@ -60,11 +59,6 @@ void ReshapeStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    reshape, STRIDED, phi::ReshapeStridedKernel) {}
-#else
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape,
                                          STRIDED,
                                          phi::ReshapeStridedKernel) {}
-#endif

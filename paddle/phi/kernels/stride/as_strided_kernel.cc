@@ -35,12 +35,6 @@ void AsStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(as_strided,
-                                                       STRIDED,
-                                                       phi::AsStridedKernel) {}
-#else
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(as_strided,
                                          STRIDED,
                                          phi::AsStridedKernel) {}
-#endif
