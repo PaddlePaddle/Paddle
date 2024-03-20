@@ -238,8 +238,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    */
   ir::LoweredFunc GenerateInferShapeFunc(
       const GroupPtr& group,
-      const std::vector<ir::Tensor> group_func_arg_tensors,
-      const std::vector<ir::Argument> group_func_args);
+      const std::vector<ir::Tensor>& group_func_arg_tensors,
+      const std::vector<ir::Argument>& group_func_args);
 
   // Functions used to determine which Ops to schedule at op level, define a
   // policy for each type of group.

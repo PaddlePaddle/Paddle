@@ -3109,6 +3109,15 @@ bool ExpandOp::InferSymbolicShape(
     return dims;
   }();
 
+  std::cerr << "expand !!!\n";
+  for (size_t i = 0; i < x_shape_or_data.shape().size(); ++i) {
+    std::cerr << "expand constrain " << i << "\t" << x_shape_or_data.shape()[i]
+              << "\t"
+              << expand_shape[i + expand_shape.size() -
+                              x_shape_or_data.shape().size()]
+              << std::endl;
+  }
+
   std::vector<symbol::DimExpr> out_shape = expand_shape;
   for (size_t i = 0; i < expand_shape.size(); i++) {
     if (expand_shape[i] == -1) {  // copy the dim from x

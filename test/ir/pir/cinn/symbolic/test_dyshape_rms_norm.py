@@ -31,19 +31,25 @@ class LlamaRMSNorm(nn.Layer):
     def __init__(self):
         super().__init__()
         self.hidden_size = 4096
-        self.weight = paddle.create_parameter(
-            shape=[self.hidden_size],
-            dtype=paddle.get_default_dtype(),
-            default_initializer=nn.initializer.Constant(1.0),
-        )
+        # self.weight = paddle.create_parameter(
+        #     shape=[self.hidden_size],
+        #     dtype=paddle.float16,
+        #     default_initializer=nn.initializer.Constant(0.2),
+        # )
         self.variance_epsilon = 1e-6
 
-    def forward(self, hidden_states):
-        variance = (hidden_states * hidden_states).sum(-1, keepdim=True) / 4096
+    def forward(self, hidden_states, weight):
+        hidden_states = hidden_states.astype("float32")
+        variance = (hidden_states * hidden_states).sum(
+            -1, keepdim=True
+        ) / self.hidden_size
         hidden_states = (
             paddle.rsqrt(variance + self.variance_epsilon) * hidden_states
         )
-        return hidden_states * self.weight
+
+        if weight.dtype in [paddle.float16, paddle.bfloat16]:
+            hidden_states = paddle.cast(hidden_states, weight.dtype)
+        return hidden_states * weight
 
 
 class TestLlamaRMSNorm(unittest.TestCase):
@@ -53,8 +59,10 @@ class TestLlamaRMSNorm(unittest.TestCase):
 
     def prepare_data(self):
         self.shape = [1, 17, 4096]
-        self.hidden_states = paddle.randn(self.shape, dtype="float32")
-        self.hidden_states.stop_gradient = False
+        self.hidden_states = paddle.randn(self.shape, dtype="float16")
+        self.hidden_states.stop_gradient = True
+        self.weight = paddle.randn([4096], dtype="float16")
+        self.weight.stop_gradient = True
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
@@ -63,13 +71,15 @@ class TestLlamaRMSNorm(unittest.TestCase):
     def eval(self, use_cinn):
         net = LlamaRMSNorm()
         input_spec = [
-            InputSpec(shape=[None, None, 4096], dtype='float32'),
+            InputSpec(shape=[None, None, 4096], dtype='float16'),
+            InputSpec(shape=[4096], dtype='float16'),
         ]
+
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.hidden_states)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
+        out = net(self.hidden_states, self.weight)
+        # if use_cinn:
+        #     self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

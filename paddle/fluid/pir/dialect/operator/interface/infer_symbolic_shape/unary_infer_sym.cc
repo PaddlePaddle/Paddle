@@ -468,6 +468,23 @@ bool ReshapeOpInferSymbolicShape(
     }
     return x_shape;
   }();
+
+  symbol::DimExpr orig_prod{1};
+  const auto &original_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+
+  for (auto &val : original_shape) {
+    orig_prod = orig_prod * val;
+  }
+
+  symbol::DimExpr new_prod{1};
+  for (auto &val : out_dims) {
+    new_prod = new_prod * val;
+  }
+
+  std::cerr << "reshape contrain " << orig_prod << "\t" << new_prod
+            << std::endl;
+
   shape_analysis->SetShapeOrDataForValue(
       op->result(1),
       CreateShapeOrDataForXShape(

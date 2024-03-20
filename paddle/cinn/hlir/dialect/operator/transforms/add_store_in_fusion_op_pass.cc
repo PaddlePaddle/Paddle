@@ -50,6 +50,10 @@ class AddYieldStoreInFusionOpPattern
               op->operand_source(i).defining_op()->operand_source(0),
               op->operand_source(i).type());
 
+          std::cerr << "reshape out symbol "
+                    << shape_analysis.GetShapeOrDataForValue(
+                           reshape_op->result(0))
+                    << std::endl;
           if (shape_analysis.HasShapeOrDataForValue(reshape_op->result(0))) {
             shape_analysis.SetShapeOrDataForValue(
                 store_op.result(0),

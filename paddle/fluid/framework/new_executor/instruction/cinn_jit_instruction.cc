@@ -322,16 +322,16 @@ void CinnJitInstruction::Run() {
       }
     }
     for (size_t i = 0; i < output_tensor_size; ++i) {
-      std::cerr << "dims " << all_dim_info_[i] << std::endl;
-      tensor_args_[input_tensor_size + i]->Resize(all_dim_info_[i]);
+      std::cerr << "new dims " << all_dim_info_[i] << std::endl;
+      // tensor_args_[input_tensor_size + i]->Resize(all_dim_info_[i]);
     }
   }
   auto stream = gpu_ctx->stream();
 
-  // if (FLAGS_cinn_bucket_compile && need_update_shape) {
-  //   fn_ptr_impl_->InferShape(
-  //       tensor_args_, input_tensor_size, output_tensor_size);
-  // }
+  if (FLAGS_cinn_bucket_compile && need_update_shape) {
+    fn_ptr_impl_->InferShape(
+        tensor_args_, input_tensor_size, output_tensor_size);
+  }
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
     gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
