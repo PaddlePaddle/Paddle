@@ -63,6 +63,10 @@ struct Group {
                                ::pir::IrMapping& ir_mapping,
                                const Options& option = Options()) const;
 
+  bool HasShapeOrDataExprs(const ::pir::Value& value) const {
+    return value_to_shape_or_data_exprs_.count(value);
+  }
+
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const {
     CHECK(value_to_shape_or_data_exprs_.count(value))
