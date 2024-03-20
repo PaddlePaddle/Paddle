@@ -54,7 +54,7 @@ class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
       const std::vector<const StmtPattern*>& stmt_ptrs) {
     LoopAlignableStmtsPattern loop_alignable;
     loop_alignable.stmts.reserve(stmt_ptrs.size());
-    for (const auto* stmt : stmt_ptrs) {
+    for (const StmtPattern* stmt : stmt_ptrs) {
       loop_alignable.stmts.push_back(*stmt);
     }
     return loop_alignable;

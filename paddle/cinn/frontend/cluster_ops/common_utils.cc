@@ -60,10 +60,6 @@ common::TopoWalker<const pir::Operation*> GetOpsReversedTopoWalker(
   return reversed_walker;
 }
 
-size_t GetRank(pir::Value value) {
-  return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
-}
-
 std::vector<int64_t> GetReduceAxes(const pir::Operation* reduce_op) {
   const size_t input_rank = GetRank(reduce_op->operand_source(0));
   const auto& attr_val = reduce_op->attributes().at("dim");

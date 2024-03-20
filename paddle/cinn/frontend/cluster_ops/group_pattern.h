@@ -67,7 +67,7 @@ using StmtsPattern = api::StmtsPattern<frontend::FrontendPattern>;
 using StmtVisitor = std::function<void(const StmtPattern*)>;
 
 struct LoopAlignableStmtsPattern {
-  std::vector<StmtsPattern> stmts;
+  std::vector<StmtPattern> stmts;
 };
 
 struct ClusteringResult {

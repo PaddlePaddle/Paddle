@@ -21,7 +21,7 @@ namespace cinn::frontend::cluster_ops {
 
 class StmtFusionHelper {
  public:
-  StmtFusionHelper(const std::vector<const pir::Operation*>& ops,
+  explicit StmtFusionHelper(const std::vector<const pir::Operation*>& ops,
                    const ShardableAxesInferer& shardable_axes_inferer);
 
   GroupPattern FuseToGroupPattern();
@@ -108,9 +108,10 @@ class StmtFusionHelper {
   std::optional<ErrorGroupPattern> FuseFilteredStmtPatterns(
       std::vector<StmtPattern>* stmt_patterns)
 
-      ShardableAxesSignature GetShardableAxesSignature(const OpTopo& op_topo)
+  ShardableAxesSignature GetShardableAxesSignature(const OpTopo& op_topo)
 
-          private : std::vector<const pir::Operation*> ops_;
+ private : 
+  std::vector<const pir::Operation*> ops_;
   ShardableAxesInferer shardable_axes_inferer_;
   OpTopo op_topo_;
   std::function<bool(const pir::Operation*)> IsInThisOpList;
