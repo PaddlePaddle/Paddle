@@ -754,7 +754,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       vectorizable_ = true;
       IRMutator<>::Visit(&node->body, &node->body);
 
-      if (target == cinn::common::DefaultNVGPUTarget()) {
+      if (target.arch_is_gpu()) {
         if (!forloop->extent.As<IntImm>() ||
             forloop->extent.as_int32() % forloop->vectorize_info().factor !=
                 0) {
@@ -804,7 +804,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
               << extent;
       VLOG(2) << "before vectorize body:\n" << node->body;
 
-      if (target == cinn::common::DefaultNVGPUTarget()) {
+      if (target.arch_is_gpu()) {
         CudaVectorizer cuda_vectorizer(
             new_forloop->loop_var, factor, &var_intervals);
         cuda_vectorizer.Visit(&new_forloop->body);

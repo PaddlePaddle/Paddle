@@ -56,8 +56,14 @@ ir::Tensor LogicalRightShift(const ir::Tensor &A,
   std::string extern_func = "cinn_";
   if (target == cinn::common::DefaultHostTarget()) {
     extern_func += "host_";
-  } else if (target == cinn::common::DefaultNVGPUTarget()) {
-    extern_func += "nvgpu_";
+  } else if (target.language == common::Target::Language::cuda) {
+    extern_func += "cuda_";
+  } else if (target.language == common::Target::Language::sycl) {
+    extern_func += "sycl_";
+  } else if (target.language == common::Target::Language::hip) {
+    extern_func += "hip_";
+  } else if (target.language == common::Target::Language::bangc) {
+    extern_func += "bangc_";
   } else {
     CINN_NOT_IMPLEMENTED
   }

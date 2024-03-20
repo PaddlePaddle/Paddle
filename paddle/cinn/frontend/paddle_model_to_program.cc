@@ -20,6 +20,8 @@
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/paddle/pb/program_desc.h"
 #include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/runtime/backend_api.h"
+#include "paddle/cinn/runtime/flags.h"
 
 PD_DECLARE_double(cinn_infer_model_version);
 
@@ -641,31 +643,29 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
           << "The y data's shape size of op [mul] is not equal to 2! Please "
              "check.";
       TransposeData(data, tensor->shape().data()[0], tensor->shape().data()[1]);
-    } else if (target_.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-      // To use cublas mul api, there is no need to transpose data.
-#ifndef CINN_WITH_CUDNN
-      std::vector<float> data(tensor->shape().numel());
-      CUDA_CALL(cudaMemcpy(
-          data.data(),
-          reinterpret_cast<void*>(tensor->mutable_data<float>(target_)),
-          tensor->shape().numel() * sizeof(float),
-          cudaMemcpyDeviceToHost));
-      CHECK(tensor->shape().size() == 2)
-          << "The y data's shape size of op [mul] is not equal to 2! Please "
-             "check.";
-      TransposeData(
-          data.data(), tensor->shape().data()[0], tensor->shape().data()[1]);
-      CUDA_CALL(cudaMemcpy(
-          reinterpret_cast<void*>(tensor->mutable_data<float>(target_)),
-          data.data(),
-          tensor->shape().numel() * sizeof(float),
-          cudaMemcpyHostToDevice));
-#endif
-#else
-      PADDLE_THROW(phi::errors::Fatal(
-          "To use CUDA backends, you need to set WITH_CUDA ON!"));
-#endif
+    } else if (target_.arch_is_gpu()) {
+      using cinn::runtime::BackendAPI;
+      using cinn::runtime::IsCompiledWithCUDNN;
+      if (target_.language == Target::Language::cuda && IsCompiledWithCUDNN()) {
+        // To use cublas mul api, there is no need to transpose data.
+      } else {
+        std::vector<float> data(tensor->shape().numel());
+        BackendAPI::get_backend(target_)->memcpy(
+            data.data(),
+            reinterpret_cast<void*>(tensor->mutable_data<float>(target_)),
+            tensor->shape().numel() * sizeof(float),
+            BackendAPI::MemcpyType::DeviceToHost);
+        CHECK(tensor->shape().size() == 2)
+            << "The y data's shape size of op [mul] is not equal to 2! Please "
+               "check.";
+        TransposeData(
+            data.data(), tensor->shape().data()[0], tensor->shape().data()[1]);
+        BackendAPI::get_backend(target_)->memcpy(
+            reinterpret_cast<void*>(tensor->mutable_data<float>(target_)),
+            data.data(),
+            tensor->shape().numel() * sizeof(float),
+            BackendAPI::MemcpyType::HostToDevice);
+      }
     } else {
       CINN_NOT_IMPLEMENTED
     }
@@ -697,27 +697,23 @@ void PaddleModelToProgram::ReverseHWVar(const std::string& name) {
           << "The y data's shape size of op [conv2d] is not equal to 4! Please "
              "check.";
       ReverseHWData(data, tensor->shape().data());
-    } else if (target_.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
+    } else if (target_.arch_is_gpu()) {
+      using cinn::runtime::BackendAPI;
       std::vector<float> data(tensor->shape().numel());
-      CUDA_CALL(cudaMemcpy(
+      BackendAPI::get_backend(target_)->memcpy(
           data.data(),
           reinterpret_cast<void*>(tensor->mutable_data<float>(target_)),
           tensor->shape().numel() * sizeof(float),
-          cudaMemcpyDeviceToHost));
+          BackendAPI::MemcpyType::DeviceToHost);
       CHECK(tensor->shape().size() == 4)
           << "The y data's shape size of op [conv2d] is not equal to 4! Please "
              "check.";
       ReverseHWData(data.data(), tensor->shape().data());
-      CUDA_CALL(cudaMemcpy(
+      BackendAPI::get_backend(target_)->memcpy(
           reinterpret_cast<void*>(tensor->mutable_data<float>(target_)),
           data.data(),
           tensor->shape().numel() * sizeof(float),
-          cudaMemcpyHostToDevice));
-#else
-      PADDLE_THROW(phi::errors::Fatal(
-          "To use CUDA backends, you need to set WITH_CUDA ON!"));
-#endif
+          BackendAPI::MemcpyType::HostToDevice);
     } else {
       CINN_NOT_IMPLEMENTED
     }

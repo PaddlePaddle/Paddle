@@ -28,7 +28,7 @@ namespace common {
 void CudaModuleTester::Compile(const ir::Module& m,
                                const std::string& rewrite_cuda_code) {
   auto _host_module_device_module_ =
-      backends::SplitCudaAndHostModule(m);  // NOLINT
+      backends::SplitDeviceAndHostModule(m, common::DefaultNVGPUTarget());  // NOLINT
   auto& host_module = std::get<0>(_host_module_device_module_);
   auto& device_module = std::get<1>(_host_module_device_module_);
   CHECK(!host_module.functions().empty());

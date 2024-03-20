@@ -14,12 +14,8 @@
 
 #include "paddle/cinn/hlir/framework/memory.h"
 
-#ifdef CINN_WITH_CUDA
-#include <cuda.h>
-#include <cuda_runtime.h>
-
-#include "paddle/cinn/backends/cuda_util.h"
-#endif
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
 
 namespace cinn {
 namespace hlir {
@@ -41,28 +37,44 @@ class X86MemoryMng : public MemoryInterface {
   }
 };
 
-#ifdef CINN_WITH_CUDA
 class CudaMemoryMng : public MemoryInterface {
  public:
   void* malloc(size_t nbytes) override {
-    void* data;
-    CUDA_CALL(cudaMalloc(&data, nbytes));
-    return data;
+    return BackendAPI::get_backend(Target::Language::cuda)->malloc(nbytes);
   }
-
-  void free(void* data) override { CUDA_CALL(cudaFree(data)); }
+  void free(void* data) override {
+    BackendAPI::get_backend(Target::Language::cuda)->free(data);
+  }
 };
 
-#endif
+class SYCLMemoryMng : public MemoryInterface {
+ public:
+  void* malloc(size_t nbytes) override {
+    return BackendAPI::get_backend(Target::Language::sycl)->malloc(nbytes);
+  }
+  void free(void* data) override {
+    BackendAPI::get_backend(Target::Language::sycl)->free(data);
+  }
+};
+
+class HIPMemoryMng : public MemoryInterface {
+ public:
+  void* malloc(size_t nbytes) override {
+    return BackendAPI::get_backend(Target::Language::hip)->malloc(nbytes);
+  }
+  void free(void* data) override {
+    BackendAPI::get_backend(Target::Language::hip)->free(data);
+  }
+};
 
 }  // namespace
 
 MemoryManager::MemoryManager() {
-  Register(Target::Arch::Unk, new X86MemoryMng);
-  Register(Target::Arch::X86, new X86MemoryMng);
-#ifdef CINN_WITH_CUDA
-  Register(Target::Arch::NVGPU, new CudaMemoryMng);
-#endif
+  Register(Target::Language::Unk, new X86MemoryMng);
+  Register(Target::Language::llvm, new X86MemoryMng);
+  Register(Target::Language::cuda, new CudaMemoryMng);
+  Register(Target::Language::sycl, new SYCLMemoryMng);
+  Register(Target::Language::hip, new HIPMemoryMng);
 }
 
 }  // namespace framework

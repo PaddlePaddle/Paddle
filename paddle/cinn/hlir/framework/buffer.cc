@@ -46,7 +46,7 @@ void Buffer::Resize(uint32_t alignment, uint32_t size) {
 
 void Buffer::SetTarget(const cinn::common::Target& target) {
   target_ = target;
-  memory_mng_cache_ = MemoryManager::Global().RetrieveSafely(target_.arch);
+  memory_mng_cache_ = MemoryManager::Global().RetrieveSafely(target_.language);
 }
 
 void Buffer::ResizeLazy(uint32_t size) {

@@ -222,16 +222,13 @@ void BindFrontend(pybind11::module *m) {
               CHECK_EQ(input_data[i].size(), in_tensor->shape().numel())
                   << "The size of tensor [" << tensor_inputs[i]->id
                   << "] is different with the input data's size! Please check.";
-              if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-                CUDA_CALL(cudaMemcpy(data,
-                                     input_data[i].data(),
-                                     in_tensor->shape().numel() * dtype.bytes(),
-                                     cudaMemcpyHostToDevice));
-#else
-     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
-     "you need to set WITH_CUDA ON!"));
-#endif
+              if (target.arch_is_gpu()) {
+                using cinn::runtime::BackendAPI;
+                BackendAPI::get_backend(target)->memcpy(
+                    data,
+                    input_data[i].data(),
+                    in_tensor->shape().numel() * dtype.bytes(),
+                    BackendAPI::MemcpyType::HostToDevice);
               } else if (target.arch == Target::Arch::X86) {
                 memcpy(data,
                        input_data[i].data(),
@@ -317,16 +314,13 @@ void BindFrontend(pybind11::module *m) {
               CHECK_EQ(input_data[i].size(), in_tensor->shape().numel())
                   << "The size of tensor [" << tensor_inputs[i]->id
                   << "] is different with the input data's size! Please check.";
-              if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-                CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                                     input_data[i].data(),
-                                     in_tensor->shape().numel() * sizeof(float),
-                                     cudaMemcpyHostToDevice));
-#else
-     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
-     "you need to set WITH_CUDA ON!"));
-#endif
+              if (target.arch_is_gpu()) {
+                using cinn::runtime::BackendAPI;
+                BackendAPI::get_backend(target)->memcpy(
+                    reinterpret_cast<void *>(data),
+                    input_data[i].data(),
+                    in_tensor->shape().numel() * sizeof(float),
+                    BackendAPI::MemcpyType::HostToDevice);
               } else if (target.arch == Target::Arch::X86) {
                 for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
                   data[j] = reinterpret_cast<const float *>(
@@ -368,16 +362,13 @@ void BindFrontend(pybind11::module *m) {
               CHECK_EQ(input_data[i].size(), in_tensor->shape().numel())
                   << "The size of tensor [" << tensor_inputs[i]->id
                   << "] is different with the input data's size! Please check.";
-              if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-                CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                                     input_data[i].data(),
-                                     in_tensor->shape().numel() * sizeof(float),
-                                     cudaMemcpyHostToDevice));
-#else
-     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
-     "you need to set WITH_CUDA ON!"));
-#endif
+              if (target.arch_is_gpu()) {
+                using cinn::runtime::BackendAPI;
+                BackendAPI::get_backend(target)->memcpy(
+                    reinterpret_cast<void *>(data),
+                    input_data[i].data(),
+                    in_tensor->shape().numel() * sizeof(float),
+                    BackendAPI::MemcpyType::HostToDevice);
               } else if (target.arch == Target::Arch::X86) {
                 for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
                   data[j] = reinterpret_cast<const float *>(

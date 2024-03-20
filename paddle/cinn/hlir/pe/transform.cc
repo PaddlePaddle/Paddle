@@ -1264,9 +1264,15 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
   CHECK_EQ(index->type(), cinn::common::Int(32))
       << "Param [Index] of ScatterAssign only support int32 ! Please Check.\n";
   std::string extern_fun_name;
-  if (target.arch == cinn::common::Target::Arch::NVGPU) {
+  if (target.language == common::Target::Language::cuda) {
     extern_fun_name.assign("cinn_cuda_find_int");
-  } else if (target.arch == cinn::common::Target::Arch::X86) {
+  } else if (target.language == common::Target::Language::sycl) {
+    extern_fun_name.assign("cinn_sycl_find_int");
+  } else if (target.language == common::Target::Language::hip) {
+    extern_fun_name.assign("cinn_hip_find_int");
+  } else if (target.language == common::Target::Language::bangc) {
+    extern_fun_name.assign("cinn_bangc_find_int");
+  } else if (target.arch == common::Target::Arch::X86) {
     extern_fun_name.assign("cinn_host_find_int");
   } else {
     PADDLE_THROW(phi::errors::Fatal(
@@ -1302,8 +1308,8 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
                       const cinn::common::Target& target,
                       const int axis,
                       const std::string& output_name) {
-  CHECK_EQ(target.arch, cinn::common::Target::Arch::NVGPU)
-      << "Op IndexAdd only support NVGPU now ! Please Check.\n";
+  CHECK(target.arch_is_gpu()) << "Op IndexAdd only support NV/AMD/Intel/Hygon "
+                                 "GPU now ! Please Check.\n";
 
   CHECK_EQ(index->type(), cinn::common::Int(32))
       << "Param [index] of IndexAdd only support int32 ! Please Check.\n";

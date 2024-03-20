@@ -56,8 +56,8 @@ void MapExternCall(Expr *e, Target target) {
       auto *node = expr->As<ir::Call>();
       CHECK(node);
       OptimizeConstantPow(node);
-      if (target.arch == Target::Arch::NVGPU) {
-        DealWithNvGpuIntrinsics(node, expr);
+      if (target.arch_is_gpu()) {
+        DealWithGpuintrinsics(node, expr);
       } else {
         DealWithCpuIntrinsics(node, expr);
       }
@@ -76,7 +76,7 @@ void MapExternCall(Expr *e, Target target) {
       }
     }
 
-    void DealWithNvGpuIntrinsics(ir::Call *node, Expr *expr) {
+    void DealWithGpuintrinsics(ir::Call *node, Expr *expr) {
       auto arg_size = node->read_args.size();
       if (arg_size == 0UL) {
         // some node like __syncthreads hasn't arguments
@@ -91,8 +91,7 @@ void MapExternCall(Expr *e, Target target) {
         return;
       }
 
-      std::string extern_func = hlir::GetExternFuncName(
-          cinn::common::DefaultNVGPUTarget(), dtype, name);
+      std::string extern_func = hlir::GetExternFuncName(target, dtype, name);
       *expr = lang::CallExtern(extern_func, node->read_args, node->attrs);
     }
 

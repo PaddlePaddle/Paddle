@@ -84,14 +84,13 @@ void CopyFromVector(const std::vector<T>& vec,
 
   size_t numel = tensor->shape().numel();
   CHECK_EQ(vec.size(), numel);
-
-  if (target == cinn::common::DefaultNVGPUTarget()) {
-#ifdef CINN_WITH_CUDA
-    cudaMemcpy(data, vec.data(), numel * sizeof(T), cudaMemcpyHostToDevice);
-#else
-    PADDLE_THROW(phi::errors::Fatal(
-        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
-#endif
+  if (target.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(target)->memcpy(
+        data,
+        vec.data(),
+        numel * sizeof(T),
+        BackendAPI::MemcpyType::HostToDevice);
   } else {
     std::copy(vec.begin(), vec.end(), data);
   }

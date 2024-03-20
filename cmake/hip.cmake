@@ -1,4 +1,4 @@
-if(NOT WITH_ROCM)
+if(NOT WITH_ROCM AND NOT CINN_WITH_ROCM)
   return()
 endif()
 

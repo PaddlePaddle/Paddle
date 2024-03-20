@@ -46,6 +46,10 @@ ScheduleParam::ScheduleParam(cinn::common::Target::Arch arch) {
       param_data = CreateCudaParams();
       break;
     }
+    case common::Target::Arch::AMDGPU: {
+      param_data = CreateCudaParams();
+      break;
+    }
     default: {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Schedule params must be initialized with target x86 or nvgpu."));
@@ -2197,8 +2201,8 @@ CreateCudaParams() {
                             {-1, 1, 2, 1},
                             {-1, 1, 4, 1},
                             {-1, 1, 1, 1}});
-
-#ifndef CINN_WITH_CUDNN
+#ifndef CINN_WITH_GPU
+  // WinogradConv lower报错
   InputWinogradConvCudaParam(
       model_data,
       "CudaWinogradConvSchedule 1 512 9 9 512 512 3 3 1 512 7 7",
@@ -2813,7 +2817,7 @@ void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
     if (i != axis) fused_shape = fused_shape * output_shapes[0][i];
   }
   int compute_at_level = 0;
-  if (target.arch == Target::Arch::NVGPU) {
+  if (target.arch_is_gpu()) {
     if (fused_shape > target.max_num_threads()) {
       stages[last_output]->Split(0, target.max_num_threads());
       stages[last_output]->Bind(0, "blockIdx.x");

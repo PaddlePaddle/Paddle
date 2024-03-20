@@ -179,7 +179,7 @@ bool SingleGroupOptimizePass::CanReplaceToMemcpy(Node* node) const {
 }
 
 void SingleGroupOptimizePassImpl(Graph* graph) {
-  if (graph->target_ != cinn::common::DefaultNVGPUTarget()) {
+  if (graph->target_.arch_is_gpu()) {
     return;
   }
   graph->fusion_groups = SingleGroupOptimizePass(graph).Apply();

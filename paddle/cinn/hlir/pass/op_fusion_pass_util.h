@@ -216,11 +216,8 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
     break;
   }
 
-  return helper->target_ == cinn::common::DefaultNVGPUTarget()
-             ? (successive_reduce_dimension <= helper->target_.max_num_threads()
-                    ? true
-                    : false)
-             : true;
+  return !helper->target_.arch_is_gpu() ||
+         succesive_reduce_dimension <= helper->target_.max_num_threads();
 }
 
 CONDITION_FUNC(horizontal_or_can_inline) {
@@ -263,7 +260,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
     return false;
   }
 
-  if (helper->target_ != cinn::common::DefaultNVGPUTarget()) {
+  if (!helper->target_.arch_is_gpu()) {
     return true;
   }
 

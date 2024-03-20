@@ -175,7 +175,7 @@ void Instruction::Run(
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
       if (!dryrun) {
-        if (target_ == cinn::common::DefaultNVGPUTarget()) {
+        if (target_.arch_is_gpu()) {
           ((lower_func_ptr_g)fn_ptrs_[idx])(
               static_cast<void*>(pod_args.data()), pod_args.size(), stream);
         } else {
@@ -322,7 +322,7 @@ void Instruction::Run(
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
       if (!dryrun) {
-        if (target_ == cinn::common::DefaultNVGPUTarget()) {
+        if (target_.arch_is_gpu()) {
           ((lower_func_ptr_g)fn_ptrs_[idx])(
               static_cast<void*>(pod_args.data()), pod_args.size(), stream);
         } else {
@@ -341,7 +341,7 @@ void Instruction::Run(
     CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                             "calling SetLoweredFunc method";
     if (!dryrun) {
-      if (target_ == cinn::common::DefaultNVGPUTarget()) {
+      if (target_.arch_is_gpu()) {
         ((lower_func_ptr_g)fn_ptrs_[idx])(
             static_cast<void*>(pod_args.data()), pod_args.size(), stream);
       } else {
@@ -390,9 +390,10 @@ std::string Instruction::DumpInstruction() const {
 
 void Instruction::CheckResults(
     const std::map<std::string, cinn_pod_value_t>* name2podargs, void* stream) {
-#ifdef CINN_WITH_CUDA
-  cudaStreamSynchronize(static_cast<cudaStream_t>(stream));
-#endif
+  if (target_.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(target_)->stream_sync(stream);
+  }
 
   if (fn_names_.size() == 1) {
     std::unordered_set<std::string> skipped_instr_set = {

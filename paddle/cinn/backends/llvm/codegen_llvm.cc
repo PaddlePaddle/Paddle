@@ -1388,6 +1388,9 @@ void CodeGenLLVM::InitTarget(const Target &target) {
     case Target::Arch::NVGPU:
       naive_vec_alignment_ = 128;
       break;
+    case Target::Arch::AMDGPU:
+      naive_vec_alignment_ = 128;
+      break;
     case Target::Arch::Unk:
       PADDLE_THROW(phi::errors::InvalidArgument("unknown Arch found"));
       break;

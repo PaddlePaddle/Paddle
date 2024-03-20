@@ -7,7 +7,8 @@ gather_srcs(
   intrinsic.cc
   cinn_runtime.cc
   intrinsic_types.cc
-  custom_function.cc)
+  custom_function.cc
+  backend_api.cc)
 
 cinn_cc_library(
   cinn_runtime SRCS cinn_runtime.cc buffer.cc #cinn_x86_device_impl.cc
@@ -21,4 +22,10 @@ if(WITH_OPENMP)
 endif()
 
 add_subdirectory(cuda)
+if (CINN_WITH_SYCL)
+  add_subdirectory(sycl)
+endif()
+if (CINN_WITH_ROCM)
+  add_subdirectory(hip)
+endif()
 add_subdirectory(cpu)

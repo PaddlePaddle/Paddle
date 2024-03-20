@@ -108,7 +108,7 @@ TEST(Instruction, RunWithRawPodArgs) {
   std::vector<cinn_buffer_t> args_buffer(
       3);  // store {"x", "y", "z"} buffer objects
   auto* default_memory_mng = MemoryManager::Global().RetrieveSafely(
-      cinn::common::DefaultHostTarget().arch);
+      common::DefaultHostTarget().language);
 
   int count = 0;
   for (const auto& name : std::vector<std::string>({"x", "y", "z"})) {

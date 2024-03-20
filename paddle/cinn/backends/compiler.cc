@@ -229,8 +229,14 @@ void SourceCodePrint::write(const std::string& source_code) {
 }
 
 void Compiler::Build(const Module& module, const std::string& code) {
-  if (target_.arch == Target::Arch::NVGPU) {
+  if (target_.language == Target::Language::cuda){
     CompileCudaModule(module, code);
+  } else if (target_.language == Target::Language::sycl){
+    //CompileSyclModule(module, code);
+    CINN_NOT_IMPLEMENTED
+  }else if (target_.language == Target::Language::hip){
+    //CompileHipModule(module, code);
+    CINN_NOT_IMPLEMENTED
   } else if (target_.arch == Target::Arch::X86) {
     CompileX86Module(module);
   } else {
@@ -239,10 +245,10 @@ void Compiler::Build(const Module& module, const std::string& code) {
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
-  if (target_.arch == Target::Arch::NVGPU) {
+  if (target_.language == Target::Language::cuda){
 #ifdef CINN_WITH_CUDA
     auto _host_module_device_module_ =
-        SplitCudaAndHostModule(module);  // NOLINT
+        SplitDeviceAndHostModule(module, target_);  // NOLINT
     auto& host_module = std::get<0>(_host_module_device_module_);
     auto& device_module = std::get<1>(_host_module_device_module_);
     CodeGenCUDA_Dev codegen(target_);
@@ -251,14 +257,26 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
     CINN_NOT_IMPLEMENTED
 #endif
+  } else if (target_.language == Target::Language::sycl){
+    //
+    CINN_NOT_IMPLEMENTED
+  }else if (target_.language == Target::Language::hip){
+    //
+    CINN_NOT_IMPLEMENTED
   } else {
     CINN_NOT_IMPLEMENTED
   }
 }
 
 void Compiler::BuildDefault(const Module& module) {
-  if (target_.arch == Target::Arch::NVGPU) {
+  if (target_.language == Target::Language::cuda){
     CompileCudaModule(module);
+  } else if (target_.language == Target::Language::sycl){
+    //CompileSyclModule(module);
+    CINN_NOT_IMPLEMENTED
+  }else if (target_.language == Target::Language::hip){
+    //CompileHipModule(module);
+    CINN_NOT_IMPLEMENTED
   } else if (target_.arch == Target::Arch::X86) {
     CompileX86Module(module);
   } else {
@@ -269,7 +287,7 @@ void Compiler::BuildDefault(const Module& module) {
 void Compiler::CompileCudaModule(const Module& module,
                                  const std::string& code) {
 #ifdef CINN_WITH_CUDA
-  auto _host_module_device_module_ = SplitCudaAndHostModule(module);  // NOLINT
+  auto _host_module_device_module_ = SplitDeviceAndHostModule(module, target_);  // NOLINT
   auto& host_module = std::get<0>(_host_module_device_module_);
   auto& device_module = std::get<1>(_host_module_device_module_);
   VLOG(3) << "[CUDA] host module:\n" << host_module;
