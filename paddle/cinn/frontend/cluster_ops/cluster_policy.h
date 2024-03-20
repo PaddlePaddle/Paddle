@@ -19,9 +19,6 @@
 
 namespace cinn::frontend {
 
-std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
-    const pir::ShapeConstraintIRAnalysis* shape_analysis);
-
 class ClusteringPolicy {
  public:
   virtual ~ClusteringPolicy() = default;

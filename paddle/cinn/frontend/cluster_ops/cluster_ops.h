@@ -14,6 +14,22 @@
 
 namespace cinn::api {
 
+
+
+  auto shardable_axes_provider = [&] {
+    auto* program = group_op->GetParentProgram();
+    const auto* shape_analysis =
+        &pir::ShapeAnalysisManager::Instance().Get(program);
+    return frontend::MakeDefaultShardableAxesProvider(shape_analysis);
+  }();
+
+  auto cluster_policy = [&] {
+    auto* program = group_op->GetParentProgram();
+    const auto* shape_analysis =
+        &pir::ShapeAnalysisManager::Instance().Get(program);
+    return frontend::MakeLoopAlignableClusteringPolicy(shape_analysis);
+  }();
+
 ClusteringResult ClusterOps(
     const std::vector<const pir::Operation*>& ops,
     const std::shared_ptr<ShardableAxesProvider>& shardable_axes_provider,

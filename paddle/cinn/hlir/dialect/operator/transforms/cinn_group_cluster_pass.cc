@@ -849,20 +849,6 @@ std::vector<GroupClusterNode> NewOpMergeWithOp(
     return ops;
   }();
 
-  auto shardable_axes_provider = [&] {
-    auto* program = group_op->GetParentProgram();
-    const auto* shape_analysis =
-        &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::MakeDefaultShardableAxesProvider(shape_analysis);
-  }();
-
-  auto cluster_policy = [&] {
-    auto* program = group_op->GetParentProgram();
-    const auto* shape_analysis =
-        &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::MakeLoopAlignableClusteringPolicy(shape_analysis);
-  }();
-
   VLOG(4) << "Start Clustering Ops!";
   const auto cluster_result = frontend::ClusterOps(
       ops, std::move(shardable_axes_provider), std::move(cluster_policy));

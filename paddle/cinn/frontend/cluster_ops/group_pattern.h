@@ -26,6 +26,10 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
+namespace cinn::frontend {
+  struct FrontendPattern {};
+}
+
 namespace cinn::api {
 
 template <>
@@ -55,11 +59,11 @@ struct PartialShardablePattern<frontend::FrontendPattern> {
 
 namespace cinn::frontend {
 
-using ErrorGroupPattern = api::ErrorPattern<frontend::FrontendPattern>;
-using GroupPattern = api::OpTopoPattern<frontend::FrontendPattern>;
+using ErrorGroupPattern = api::ErrorPattern<FrontendPattern>;
+using GroupPattern = api::OpTopoPattern<FrontendPattern>;
 
 struct LoopAlignableStmtsPattern {
-  std::vector<api::StmtPattern<frontend::FrontendPattern>> stmts;
+  std::vector<api::StmtPattern<FrontendPattern>> stmts;
 };
 
 struct ClusteringResult {
@@ -74,12 +78,7 @@ using R = api::ReductionPattern<frontend::FrontendPattern>;
 using PS = api::PartialShardablePattern<frontend::FrontendPattern>;
 using StmtPattern = api::StmtPattern<frontend::FrontendPattern>;
 using StmtsPattern = api::StmtsPattern<frontend::FrontendPattern>;
-using OpSet = std::unordered_set<const pir::Operation*>;
-using OpSetPtr = std::shared_ptr<OpSet>;
-
-using OpVisitor = std::function<void(const pir::Operation*)>;
 using StmtVisitor = std::function<void(const StmtPattern*)>;
-
 }  // namespace cluster_ops
 
 }  // namespace cinn::frontend
