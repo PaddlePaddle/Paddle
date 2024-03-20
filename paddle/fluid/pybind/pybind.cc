@@ -79,6 +79,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
 #include "paddle/common/macros.h"
@@ -2161,6 +2162,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
+#if defined(PADDLE_WITH_CUDA)
+  m.def("_set_warmup", [](bool warmup) {
+    paddle::memory::allocation::AutoGrowthBestFitAllocatorV2State::GetInstance()
+        .SetWarmup(warmup);
+  });
+#endif
   m.def("_test_enforce_gpu_success", []() {
 #if defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(cudaErrorInsufficientDriver);
