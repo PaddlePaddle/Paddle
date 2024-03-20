@@ -69,6 +69,9 @@ OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
 NEED_GEN_STATIC_ONLY_APIS = [
+    'c_allreduce_avg_',
+    'c_allreduce_min_',
+    'c_allreduce_prod_',
     'distributed_fused_lamb_init',
     'distributed_fused_lamb_init_',
     'fetch',
@@ -122,15 +125,13 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'all_reduce',
     'all_reduce_',
+    'barrier',
     'c_allgather',
     'c_allreduce_avg',
-    'c_allreduce_avg_',
     'c_allreduce_max',
     'c_allreduce_min',
-    'c_allreduce_min_',
     'c_allreduce_sum',
     'c_allreduce_prod',
-    'c_allreduce_prod_',
     'c_embedding',
     'c_identity',
     'c_reduce_sum',
@@ -143,6 +144,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'dpsgd',
     'embedding_grad_sparse',
     'ftrl',
+    'fused_adam_',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
     'fused_elemwise_add_activation',
@@ -155,6 +157,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'lars_momentum',
     'lars_momentum_',
     'max_pool2d_v2',
+    'partial_sum',
     'random_routing',
     'rank_attention',
     'recv_v2',
@@ -184,8 +187,12 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'push_sparse_v2_',
     'partial_send',
     'partial_recv',
+    'partial_allgather',
+    'partial_allgather_',
     'nop',
     'nop_',
+    'limit_by_capacity',
+    'global_scatter',
 ]
 
 
