@@ -313,6 +313,8 @@ class TestExpandV2Error(unittest.TestCase):
             x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.expand, x3, shape)
+            x3.stop_gradient = True
+            self.assertRaises(TypeError, paddle.tensor.expand, x3, 1)
         paddle.disable_static()
 
 
