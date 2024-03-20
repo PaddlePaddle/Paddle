@@ -333,7 +333,27 @@ bool Rsqrt_OpInferSymbolicShape(
 }
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return SameOperandsAndResultShape(op, shape_analysis);
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  std::vector<symbol::DimExpr> shape(operand_shape_or_data.shape());
+
+  std::vector<symbol::DimExpr> data;
+  if (operand_shape_or_data.data()) {
+    for (auto &val : *(operand_shape_or_data.data())) {
+      int scale = op->attribute("scale").dyn_cast<pir::FloatAttribute>().data();
+      int bias = op->attribute("bias").dyn_cast<pir::FloatAttribute>().data();
+      data.push_back(val * scale + bias);
+    }
+
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs(shape, data));
+  } else {
+    shape_analysis->SetShapeOrDataForValue(op->result(0),
+                                           operand_shape_or_data);
+  }
+
+  return true;
 }
 bool ScaleSrOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
