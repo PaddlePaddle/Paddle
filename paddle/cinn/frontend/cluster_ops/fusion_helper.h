@@ -37,24 +37,24 @@ class StmtFusionHelper {
       std::vector<StmtPattern>* stmt_patterns);
 
   struct FusePolicy_IS_x_PS_2_PS {
-    static bool FuseCondition(const StmtPattern& upstream,
+    bool FuseCondition(const StmtPattern& upstream,
                               const StmtPattern& downstream);
-    static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
+    std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
         const StmtPattern& upstream, const StmtPattern& downstream);
-    static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
+    std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
         const IS& upstream, const PS& downstream);
-    static ShardableAxesSignature MergeShardableAxesSignature(
+    ShardableAxesSignature MergeShardableAxesSignature(
         const IS& upstream, const PS& downstream);
   };
 
   std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(
       std::vector<StmtPattern>* stmt_patterns);
   struct FusePolicy_IS_x_R_2_R {
-    static bool FuseCondition(const StmtPattern& upstream,
+    bool FuseCondition(const StmtPattern& upstream,
                               const StmtPattern& downstream);
-    static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
+    std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
         const StmtPattern& upstream, const StmtPattern& downstream);
-    static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
+    std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
         const IS& upstream, const R& downstream);
   };
 
@@ -62,11 +62,11 @@ class StmtFusionHelper {
       std::vector<StmtPattern>* stmt_patterns);
 
   struct FusePolicy_PS_x_R_2_R {
-    static bool FuseCondition(const StmtPattern& upstream,
+    bool FuseCondition(const StmtPattern& upstream,
                               const StmtPattern& downstream);
-    static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
+    std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
         const StmtPattern& upstream, const StmtPattern& downstream);
-    static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
+    std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
         const PS& upstream, const R& downstream);
   };
 
@@ -81,13 +81,79 @@ class StmtFusionHelper {
   PS ConvertOpToPS(const pir::Operation* op);
   using StmtPtr4OpT =
       std::function<std::optional<StmtPattern*>(const pir::Operation*)>;
-  static StmtPtr4OpT MakeStmtFinderFromOp(std::vector<StmtPattern>* stmts);
+  StmtPtr4OpT MakeStmtFinderFromOp(std::vector<StmtPattern>* stmts);
+
 
   template <typename IsChozenPatternT, typename ConstructPatternT>
   std::optional<ErrorGroupPattern> MultiFuse(
       const IsChozenPatternT& IsChozenPattern,
       const ConstructPatternT& ConstructPattern,
-      std::vector<StmtPattern>* stmts);
+      std::vector<StmtPattern>* stmts) {
+    const auto StmtFinder = MakeStmtFinderFromOp(stmts);
+    const auto VisitInputStmt = [&](const StmtPattern* stmt,
+                                    const StmtVisitor& DoEach) {
+      VisitStmtOp(*stmt, [&](const auto* op) {
+        op_topo_.VisitInputOp(op, [&](const pir::Operation* input) {
+          if (const auto& input_stmt = StmtFinder(input)) {
+            if (IsChozenPattern(*input_stmt.value())) {
+              DoEach(input_stmt.value());
+            }
+          }
+        });
+      });
+    };
+    const auto VisitOutputStmt = [&](const StmtPattern* stmt,
+                                     const StmtVisitor& DoEach) {
+      VisitStmtOp(*stmt, [&](const auto* op) {
+        op_topo_.VisitOutputOp(op, [&](const pir::Operation* output) {
+          if (const auto& output_stmt = StmtFinder(output)) {
+            if (IsChozenPattern(*output_stmt.value())) {
+              DoEach(output_stmt.value());
+            }
+          }
+        });
+      });
+    };
+    const auto IsSinkPattern = [&](const StmtPattern* stmt) {
+      if (!IsChozenPattern(*stmt)) return false;
+      std::size_t num_injective_src_outputs = 0;
+      VisitOutputStmt(stmt, [&](const auto& consumer) {
+        num_injective_src_outputs += IsChozenPattern(*consumer);
+      });
+      return num_injective_src_outputs == 0;
+    };
+    const auto Cmp = [&](const auto* lhs, const auto* rhs) {
+      return this->GetOrderValue4Op(lhs) < this->GetOrderValue4Op(rhs);
+    };
+    common::BfsWalker<const StmtPattern*> reverse_walker(VisitInputStmt);
+    const auto& GetAllUpstreamOps = [&](const StmtPattern* stmt_ptr) {
+      std::vector<const pir::Operation*> visited_ops;
+      reverse_walker(stmt_ptr, [&](const StmtPattern* node) {
+        VisitStmtOp(*node, [&](const auto* op) { visited_ops.push_back(op); });
+      });
+      std::sort(visited_ops.begin(), visited_ops.end(), Cmp);
+      return visited_ops;
+    };
+
+    std::vector<StmtPattern> ret_stmts = [&] {
+      std::vector<StmtPattern> ret_stmts;
+      ret_stmts.reserve(stmts->size());
+      for (const auto& stmt : *stmts) {
+        if (!IsChozenPattern(stmt)) {
+          ret_stmts.push_back(stmt);
+        } else {
+          // do nothing.
+        }
+      }
+      return ret_stmts;
+    }();
+    for (auto& stmt : *stmts) {
+      if (!IsSinkPattern(&stmt)) continue;
+      ret_stmts.emplace_back(ConstructPattern(GetAllUpstreamOps(&stmt)));
+    }
+    *stmts = ret_stmts;
+    return std::nullopt;
+  }
 
   struct StmtIterPair {
     std::list<StmtPattern*>::iterator upstream_iter;
@@ -102,15 +168,74 @@ class StmtFusionHelper {
   std::optional<StmtIterPair> FindConnetedPattenPairWithCondition(
       const StmtPtr4OpT& StmtFinder,
       std::list<StmtPattern*>* stmt_ptrs,
-      const FuseTargetConditionT& FuseTargetCondition);
+      const FuseTargetConditionT& FuseTargetCondition) {
+    for (auto dst_iter = stmt_ptrs->begin(); dst_iter != stmt_ptrs->end();
+         ++dst_iter) {
+      for (auto src_iter = stmt_ptrs->begin(); src_iter != stmt_ptrs->end();
+           ++src_iter) {
+        if (src_iter == dst_iter) continue;
+        if (!IsConnected(StmtFinder, *src_iter, *dst_iter)) continue;
+        if (FuseTargetCondition(**src_iter, **dst_iter)) {
+          return StmtIterPair{
+              .upstream_iter = src_iter,
+              .downstream_iter = dst_iter,
+          };
+        }
+      }
+    }
+    return std::nullopt;
+  }
+
 
   template <typename FusionPolicy>
   std::optional<ErrorGroupPattern> FuseFilteredStmtPatterns(
-      std::vector<StmtPattern>* stmt_patterns)
+      std::vector<StmtPattern>* stmt_patterns) {
+    std::list<StmtPattern*> stmts_iters = [&] {
+      std::list<StmtPattern*> stmts_iters;
+      for (auto& stmt : *stmt_patterns) {
+        stmts_iters.push_back(&stmt);
+      }
+      return stmts_iters;
+    }();
+    const auto StmtFinder = MakeStmtFinderFromOp(stmt_patterns);
+    const auto EraseOld = [&](const StmtIterPair& pattern_pair) {
+      stmts_iters.erase(pattern_pair.upstream_iter);
+      stmts_iters.erase(pattern_pair.downstream_iter);
+    };
+    const auto& InsertNew = [&](const StmtPattern& stmt_pattern) {
+      stmt_patterns->push_back(stmt_pattern);
+      stmts_iters.push_back(&stmt_patterns->back());
+    };
+    while (true) {
+      const auto& pattern_pair = FindConnetedPattenPairWithCondition(
+          StmtFinder, &stmts_iters, &FusionPolicy::FuseCondition);
+      if (!pattern_pair.has_value()) break;
+      const std::variant<StmtPattern, ErrorGroupPattern>& new_pattern =
+          FusionPolicy::MergePattern(**pattern_pair.value().upstream_iter,
+                                     **pattern_pair.value().downstream_iter);
 
-      ShardableAxesSignature GetShardableAxesSignature(const OpTopo& op_topo)
+      if (std::holds_alternative<ErrorGroupPattern>(new_pattern)) {
+        return std::get<ErrorGroupPattern>(new_pattern);
+      }
+      EraseOld(pattern_pair.value());
+      InsertNew(std::get<StmtPattern>(new_pattern));
+    }
+    *stmt_patterns = [&] {
+      std::vector<StmtPattern> ret_patterns;
+      ret_patterns.reserve(stmts_iters.size());
+      for (const auto& stmt_iter : stmts_iters) {
+        ret_patterns.push_back(*stmt_iter);
+      }
+      return ret_patterns;
+    }();
+    return std::nullopt;
+  }
 
-          private : std::vector<const pir::Operation*> ops_;
+
+  ShardableAxesSignature GetShardableAxesSignature(const OpTopo& op_topo);
+
+  private : 
+  std::vector<const pir::Operation*> ops_;
   ShardableAxesInferer shardable_axes_inferer_;
   OpTopo op_topo_;
   std::function<bool(const pir::Operation*)> IsInThisOpList;
