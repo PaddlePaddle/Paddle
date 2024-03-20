@@ -70,27 +70,17 @@ Original subgraph (situation 1):
 
 Original subgraph (situation 2):
 
-      ------------Input1
+      -------------- in
       |              |
-      |          group_norm
+      |          gn_silu_xpu
       |              |
-      |             silu
+      |          conv2d_xpu
       |              |
-      |         _xpu_conv2d
-      |              \
-      |               \
-      |                \
-      |                 \
-      |                  |
-      |              group_norm
-      |                  |
-      |                 silu
-      |                  |
-      |              _xpu_conv2d
-      |                  |
-      |___________elementwise_add
-                        |
-                      output
+      |          gn_silu_xpu
+      |              |
+      -----------conv2d_xpu
+                     |
+                    out
 
 Original subgraph (situation 3):
 
@@ -129,11 +119,11 @@ Fuse to:
               output
 or:
 (Situation 2 and 3):
-               Input
+                 in
                  |
-  __xpu__spatial_transformer_resblock
+  spatial_transformer_resblock_xpu
                  |
-              output
+                out
 */
 struct SpatialTransformerResBlockXPUPattern : public PatternBase {
   SpatialTransformerResBlockXPUPattern(PDPattern* pattern,
@@ -157,7 +147,7 @@ struct SpatialTransformerResBlockXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(gn_silu_1_scale);
   PATTERN_DECL_NODE(gn_silu_1_out);
   PATTERN_DECL_NODE(conv2d_1_bias);
-  PATTERN_DECL_NODE(conv2d_1_branch_max);
+  // PATTERN_DECL_NODE(conv2d_1_branch_max);
   PATTERN_DECL_NODE(conv2d_1_filter);
   PATTERN_DECL_NODE(conv2d_1_filter_max);
   PATTERN_DECL_NODE(conv2d_1_out);
@@ -172,15 +162,15 @@ SpatialTransformerResBlockXPUPattern::SpatialTransformerResBlockXPUPattern(
       pattern->NewNode(gn_silu_0_repr())->assert_is_op("gn_silu_xpu");
   auto gn_silu_0_x = pattern->NewNode(gn_silu_0_x_repr())
                          ->assert_is_op_input("gn_silu_xpu", "x")
-                         ->assert_is_op_input("conv2d_xpu", "branch")
+                         ->assert_is_op_input("conv2d_xpu", "branch") 
                          ->AsInput();
   auto gn_silu_0_bias = pattern->NewNode(gn_silu_0_bias_repr())
                             ->assert_is_op_input("gn_silu_xpu", "bias")
-                            ->assert_is_persistable_var()
+                            // ->assert_is_persistable_var()
                             ->AsInput();
   auto gn_silu_0_scale = pattern->NewNode(gn_silu_0_scale_repr())
                              ->assert_is_op_input("gn_silu_xpu", "scale")
-                             ->assert_is_persistable_var()
+                            //  ->assert_is_persistable_var()
                              ->AsInput();
   auto gn_silu_0_out = pattern->NewNode(gn_silu_0_out_repr())
                            ->assert_is_op_output("gn_silu_xpu", "out")
@@ -235,9 +225,9 @@ SpatialTransformerResBlockXPUPattern::SpatialTransformerResBlockXPUPattern(
   auto conv2d_1_bias = pattern->NewNode(conv2d_1_bias_repr())
                            ->assert_is_op_input("conv2d_xpu", "bias")
                            ->AsInput();
-  auto conv2d_1_branch_max = pattern->NewNode(conv2d_1_branch_max_repr())
-                           ->assert_is_op_input("conv2d_xpu", "branch_max")
-                           ->AsInput();
+  // auto conv2d_1_branch_max = pattern->NewNode(conv2d_1_branch_max_repr())
+  //                          ->assert_is_op_input("conv2d_xpu", "branch_max")
+  //                          ->AsInput();
   auto conv2d_1_filter = pattern->NewNode(conv2d_1_filter_repr())
                            ->assert_is_op_input("conv2d_xpu", "filter")
                            ->AsInput();
@@ -246,13 +236,12 @@ SpatialTransformerResBlockXPUPattern::SpatialTransformerResBlockXPUPattern(
           ->assert_is_op_input("conv2d_xpu", "filter_max")
           ->AsInput();
   auto conv2d_1_out = pattern->NewNode(conv2d_1_out_repr())
-                          ->assert_is_op_output("conv2d_xpu", "out")
-                          ->assert_has_n_outputs(1);
+                          ->assert_is_op_output("conv2d_xpu", "out");
   auto conv2d_1_out_max = pattern->NewNode(conv2d_1_out_max_repr())
                               ->assert_is_op_output("conv2d_xpu", "out_max")
                               ->assert_has_n_outputs(0);
   conv2d_1->LinksFrom(
-          {gn_silu_1_out, conv2d_1_bias, gn_silu_0_x, conv2d_1_branch_max, conv2d_1_filter, conv2d_1_filter_max})
+          {gn_silu_1_out, gn_silu_0_x, conv2d_1_bias, conv2d_1_filter, conv2d_1_filter_max})
       .LinksTo({conv2d_1_out, conv2d_1_out_max});
 }
 
@@ -296,6 +285,29 @@ class SpatialTransformerResBlockXPUFusePass : public FusePassBase {
  private:
   void FuseSpatialTransformerResBlock(ir::Graph* graph) const;
 
+  void UpdateWeight(Scope* scope,
+                    const std::vector<std::string>& weight_names,
+                    const std::vector<std::string>& weight_max_names,
+                    bool trans) const{
+    std::vector<phi::DenseTensor*> weight_tensor_vec(weight_names.size(), nullptr);
+    std::vector<phi::DenseTensor*> weight_max_tensor_vec(weight_max_names.size(), nullptr);
+    std::vector<DDim> weight_dims_vec(weight_names.size());
+    std::vector<int> weight_len_vec(weight_names.size());
+
+    for (size_t i = 0; i < weight_names.size(); ++i) {
+      weight_tensor_vec[i] = scope->FindVar(weight_names[i])->GetMutable<phi::DenseTensor>();
+      weight_max_tensor_vec[i] = scope->FindVar(weight_max_names[i])->GetMutable<phi::DenseTensor>();
+      CHECK(weight_tensor_vec[i] != nullptr);
+      CHECK(weight_max_tensor_vec[i] != nullptr);
+      weight_dims_vec[i] =weight_tensor_vec[i]->dims();
+      weight_len_vec[i] = weight_tensor_vec[i]->numel();
+      if (trans && i > 0) {
+        CHECK_EQ(weight_dims_vec[i][0], weight_dims_vec[i - 1][0]);
+      }
+      ConvertFromFp32ToFp16(weight_tensor_vec[i], weight_max_tensor_vec[i], trans);
+    }
+  }
+
   const std::string name_scope_{"spatial_transformer_resblock_xpu_fuse_pass"};
 };
 
@@ -336,13 +348,13 @@ void SpatialTransformerResBlockXPUFusePass::FuseSpatialTransformerResBlock(
     GET_IR_NODE(gn_silu_1_scale);
     GET_IR_NODE(gn_silu_1_out);
     GET_IR_NODE(conv2d_1_bias);
-    GET_IR_NODE(conv2d_1_branch_max);
+    // GET_IR_NODE(conv2d_1_branch_max);
     GET_IR_NODE(conv2d_1_filter);
     GET_IR_NODE(conv2d_1_filter_max);
     GET_IR_NODE(conv2d_1_out);
     GET_IR_NODE(conv2d_1_out_max);
 
-    auto* block = gn_silu_0->Op()->Block();
+    auto* block = gn_silu_1->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
@@ -388,24 +400,28 @@ void SpatialTransformerResBlockXPUFusePass::FuseSpatialTransformerResBlock(
     fused_op_out_name = conv2d_1_out->Name();
     // Generate add_layernorm fused op
     framework::OpDesc fused_op_desc(block);
+    std::vector<std::string> conv_filter_names{conv2d_0_filter->Name(), conv2d_1_filter->Name()};
+    std::vector<std::string> conv_filter_max_names{conv2d_0_filter_max->Name(), conv2d_1_filter_max->Name()};
 
     fused_op_desc.SetType("spatial_transformer_resblock_xpu");
     // set attrs for fused op
     fused_op_desc.SetInput("x", {gn_silu_0_x->Name()});
     fused_op_desc.SetInput("conv_bias", {conv2d_0_bias->Name(), conv2d_1_bias->Name()});
-    fused_op_desc.SetInput("conv_filter", {conv2d_0_filter->Name(), conv2d_1_filter->Name()});
-    fused_op_desc.SetInput("conv_filter_max", {conv2d_0_filter_max->Name(), conv2d_1_filter_max->Name()});
+    fused_op_desc.SetInput("conv_filter", conv_filter_names);
+    fused_op_desc.SetInput("conv_filter_max", conv_filter_max_names);
+    // fused_op_desc.SetInput("conv_branch", {gn_silu_0_x->Name()});
     fused_op_desc.SetInput("gn_bias", {gn_silu_0_bias->Name(), gn_silu_1_bias->Name()});
     fused_op_desc.SetInput("gn_scale", {gn_silu_0_scale->Name(), gn_silu_1_scale->Name()});
+    fused_op_desc.SetOutput("out", {fused_op_out_name});
+    fused_op_desc.SetOutput("out_max", {conv2d_1_out_max->Name()});
 
     fused_op_desc.SetAttr("dilations", IntVec2DTo1D(dilations));
     fused_op_desc.SetAttr("paddings", IntVec2DTo1D(paddings));
     fused_op_desc.SetAttr("strides", IntVec2DTo1D(strides));
+    fused_op_desc.SetAttr("groups", std::vector<int>{conv2d_0_groups, conv2d_1_groups});
     fused_op_desc.SetAttr("gn_eps", std::vector<float>{gn_silu_0_eps, gn_silu_1_eps});
     fused_op_desc.SetAttr("gn_groups", std::vector<int>{gn_silu_0_groups, gn_silu_1_groups});
-    fused_op_desc.SetAttr("groups", std::vector<int>{conv2d_0_groups, conv2d_1_groups});
 
-    fused_op_desc.SetOutput("out", {fused_op_out_name});
     // relink fused op
     auto* fused_op = graph->CreateOpNode(&fused_op_desc);
 
@@ -422,10 +438,10 @@ void SpatialTransformerResBlockXPUFusePass::FuseSpatialTransformerResBlock(
     IR_NODE_LINK_TO(conv2d_1_filter_max, fused_op);
     
     IR_NODE_LINK_TO(fused_op, conv2d_1_out);
+    IR_NODE_LINK_TO(fused_op, conv2d_1_out_max);
 
     delete_nodes.insert({gn_silu_0, gn_silu_1, conv2d_0, conv2d_1, gn_silu_0_out, 
-      conv2d_0_out, conv2d_0_out_max, gn_silu_1_out, 
-      conv2d_1_branch_max, conv2d_1_out_max});
+      conv2d_0_out, conv2d_0_out_max, gn_silu_1_out});
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
