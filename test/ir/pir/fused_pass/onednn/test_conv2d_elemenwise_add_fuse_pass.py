@@ -29,11 +29,12 @@ paddle.enable_static()
 class TestConv2dAddFusePass(PassTest):
     """
     x_var   filter
-      \      /      
+      \      /
         conv2d   residual
            \      /
-              out  
+              out
     """
+
     def is_program_valid(self, program=None):
         return True
 
@@ -90,11 +91,12 @@ class TestConv2dAddFusePass(PassTest):
 class TestConv2dAddFusePassAsY(PassTest):
     """
             x_var   filter
-              \      /      
-    residual    conv2d   
+              \      /
+    residual    conv2d
            \      /
-              out  
+              out
     """
+
     def is_program_valid(self, program=None):
         return True
 
@@ -151,13 +153,14 @@ class TestConv2dAddFusePassAsY(PassTest):
 class TestConv2dBiasAddFusePass(PassTest):
     """
     x_var   filter
-      \      /      
+      \      /
         conv2d   bias
            \      /
             conv2d_bias   residual
                   \       /
                      out
     """
+
     def is_program_valid(self, program=None):
         return True
 
