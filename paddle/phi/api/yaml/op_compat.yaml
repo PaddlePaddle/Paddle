@@ -2487,6 +2487,10 @@
 
 - op : partial_sum
   backward : partial_sum_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 

@@ -1204,6 +1204,16 @@
     func : partial_recv
     data_type : dtype
 
+- op : partial_sum
+  args : (Tensor[] x, int start_index = 0, int length = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : PartialSumInferMeta
+  kernel :
+    func : partial_sum
+    data_type : x
+  backward : partial_sum_grad
+
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
