@@ -21,6 +21,7 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/sparse_type.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/type_base.h"
 #include "paddle/pir/include/core/type_name.h"
@@ -247,6 +248,39 @@ TEST(type_test, custom_type_dialect) {
   pir::Dialect *dialect_integer1 = ctx->GetRegisteredDialect("integer");
   pir::Dialect *dialect_integer2 = ctx->GetRegisteredDialect<IntegerDialect>();
   EXPECT_EQ(dialect_integer1, dialect_integer2);
+}
+
+TEST(type_test, sparse_dialect) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  common::DDim dims = {4, 4};
+  common::DataLayout data_layout = common::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  pir::DenseTensorType none_zero_indices = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  pir::DenseTensorType none_zero_elements = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  bool coalesced = false;
+  pir::Type pir_type =
+      paddle::dialect::SparseCooTensorType::get(ctx,
+                                                fp32_dtype,
+                                                dims,
+                                                data_layout,
+                                                none_zero_indices,
+                                                none_zero_elements,
+                                                coalesced);
+
+  paddle::dialect::SparseCooTensorType sparse_coo_tensor_type =
+      paddle::dialect::SparseCooTensorType::dyn_cast_impl(pir_type);
+
+  EXPECT_EQ(sparse_coo_tensor_type.isa<paddle::dialect::SparseCooTensorType>(),
+            true);
+  EXPECT_EQ(sparse_coo_tensor_type.dims(), dims);
+  EXPECT_EQ(sparse_coo_tensor_type.data_layout(), data_layout);
+  EXPECT_EQ(sparse_coo_tensor_type.get_indices(), none_zero_indices);
+  EXPECT_EQ(sparse_coo_tensor_type.get_elements(), none_zero_elements);
 }
 
 TEST(type_test, pd_op_dialect) {
