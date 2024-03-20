@@ -10,17 +10,16 @@ if(((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_IR_PASSES test_ir_fusion_group_pass)
 endif()
 
-if(NOT WIN32 OR WIN_UNITTEST_LEVEL EQUAL 0)
+if(WIN32 AND WIN_UNITTEST_LEVEL GREATER 0)
+  message(STATUS "Skip tests unrelated to CUDA/TRT")
+else()
   foreach(target ${TEST_IR_PASSES})
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
-endif()
-
-add_subdirectory(inference)
-
-if(NOT WIN32 OR WIN_UNITTEST_LEVEL EQUAL 0)
   add_subdirectory(pir)
   set_tests_properties(test_fuse_resnet_unit PROPERTIES TIMEOUT 120)
   set_tests_properties(test_convert_to_mixed_precision PROPERTIES TIMEOUT 300)
 endif()
+
+add_subdirectory(inference)

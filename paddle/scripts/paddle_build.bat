@@ -84,8 +84,10 @@ if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined WIN_UNITTEST_LEVEL set WIN_UNITTEST_LEVEL=0
 rem LEVEL 0: run all test 
-rem LEVEL 1: skip tests unrelated to cuda or trt 
-rem LEVEL 2: skip tests unrelated to cuda or trt and skip tests without GPU memory
+rem LEVEL 1: For unittests unrelated to CUDA/TRT, only run on PR-CI-Windows-Infernece(CUDA 11.2), 
+rem          skip it on PR-CI-Windows(CUDA 12.0)
+rem LEVEL 2: For unittests unrelated to CUDA/TRT or unittests without GPU memory, only run on 
+rem          PR-CI-Windows-Infernece(CUDA 11.2), skip it on PR-CI-Windows(CUDA 12.0)
 if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python38
