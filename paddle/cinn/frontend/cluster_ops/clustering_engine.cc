@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/frontend/cluster_ops/cluster_engine.h"
+#include "paddle/cinn/frontend/cluster_ops/clustering_engine.h"
 
 namespace cinn::frontend::cluster_ops {
 class ClusteringEngine {
@@ -498,4 +498,4 @@ class ClusteringEngine {
   const OpTopo op_topo_;
 };
 
-} // namespace cinn::frontend::cluster_ops
+}  // namespace cinn::frontend::cluster_ops
