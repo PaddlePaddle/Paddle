@@ -83,6 +83,8 @@ class ShardableAxesProvider {
 std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
     const pir::ShapeConstraintIRAnalysis* shape_analysis);
 
+int GetOutputShardableAxesResultIdx(const pir::Operation* op) { return 0; }
+
 class ShardableAxesInferer {
  public:
   explicit ShardableAxesInferer(

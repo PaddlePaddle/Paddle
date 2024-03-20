@@ -66,8 +66,6 @@ void VisitStmtOp(const StmtPattern& stmt, const DoEachT& DoEach) {
   std::visit([&](const auto& impl) { VisitStmtOpImpl(impl, DoEach); }, stmt);
 }
 
-int GetOutputShardableAxesResultIdx(const pir::Operation* op) { return 0; }
-
 pir::Value GetStmtBigestShapeValueImpl(const IS& injective_source) {
   const auto* sink_op = injective_source.sole_sink;
   const int result_idx = GetOutputShardableAxesResultIdx(sink_op);

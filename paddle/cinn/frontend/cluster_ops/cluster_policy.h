@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/cluster_ops/group_pattern.h"
+#include "paddle/cinn/frontend/cluster_ops/pattern_utils.h"
 #include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 

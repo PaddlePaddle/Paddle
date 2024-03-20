@@ -117,11 +117,6 @@ struct ShardableAxesUtil {
   }
 };
 
-std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
-    const pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  return std::make_shared<DefaultShardableAxesProvider>(shape_analysis);
-}
-
 class DefaultShardableAxesProvider final : public ShardableAxesProvider {
  private:
   const pir::ShapeConstraintIRAnalysis* shape_analysis_;
@@ -311,6 +306,10 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
   }
 };
 
+std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
+    const pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  return std::make_shared<DefaultShardableAxesProvider>(shape_analysis);
+}
 
 /*====================== ShardableAxesInferer Methods ======================*/
 
@@ -390,7 +389,7 @@ std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::ReversedInfe
 }
 
 std::unordered_map<const pir::Operation*, ShardableAxesSignature>
-GetOp2ShardableAxesSignature(const OpSetPtr& ops) {
+ShardableAxesInferer::GetOp2ShardableAxesSignature(const OpSetPtr& ops) {
   std::unordered_map<const pir::Operation*, ShardableAxesSignature> ret;
   for (const auto* op : *ops) {
     ret[op] = MakeShardableAxesSignature4Op(op);
