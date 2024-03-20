@@ -148,4 +148,7 @@ class ShardableAxesInferer {
   std::shared_ptr<ShardableAxesProvider> shardable_axes_provider_;
 };
 
+using ShardableAxes4ValueT =
+    std::function<std::optional<const ShardableAxes*>(pir::Value)>;
+
 }  // namespace cinn::frontend

@@ -52,13 +52,6 @@ class ClusteringEngine {
     }
     }
 
-  using ShardableAxes4ValueT =
-      std::function<std::optional<const ShardableAxes*>(pir::Value)>;
-  using IsAcyclicConnectedT =
-      std::function<bool(const StmtPattern* src, const StmtPattern* dst)>;
-  using ClusterRoot4StmtT =
-      std::function<const StmtPattern*(const StmtPattern*)>;
-
   ShardableAxes4ValueT MakeInferedShardableAxes4Value(
       const std::vector<const StmtPattern*>& stmt_ptrs);
 
