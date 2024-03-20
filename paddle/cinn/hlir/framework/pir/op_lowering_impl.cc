@@ -680,6 +680,13 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       continue;
     }
     auto tensor = tensor_map.at(op_result);
+    tensor->shape.clear();
+    for (size_t i = 0; i < group->GetShapeOrDataExprs(op_result).shape().size();
+         ++i) {
+      ir::Dim t(tensor->name, group->GetShapeOrDataExprs(op_result).shape()[i]);
+      tensor->shape.push_back(t->dim_expr);
+    }
+
     infer_shape_arg_tensor->push_back(tensor);
     if ((op_result.defining_op()->name() == "cinn_op.reshape") &&
         erase_reshape.count(op_result.defining_op())) {
