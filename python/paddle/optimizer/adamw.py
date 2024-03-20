@@ -67,10 +67,10 @@ class AdamW(Optimizer):
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.9.
         beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
