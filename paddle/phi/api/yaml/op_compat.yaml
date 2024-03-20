@@ -1614,6 +1614,12 @@
   attrs :
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
+- op : global_scatter
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+
 - op : grad_add
   inputs :
     {x : X, y : Y}
@@ -3768,6 +3774,10 @@
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+
+- op: limit_by_capacity
+  outputs :
+    out : Out
 
 - op: lod_array_length
   inputs :
