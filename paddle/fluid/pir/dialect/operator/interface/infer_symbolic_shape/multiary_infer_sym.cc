@@ -122,8 +122,7 @@ bool LinspaceOpInferSymbolicShape(
     return expr;
   }();
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
-    std::vector<symbol::DimExpr> out_dims;
-    out_dims.emplace_back(step);
+    std::vector<symbol::DimExpr> out_dims{step};
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(out_dims)};
   }();
@@ -131,7 +130,7 @@ bool LinspaceOpInferSymbolicShape(
 }
 bool LogspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return LinSpaceOpInferSymbolicShape(op, shape_analysis);
+  return LinspaceOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool StackOpInferSymbolicShape(pir::Operation *op,

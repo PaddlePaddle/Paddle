@@ -387,6 +387,7 @@ bool RepeatInterleaveOpInferSymbolicShape(
         out_sym_shape.push_back(in_dims_sym[i]);
       }
     }
+    return out_sym_shape;
   }();
 
   shape_analysis->SetShapeOrDataForValue(
@@ -759,7 +760,7 @@ bool TopkOpInferSymbolicShape(pir::Operation *op,
   int x_rank = in_dims_sym.size();
   int k = k_shape_or_data.data().value()[0].Get<int64_t>();
 
-  if (axis < 0) axis += rank;
+  if (axis < 0) axis += x_rank;
   const auto &out_sym_shape = [&] {
     std::vector<symbol::DimExpr> out_sym_shape;
     for (int i = 0; i < x_rank; ++i) {
@@ -769,12 +770,13 @@ bool TopkOpInferSymbolicShape(pir::Operation *op,
         out_sym_shape.push_back(in_dims_sym[i]);
       }
     }
+    return out_sym_shape;
   }();
 
-  shape_analysis->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_sym_shape)});
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_sym_shape)};
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
 
   return true;
 }
