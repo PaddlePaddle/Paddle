@@ -136,9 +136,9 @@ class TestSparseUnary(unittest.TestCase):
                 )
 
     def test_sparse_abs(self):
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float16')
         self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float32')
         self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float64')
-        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float16')
         self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'complex64')
         self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'complex128')
 

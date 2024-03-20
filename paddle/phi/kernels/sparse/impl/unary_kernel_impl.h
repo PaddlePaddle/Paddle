@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "glog/logging.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -96,33 +95,20 @@ template <typename T, typename Context>
 void AbsCooKernel(const Context& dev_ctx,
                   const SparseCooTensor& x,
                   SparseCooTensor* out) {
-  VLOG(8) << "rabit3" << out->dtype();
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
-  VLOG(8) << "rabit final" << out->dtype();
+  EmptyLikeCooRealComplexKernel<T, Context>(dev_ctx, x, out);
   phi::AbsKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
 
   out->SetIndicesDict(x.GetIndicesDict());
-  // if (out->dtype() == DataType::COMPLEX64 ||
-  //     out->dtype() == DataType::COMPLEX128) {
-  //   DenseTensor* out_values = out->mutable_non_zero_elements();
-  //   out->set_type(out_values->dtype());
-  // }
 }
 
 template <typename T, typename Context>
 void AbsCsrKernel(const Context& dev_ctx,
                   const SparseCsrTensor& x,
                   SparseCsrTensor* out) {
-  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
+  EmptyLikeCsrRealComplexKernel<T, Context>(dev_ctx, x, out);
   phi::AbsKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
-
-  if (out->dtype() == DataType::COMPLEX64 ||
-      out->dtype() == DataType::COMPLEX128) {
-    DenseTensor* out_values = out->mutable_non_zero_elements();
-    out->set_type(out_values->dtype());
-  }
 }
 
 template <typename T, typename Context>

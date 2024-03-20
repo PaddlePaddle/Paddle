@@ -30,5 +30,15 @@ void EmptyLikeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         SparseCsrTensor* out);
 
+template <typename T, typename Context>
+void EmptyLikeCooRealComplexKernel(const Context& dev_ctx,
+                                   const SparseCooTensor& x,
+                                   SparseCooTensor* out);
+
+template <typename T, typename Context>
+void EmptyLikeCsrRealComplexKernel(const Context& dev_ctx,
+                                   const SparseCsrTensor& x,
+                                   SparseCsrTensor* out);
+
 }  // namespace sparse
 }  // namespace phi

@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-#include "glog/logging.h"
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -27,17 +25,13 @@ template <typename T, typename Context>
 void EmptyLikeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         SparseCooTensor* out) {
-  VLOG(8) << "rabit4" << out->dtype();
   *(out->mutable_indices()) = x.indices();
 
   const DenseTensor& x_values = x.values();
   DenseTensor* out_values = out->mutable_values();
   out_values->Resize(x_values.dims());
-  VLOG(8) << "rabit5" << out->dtype();
   out->set_meta(x.meta());
-  VLOG(8) << "rabit6" << out->dtype();
   dev_ctx.template Alloc<T>(out_values);
-  VLOG(8) << "rabit7" << out->dtype();
 }
 
 template <typename T, typename Context>
@@ -51,6 +45,35 @@ void EmptyLikeCsrKernel(const Context& dev_ctx,
   DenseTensor* out_values = out->mutable_values();
   out_values->Resize(x_values.dims());
   out->set_meta(x.meta());
+  dev_ctx.template Alloc<T>(out_values);
+}
+
+template <typename T, typename Context>
+void EmptyLikeCooRealComplexKernel(const Context& dev_ctx,
+                                   const SparseCooTensor& x,
+                                   SparseCooTensor* out) {
+  *(out->mutable_indices()) = x.indices();
+
+  const DenseTensor& x_values = x.values();
+  DenseTensor* out_values = out->mutable_values();
+  out_values->Resize(x_values.dims());
+  // For certain c2r or r2c op, the meta-information has already been processed
+  // in the infermeta function.
+  dev_ctx.template Alloc<T>(out_values);
+}
+
+template <typename T, typename Context>
+void EmptyLikeCsrRealComplexKernel(const Context& dev_ctx,
+                                   const SparseCsrTensor& x,
+                                   SparseCsrTensor* out) {
+  *(out->mutable_crows()) = x.crows();
+  *(out->mutable_cols()) = x.cols();
+
+  const DenseTensor& x_values = x.values();
+  DenseTensor* out_values = out->mutable_values();
+  out_values->Resize(x_values.dims());
+  // For certain c2r or r2c op, the meta-information has already been processed
+  // in the infermeta function.
   dev_ctx.template Alloc<T>(out_values);
 }
 
@@ -91,6 +114,40 @@ PD_REGISTER_KERNEL(empty_like_csr,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
+PD_REGISTER_KERNEL(empty_like_coo_real_comlex,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::EmptyLikeCooRealComplexKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(empty_like_csr_real_comlex,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::EmptyLikeCsrRealComplexKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(empty_like_coo,
                    GPU,
@@ -114,6 +171,41 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::EmptyLikeCsrKernel,
+                   phi::dtype::float16,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+PD_REGISTER_KERNEL(empty_like_coo_real_comlex,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::EmptyLikeCooRealComplexKernel,
+                   phi::dtype::float16,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(empty_like_csr_real_comlex,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::EmptyLikeCsrRealComplexKernel,
                    phi::dtype::float16,
                    float,
                    double,
