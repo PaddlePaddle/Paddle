@@ -101,5 +101,17 @@ std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
     return iter->second;
   };
 }
-
+std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
+    const std::vector<const pir::Operation*>& ops) {
+  std::set<const pir::Operation*> set;
+  for (const pir::Operation* op : ops) {
+    if (!op->isa<::pir::YieldOp>()) {
+      set.insert(op);
+    }
+  }
+  return [set = std::move(set)](const pir::Operation* op) {
+    return set.count(op) > 0;
+  };
 }
+
+} // namespace cinn::frontend::cluster_ops

@@ -12,70 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
-    const std::vector<const pir::Operation*>& ops) {
-  std::set<const pir::Operation*> set;
-  for (const pir::Operation* op : ops) {
-    if (!op->isa<::pir::YieldOp>()) {
-      set.insert(op);
-    }
-  }
-  return [set = std::move(set)](const pir::Operation* op) {
-    return set.count(op) > 0;
-  };
-}
+#include "paddle/cinn/frontend/cluster_ops/fusion_helper.h"
 
-std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
-    const OpTopo& op_topo) {
-  const auto& IsSource = [&](const pir::Operation* op) {
-    std::size_t num_inputs = 0;
-    op_topo.VisitInputOp(op,
-                         [&](const pir::Operation* input) { ++num_inputs; });
-    return num_inputs == 0;
-  };
-
-  const auto starts = [&] {
-    std::list<const pir::Operation*> starts;
-    for (const auto* op : *op_topo.ops) {
-      if (IsSource(op)) {
-        starts.push_back(op);
-      } else {
-        // do nothing.
-      }
-    }
-    return starts;
-  }();
-
-  std::unordered_map<const pir::Operation*, bool> op_2_is_injective_source;
-
-  auto IsInputsAllInjectiveSource = [&](const pir::Operation* op) {
-    bool is_inputs_all_injective_source = true;
-    op_topo.VisitInputOp(op, [&](const pir::Operation* input) {
-      is_inputs_all_injective_source = (is_inputs_all_injective_source &&
-                                        op_2_is_injective_source.at(input));
-    });
-    return is_inputs_all_injective_source;
-  };
-  const auto VisitInput = [&](const pir::Operation* op,
-                              const OpVisitor& DoEach) {
-    op_topo.VisitInputOp(op, DoEach);
-  };
-  const auto VisitOutput = [&](const pir::Operation* op,
-                               const OpVisitor& DoEach) {
-    op_topo.VisitOutputOp(op, DoEach);
-  };
-  common::TopoWalker<const pir::Operation*> walker{VisitInput, VisitOutput};
-  walker(starts.begin(), starts.end(), [&](const pir::Operation* op) {
-    op_2_is_injective_source[op] =
-        (IsGeneralInjective(op) && IsInputsAllInjectiveSource(op));
-  });
-  return [map = std::move(op_2_is_injective_source)](const pir::Operation* op) {
-    const auto& iter = map.find(op);
-    CHECK(iter != map.end());
-    return iter->second;
-  };
-}
-
+namespace cinn::frontend::cluster_ops {
 class StmtFusionHelper {
  public:
   StmtFusionHelper(const std::vector<const pir::Operation*>& ops,
@@ -524,3 +463,4 @@ class StmtFusionHelper {
   std::function<bool(const pir::Operation*)> IsInjectiveSource;
   std::function<size_t(const pir::Operation*)> GetOrderValue4Op;
 };
+} // namespace cinn::frontend::cluster_ops

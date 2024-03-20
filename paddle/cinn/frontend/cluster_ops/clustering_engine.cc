@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/frontend/cluster_ops/cluster_engine.h"
 
+namespace cinn::frontend::cluster_ops {
 class ClusteringEngine {
  public:
   ClusteringEngine(const std::vector<const pir::Operation*>& ops,
@@ -496,3 +497,5 @@ class ClusteringEngine {
   ShardableAxesInferer shardable_axes_inferer_;
   const OpTopo op_topo_;
 };
+
+} // namespace cinn::frontend::cluster_ops

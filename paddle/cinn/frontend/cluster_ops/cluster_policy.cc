@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/frontend/cluster_ops/cluster_policy.h"
 
-namespace cinn::frontend {
+namespace cinn::frontend::cluster_ops {
 
 class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
  public:
@@ -233,6 +233,4 @@ std::shared_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
     const pir::ShapeConstraintIRAnalysis* shape_analysis) {
   return std::make_shared<LoopAlignableClusteringPolicy>(shape_analysis);
 }
-
-
-}  // namespace cinn::frontend
+} // namespace cinn::frontend::cluster_ops
