@@ -112,8 +112,8 @@ void ApplyBuildGroupOpPass(
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
-  pass_manager->AddPass(
-        cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+
   pass_manager->AddPass(pir::CreateBuildCinnPass());
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
