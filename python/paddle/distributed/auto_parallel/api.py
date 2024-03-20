@@ -1871,7 +1871,7 @@ class DistModel:
                 if feed_var is None:
                     no_data_ids.append(idx)
                 else:
-                    feed_list.append(_to_lodtensor(data))
+                    feed_list.append(feed_var)
             else:
                 feed_list.append(data)
         feed_name_list_with_data = []
