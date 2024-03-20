@@ -214,10 +214,12 @@ void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
   auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
-  ApplyCinnPreprocessPass(program, CreatePassManager);
   // std::cout << "Program before ApplyBuildGroupOpPass: \n"
-  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
-  //           << std::endl;
+  //           << *program << std::endl;
+  ApplyCinnPreprocessPass(program, CreatePassManager);
+  std::cout << "Program before ApplyBuildGroupOpPass: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+            << std::endl;
   ApplyBuildGroupOpPass(program, CreatePassManager);
   // std::cout << "Program before ApplyGroupOpPass: \n"
   //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())

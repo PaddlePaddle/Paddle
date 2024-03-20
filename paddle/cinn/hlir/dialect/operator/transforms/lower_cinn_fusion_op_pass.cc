@@ -514,7 +514,7 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
   VLOG(6) << "Before simply condition block: " << *program;
 
   SimplyConditionBlock(rewriter, &group_map);
-  VLOG(1) << "After simply condition block: " << *program;
+  VLOG(0) << "After simply condition block: " << *program;
 
   // 3. compile condition block to jit_kernel_op
   CompileGroupToJitKernelOp(group_inputs, pir_compiler, rewriter, &group_map);
@@ -557,7 +557,7 @@ pir::Operation* ProcessDyShapeGroup(
   cinn::common::BroadcastTree broadcast_tree =
       cinn::common::ConstructBroadcastTree(
           cinn::common::BroadcastLeaf(all_value_dim_exprs));
-  VLOG(4) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
+  VLOG(0) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
 
   auto group_inputs = GetBlockOutsideInput(group->ops);
 
