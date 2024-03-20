@@ -90,7 +90,7 @@ class IR_API Pass {
   // Get a reference to the attributed previously set.
   template <typename AttrType>
   AttrType& Get(const std::string& attr_name) const {
-    PADDLE_ENFORCE_NE(attrs_.find(attr_name) != attrs_.end(),
+    PADDLE_ENFORCE_EQ(attrs_.find(attr_name) != attrs_.end(),
                       true,
                       phi::errors::InvalidArgument(
                           "Attribute %s not registered for pass.", attr_name));
