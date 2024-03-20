@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/cluster_ops/common_utils.h"
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/frontend/cluster_ops/common_utils.h"
 
 namespace cinn::frontend::cluster_ops {
 
@@ -28,12 +28,13 @@ struct OpAndOperandIndex {
   }
 };
 
-}
+}  // namespace cinn::frontend::cluster_ops
 namespace std {
 
 template <>
 struct hash<cinn::frontend::cluster_ops::OpAndOperandIndex> {
-  size_t operator()(const cinn::frontend::cluster_ops::OpAndOperandIndex& op_operand) const {
+  size_t operator()(
+      const cinn::frontend::cluster_ops::OpAndOperandIndex& op_operand) const {
     return cinn::adt::hash_combine(
         std::hash<const pir::Operation*>()(op_operand.op),
         op_operand.operand_index);
@@ -42,8 +43,8 @@ struct hash<cinn::frontend::cluster_ops::OpAndOperandIndex> {
 
 }  // namespace std
 
-
 namespace cinn::frontend::cluster_ops {
+
 struct ShardableAxis {
   int axis;
   std::string axis_name;
@@ -83,7 +84,7 @@ class ShardableAxesProvider {
 std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
     const pir::ShapeConstraintIRAnalysis* shape_analysis);
 
-int GetOutputShardableAxesResultIdx(const pir::Operation* op) { return 0; }
+int GetOutputShardableAxesResultIdx(const pir::Operation* op);
 
 class ShardableAxesInferer {
  public:
@@ -95,9 +96,7 @@ class ShardableAxesInferer {
   ShardableAxesInferer(ShardableAxesInferer&&) = default;
 
   ShardableAxesSignature MakeShardableAxesSignature4Op(
-      const pir::Operation* op) {
-    return shardable_axes_provider_->MakeShardableAxesSignature4Op(op);
-  }
+      const pir::Operation* op);
 
   std::unordered_map<pir::Value, ShardableAxes> InferShardableAxesFromSink(
       const pir::Operation* sink, const OpTopo& op_topo);
@@ -151,4 +150,4 @@ class ShardableAxesInferer {
 using ShardableAxes4ValueT =
     std::function<std::optional<const ShardableAxes*>(pir::Value)>;
 
-}  // namespace cinn::frontend
+}  // namespace cinn::frontend::cluster_ops

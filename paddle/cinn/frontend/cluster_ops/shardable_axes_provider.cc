@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <optional>
 #include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
+#include <optional>
 
 namespace cinn::frontend::cluster_ops {
 
@@ -245,7 +245,6 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
     };
   }
 
-
   std::optional<std::tuple<pir::Value, /*input_dix*/ int, pir::Value>>
   GetGetBroadcastOpInputOuputValue(const pir::Operation* op) {
     auto* mut_op = const_cast<pir::Operation*>(op);
@@ -311,10 +310,18 @@ std::shared_ptr<ShardableAxesProvider> MakeDefaultShardableAxesProvider(
   return std::make_shared<DefaultShardableAxesProvider>(shape_analysis);
 }
 
+int GetOutputShardableAxesResultIdx(const pir::Operation* op) { return 0; }
+
 /*====================== ShardableAxesInferer Methods ======================*/
 
-std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::InferShardableAxesFromSink(
-    const pir::Operation* sink, const OpTopo& op_topo) {
+ShardableAxesSignature ShardableAxesInferer::MakeShardableAxesSignature4Op(
+    const pir::Operation* op) {
+  return shardable_axes_provider_->MakeShardableAxesSignature4Op(op);
+}
+
+std::unordered_map<pir::Value, ShardableAxes>
+ShardableAxesInferer::InferShardableAxesFromSink(const pir::Operation* sink,
+                                                 const OpTopo& op_topo) {
   auto reversed_walker = GetOpsReversedTopoWalker(op_topo);
   CHECK_GT(op_topo.ops->count(sink), 0);
   const int result_idx = GetOutputShardableAxesResultIdx(sink);
@@ -323,21 +330,21 @@ std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::InferShardab
   return ReversedInferShardableAxes(reversed_walker, sink, init_sa);
 }
 
-std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::InferShardableAxes(
-    const OpSetPtr& ops) {
+std::unordered_map<pir::Value, ShardableAxes>
+ShardableAxesInferer::InferShardableAxes(const OpSetPtr& ops) {
   auto reversed_walker = GetOpsReversedTopoWalker(OpTopo{
       .ops = ops,
   });
   const auto& sinks = GetSinks(*ops);
   const auto& sink_and_init_value =
       GetSinkAndInitValues(reversed_walker, ops, sinks);
-  return ReversedInferShardableAxes(reversed_walker,
-                                    sink_and_init_value.begin(),
-                                    sink_and_init_value.end());
+  return ReversedInferShardableAxes(
+      reversed_walker, sink_and_init_value.begin(), sink_and_init_value.end());
 }
 
 template <typename InputIt>
-std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::ReversedInferShardableAxes(
+std::unordered_map<pir::Value, ShardableAxes>
+ShardableAxesInferer::ReversedInferShardableAxes(
     const common::TopoWalker<const pir::Operation*>& reversed_walker,
     InputIt sink_and_init_begin,
     InputIt sink_and_init_end) {
@@ -376,7 +383,8 @@ std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::ReversedInfe
   return value2shardable_axes;
 }
 
-std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::ReversedInferShardableAxes(
+std::unordered_map<pir::Value, ShardableAxes>
+ShardableAxesInferer::ReversedInferShardableAxes(
     const common::TopoWalker<const pir::Operation*>& reversed_walker,
     const pir::Operation* sink,
     const ShardableAxes& init_sa) {
@@ -397,7 +405,8 @@ ShardableAxesInferer::GetOp2ShardableAxesSignature(const OpSetPtr& ops) {
   return ret;
 }
 
-std::map<std::string, std::vector<std::string>> ShardableAxesInferer::GetAxisName2BoundAxisName(
+std::map<std::string, std::vector<std::string>>
+ShardableAxesInferer::GetAxisName2BoundAxisName(
     const OpSetPtr& ops,
     const std::unordered_map<const pir::Operation*, ShardableAxesSignature>&
         op2shardable_axes_signature) {
@@ -432,7 +441,8 @@ std::map<std::string, std::vector<std::string>> ShardableAxesInferer::GetAxisNam
   return axis_name2bound_axis_name;
 }
 
-std::unordered_map<std::string, std::string> ShardableAxesInferer::GetAxisName2UnionFindSetRoot(
+std::unordered_map<std::string, std::string>
+ShardableAxesInferer::GetAxisName2UnionFindSetRoot(
     const OpSetPtr& ops,
     const std::unordered_map<const pir::Operation*, ShardableAxesSignature>&
         op2shardable_axes_signature) {
@@ -440,7 +450,7 @@ std::unordered_map<std::string, std::string> ShardableAxesInferer::GetAxisName2U
       GetAxisName2BoundAxisName(ops, op2shardable_axes_signature);
   using NodeVisitor = std::function<void(const std::string&)>;
   const auto VisitNext = [&](const std::string& axis_name,
-                              const NodeVisitor& DoEach) {
+                             const NodeVisitor& DoEach) {
     const auto& iter = axis_name2bound_axis_name.find(axis_name);
     if (iter == axis_name2bound_axis_name.end()) return;
     for (const auto& input_axis_name : iter->second) {
@@ -458,7 +468,8 @@ std::unordered_map<std::string, std::string> ShardableAxesInferer::GetAxisName2U
   return axis_name2root;
 }
 
-std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::GetSinkAndInitShardableAxes(
+std::unordered_map<pir::Value, ShardableAxes>
+ShardableAxesInferer::GetSinkAndInitShardableAxes(
     const std::list<const pir::Operation*>& sinks,
     const std::unordered_map<const pir::Operation*, ShardableAxesSignature>&
         op2shardable_axes_signature,
@@ -507,7 +518,8 @@ void ShardableAxesInferer::RenameDuplicatedAxisName(
   }
 }
 
-std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::GetSinkAndInitValues(
+std::unordered_map<pir::Value, ShardableAxes>
+ShardableAxesInferer::GetSinkAndInitValues(
     const common::TopoWalker<const pir::Operation*>& reverse_walker,
     const OpSetPtr& ops,
     const std::list<const pir::Operation*>& sinks) {
@@ -521,4 +533,4 @@ std::unordered_map<pir::Value, ShardableAxes> ShardableAxesInferer::GetSinkAndIn
   return sink_and_inits;
 }
 
-}  // namespace cinn::frontend
+}  // namespace cinn::frontend::cluster_ops

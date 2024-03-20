@@ -39,7 +39,6 @@ using OpSetPtr = std::shared_ptr<OpSet>;
 using OpVisitor = std::function<void(const pir::Operation*)>;
 using OpPatternKind = cinn::hlir::framework::OpPatternKind;
 
-
 struct OpTopo {
   OpSetPtr ops;
 
@@ -76,21 +75,11 @@ struct OpTopo {
   }
 };
 
+OpPatternKind GetOpPatternKind(const ::pir::Operation* node);
 
-OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
-  return hlir::framework::pir::CompatibleInfo::OpKind(*node);
-}
+bool IsGeneralInjective(const pir::Operation* op);
 
-bool IsGeneralInjective(const pir::Operation* op) {
-  hlir::framework::OpPatternKind op_pattern_kind = GetOpPatternKind(op);
-  return op_pattern_kind == hlir::framework::kElementWise ||
-         op_pattern_kind == hlir::framework::kBroadcast ||
-         op_pattern_kind == hlir::framework::kInjective;
-}
-
-size_t GetRank(pir::Value value) {
-  return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
-}
+size_t GetRank(pir::Value value);
 
 std::list<const pir::Operation*> GetSinks(const OpSet& ops);
 

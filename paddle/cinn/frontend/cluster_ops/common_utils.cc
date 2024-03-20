@@ -16,6 +16,21 @@
 
 namespace cinn::frontend::cluster_ops {
 
+OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
+  return hlir::framework::pir::CompatibleInfo::OpKind(*node);
+}
+
+bool IsGeneralInjective(const pir::Operation* op) {
+  hlir::framework::OpPatternKind op_pattern_kind = GetOpPatternKind(op);
+  return op_pattern_kind == hlir::framework::kElementWise ||
+         op_pattern_kind == hlir::framework::kBroadcast ||
+         op_pattern_kind == hlir::framework::kInjective;
+}
+
+size_t GetRank(pir::Value value) {
+  return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
+}
+
 std::list<const pir::Operation*> GetSinks(const OpSet& ops) {
   const auto IsSink = [&](const pir::Operation* op) {
     for (int i = 0; i < op->num_results(); ++i) {
@@ -110,4 +125,4 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
   };
 }
 
-} // namespace cinn::frontend::cluster_ops
+}  // namespace cinn::frontend::cluster_ops
