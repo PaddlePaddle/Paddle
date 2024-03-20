@@ -79,9 +79,6 @@ class IR_API SparseCooTensorType
           TypeBase<SparseCooTensorType, pir::Type, SparseCooTensorTypeStorage> {
  public:
   using Base::Base;
-  // using Type = pir::Type;
-  // using Dim = common::DDim;
-  // using DataLayout = common::DataLayout;
 
   pir::Type dtype() const;
   const common::DDim &dims() const;
