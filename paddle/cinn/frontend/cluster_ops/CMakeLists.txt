@@ -1,7 +1,7 @@
 core_gather_headers()
 
 gather_srcs(
-  cinnapi_src
+  cluster_ops_src
   SRCS
   common_utils.cc
   shardable_axes_provider.cc
@@ -9,3 +9,5 @@ gather_srcs(
   fusion_helper.cc
   cluster_policy.cc
   clustering_engine.cc)
+
+cc_library(cluster_ops SRCS ${cluster_ops_src})
