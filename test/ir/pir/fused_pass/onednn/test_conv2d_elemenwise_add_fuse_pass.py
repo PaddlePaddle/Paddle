@@ -27,7 +27,7 @@ paddle.enable_static()
     "Test case only for OneDNN pass.",
 )
 class TestConv2dAddFusePass(PassTest):
-    """
+    r"""
     x_var   filter
       \      /
         conv2d   residual
@@ -89,7 +89,7 @@ class TestConv2dAddFusePass(PassTest):
     "Test case only for OneDNN pass.",
 )
 class TestConv2dAddFusePassAsY(PassTest):
-    """
+    r"""
             x_var   filter
               \      /
     residual    conv2d
@@ -151,7 +151,7 @@ class TestConv2dAddFusePassAsY(PassTest):
     "Test case only for OneDNN pass.",
 )
 class TestConv2dBiasAddFusePass(PassTest):
-    """
+    r"""
     x_var   filter
       \      /
         conv2d   bias
