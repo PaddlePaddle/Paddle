@@ -962,10 +962,10 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   }
 
   for (auto* op : ops) {
-    VLOG(4) << "start lowering op:" << op->name();
+    VLOG(0) << "start lowering op:" << op->name();
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
 
-    VLOG(4) << "cinn op name " << cinn_op_name << std::endl;
+    VLOG(0) << "cinn op name " << cinn_op_name << std::endl;
 
     // 1.Select Op impl
     std::vector<ir::Tensor> op_func_arg_tensors =
@@ -1204,10 +1204,10 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
-    VLOG(4) << "input tensor name: " << ValueName(in_value);
+    VLOG(0) << "input tensor name: " << ValueName(in_value);
     ir::Tensor tensor = GetTensor(group, in_value);
-    VLOG(4) << "shape: " << tensor->shape;
-    VLOG(4) << "sym_shape: " << tensor->sym_shape;
+    VLOG(0) << "shape: " << tensor->shape;
+    VLOG(0) << "sym_shape: " << tensor->sym_shape;
 
     if (!tensor_map->count(in_value)) {
       // record tensor.
@@ -1270,6 +1270,7 @@ void OpLowererImpl::CollectOutputInfo(
       const auto& dims = type_info.dims();
       if (::common::contain_unknown_dim(dims)) {  // dynamic shape
         const auto& sym_vec = group->GetShapeOrDataExprs(out_value).shape();
+        VLOG(0) << "#### out dynamic shape: " << sym_vec;
         std::vector<ir::Dim> sym_shape;
         for (const auto& sym : sym_vec) {
           DoEach(sym);
