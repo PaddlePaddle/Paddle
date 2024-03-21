@@ -20,16 +20,17 @@ namespace cinn::frontend {
 
 cluster_ops::ClusteringResult ClusterOps(
     const cinn::dialect::GroupOp& group_op) {
-  VLOG(4) << "Start Cluster Ops!";
-  VLOG(4) << "Input group_op :";
   const auto& ops = [&] {
     std::vector<const pir::Operation*> ops;
     for (const auto& op : group_op.GetOperators()) {
-      VLOG(4) << cluster_ops::OpDebugStr(op);
       ops.push_back(op);
     }
     return ops;
   }();
+
+  VLOG(4) << "Start Cluster Ops!";
+  VLOG(4) << "Input Group with size " << ops.size() << " :\n"
+          << cluster_ops::OpsDebugStr(ops);
 
   auto shardable_axes_provider = [&] {
     auto* program = group_op->GetParentProgram();

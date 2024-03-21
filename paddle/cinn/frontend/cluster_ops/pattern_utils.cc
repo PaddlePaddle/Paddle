@@ -244,17 +244,13 @@ std::vector<const pir::Operation*> GetStmtContainedOps(
 }
 
 std::string StmtDebugStr(const StmtPattern& stmt) {
-  std::stringstream ss;
   const auto& all_ops = GetStmtContainedOps(stmt);
-  for (const pir::Operation* op : all_ops) {
-    ss << OpDebugStr(op) << "\n";
-  }
-  return ss.str();
+  return OpsDebugStr(all_ops);
 }
 
 std::string LoopAlignableStmtPatternVec::DebugStr() const {
   std::stringstream ss;
-  ss << "  Alignable Stmt:\n";
+  ss << "  Alignable Stmt, size " << stmts.size() << " :\n";
   for (const auto& stmt : stmts) {
     ss << StmtDebugStr(stmt);
   }
@@ -263,7 +259,7 @@ std::string LoopAlignableStmtPatternVec::DebugStr() const {
 
 std::string ClusteringResult::DebugStr() const {
   std::stringstream ss;
-  ss << "Cluster Result:\n";
+  ss << "Cluster Result, size " << loop_alignable_list.size() << " :\n";
   for (const auto& alignable_stmt : loop_alignable_list) {
     ss << alignable_stmt.DebugStr();
   }
