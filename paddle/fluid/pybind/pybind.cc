@@ -1851,8 +1851,7 @@ All parameter, weight, gradient are variables in Paddle.
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
-              "installed "
-              "CPU/GPU version PaddlePaddle.\n"
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_custom_device, please try to "
               "install"
               "CustomDevice version "
@@ -1870,8 +1869,7 @@ All parameter, weight, gradient are variables in Paddle.
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_custom_device_count because you have "
-              "installed "
-              "CPU/GPU version PaddlePaddle.\n"
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_custom_device_count, please try to "
               "install"
               "CustomDevice version "
