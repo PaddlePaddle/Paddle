@@ -72,7 +72,6 @@ class TestSinHighGradCheck(unittest.TestCase):
             grad_checker.check_vjp(self.func_wrapper, [var], order)
 
     def test_high_grad(self):
-        paddle.enable_static()
         places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
