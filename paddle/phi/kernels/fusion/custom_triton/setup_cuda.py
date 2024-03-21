@@ -44,12 +44,13 @@ setup(
     name="triton_ops",
     ext_modules=CUDAExtension(
         sources=[
-            #"./matmul.cu",
-            "./fmha_triton.cu",
-            "./fmha2_triton.cu",
-            "./fmha3_triton.cu",
-            "./FcRelu_triton.cu",
-            "./Fc_triton.cu",
+            "./matmul.cu",
+            # "./fmha_triton.cu",
+            # "./fmha2_triton.cu",
+            # "./fmha3_triton.cu",
+            # "./FcRelu_triton.cu",
+            # "./Fc_triton.cu",
+            # "./Fc_triton_2.cu",
         ] + generated_cu,
         extra_compile_args={
             "cc": ["-lcuda"],

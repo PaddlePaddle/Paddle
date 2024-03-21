@@ -7,3 +7,6 @@ import triton.language as tl
 def leaky_relu(x):
     x = x + 1
     return tl.where(x >= 0, x, 0.01 * x)
+
+def relu(x):
+    return tl.where(x >= 0, x, 0)
