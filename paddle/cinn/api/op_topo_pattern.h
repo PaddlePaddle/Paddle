@@ -40,7 +40,7 @@ using StmtPattern = std::variant<InjectiveSourcePattern<T>, ReductionPattern<T>,
 
 // Stmts := [Stmt]
 template <typename T>
-using StmtsPattern = std::vector<StmtPattern<T>>;
+using StmtPatternVec = std::vector<StmtPattern<T>>;
 // fuse rules:
 //  1. IS * IS -> IS
 //  2. PS * PS -> PS
@@ -54,6 +54,6 @@ using StmtsPattern = std::vector<StmtPattern<T>>;
 // OpTopoPattern := Error | Stmts
 
 template <typename T>
-using OpTopoPattern = std::variant<ErrorPattern<T>, StmtsPattern<T>>;
+using OpTopoPattern = std::variant<ErrorPattern<T>, StmtPatternVec<T>>;
 
 }

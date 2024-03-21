@@ -28,8 +28,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 
-#include "paddle/cinn/frontend/group_pattern.h"
-#include "paddle/cinn/frontend/group_pattern_util.h"
+#include "paddle/cinn/frontend/cluster_ops/cluster_ops.h"
+#include "paddle/cinn/frontend/cluster_ops/group_pattern.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -869,31 +869,8 @@ struct GetPatternOpList {
 
 std::vector<GroupClusterNode> NewOpMergeWithOp(
     cinn::dialect::GroupOp group_op) {
-  const auto& ops = [&] {
-    std::vector<const pir::Operation*> ops;
-    for (const auto& op : *group_op.block()) {
-      ops.push_back(&op);
-    }
-    return ops;
-  }();
-
-  auto shardable_axes_provider = [&] {
-    auto* program = group_op->GetParentProgram();
-    const auto* shape_analysis =
-        &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::MakeDefaultShardableAxesProvider(shape_analysis);
-  }();
-
-  auto cluster_policy = [&] {
-    auto* program = group_op->GetParentProgram();
-    const auto* shape_analysis =
-        &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::MakeLoopAlignableClusteringPolicy(shape_analysis);
-  }();
-
   VLOG(4) << "Start Clustering Ops!";
-  const auto cluster_result = frontend::ClusterOps(
-      ops, std::move(shardable_axes_provider), std::move(cluster_policy));
+  const auto cluster_result = frontend::ClusterOps(group_op);
   VLOG(4) << "Finished Clustering Ops!";
 
   // Each stmts corresponds to each fusion op(cluster node).
