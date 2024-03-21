@@ -627,7 +627,7 @@ class LayerNorm(Layer):
         - output: same shape as input x.
 
     Returns:
-        ``Tensor`` , the dimension is the same as :attr:`x`, but the internal values have been normalized by ``LayerNorm`` .
+        ``Tensor`` , the dimension is the same as :attr:`x`, but the internal values is normalized by ``LayerNorm`` .
 
     Examples:
 
