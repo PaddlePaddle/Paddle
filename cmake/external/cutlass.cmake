@@ -14,13 +14,19 @@
 
 include(ExternalProject)
 
-set(CUTLASS_PREFIX_DIR ${THIRD_PARTY_PATH}/cutlass)
-set(CUTLASS_TAG v2.11.0)
-set(CUTLASS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cutlass)
+if(NOT DEFINED ENV{MACA_PATH})
+    MESSAGE(FATAL_ERROR "MACA_PATH undefined, mctlass not found!")
+else()
+    set(CUTLASS_PREFIX_DIR "$ENV{MACA_PATH}/include/mctlass")
+    set(CUTLASS_SOURCE_DIR "$ENV{MACA_PATH}/include/mctlass")
+endif()
+if(NOT EXISTS ${CUTLASS_SOURCE_DIR})
+    MESSAGE(FATAL_ERROR "mctlass not found in MACA_PATH!")
+endif()
 
 include_directories("${CUTLASS_SOURCE_DIR}/")
 include_directories("${CUTLASS_SOURCE_DIR}/include/")
-include_directories("${CUTLASS_SOURCE_DIR}/tools/util/include/")
+# include_directories("${CUTLASS_SOURCE_DIR}/tools/util/include/")
 
 add_definitions("-DPADDLE_WITH_CUTLASS")
 add_definitions("-DSPCONV_WITH_CUTLASS=0")

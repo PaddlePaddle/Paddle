@@ -15,7 +15,7 @@
 #pragma once
 
 #if defined(PADDLE_WITH_CUDA)
-#include "paddle/phi/backends/dynload/cublasLt.h"
+// #include "paddle/phi/backends/dynload/cublasLt.h"
 #endif
 
 #include "glog/logging.h"
@@ -66,7 +66,7 @@ class AttnMatMul {
             << ", transB=" << transB_ << ", compute_bias=" << compute_bias_
             << ", fused=" << fused;
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
     if (compute_bias_ && fused) {
       PADDLE_ENFORCE_EQ(
           !output || output == bias_out,
@@ -128,7 +128,7 @@ class AttnMatMul {
                        phi::DenseTensor* d_bias,
                        bool use_addto = false,
                        bool fused = false) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
     if (compute_bias_ && fused) {
       phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
                                                       d_output,

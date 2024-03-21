@@ -180,11 +180,11 @@ typedef u_int64_t warp_mask_t;
 #define WARP_SIZE 64
 #define WARP_SIZE_WIDTH 6
 #define WARP_SIZE_WIDTH_MASK 0x3f
-typedef unsigned warp_mask_t;
+typedef long long warp_mask_t;
 #endif
 
 template <typename T>
-__inline__ __device__ T WarpReduceSum(T val, warp_mask_t long long lane_mask) {
+__inline__ __device__ T WarpReduceSum(T val, warp_mask_t lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
     val += __shfl_xor_sync(lane_mask, val, mask, warpSize);
@@ -196,7 +196,7 @@ __inline__ __device__ T WarpReduceSum(T val, warp_mask_t long long lane_mask) {
 
 /* Calculate the sum of all elements in a block */
 template <typename T>
-__inline__ __device__ T BlockReduceSum(T val, warp_mask_t long long mask) {
+__inline__ __device__ T BlockReduceSum(T val, warp_mask_t mask) {
   static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & WARP_SIZE_WIDTH_MASK;
   int wid = threadIdx.x >> WARP_SIZE_WIDTH;
@@ -257,7 +257,7 @@ __inline__ __device__ T BlockReduceSumV2(T *val) {
 }
 
 template <typename T>
-__inline__ __device__ T WarpReduceMax(T val, warp_mask_t long long lane_mask) {
+__inline__ __device__ T WarpReduceMax(T val, warp_mask_t lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
     val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
@@ -280,7 +280,7 @@ __inline__ __device__ T WarpReduceMaxV2(T *val) {
 }
 
 template <typename T>
-__inline__ __device__ T WarpReduceMin(T val, warp_mask_t long long lane_mask) {
+__inline__ __device__ T WarpReduceMin(T val, warp_mask_t lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
     val = min(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
@@ -293,7 +293,7 @@ __inline__ __device__ T WarpReduceMin(T val, warp_mask_t long long lane_mask) {
 /* Calculate the minimum of all elements in a warp when actual quantity of
  * threads are less than warpSize.*/
 template <typename T>
-__inline__ __device__ T PartialWarpReduceMin(T val, warp_mask_t long long lane_mask) {
+__inline__ __device__ T PartialWarpReduceMin(T val, warp_mask_t lane_mask) {
 #if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
   T warp_val = __shfl_sync(lane_mask, val, 0, warpSize);
 #else
@@ -314,7 +314,7 @@ __inline__ __device__ T PartialWarpReduceMin(T val, warp_mask_t long long lane_m
 
 /* Calculate the maximum of all elements in a block */
 template <typename T>
-__inline__ __device__ T BlockReduceMax(T val, warp_mask_t long long mask) {
+__inline__ __device__ T BlockReduceMax(T val, warp_mask_t mask) {
   static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & WARP_SIZE_WIDTH_MASK;
   int wid = threadIdx.x >> WARP_SIZE_WIDTH;
@@ -364,7 +364,7 @@ __inline__ __device__ T BlockReduceMaxV2(T *val) {
 
 /* Calculate the minimum of all elements in a block */
 template <typename T>
-__inline__ __device__ T BlockReduceMin(T val, warp_mask_t long long mask) {
+__inline__ __device__ T BlockReduceMin(T val, warp_mask_t mask) {
   static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & WARP_SIZE_WIDTH_MASK;
   int wid = threadIdx.x >> WARP_SIZE_WIDTH;
@@ -384,7 +384,7 @@ __inline__ __device__ T BlockReduceMin(T val, warp_mask_t long long mask) {
 /* Calculate the minimum of all elements in a warp when actual quantity of
  * threads are less than warpSize.*/
 template <typename T>
-__inline__ __device__ T PartialBlockReduceMin(T val, warp_mask_t long long mask) {
+__inline__ __device__ T PartialBlockReduceMin(T val, warp_mask_t mask) {
   static __shared__ T shared[WARP_SIZE];
   static __shared__ T min_value;
   int lane = threadIdx.x & WARP_SIZE_WIDTH_MASK;

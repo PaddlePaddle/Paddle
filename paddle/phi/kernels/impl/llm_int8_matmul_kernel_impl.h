@@ -15,7 +15,7 @@ limitations under the License. */
 #include <iostream>
 #include <vector>
 #include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/kernels/funcs/cublaslt.h"
+// #include "paddle/phi/kernels/funcs/cublaslt.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
 
 #pragma once
@@ -557,136 +557,136 @@ void LaunchDequantMergeKernel(const int32_t* x,
       n);
 }
 
-template <typename T>
-void LLMGemm(const phi::GPUContext& dev_ctx,
-             const phi::DenseTensor* weight,
-             const phi::DenseTensor* input,
-             const phi::DenseTensor* weight_scale,
-             const float threshold,
-             phi::DenseTensor* output,
-             phi::DenseTensor* workspace,
-             std::string name,
-             int m,
-             int k,
-             int n) {
-  // absmax, quant, outlier
-  int64_t num_outlier_idx = (k + 31) / 32;
-  phi::DenseTensor row_ranges, outlier_idx, quant_input;
-  row_ranges.Resize({m});
-  outlier_idx.Resize({num_outlier_idx});
-  quant_input.Resize({m, k});
-  dev_ctx.Alloc<float>(&row_ranges);
-  dev_ctx.Alloc<int32_t>(&outlier_idx);
-  dev_ctx.Alloc<int8_t>(&quant_input);
+// template <typename T>
+// void LLMGemm(const phi::GPUContext& dev_ctx,
+//              const phi::DenseTensor* weight,
+//              const phi::DenseTensor* input,
+//              const phi::DenseTensor* weight_scale,
+//              const float threshold,
+//              phi::DenseTensor* output,
+//              phi::DenseTensor* workspace,
+//              std::string name,
+//              int m,
+//              int k,
+//              int n) {
+//   // absmax, quant, outlier
+//   int64_t num_outlier_idx = (k + 31) / 32;
+//   phi::DenseTensor row_ranges, outlier_idx, quant_input;
+//   row_ranges.Resize({m});
+//   outlier_idx.Resize({num_outlier_idx});
+//   quant_input.Resize({m, k});
+//   dev_ctx.Alloc<float>(&row_ranges);
+//   dev_ctx.Alloc<int32_t>(&outlier_idx);
+//   dev_ctx.Alloc<int8_t>(&quant_input);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(outlier_idx.data<int32_t>(),
-                                             0,
-                                             num_outlier_idx * sizeof(int32_t),
-                                             dev_ctx.stream()));
-  LaunchReduceAbsMaxQuantKernel(input->data<T>(),
-                                threshold,
-                                m,
-                                k,
-                                row_ranges.data<float>(),
-                                outlier_idx.data<int32_t>(),
-                                quant_input.data<int8_t>(),
-                                dev_ctx.stream());
-  int32_t kfp_num = 0;
-  phi::DenseTensor kfp_num_tensor;
-  kfp_num_tensor.Resize({1});
-  dev_ctx.Alloc<int32_t>(&kfp_num_tensor);
+//   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(outlier_idx.data<int32_t>(),
+//                                              0,
+//                                              num_outlier_idx * sizeof(int32_t),
+//                                              dev_ctx.stream()));
+//   LaunchReduceAbsMaxQuantKernel(input->data<T>(),
+//                                 threshold,
+//                                 m,
+//                                 k,
+//                                 row_ranges.data<float>(),
+//                                 outlier_idx.data<int32_t>(),
+//                                 quant_input.data<int8_t>(),
+//                                 dev_ctx.stream());
+//   int32_t kfp_num = 0;
+//   phi::DenseTensor kfp_num_tensor;
+//   kfp_num_tensor.Resize({1});
+//   dev_ctx.Alloc<int32_t>(&kfp_num_tensor);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-      kfp_num_tensor.data<int32_t>(), 0, sizeof(int32_t), dev_ctx.stream()));
-  UpdateOutlier<<<1, num_outlier_idx, 0, dev_ctx.stream()>>>(
-      outlier_idx.data<int32_t>(), kfp_num_tensor.data<int32_t>());
-  cudaMemcpy(&kfp_num,
-             kfp_num_tensor.data<int32_t>(),
-             sizeof(int32_t),
-             cudaMemcpyDeviceToHost);
+//   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+//       kfp_num_tensor.data<int32_t>(), 0, sizeof(int32_t), dev_ctx.stream()));
+//   UpdateOutlier<<<1, num_outlier_idx, 0, dev_ctx.stream()>>>(
+//       outlier_idx.data<int32_t>(), kfp_num_tensor.data<int32_t>());
+//   cudaMemcpy(&kfp_num,
+//              kfp_num_tensor.data<int32_t>(),
+//              sizeof(int32_t),
+//              cudaMemcpyDeviceToHost);
 
-  phi::DenseTensor sub_out;
-  sub_out.Resize({m, n});
-  dev_ctx.Alloc<T>(&sub_out);
-  if (kfp_num != 0) {
-    phi::DenseTensor sub_input, sub_weight;
-    sub_input.Resize({m, kfp_num});
-    sub_weight.Resize({n, kfp_num});
+//   phi::DenseTensor sub_out;
+//   sub_out.Resize({m, n});
+//   dev_ctx.Alloc<T>(&sub_out);
+//   if (kfp_num != 0) {
+//     phi::DenseTensor sub_input, sub_weight;
+//     sub_input.Resize({m, kfp_num});
+//     sub_weight.Resize({n, kfp_num});
 
-    dev_ctx.Alloc<T>(&sub_input);
-    dev_ctx.Alloc<T>(&sub_weight);
+//     dev_ctx.Alloc<T>(&sub_input);
+//     dev_ctx.Alloc<T>(&sub_weight);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(sub_input.data<T>(),
-                                               0,
-                                               sub_input.numel() * sizeof(T),
-                                               dev_ctx.stream()));
+//     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(sub_input.data<T>(),
+//                                                0,
+//                                                sub_input.numel() * sizeof(T),
+//                                                dev_ctx.stream()));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(sub_weight.data<T>(),
-                                               0,
-                                               sub_weight.numel() * sizeof(T),
-                                               dev_ctx.stream()));
+//     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(sub_weight.data<T>(),
+//                                                0,
+//                                                sub_weight.numel() * sizeof(T),
+//                                                dev_ctx.stream()));
 
-    LaunchSplitKernel(input->data<T>(),
-                      weight->data<int8_t>(),
-                      weight_scale->data<float>(),
-                      outlier_idx.data<int32_t>(),
-                      sub_input.data<T>(),
-                      sub_weight.data<T>(),
-                      m,
-                      k,
-                      n,
-                      kfp_num,
-                      dev_ctx.stream());
+//     LaunchSplitKernel(input->data<T>(),
+//                       weight->data<int8_t>(),
+//                       weight_scale->data<float>(),
+//                       outlier_idx.data<int32_t>(),
+//                       sub_input.data<T>(),
+//                       sub_weight.data<T>(),
+//                       m,
+//                       k,
+//                       n,
+//                       kfp_num,
+//                       dev_ctx.stream());
 
-    CBLAS_TRANSPOSE transA = CblasNoTrans;
-    CBLAS_TRANSPOSE transB = CblasTrans;
-    T alpha = static_cast<T>(1.0);
-    T beta = static_cast<T>(0.0);
+//     CBLAS_TRANSPOSE transA = CblasNoTrans;
+//     CBLAS_TRANSPOSE transB = CblasTrans;
+//     T alpha = static_cast<T>(1.0);
+//     T beta = static_cast<T>(0.0);
 
-    // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
-    blas.GEMM(transA,
-              transB,
-              m,
-              n,
-              kfp_num,
-              alpha,
-              sub_input.data<T>(),
-              sub_weight.data<T>(),
-              beta,
-              sub_out.data<T>());
+//     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
+//     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+//     blas.GEMM(transA,
+//               transB,
+//               m,
+//               n,
+//               kfp_num,
+//               alpha,
+//               sub_input.data<T>(),
+//               sub_weight.data<T>(),
+//               beta,
+//               sub_out.data<T>());
 
-    // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-  } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-        sub_out.data<T>(), 0, sub_out.numel() * sizeof(T), dev_ctx.stream()));
-  }
+//     // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+//   } else {
+//     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+//         sub_out.data<T>(), 0, sub_out.numel() * sizeof(T), dev_ctx.stream()));
+//   }
 
-  phi::DenseTensor int_out;
-  int_out.Resize({m, n});
-  dev_ctx.Alloc<int32_t>(&int_out);
+//   phi::DenseTensor int_out;
+//   int_out.Resize({m, n});
+//   dev_ctx.Alloc<int32_t>(&int_out);
 
-  {
-    auto helper =
-        std::make_unique<CublasLtHelper>(m, k, n, dev_ctx.cublaslt_handle());
-    helper->GEMM(quant_input.data<int8_t>(),
-                 weight->data<int8_t>(),
-                 int_out.data<int32_t>(),
-                 dev_ctx.stream(),
-                 (void*)workspace->data<int8_t>());
-  }
-  // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+//   {
+//     auto helper =
+//         std::make_unique<CublasLtHelper>(m, k, n, dev_ctx.cublaslt_handle());
+//     helper->GEMM(quant_input.data<int8_t>(),
+//                  weight->data<int8_t>(),
+//                  int_out.data<int32_t>(),
+//                  dev_ctx.stream(),
+//                  (void*)workspace->data<int8_t>());
+//   }
+//   // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 
-  LaunchDequantMergeKernel<T>(int_out.data<int32_t>(),
-                              sub_out.data<T>(),
-                              row_ranges.data<float>(),
-                              weight_scale->data<float>(),
-                              output->data<T>(),
-                              m,
-                              n,
-                              dev_ctx.stream());
-  // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-}
+//   LaunchDequantMergeKernel<T>(int_out.data<int32_t>(),
+//                               sub_out.data<T>(),
+//                               row_ranges.data<float>(),
+//                               weight_scale->data<float>(),
+//                               output->data<T>(),
+//                               m,
+//                               n,
+//                               dev_ctx.stream());
+//   // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+// }
 
 }  // namespace llm_int8
 }  // namespace phi

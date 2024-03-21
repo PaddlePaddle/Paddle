@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#if CUDA_VERSION >= 11060  // Use cublasLt to fuse FFN operation.
+#if CUDA_VERSION >= 11060 && 0  // Use cublasLt to fuse FFN operation.
 
 template <typename T, typename DeviceContext>
 class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
@@ -1363,7 +1363,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
   }
 };
 
-#endif  // CUDA_VERSION >= 11060
+#endif  // CUDA_VERSION >= 11060 && 0
 
 }  // namespace operators
 }  // namespace paddle

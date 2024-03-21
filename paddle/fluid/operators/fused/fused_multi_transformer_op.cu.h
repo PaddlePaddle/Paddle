@@ -1779,7 +1779,7 @@ void InvokeRebuildPadding(const phi::GPUContext &dev_ctx,
       output_data, input_data, padding_offset, dim_embed);
 }
 
-#if CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060 && 0
 // Only Used in Inference
 template <typename T>
 class CublasFusedMLP {

@@ -114,7 +114,7 @@
 //             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
 //             "information"));
 
-// #if CUDA_VERSION >= 11020
+// #if CUDA_VERSION >= 11020 && 0
 
 //     int algoId = 21;
 //     int swizzle = 0;
@@ -199,7 +199,7 @@
 //                                  C_desc_,
 //                                  C_dev,
 //                                  C_desc_,
-// #if CUDA_VERSION >= 11020
+// #if CUDA_VERSION >= 11020 && 0
 //                                  &algo_,
 //                                  workspace,
 //                                  workspace_size_,

@@ -24,7 +24,7 @@ limitations under the License. */
 #include <cuda_runtime_api.h>  // NOLINT
 #include "cuda.h"              // NOLINT
 
-#if CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060 && 0
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"

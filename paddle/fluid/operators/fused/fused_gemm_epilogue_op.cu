@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#if CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060 && 0
 
 template <typename T>
 phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
@@ -65,7 +65,7 @@ template <typename T, typename DeviceContext>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if CUDA_VERSION < 11060
+#if CUDA_VERSION < 11060 || 1
     PADDLE_THROW(phi::errors::Unimplemented(
         "The fused_gemm_epilogue operator only support CUDA 11.6 "
         "or higher version."));
@@ -121,7 +121,7 @@ template <typename T, typename DeviceContext>
 class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if CUDA_VERSION < 11060
+#if CUDA_VERSION < 11060 || 1
     PADDLE_THROW(phi::errors::Unimplemented(
         "The fused_gemm_epilogue operator only support CUDA 11.6 "
         "or higher version."));

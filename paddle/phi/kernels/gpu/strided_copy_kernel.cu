@@ -40,7 +40,7 @@ __global__ void StridedCopyCaseZeroFunc(
                            blockIdx.y,
                            blockIdx.z};
 #else
-  float coordinate[6] = {threadIdx.x,
+  int64_t coordinate[6] = {threadIdx.x,
                          threadIdx.y,
                          threadIdx.z,
                          blockIdx.x,
@@ -475,7 +475,7 @@ __global__ void Strided2ContiguousCaseZeroFunc(
                            blockIdx.y,
                            blockIdx.z};
 #else
-  float coordinate[6] = {threadIdx.x,
+  int64_t coordinate[6] = {threadIdx.x,
                          threadIdx.y,
                          threadIdx.z,
                          blockIdx.x,
@@ -889,7 +889,7 @@ __global__ void Contiguous2StridedCaseZeroFunc(
                            blockIdx.y,
                            blockIdx.z};
 #else
-  float coordinate[6] = {threadIdx.x,
+  int64_t coordinate[6] = {threadIdx.x,
                          threadIdx.y,
                          threadIdx.z,
                          blockIdx.x,

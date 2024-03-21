@@ -883,7 +883,7 @@ __global__ void GatherKthValue(const T* input,
 
   // 1. Find the k-th value
   T kth_value = static_cast<T>(0);
-  RadixSearch<T, RadixTypeConfig<T>::RadixType, false>(
+  RadixSearch<T, typename RadixTypeConfig<T>::RadixType, false>(
       cur_input, k, num_cols, shared_mem, &kth_value);
   const auto converted_kth_value = RadixTypeConfig<T>::Convert(kth_value);
 

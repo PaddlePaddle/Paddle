@@ -34,25 +34,25 @@ static inline __device__ __host__ float sigmoid(float x) {
 
 #ifdef PADDLE_CUDA_BF16
 __host__ __device__ inline float2 bfloat1622float2(const __nv_bfloat162 a) {
-#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+// #if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
   return __bfloat1622float2(a);
-#else
-  float hi_float;
-  float lo_float;
-  lo_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).x);
-  hi_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).y);
-  return make_float2(lo_float, hi_float);
-#endif
+// #else
+//   float hi_float;
+//   float lo_float;
+//   lo_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).x);
+//   hi_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).y);
+//   return make_float2(lo_float, hi_float);
+// #endif
 }
 
 __host__ __device__ inline __nv_bfloat162 float22bfloat162_rn(const float2 a) {
   __nv_bfloat162 val;
-#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+// #if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
   val = __float22bfloat162_rn(a);
-#else
-  val.x = __float2bfloat16_rn(a.x);
-  val.y = __float2bfloat16_rn(a.y);
-#endif
+// #else
+//   val.x = __float2bfloat16_rn(a.x);
+//   val.y = __float2bfloat16_rn(a.y);
+// #endif
   return val;
 }
 

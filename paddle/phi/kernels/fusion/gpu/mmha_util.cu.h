@@ -421,15 +421,17 @@ inline __device__ __nv_bfloat16 bf16hmul(const __nv_bfloat16 x,
 #endif  // ENABLE_BF16
 
 inline __device__ float half_to_float(uint16_t h) {
-  float f;
-  asm volatile("cvt.f32.f16 %0, %1;\n" : "=f"(f) : "h"(h));
-  return f;
+  // float f;
+  // asm volatile("cvt.f32.f16 %0, %1;\n" : "=f"(f) : "h"(h));
+  return __half2float(h);
 }
 
 inline __device__ float2 half2_to_float2(uint32_t v) {
-  uint16_t lo, hi;
-  asm volatile("mov.b32 {%0, %1}, %2;\n" : "=h"(lo), "=h"(hi) : "r"(v));
-  return make_float2(half_to_float(lo), half_to_float(hi));
+  // uint16_t lo, hi;
+  // asm volatile("mov.b32 {%0, %1}, %2;\n" : "=h"(lo), "=h"(hi) : "r"(v));
+  // return make_float2(half_to_float(lo), half_to_float(hi));
+  __half2* v_hf_p = reinterpret_cast<__half2 *>(&v);
+  return make_float2(__low2float(*v_hf_p), __high2float(*v_hf_p));
 }
 
 inline __device__ uint32_t float2_to_half2(float2 f) {
@@ -438,9 +440,12 @@ inline __device__ uint32_t float2_to_half2(float2 f) {
     uint16_t u16[2];
   } tmp;
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-  asm volatile("cvt.rn.f16x2.f32 %0, %1, %2;\n"
-               : "=r"(tmp.u32)
-               : "f"(f.y), "f"(f.x));
+  // asm volatile("cvt.rn.f16x2.f32 %0, %1, %2;\n"
+  //              : "=r"(tmp.u32)
+  //              : "f"(f.y), "f"(f.x));
+  __half2 res = __float22half2_rn(f);
+  uint32_t *temp = reinterpret_cast<uint32_t *>(&res);
+  tmp.u32 = *temp;
 #else
   asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[0]) : "f"(f.x));
   asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[1]) : "f"(f.y));
@@ -533,15 +538,18 @@ inline __device__ float4 add(float4 a, float4 b) {
 }
 
 inline __device__ uint16_t add(uint16_t a, uint16_t b) {
-  uint16_t c;
-  asm volatile("add.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
-  return c;
+  // asm volatile("add.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
+  __half __d = __hadd(*(__half*)&a,*(__half*)&b);
+  uint16_t *c = reinterpret_cast<uint16_t *>(&__d);
+  return *c;
 }
 
 inline __device__ uint32_t add(uint32_t a, uint32_t b) {
-  uint32_t c;
-  asm volatile("add.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
-  return c;
+  // uint32_t c;
+  // asm volatile("add.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
+  __half2 __d = __hadd2(*(__half2*)&a,*(__half2*)&b);
+  uint32_t *c = reinterpret_cast<uint32_t *>(&__d);
+  return *c;
 }
 
 inline __device__ uint2 add(uint2 a, uint2 b) {
@@ -650,20 +658,32 @@ inline __device__ void convert_(float16* result, uint32_t const& source) {
   static constexpr uint32_t mask_for_elt_01 = 0x5150;
   static constexpr uint32_t mask_for_elt_23 = 0x5352;
   static constexpr uint32_t start_byte_for_fp16 = 0x64646464;
-  asm volatile("prmt.b32 %0,%1,%2,%3;\n"
-               : "=r"(h[0])
-               : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_01));
-  asm volatile("prmt.b32 %0,%1,%2,%3;\n"
-               : "=r"(h[1])
-               : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_23));
+  // asm volatile("prmt.b32 %0,%1,%2,%3;\n"
+  //              : "=r"(h[0])
+  //              : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_01));
+  h[0] = ::__byte_perm(i8s, start_byte_for_fp16, mask_for_elt_01);             
+  // asm volatile("prmt.b32 %0,%1,%2,%3;\n"
+  //              : "=r"(h[1])
+  //              : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_23));
+  h[1] = ::__byte_perm(i8s, start_byte_for_fp16, mask_for_elt_23);
+  // static constexpr uint32_t I8s_TO_F16s_MAGIC_NUM = 0x64806480;
+  // asm volatile("sub.f16x2 %0, %1, %2;\n"
+  //              : "=r"(h[0])
+  //              : "r"(h[0]), "r"(I8s_TO_F16s_MAGIC_NUM));
+  // asm volatile("sub.f16x2 %0, %1, %2;\n"
+  //              : "=r"(h[1])
+  //              : "r"(h[1]), "r"(I8s_TO_F16s_MAGIC_NUM));
+  int temp = 0x64806480;
+  __half2 *I8s_TO_F16s_MAGIC_NUM = reinterpret_cast<__half2 *>(&temp);
+  __half2 *a    = reinterpret_cast<__half2 *>(&h[0]);
+  __half2 d_a = __hsub2(*a, *I8s_TO_F16s_MAGIC_NUM);
+  uint32_t* d_ap = reinterpret_cast<uint32_t *>(&d_a);
+  h[0] = *d_ap;
 
-  static constexpr uint32_t I8s_TO_F16s_MAGIC_NUM = 0x64806480;
-  asm volatile("sub.f16x2 %0, %1, %2;\n"
-               : "=r"(h[0])
-               : "r"(h[0]), "r"(I8s_TO_F16s_MAGIC_NUM));
-  asm volatile("sub.f16x2 %0, %1, %2;\n"
-               : "=r"(h[1])
-               : "r"(h[1]), "r"(I8s_TO_F16s_MAGIC_NUM));
+  __half2 *b    = reinterpret_cast<__half2 *>(&h[1]);
+  __half2 d_b = __hsub2(*b, *I8s_TO_F16s_MAGIC_NUM);
+  uint32_t* d_bp = reinterpret_cast<uint32_t *>(&d_b);
+  h[1] = *d_bp;
 #endif
 }
 
@@ -678,15 +698,20 @@ inline __device__ void mul_pointer_v2(uint32_t* c, float a, uint16_t* b) {
 
   static constexpr uint32_t mask_for_elt_01 = 0x5150;
   static constexpr uint32_t start_byte_for_fp16 = 0x64646464;
-  asm volatile("prmt.b32 %0,%1,%2,%3;\n"
-               : "=r"(h[0])
-               : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_01));
-
-  static constexpr uint32_t I8s_TO_F16s_MAGIC_NUM = 0x64806480;
-  asm volatile("sub.f16x2 %0, %1, %2;\n"
-               : "=r"(h[0])
-               : "r"(h[0]), "r"(I8s_TO_F16s_MAGIC_NUM));
-
+  // asm volatile("prmt.b32 %0,%1,%2,%3;\n"
+  //              : "=r"(h[0])
+  //              : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_01));
+  h[0] = ::__byte_perm(i8s, start_byte_for_fp16, mask_for_elt_01);
+  // static constexpr uint32_t I8s_TO_F16s_MAGIC_NUM = 0x64806480;
+  // asm volatile("sub.f16x2 %0, %1, %2;\n"
+  //              : "=r"(h[0])
+  //              : "r"(h[0]), "r"(I8s_TO_F16s_MAGIC_NUM));
+  int temp = 0x64806480;
+  __half2 *I8s_TO_F16s_MAGIC_NUM = reinterpret_cast<__half2 *>(&temp);
+  __half2 *h_0_hf2 = reinterpret_cast<__half2 *>(&h[0]);
+  __half2 d_h_0_hf2 = __hsub2(*h_0_hf2, *I8s_TO_F16s_MAGIC_NUM);
+  uint32_t* d_p = reinterpret_cast<uint32_t *>(&d_h_0_hf2);
+  h[0] = *d_p;
   half2 tmp_half2 = *reinterpret_cast<half2*>(h);
   tmp_half2.x *= static_cast<half>(a);
   tmp_half2.y *= static_cast<half>(a);
@@ -947,16 +972,20 @@ inline __device__ float4 mul(float4 a, float4 b) {
 
 template <>
 inline __device__ uint16_t mul(uint16_t a, uint16_t b) {
-  uint16_t c;
-  asm volatile("mul.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
-  return c;
+  // uint16_t c;
+  // asm volatile("mul.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
+  return a * b;
 }
 
 template <>
 inline __device__ uint32_t mul(uint32_t a, uint32_t b) {
-  uint32_t c;
-  asm volatile("mul.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
-  return c;
+  // uint32_t c;
+  // asm volatile("mul.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
+  __half2 *a_h2    = reinterpret_cast<__half2 *>(&a);
+  __half2 *b_h2    = reinterpret_cast<__half2 *>(&b);
+  __half2 d = __hmul2(*a_h2, *b_h2);
+  uint32_t* d_p = reinterpret_cast<uint32_t *>(&d);
+  return *d_p;
 }
 
 template <>
@@ -1351,11 +1380,16 @@ inline __device__ float4 fma(float4 a, float4 b, float4 c) {
 }
 
 inline __device__ uint32_t fma(uint32_t a, uint32_t b, uint32_t c) {
-  uint32_t d;
-  asm volatile("fma.rn.f16x2 %0, %1, %2, %3;\n"
-               : "=r"(d)
-               : "r"(a), "r"(b), "r"(c));
-  return d;
+  // uint32_t d;
+  // asm volatile("fma.rn.f16x2 %0, %1, %2, %3;\n"
+  //              : "=r"(d)
+  //              : "r"(a), "r"(b), "r"(c));
+  __half2 *a_h2    = reinterpret_cast<__half2 *>(&a);
+  __half2 *b_h2    = reinterpret_cast<__half2 *>(&b);
+  __half2 *c_h2    = reinterpret_cast<__half2 *>(&c);
+  __half2 d =  __hfma2(*a_h2, *b_h2, *c_h2);
+  uint32_t* d_p = reinterpret_cast<uint32_t *>(&d);
+  return *d_p;
 }
 
 inline __device__ uint2 fma(uint2 a, uint2 b, uint2 c) {
@@ -1420,9 +1454,13 @@ inline __device__ bf16_4_t fma(float a, Float4_ b, bf16_4_t c) {
 #endif  // ENABLE_BF16
 
 inline __device__ uint32_t h0_h0(uint16_t a) {
-  uint32_t b;
-  asm volatile("mov.b32 %0, {%1, %1};" : "=r"(b) : "h"(a));
-  return b;
+  // uint32_t b;
+  // Zequn: pack two f16 to 32bit f16x2 ？
+  // asm volatile("mov.b32 %0, {%1, %1};" : "=r"(b) : "h"(a));
+  __half* a_p = reinterpret_cast<__half*>(&a);
+  __half2 b_h2 = __halves2half2(*a_p, *a_p);
+  uint32_t* b = reinterpret_cast<uint32_t *>(&b_h2);
+  return *b;
 }
 
 inline __device__ uint32_t fma(uint16_t a, uint32_t b, uint32_t c) {
@@ -2661,15 +2699,19 @@ struct MMHAStore<T, int8_t, true> {
 inline __device__ float4 hmma_fp32_tensorcore(const uint2& a, uint32_t b) {
   float4 c;
   float zero = 0.f;
-  asm volatile(
-      "mma.sync.aligned.m16n8k8.row.col.f32.f16.f16.f32 \n"
-      "    {%0, %1, %2, %3}, \n"
-      "    {%4, %5}, \n"
-      "    {%6}, \n"
-      "    {%7, %7, %7, %7}; \n"
+  // asm volatile(
+  //     "mma.sync.aligned.m16n8k8.row.col.f32.f16.f16.f32 \n"
+  //     "    {%0, %1, %2, %3}, \n"
+  //     "    {%4, %5}, \n"
+  //     "    {%6}, \n"
+  //     "    {%7, %7, %7, %7}; \n"
 
-      : "=f"(c.x), "=f"(c.y), "=f"(c.z), "=f"(c.w)
-      : "r"(a.x) "r"(a.y), "r"(b), "f"(zero));
+  //     : "=f"(c.x), "=f"(c.y), "=f"(c.z), "=f"(c.w)
+  //     : "r"(a.x) "r"(a.y), "r"(b), "f"(zero));
+  //  auto results = __builtin_mxc_mma_16x8x8f32(
+  //       {static_cast<__fp16>(float(a.x)), static_cast<__fp16>(float(a.y))},
+  //       {b},
+  //       {zero});
   return c;
 }
 

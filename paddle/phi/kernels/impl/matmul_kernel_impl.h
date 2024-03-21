@@ -26,7 +26,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/funcs/cublaslt.h"
 #endif
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #endif
 
@@ -486,7 +486,7 @@ void MatMulFunctionImplWithBlas(
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 // This is almost a copy from MatMulFunctionImplWithBlas,
 // compare cublas with cublasLt kernels when Matmul autotune is on
 template <typename Context, typename T>
@@ -921,7 +921,7 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                   bool trans_x,
                   bool trans_y,
                   bool flag = false) {
-#if CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060 && 0
     auto* tuner = phi::autotune::MakeMatmulTuner<T>(
         MatMulFunctionImplWithBlas<phi::GPUContext, T>);
     tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
@@ -995,7 +995,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
   if (x.dtype() != DataType::INT8 || y.dtype() != DataType::INT8) {
     return false;
   }
-#if CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060 && 0
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
   const int8_t* x_data = x.data<int8_t>();
@@ -1580,7 +1580,7 @@ void MatmulWithFlattenKernelInt8Impl(const Context& dev_ctx,
     out->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
   }
 
-#if CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060 && 0
   using blaslt = phi::funcs::MatmulWithCublasLt<int8_t, int32_t>;
 
   const int8_t* x_data = x_matrix.data<int8_t>();

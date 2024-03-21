@@ -66,20 +66,32 @@ __device__ inline void fast_cvt_4_packed_signed_i8s_to_2_half2s(
   static constexpr uint32_t mask_for_elt_01 = 0x5150;
   static constexpr uint32_t mask_for_elt_23 = 0x5352;
   static constexpr uint32_t start_byte_for_fp16 = 0x64646464;
-  asm volatile("prmt.b32 %0,%1,%2,%3;\n"
-               : "=r"(h[0])
-               : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_01));
-  asm volatile("prmt.b32 %0,%1,%2,%3;\n"
-               : "=r"(h[1])
-               : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_23));
+  // asm volatile("prmt.b32 %0,%1,%2,%3;\n"
+  //              : "=r"(h[0])
+  //              : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_01));
+  h[0] = ::__byte_perm(i8s, start_byte_for_fp16, mask_for_elt_01);
+  // asm volatile("prmt.b32 %0,%1,%2,%3;\n"
+  //              : "=r"(h[1])
+  //              : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_23));
+  h[1] = ::__byte_perm(i8s, start_byte_for_fp16, mask_for_elt_23);
+  // static constexpr uint32_t I8s_TO_F16s_MAGIC_NUM = 0x64806480;
+  // asm volatile("sub.f16x2 %0, %1, %2;\n"
+  //              : "=r"(h[0])
+  //              : "r"(h[0]), "r"(I8s_TO_F16s_MAGIC_NUM));
+  // asm volatile("sub.f16x2 %0, %1, %2;\n"
+  //              : "=r"(h[1])
+  //              : "r"(h[1]), "r"(I8s_TO_F16s_MAGIC_NUM));
+  int temp = 0x64806480;
+  __half2 *I8s_TO_F16s_MAGIC_NUM = reinterpret_cast<__half2 *>(&temp);
+  __half2 *a    = reinterpret_cast<__half2 *>(&h[0]);
+  __half2 d_a = __hsub2(*a, *I8s_TO_F16s_MAGIC_NUM);
+  uint32_t* d_ap = reinterpret_cast<uint32_t *>(&d_a);
+  h[0] = *d_ap;
 
-  static constexpr uint32_t I8s_TO_F16s_MAGIC_NUM = 0x64806480;
-  asm volatile("sub.f16x2 %0, %1, %2;\n"
-               : "=r"(h[0])
-               : "r"(h[0]), "r"(I8s_TO_F16s_MAGIC_NUM));
-  asm volatile("sub.f16x2 %0, %1, %2;\n"
-               : "=r"(h[1])
-               : "r"(h[1]), "r"(I8s_TO_F16s_MAGIC_NUM));
+  __half2 *b    = reinterpret_cast<__half2 *>(&h[1]);
+  __half2 d_b = __hsub2(*b, *I8s_TO_F16s_MAGIC_NUM);
+  uint32_t* d_bp = reinterpret_cast<uint32_t *>(&d_b);
+  h[1] = *d_bp;
 #endif
 }
 
@@ -134,14 +146,14 @@ __forceinline__ __device__ float copysignf_pos(float a, float b) {
 }
 
 __inline__ __device__ float tanh_opt(float x) {
-#if (__CUDA_ARCH__ >= 750 && CUDART_VERSION >= 11000)
-  float r;
-  asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(r) : "f"(x));
-  return r;
-#else
+// #if (__CUDA_ARCH__ >= 750 && CUDART_VERSION >= 11000)
+//   float r;
+//   asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(r) : "f"(x));
+//   return r;
+// #else
   const float exp_val = -1.f * fabs(2 * x);
   return copysignf_pos((1.0f - __expf(exp_val)) / (__expf(exp_val) + 1.0f), x);
-#endif
+// #endif
 }
 
 template <typename T, bool EnableFastGelu>
@@ -757,7 +769,7 @@ __global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight,
 
   // Each warp completes the internal reduce and writes the [Batch * NPerBlock *
   // Interleave] results to the corresponding address in shared memory
-  Details::Layout::sync<Num, WarpSize>(reses, sm);
+  // Details::Layout::sync<Num, WarpSize>(reses, sm);
 
   // Each thread is responsible for the accumulation and store to global memory
   // of one element

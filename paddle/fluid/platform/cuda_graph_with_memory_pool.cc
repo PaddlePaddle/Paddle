@@ -34,7 +34,7 @@ void InitCUDNNRelatedHandle(phi::GPUContext* dev_ctx) {
   // support capture such kind of init, need to init all these handle before
   // cuda graph.
   dev_ctx->cublas_handle();
-// #if CUDA_VERSION >= 11060
+// #if CUDA_VERSION >= 11060 && 0
 //   dev_ctx->cublaslt_handle();
 // #endif
   dev_ctx->cudnn_handle();

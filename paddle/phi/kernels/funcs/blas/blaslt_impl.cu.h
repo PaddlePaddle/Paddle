@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 
 #include "glog/logging.h"
 
@@ -35,7 +35,7 @@ PHI_DECLARE_int64(cublaslt_exhaustive_search_times);
 namespace phi {
 namespace funcs {
 
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0)
 
 // Set this enum according to
 // https://docs.nvidia.com/cuda/cublas/index.html#cublasltepilogue-t
@@ -1130,7 +1130,7 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
 #else
 // A void structure just for successfully compile.
 struct MatmulPlanner {};
-#endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 
 }  // namespace funcs
 }  // namespace phi

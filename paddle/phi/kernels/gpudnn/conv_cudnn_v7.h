@@ -615,7 +615,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
           perf_results.size(),
           workspace_size_limit);
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, returned_algo_count);
     }
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);

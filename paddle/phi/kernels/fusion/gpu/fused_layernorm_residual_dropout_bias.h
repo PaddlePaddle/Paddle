@@ -620,7 +620,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
         RandVec<VecSize>(&state, rand);
 #pragma unroll
         for (int jt = 0; jt < VecSize; jt++) {
-#pragma unroll
+// #pragma unroll
           mask_vec[it][jt] = static_cast<MaskType>(rand[jt] >= dropout_prob);
         }
       }

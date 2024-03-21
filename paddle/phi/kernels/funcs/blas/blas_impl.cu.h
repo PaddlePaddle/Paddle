@@ -1699,7 +1699,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   const int64_t strideC = M * N;
   context_.CublasCall([&](cublasHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cublasDgemmStridedBatched(handle,
+        phi::dynload::cublasDgemmStridedBatched(handle,
                                                              cuTransB,
                                                              cuTransA,
                                                              N,

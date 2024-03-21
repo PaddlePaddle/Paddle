@@ -54,7 +54,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
   return common::make_ddim({y_dim[0], 1});
 }
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 template <typename T, typename DeviceContext>
 typename std::enable_if<std::is_integral<T>::value, void>::type
 ComputeMatmulImpl(const framework::ExecutionContext &context) {
@@ -965,7 +965,7 @@ REGISTER_OP_CUDA_KERNEL(
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
-#if CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060 && 0
 REGISTER_OP_CUDA_KERNEL(
     matmul,
     ops::MatMulKernel<phi::GPUContext, int8_t>,

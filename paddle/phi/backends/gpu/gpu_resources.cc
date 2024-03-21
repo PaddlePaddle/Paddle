@@ -24,7 +24,7 @@
 #include "paddle/phi/core/allocator.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
-#include "paddle/phi/backends/dynload/cublasLt.h"
+// #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
@@ -253,13 +253,13 @@ void DestroyBlasHandle(blasHandle_t handle) {
 }
 
 // void InitBlasLtHandle(blasLtHandle_t* blaslt_handle) {
-// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 //   phi::dynload::cublasLtCreate(blaslt_handle);
 // #endif
 // }
 
 // void DestroyBlasLtHandle(blasLtHandle_t handle) {
-// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060 && 0
 //   if (handle != nullptr) {
 //     phi::dynload::cublasLtDestroy(handle);
 //     handle = nullptr;
