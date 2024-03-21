@@ -145,7 +145,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'distributed_lookup_table',
     'dgc_momentum',
     'dgc',
-    'dgc_',
     'dpsgd',
     'embedding_grad_sparse',
     'ftrl',
