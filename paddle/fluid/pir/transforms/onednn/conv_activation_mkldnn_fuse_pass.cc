@@ -57,14 +57,36 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     if (fused_level_ > 0) {
       conv_name = paddle::onednn::dialect::FusedConv2dOp::name();
     }
+
     const auto &conv =
-        pat.Op(conv_name,
-               {{"strides", pat.Attr("strides")},
-                {"paddings", pat.Attr("paddings")},
-                {"padding_algorithm", pat.Attr("padding_algorithm")},
-                {"dilations", pat.Attr("dilations")},
-                {"groups", pat.Attr("groups")},
-                {"data_format", pat.Attr("data_format")}});
+        fused_level_ == 1
+            ? pat.Op(conv_name,
+                     {{"strides", pat.Attr("strides")},
+                      {"paddings", pat.Attr("paddings")},
+                      {"padding_algorithm", pat.Attr("padding_algorithm")},
+                      {"dilations", pat.Attr("dilations")},
+                      {"groups", pat.Attr("groups")},
+                      {"data_format", pat.Attr("data_format")}})
+            : pat.Op(conv_name,
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", pat.Attr("fuse_activation")},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("fuse_alpha")},
+                         {"fuse_beta", pat.Attr("fuse_beta")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     std::string activation_name_op = "pd_op." + activation_name_;
     if (activation_name_ == "hard_swish") {
@@ -111,10 +133,6 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    auto fuse_residual = res.BoolAttr(false);
-    if (fused_level_ > 1) {
-      fuse_residual = res.BoolAttr(true);
-    }
     auto fuse_beta = res.Float32Attr(0.0f);
     auto fuse_alpha = res.Float32Attr(0.0f);
     if (activation_name_ == "relu6") {
@@ -130,25 +148,47 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &fused_conv =
-        res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-               {{
-                   {"strides", pat.Attr("strides")},
-                   {"paddings", pat.Attr("paddings")},
-                   {"padding_algorithm", pat.Attr("padding_algorithm")},
-                   {"dilations", pat.Attr("dilations")},
-                   {"groups", pat.Attr("groups")},
-                   {"data_format", pat.Attr("data_format")},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
-                   {"fuse_activation", res.StrAttr(activation_name_)},
-                   {"fuse_residual_connection", fuse_residual},
-                   {"force_fp32_output", res.BoolAttr(false)},
-                   {"fuse_alpha", fuse_alpha},
-                   {"fuse_beta", fuse_beta},
-                   {"scale_in", res.Float32Attr(1.0f)},
-                   {"scale_out", res.Float32Attr(1.0f)},
-                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                   {"scale_weights", res.VectorFloatAttr({1.0f})},
-               }});
+        fused_level_ == 1
+            ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"fuse_activation", res.StrAttr(activation_name_)},
+                         {"fuse_residual_connection", res.BoolAttr(false)},
+                         {"force_fp32_output", res.BoolAttr(false)},
+                         {"fuse_alpha", fuse_alpha},
+                         {"fuse_beta", fuse_beta},
+                         {"scale_in", res.Float32Attr(1.0f)},
+                         {"scale_out", res.Float32Attr(1.0f)},
+                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
+                         {"scale_weights", res.VectorFloatAttr({1.0f})},
+                     }})
+            : res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", res.StrAttr(activation_name_)},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", fuse_alpha},
+                         {"fuse_beta", fuse_beta},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
+
     if (fused_level_ == 1) {
       fused_conv({&res.Tensor("input"),
                   &res.Tensor("filter"),
@@ -213,13 +253,34 @@ class ConvActivationFusePattern2 : public paddle::drr::DrrPatternBase {
       conv_name = paddle::onednn::dialect::FusedConv2dOp::name();
     }
     const auto &conv =
-        pat.Op(conv_name,
-               {{"strides", pat.Attr("strides")},
-                {"paddings", pat.Attr("paddings")},
-                {"padding_algorithm", pat.Attr("padding_algorithm")},
-                {"dilations", pat.Attr("dilations")},
-                {"groups", pat.Attr("groups")},
-                {"data_format", pat.Attr("data_format")}});
+        fused_level_ == 1
+            ? pat.Op(conv_name,
+                     {{"strides", pat.Attr("strides")},
+                      {"paddings", pat.Attr("paddings")},
+                      {"padding_algorithm", pat.Attr("padding_algorithm")},
+                      {"dilations", pat.Attr("dilations")},
+                      {"groups", pat.Attr("groups")},
+                      {"data_format", pat.Attr("data_format")}})
+            : pat.Op(conv_name,
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", pat.Attr("fuse_activation")},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("fuse_alpha")},
+                         {"fuse_beta", pat.Attr("fuse_beta")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     std::string activation_name_op = "pd_op." + activation_name_;
     if (activation_name_ == "hard_swish") {
@@ -266,10 +327,6 @@ class ConvActivationFusePattern2 : public paddle::drr::DrrPatternBase {
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    auto fuse_residual = res.BoolAttr(false);
-    if (fused_level_ > 1) {
-      fuse_residual = res.BoolAttr(true);
-    }
     auto fuse_beta = res.Float32Attr(0.0f);
     auto fuse_alpha = res.Float32Attr(0.0f);
     if (activation_name_ == "relu6") {
@@ -285,25 +342,47 @@ class ConvActivationFusePattern2 : public paddle::drr::DrrPatternBase {
     }
 
     const auto &fused_conv =
-        res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-               {{
-                   {"strides", pat.Attr("strides")},
-                   {"paddings", pat.Attr("paddings")},
-                   {"padding_algorithm", pat.Attr("padding_algorithm")},
-                   {"dilations", pat.Attr("dilations")},
-                   {"groups", pat.Attr("groups")},
-                   {"data_format", pat.Attr("data_format")},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
-                   {"fuse_activation", res.StrAttr(activation_name_)},
-                   {"fuse_residual_connection", fuse_residual},
-                   {"force_fp32_output", res.BoolAttr(false)},
-                   {"fuse_alpha", fuse_alpha},
-                   {"fuse_beta", fuse_beta},
-                   {"scale_in", res.Float32Attr(1.0f)},
-                   {"scale_out", res.Float32Attr(1.0f)},
-                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                   {"scale_weights", res.VectorFloatAttr({1.0f})},
-               }});
+        fused_level_ == 1
+            ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"fuse_activation", res.StrAttr(activation_name_)},
+                         {"fuse_residual_connection", res.BoolAttr(false)},
+                         {"force_fp32_output", res.BoolAttr(false)},
+                         {"fuse_alpha", fuse_alpha},
+                         {"fuse_beta", fuse_beta},
+                         {"scale_in", res.Float32Attr(1.0f)},
+                         {"scale_out", res.Float32Attr(1.0f)},
+                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
+                         {"scale_weights", res.VectorFloatAttr({1.0f})},
+                     }})
+            : res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", res.StrAttr(activation_name_)},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", fuse_alpha},
+                         {"fuse_beta", fuse_beta},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
+
     if (fused_level_ == 1) {
       fused_conv({&res.Tensor("input"),
                   &res.Tensor("filter"),
@@ -357,13 +436,34 @@ class ConvLeakyReluFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &conv =
-        pat.Op(conv_name,
-               {{"strides", pat.Attr("strides")},
-                {"paddings", pat.Attr("paddings")},
-                {"padding_algorithm", pat.Attr("padding_algorithm")},
-                {"dilations", pat.Attr("dilations")},
-                {"groups", pat.Attr("groups")},
-                {"data_format", pat.Attr("data_format")}});
+        fused_level_ == 1
+            ? pat.Op(conv_name,
+                     {{"strides", pat.Attr("strides")},
+                      {"paddings", pat.Attr("paddings")},
+                      {"padding_algorithm", pat.Attr("padding_algorithm")},
+                      {"dilations", pat.Attr("dilations")},
+                      {"groups", pat.Attr("groups")},
+                      {"data_format", pat.Attr("data_format")}})
+            : pat.Op(conv_name,
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", pat.Attr("fuse_activation")},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("fuse_alpha")},
+                         {"fuse_beta", pat.Attr("fuse_beta")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     const auto &activation = pat.Op(
         activation_name_, {{"negative_slope", pat.Attr("negative_slope")}});
@@ -404,31 +504,48 @@ class ConvLeakyReluFusePattern : public paddle::drr::DrrPatternBase {
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    auto fuse_residual = res.BoolAttr(false);
-    if (fused_level_ > 1) {
-      fuse_residual = res.BoolAttr(true);
-    }
 
     const auto &fused_conv =
-        res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-               {{
-                   {"strides", pat.Attr("strides")},
-                   {"paddings", pat.Attr("paddings")},
-                   {"padding_algorithm", pat.Attr("padding_algorithm")},
-                   {"dilations", pat.Attr("dilations")},
-                   {"groups", pat.Attr("groups")},
-                   {"data_format", pat.Attr("data_format")},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
-                   {"fuse_activation", res.StrAttr("leaky_relu")},
-                   {"fuse_residual_connection", fuse_residual},
-                   {"force_fp32_output", res.BoolAttr(false)},
-                   {"fuse_alpha", pat.Attr("negative_slope")},
-                   {"fuse_beta", res.Float32Attr(0.0f)},
-                   {"scale_in", res.Float32Attr(1.0f)},
-                   {"scale_out", res.Float32Attr(1.0f)},
-                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                   {"scale_weights", res.VectorFloatAttr({1.0f})},
-               }});
+        fused_level_ == 1
+            ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"fuse_activation", res.StrAttr("leaky_relu")},
+                         {"fuse_residual_connection", res.BoolAttr(false)},
+                         {"force_fp32_output", res.BoolAttr(false)},
+                         {"fuse_alpha", pat.Attr("negative_slope")},
+                         {"fuse_beta", res.Float32Attr(0.0f)},
+                         {"scale_in", res.Float32Attr(1.0f)},
+                         {"scale_out", res.Float32Attr(1.0f)},
+                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
+                         {"scale_weights", res.VectorFloatAttr({1.0f})},
+                     }})
+            : res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", res.StrAttr("leaky_relu")},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("negative_slope")},
+                         {"fuse_beta", pat.Attr("fuse_beta")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     if (fused_level_ == 1) {
       fused_conv({&res.Tensor("input"),
@@ -482,13 +599,34 @@ class ConvHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &conv =
-        pat.Op(conv_name,
-               {{"strides", pat.Attr("strides")},
-                {"paddings", pat.Attr("paddings")},
-                {"padding_algorithm", pat.Attr("padding_algorithm")},
-                {"dilations", pat.Attr("dilations")},
-                {"groups", pat.Attr("groups")},
-                {"data_format", pat.Attr("data_format")}});
+        fused_level_ == 1
+            ? pat.Op(conv_name,
+                     {{"strides", pat.Attr("strides")},
+                      {"paddings", pat.Attr("paddings")},
+                      {"padding_algorithm", pat.Attr("padding_algorithm")},
+                      {"dilations", pat.Attr("dilations")},
+                      {"groups", pat.Attr("groups")},
+                      {"data_format", pat.Attr("data_format")}})
+            : pat.Op(conv_name,
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", pat.Attr("fuse_activation")},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("fuse_alpha")},
+                         {"fuse_beta", pat.Attr("fuse_beta")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     const auto &activation =
         pat.Op(activation_name_,
@@ -526,31 +664,48 @@ class ConvHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    auto fuse_residual = res.BoolAttr(false);
-    if (fused_level_ > 1) {
-      fuse_residual = res.BoolAttr(true);
-    }
 
     const auto &fused_conv =
-        res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-               {{
-                   {"strides", pat.Attr("strides")},
-                   {"paddings", pat.Attr("paddings")},
-                   {"padding_algorithm", pat.Attr("padding_algorithm")},
-                   {"dilations", pat.Attr("dilations")},
-                   {"groups", pat.Attr("groups")},
-                   {"data_format", pat.Attr("data_format")},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
-                   {"fuse_activation", res.StrAttr("hard_sigmoid")},
-                   {"fuse_residual_connection", fuse_residual},
-                   {"force_fp32_output", res.BoolAttr(false)},
-                   {"fuse_alpha", pat.Attr("slope")},
-                   {"fuse_beta", pat.Attr("offset")},
-                   {"scale_in", res.Float32Attr(1.0f)},
-                   {"scale_out", res.Float32Attr(1.0f)},
-                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                   {"scale_weights", res.VectorFloatAttr({1.0f})},
-               }});
+        fused_level_ == 1
+            ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"fuse_activation", res.StrAttr("hard_sigmoid")},
+                         {"fuse_residual_connection", res.BoolAttr(false)},
+                         {"force_fp32_output", res.BoolAttr(false)},
+                         {"fuse_alpha", pat.Attr("slope")},
+                         {"fuse_beta", pat.Attr("offset")},
+                         {"scale_in", res.Float32Attr(1.0f)},
+                         {"scale_out", res.Float32Attr(1.0f)},
+                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
+                         {"scale_weights", res.VectorFloatAttr({1.0f})},
+                     }})
+            : res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", res.StrAttr("hard_sigmoid")},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("slope")},
+                         {"fuse_beta", pat.Attr("offset")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     if (fused_level_ == 1) {
       fused_conv({&res.Tensor("input"),
@@ -603,13 +758,34 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &conv =
-        pat.Op(conv_name,
-               {{"strides", pat.Attr("strides")},
-                {"paddings", pat.Attr("paddings")},
-                {"padding_algorithm", pat.Attr("padding_algorithm")},
-                {"dilations", pat.Attr("dilations")},
-                {"groups", pat.Attr("groups")},
-                {"data_format", pat.Attr("data_format")}});
+        fused_level_ == 1
+            ? pat.Op(conv_name,
+                     {{"strides", pat.Attr("strides")},
+                      {"paddings", pat.Attr("paddings")},
+                      {"padding_algorithm", pat.Attr("padding_algorithm")},
+                      {"dilations", pat.Attr("dilations")},
+                      {"groups", pat.Attr("groups")},
+                      {"data_format", pat.Attr("data_format")}})
+            : pat.Op(conv_name,
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", pat.Attr("fuse_activation")},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("fuse_alpha")},
+                         {"fuse_beta", pat.Attr("fuse_beta")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     const auto &activation =
         pat.Op(activation_name_, {{"approximate", pat.Attr("approximate")}});
@@ -654,30 +830,48 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
           return "gelu_erf";
         });
     auto fuse_residual = res.BoolAttr(false);
-    if (fused_level_ > 1) {
-      fuse_residual = res.BoolAttr(true);
-    }
 
     const auto &fused_conv =
-        res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-               {{
-                   {"strides", pat.Attr("strides")},
-                   {"paddings", pat.Attr("paddings")},
-                   {"padding_algorithm", pat.Attr("padding_algorithm")},
-                   {"dilations", pat.Attr("dilations")},
-                   {"groups", pat.Attr("groups")},
-                   {"data_format", pat.Attr("data_format")},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
-                   {"fuse_activation", gelu},
-                   {"fuse_residual_connection", fuse_residual},
-                   {"force_fp32_output", res.BoolAttr(false)},
-                   {"fuse_alpha", res.Float32Attr(0.0f)},
-                   {"fuse_beta", res.Float32Attr(0.0f)},
-                   {"scale_in", res.Float32Attr(1.0f)},
-                   {"scale_out", res.Float32Attr(1.0f)},
-                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                   {"scale_weights", res.VectorFloatAttr({1.0f})},
-               }});
+        fused_level_ == 1
+            ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"fuse_activation", gelu},
+                         {"fuse_residual_connection", res.BoolAttr(false)},
+                         {"force_fp32_output", res.BoolAttr(false)},
+                         {"fuse_alpha", res.Float32Attr(0.0f)},
+                         {"fuse_beta", res.Float32Attr(0.0f)},
+                         {"scale_in", res.Float32Attr(1.0f)},
+                         {"scale_out", res.Float32Attr(1.0f)},
+                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
+                         {"scale_weights", res.VectorFloatAttr({1.0f})},
+                     }})
+            : res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", gelu},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("fuse_alpha")},
+                         {"fuse_beta", pat.Attr("fuse_beta")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     if (fused_level_ == 1) {
       fused_conv({&res.Tensor("input"),
@@ -736,13 +930,34 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("min") = full_1();
     pat.Tensor("max") = full_2();
     const auto &conv =
-        pat.Op(conv_name,
-               {{"strides", pat.Attr("strides")},
-                {"paddings", pat.Attr("paddings")},
-                {"padding_algorithm", pat.Attr("padding_algorithm")},
-                {"dilations", pat.Attr("dilations")},
-                {"groups", pat.Attr("groups")},
-                {"data_format", pat.Attr("data_format")}});
+        fused_level_ == 1
+            ? pat.Op(conv_name,
+                     {{"strides", pat.Attr("strides")},
+                      {"paddings", pat.Attr("paddings")},
+                      {"padding_algorithm", pat.Attr("padding_algorithm")},
+                      {"dilations", pat.Attr("dilations")},
+                      {"groups", pat.Attr("groups")},
+                      {"data_format", pat.Attr("data_format")}})
+            : pat.Op(conv_name,
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", pat.Attr("fuse_activation")},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("fuse_alpha")},
+                         {"fuse_beta", pat.Attr("fuse_beta")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     const auto &activation = pat.Op(activation_name_);
     if (fused_level_ == 1) {
@@ -774,31 +989,48 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
         pat.Tensor("conv2d_out"), pat.Tensor("min"), pat.Tensor("max"));
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    auto fuse_residual = res.BoolAttr(false);
-    if (fused_level_ > 1) {
-      fuse_residual = res.BoolAttr(true);
-    }
 
     const auto &fused_conv =
-        res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-               {{
-                   {"strides", pat.Attr("strides")},
-                   {"paddings", pat.Attr("paddings")},
-                   {"padding_algorithm", pat.Attr("padding_algorithm")},
-                   {"dilations", pat.Attr("dilations")},
-                   {"groups", pat.Attr("groups")},
-                   {"data_format", pat.Attr("data_format")},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
-                   {"fuse_activation", res.StrAttr("clip")},
-                   {"fuse_residual_connection", fuse_residual},
-                   {"force_fp32_output", res.BoolAttr(false)},
-                   {"fuse_alpha", pat.Attr("full_1_value")},
-                   {"fuse_beta", pat.Attr("full_2_value")},
-                   {"scale_in", res.Float32Attr(1.0f)},
-                   {"scale_out", res.Float32Attr(1.0f)},
-                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                   {"scale_weights", res.VectorFloatAttr({1.0f})},
-               }});
+        fused_level_ == 1
+            ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"fuse_activation", res.StrAttr("clip")},
+                         {"fuse_residual_connection", res.BoolAttr(false)},
+                         {"force_fp32_output", res.BoolAttr(false)},
+                         {"fuse_alpha", pat.Attr("full_1_value")},
+                         {"fuse_beta", pat.Attr("full_2_value")},
+                         {"scale_in", res.Float32Attr(1.0f)},
+                         {"scale_out", res.Float32Attr(1.0f)},
+                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
+                         {"scale_weights", res.VectorFloatAttr({1.0f})},
+                     }})
+            : res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
+                     {{
+                         {"strides", pat.Attr("strides")},
+                         {"paddings", pat.Attr("paddings")},
+                         {"padding_algorithm", pat.Attr("padding_algorithm")},
+                         {"dilations", pat.Attr("dilations")},
+                         {"groups", pat.Attr("groups")},
+                         {"data_format", pat.Attr("data_format")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"fuse_activation", res.StrAttr("clip")},
+                         {"fuse_residual_connection",
+                          pat.Attr("fuse_residual_connection")},
+                         {"force_fp32_output", pat.Attr("force_fp32_output")},
+                         {"fuse_alpha", pat.Attr("full_1_value")},
+                         {"fuse_beta", pat.Attr("full_2_value")},
+                         {"scale_in", pat.Attr("scale_in")},
+                         {"scale_out", pat.Attr("scale_out")},
+                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                         {"scale_weights", pat.Attr("scale_weights")},
+                     }});
 
     if (fused_level_ == 1) {
       fused_conv({&res.Tensor("input"),
