@@ -19,7 +19,7 @@ class Nope:
     op_name: op_name_generator.Nope
     dims_descriptor: IrGenDimDescriptor
 
-    def CheckDimsSize(self):
+    def CheckNumDims(self):
         pass
 
 @dataclass
@@ -29,7 +29,7 @@ class AddSinkTensor:
     op_name: op_name_generator.AddSinkTensor
     dims_descriptor: IrGenDimDescriptor
 
-    def CheckDimsSize(self):
+    def CheckNumDims(self):
         pass
 
 
@@ -40,7 +40,7 @@ class AddUnaryOp:
     op_name: op_name_generator.AddUnaryOp
     dims_descriptor: IrGenDimDescriptor
 
-    def CheckDimsSize(self):
+    def CheckNumDims(self):
         assert (
             len(dims_descriptor.static_dim_size)
             == len(dims.source_tensor_dim_eq_one)
@@ -54,7 +54,7 @@ class AddBinaryOp:
     op_name: op_name_generator.AddBinaryOp
     dims_descriptor: IrGenDimDescriptor
 
-    def CheckDimsSize(self):
+    def CheckNumDims(self):
         assert (
             len(dims_descriptor.static_dim_size)
             == len(dims.lhs_source_tensor_dim_eq_one)
@@ -72,7 +72,7 @@ class InsertBinaryOp:
     op_name: op_name_generator.InsertBinaryOp
     dims_descriptor: IrGenDimDescriptor
 
-    def CheckDimsSize(self):
+    def CheckNumDims(self):
         assert (
             len(dims_descriptor.static_dim_size)
             == len(dims.rhs_source_tensor_dim_eq_one)
@@ -124,7 +124,7 @@ class IrGenGenerator:
         dag_gen_instructions: List[dag_generator.DAGGenInstruction],
         dims_gen_instructions: List[dims_generator.DimsGenInstruction],
         op_name_gen_instructions: List[op_name_generator.OpNameGenInstruction]
-    ):
+    ) -> List[IrGenInstruction]:
         def CreateIrGenInstruction(triple):
             dag_gen_instr, dims_gen_instr, op_name_gen_instr = triple
             dag_gen_class = type(dag_gen_instr)
@@ -135,7 +135,7 @@ class IrGenGenerator:
                 op_name=op_name_gen_instr,
                 dims_descriptor=self.requirement.dims_descriptor
             )
-            instruction.CheckDimsSize()
+            instruction.CheckNumDims()
             return instruction
         return [
             CreateIrGenInstruction(triple)

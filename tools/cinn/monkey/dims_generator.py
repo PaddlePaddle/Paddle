@@ -11,7 +11,7 @@ class DimsGenRequirement:
 @dataclass
 class Nope:
     @classmethod
-    def Merge(cls, dim_gen_instructions):
+    def Merge(cls, dim_gen_instructions: List[dim_generator.DimGenInstruction]):
         return Nope()
 
 
@@ -20,7 +20,7 @@ class AddSinkTensor:
     source_tensor_dim_eq_one: List[bool]
 
     @classmethod
-    def Merge(cls, dim_gen_instructions):
+    def Merge(cls, dim_gen_instructions: List[dim_generator.DimGenInstruction]):
         return AddSinkTensor(
             source_tensor_dim_eq_one=tuple(
                 dim_gen_instance.source_tensor_dim_eq_one
@@ -34,7 +34,7 @@ class AddUnaryOp:
     source_tensor_dim_eq_one: List[bool]
 
     @classmethod
-    def Merge(cls, dim_gen_instructions):
+    def Merge(cls, dim_gen_instructions: List[dim_generator.DimGenInstruction]):
         return AddUnaryOp(
             source_tensor_dim_eq_one=tuple(
                 dim_gen_instance.source_tensor_dim_eq_one
@@ -49,7 +49,7 @@ class AddBinaryOp:
     rhs_source_tensor_dim_eq_one: List[bool]
 
     @classmethod
-    def Merge(cls, dim_gen_instructions):
+    def Merge(cls, dim_gen_instructions: List[dim_generator.DimGenInstruction]):
         return AddBinaryOp(
             lhs_source_tensor_dim_eq_one=tuple(
                 dim_gen_instance.lhs_source_tensor_dim_eq_one
@@ -67,7 +67,7 @@ class InsertBinaryOp:
     rhs_source_tensor_dim_eq_one: List[bool]
 
     @classmethod
-    def Merge(cls, dim_gen_instructions):
+    def Merge(cls, dim_gen_instructions: List[dim_generator.DimGenInstruction]):
         return InsertBinaryOp(
             rhs_source_tensor_dim_eq_one=tuple(
                 dim_gen_instance.rhs_source_tensor_dim_eq_one
@@ -80,7 +80,7 @@ class InsertBinaryOp:
 class AddBinaryClone:
 
     @classmethod
-    def Merge(cls, dim_gen_instructions):
+    def Merge(cls, dim_gen_instructions: List[dim_generator.DimGenInstruction]):
         return AddBinaryClone()
 
 
@@ -88,7 +88,7 @@ class AddBinaryClone:
 class AddSourceOp:
 
     @classmethod
-    def Merge(cls, dim_gen_instructions):
+    def Merge(cls, dim_gen_instructions: List[dim_generator.DimGenInstruction]):
         return AddSourceOp()
 
 

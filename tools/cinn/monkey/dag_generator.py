@@ -379,13 +379,14 @@ kDAGGenInstructionClasses = [
 ]
 
 def GetTotalWeight(
-    pick_probability: DAGGenTypePickProbability
+    pick_probability: DAGGenTypePickProbability,
+    dag_gen_classes: List[type]
 ) -> float:
     def GetWeight(dag_gen_class):
         return dag_gen_class.GetWeight(pick_probability)
     return functools.reduce(
         lambda a, b: a + b,
-        functools.map(GetWeight, kDAGGenInstructionClasses)
+        functools.map(GetWeight, dag_gen_classes)
     )
 
 class DAGGenClassGenerator:
@@ -393,9 +394,7 @@ class DAGGenClassGenerator:
         self,
         pick_probability: DAGGenTypePickProbability
     ):
-        self.rolling_ranges = DAGGenClassGenerator._MakeRollingRange(
-            pick_probability
-        )
+        self.pick_probability = pick_probability
     
     def GetRandomDAGGenClass(
         self,
@@ -409,11 +408,13 @@ class DAGGenClassGenerator:
                 num_source_tensors,
                 requirement
             )
+        rolling_ranges = type(self)._MakeRollingRange(
+            self.pick_probability,
+            [x for x in kDAGGenInstructionClasses if IsValidNumSources(x)]
+        )
         def Roll():
             random_int = random.randomint(0, type(self)._RollingLimit())
-            for start, end, dag_gen_class in self.rolling_ranges:
-                if not IsValidNumSources(dag_gen_class):
-                    continue
+            for start, end, dag_gen_class in rolling_ranges:
                 if random_int >= start and random_int < end:
                     return dag_gen_class
             return None
@@ -432,9 +433,10 @@ class DAGGenClassGenerator:
     @classmethod
     def _MakeRollingRange(
         cls,
-        pick_probability: DAGGenTypePickProbability
+        pick_probability: DAGGenTypePickProbability,
+        dag_gen_classes: List[type]
     ) -> List[DAGGenClassRollingRange]:
-        total_weight = GetTotalWeight(pick_probability)
+        total_weight = GetTotalWeight(pick_probability, dag_gen_classes)
         start = 0
         def GetRange(dag_gen_class):
             nonlocal start
@@ -447,11 +449,12 @@ class DAGGenClassGenerator:
                 .end=current_end,
                 .dag_gen_class=dag_gen_class,
             )
-        return [GetRange(cls) for cls in kDAGGenInstructionClasses]
+        return [GetRange(cls) for cls in dag_gen_classes]
 
     @classmethod
     def _RollingLimit(cls):
         return 10000
+
 
 class ConstDAGGenInstructions:
     def __init__(
