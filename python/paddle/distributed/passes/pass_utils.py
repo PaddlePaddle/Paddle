@@ -277,9 +277,10 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
         )
 
         if job_type == "backward":
-            assert (
-                len(skip_gc_vars) == 0
-            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
+            if not ("backward_b" in job_types or "backward_w" in job_types):
+                assert (
+                    len(skip_gc_vars) == 0
+                ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
@@ -772,15 +773,16 @@ def _program_for_vpp(
 
 
 def _get_backward_op_type(block, op):
+    only_backward_w = 0
     for name in op.output_arg_names:
         name = name.split("@")[0]
         if block._find_var_recursive(name):
             var = block._find_var_recursive(name)
-            if var.is_parameter:
-                return "backward_w"
-            else:
+            if not var.is_parameter:
                 return "backward_b"
-    return "backward_b"
+            else:
+                only_backward_w = 1
+    return "backward_w" if only_backward_w else "backward_b"
 
 
 def _program_for_zero_bubble(program):
@@ -788,9 +790,10 @@ def _program_for_zero_bubble(program):
 
     oprole_type = {
         0: "forward",
-        1: "backward_b",
-        2: 'backward_w',
-        3: "optimizer",
+        1: "backward",
+        2: "backward_b",
+        3: 'backward_w',
+        4: "optimizer",
     }
 
     def _split_ops(block):
@@ -808,6 +811,7 @@ def _program_for_zero_bubble(program):
             elif is_backward_op(op):
                 type = _get_backward_op_type(block, op)
                 type_to_ops[type].append(op)
+                type_to_ops["backward"].append(op)
             elif is_optimize_op(op):
                 type_to_ops["optimizer"].append(op)
             else:
@@ -824,8 +828,9 @@ def _program_for_zero_bubble(program):
 
     for idx, src_block in enumerate(program.blocks):
         type_to_ops = _split_ops(src_block)
-        fwd_ops, bwd_b_ops, bwd_w_ops, opt_ops, fetch_ops = (
+        fwd_ops, bwd_ops, bwd_b_ops, bwd_w_ops, opt_ops, fetch_ops = (
             type_to_ops["forward"],
+            type_to_ops["backward"],
             type_to_ops["backward_b"],
             type_to_ops["backward_w"],
             type_to_ops["optimizer"],
@@ -834,6 +839,9 @@ def _program_for_zero_bubble(program):
         if idx == 0:
             fwd_block = type_to_program["forward"].block(0)
             _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            bwd_block = type_to_program["backward"].block(0)
+            _add_ops_into_block(src_block, bwd_block, bwd_ops)
 
             bwd_block_b = type_to_program["backward_b"].block(0)
             _add_ops_into_block(src_block, bwd_block_b, bwd_b_ops)
@@ -850,6 +858,13 @@ def _program_for_zero_bubble(program):
                 )
                 fwd_block._set_forward_block_idx(src_block.forward_block_idx)
                 _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            if len(bwd_ops):
+                bwd_block = type_to_program["backward"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block, bwd_ops)
 
             if len(bwd_b_ops):
                 bwd_block_b = type_to_program["backward_b"]._create_block(
