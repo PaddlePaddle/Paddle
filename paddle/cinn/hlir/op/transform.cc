@@ -289,9 +289,9 @@ std::vector<std::vector<int>> InferShapeForSplit(
   if (attrs.find("num_or_sections") != attrs.end()) {
     sections = absl::get<std::vector<int>>(attrs.at("num_or_sections"));
   } else {
-    LOG(FATAL)
-        << "The Split op doesn't find [num_or_sections] attribute! It it "
-           "a mandatory attribute ! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The Split op doesn't find [num_or_sections] attribute! It it "
+        "a mandatory attribute ! Please check."));
   }
 
   if (inputs_shape.empty()) {
@@ -340,11 +340,13 @@ std::vector<std::vector<int>> InferShapeForSplit(
         neg_index = i;
       } else {
         if (sections[i] == 0) {
-          LOG(FATAL) << "The attribute 'num_or_sections' should not has 0 ! "
-                        "Please check.";
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The attribute 'num_or_sections' should not has 0 ! "
+              "Please check."));
         } else {
-          LOG(FATAL) << "The attribute 'num_or_sections' can only have at most "
-                        "one '-1' ! Please check.";
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The attribute 'num_or_sections' can only have at most "
+              "one '-1' ! Please check."));
         }
       }
     }
@@ -376,9 +378,9 @@ std::vector<Type> InferDtypeForSplit(const std::vector<Type> &inputs_type,
   if (attrs.find("num_or_sections") != attrs.end()) {
     sections = absl::get<std::vector<int>>(attrs.at("num_or_sections"));
   } else {
-    LOG(FATAL)
-        << "The Split op doesn't find [num_or_sections] attribute! It it "
-           "a mandatory attribute ! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The Split op doesn't find [num_or_sections] attribute! It it "
+        "a mandatory attribute ! Please check."));
   }
 
   int output_size = sections.size();
@@ -402,9 +404,9 @@ std::vector<std::vector<std::string>> InferLayoutForSplit(
     sections =
         absl::get<std::vector<int>>(attrs.attr_store.at("num_or_sections"));
   } else {
-    LOG(FATAL)
-        << "The Split op doesn't find [num_or_sections] attribute! It it "
-           "a mandatory attribute ! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The Split op doesn't find [num_or_sections] attribute! It it "
+        "a mandatory attribute ! Please check."));
   }
 
   int output_size = sections.size();
@@ -926,7 +928,8 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
     for (auto &e : axis) {
       if (e >= static_cast<int>(output_shapes[0].size()) ||
           e < -1 * static_cast<int>(output_shapes[0].size())) {
-        LOG(FATAL) << "axis is not in [0, n_dim), Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "axis is not in [0, n_dim), Please check."));
       }
       if (e < 0) {
         e += output_shapes[0].size();
@@ -973,7 +976,8 @@ std::vector<framework::shape_t> InferShapeForReverse(
     for (auto &e : axis) {
       if (e >= static_cast<int>(inputs_shape[0].size()) ||
           e < -1 * static_cast<int>(inputs_shape[0].size())) {
-        LOG(FATAL) << "axis is not in [-n_dim, n_dim), Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "axis is not in [-n_dim, n_dim), Please check."));
       }
       if (e < 0) {
         e += inputs_shape[0].size();
@@ -993,7 +997,8 @@ std::vector<std::vector<std::string>> InferLayoutForReverse(
     for (auto &e : axis) {
       if (e >= static_cast<int>(input_shapes[0].size()) ||
           e < -1 * static_cast<int>(input_shapes[0].size())) {
-        LOG(FATAL) << "axis is not in [-n_dim, n_dim), Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "axis is not in [-n_dim, n_dim), Please check."));
       }
     }
   }
@@ -1046,7 +1051,8 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
           << "output shape is not equal! Please check!\n";
     }
   } else {
-    LOG(FATAL) << "axis is not be set! Please check.";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("axis is not be set! Please check."));
   }
 
   framework::CINNCompute transpose_compute([=](lang::Args args,
@@ -1173,7 +1179,8 @@ std::vector<framework::shape_t> InferShapeForTranspose(
     }
     result.push_back(output_shape);
   } else {
-    LOG(FATAL) << "axis is not be set! Please check.";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("axis is not be set! Please check."));
   }
   return result;
 }
@@ -1198,7 +1205,8 @@ std::vector<std::vector<std::string>> InferLayoutForTranspose(
       }
     }
   } else {
-    LOG(FATAL) << "axis is not be set! Please check.";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("axis is not be set! Please check."));
   }
 
   std::vector<std::string> new_input_layouts = input_layouts;

@@ -249,6 +249,41 @@ TEST(type_test, custom_type_dialect) {
   EXPECT_EQ(dialect_integer1, dialect_integer2);
 }
 
+TEST(type_test, sparse_coo) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  common::DDim dims = {4, 4};
+  common::DDim non_zero_dims = {4, 1};
+  common::DataLayout data_layout = common::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  pir::DenseTensorType none_zero_indices = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  pir::DenseTensorType none_zero_elements = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  bool coalesced = false;
+  pir::Type pir_type =
+      paddle::dialect::SparseCooTensorType::get(ctx,
+                                                fp32_dtype,
+                                                dims,
+                                                non_zero_dims,
+                                                data_layout,
+                                                none_zero_indices,
+                                                none_zero_elements,
+                                                coalesced);
+
+  EXPECT_EQ(pir_type.isa<paddle::dialect::SparseCooTensorType>(), true);
+  paddle::dialect::SparseCooTensorType sparse_coo_tensor_type =
+      pir_type.dyn_cast<paddle::dialect::SparseCooTensorType>();
+  EXPECT_EQ(sparse_coo_tensor_type.dims(), dims);
+  EXPECT_EQ(sparse_coo_tensor_type.non_zero_dims(), non_zero_dims);
+  EXPECT_EQ(sparse_coo_tensor_type.data_layout(), data_layout);
+  EXPECT_EQ(sparse_coo_tensor_type.non_zero_indices(), none_zero_indices);
+  EXPECT_EQ(sparse_coo_tensor_type.non_zero_elements(), none_zero_elements);
+  EXPECT_EQ(sparse_coo_tensor_type.coalesced(), coalesced);
+}
+
 TEST(type_test, pd_op_dialect) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();

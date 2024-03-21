@@ -329,6 +329,12 @@
   outputs :
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
+- op : barrier
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+
 - op : batch_norm
   backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
   inputs:
@@ -1254,6 +1260,15 @@
       data_type : float
       support_tensor : true
 
+- op : fused_adam_(fused_adam)
+  inputs :
+    {params : Params, grads : Grads, learning_rate : LearningRate, moments1 : Moments1,
+     moments2 : Moments2, beta1_pows : Beta1Pows, beta2_pows : Beta2Pows, master_params : MasterParams,
+     skip_update : SkipUpdate}
+  outputs :
+    {params_out : ParamsOut, moments1_out : Moments1Out, moments2_out : Moments2Out,
+     beta1_pows_out : Beta1PowsOut, beta2_pows_out : Beta2PowsOut, master_params_out : MasterParamsOut}
+
 - op : fused_attention
   backward: fused_attention_grad
   inputs:
@@ -1607,6 +1622,12 @@
     {rpn_rois : RpnRois, rpn_roi_probs : RpnRoiProbs, rpn_rois_num : RpnRoisNum}
   attrs :
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
+
+- op : global_scatter
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
 
 - op : grad_add
   inputs :
@@ -2469,12 +2490,22 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : partial_allgather
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : partial_recv
   outputs :
     out : Out
 
 - op : partial_sum
   backward : partial_sum_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3706,11 +3737,24 @@
   attrs :
     {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, fused_reshape_x : fused_reshape_X, fused_transpose_x : fused_transpose_X, fused_reshape_y : fused_reshape_Y, fused_transpose_y : fused_transpose_Y, fused_reshape_out : fused_reshape_Out, fused_transpose_out : fused_transpose_Out}
 
+- op: fused_softmax_mask
+  backward : fused_softmax_mask_grad
+  inputs :
+    {x: X, mask: Mask}
+  outputs :
+    {out : Out}
+
 - op: fused_softplus
   inputs :
     {x: X}
   outputs :
     {out : Out}
+
+- op: fused_token_prune
+  inputs :
+    {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
+  outputs :
+    {slimmed_x : SlimmedX, cls_inds : CLSInds}
 
 - op: fusion_squared_mat_sub
   inputs :
@@ -3739,6 +3783,10 @@
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+
+- op: limit_by_capacity
+  outputs :
+    out : Out
 
 - op: lod_array_length
   inputs :
@@ -3802,6 +3850,12 @@
 - op: partial_send
   inputs :
     x : X
+
+- op: prune_gate_by_capacity
+  inputs:
+    {gate_idx: GateIdx, expert_count: ExpertCount}
+  outputs:
+    new_gate_idx: NewGateIdx
 
 - op: random_routing
   inputs:
