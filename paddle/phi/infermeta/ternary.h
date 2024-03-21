@@ -57,7 +57,7 @@ void AssignPosInferMeta(const MetaTensor& x,
                         const MetaTensor& cum_count,
                         const MetaTensor& eff_num_len,
                         MetaTensor* out);
-  
+
 void BatchFCInferMeta(const MetaTensor& input,
                       const MetaTensor& w,
                       const MetaTensor& bias,
