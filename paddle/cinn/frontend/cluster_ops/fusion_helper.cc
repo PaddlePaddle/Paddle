@@ -48,7 +48,7 @@ struct FusePolicy_IS_x_PS_2_PS {
     });
   }
 
-  ShardableAxesSignature MergeShardableAxesSignature(
+  static ShardableAxesSignature MergeShardableAxesSignature(
       const IS& upstream, const PS& downstream) {
     LOG(FATAL) << "TODO(tianchao)";
   }
