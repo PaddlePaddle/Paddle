@@ -32,7 +32,6 @@ logger = get_logger(logging.INFO)
 class PipelineZeroBubblePipelinePass(PipelinePassBase):
     def __init__(self):
         super().__init__()
-        self.jobs_in_stable_phase = [BACKWARD + '_b', BACKWARD + '_w', FORWARD]
         self.set_attr("enable_optimizer_post_validation", 0)
 
     def _create_job_list(self):
@@ -46,7 +45,7 @@ class PipelineZeroBubblePipelinePass(PipelinePassBase):
         ), "Num of micro batches should larger than or equal to pp degree."
 
         micro_batch_in_warmup = pp_degree - pp_stage
-        micro_batch_in_zero_bubble = num_micro_batches - micro_batch_in_warmup
+        micro_batch_in_zero_bubble = num_micro_batches - pp_degree
 
         forward_micro_batch_id = 0
         for _ in range(micro_batch_in_warmup):
@@ -55,29 +54,61 @@ class PipelineZeroBubblePipelinePass(PipelinePassBase):
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
-        backward_micro_batch_id = 0
-        for _ in range(micro_batch_in_zero_bubble):
-            for job_type in self.jobs_in_stable_phase:
-                job = core.Job(job_type)
-                micro_batch_id = (
-                    forward_micro_batch_id
-                    if job_type.startswith(FORWARD)
-                    else backward_micro_batch_id
-                )
-                job.set_micro_batch_id(micro_batch_id)
-                job_list.append(job)
+        backward_b_job = core.Job(BACKWARD + '_b')
+        backward_b_job.set_micro_batch_id(0)
+        job_list.append(backward_b_job)
+        backward_b_micro_batch_id = 1
+
+        for _ in range(pp_stage):
+            forward_job = core.Job(FORWARD)
+            forward_job.set_micro_batch_id(forward_micro_batch_id)
+            job_list.append(forward_job)
             forward_micro_batch_id += 1
-            backward_micro_batch_id += 1
 
-        for _ in range(micro_batch_in_warmup):
             backward_b_job = core.Job(BACKWARD + '_b')
-            backward_b_job.set_micro_batch_id(backward_micro_batch_id)
+            backward_b_job.set_micro_batch_id(backward_b_micro_batch_id)
+            job_list.append(backward_b_job)
+            backward_b_micro_batch_id += 1
 
-            backward_w_job = core.Job(BACKWARD + '_w')
-            backward_w_job.set_micro_batch_id(backward_micro_batch_id)
+        backward_w_job = core.Job(BACKWARD + '_w')
+        backward_w_job.set_micro_batch_id(0)
+        job_list.append(backward_w_job)
+        backward_w_micro_batch_id = 1
+
+        for _ in range(micro_batch_in_zero_bubble):
+            forward_job = core.Job(FORWARD)
+            forward_job.set_micro_batch_id(forward_micro_batch_id)
+            job_list.append(forward_job)
+
+            backward_b_job = core.Job(BACKWARD + '_b')
+            backward_b_job.set_micro_batch_id(backward_b_micro_batch_id)
             job_list.append(backward_b_job)
 
-            backward_micro_batch_id += 1
+            backward_w_job = core.Job(BACKWARD + '_w')
+            backward_w_job.set_micro_batch_id(backward_w_micro_batch_id)
+            job_list.append(backward_w_job)
+
+            forward_micro_batch_id += 1
+            backward_b_micro_batch_id += 1
+            backward_w_micro_batch_id += 1
+
+        for _ in range(micro_batch_in_warmup - 1):
+            backward_b_job = core.Job(BACKWARD + '_b')
+            backward_b_job.set_micro_batch_id(backward_b_micro_batch_id)
+            job_list.append(backward_b_job)
+
+            backward_w_job = core.Job(BACKWARD + '_w')
+            backward_w_job.set_micro_batch_id(backward_w_micro_batch_id)
+            job_list.append(backward_w_job)
+
+            backward_b_micro_batch_id += 1
+            backward_w_micro_batch_id += 1
+
+        for _ in range(pp_stage):
+            backward_w_job = core.Job(BACKWARD + '_w')
+            backward_w_job.set_micro_batch_id(backward_w_micro_batch_id)
+            job_list.append(backward_w_job)
+            backward_w_micro_batch_id += 1
 
         opt_job = core.Job(OPT)
         opt_job.set_micro_batch_id(0)
