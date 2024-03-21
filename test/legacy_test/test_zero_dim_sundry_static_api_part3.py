@@ -332,6 +332,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_t(self):
         x = paddle.full([], 2.0)
@@ -340,9 +341,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         grad_list = paddle.static.append_backward(out, parameter_list=[out, x])
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, feed={}, fetch_list=[out, out.grad_name, x.grad_name]
-        )
+        if paddle.framework.in_pir_mode():
+            res = self.exe.run(
+                prog,
+                feed={},
+                fetch_list=[out, grad_list[0][1], grad_list[1][1]],
+            )
+        else:
+            res = self.exe.run(
+                prog, feed={}, fetch_list=[out, out.grad_name, x.grad_name]
+            )
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
@@ -363,6 +371,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={"x": x_tensor}, fetch_list=[out])
         self.assertEqual(res[0].shape, (3, 4, 2))
 
+    @test_with_pir_api
     @prog_scope()
     def test_static_data(self):
         x1 = paddle.static.data(name="x1", shape=[])
@@ -372,9 +381,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             feed={
                 "x1": np.array(1.0, dtype='float32'),
             },
-            fetch_list=[
-                x1.name,
-            ],
+            fetch_list=[x1],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], np.array(1.0))
@@ -389,9 +396,7 @@ class TestSundryAPIStatic(unittest.TestCase):
                 "x2": 100.5,
                 "x3": 200.5,
             },
-            fetch_list=[
-                y.name,
-            ],
+            fetch_list=[y],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 301.0)

@@ -294,7 +294,11 @@ Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
     x_tmp = cast<T>(x, DataType::FLOAT32);
   }
 
-  auto res = log<T>(softmax_decomp<T>(x_tmp, axis));
+  auto max_tmp = max<T>(x_tmp, {axis}, true);
+  auto sub = x_tmp - max_tmp;
+  auto molecular = exp<T>(sub);
+  auto res = sub - log<T>(sum<T>(molecular, {axis}, molecular.dtype(), true));
+
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {

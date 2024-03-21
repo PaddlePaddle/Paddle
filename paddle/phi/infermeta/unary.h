@@ -396,6 +396,7 @@ void MultinomialInferMeta(const MetaTensor& x,
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,
+                        const std::string& mode,
                         MetaTensor* out,
                         MetaTensor* median_index);
 
@@ -703,6 +704,12 @@ void SumRawInferMeta(const MetaTensor& x,
                      DataType dtype,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,
+                         int start_index,
+                         int length,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
 
 void SvdInferMeta(const MetaTensor& x,
                   bool full_matrices,
