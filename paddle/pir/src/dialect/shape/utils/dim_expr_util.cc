@@ -971,8 +971,8 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FoldUnitConstant<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Add>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Mul>>(&keep_rewrite, &ret);
-    DoPass<FoldConstants<Max>>(&keep_rewrite, &ret);
-    DoPass<FoldConstants<Min>>(&keep_rewrite, &ret);
+    // DoPass<FoldConstants<Max>>(&keep_rewrite, &ret);
+    // DoPass<FoldConstants<Min>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Add>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Mul>>(&keep_rewrite, &ret);
