@@ -894,21 +894,38 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   if (need_cast) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
+  Tensor out, mean_, var_;
+  if (has_dynamic_shape(x.shape())) {
+    Tensor x_dim = shape<T>(x);
+    std::vector<int64_t> one_axis(1, 1);
+    Tensor x_shape = get_slice<T>(x_dim, 0) * groups;
+    Tensor dim_1 = full<T>({1}, -1, x_dim.type());
+    x_shape = concat<T>({x_shape, dim_1});
+    x_cast = backend::reshape<T>(x_cast, x_shape);
+    mean_ = mean_decomp<T>(x_cast, IntArray(one_axis), true);
+    Tensor var_tmp_ =
+        mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) -
+        mean_ * mean_;
+    var_ = maximum<T>(
+        var_tmp_,
+        backend::full_with_tensor<T>(shape<T>(var_tmp_), 0, var_tmp_.dtype()));
+    Tensor var_inv = 1 / sqrt_decomp<T>(var_ + epsilon);
+    Tensor res = (x_cast - mean_) * var_inv;
+    out = backend::reshape<T>(res, x_dim);
+  } else {
+    auto x_dim = x.shape();
+    std::vector<int64_t> one_axis(1, 1);
 
-  auto x_dim = x.shape();
-  std::vector<int64_t> one_axis(1, 1);
-
-  std::vector<int64_t> x_shape{x_dim[0] * groups, -1};
-  x_cast = reshape<T>(x_cast, x_shape);
-  auto mean_ = mean_decomp<T>(x_cast, IntArray(one_axis), true);
-  auto var_tmp_ =
-      mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) - mean_ * mean_;
-  auto var_ =
-      maximum<T>(var_tmp_, full<T>(var_tmp_.shape(), 0, var_tmp_.dtype()));
-  auto var_inv = 1 / sqrt_decomp<T>(var_ + epsilon);
-  auto res = (x_cast - mean_) * var_inv;
-  auto out = reshape<T>(res, x_dim);
-
+    std::vector<int64_t> x_shape{x_dim[0] * groups, -1};
+    x_cast = reshape<T>(x_cast, x_shape);
+    mean_ = mean_decomp<T>(x_cast, IntArray(one_axis), true);
+    auto var_tmp_ = mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) -
+                    mean_ * mean_;
+    var_ = maximum<T>(var_tmp_, full<T>(var_tmp_.shape(), 0, var_tmp_.dtype()));
+    auto var_inv = 1 / sqrt_decomp<T>(var_ + epsilon);
+    auto res = (x_cast - mean_) * var_inv;
+    out = reshape<T>(res, x_dim);
+  }
   auto scale_ptr = scale.get_ptr();
   auto bias_ptr = bias.get_ptr();
 
@@ -937,11 +954,20 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     }
     out = out + bias_cast;
   }
-
-  std::vector<int64_t> res_shape{x_dim[0], groups};
-  auto mean_out = reshape<T>(mean_, res_shape);
-  auto var_out = reshape<T>(var_, res_shape);
-
+  Tensor mean_out, var_out;
+  if (has_dynamic_shape(x.shape())) {
+    Tensor x_dim = shape<T>(x);
+    Tensor x_shape = get_slice<T>(x_dim, 0);
+    Tensor dim_1 = full<T>({1}, groups, x_shape.type());
+    x_shape = concat<T>({x_shape, dim_1});
+    mean_out = backend::reshape<T>(mean_, x_shape);
+    var_out = backend::reshape<T>(var_, x_shape);
+  } else {
+    auto x_dim = x.shape();
+    std::vector<int64_t> res_shape{x_dim[0], groups};
+    mean_out = reshape<T>(mean_, res_shape);
+    var_out = reshape<T>(var_, res_shape);
+  }
   if (need_cast) {
     out = cast<T>(out, org_dtype);
   }
