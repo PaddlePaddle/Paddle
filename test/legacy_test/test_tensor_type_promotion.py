@@ -63,6 +63,1330 @@ def create_test_case(baseclass, ldtype, rdtype, expected_out_dtype=None):
     globals()[cls_name] = TestPromotion
 
 
+class TestOperatorOverloadAddInDygraph(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.set_dtype()
+
+    def set_dtype(self):
+        self.ldtype = 'float32'
+        self.rdtype = 'float64'
+        self.expected_out_dtype = 'float64'
+
+    def generate_test_value(self):
+        self.l_value = (paddle.randn((4, 3, 2)) * 10).astype(self.ldtype)
+        self.r_value = (paddle.randn((4, 3, 2)) * 10).astype(self.rdtype)
+
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value + self.r_value
+        out_reverse = self.r_value + self.l_value
+
+        return out, out_reverse
+
+    def test_dtype_is_expected(self):
+        out, out_reverse = self.run_api()
+        self.assertEqual(
+            out.dtype.__str__(), "paddle." + self.expected_out_dtype
+        )
+        self.assertEqual(
+            out_reverse.dtype.__str__(), "paddle." + self.expected_out_dtype
+        )
+
+
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'float32', 'float64', 'float64'
+)
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadAddInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadAddInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadAddInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+    create_test_case(
+        TestOperatorOverloadAddInDygraph, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestOperatorOverloadAddInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'bool', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'int8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'uint8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'int16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'int32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'int64', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex128', 'bool', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex128', 'int8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInDygraph, 'complex128', 'float64', 'complex128'
+)
+
+
+class TestAPIAddInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.add(self.l_value, self.r_value)
+        out_reverse = paddle.add(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIAddInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIAddInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIAddInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIAddInDygraph, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIAddInDygraph, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIAddInDygraph, 'bfloat16', 'float64', 'float64')
+    create_test_case(TestAPIAddInDygraph, 'bfloat16', 'complex64', 'complex64')
+    create_test_case(
+        TestAPIAddInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(TestAPIAddInDygraph, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPIAddInDygraph, 'complex64', 'int8', 'complex64')
+create_test_case(TestAPIAddInDygraph, 'complex64', 'uint8', 'complex64')
+create_test_case(TestAPIAddInDygraph, 'complex64', 'int16', 'complex64')
+create_test_case(TestAPIAddInDygraph, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPIAddInDygraph, 'complex64', 'int64', 'complex64')
+create_test_case(TestAPIAddInDygraph, 'complex64', 'float16', 'complex64')
+create_test_case(TestAPIAddInDygraph, 'complex64', 'float32', 'complex64')
+create_test_case(TestAPIAddInDygraph, 'complex64', 'float64', 'complex128')
+create_test_case(TestAPIAddInDygraph, 'complex64', 'complex128', 'complex128')
+
+create_test_case(TestAPIAddInDygraph, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPIAddInDygraph, 'complex128', 'int8', 'complex128')
+create_test_case(TestAPIAddInDygraph, 'complex128', 'uint8', 'complex128')
+create_test_case(TestAPIAddInDygraph, 'complex128', 'int16', 'complex128')
+create_test_case(TestAPIAddInDygraph, 'complex128', 'int32', 'complex128')
+create_test_case(TestAPIAddInDygraph, 'complex128', 'int64', 'complex128')
+create_test_case(TestAPIAddInDygraph, 'complex128', 'float16', 'complex128')
+create_test_case(TestAPIAddInDygraph, 'complex128', 'float32', 'complex128')
+create_test_case(TestAPIAddInDygraph, 'complex128', 'float64', 'complex128')
+
+
+class TestOperatorOverloadSubInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value - self.r_value
+        out_reverse = self.r_value - self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'float32', 'float64', 'float64'
+)
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadSubInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadSubInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadSubInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+    create_test_case(
+        TestOperatorOverloadSubInDygraph, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestOperatorOverloadSubInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'bool', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'int8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'uint8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'int16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'int32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'int64', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex128', 'bool', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex128', 'int8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInDygraph, 'complex128', 'float64', 'complex128'
+)
+
+
+class TestAPISubInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.subtract(self.l_value, self.r_value)
+        out_reverse = paddle.subtract(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPISubInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPISubInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPISubInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPISubInDygraph, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPISubInDygraph, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPISubInDygraph, 'bfloat16', 'float64', 'float64')
+    create_test_case(TestAPISubInDygraph, 'bfloat16', 'complex64', 'complex64')
+    create_test_case(
+        TestAPISubInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(TestAPISubInDygraph, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPISubInDygraph, 'complex64', 'int8', 'complex64')
+create_test_case(TestAPISubInDygraph, 'complex64', 'uint8', 'complex64')
+create_test_case(TestAPISubInDygraph, 'complex64', 'int16', 'complex64')
+create_test_case(TestAPISubInDygraph, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPISubInDygraph, 'complex64', 'int64', 'complex64')
+create_test_case(TestAPISubInDygraph, 'complex64', 'float16', 'complex64')
+create_test_case(TestAPISubInDygraph, 'complex64', 'float32', 'complex64')
+create_test_case(TestAPISubInDygraph, 'complex64', 'float64', 'complex128')
+create_test_case(TestAPISubInDygraph, 'complex64', 'complex128', 'complex128')
+
+create_test_case(TestAPISubInDygraph, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPISubInDygraph, 'complex128', 'int8', 'complex128')
+create_test_case(TestAPISubInDygraph, 'complex128', 'uint8', 'complex128')
+create_test_case(TestAPISubInDygraph, 'complex128', 'int16', 'complex128')
+create_test_case(TestAPISubInDygraph, 'complex128', 'int32', 'complex128')
+create_test_case(TestAPISubInDygraph, 'complex128', 'int64', 'complex128')
+create_test_case(TestAPISubInDygraph, 'complex128', 'float16', 'complex128')
+create_test_case(TestAPISubInDygraph, 'complex128', 'float32', 'complex128')
+create_test_case(TestAPISubInDygraph, 'complex128', 'float64', 'complex128')
+
+
+class TestOperatorOverloadMulInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value * self.r_value
+        out_reverse = self.r_value * self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'float32', 'float64', 'float64'
+)
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadMulInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadMulInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadMulInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+    create_test_case(
+        TestOperatorOverloadMulInDygraph, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestOperatorOverloadMulInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'bool', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'int8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'uint8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'int16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'int32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'int64', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex128', 'bool', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex128', 'int8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInDygraph, 'complex128', 'float64', 'complex128'
+)
+
+
+class TestAPIMulInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.multiply(self.l_value, self.r_value)
+        out_reverse = paddle.multiply(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIMulInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIMulInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIMulInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIMulInDygraph, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIMulInDygraph, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIMulInDygraph, 'bfloat16', 'float64', 'float64')
+    create_test_case(TestAPIMulInDygraph, 'bfloat16', 'complex64', 'complex64')
+    create_test_case(
+        TestAPIMulInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(TestAPIMulInDygraph, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPIMulInDygraph, 'complex64', 'int8', 'complex64')
+create_test_case(TestAPIMulInDygraph, 'complex64', 'uint8', 'complex64')
+create_test_case(TestAPIMulInDygraph, 'complex64', 'int16', 'complex64')
+create_test_case(TestAPIMulInDygraph, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPIMulInDygraph, 'complex64', 'int64', 'complex64')
+create_test_case(TestAPIMulInDygraph, 'complex64', 'float16', 'complex64')
+create_test_case(TestAPIMulInDygraph, 'complex64', 'float32', 'complex64')
+create_test_case(TestAPIMulInDygraph, 'complex64', 'float64', 'complex128')
+create_test_case(TestAPIMulInDygraph, 'complex64', 'complex128', 'complex128')
+
+create_test_case(TestAPIMulInDygraph, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPIMulInDygraph, 'complex128', 'int8', 'complex128')
+create_test_case(TestAPIMulInDygraph, 'complex128', 'uint8', 'complex128')
+create_test_case(TestAPIMulInDygraph, 'complex128', 'int16', 'complex128')
+create_test_case(TestAPIMulInDygraph, 'complex128', 'int32', 'complex128')
+create_test_case(TestAPIMulInDygraph, 'complex128', 'int64', 'complex128')
+create_test_case(TestAPIMulInDygraph, 'complex128', 'float16', 'complex128')
+create_test_case(TestAPIMulInDygraph, 'complex128', 'float32', 'complex128')
+create_test_case(TestAPIMulInDygraph, 'complex128', 'float64', 'complex128')
+
+
+class TestOperatorOverloadDivInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value / self.r_value
+        out_reverse = self.r_value / self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'float32', 'float64', 'float64'
+)
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadDivInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadDivInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadDivInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+    create_test_case(
+        TestOperatorOverloadDivInDygraph, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestOperatorOverloadDivInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'bool', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'int8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'uint8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'int16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'int32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'int64', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex128', 'bool', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex128', 'int8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInDygraph, 'complex128', 'float64', 'complex128'
+)
+
+
+class TestAPIDivInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.divide(self.l_value, self.r_value)
+        out_reverse = paddle.divide(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIDivInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIDivInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIDivInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIDivInDygraph, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIDivInDygraph, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIDivInDygraph, 'bfloat16', 'float64', 'float64')
+    create_test_case(TestAPIDivInDygraph, 'bfloat16', 'complex64', 'complex64')
+    create_test_case(
+        TestAPIDivInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(TestAPIDivInDygraph, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPIDivInDygraph, 'complex64', 'int8', 'complex64')
+create_test_case(TestAPIDivInDygraph, 'complex64', 'uint8', 'complex64')
+create_test_case(TestAPIDivInDygraph, 'complex64', 'int16', 'complex64')
+create_test_case(TestAPIDivInDygraph, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPIDivInDygraph, 'complex64', 'int64', 'complex64')
+create_test_case(TestAPIDivInDygraph, 'complex64', 'float16', 'complex64')
+create_test_case(TestAPIDivInDygraph, 'complex64', 'float32', 'complex64')
+create_test_case(TestAPIDivInDygraph, 'complex64', 'float64', 'complex128')
+create_test_case(TestAPIDivInDygraph, 'complex64', 'complex128', 'complex128')
+
+create_test_case(TestAPIDivInDygraph, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPIDivInDygraph, 'complex128', 'int8', 'complex128')
+create_test_case(TestAPIDivInDygraph, 'complex128', 'uint8', 'complex128')
+create_test_case(TestAPIDivInDygraph, 'complex128', 'int16', 'complex128')
+create_test_case(TestAPIDivInDygraph, 'complex128', 'int32', 'complex128')
+create_test_case(TestAPIDivInDygraph, 'complex128', 'int64', 'complex128')
+create_test_case(TestAPIDivInDygraph, 'complex128', 'float16', 'complex128')
+create_test_case(TestAPIDivInDygraph, 'complex128', 'float32', 'complex128')
+create_test_case(TestAPIDivInDygraph, 'complex128', 'float64', 'complex128')
+
+
+class TestOperatorOverloadPowInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value**self.r_value
+        out_reverse = self.r_value**self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadPowInDygraph, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadPowInDygraph, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadPowInDygraph, 'float32', 'float64', 'float64'
+)
+
+
+class TestAPIPowInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.pow(self.l_value, self.r_value)
+        out_reverse = paddle.pow(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIPowInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIPowInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIPowInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestOperatorOverloadFloorDivInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value // self.r_value
+        out_reverse = self.r_value // self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadFloorDivInDygraph, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadFloorDivInDygraph, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadFloorDivInDygraph, 'float32', 'float64', 'float64'
+)
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestAPIFloorDivInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.floor_divide(self.l_value, self.r_value)
+        out_reverse = paddle.floor_divide(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadFloorDivInDygraph, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadFloorDivInDygraph, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadFloorDivInDygraph, 'float32', 'float64', 'float64'
+)
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestOperatorOverloadModInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value % self.r_value
+        out_reverse = self.r_value % self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadModInDygraph, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadModInDygraph, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadModInDygraph, 'float32', 'float64', 'float64'
+)
+
+
+class TestAPIModInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.mod(self.l_value, self.r_value)
+        out_reverse = paddle.mod(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIModInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIModInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIModInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestOperatorOverloadEqualInDygraph(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.set_dtype()
+
+    def set_dtype(self):
+        self.ldtype = 'float32'
+        self.rdtype = 'float64'
+        self.expected_out_dtype = 'bool'
+
+    def generate_test_value(self):
+        self.l_value = (paddle.randn((4, 3, 2)) * 10).astype(self.ldtype)
+        self.r_value = (paddle.randn((4, 3, 2)) * 10).astype(self.rdtype)
+
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value == self.r_value
+        out_reverse = self.r_value == self.l_value
+
+        return out, out_reverse
+
+    def test_dtype_is_expected(self):
+        out, out_reverse = self.run_api()
+        self.assertEqual(
+            out.dtype.__str__(), "paddle." + self.expected_out_dtype
+        )
+        self.assertEqual(
+            out_reverse.dtype.__str__(), "paddle." + self.expected_out_dtype
+        )
+
+
+create_test_case(
+    TestOperatorOverloadEqualInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadEqualInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadEqualInDygraph, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPIEqualInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.equal(self.l_value, self.r_value)
+        out_reverse = paddle.equal(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIEqualInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPIEqualInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPIEqualInDygraph, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadNotEqualInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value != self.r_value
+        out_reverse = self.r_value != self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadNotEqualInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadNotEqualInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadNotEqualInDygraph, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPINotEqualInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.not_equal(self.l_value, self.r_value)
+        out_reverse = paddle.not_equal(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPINotEqualInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPINotEqualInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPINotEqualInDygraph, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadLessThanInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value < self.r_value
+        out_reverse = self.r_value < self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadLessThanInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadLessThanInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadLessThanInDygraph, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPILessThanInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.less_than(self.l_value, self.r_value)
+        out_reverse = paddle.less_than(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPILessThanInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPILessThanInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILessThanInDygraph, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadLessEqualInDygraph(
+    TestOperatorOverloadEqualInDygraph
+):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value <= self.r_value
+        out_reverse = self.r_value <= self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadLessEqualInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadLessEqualInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadLessEqualInDygraph, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPILessEqualInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.less_equal(self.l_value, self.r_value)
+        out_reverse = paddle.less_equal(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPILessEqualInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPILessEqualInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILessEqualInDygraph, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadGreaterThanInDygraph(
+    TestOperatorOverloadEqualInDygraph
+):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value > self.r_value
+        out_reverse = self.r_value > self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadGreaterThanInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadGreaterThanInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadGreaterThanInDygraph, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPIGreaterThanInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.greater_than(self.l_value, self.r_value)
+        out_reverse = paddle.greater_than(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIGreaterThanInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPIGreaterThanInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPIGreaterThanInDygraph, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadGreaterEqualInDygraph(
+    TestOperatorOverloadEqualInDygraph
+):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = self.l_value >= self.r_value
+        out_reverse = self.r_value >= self.l_value
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestOperatorOverloadGreaterEqualInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadGreaterEqualInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadGreaterEqualInDygraph, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPIGreaterEqualInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.greater_equal(self.l_value, self.r_value)
+        out_reverse = paddle.greater_equal(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIGreaterEqualInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPIGreaterEqualInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPIGreaterEqualInDygraph, 'float32', 'float64', 'bool')
+
+
+class TestAPILogicalAndInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.logical_and(self.l_value, self.r_value)
+        out_reverse = paddle.logical_and(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPILogicalAndInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILogicalAndInDygraph, 'float32', 'float64', 'bool')
+
+create_test_case(TestAPILogicalAndInDygraph, 'complex64', 'bool', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex64', 'int8', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex64', 'int16', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex64', 'int32', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex64', 'int64', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex64', 'float16', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex64', 'float32', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex64', 'float64', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex64', 'complex128', 'bool')
+
+create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'bool', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'int8', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'int16', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'int32', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'int64', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'float16', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'float32', 'bool')
+create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'float64', 'bool')
+
+
+class TestAPILogicalOrInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.logical_or(self.l_value, self.r_value)
+        out_reverse = paddle.logical_or(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPILogicalOrInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILogicalOrInDygraph, 'float32', 'float64', 'bool')
+
+create_test_case(TestAPILogicalOrInDygraph, 'complex64', 'bool', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex64', 'int8', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex64', 'int16', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex64', 'int32', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex64', 'int64', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex64', 'float16', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex64', 'float32', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex64', 'float64', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex64', 'complex128', 'bool')
+
+create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'bool', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'int8', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'int16', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'int32', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'int64', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'float16', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'float32', 'bool')
+create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'float64', 'bool')
+
+
+class TestAPILogicalXorInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.logical_xor(self.l_value, self.r_value)
+        out_reverse = paddle.logical_xor(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPILogicalXorInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILogicalXorInDygraph, 'float32', 'float64', 'bool')
+
+create_test_case(TestAPILogicalXorInDygraph, 'complex64', 'bool', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex64', 'int8', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex64', 'int16', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex64', 'int32', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex64', 'int64', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex64', 'float16', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex64', 'float32', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex64', 'float64', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex64', 'complex128', 'bool')
+
+create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'bool', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'int8', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'int16', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'int32', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'int64', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'float16', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'float32', 'bool')
+create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'float64', 'bool')
+
+
+class TestAPIFmaxInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.fmax(self.l_value, self.r_value)
+        out_reverse = paddle.fmax(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIFmaxInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIFmaxInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIFmaxInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestAPIFminInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.fmin(self.l_value, self.r_value)
+        out_reverse = paddle.fmin(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIFminInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIFminInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIFminInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestAPILogAddExpInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.logaddexp(self.l_value, self.r_value)
+        out_reverse = paddle.logaddexp(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPILogAddExpInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPILogAddExpInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPILogAddExpInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestAPIMaximumInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.maximum(self.l_value, self.r_value)
+        out_reverse = paddle.maximum(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIMaximumInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestAPIMinimumInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.minimum(self.l_value, self.r_value)
+        out_reverse = paddle.minimum(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIMinimumInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestAPINextAfterInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.nextafter(self.l_value, self.r_value)
+        out_reverse = paddle.nextafter(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPINextAfterInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestAPIAtan2InDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.atan2(self.l_value, self.r_value)
+        out_reverse = paddle.atan2(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIAtan2InDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIAtan2InDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIAtan2InDygraph, 'float32', 'float64', 'float64')
+
+
+class TestAPIPoissonNllLossInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.nn.functional.poisson_nll_loss(self.l_value, self.r_value)
+        out_reverse = paddle.nn.functional.poisson_nll_loss(
+            self.r_value, self.l_value
+        )
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestAPIPoissonNllLossInDygraph, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestAPIPoissonNllLossInDygraph, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestAPIPoissonNllLossInDygraph, 'float32', 'float64', 'float64'
+)
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestAPIPoissonNllLossInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestAPIPoissonNllLossInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestAPIPoissonNllLossInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestAPIL1LossInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.nn.functional.l1_loss(self.l_value, self.r_value)
+        out_reverse = paddle.nn.functional.l1_loss(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIL1LossInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIL1LossInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIL1LossInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestAPISmoothL1LossInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.nn.functional.smooth_l1_loss(self.l_value, self.r_value)
+        out_reverse = paddle.nn.functional.smooth_l1_loss(
+            self.r_value, self.l_value
+        )
+
+        return out, out_reverse
+
+
+create_test_case(TestAPISmoothL1LossInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPISmoothL1LossInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPISmoothL1LossInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestAPISmoothL1LossInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestAPISmoothL1LossInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestAPISmoothL1LossInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestAPIHuberLossInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle._C_ops.huber_loss(self.l_value, self.r_value, 1.0)
+        out_reverse = paddle._C_ops.huber_loss(self.r_value, self.l_value, 1.0)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIHuberLossInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIHuberLossInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIHuberLossInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestAPIHuberLossInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestAPIHuberLossInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestAPIHuberLossInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestAPIMSELossInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+
+        out = paddle.nn.functional.mse_loss(self.l_value, self.r_value)
+        out_reverse = paddle.nn.functional.mse_loss(self.r_value, self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIMSELossInDygraph, 'float32', 'float64', 'float64')
+
+
 class TestOperatorOverloadAddInStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
@@ -117,6 +1441,71 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadAddInStatic, 'bfloat16', 'float64', 'float64'
     )
+    create_test_case(
+        TestOperatorOverloadAddInStatic, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestOperatorOverloadAddInStatic, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'bool', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'int8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'uint8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'int16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'int32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'int64', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex128', 'bool', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex128', 'int8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadAddInStatic, 'complex128', 'float64', 'complex128'
+)
 
 
 class TestAPIAddInStatic(TestOperatorOverloadAddInStatic):
@@ -142,6 +1531,23 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPIAddInStatic, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPIAddInStatic, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPIAddInStatic, 'bfloat16', 'float64', 'float64')
+    create_test_case(TestAPIAddInStatic, 'bfloat16', 'complex64', 'complex64')
+    create_test_case(TestAPIAddInStatic, 'bfloat16', 'complex128', 'complex128')
+
+create_test_case(TestAPIAddInStatic, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPIAddInStatic, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPIAddInStatic, 'complex64', 'int64', 'complex64')
+create_test_case(TestAPIAddInStatic, 'complex64', 'float16', 'complex64')
+create_test_case(TestAPIAddInStatic, 'complex64', 'float32', 'complex64')
+create_test_case(TestAPIAddInStatic, 'complex64', 'float64', 'complex128')
+create_test_case(TestAPIAddInStatic, 'complex64', 'complex128', 'complex128')
+
+create_test_case(TestAPIAddInStatic, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPIAddInStatic, 'complex128', 'int32', 'complex128')
+create_test_case(TestAPIAddInStatic, 'complex128', 'int64', 'complex128')
+create_test_case(TestAPIAddInStatic, 'complex128', 'float16', 'complex128')
+create_test_case(TestAPIAddInStatic, 'complex128', 'float32', 'complex128')
+create_test_case(TestAPIAddInStatic, 'complex128', 'float64', 'complex128')
 
 
 class TestOperatorOverloadSubInStatic(TestOperatorOverloadAddInStatic):
@@ -179,6 +1585,71 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadSubInStatic, 'bfloat16', 'float64', 'float64'
     )
+    create_test_case(
+        TestOperatorOverloadSubInStatic, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestOperatorOverloadSubInStatic, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'bool', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'int8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'uint8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'int16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'int32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'int64', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex128', 'bool', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex128', 'int8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadSubInStatic, 'complex128', 'float64', 'complex128'
+)
 
 
 class TestAPISubInStatic(TestOperatorOverloadAddInStatic):
@@ -197,13 +1668,30 @@ class TestAPISubInStatic(TestOperatorOverloadAddInStatic):
 create_test_case(TestAPISubInStatic, 'float16', 'float32', 'float32')
 create_test_case(TestAPISubInStatic, 'float16', 'float64', 'float64')
 
-create_test_case(TestAPIAddInStatic, 'float32', 'float64', 'float64')
+create_test_case(TestAPISubInStatic, 'float32', 'float64', 'float64')
 
 
 if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     create_test_case(TestAPISubInStatic, 'bfloat16', 'float16', 'float32')
     create_test_case(TestAPISubInStatic, 'bfloat16', 'float32', 'float32')
     create_test_case(TestAPISubInStatic, 'bfloat16', 'float64', 'float64')
+    create_test_case(TestAPISubInStatic, 'bfloat16', 'complex64', 'complex64')
+    create_test_case(TestAPISubInStatic, 'bfloat16', 'complex128', 'complex128')
+
+create_test_case(TestAPISubInStatic, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPISubInStatic, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPISubInStatic, 'complex64', 'int64', 'complex64')
+create_test_case(TestAPISubInStatic, 'complex64', 'float16', 'complex64')
+create_test_case(TestAPISubInStatic, 'complex64', 'float32', 'complex64')
+create_test_case(TestAPISubInStatic, 'complex64', 'float64', 'complex128')
+create_test_case(TestAPISubInStatic, 'complex64', 'complex128', 'complex128')
+
+create_test_case(TestAPISubInStatic, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPISubInStatic, 'complex128', 'int32', 'complex128')
+create_test_case(TestAPISubInStatic, 'complex128', 'int64', 'complex128')
+create_test_case(TestAPISubInStatic, 'complex128', 'float16', 'complex128')
+create_test_case(TestAPISubInStatic, 'complex128', 'float32', 'complex128')
+create_test_case(TestAPISubInStatic, 'complex128', 'float64', 'complex128')
 
 
 class TestOperatorOverloadMulInStatic(TestOperatorOverloadAddInStatic):
@@ -240,7 +1728,1073 @@ if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     create_test_case(
         TestOperatorOverloadMulInStatic, 'bfloat16', 'float64', 'float64'
     )
+    create_test_case(
+        TestOperatorOverloadMulInStatic, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestOperatorOverloadMulInStatic, 'bfloat16', 'complex128', 'complex128'
+    )
 
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'bool', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'int8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'uint8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'int16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'int32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'int64', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex128', 'bool', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex128', 'int8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadMulInStatic, 'complex128', 'float64', 'complex128'
+)
+
+
+class TestAPIMulInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.multiply(self.l_value, self.r_value)
+            out_reverse = paddle.multiply(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIMulInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIMulInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIMulInStatic, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIMulInStatic, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIMulInStatic, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIMulInStatic, 'bfloat16', 'float64', 'float64')
+    create_test_case(TestAPIMulInStatic, 'bfloat16', 'complex64', 'complex64')
+    create_test_case(TestAPIMulInStatic, 'bfloat16', 'complex128', 'complex128')
+
+create_test_case(TestAPIMulInStatic, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPIMulInStatic, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPIMulInStatic, 'complex64', 'int64', 'complex64')
+create_test_case(TestAPIMulInStatic, 'complex64', 'float16', 'complex64')
+create_test_case(TestAPIMulInStatic, 'complex64', 'float32', 'complex64')
+create_test_case(TestAPIMulInStatic, 'complex64', 'float64', 'complex128')
+create_test_case(TestAPIMulInStatic, 'complex64', 'complex128', 'complex128')
+
+create_test_case(TestAPIMulInStatic, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPIMulInStatic, 'complex128', 'int32', 'complex128')
+create_test_case(TestAPIMulInStatic, 'complex128', 'int64', 'complex128')
+create_test_case(TestAPIMulInStatic, 'complex128', 'float16', 'complex128')
+create_test_case(TestAPIMulInStatic, 'complex128', 'float32', 'complex128')
+create_test_case(TestAPIMulInStatic, 'complex128', 'float64', 'complex128')
+
+
+class TestAPIDivInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.divide(self.l_value, self.r_value)
+            out_reverse = paddle.divide(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIDivInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIDivInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIDivInStatic, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIDivInStatic, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIDivInStatic, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIDivInStatic, 'bfloat16', 'float64', 'float64')
+    create_test_case(TestAPIDivInStatic, 'bfloat16', 'complex64', 'complex64')
+    create_test_case(TestAPIDivInStatic, 'bfloat16', 'complex128', 'complex128')
+
+create_test_case(TestAPIDivInStatic, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPIDivInStatic, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPIDivInStatic, 'complex64', 'int64', 'complex64')
+create_test_case(TestAPIDivInStatic, 'complex64', 'float16', 'complex64')
+create_test_case(TestAPIDivInStatic, 'complex64', 'float32', 'complex64')
+create_test_case(TestAPIDivInStatic, 'complex64', 'float64', 'complex128')
+create_test_case(TestAPIDivInStatic, 'complex64', 'complex128', 'complex128')
+
+create_test_case(TestAPIDivInStatic, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPIDivInStatic, 'complex128', 'int32', 'complex128')
+create_test_case(TestAPIDivInStatic, 'complex128', 'int64', 'complex128')
+create_test_case(TestAPIDivInStatic, 'complex128', 'float16', 'complex128')
+create_test_case(TestAPIDivInStatic, 'complex128', 'float32', 'complex128')
+create_test_case(TestAPIDivInStatic, 'complex128', 'float64', 'complex128')
+
+
+class TestOperatorOverloadDivInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value / self.r_value
+            out_reverse = self.r_value / self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'float32', 'float64', 'float64'
+)
+
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadDivInStatic, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadDivInStatic, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadDivInStatic, 'bfloat16', 'float64', 'float64'
+    )
+    create_test_case(
+        TestOperatorOverloadDivInStatic, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestOperatorOverloadDivInStatic, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'bool', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'int8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'uint8', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'int16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'int32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'int64', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex128', 'bool', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex128', 'int8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestOperatorOverloadDivInStatic, 'complex128', 'float64', 'complex128'
+)
+
+
+class TestAPIFloorDivInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.floor_divide(self.l_value, self.r_value)
+            out_reverse = paddle.floor_divide(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIFloorDivInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIFloorDivInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIFloorDivInStatic, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIFloorDivInStatic, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIFloorDivInStatic, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIFloorDivInStatic, 'bfloat16', 'float64', 'float64')
+
+
+class TestOperatorOverloadFloorDivInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value // self.r_value
+            out_reverse = self.r_value // self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(
+    TestOperatorOverloadFloorDivInStatic, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadFloorDivInStatic, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadFloorDivInStatic, 'float32', 'float64', 'float64'
+)
+
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadFloorDivInStatic, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadFloorDivInStatic, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadFloorDivInStatic, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestAPIPowInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.pow(self.l_value, self.r_value)
+            out_reverse = paddle.pow(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIPowInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIPowInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIPowInStatic, 'float32', 'float64', 'float64')
+
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIPowInStatic, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIPowInStatic, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIPowInStatic, 'bfloat16', 'float64', 'float64')
+
+
+class TestOperatorOverloadPowInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value**self.r_value
+            out_reverse = self.r_value**self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(
+    TestOperatorOverloadPowInStatic, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadPowInStatic, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadPowInStatic, 'float32', 'float64', 'float64'
+)
+
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadPowInStatic, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadPowInStatic, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadPowInStatic, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestAPIModInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.mod(self.l_value, self.r_value)
+            out_reverse = paddle.mod(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIModInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIModInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIModInStatic, 'float32', 'float64', 'float64')
+
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIModInStatic, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIModInStatic, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIModInStatic, 'bfloat16', 'float64', 'float64')
+
+
+class TestOperatorOverloadModInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value % self.r_value
+            out_reverse = self.r_value % self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(
+    TestOperatorOverloadModInStatic, 'float16', 'float32', 'float32'
+)
+create_test_case(
+    TestOperatorOverloadModInStatic, 'float16', 'float64', 'float64'
+)
+
+create_test_case(
+    TestOperatorOverloadModInStatic, 'float32', 'float64', 'float64'
+)
+
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestOperatorOverloadModInStatic, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadModInStatic, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestOperatorOverloadModInStatic, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestOperatorOverloadEqualInStatic(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.set_dtype()
+        self.exe = paddle.static.Executor()
+
+    def set_dtype(self):
+        self.ldtype = 'float32'
+        self.rdtype = 'float64'
+        self.expected_out_dtype = 'bool'
+
+    def generate_test_value(self):
+        self.l_value = (paddle.randn((4, 3, 2)) * 10).astype(self.ldtype)
+        self.r_value = (paddle.randn((4, 3, 2)) * 10).astype(self.rdtype)
+
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value == self.r_value
+            out_reverse = self.r_value == self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+    def test_dtype_is_expected(self):
+        res = self.run_api()
+        self.assertEqual(res[0].dtype.__str__(), self.expected_out_dtype)
+        self.assertEqual(res[1].dtype.__str__(), self.expected_out_dtype)
+
+
+create_test_case(
+    TestOperatorOverloadEqualInStatic, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadEqualInStatic, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadEqualInStatic, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPIEqualInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.equal(self.l_value, self.r_value)
+            out_reverse = paddle.equal(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIEqualInStatic, 'float16', 'float32', 'bool')
+create_test_case(TestAPIEqualInStatic, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPIEqualInStatic, 'float32', 'float64', 'bool')
+
+
+class TestAPINotEqualInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.not_equal(self.l_value, self.r_value)
+            out_reverse = paddle.not_equal(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPINotEqualInStatic, 'float16', 'float32', 'bool')
+create_test_case(TestAPINotEqualInStatic, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPINotEqualInStatic, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadNotEqualInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value != self.r_value
+            out_reverse = self.r_value != self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(
+    TestOperatorOverloadNotEqualInStatic, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadNotEqualInStatic, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadNotEqualInStatic, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPILessThanInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.less_than(self.l_value, self.r_value)
+            out_reverse = paddle.less_than(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPILessThanInStatic, 'float16', 'float32', 'bool')
+create_test_case(TestAPILessThanInStatic, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILessThanInStatic, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadLessThanInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value < self.r_value
+            out_reverse = self.r_value < self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(
+    TestOperatorOverloadLessThanInStatic, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadLessThanInStatic, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadLessThanInStatic, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPILessEqualInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.less_equal(self.l_value, self.r_value)
+            out_reverse = paddle.less_equal(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPILessEqualInStatic, 'float16', 'float32', 'bool')
+create_test_case(TestAPILessEqualInStatic, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILessEqualInStatic, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadLessEqualInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value <= self.r_value
+            out_reverse = self.r_value <= self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(
+    TestOperatorOverloadLessEqualInStatic, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadLessEqualInStatic, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadLessEqualInStatic, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPIGreaterThanInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.greater_than(self.l_value, self.r_value)
+            out_reverse = paddle.greater_than(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIGreaterThanInStatic, 'float16', 'float32', 'bool')
+create_test_case(TestAPIGreaterThanInStatic, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPIGreaterThanInStatic, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadGreaterThanInStatic(
+    TestOperatorOverloadEqualInStatic
+):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value > self.r_value
+            out_reverse = self.r_value > self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(
+    TestOperatorOverloadGreaterThanInStatic, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadGreaterThanInStatic, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadGreaterThanInStatic, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPIGreaterEqualInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.greater_equal(self.l_value, self.r_value)
+            out_reverse = paddle.greater_equal(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIGreaterEqualInStatic, 'float16', 'float32', 'bool')
+create_test_case(TestAPIGreaterEqualInStatic, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPIGreaterEqualInStatic, 'float32', 'float64', 'bool')
+
+
+class TestOperatorOverloadGreaterEqualInStatic(
+    TestOperatorOverloadEqualInStatic
+):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = self.l_value >= self.r_value
+            out_reverse = self.r_value >= self.l_value
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(
+    TestOperatorOverloadGreaterEqualInStatic, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestOperatorOverloadGreaterEqualInStatic, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestOperatorOverloadGreaterEqualInStatic, 'float32', 'float64', 'bool'
+)
+
+
+class TestAPILogicalAndInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.logical_and(self.l_value, self.r_value)
+            out_reverse = paddle.logical_and(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPILogicalAndInStatic, 'float16', 'float32', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILogicalAndInStatic, 'float32', 'float64', 'bool')
+
+create_test_case(TestAPILogicalAndInStatic, 'complex64', 'bool', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex64', 'int8', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex64', 'int16', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex64', 'int32', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex64', 'int64', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex64', 'float16', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex64', 'float32', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex64', 'float64', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex64', 'complex128', 'bool')
+
+create_test_case(TestAPILogicalAndInStatic, 'complex128', 'bool', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex128', 'int8', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex128', 'int16', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex128', 'int32', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex128', 'int64', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex128', 'float16', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex128', 'float32', 'bool')
+create_test_case(TestAPILogicalAndInStatic, 'complex128', 'float64', 'bool')
+
+
+class TestAPILogicalOrInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.logical_or(self.l_value, self.r_value)
+            out_reverse = paddle.logical_or(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPILogicalOrInStatic, 'float16', 'float32', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILogicalOrInStatic, 'float32', 'float64', 'bool')
+
+create_test_case(TestAPILogicalOrInStatic, 'complex64', 'bool', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex64', 'int8', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex64', 'int16', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex64', 'int32', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex64', 'int64', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex64', 'float16', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex64', 'float32', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex64', 'float64', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex64', 'complex128', 'bool')
+
+create_test_case(TestAPILogicalOrInStatic, 'complex128', 'bool', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex128', 'int8', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex128', 'int16', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex128', 'int32', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex128', 'int64', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex128', 'float16', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex128', 'float32', 'bool')
+create_test_case(TestAPILogicalOrInStatic, 'complex128', 'float64', 'bool')
+
+
+class TestAPILogicalXorInStatic(TestOperatorOverloadEqualInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.logical_xor(self.l_value, self.r_value)
+            out_reverse = paddle.logical_xor(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPILogicalXorInStatic, 'float16', 'float32', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILogicalXorInStatic, 'float32', 'float64', 'bool')
+
+create_test_case(TestAPILogicalXorInStatic, 'complex64', 'bool', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex64', 'int8', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex64', 'int16', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex64', 'int32', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex64', 'int64', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex64', 'float16', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex64', 'float32', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex64', 'float64', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex64', 'complex128', 'bool')
+
+create_test_case(TestAPILogicalXorInStatic, 'complex128', 'bool', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex128', 'int8', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex128', 'int16', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex128', 'int32', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex128', 'int64', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex128', 'float16', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex128', 'float32', 'bool')
+create_test_case(TestAPILogicalXorInStatic, 'complex128', 'float64', 'bool')
+
+
+class TestAPIFmaxInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.fmax(self.l_value, self.r_value)
+            out_reverse = paddle.fmax(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIFmaxInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIFmaxInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIFmaxInStatic, 'float32', 'float64', 'float64')
+
+
+class TestAPIFminInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.fmin(self.l_value, self.r_value)
+            out_reverse = paddle.fmin(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIFminInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIFminInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIFminInStatic, 'float32', 'float64', 'float64')
+
+
+class TestAPILogAddExpInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.logaddexp(self.l_value, self.r_value)
+            out_reverse = paddle.logaddexp(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPILogAddExpInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPILogAddExpInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPILogAddExpInStatic, 'float32', 'float64', 'float64')
+
+
+class TestAPIMaximumInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.maximum(self.l_value, self.r_value)
+            out_reverse = paddle.maximum(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIMaximumInStatic, 'float32', 'float64', 'float64')
+
+
+class TestAPIMiniumInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.minimum(self.l_value, self.r_value)
+            out_reverse = paddle.maximum(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIMiniumInStatic, 'float32', 'float64', 'float64')
+
+
+class TestAPINextAfterInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.nextafter(self.l_value, self.r_value)
+            out_reverse = paddle.nextafter(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPINextAfterInStatic, 'float32', 'float64', 'float64')
+
+
+class TestAPIAtan2InStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.atan2(self.l_value, self.r_value)
+            out_reverse = paddle.atan2(self.r_value, self.l_value)
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIAtan2InStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIAtan2InStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIAtan2InStatic, 'float32', 'float64', 'float64')
+
+
+class TestAPIPoissonNllLossInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.nn.functional.poisson_nll_loss(
+                self.l_value, self.r_value
+            )
+            out_reverse = paddle.nn.functional.poisson_nll_loss(
+                self.r_value, self.l_value
+            )
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIPoissonNllLossInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIPoissonNllLossInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIPoissonNllLossInStatic, 'float32', 'float64', 'float64')
+
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestAPIPoissonNllLossInStatic, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestAPIPoissonNllLossInStatic, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestAPIPoissonNllLossInStatic, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestAPIL1LossInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.nn.functional.l1_loss(self.l_value, self.r_value)
+            out_reverse = paddle.nn.functional.l1_loss(
+                self.r_value, self.l_value
+            )
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIL1LossInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPIL1LossInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIL1LossInStatic, 'float32', 'float64', 'float64')
+
+
+class TestAPISmoothL1LossInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.nn.functional.smooth_l1_loss(
+                self.l_value, self.r_value
+            )
+            out_reverse = paddle.nn.functional.smooth_l1_loss(
+                self.r_value, self.l_value
+            )
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPISmoothL1LossInStatic, 'float16', 'float32', 'float32')
+create_test_case(TestAPISmoothL1LossInStatic, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPISmoothL1LossInStatic, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestAPISmoothL1LossInStatic, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestAPISmoothL1LossInStatic, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestAPISmoothL1LossInStatic, 'bfloat16', 'float64', 'float64'
+    )
+
+
+class TestAPIMSELossInStatic(TestOperatorOverloadAddInStatic):
+    def run_api(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            self.generate_test_value()
+
+            out = paddle.nn.functional.mse_loss(self.l_value, self.r_value)
+            out_reverse = paddle.nn.functional.mse_loss(
+                self.r_value, self.l_value
+            )
+
+        res = self.exe.run(prog, fetch_list=[out, out_reverse])
+        return res
+
+
+create_test_case(TestAPIMSELossInStatic, 'float32', 'float64', 'float64')
 
 if __name__ == '__main__':
     unittest.main()

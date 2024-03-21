@@ -775,7 +775,10 @@ def logaddexp(x, y, name=None):
             [-0.30685282, -0.68673831, -0.87307199])
     """
     log_1p = paddle.log1p(paddle.exp(-paddle.abs(x - y)))
-    return log_1p + paddle.maximum(x, y).astype(log_1p.dtype)
+    maximum = paddle.maximum(x, y)
+    if maximum.dtype == paddle.int32 or maximum.dtype == paddle.int64:
+        maximum = maximum.astype(log_1p.dtype)
+    return log_1p + maximum
 
 
 def subtract(x, y, name=None):

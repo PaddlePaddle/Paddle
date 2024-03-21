@@ -1594,7 +1594,6 @@ def poisson_nll_loss(
     if not (input.shape == label.shape):
         raise ValueError("input's shape must equal to label's shape")
 
-    label = paddle.cast(label, input.dtype)
     loss_out = 0
     if log_input:
         loss_out = paddle.exp(input) - label * input
