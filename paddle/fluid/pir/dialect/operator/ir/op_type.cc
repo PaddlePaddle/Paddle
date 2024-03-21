@@ -120,9 +120,49 @@ SparseCooTensorType SparseCooTensorType::dyn_cast_impl(Type type) {
   return nullptr;
 }
 
+pir::Type SparseCsrTensorType::dtype() const { return storage()->dtype_; }
+
+const common::DDim& SparseCsrTensorType::dims() const {
+  return storage()->dims_;
+}
+
+common::DataLayout SparseCsrTensorType::data_layout() const {
+  return storage()->layout_;
+}
+
+pir::DenseTensorType SparseCsrTensorType::non_zero_crows() const {
+  return storage()->non_zero_crows_;
+}
+
+pir::DenseTensorType SparseCsrTensorType::non_zero_cols() const {
+  return storage()->non_zero_cols_;
+}
+
+pir::DenseTensorType SparseCsrTensorType::non_zero_elements() const {
+  return storage()->non_zero_elements_;
+}
+
+bool SparseCsrTensorType::classof(Type type) {
+  if (type) {
+    if (type.type_id() == type_id()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+SparseCsrTensorType SparseCsrTensorType::dyn_cast_impl(Type type) {
+  if (type) {
+    if (type.type_id() == type_id()) {
+      return SparseCsrTensorType(type.storage());
+    }
+  }
+  return nullptr;
+}
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SparseCooTensorType)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SparseCsrTensorType)
