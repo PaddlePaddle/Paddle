@@ -2001,7 +2001,7 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : scale_grad
-  forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
+  forward : scale (Tensor x, Scalar scale, Scalar bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale=1.0)
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0f, true)

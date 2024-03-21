@@ -109,6 +109,7 @@ test_fold_op
 test_frame_op
 test_ftrl_op
 test_full_like_op
+test_fused_adam_op
 test_fused_attention_op
 test_fused_attention_op_api
 test_fused_bias_dropout_residual_layer_norm_op
@@ -201,6 +202,7 @@ test_one_hot_v2_op
 test_one_hot_v2_op_static_build
 test_overlap_add_op
 test_pad3d_op
+test_partial_sum_op
 test_pass_quantization
 test_pixel_shuffle_op
 test_poisson_op
