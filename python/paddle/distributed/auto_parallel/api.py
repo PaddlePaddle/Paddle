@@ -657,7 +657,9 @@ class _ShardOptimizer:
                 self._shard_fn._shard_parameter(param)
 
     def _set_and_check_sharding_prop_from_param(self):
-        if len(self._shard_fn._mesh._shape) == 1:
+        if (self._shard_fn._mesh is not None) and (
+            len(self._shard_fn._mesh._shape) == 1
+        ):
             self._sharding_degree = self._shard_fn._mesh.get_dim_size(0)
             self._sharding_mesh_axis = 0
         else:
@@ -684,16 +686,12 @@ class _ShardOptimizer:
                     assert isinstance(
                         placements[self._sharding_mesh_axis], dist.Replicate
                     ), "The placement on sharding_mesh_axis should be Replicate"
+
                     # check the sharding degree since it has already been set
-                    if any(
-                        isinstance(placement, dist.Shard)
-                        for placement in placements
-                    ):
-                        for idx, placement in enumerate(placements):
-                            if isinstance(placement, dist.Replicate):
-                                assert (
-                                    mesh.dim_size(idx) == self._sharding_degree
-                                ), "The sharding degree of all parameters must be equal currently."
+                    assert (
+                        mesh.dim_size(self._sharding_mesh_axis)
+                        == self._sharding_degree
+                    ), "The sharding degree of all parameters must be equal currently."
 
         assert (
             self._sharding_degree is not None
@@ -889,7 +887,7 @@ class ShardingStage1(_ShardingStageBase):
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 1.
 
     Args:
-        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        mesh(None|paddle.distributed.ProcessMesh): If mesh is not None, the `ProcessMesh` object describes the Cartesian topology of the used processes for dense type parameters.
 
     Examples:
         .. code-block:: python
@@ -922,7 +920,7 @@ class ShardingStage1(_ShardingStageBase):
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh=None):
         super().__init__(mesh)
 
     def __call__(self, key, param, accumulator):
@@ -950,7 +948,7 @@ class ShardingStage2(_ShardingStageBase):
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 2.
 
     Args:
-        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        mesh(None|paddle.distributed.ProcessMesh): If mesh is not None, the `ProcessMesh` object describes the Cartesian topology of the used processes for dense type parameters.
 
     Examples:
         .. code-block:: python
@@ -983,7 +981,7 @@ class ShardingStage2(_ShardingStageBase):
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh=None):
         super().__init__(mesh)
 
     def __call__(self, key, param, accumulator):
@@ -1022,7 +1020,7 @@ class ShardingStage2(_ShardingStageBase):
         return grad
 
     def _register_hook_for_param_grad(self, param):
-        if param.is_dense():
+        if param.is_dense() and self._mesh is not None:
             placements = []
             for _ in range(len(self._mesh.shape)):
                 placements.append(dist.Replicate())
@@ -1036,7 +1034,7 @@ class ShardingStage3(_ShardingStageBase):
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 3.
 
     Args:
-        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        mesh(None|paddle.distributed.ProcessMesh): If mesh is not None, the `ProcessMesh` object describes the Cartesian topology of the used processes for dense type parameters.
 
     Examples:
         .. code-block:: python
@@ -1069,11 +1067,11 @@ class ShardingStage3(_ShardingStageBase):
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh=None):
         super().__init__(mesh)
 
     def _shard_parameter(self, param):
-        if param.is_dense():
+        if param.is_dense() and self._mesh is not None:
             placements = []
             for _ in range(len(self._mesh.shape)):
                 placements.append(dist.Replicate())
