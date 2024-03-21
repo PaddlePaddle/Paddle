@@ -115,9 +115,48 @@ class IR_API SparseCooTensorType
   }
 };
 
+class IR_API SparseCsrTensorType
+    : public pir::Type::
+          TypeBase<SparseCsrTensorType, pir::Type, SparseCsrTensorTypeStorage> {
+ public:
+  using Base::Base;
+
+  pir::Type dtype() const;
+  const common::DDim &dims() const;
+  common::DataLayout data_layout() const;
+  pir::DenseTensorType non_zero_crows() const;
+  pir::DenseTensorType non_zero_cols() const;
+  pir::DenseTensorType non_zero_elements() const;
+
+  ///
+  /// \brief Implementation of 'classof' that compares the type id of
+  /// the provided value with the concrete type id.
+  ///
+  static bool classof(pir::Type type);
+
+  static SparseCsrTensorType dyn_cast_impl(pir::Type type);
+
+  static SparseCsrTensorType get(pir::IrContext *ctx,
+                                 pir::Type dtype,
+                                 const common::DDim &dims,
+                                 common::DataLayout layout,
+                                 pir::DenseTensorType non_zero_crows,
+                                 pir::DenseTensorType non_zero_cols,
+                                 pir::DenseTensorType non_zero_elements) {
+    return Base::get(ctx,
+                     dtype,
+                     dims,
+                     layout,
+                     non_zero_crows,
+                     non_zero_cols,
+                     non_zero_elements);
+  }
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SparseCooTensorType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SparseCsrTensorType)
