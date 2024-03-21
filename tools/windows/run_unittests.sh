@@ -148,6 +148,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_zero_dim_sundry_static_api_part1$|\
 ^test_zero_dim_sundry_static_api_part2$|\
 ^test_zero_dim_sundry_static_api_part3$|\
+^test_zero_dim_sundry_static_api_part4$|\
 ^paddle_infer_api_copy_tensor_tester$|\
 ^cudnn_helper_test$|\
 ^test_analyzer_small_dam$|\
