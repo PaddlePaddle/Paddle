@@ -35,12 +35,6 @@ class TileOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
 
     if (engine_->with_dynamic_shape()) {
-      std::vector<int32_t> start(rank, 0);
-      std::vector<int32_t> stride(rank, 1);
-      auto start_tensor =
-          Add1DConstantLayer(start, output_name + "start_tensor");
-      auto stride_tensor =
-          Add1DConstantLayer(stride, output_name + "stride_tensor");
       auto input_shape_tensor = Shape(input);
 
       nvinfer1::ITensor* repeat_tensor = nullptr;
