@@ -14,11 +14,12 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
-
 #include "paddle/cinn/api/op_topo_pattern.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+
+#include "paddle/cinn/frontend/cluster_ops/shardable_axes_inferer.h"
+#include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 
 namespace cinn::frontend {
 struct FrontendPattern {};

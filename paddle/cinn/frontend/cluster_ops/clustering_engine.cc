@@ -35,7 +35,9 @@ ClusteringResult ClusteringEngine::ClusterOps() {
     CHECK(std::holds_alternative<std::vector<StmtPattern>>(raw_parsed));
     return std::get<std::vector<StmtPattern>>(raw_parsed);
   }();
-
+  VLOG(4) << "- After Raw Parsing, the number of StmtPatterns is "
+          << stmt_patterns.size();
+  VLOG(4) << "- Making Acyclic Same Cluster Bfs Walker";
   common::BfsWalker<const StmtPattern*> walker =
       MakeAcyclicSameClusterBfsWalker(stmt_patterns);
   auto OrderValue4Op = MakeTopoOrderFinderOfOp(ops_);
@@ -68,13 +70,15 @@ void ClusteringEngine::SortStmtsList(
 common::BfsWalker<const StmtPattern*>
 ClusteringEngine::MakeAcyclicSameClusterBfsWalker(
     const std::vector<StmtPattern>& stmt_patterns) {
-  VLOG(4) << "Make BFS Walker";
+  VLOG(4) << "-- Make Topo Walker";
   const auto entire_topo_walk = MakeTopoWalker(op_topo_, stmt_patterns);
+  VLOG(4) << "-- Make ClusterRoot for Stmt";
   const auto ClusterRoot4Stmt =
       MakeClusterRoot4Stmt(entire_topo_walk, stmt_patterns);
   const auto IsInSameCluster = [=](const auto* lhs, const auto* rhs) {
     return ClusterRoot4Stmt(lhs) == ClusterRoot4Stmt(rhs);
   };
+  VLOG(4) << "-- Make Is Acyclic Connected Predicator";
   const auto IsAcyclicConnected = MakePredicatorIsAcyclicConnected(
       entire_topo_walk, stmt_patterns, ClusterRoot4Stmt);
   using NodeVisitor = std::function<void(const StmtPattern*)>;

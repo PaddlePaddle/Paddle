@@ -17,6 +17,7 @@
 #include "paddle/cinn/frontend/cluster_ops/common_utils.h"
 #include "paddle/cinn/frontend/cluster_ops/group_pattern.h"
 #include "paddle/cinn/frontend/cluster_ops/pattern_utils.h"
+#include "paddle/cinn/frontend/cluster_ops/shardable_axes_inferer.h"
 #include "paddle/cinn/frontend/cluster_ops/shardable_axes_provider.h"
 
 namespace cinn::frontend::cluster_ops {
