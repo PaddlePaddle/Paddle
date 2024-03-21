@@ -2659,6 +2659,13 @@
   attrs :
     {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
 
+- op : pull_gpups_sparse
+  backward : pull_gpups_sparse_grad
+  inputs :
+    {w : W, ids : Ids}
+  outputs :
+    out : Out
+
 - op : push_sparse_v2
   inputs :
     { x : Ids, W : w}

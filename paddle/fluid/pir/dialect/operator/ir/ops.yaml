@@ -1333,6 +1333,17 @@
     func : push_dense
     data_type : DataType::FLOAT32
 
+- op : pull_gpups_sparse
+  args : (Tensor w, Tensor ids, int[] size={}, bool is_sparse=false, bool is_distributed=false)
+  output : Tensor(out)
+  infer_meta :
+    func : PullGpupsSparseInferMeta
+  kernel :
+    func : pull_gpups_sparse
+    data_type : out
+  optional : w
+  backward: pull_gpups_sparse_grad
+
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
   output : Tensor[](out_grad_out){out_grad_in.size()}
