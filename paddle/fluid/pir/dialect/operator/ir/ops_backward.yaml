@@ -580,6 +580,16 @@
   composite : pad_grad(x, out_grad, paddings, pad_value, x_grad)
   backward : pad_double_grad
 
+- backward_op : partial_concat_grad
+  forward : partial_concat (Tensor[] x, int start_index = 0, int length = -1) -> Tensor(out)
+  args : (Tensor[] x, Tensor out_grad, int start_index, int length)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : PartialConcatGradInferMeta
+    param : [x]
+  kernel :
+    func : partial_concat_grad
+
 - backward_op : partial_sum_grad
   forward : partial_sum (Tensor[] x, int start_index = 0, int length = -1) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad, int start_index, int length)

@@ -202,6 +202,7 @@ test_one_hot_v2_op
 test_one_hot_v2_op_static_build
 test_overlap_add_op
 test_pad3d_op
+test_partial_concat_op
 test_partial_sum_op
 test_pass_quantization
 test_pixel_shuffle_op
