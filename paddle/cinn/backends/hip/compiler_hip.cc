@@ -129,8 +129,44 @@ std::string Compiler::CompileHipSource(const std::string& code,
 }
 
 std::string Compiler::CompileWithHipcc(const std::string& hip_c) {
-  //todo，参考hipcc_test.cc
-  return "";
+    // hipcc compile command
+    std::string options = "hipcc -O3 --genco";
+    // arch
+    // Get device properties from the first device available.
+    hipDeviceProp_t        props;
+    constexpr unsigned int device_id = 0;
+    hipGetDeviceProperties(&props, device_id);
+    if(props.gcnArchName[0])
+    {
+        options += std::string(" --offload-arch=") + props.gcnArchName;
+    }
+
+    auto include_dir = common::Context::Global().runtime_include_dir();
+    std::string include_dir_str = "";
+    for (auto dir : include_dir) {
+        if (include_dir_str.empty()) {
+        include_dir_str = dir;
+        } else {
+        include_dir_str += ":" + dir;
+        }
+    }
+
+    std::string dir = "./source";
+    prefix_name_ = dir + "/" + common::UniqName("rtc_tmp");
+
+    auto hip_c_file = prefix_name_ + ".cu";
+    std::ofstream ofs(hip_c_file, std::ios::out);
+    CHECK(ofs.is_open()) << "Fail to open file " << hip_c_file;
+    ofs << hip_c;
+    ofs.close();
+
+    options += " -I " + include_dir_str;
+    options += " -o " + prefix_name_ + ".hsaco";
+    options += " " + prefix_name_ + ".cc";
+
+    std::cout << options << std::endl;
+    system(options.c_str());
+    return prefix_name_ + ".hsaco";
 }
 
 
