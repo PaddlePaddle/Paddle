@@ -101,7 +101,7 @@ DimsGenInstruction = ( Nope
                      | AddSourceOp
                      )
 
-kDAGGenClassToDimGenClassMap = {
+kDAGGenClassToDimsGenClassMap = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,

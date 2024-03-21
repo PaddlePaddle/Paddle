@@ -75,6 +75,7 @@ class AddUnaryOp:
             return AddUnaryOp(
                 op_name=_GetRandomBroadcastOpName(requirement)
             )
+        assert input_dims_eq_one == output_dims_eq_one
         return AddUnaryOp(
             op_name=_GetRandomUnaryOpName(requirement)
         )
@@ -91,6 +92,17 @@ class AddBinaryOp:
         dag_dims_gen_instruction: dag_dims_generator.DAGDimsGenInstruction,
         infer_ctx: dag_dims_generator.DimsIsEqOneInferContext
     ):
+        lhs_input_dims_eq_one = (
+            dag_dims_gen_instruction.dims.lhs_source_tensor_dim_eq_one
+        )
+        rhs_input_dims_eq_one = (
+            dag_dims_gen_instruction.dims.rhs_source_tensor_dim_eq_one
+        )
+        output_dims_eq_one = infer_ctx.current_source_tensor_dim_eq_one[
+            dag_dims_gen_instruction.dag.source_tensor_index
+        ]
+        assert _IsLhsGreaterThanRhs(output_dims_eq_one, lhs_input_dims_eq_one)
+        assert _IsLhsGreaterThanRhs(output_dims_eq_one, rhs_input_dims_eq_one)
         return AddBinaryOp(
             op_name=_GetRandomBinaryOpName(requirement)
         )
