@@ -1040,7 +1040,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableCustomPasses,
            py::arg("passes") = std::vector<std::string>(),
            py::arg("custom_pass_only") = false)
-      .def("set_opt_level",
+      .def("set_optimization_level",
            &AnalysisConfig::SetOptimizationLevel,
            py::arg("opt_level") = 2)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
