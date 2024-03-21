@@ -27,7 +27,6 @@ ClusteringEngine::ClusteringEngine(
       clustering_policy_(clustering_policy) {}
 
 ClusteringResult ClusteringEngine::ClusterOps() {
-  VLOG(4) << "- Raw Parsing";
   const std::vector<StmtPattern> stmt_patterns = [&] {
     GroupPattern raw_parsed =
         StmtFusionHelper(ops_, shardable_axes_inferer_).FuseToGroupPattern();
@@ -39,12 +38,9 @@ ClusteringResult ClusteringEngine::ClusterOps() {
 
   common::BfsWalker<const StmtPattern*> walker =
       MakeAcyclicSameClusterBfsWalker(stmt_patterns);
-
-  VLOG(4) << "- Making Acyclic Same Cluster Bfs Walker";
-  std::vector<std::vector<const StmtPattern*>> stmts_list;
-  VLOG(4) << "- Visit Connect Component";
-
   auto OrderValue4Op = MakeTopoOrderFinderOfOp(ops_);
+
+  std::vector<std::vector<const StmtPattern*>> stmts_list;
   VisitConnectedComponent(walker, stmt_patterns, [&](auto stmt_ptrs) {
     SortStmtPtrs(&stmt_ptrs, OrderValue4Op);
     stmts_list.push_back(stmt_ptrs);

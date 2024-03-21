@@ -121,6 +121,7 @@ StmtFusionHelper::StmtFusionHelper(
 }
 
 GroupPattern StmtFusionHelper::FuseToGroupPattern() {
+  VLOG(4) << "Step 1 Start fuse IS PS to their downstreams";
   std::vector<StmtPattern> stmt_patterns = ConvertToStmtPatternVec();
   if (const auto& error = Fuse_IS_x_IS_2_IS(&stmt_patterns))
     return error.value();
@@ -131,6 +132,10 @@ GroupPattern StmtFusionHelper::FuseToGroupPattern() {
   if (const auto& error = Fuse_IS_x_R_2_R(&stmt_patterns)) return error.value();
   if (const auto& error = Fuse_PS_x_R_2_R(&stmt_patterns)) return error.value();
   SortStmtPatterns(&stmt_patterns);
+  VLOG(4) << "Step 1 Finished, Output:";
+  for (int i=0; i<stmt_patterns.size(); i++){
+    VLOG(4) << "Stmt " << i << "\n" << StmtDebugStr(stmt_patterns[i]);
+  }
   return stmt_patterns;
 }
 

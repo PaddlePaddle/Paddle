@@ -39,6 +39,7 @@ class ClusteringEngine {
       const common::BfsWalker<const StmtPattern*>& walker,
       const std::vector<StmtPattern>& stmt_patterns,
       const DoEachComponentT& DoEachComponent) {
+    VLOG(4) << "Step 2, Searching Connected Componenet";
     std::unordered_set<const StmtPattern*> visited;
     for (const auto& start : stmt_patterns) {
       if (visited.count(&start)) continue;
@@ -49,6 +50,7 @@ class ClusteringEngine {
       });
       DoEachComponent(component);
     }
+    VLOG(4) << "Step 2 Finished";
   }
 
   ShardableAxes4ValueT MakeInferedShardableAxes4Value(
