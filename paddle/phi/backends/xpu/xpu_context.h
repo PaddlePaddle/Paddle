@@ -69,9 +69,9 @@ class XPUContext : public DeviceContext,
   // NOTE: External users manage resources. Used in inference scenarios.
   // The Set interface is for inference only, DeviceContext will mark the
   // resource as external, and will not delete any resource when destructing.
-  void SetXContext(xpu::Context*);
+  void SetXContext(xpu::Context*, int i = 0);
 
-  void SetL3Cache(int l3_size = 14155776);
+  void SetL3Cache(int l3_size = 1024, int i = 0);
 
   void SetXpuVersion(int version);
 
