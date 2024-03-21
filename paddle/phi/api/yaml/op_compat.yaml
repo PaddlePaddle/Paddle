@@ -339,6 +339,8 @@
   backward : batch_fc_grad
   inputs :
     {input : Input, w : W, bias : Bias}
+  outputs :
+    out : Out
 
 - op : batch_norm
   backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
