@@ -85,6 +85,7 @@ void SortStmtPtrs(
 }
 common::TopoWalker<const StmtPattern*> MakeTopoWalker(
     const OpTopo& op_topo, const std::vector<StmtPattern>& stmt_patterns) {
+  VLOG(4) << "MakeTopoWalker";
   using StmtPtrs = std::vector<const StmtPattern*>;
   using Op2OwnerStmtPtrs = std::unordered_map<const pir::Operation*, StmtPtrs>;
   auto op2owner_stmt_ptr = std::make_shared<Op2OwnerStmtPtrs>();

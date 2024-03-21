@@ -68,6 +68,7 @@ void ClusteringEngine::SortStmtsList(
 common::BfsWalker<const StmtPattern*>
 ClusteringEngine::MakeAcyclicSameClusterBfsWalker(
     const std::vector<StmtPattern>& stmt_patterns) {
+  VLOG(4) << "Make BFS Walker";
   const auto entire_topo_walk = MakeTopoWalker(op_topo_, stmt_patterns);
   const auto ClusterRoot4Stmt =
       MakeClusterRoot4Stmt(entire_topo_walk, stmt_patterns);
@@ -134,6 +135,7 @@ ClusteringEngine::MakePredicatorIsAcyclicConnected(
     const common::TopoWalker<const StmtPattern*>& walker,
     const std::vector<StmtPattern>& stmt_patterns,
     const ClusteringEngine::ClusterRoot4StmtT& ClusterRoot4Stmt) {
+  VLOG(4) << "MakePredicatorIsAcyclicConnected";
   const auto AllTopClosureUpstreams4Stmt =
       MakeAllTopClosureUpstreams4Stmt(walker, stmt_patterns, ClusterRoot4Stmt);
   const auto IsSrcAcyclicConnectedToDst = [&](const auto* src,
@@ -363,6 +365,7 @@ std::function<const StmtPattern*(const StmtPattern*)>
 ClusteringEngine::MakeClusterRoot4Stmt(
     const common::TopoWalker<const StmtPattern*>& topo_walker,
     const std::vector<StmtPattern>& stmt_patterns) {
+  VLOG(4) << "MakeClusterRoot4Stmt";
   std::unordered_map<const StmtPattern*, const StmtPattern*> stmt2cluster_root;
   VisitClusterStmts(topo_walker, stmt_patterns, [&](const auto& stmt_ptrs) {
     CHECK(!stmt_ptrs.empty());

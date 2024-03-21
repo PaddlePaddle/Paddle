@@ -101,6 +101,7 @@ bool GetReduceOpKeepDims(const pir::Operation* reduce_op) {
 
 std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
     const std::vector<const pir::Operation*>& ops) {
+  VLOG(4) << "Make Topo Order Finder";
   std::unordered_map<const pir::Operation*, size_t> op2order_in_block;
   size_t order = 0;
   for (const pir::Operation* op : ops) {
