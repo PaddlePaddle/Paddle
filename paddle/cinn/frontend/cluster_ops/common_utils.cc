@@ -131,5 +131,4 @@ std::string OpDebugStr(const pir::Operation* op) {
   printer.PrintOperation(const_cast<pir::Operation*>(op));
   return ss.str();
 }
-
 }  // namespace cinn::frontend::cluster_ops
