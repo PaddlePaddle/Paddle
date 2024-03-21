@@ -435,12 +435,13 @@ PD_REGISTER_SPMD_RULE(
     logical_xor,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     not_equal,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
-
+PD_REGISTER_SPMD_RULE(swiglu,
+                      PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmdReverse));
 // TODO(pkuzyc): add multiary elementwise rule
 
 // reduction rule
@@ -619,6 +620,32 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(scatter,
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmdReverse));
+
+// gather
+PD_REGISTER_SPMD_RULE(
+    gather,
+    PD_INFER_SPMD(phi::distributed::GatherInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::GatherInferSpmdReverseBase));
+
+// one_hot
+PD_REGISTER_SPMD_RULE(one_hot,
+                      PD_INFER_SPMD(phi::distributed::OneHotInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::OneHotInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(cumsum,
+                      PD_INFER_SPMD(phi::distributed::CumSumInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CumSumInferSpmdReverse));
+
+// argmax
+PD_REGISTER_SPMD_RULE(
+    argmax,
+    PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdReverseBase));
+
+// unbind
+PD_REGISTER_SPMD_RULE(unbind,
+                      PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::UnbindInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

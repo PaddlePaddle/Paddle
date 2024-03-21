@@ -30,7 +30,7 @@
 
 PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
                          true,
-                         "Whether to use strdie kernel if op support stride.");
+                         "Whether to use stride kernel if op support stride.");
 
 COMMON_DECLARE_int32(low_precision_op_list);
 COMMON_DECLARE_bool(enable_api_kernel_fallback);
@@ -249,6 +249,17 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     if (stride_kernel_iter != iter->second.end()) {
       return {stride_kernel_iter->second, false, true};
     }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (stride_kernel_iter == iter->second.end() &&
+        const_kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+      stride_kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                              phi::DataLayout::STRIDED,
+                                              const_kernel_key.dtype()});
+      if (stride_kernel_iter != iter->second.end()) {
+        return {stride_kernel_iter->second, false, true};
+      }
+    }
+#endif
   }
 
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),

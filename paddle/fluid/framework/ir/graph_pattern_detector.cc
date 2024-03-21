@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -781,8 +781,7 @@ void GraphSafeRemoveNodes(
   for (auto *node : nodes) {
     if (saved_nodes != nullptr) {
       // prevent unique_ptr node from being released
-      saved_nodes->insert(
-          std::move(graph->RemoveNode(const_cast<Node *>(node))));
+      saved_nodes->insert(graph->RemoveNode(const_cast<Node *>(node)));
     } else {
       graph->RemoveNode(const_cast<Node *>(node));
     }

@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 paddle.seed(10)
@@ -62,10 +63,11 @@ class TestNormalAPI(unittest.TestCase):
         ret_all_shape = copy.deepcopy(shape)
         ret_all_shape.insert(0, self.repeat_num)
         ret_all = np.zeros(ret_all_shape, self.dtype)
+        main_program = paddle.static.Program()
         if isinstance(self.mean, np.ndarray) and isinstance(
             self.std, np.ndarray
         ):
-            with paddle.static.program_guard(paddle.static.Program()):
+            with paddle.static.program_guard(main_program):
                 mean = paddle.static.data(
                     'Mean', self.mean.shape, self.mean.dtype
                 )
@@ -84,7 +86,7 @@ class TestNormalAPI(unittest.TestCase):
                     ret_all[i] = ret[0]
             return ret_all
         elif isinstance(self.mean, np.ndarray):
-            with paddle.static.program_guard(paddle.static.Program()):
+            with paddle.static.program_guard(main_program):
                 mean = paddle.static.data(
                     'Mean', self.mean.shape, self.mean.dtype
                 )
@@ -96,7 +98,7 @@ class TestNormalAPI(unittest.TestCase):
                     ret_all[i] = ret[0]
             return ret_all
         elif isinstance(self.std, np.ndarray):
-            with paddle.static.program_guard(paddle.static.Program()):
+            with paddle.static.program_guard(main_program):
                 std = paddle.static.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(self.mean, std, self.shape)
 
@@ -106,7 +108,7 @@ class TestNormalAPI(unittest.TestCase):
                     ret_all[i] = ret[0]
             return ret_all
         else:
-            with paddle.static.program_guard(paddle.static.Program()):
+            with paddle.static.program_guard(main_program):
                 out = paddle.normal(self.mean, self.std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
@@ -138,6 +140,7 @@ class TestNormalAPI(unittest.TestCase):
         paddle.enable_static()
         return ret_all
 
+    @test_with_pir_api
     def test_api(self):
         ret_static = self.static_api()
         ret_dygraph = self.dygraph_api()
@@ -185,6 +188,7 @@ class TestNormalAPI_mean_std_are_tensor_with_different_dtype(TestNormalAPI):
 
 
 class TestNormalAlias(unittest.TestCase):
+    @test_with_pir_api
     def test_alias(self):
         paddle.disable_static()
         shape = [1, 2, 3]
@@ -195,8 +199,10 @@ class TestNormalAlias(unittest.TestCase):
 
 
 class TestNormalErrors(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with paddle.static.program_guard(paddle.static.Program()):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             mean = [1, 2, 3]
             self.assertRaises(TypeError, paddle.normal, mean)
 

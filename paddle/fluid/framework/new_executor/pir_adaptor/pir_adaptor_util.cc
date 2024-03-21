@@ -480,18 +480,9 @@ void HandleForSpecialOp(pir::Operation* op,
         auto shape = op->attribute<dialect::IntArrayAttribute>("shape");
         auto dim = phi::make_ddim(shape.data().GetData());
         auto dtype = op->attribute<dialect::DataTypeAttribute>("dtype");
-        auto place = op->attribute<dialect::PlaceAttribute>("place").data();
-        if (place.GetType() == phi::AllocationType::UNDEFINED) {
-          place = phi::CPUPlace();
-        }
         if (!common::contain_unknown_dim(dim)) {
           phi::DenseTensorMeta meta(dtype.data(), dim);
           t->set_meta(meta);
-          auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-          dev_ctx->Alloc(t, dtype.data());
-          VLOG(10) << "[Alloc var]: "
-                   << op->attribute<pir::StrAttribute>("name") << " "
-                   << t->initialized();
         }
       }
     }
@@ -556,10 +547,10 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->operand_source(0);
 
     Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
-    if (auto bool_atttr =
+    if (auto bool_attr =
             value.attribute<pir::BoolAttribute>(kAttrIsPersistable)) {
-      if (bool_atttr.data()) {
-        VLOG(6) << "Handle for builtin.shadow_ouptut persistable value:"
+      if (bool_attr.data()) {
+        VLOG(6) << "Handle for builtin.shadow_output persistable value:"
                 << var_name;
         scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
       }
@@ -753,7 +744,7 @@ void BuildScope(const pir::Block& block,
     Variable* var = value_exe_info->GetScope()->FindVar(kwarg.first);
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
-                       "The variable %s shoud exist", kwarg.first));
+                       "The variable %s should exist", kwarg.first));
 
     value_exe_info->Add(kwarg.second, kwarg.first);
   }
