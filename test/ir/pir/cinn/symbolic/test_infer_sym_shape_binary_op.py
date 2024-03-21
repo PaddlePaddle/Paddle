@@ -185,7 +185,7 @@ class Conv2dNet(paddle.nn.Layer):
 
 class Conv2dOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
-        self.expected = ['shape[2, 6, 8, 8], data[NULL]']
+        self.expected = ['shape[2, 6, 6, 6], data[NULL]']
 
     def test_eval_symbolic(self):
         net = Conv2dNet()

@@ -74,6 +74,7 @@ bool Conv2dOpInferSymbolicShape(
 
   std::vector<int> dilations =
       paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
+
   const auto &attributes = op->attributes();
   const std::string data_format =
       attributes.at("data_format").dyn_cast<pir::StrAttribute>().AsString();
@@ -100,11 +101,11 @@ bool Conv2dOpInferSymbolicShape(
 
   std::vector<symbol::DimExpr> ksize = filter_data_dims;
 
-  std::vector<symbol::DimExpr> new_paddings(paddings.size());
+  std::vector<symbol::DimExpr> new_paddings;
   for (const auto &i : paddings) {
     new_paddings.push_back(symbol::DimExpr{i});
   }
-  std::vector<symbol::DimExpr> new_dilations(dilations.size());
+  std::vector<symbol::DimExpr> new_dilations;
   for (const auto &i : dilations) {
     new_dilations.push_back(symbol::DimExpr{i});
   }
