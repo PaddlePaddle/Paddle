@@ -2162,12 +2162,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
-#if defined(PADDLE_WITH_CUDA)
   m.def("_set_warmup", [](bool warmup) {
+#if defined(PADDLE_WITH_CUDA)
     paddle::memory::allocation::AutoGrowthBestFitAllocatorV2State::GetInstance()
         .SetWarmup(warmup);
-  });
 #endif
+  });
   m.def("_test_enforce_gpu_success", []() {
 #if defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(cudaErrorInsufficientDriver);
