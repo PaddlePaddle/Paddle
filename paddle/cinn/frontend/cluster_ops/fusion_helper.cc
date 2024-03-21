@@ -16,6 +16,100 @@
 
 namespace cinn::frontend::cluster_ops {
 
+struct FusePolicy_IS_x_PS_2_PS {
+  static bool FuseCondition(const StmtPattern& upstream,
+                            const StmtPattern& downstream) {
+    return IsISPattern(upstream) && IsPSPattern(downstream);
+  }
+
+  static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
+      const StmtPattern& upstream, const StmtPattern& downstream) {
+    return MergePatternImpl(std::get<IS>(upstream), std::get<PS>(downstream));
+  }
+
+  static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
+      const IS& upstream, const PS& downstream) {
+    const auto& ops = [&] {
+      std::vector<const pir::Operation*> ops(upstream.ops.begin(),
+                                              upstream.ops.end());
+      for (const auto* downstream_op : downstream.ops) {
+        if (std::find(ops.begin(), ops.end(), downstream_op) == ops.end()) {
+          ops.push_back(downstream_op);
+        }
+      }
+      return ops;
+    }();
+    const auto& shardable_axes_signature =
+        MergeShardableAxesSignature(upstream, downstream);
+    return StmtPattern(PS{
+        .ops = ops,
+        .sole_sink = downstream.sole_sink,
+        .shardable_axes_signature = shardable_axes_signature,
+    });
+  }
+
+  ShardableAxesSignature MergeShardableAxesSignature(
+      const IS& upstream, const PS& downstream) {
+    LOG(FATAL) << "TODO(tianchao)";
+  }
+};
+
+
+struct FusePolicy_IS_x_R_2_R {
+  static bool FuseCondition(const StmtPattern& upstream,
+                            const StmtPattern& downstream) {
+    return IsISPattern(upstream) && IsRPattern(downstream);
+    std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
+        const StmtPattern& upstream, const StmtPattern& downstream);
+    std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
+        const IS& upstream, const R& downstream);
+  };
+
+  static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
+      const StmtPattern& upstream, const StmtPattern& downstream) {
+    return MergePatternImpl(std::get<IS>(upstream), std::get<R>(downstream));
+  }
+
+  static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
+      const IS& upstream, const R& downstream) {
+    if (downstream.HasFusedInput()) {
+      return ErrorGroupPattern{
+          .ops = {downstream.reduce_op_pattern.reduce_op},
+          .error_string = "The input of reduce has been fused.",
+      };
+    }
+    R new_pattern = R(downstream);
+    new_pattern.input = upstream;
+    return StmtPattern(std::move(new_pattern));
+  }
+};
+
+
+struct FusePolicy_PS_x_R_2_R {
+  static bool FuseCondition(const StmtPattern& upstream,
+                            const StmtPattern& downstream) {
+    return IsISPattern(upstream) && IsRPattern(downstream);
+  }
+
+  static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
+      const StmtPattern& upstream, const StmtPattern& downstream) {
+    return MergePatternImpl(std::get<PS>(upstream), std::get<R>(downstream));
+  }
+
+  static std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
+      const PS& upstream, const R& downstream) {
+    if (downstream.HasFusedInput()) {
+      return ErrorGroupPattern{
+          .ops = {downstream.reduce_op_pattern.reduce_op},
+          .error_string = "The input of reduce has been fused.",
+      };
+    }
+    R new_pattern = R(downstream);
+    new_pattern.input = upstream;
+    return StmtPattern(new_pattern);
+  }
+};
+
 StmtFusionHelper::StmtFusionHelper(
     const std::vector<const pir::Operation*>& ops,
     const ShardableAxesInferer& shardable_axes_inferer)
@@ -110,83 +204,6 @@ std::optional<ErrorGroupPattern> StmtFusionHelper::Fuse_PS_x_R_2_R(
   return FuseFilteredStmtPatterns<FusePolicy_PS_x_R_2_R>(stmt_patterns);
 }
 
-bool StmtFusionHelper::FusePolicy_IS_x_PS_2_PS::FuseCondition(const StmtPattern& upstream,
-                          const StmtPattern& downstream) {
-  return IsISPattern(upstream) && IsPSPattern(downstream);
-}
-std::variant<StmtPattern, ErrorGroupPattern> StmtFusionHelper::FusePolicy_IS_x_PS_2_PS::MergePattern(
-    const StmtPattern& upstream, const StmtPattern& downstream) {
-  return MergePatternImpl(std::get<IS>(upstream), std::get<PS>(downstream));
-}
-std::variant<StmtPattern, ErrorGroupPattern> StmtFusionHelper::FusePolicy_IS_x_PS_2_PS::MergePatternImpl(
-    const IS& upstream, const PS& downstream) {
-  const auto& ops = [&] {
-    std::vector<const pir::Operation*> ops(upstream.ops.begin(),
-                                            upstream.ops.end());
-    for (const auto* downstream_op : downstream.ops) {
-      if (std::find(ops.begin(), ops.end(), downstream_op) == ops.end()) {
-        ops.push_back(downstream_op);
-      }
-    }
-    return ops;
-  }();
-  const auto& shardable_axes_signature =
-      MergeShardableAxesSignature(upstream, downstream);
-  return StmtPattern(PS{
-      .ops = ops,
-      .sole_sink = downstream.sole_sink,
-      .shardable_axes_signature = shardable_axes_signature,
-  });
-}
-
-ShardableAxesSignature StmtFusionHelper::FusePolicy_IS_x_PS_2_PS::MergeShardableAxesSignature(
-    const IS& upstream, const PS& downstream) {
-  LOG(FATAL) << "TODO(tianchao)";
-}
-
-
-bool StmtFusionHelper::FusePolicy_IS_x_R_2_R::FuseCondition(const StmtPattern& upstream,
-                          const StmtPattern& downstream) {
-  return IsISPattern(upstream) && IsRPattern(downstream);
-}
-std::variant<StmtPattern, ErrorGroupPattern> StmtFusionHelper::FusePolicy_IS_x_R_2_R::MergePattern(
-    const StmtPattern& upstream, const StmtPattern& downstream) {
-  return MergePatternImpl(std::get<IS>(upstream), std::get<R>(downstream));
-}
-std::variant<StmtPattern, ErrorGroupPattern> StmtFusionHelper::FusePolicy_IS_x_R_2_R::MergePatternImpl(
-    const IS& upstream, const R& downstream) {
-  if (downstream.HasFusedInput()) {
-    return ErrorGroupPattern{
-        .ops = {downstream.reduce_op_pattern.reduce_op},
-        .error_string = "The input of reduce has been fused.",
-    };
-  }
-  R new_pattern = R(downstream);
-  new_pattern.input = upstream;
-  return StmtPattern(std::move(new_pattern));
-}
-
-bool StmtFusionHelper::FusePolicy_PS_x_R_2_R::FuseCondition(const StmtPattern& upstream,
-                          const StmtPattern& downstream) {
-  return IsISPattern(upstream) && IsRPattern(downstream);
-}
-std::variant<StmtPattern, ErrorGroupPattern> StmtFusionHelper::FusePolicy_PS_x_R_2_R::MergePattern(
-    const StmtPattern& upstream, const StmtPattern& downstream) {
-  return MergePatternImpl(std::get<PS>(upstream), std::get<R>(downstream));
-}
-std::variant<StmtPattern, ErrorGroupPattern> StmtFusionHelper::FusePolicy_PS_x_R_2_R::MergePatternImpl(
-    const PS& upstream, const R& downstream) {
-  if (downstream.HasFusedInput()) {
-    return ErrorGroupPattern{
-        .ops = {downstream.reduce_op_pattern.reduce_op},
-        .error_string = "The input of reduce has been fused.",
-    };
-  }
-  R new_pattern = R(downstream);
-  new_pattern.input = upstream;
-  return StmtPattern(new_pattern);
-}
-
 StmtPattern StmtFusionHelper::ConvertToStmtPattern(const pir::Operation* op) {
   const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
   if (IsInjectiveSource(op)) {
@@ -267,6 +284,50 @@ bool StmtFusionHelper::IsConnected(
     }
   });
   return found;
+}
+
+template <typename FusionPolicy>
+std::optional<ErrorGroupPattern>  StmtFusionHelper::FuseFilteredStmtPatterns(
+    std::vector<StmtPattern>* stmt_patterns) {
+  std::list<StmtPattern*> stmts_iters = [&] {
+    std::list<StmtPattern*> stmts_iters;
+    for (auto& stmt : *stmt_patterns) {
+      stmts_iters.push_back(&stmt);
+    }
+    return stmts_iters;
+  }();
+  const auto StmtFinder = MakeStmtFinderFromOp(stmt_patterns);
+  const auto EraseOld = [&](const StmtIterPair& pattern_pair) {
+    stmts_iters.erase(pattern_pair.upstream_iter);
+    stmts_iters.erase(pattern_pair.downstream_iter);
+  };
+  const auto& InsertNew = [&](const StmtPattern& stmt_pattern) {
+    stmt_patterns->push_back(stmt_pattern);
+    stmts_iters.push_back(&stmt_patterns->back());
+  };
+  while (true) {
+    const auto& pattern_pair = FindConnetedPattenPairWithCondition(
+        StmtFinder, &stmts_iters, &FusionPolicy::FuseCondition);
+    if (!pattern_pair.has_value()) break;
+    const std::variant<StmtPattern, ErrorGroupPattern>& new_pattern =
+        FusionPolicy::MergePattern(**pattern_pair.value().upstream_iter,
+                                    **pattern_pair.value().downstream_iter);
+
+    if (std::holds_alternative<ErrorGroupPattern>(new_pattern)) {
+      return std::get<ErrorGroupPattern>(new_pattern);
+    }
+    EraseOld(pattern_pair.value());
+    InsertNew(std::get<StmtPattern>(new_pattern));
+  }
+  *stmt_patterns = [&] {
+    std::vector<StmtPattern> ret_patterns;
+    ret_patterns.reserve(stmts_iters.size());
+    for (const auto& stmt_iter : stmts_iters) {
+      ret_patterns.push_back(*stmt_iter);
+    }
+    return ret_patterns;
+  }();
+  return std::nullopt;
 }
 
 ShardableAxesSignature StmtFusionHelper::GetShardableAxesSignature(
