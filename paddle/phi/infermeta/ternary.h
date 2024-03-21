@@ -57,6 +57,11 @@ void AssignPosInferMeta(const MetaTensor& x,
                         const MetaTensor& cum_count,
                         const MetaTensor& eff_num_len,
                         MetaTensor* out);
+  
+void BatchFCInferMeta(const MetaTensor& input,
+                      const MetaTensor& w,
+                      const MetaTensor& bias,
+                      MetaTensor* out);
 
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,
@@ -107,6 +112,13 @@ void InstanceNormInferMeta(const MetaTensor& x,
                            MetaTensor* saved_mean,
                            MetaTensor* saved_variance,
                            MetaConfig config = MetaConfig());
+
+void GlobalScatterInferMeta(const MetaTensor& x,
+                            const MetaTensor& local_count,
+                            const MetaTensor& global_count,
+                            int ring_id,
+                            bool use_calc_stream,
+                            MetaTensor* out);
 
 void GroupNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,

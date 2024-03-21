@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/constant_folding_pass.h"
-#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
+#include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/multihead_matmul_fuse_pass.h"
 
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
