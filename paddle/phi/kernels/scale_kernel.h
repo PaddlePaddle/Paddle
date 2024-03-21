@@ -21,12 +21,12 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void ScaleKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const Scalar& scale,
-                 float bias,
-                 bool bias_after_scale,
-                 DenseTensor* out);
+TEST_API void ScaleKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const Scalar& scale,
+                          float bias,
+                          bool bias_after_scale,
+                          DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Scale(const Context& dev_ctx,

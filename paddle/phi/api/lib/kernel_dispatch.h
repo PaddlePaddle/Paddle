@@ -36,11 +36,11 @@ namespace paddle {
 namespace experimental {
 
 namespace detail {
-BackendSet GetTensorBackendSet(const phi::TensorBase& t);
-std::size_t CountLeadingZeros(uint32_t val);
+TEST_API BackendSet GetTensorBackendSet(const phi::TensorBase& t);
+TEST_API std::size_t CountLeadingZeros(uint32_t val);
 }  // namespace detail
 
-phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
+TEST_API phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
 
 enum class KernelType {
   DENSE_TENSOR_KERNEL,   // kernel for DenseTensor

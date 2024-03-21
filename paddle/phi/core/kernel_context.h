@@ -47,7 +47,7 @@ class KernelContext {
     return static_cast<const CtxType&>(*dev_ctx_);
   }
 
-  void EmplaceBackInput(const TensorBase* input);
+  TEST_API void EmplaceBackInput(const TensorBase* input);
 
   void EmplaceBackInputWithoutSetRange(const TensorBase* input);
 
@@ -56,7 +56,7 @@ class KernelContext {
   void EmplaceBackInputsWithoutSetRange(
       paddle::small_vector<const TensorBase*> inputs);
 
-  void EmplaceBackOutput(TensorBase* output);
+  TEST_API void EmplaceBackOutput(TensorBase* output);
 
   void EmplaceBackOutputWithoutSetRange(TensorBase* output);
 
@@ -65,7 +65,7 @@ class KernelContext {
   void EmplaceBackOutputsWithoutSetRange(
       paddle::small_vector<TensorBase*> outputs);
 
-  void EmplaceBackAttr(Attribute attr);
+  TEST_API void EmplaceBackAttr(Attribute attr);
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
 
