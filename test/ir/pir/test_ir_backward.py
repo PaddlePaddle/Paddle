@@ -145,9 +145,7 @@ def get_ir_program_1():
     )
     with paddle.static.program_guard(main_program, start_program):
         x_s = paddle.static.data('x', [4, 4], x.dtype)
-        y_s = paddle.static.data('y', [4, 4], x.dtype)
         x_s.stop_gradient = False
-        y_s.stop_gradient = False
 
         k_s = paddle.tanh(x_s)
         z_x = paddle.tanh(x_s)

@@ -1647,8 +1647,8 @@
     func : mv_grad
 
 - backward_op : nanmedian_grad
-  forward : nanmedian (Tensor x, IntArray axis, bool keepdim) -> Tensor(out), Tensor(medians)
-  args : (Tensor x, Tensor medians, Tensor out_grad, IntArray axis, bool keepdim)
+  forward : nanmedian (Tensor x, IntArray axis, bool keepdim, str mode) -> Tensor(out), Tensor(medians)
+  args : (Tensor x, Tensor medians, Tensor out_grad, IntArray axis, bool keepdim, str mode)
   output : Tensor(x_grad)
   infer_meta :
     func : NanmedianGradInferMeta
@@ -2001,7 +2001,7 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : scale_grad
-  forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
+  forward : scale (Tensor x, Scalar scale, Scalar bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale=1.0)
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0f, true)
