@@ -125,4 +125,11 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
   };
 }
 
+std::string OpDebugStr(const pir::Operation* op) {
+  std::stringstream ss;
+  pir::IrPrinter printer(ss);
+  printer.PrintOperation(const_cast<pir::Operation*>(op));
+  return ss.str();
+}
+
 }  // namespace cinn::frontend::cluster_ops

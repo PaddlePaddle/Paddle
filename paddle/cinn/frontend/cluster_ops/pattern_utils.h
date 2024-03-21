@@ -60,19 +60,7 @@ void VisitStmtOp(const StmtPattern& stmt, const DoEachT& DoEach) {
   std::visit([&](const auto& impl) { VisitStmtOpImpl(impl, DoEach); }, stmt);
 }
 
-pir::Value GetStmtBigestShapeValueImpl(const IS& injective_source);
-
-pir::Value GetStmtBigestShapeValueImpl(const R& reduce_pattern);
-
-pir::Value GetStmtBigestShapeValueImpl(const PS& partial_shardable);
-
 pir::Value GetStmtBigestShapeValue(const StmtPattern& stmt);
-
-const pir::Operation* GetStmtSoleSinkImpl(const IS& injective_source);
-
-const pir::Operation* GetStmtSoleSinkImpl(const PS& partial_shardable);
-
-const pir::Operation* GetStmtSoleSinkImpl(const R& reduce);
 
 const pir::Operation* GetStmtSoleSinkOp(const StmtPattern& stmt);
 
@@ -85,5 +73,19 @@ common::TopoWalker<const StmtPattern*> MakeTopoWalker(
 
 std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
     const OpTopo& op_topo);
+
+std::vector<const pir::Operation*> GetStmtContainedOps(const StmtPattern& stmt);
+
+std::string StmtDebugStr(const StmtPattern& stmt);
+
+struct LoopAlignableStmtPatternVec {
+  std::vector<StmtPattern> stmts;
+  std::string DebugStr() const;
+};
+
+struct ClusteringResult {
+  std::vector<LoopAlignableStmtPatternVec> loop_alignable_list;
+  std::string DebugStr() const;
+};
 
 }  // namespace cinn::frontend::cluster_ops

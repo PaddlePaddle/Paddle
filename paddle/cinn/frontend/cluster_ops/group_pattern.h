@@ -66,11 +66,4 @@ using StmtPattern = api::StmtPattern<frontend::FrontendPattern>;
 using StmtPatternVec = api::StmtPatternVec<frontend::FrontendPattern>;
 using StmtVisitor = std::function<void(const StmtPattern*)>;
 
-struct LoopAlignableStmtPatternVec {
-  std::vector<StmtPattern> stmts;
-};
-
-struct ClusteringResult {
-  std::vector<LoopAlignableStmtPatternVec> loop_alignable_list;
-};
 }  // namespace cinn::frontend::cluster_ops

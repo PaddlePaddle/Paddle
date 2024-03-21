@@ -869,9 +869,7 @@ struct GetPatternOpList {
 
 std::vector<GroupClusterNode> NewOpMergeWithOp(
     cinn::dialect::GroupOp group_op) {
-  VLOG(4) << "Start Clustering Ops!";
   const auto cluster_result = frontend::ClusterOps(group_op);
-  VLOG(4) << "Finished Clustering Ops!";
 
   // Each stmts corresponds to each fusion op(cluster node).
   // Concat all the ops of patterns in the stmts, and make them the op list of
@@ -972,9 +970,11 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
 
 std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   // stage 1
-  auto first_stage_output = FLAGS_cinn_new_cluster_op_method
-                                ? NewOpMergeWithOp(group_op)
-                                : OpMergeWithOp(group_op);
+  if (FLAGS_cinn_new_cluster_op_method) {
+    return NewOpMergeWithOp(group_op);
+  }
+
+  auto first_stage_output = OpMergeWithOp(group_op);
 
   if (first_stage_output.size() <= 1) {
     return first_stage_output;

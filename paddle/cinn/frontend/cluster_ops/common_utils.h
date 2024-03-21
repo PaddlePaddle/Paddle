@@ -98,4 +98,6 @@ std::function<size_t(const pir::Operation*)> MakeTopoOrderFinderOfOp(
 std::function<bool(const pir::Operation*)> MakePredicatorIsInThisFusionOp(
     const std::vector<const pir::Operation*>& ops);
 
+std::string OpDebugStr(const pir::Operation* op);
+
 }  // namespace cinn::frontend::cluster_ops

@@ -209,4 +209,65 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
   };
 }
 
+std::vector<const pir::Operation*> GetStmtContainedOpsImpl(
+    std::monostate nothing) {
+  return {};
+}
+
+std::vector<const pir::Operation*> GetStmtContainedOpsImpl(
+    const IS& injective_source) {
+  return injective_source.ops;
+}
+
+std::vector<const pir::Operation*> GetStmtContainedOpsImpl(
+    const PS& partial_shardable) {
+  return partial_shardable.ops;
+}
+
+std::vector<const pir::Operation*> GetStmtContainedOpsImpl(const R& reduce) {
+  const auto get_input_ops = [](std::variant<std::monostate, IS, PS> input) {
+    return std::visit(
+        [](const auto& impl) -> std::vector<const pir::Operation*> {
+          return GetStmtContainedOpsImpl(impl);
+        },
+        input);
+  };
+  std::vector<const pir::Operation*> result = get_input_ops(reduce.input);
+  result.emplace_back(reduce.reduce_op_pattern.reduce_op);
+  return result;
+}
+
+std::vector<const pir::Operation*> GetStmtContainedOps(
+    const StmtPattern& stmt) {
+  return std::visit(
+      [](const auto& impl) { return GetStmtContainedOpsImpl(impl); }, stmt);
+}
+
+std::string StmtDebugStr(const StmtPattern& stmt) {
+  std::stringstream ss;
+  const auto& all_ops = GetStmtContainedOps(stmt);
+  for (const pir::Operation* op : all_ops) {
+    ss << OpDebugStr(op) << "\n";
+  }
+  return ss.str();
+}
+
+std::string LoopAlignableStmtPatternVec::DebugStr() const {
+  std::stringstream ss;
+  ss << "  Alignable Stmt:\n";
+  for (const auto& stmt : stmts) {
+    ss << StmtDebugStr(stmt);
+  }
+  return ss.str();
+}
+
+std::string ClusteringResult::DebugStr() const {
+  std::stringstream ss;
+  ss << "Cluster Result:\n";
+  for (const auto& alignable_stmt : loop_alignable_list) {
+    ss << alignable_stmt.DebugStr();
+  }
+  return ss.str();
+}
+
 }  // namespace cinn::frontend::cluster_ops

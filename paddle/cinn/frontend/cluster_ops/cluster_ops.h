@@ -20,10 +20,13 @@ namespace cinn::frontend {
 
 cluster_ops::ClusteringResult ClusterOps(
     const cinn::dialect::GroupOp& group_op) {
+  VLOG(4) << "Start Cluster Ops!";
+  VLOG(4) << "Input group_op :";
   const auto& ops = [&] {
     std::vector<const pir::Operation*> ops;
-    for (const auto& op : *group_op.block()) {
-      ops.push_back(&op);
+    for (const auto& op : group_op.GetOperators()) {
+      VLOG(4) << cluster_ops::OpDebugStr(op);
+      ops.push_back(op);
     }
     return ops;
   }();
@@ -45,6 +48,9 @@ cluster_ops::ClusteringResult ClusterOps(
   cluster_ops::ShardableAxesInferer inferer(shardable_axes_provider);
   cluster_ops::ClusteringEngine engine(ops, inferer, cluster_policy);
 
-  return engine.ClusterOps();
+  auto result = engine.ClusterOps();
+  VLOG(4) << result.DebugStr();
+  VLOG(4) << "Finished Cluster Ops!";
+  return result;
 }
 }  // namespace cinn::frontend
