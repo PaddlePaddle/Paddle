@@ -373,7 +373,10 @@ void ParallelCompiler::Task::CodegenAndJit() {
     //    ptx, group_id, device_id);
     //pcompiler->result_.SetSourcePtx(group_id, ptx);
     // load cumodule
-    hip_module = std::make_unique<HIPModule>(hsaco, HIPModule::Kind::GCN);
+    hip_module = std::make_unique<HIPModule>(hsaco, 
+                                                compiler.compile_to_hipbin()
+                                                ? HIPModule::Kind::HIPBIN
+                                                : HIPModule::Kind::GCN);
     // register kernel
     backends::RuntimeSymbols symbols;
     for (auto& fn : device_module.functions()) {

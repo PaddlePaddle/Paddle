@@ -289,7 +289,7 @@ bool CanUseNvccCompiler() {
 }
 
 bool CanUseHipccCompiler() {
-  return false;
+  return true;
 }
 
 bool IsCompiledWithCUDA() {
