@@ -44,7 +44,7 @@ class CastSubgraph(nn.Layer):
         super().__init__()
 
     def forward(self, x):
-        return x.cast("float32").reshape([-1, 128])
+        return x.cast("float32")
 
 
 # class TestIfSubgraph(unittest.TestCase):
@@ -95,7 +95,7 @@ class TestCastSubgraph(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [1, 17, 1, 128]
+        self.shape = [1, 32, 17, 17]
         self.x = paddle.randn(self.shape, dtype="float16")
         self.x.stop_gradient = False
 
@@ -113,7 +113,7 @@ class TestCastSubgraph(unittest.TestCase):
     def eval(self, use_cinn):
         net = CastSubgraph()
         input_spec = [
-            InputSpec(shape=[1, None, 1, 128], dtype="float32"),
+            InputSpec(shape=[None, 32, 17, 17], dtype="float32"),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()

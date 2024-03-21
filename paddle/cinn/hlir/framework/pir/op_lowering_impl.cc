@@ -685,11 +685,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       continue;
     }
 
-    std::cerr << "define " << op_result.defining_op()->name() << std::endl;
-    std::cerr << "defind " << group->GetShapeOrDataExprs(op_result)
-              << std::endl;
-    std::cerr << "shpe " << tensor->shape << std::endl;
-
     tensor->shape.clear();
     for (size_t i = 0; i < group->GetShapeOrDataExprs(op_result).shape().size();
          ++i) {
