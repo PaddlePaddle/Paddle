@@ -703,7 +703,8 @@ struct FoldOperandTrait<Max> {
   }
 
   static const_value_type MakeUnit() {
-    return std::numeric_limits<const_value_type>::min();
+    return -10000;
+    // return std::numeric_limits<const_value_type>::min();
   }
   static void Accumulate(const_value_type* value, const DimExpr& expr) {
     *value = std::max(*value, GetInteger(expr));
@@ -743,7 +744,8 @@ struct FoldOperandTrait<Min> {
   }
 
   static const_value_type MakeUnit() {
-    return std::numeric_limits<const_value_type>::max();
+    return 10000;
+    // return std::numeric_limits<const_value_type>::max();
   }
   static void Accumulate(const_value_type* value, const DimExpr& expr) {
     *value = std::min(*value, GetInteger(expr));
