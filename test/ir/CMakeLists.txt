@@ -10,7 +10,7 @@ if(((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_IR_PASSES test_ir_fusion_group_pass)
 endif()
 
-if(WIN32 AND WIN_UNITTEST_LEVEL GREATER 0)
+if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
   message(STATUS "Skip tests unrelated to CUDA/TRT")
 else()
   foreach(target ${TEST_IR_PASSES})

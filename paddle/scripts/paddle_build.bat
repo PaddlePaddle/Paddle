@@ -82,12 +82,12 @@ if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
-if not defined WIN_UNITTEST_LEVEL set WIN_UNITTEST_LEVEL=0
-rem LEVEL 0: run all test 
+if not defined WIN_UNITTEST_LEVEL set WIN_UNITTEST_LEVEL=2
+rem LEVEL 0: For unittests unrelated to CUDA/TRT or unittests without GPU memory, only run on 
+rem          PR-CI-Windows-Infernece(CUDA 11.2), skip them on PR-CI-Windows(CUDA 12.0)
 rem LEVEL 1: For unittests unrelated to CUDA/TRT, only run on PR-CI-Windows-Infernece(CUDA 11.2), 
-rem          skip it on PR-CI-Windows(CUDA 12.0)
-rem LEVEL 2: For unittests unrelated to CUDA/TRT or unittests without GPU memory, only run on 
-rem          PR-CI-Windows-Infernece(CUDA 11.2), skip it on PR-CI-Windows(CUDA 12.0)
+rem          skip them on PR-CI-Windows(CUDA 12.0)
+rem LEVEL 2: run all test 
 if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python38
@@ -250,7 +250,7 @@ set MSVC_STATIC_CRT=OFF
 set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=OFF
-set WIN_UNITTEST_LEVEL=2
+set WIN_UNITTEST_LEVEL=0
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error

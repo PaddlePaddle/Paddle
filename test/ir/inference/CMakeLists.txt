@@ -114,7 +114,7 @@ foreach(TEST_INFERENCE_IR_PASS ${TEST_ONEDNN_IR_PASSES})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
 endforeach()
 
-if(WIN32 AND WIN_UNITTEST_LEVEL GREATER 0)
+if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
   message(STATUS "Skip tests unrelated to CUDA/TRT")
 elseif(WITH_MKLDNN)
   foreach(target ${TEST_MKLDNN_IR_PASSES})
@@ -258,7 +258,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 360)
       set_tests_properties(test_layernorm_shift_partition_pass
                            PROPERTIES TIMEOUT 360)
-      if(WIN_UNITTEST_LEVEL EQUAL 0)
+      if(WIN_UNITTEST_LEVEL EQUAL 2)
         set_tests_properties(test_onednn_conv_bias_fuse_pass PROPERTIES TIMEOUT
                                                                         300)
         set_tests_properties(test_onednn_conv_concat_activation_fuse_pass
@@ -285,7 +285,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_split_layernorm_to_math_ops_pass
                            PROPERTIES TIMEOUT 240)
     endif()
-    if(WIN32 AND WIN_UNITTEST_LEVEL GREATER 0)
+    if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
       message(STATUS "Skip tests unrelated to CUDA/TRT")
     else()
       set_tests_properties(test_onednn_conv_bn_fuse_pass PROPERTIES TIMEOUT 120)

@@ -702,7 +702,7 @@ export FLAGS_call_stack_level=2
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
 
     single_ut_mem_0_startTime_s=`date +%s`
-    if [ ${WIN_UNITTEST_LEVEL:-0} == "2" ]; then
+    if [ ${WIN_UNITTEST_LEVEL:-2} == "0" ]; then
         echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: 0 s"
     else
         while read line

@@ -141,7 +141,7 @@ if(WITH_TESTING)
     add_subdirectory(ir/pir/cinn)
   endif()
 
-  if(WIN32 AND WIN_UNITTEST_LEVEL GREATER 0)
+  if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
     message(STATUS "Skip tests unrelated to CUDA/TRT")
   else()
     add_subdirectory(amp)
