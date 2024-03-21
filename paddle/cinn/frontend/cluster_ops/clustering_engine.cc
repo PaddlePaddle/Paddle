@@ -81,29 +81,35 @@ ClusteringEngine::MakeAcyclicSameClusterBfsWalker(
   const auto VisitAcyclicClusterNext = [=](const StmtPattern* stmt,
                                            const NodeVisitor& DoEach) {
     entire_topo_walk.VisitPrevNodes(stmt, [&](const StmtPattern* input) {
-      VLOG(4) << "Walker || Checking Connected with PreNode:";
-      VLOG(4) << "Walker || Base Node is:\n" << StmtPatternDebugStr(*stmt);
-      VLOG(4) << "Walker || Pre Node is:\n" << StmtPatternDebugStr(*input);
+      VLOG(4) << "CheckAcyclicWalker || Checking Connected with PreNode:";
+      VLOG(4) << "CheckAcyclicWalker || Base Node is:\n"
+              << StmtPatternDebugStr(*stmt);
+      VLOG(4) << "CheckAcyclicWalker || Pre Node is:\n"
+              << StmtPatternDebugStr(*input);
 
       bool in_same_cluster = IsInSameCluster(stmt, input);
-      VLOG(4) << "Walker || In Same Cluster: " << in_same_cluster;
+      VLOG(4) << "CheckAcyclicWalker || In Same Cluster: " << in_same_cluster;
 
       bool is_acyclic_connected = IsAcyclicConnected(stmt, input);
-      VLOG(4) << "Walker || Is Acyclic Connected: " << is_acyclic_connected;
+      VLOG(4) << "CheckAcyclicWalker || Is Acyclic Connected: "
+              << is_acyclic_connected;
 
       if (!in_same_cluster || !is_acyclic_connected) return;
       DoEach(input);
     });
     entire_topo_walk.VisitNextNodes(stmt, [&](const StmtPattern* output) {
-      VLOG(4) << "Walker || Checking Connected with NextNode:";
-      VLOG(4) << "Walker || Base Node is:\n" << StmtPatternDebugStr(*stmt);
-      VLOG(4) << "Walker || Next Node is:\n" << StmtPatternDebugStr(*output);
+      VLOG(4) << "CheckAcyclicWalker || Checking Connected with NextNode:";
+      VLOG(4) << "CheckAcyclicWalker || Base Node is:\n"
+              << StmtPatternDebugStr(*stmt);
+      VLOG(4) << "CheckAcyclicWalker || Next Node is:\n"
+              << StmtPatternDebugStr(*output);
 
       bool in_same_cluster = IsInSameCluster(stmt, output);
-      VLOG(4) << "Walker || In Same Cluster: " << in_same_cluster;
+      VLOG(4) << "CheckAcyclicWalker || In Same Cluster: " << in_same_cluster;
 
       bool is_acyclic_connected = IsAcyclicConnected(stmt, output);
-      VLOG(4) << "Walker || Is Acyclic Connected: " << is_acyclic_connected;
+      VLOG(4) << "CheckAcyclicWalker || Is Acyclic Connected: "
+              << is_acyclic_connected;
 
       if (!in_same_cluster || !is_acyclic_connected) return;
       DoEach(output);

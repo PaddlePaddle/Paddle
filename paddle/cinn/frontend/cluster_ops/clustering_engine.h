@@ -197,11 +197,25 @@ class ClusteringEngine {
     const auto VisitNext = [&](const StmtPattern* stmt,
                                const NodeVisitor& DoEach) {
       entire_topo_walker.VisitPrevNodes(stmt, [&](const auto* prev) {
-        if (Fusible(prev, stmt)) {
+        VLOG(4) << "ClusterWalker || Checking Connected with PreNode:";
+        VLOG(4) << "ClusterWalker || Base Node is:\n"
+                << StmtPatternDebugStr(*stmt);
+        VLOG(4) << "ClusterWalker || Pre Node is:\n"
+                << StmtPatternDebugStr(*prev);
+        bool can_fuse = Fusible(prev, stmt);
+        VLOG(4) << "ClusterWalker || Can Fuse: " << can_fuse;
+        if (can_fuse) {
           DoEach(prev);
         }
       });
       entire_topo_walker.VisitNextNodes(stmt, [&](const auto* next) {
+        VLOG(4) << "ClusterWalker || Checking Connected with NextNode:";
+        VLOG(4) << "ClusterWalker || Base Node is:\n"
+                << StmtPatternDebugStr(*stmt);
+        VLOG(4) << "ClusterWalker || Next Node is:\n"
+                << StmtPatternDebugStr(*next);
+        bool can_fuse = Fusible(prev, stmt);
+        VLOG(4) << "ClusterWalker || Can Fuse: " << can_fuse;
         if (Fusible(stmt, next)) {
           DoEach(next);
         }

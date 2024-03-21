@@ -332,6 +332,7 @@ ShardableAxesInferer::InferShardableAxesFromSink(const pir::Operation* sink,
 
 std::unordered_map<pir::Value, ShardableAxes>
 ShardableAxesInferer::InferShardableAxes(const OpSetPtr& ops) {
+  VLOG(4) << "InferShardableAxes";
   auto reversed_walker = GetOpsReversedTopoWalker(OpTopo{
       .ops = ops,
   });
@@ -398,6 +399,7 @@ ShardableAxesInferer::ReversedInferShardableAxes(
 
 std::unordered_map<const pir::Operation*, ShardableAxesSignature>
 ShardableAxesInferer::GetOp2ShardableAxesSignature(const OpSetPtr& ops) {
+  VLOG(4) << "GetOp2ShardableAxesSignature";
   std::unordered_map<const pir::Operation*, ShardableAxesSignature> ret;
   for (const auto* op : *ops) {
     ret[op] = MakeShardableAxesSignature4Op(op);
@@ -446,6 +448,7 @@ ShardableAxesInferer::GetAxisName2UnionFindSetRoot(
     const OpSetPtr& ops,
     const std::unordered_map<const pir::Operation*, ShardableAxesSignature>&
         op2shardable_axes_signature) {
+  VLOG(4) << "GetAxisName2UnionFindSetRoot";
   const auto axis_name2bound_axis_name =
       GetAxisName2BoundAxisName(ops, op2shardable_axes_signature);
   using NodeVisitor = std::function<void(const std::string&)>;
@@ -475,6 +478,7 @@ ShardableAxesInferer::GetSinkAndInitShardableAxes(
         op2shardable_axes_signature,
     const std::unordered_map<std::string, std::string>&
         axis_name2union_find_set_root) {
+  VLOG(4) << "GetSinkAndInitShardableAxes";
   const auto& ConvertByBoundAxisName = [&](const ShardableAxes& sa) {
     ShardableAxes ret_sa;
     for (const auto& [axis, axis_name] : sa) {
@@ -502,6 +506,7 @@ ShardableAxesInferer::GetSinkAndInitShardableAxes(
 
 void ShardableAxesInferer::RenameDuplicatedAxisName(
     std::unordered_map<pir::Value, ShardableAxes>* sink2sa) {
+  VLOG(4) << "RenameDuplicatedAxisName";
   const auto& RenameDuplicated = [&](ShardableAxes* sa) {
     std::set<std::string> existed_axis_name;
     for (auto& [_, axis_name] : *sa) {
@@ -523,6 +528,7 @@ ShardableAxesInferer::GetSinkAndInitValues(
     const common::TopoWalker<const pir::Operation*>& reverse_walker,
     const OpSetPtr& ops,
     const std::list<const pir::Operation*>& sinks) {
+  VLOG(4) << "GetSinkAndInitValues";
   const auto& op2shardable_axes_signature = GetOp2ShardableAxesSignature(ops);
   const auto& axis_name2union_find_set_root =
       GetAxisName2UnionFindSetRoot(ops, op2shardable_axes_signature);
