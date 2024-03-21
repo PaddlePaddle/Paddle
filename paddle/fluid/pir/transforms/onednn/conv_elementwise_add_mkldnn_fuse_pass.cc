@@ -204,16 +204,26 @@ class FusedConvBiasElementwiseAddPattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &conv =
-        pat.Op(conv_name_,
-               {{
-                   {"strides", pat.Attr("strides")},
-                   {"paddings", pat.Attr("paddings")},
-                   {"padding_algorithm", pat.Attr("padding_algorithm")},
-                   {"dilations", pat.Attr("dilations")},
-                   {"groups", pat.Attr("groups")},
-                   {"data_format", pat.Attr("data_format")},
-               }});
+    const auto &conv = pat.Op(
+        conv_name_,
+        {{
+            {"strides", pat.Attr("strides")},
+            {"paddings", pat.Attr("paddings")},
+            {"padding_algorithm", pat.Attr("padding_algorithm")},
+            {"dilations", pat.Attr("dilations")},
+            {"groups", pat.Attr("groups")},
+            {"data_format", pat.Attr("data_format")},
+            {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+            {"fuse_activation", pat.Attr("fuse_activation")},
+            {"fuse_residual_connection", pat.Attr("fuse_residual_connection")},
+            {"force_fp32_output", pat.Attr("force_fp32_output")},
+            {"fuse_alpha", pat.Attr("fuse_alpha")},
+            {"fuse_beta", pat.Attr("fuse_beta")},
+            {"scale_in", pat.Attr("scale_in")},
+            {"scale_out", pat.Attr("scale_out")},
+            {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+            {"scale_weights", pat.Attr("scale_weights")},
+        }});
 
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     conv({&pat.Tensor("input"),
@@ -253,16 +263,16 @@ class FusedConvBiasElementwiseAddPattern : public paddle::drr::DrrPatternBase {
                    {"dilations", pat.Attr("dilations")},
                    {"groups", pat.Attr("groups")},
                    {"data_format", pat.Attr("data_format")},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
-                   {"fuse_activation", res.StrAttr("")},
+                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                   {"fuse_activation", pat.Attr("fuse_activation")},
                    {"fuse_residual_connection", res.BoolAttr(true)},
-                   {"force_fp32_output", res.BoolAttr(false)},
-                   {"fuse_alpha", res.Float32Attr(0.0f)},
-                   {"fuse_beta", res.Float32Attr(0.0f)},
-                   {"scale_in", res.Float32Attr(1.0f)},
-                   {"scale_out", res.Float32Attr(1.0f)},
-                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                   {"scale_weights", res.VectorFloatAttr({1.0f})},
+                   {"force_fp32_output", pat.Attr("force_fp32_output")},
+                   {"fuse_alpha", pat.Attr("fuse_alpha")},
+                   {"fuse_beta", pat.Attr("fuse_beta")},
+                   {"scale_in", pat.Attr("scale_in")},
+                   {"scale_out", pat.Attr("scale_out")},
+                   {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                   {"scale_weights", pat.Attr("scale_weights")},
                }});
 
     fused_conv2d_add({&res.Tensor("input"),
@@ -293,16 +303,26 @@ class FusedConvBiasElementwiseAddAsYPattern
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
-    const auto &conv =
-        pat.Op(conv_name_,
-               {{
-                   {"strides", pat.Attr("strides")},
-                   {"paddings", pat.Attr("paddings")},
-                   {"padding_algorithm", pat.Attr("padding_algorithm")},
-                   {"dilations", pat.Attr("dilations")},
-                   {"groups", pat.Attr("groups")},
-                   {"data_format", pat.Attr("data_format")},
-               }});
+    const auto &conv = pat.Op(
+        conv_name_,
+        {{
+            {"strides", pat.Attr("strides")},
+            {"paddings", pat.Attr("paddings")},
+            {"padding_algorithm", pat.Attr("padding_algorithm")},
+            {"dilations", pat.Attr("dilations")},
+            {"groups", pat.Attr("groups")},
+            {"data_format", pat.Attr("data_format")},
+            {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+            {"fuse_activation", pat.Attr("fuse_activation")},
+            {"fuse_residual_connection", pat.Attr("fuse_residual_connection")},
+            {"force_fp32_output", pat.Attr("force_fp32_output")},
+            {"fuse_alpha", pat.Attr("fuse_alpha")},
+            {"fuse_beta", pat.Attr("fuse_beta")},
+            {"scale_in", pat.Attr("scale_in")},
+            {"scale_out", pat.Attr("scale_out")},
+            {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+            {"scale_weights", pat.Attr("scale_weights")},
+        }});
 
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     conv({&pat.Tensor("input"),
@@ -342,16 +362,16 @@ class FusedConvBiasElementwiseAddAsYPattern
                    {"dilations", pat.Attr("dilations")},
                    {"groups", pat.Attr("groups")},
                    {"data_format", pat.Attr("data_format")},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
-                   {"fuse_activation", res.StrAttr("")},
+                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                   {"fuse_activation", pat.Attr("fuse_activation")},
                    {"fuse_residual_connection", res.BoolAttr(true)},
-                   {"force_fp32_output", res.BoolAttr(false)},
-                   {"fuse_alpha", res.Float32Attr(0.0f)},
-                   {"fuse_beta", res.Float32Attr(0.0f)},
-                   {"scale_in", res.Float32Attr(1.0f)},
-                   {"scale_out", res.Float32Attr(1.0f)},
-                   {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                   {"scale_weights", res.VectorFloatAttr({1.0f})},
+                   {"force_fp32_output", pat.Attr("force_fp32_output")},
+                   {"fuse_alpha", pat.Attr("fuse_alpha")},
+                   {"fuse_beta", pat.Attr("fuse_beta")},
+                   {"scale_in", pat.Attr("scale_in")},
+                   {"scale_out", pat.Attr("scale_out")},
+                   {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                   {"scale_weights", pat.Attr("scale_weights")},
                }});
 
     fused_conv2d_add({&res.Tensor("input"),
