@@ -59,7 +59,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? pat.Op(conv_name,
                      {{"strides", pat.Attr("strides")},
                       {"paddings", pat.Attr("paddings")},
@@ -148,7 +148,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &fused_conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
                      {{
                          {"strides", pat.Attr("strides")},
@@ -253,7 +253,7 @@ class ConvActivationFusePattern2 : public paddle::drr::DrrPatternBase {
       conv_name = paddle::onednn::dialect::FusedConv2dOp::name();
     }
     const auto &conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? pat.Op(conv_name,
                      {{"strides", pat.Attr("strides")},
                       {"paddings", pat.Attr("paddings")},
@@ -342,7 +342,7 @@ class ConvActivationFusePattern2 : public paddle::drr::DrrPatternBase {
     }
 
     const auto &fused_conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
                      {{
                          {"strides", pat.Attr("strides")},
@@ -436,7 +436,7 @@ class ConvLeakyReluFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? pat.Op(conv_name,
                      {{"strides", pat.Attr("strides")},
                       {"paddings", pat.Attr("paddings")},
@@ -506,7 +506,7 @@ class ConvLeakyReluFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
                      {{
                          {"strides", pat.Attr("strides")},
@@ -599,7 +599,7 @@ class ConvHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? pat.Op(conv_name,
                      {{"strides", pat.Attr("strides")},
                       {"paddings", pat.Attr("paddings")},
@@ -666,7 +666,7 @@ class ConvHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
                      {{
                          {"strides", pat.Attr("strides")},
@@ -758,7 +758,7 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? pat.Op(conv_name,
                      {{"strides", pat.Attr("strides")},
                       {"paddings", pat.Attr("paddings")},
@@ -832,7 +832,7 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
     auto fuse_residual = res.BoolAttr(false);
 
     const auto &fused_conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
                      {{
                          {"strides", pat.Attr("strides")},
@@ -930,7 +930,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("min") = full_1();
     pat.Tensor("max") = full_2();
     const auto &conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? pat.Op(conv_name,
                      {{"strides", pat.Attr("strides")},
                       {"paddings", pat.Attr("paddings")},
@@ -991,7 +991,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv =
-        fused_level_ == 1
+        fused_level_ == 0
             ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
                      {{
                          {"strides", pat.Attr("strides")},
