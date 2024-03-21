@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import .dag_generator as dag_generator
-import .dag_dims_eq1_generator as dag_dims_eq1_generator
+from .defensive_list import DList
 from .pick_weight import PickWeight
 from typing import List, Set
 import random
@@ -35,9 +35,9 @@ class Nope:
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
-        dag_dims_eq1_gen_instruction: dag_dims_eq1_generator.DAGDimsEq1GenInstruction,
-        infer_ctx: dag_dims_eq1_generator.DimsIsEqOneInferContext
-    ):
+        dag_gen_instruction: "DAGGenInstruction",
+        dims_eq1_signature: "DimsEq1Signature"
+    ) -> "OpNameGenInstruction":
         return Nope()
 
 
@@ -48,9 +48,9 @@ class AddSinkTensor:
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
-        dag_dims_eq1_gen_instruction: dag_dims_eq1_generator.DAGDimsEq1GenInstruction,
-        infer_ctx: dag_dims_eq1_generator.DimsIsEqOneInferContext
-    ):
+        dag_gen_instruction: "DAGGenInstruction",
+        dims_eq1_signature: "DimsEq1Signature"
+    ) -> "OpNameGenInstruction":
         return AddSinkTensor()
 
 @dataclass
@@ -61,12 +61,12 @@ class AddUnaryOp:
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
-        dag_dims_eq1_gen_instruction: dag_dims_eq1_generator.DAGDimsEq1GenInstruction,
-        infer_ctx: dag_dims_eq1_generator.DimsIsEqOneInferContext
-    ):
-        input_dims_eq1 = dag_dims_eq1_gen_instruction.dims_eq1.source_tensor_dim_eq1
-        output_idx = dag_dims_eq1_gen_instruction.dag.source_tensor_index
-        output_dims_eq1 = infer_ctx.current_source_tensor_dim_eq1[output_idx]
+        dag_gen_instruction: "DAGGenInstruction",
+        dims_eq1_signature: "DimsEq1Signature"
+    ) -> "OpNameGenInstruction":
+        input_dims_eq1 = dims_eq1_signature.input_dims_eq1
+        output_idx = dag_gen_instruction.source_tensor_index
+        output_dims_eq1 = dims_eq1_signature.output_dims_eq1
         if _IsReduceOp(input_dims_eq1, output_dims_eq1):
             return AddUnaryOp(
                 op_name=_GetRandomReduceOpName(requirement)
@@ -89,18 +89,12 @@ class AddBinaryOp:
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
-        dag_dims_eq1_gen_instruction: dag_dims_eq1_generator.DAGDimsEq1GenInstruction,
-        infer_ctx: dag_dims_eq1_generator.DimsIsEqOneInferContext
-    ):
-        lhs_input_dims_eq1 = (
-            dag_dims_eq1_gen_instruction.dims_eq1.lhs_source_tensor_dim_eq1
-        )
-        rhs_input_dims_eq1 = (
-            dag_dims_eq1_gen_instruction.dims_eq1.rhs_source_tensor_dim_eq1
-        )
-        output_dims_eq1 = infer_ctx.current_source_tensor_dim_eq1[
-            dag_dims_eq1_gen_instruction.dag.source_tensor_index
-        ]
+        dag_gen_instruction: "DAGGenInstruction",
+        dims_eq1_signature: "DimsEq1Signature"
+    ) -> "OpNameGenInstruction":
+        lhs_input_dims_eq1 = dims_eq1_signature.lhs_input_dims_eq1
+        rhs_input_dims_eq1 = dims_eq1_signature.rhs_input_dims_eq1
+        output_dims_eq1 = dims_eq1_signature.output_dims_eq1
         assert _IsLhsGreaterThanRhs(output_dims_eq1, lhs_input_dims_eq1)
         assert _IsLhsGreaterThanRhs(output_dims_eq1, rhs_input_dims_eq1)
         return AddBinaryOp(
@@ -116,9 +110,12 @@ class InsertBinaryOp:
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
-        dag_dims_eq1_gen_instruction: dag_dims_eq1_generator.DAGDimsEq1GenInstruction,
-        infer_ctx: dag_dims_eq1_generator.DimsIsEqOneInferContext
-    ):
+        dag_gen_instruction: "DAGGenInstruction",
+        dims_eq1_signature: "DimsEq1Signature"
+    ) -> "OpNameGenInstruction":
+        rhs_input_dims_eq1 = dims_eq1_signature.rhs_input_dims_eq1
+        output_dims_eq1 = dims_eq1_signature.output_dims_eq1
+        assert _IsLhsGreaterThanRhs(output_dims_eq1, rhs_input_dims_eq1)
         return InsertBinaryOp(
             op_name=_GetRandomBinaryOpName(requirement)
         )
@@ -131,9 +128,12 @@ class AddBinaryClone:
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
-        dag_dims_eq1_gen_instruction: dag_dims_eq1_generator.DAGDimsEq1GenInstruction,
-        infer_ctx: dag_dims_eq1_generator.DimsIsEqOneInferContext
-    ):
+        dag_gen_instruction: "DAGGenInstruction",
+        dims_eq1_signature: "DimsEq1Signature"
+    ) -> "OpNameGenInstruction":
+        lhs_output_dims_eq1 = dims_eq1_signature.lhs_output_dims_eq1
+        rhs_output_dims_eq1 = dims_eq1_signature.rhs_output_dims_eq1
+        assert lhs_output_dims_eq1 == rhs_output_dims_eq1
         return AddBinaryClone()
 
 
@@ -145,9 +145,9 @@ class AddSourceOp:
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
-        dag_dims_eq1_gen_instruction: dag_dims_eq1_generator.DAGDimsEq1GenInstruction,
-        infer_ctx: dag_dims_eq1_generator.DimsIsEqOneInferContext
-    ):
+        dag_gen_instruction: "DAGGenInstruction",
+        dims_eq1_signature: "DimsEq1Signature"
+    ) -> "OpNameGenInstruction":
         return AddSourceOp(op_name=_GetRandomSourceOpName(requirement))
 
 
@@ -211,20 +211,18 @@ class OpNameGenerator:
     # Instructions generating sink nodes of DAG are on put the front of list.
     def Generate(
         self,
-        dag_dims_eq1_gen_instructions: List[dag_dims_eq1_generator.DAGDimsEq1GenInstruction]
+        guarded_dims_eq1_sigs: DList["DAGGenInstruction", "DimsEq1Signature"]
     ) -> List["OpNameGenInstruction"]:
-        infer_ctx = dag_dims_eq1_generator.DimsIsEqOneInferContext()
-        def CreateOpNameGenInstruction(dag_dims_eq1_gen_instruction):
-            dag_gen_class = type(dag_dims_eq1_gen_instruction.dag)
-            op_gen_class = kDAGGenClassToOpNameGenClassMap[dag_gen_class]
-            op_name_gen_instruction = op_gen_class.MakeRandomInstance(
+        def CreateOpNameGenInstruction(dag_instr, dims_eq1_sig):
+            cls = kDAGGenClassToOpNameGenClassMap[type(dag_instr)]
+            return cls.MakeRandomInstance(
                 self.requirement,
-                dag_dims_eq1_gen_instruction,
-                infer_ctx
+                dag_instr,
+                dims_eq1_sig
             )
-            infer_ctx.InferInputsDimsEqOne(dag_dims_eq1_gen_instruction)
-            return op_name_gen_instruction
         return [
-            CreateOpNameGenInstruction(dag_dims_eq1_gen_instruction)
-            for dag_dims_eq1_gen_instruction in dag_dims_eq1_gen_instructions
+            CreateOpNameGenInstruction(*x)
+            for x in guarded_dims_eq1_sigs.Unguard(
+                lambda key: key.GetHashValue()
+            )
         ]
