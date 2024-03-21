@@ -130,18 +130,18 @@ std::unordered_set<pir::Operation*> GetOpSetFromOutputToInputsValue(
   std::unordered_set<pir::Operation*> op_set;
   const std::unordered_set<pir::Value> input_value_set(input_values.begin(),
                                                        input_values.end());
-  common::BfsWalker<pir::Operation*> walker(
-      [&](pir::Operation* node,
-          const std::function<void(pir::Operation*)>& NodeHandler) {
-        for (uint32_t i = 0; i < node->num_operands(); ++i) {
-          pir::Value in_value = node->operand_source(i);
-          if (!in_value || !in_value.type()) continue;
-          if (input_value_set.count(in_value) == 0 &&
-              op_set.count(in_value.defining_op()) == 0) {
-            NodeHandler(in_value.defining_op());
-          }
-        }
-      });
+  auto VisitNextOp = [&](pir::Operation* node,
+                         const std::function<void(pir::Operation*)>& Visit) {
+    for (uint32_t i = 0; i < node->num_operands(); ++i) {
+      pir::Value in_value = node->operand_source(i);
+      if (!in_value || !in_value.type()) continue;
+      if (input_value_set.count(in_value)) continue;
+      if (op_set.count(in_value.defining_op())) continue;
+
+      Visit(in_value.defining_op());
+    }
+  };
+  common::BfsWalker<pir::Operation*> walker(VisitNextOp);
   walker(output_value.defining_op(), [&](pir::Operation* op) {
     if (!op) return;
     op_set.insert(op);
@@ -153,43 +153,54 @@ std::vector<pir::Operation*> GetSubGraphFromOutputToInputsValue(
     const std::vector<pir::Value>& input_values, pir::Value output_value) {
   const std::unordered_set<pir::Operation*>& op_set =
       GetOpSetFromOutputToInputsValue(input_values, output_value);
-  common::TopoWalker<pir::Operation*> visitor(
+  auto VisitUpstreamOp =
       [&](pir::Operation* node,
-          const std::function<void(pir::Operation*)>& NodeHandler) {
+          const std::function<void(pir::Operation*)>& Visit) {
         for (uint32_t i = 0; i < node->num_operands(); ++i) {
           pir::Value in_value = node->operand_source(i);
-          if (in_value && in_value.defining_op()) {
-            NodeHandler(in_value.defining_op());
-          }
+          if (!in_value || !in_value.type()) continue;
+          if (in_value.defining_op() == nullptr) continue;
+          if (op_set.count(in_value.defining_op()) == 0) continue;
+          Visit(in_value.defining_op());
         }
-      },
+      };
+  auto VisitDownstreamOp =
       [&](pir::Operation* node,
-          const std::function<void(pir::Operation * node)>& NodeHandler) {
+          const std::function<void(pir::Operation * node)>& Visit) {
         for (uint32_t i = 0; i < node->num_results(); ++i) {
           for (auto iter = node->result(i).use_begin();
                iter != node->result(i).use_end();
                ++iter) {
             if (op_set.count(iter->owner())) {
-              NodeHandler(iter->owner());
+              Visit(iter->owner());
             }
           }
         }
-      });
+      };
+  common::TopoWalker<pir::Operation*> walker(VisitUpstreamOp,
+                                             VisitDownstreamOp);
 
   const std::vector<pir::Operation*> input_ops = [&] {
     const std::unordered_set<pir::Value> input_value_set(input_values.begin(),
                                                          input_values.end());
+    auto IsInputOp = [&](pir::Operation* op) {
+      for (uint32_t i = 0; i < op->num_operands(); ++i) {
+        if (input_value_set.count(op->operand_source(i)) == 0) {
+          return false;
+        }
+      }
+      return true;
+    };
     std::vector<pir::Operation*> input_ops;
     for (auto* op : op_set) {
-      for (uint32_t i = 0; i < op->num_operands(); ++i) {
-        if (input_value_set.count(op->operand_source(i)) == 0) continue;
+      if (IsInputOp(op)) {
+        input_ops.push_back(op);
       }
-      input_ops.push_back(op);
     }
     return input_ops;
   }();
   std::vector<pir::Operation*> ops;
-  visitor(input_ops.begin(), input_ops.end(), [&](pir::Operation* node) {
+  walker(input_ops.begin(), input_ops.end(), [&](pir::Operation* node) {
     if (!node) return;
     ops.push_back(node);
   });
