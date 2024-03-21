@@ -1066,6 +1066,10 @@
       support_tensor : true
 
 - op : fake_channel_wise_quantize_abs_max
+  inputs :
+    {x : X, bit_length : bit_length, round_type : round_type, quant_axis : quant_axis, is_test : is_test}
+  outputs :
+    {out : Out, out_scale : OutScale}
   extra :
     attrs : [int round_type = 1]
 
@@ -1074,6 +1078,10 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_abs_max
+  inputs :
+    {x : X, bit_length : bit_length, round_type : round_type}
+  outputs :
+    {out : Out, out_scale : OutScale}
   extra :
     attrs : [int round_type = 1]
 
@@ -1086,10 +1094,18 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_moving_average_abs_max
+  inputs :
+    {x : X, in_scale : InScale, in_accum : InAccum, in_state : InState, moving_rate : moving_rate, bit_length : bit_length, is_test : is_test}
+  outputs :
+    {out : Out, out_scale : OutScale, out_state : OutState, out_accum : OutAccum}
   extra :
     attrs : [int round_type = 1]
 
 - op : fake_quantize_range_abs_max
+  inputs :
+    {x : X, in_scale : InScale, iter : Iter, window_size : window_size, bit_length : bit_length,  is_test : is_test}
+  outputs :
+    {out : Out, out_scale : OutScale, out_scales : OutScales}
   extra :
     attrs : [int round_type = 1]
 
