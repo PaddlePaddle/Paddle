@@ -692,6 +692,7 @@ struct FoldOperandTrait<Max> {
   using const_value_type = std::int64_t;
 
   static bool IsConstPattern(const DimExpr& dim_expr) {
+    std::cerr << "IsConstPattern: Max" << std::endl;
     if (dim_expr.Has<std::int64_t>()) {
       return true;
     }
@@ -703,16 +704,19 @@ struct FoldOperandTrait<Max> {
   }
 
   static const_value_type MakeUnit() {
-    return -10000;
-    // return std::numeric_limits<const_value_type>::min();
+    std::cerr << "MakeUnit: Max" << std::endl;
+    return std::numeric_limits<const_value_type>::min();
   }
   static void Accumulate(const_value_type* value, const DimExpr& expr) {
+    std::cerr << "Accumulate: Max" << std::endl;
     *value = std::max(*value, GetInteger(expr));
   }
   static bool IsUnit(const const_value_type& value) {
+    std::cerr << "IsUnit: Max" << std::endl;
     return value == MakeUnit();
   }
   static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    std::cerr << "IsUnitDimExpr: Max" << std::endl;
     if (!dim_expr.Has<std::int64_t>()) {
       return false;
     }
@@ -720,10 +724,12 @@ struct FoldOperandTrait<Max> {
   }
   static void MakeAndAppendDimExpr(const const_value_type& value,
                                    List<DimExpr>* ret) {
+    std::cerr << "MakeAndAppendDimExpr: Max" << std::endl;
     (*ret)->emplace_back(value);
   }
 
   static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
+    std::cerr << "IsInversedPair: Max" << std::endl;
     return false;
   }
 };
@@ -733,6 +739,7 @@ struct FoldOperandTrait<Min> {
   using const_value_type = std::int64_t;
 
   static bool IsConstPattern(const DimExpr& dim_expr) {
+    std::cerr << "IsConstPattern: Min" << std::endl;
     if (dim_expr.Has<std::int64_t>()) {
       return true;
     }
@@ -744,16 +751,19 @@ struct FoldOperandTrait<Min> {
   }
 
   static const_value_type MakeUnit() {
-    return 10000;
-    // return std::numeric_limits<const_value_type>::max();
+    std::cerr << "MakeUnit: Min" << std::endl;
+    return std::numeric_limits<const_value_type>::max();
   }
   static void Accumulate(const_value_type* value, const DimExpr& expr) {
+    std::cerr << "Accumulate: Min" << std::endl;
     *value = std::min(*value, GetInteger(expr));
   }
   static bool IsUnit(const const_value_type& value) {
+    std::cerr << "IsUnit: Min" << std::endl;
     return value == MakeUnit();
   }
   static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    std::cerr << "IsUnitDimExpr: Min" << std::endl;
     if (!dim_expr.Has<std::int64_t>()) {
       return false;
     }
@@ -761,10 +771,12 @@ struct FoldOperandTrait<Min> {
   }
   static void MakeAndAppendDimExpr(const const_value_type& value,
                                    List<DimExpr>* ret) {
+    std::cerr << "MakeAndAppendDimExpr: Min" << std::endl;
     (*ret)->emplace_back(value);
   }
 
   static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
+    std::cerr << "IsInversedPair: Min" << std::endl;
     return false;
   }
 };
@@ -971,8 +983,8 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FoldUnitConstant<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Add>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Mul>>(&keep_rewrite, &ret);
-    // DoPass<FoldConstants<Max>>(&keep_rewrite, &ret);
-    // DoPass<FoldConstants<Min>>(&keep_rewrite, &ret);
+    DoPass<FoldConstants<Max>>(&keep_rewrite, &ret);
+    DoPass<FoldConstants<Min>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Add>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Mul>>(&keep_rewrite, &ret);
