@@ -163,7 +163,8 @@ void AssignPosInferMeta(const MetaTensor& x,
                         "The dtype of the cum_count_dtype, eff_num_len and "
                         "X should be same as int64"));
   out->set_dtype(X_dtype);
-  
+}
+
 void BatchFCInferMeta(const MetaTensor& input,
                       const MetaTensor& w,
                       const MetaTensor& bias,
