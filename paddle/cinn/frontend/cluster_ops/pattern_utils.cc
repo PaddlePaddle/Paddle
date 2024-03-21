@@ -244,8 +244,11 @@ std::vector<const pir::Operation*> GetStmtContainedOps(
 }
 
 std::string StmtDebugStr(const StmtPattern& stmt) {
+  std::stringstream ss;
   const auto& all_ops = GetStmtContainedOps(stmt);
-  return OpsDebugStr(all_ops);
+  ss << "  Stmt, size " << all_ops.size() << " :\n";
+  ss << OpsDebugStr(all_ops);
+  return ss.str();
 }
 
 std::string LoopAlignableStmtPatternVec::DebugStr() const {
