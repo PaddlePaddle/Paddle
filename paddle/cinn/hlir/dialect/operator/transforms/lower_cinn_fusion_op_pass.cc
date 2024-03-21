@@ -812,8 +812,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     //         << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
     //         << std::endl;
 
-    auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
-        *program, target, scope);
+    auto target = cinn::common::DefaultNVGPUTarget();
+    auto ir_compiler =
+        cinn::hlir::framework::PirCompilerManager::Create(target);
     auto group = RebuildGroup(fusion_op);
     // Because the group is rebuilt, the order of group.output_values generated
     // by BuildCUDAJITInfo may not be same with the order bound in the yield op,

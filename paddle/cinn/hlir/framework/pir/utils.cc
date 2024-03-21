@@ -140,7 +140,9 @@ class OpTransInfo {
       "matmul_grad",
       "embedding_grad",
       "embedding",
+      "softmax",
       "arange",
+      "gather",
   };
 };
 
