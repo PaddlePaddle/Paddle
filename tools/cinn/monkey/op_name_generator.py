@@ -25,6 +25,9 @@ class OpNameGenRequirement:
     permute_op_names: List[str] = field(
         default_factory=lambda: ["transpose"]
     )
+    source_op_names: List[str] = field(
+        default_factory=lambda: ["zeros", "ones"]
+    )
 
 @dataclass
 class Nope:
@@ -51,7 +54,7 @@ class AddSinkTensor:
         return AddSinkTensor()
 
 @dataclass
-class AddUnaryUpstreamOp:
+class AddUnaryOp:
     op_name: str
 
     @classmethod
@@ -65,20 +68,20 @@ class AddUnaryUpstreamOp:
         output_idx = dag_dims_gen_instruction.dag.source_tensor_index
         output_dims_eq_one = infer_ctx.current_source_tensor_dim_eq_one[output_idx]
         if _IsReduceOp(input_dims_eq_one, output_dims_eq_one):
-            return AddUnaryUpstreamOp(
+            return AddUnaryOp(
                 op_name=_GetRandomReduceOpName(requirement)
             )
         if _IsBroadcastOp(input_dims_eq_one, output_dims_eq_one):
-            return AddUnaryUpstreamOp(
+            return AddUnaryOp(
                 op_name=_GetRandomBroadcastOpName(requirement)
             )
-        return AddUnaryUpstreamOp(
+        return AddUnaryOp(
             op_name=_GetRandomUnaryOpName(requirement)
         )
 
 
 @dataclass
-class AddBinaryUpstreamOp:
+class AddBinaryOp:
     op_name: str
 
     @classmethod
@@ -88,13 +91,13 @@ class AddBinaryUpstreamOp:
         dag_dims_gen_instruction: dag_dims_generator.DAGDimsGenInstruction,
         infer_ctx: dag_dims_generator.DimsIsEqOneInferContext
     ):
-        return AddBinaryUpstreamOp(
+        return AddBinaryOp(
             op_name=_GetRandomBinaryOpName(requirement)
         )
 
 
 @dataclass
-class InsertBinaryUpstreamOp:
+class InsertBinaryOp:
     op_name: str
 
     @classmethod
@@ -104,13 +107,13 @@ class InsertBinaryUpstreamOp:
         dag_dims_gen_instruction: dag_dims_generator.DAGDimsGenInstruction,
         infer_ctx: dag_dims_generator.DimsIsEqOneInferContext
     ):
-        return InsertBinaryUpstreamOp(
+        return InsertBinaryOp(
             op_name=_GetRandomBinaryOpName(requirement)
         )
 
 
 @dataclass
-class AddBinaryCloneUpstream:
+class AddBinaryClone:
 
     @classmethod
     def MakeRandomInstance(
@@ -119,11 +122,12 @@ class AddBinaryCloneUpstream:
         dag_dims_gen_instruction: dag_dims_generator.DAGDimsGenInstruction,
         infer_ctx: dag_dims_generator.DimsIsEqOneInferContext
     ):
-        return AddBinaryCloneUpstream()
+        return AddBinaryClone()
 
 
 @dataclass
-class MarkFinalSourceTensor:
+class AddSourceOp:
+    op_name: str
 
     @classmethod
     def MakeRandomInstance(
@@ -132,26 +136,26 @@ class MarkFinalSourceTensor:
         dag_dims_gen_instruction: dag_dims_generator.DAGDimsGenInstruction,
         infer_ctx: dag_dims_generator.DimsIsEqOneInferContext
     ):
-        return MarkFinalSourceTensor()
+        return AddSourceOp(op_name=_GetRandomSourceOpName(requirement))
 
 
 OpNameGenInstruction = ( Nope
                        | AddSinkTensor
-                       | AddUnaryUpstreamOp
-                       | AddBinaryUpstreamOp
-                       | InsertBinaryUpstreamOp
-                       | AddBinaryCloneUpstream
-                       | MarkFinalSourceTensor
+                       | AddUnaryOp
+                       | AddBinaryOp
+                       | InsertBinaryOp
+                       | AddBinaryClone
+                       | AddSourceOp
                        )
 
 kDAGGenClassToOpNameGenClassMap = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
-    dag_generator.AddUnaryUpstreamOp: AddUnaryUpstreamOp,
-    dag_generator.AddBinaryUpstreamOp: AddBinaryUpstreamOp,
-    dag_generator.InsertBinaryUpstreamOp: InsertBinaryUpstreamOp,
-    dag_generator.AddBinaryCloneUpstream: AddBinaryCloneUpstream,
-    dag_generator.MarkFinalSourceTensor: MarkFinalSourceTensor,
+    dag_generator.AddUnaryOp: AddUnaryOp,
+    dag_generator.AddBinaryOp: AddBinaryOp,
+    dag_generator.InsertBinaryOp: InsertBinaryOp,
+    dag_generator.AddBinaryClone: AddBinaryClone,
+    dag_generator.AddSourceOp: AddSourceOp,
 }
 
 def _IsReduceOp(input_dims_eq_one: List[bool], output_dims_eq_one:  List[bool]):
@@ -168,28 +172,21 @@ def _IsLhsGreaterThanRhs(lhs: List[bool], rhs:  List[bool]):
     return True
 
 def _GetRandomReduceOpName(requirement: DimGenRequirement):
-    op_names = requirement.reduce_op_names
-    kRangeMax = len(op_names) - 1
-    assert 0 <= kRangeMax
-    random_int = random.randomint(0, kRangeMax)
-    return op_names[random_int]
+    return _GetRandomOpName(requirement.reduce_op_names)
 
 def _GetRandomBroadcastOpName(requirement: DimGenRequirement):
-    op_names = requirement.broadcast_op_names
-    kRangeMax = len(op_names) - 1
-    assert 0 <= kRangeMax
-    random_int = random.randomint(0, kRangeMax)
-    return op_names[random_int]
+    return _GetRandomOpName(requirement.broadcast_op_names)
 
 def _GetRandomUnaryOpName(requirement: DimGenRequirement):
-    op_names = requirement.unary_elementwise_op_names
-    kRangeMax = len(op_names) - 1
-    assert 0 <= kRangeMax
-    random_int = random.randomint(0, kRangeMax)
-    return op_names[random_int]
+    return _GetRandomOpName(requirement.unary_elementwise_op_names)
 
 def _GetRandomBinaryOpName(requirement: DimGenRequirement):
-    op_names = requirement.binary_elementwise_op_names
+    return _GetRandomOpName(requirement.binary_elementwise_op_names)
+
+def _GetRandomSourceOpName(requirement: DimGenRequirement):
+    return _GetRandomOpName(requirement.source_op_names)
+
+def _GetRandomOpName(op_names: List[str]):
     kRangeMax = len(op_names) - 1
     assert 0 <= kRangeMax
     random_int = random.randomint(0, kRangeMax)

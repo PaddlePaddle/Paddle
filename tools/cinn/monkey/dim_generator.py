@@ -31,72 +31,72 @@ class AddSinkTensor:
 
 
 @dataclass
-class AddUnaryUpstreamOp:
+class AddUnaryOp:
     source_tensor_dim_eq_one: bool
 
     @classmethod
     def MakeRandomInstance(cls, requirement: DimGenRequirement):
-        return AddUnaryUpstreamOp(
+        return AddUnaryOp(
             source_tensor_dim_eq_one=_GetRandomBool(requirement)
         )
 
 
 @dataclass
-class AddBinaryUpstreamOp:
+class AddBinaryOp:
     lhs_source_tensor_dim_eq_one: bool
     rhs_source_tensor_dim_eq_one: bool
 
     @classmethod
     def MakeRandomInstance(cls, requirement: DimGenRequirement):
-        return AddBinaryUpstreamOp(
+        return AddBinaryOp(
             lhs_source_tensor_dim_eq_one=_GetRandomBool(requirement),           rhs_source_tensor_dim_eq_one=_GetRandomBool(requirement)
         )
 
 
 @dataclass
-class InsertBinaryUpstreamOp:
+class InsertBinaryOp:
     rhs_source_tensor_dim_eq_one: bool
 
     @classmethod
     def MakeRandomInstance(cls, requirement: DimGenRequirement):
-        return InsertBinaryUpstreamOp(
+        return InsertBinaryOp(
             rhs_source_tensor_dim_eq_one=_GetRandomBool(requirement)
         )
 
 
 @dataclass
-class AddBinaryCloneUpstream:
+class AddBinaryClone:
 
     @classmethod
     def MakeRandomInstance(cls, requirement: DimGenRequirement):
-        return AddBinaryCloneUpstream()
+        return AddBinaryClone()
 
 
 @dataclass
-class MarkFinalSourceTensor:
+class AddSourceOp:
 
     @classmethod
     def MakeRandomInstance(cls, requirement: DimGenRequirement):
-        return MarkFinalSourceTensor()
+        return AddSourceOp()
 
 
 DimGenInstruction = ( Nope
                     | AddSinkTensor
-                    | AddUnaryUpstreamOp
-                    | AddBinaryUpstreamOp
-                    | InsertBinaryUpstreamOp
-                    | AddBinaryCloneUpstream
-                    | MarkFinalSourceTensor
+                    | AddUnaryOp
+                    | AddBinaryOp
+                    | InsertBinaryOp
+                    | AddBinaryClone
+                    | AddSourceOp
                     )
 
 kDAGGenClassToDimGenClassMap = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
-    dag_generator.AddUnaryUpstreamOp: AddUnaryUpstreamOp,
-    dag_generator.AddBinaryUpstreamOp: AddBinaryUpstreamOp,
-    dag_generator.InsertBinaryUpstreamOp: InsertBinaryUpstreamOp,
-    dag_generator.AddBinaryCloneUpstream: AddBinaryCloneUpstream,
-    dag_generator.MarkFinalSourceTensor: MarkFinalSourceTensor,
+    dag_generator.AddUnaryOp: AddUnaryOp,
+    dag_generator.AddBinaryOp: AddBinaryOp,
+    dag_generator.InsertBinaryOp: InsertBinaryOp,
+    dag_generator.AddBinaryClone: AddBinaryClone,
+    dag_generator.AddSourceOp: AddSourceOp,
 }
 
 class DimGenerator:

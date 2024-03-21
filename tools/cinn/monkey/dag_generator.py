@@ -9,13 +9,13 @@ import random
 class DAGGenTypePickProbability:
     nope: PickWeight
     add_sink_tensor: PickWeight
-    add_unary_upstream_op: PickWeight
+    add_unary_op: PickWeight
     # append to core DAG.
-    add_binary_upstream_op: PickWeight
+    add_binary_op: PickWeight
     # modify core DAG
-    insert_binary_upstream_op: PickWeight
-    add_binary_clone_upstream: PickWeight
-    mark_final_source_tensor: PickWeight
+    insert_binary_op: PickWeight
+    add_binary_clone: PickWeight
+    add_source_op: PickWeight
 
 @dataclass
 class DAGGenRequirement:
@@ -103,7 +103,7 @@ class AddSinkTensor:
         return num_source_tensors <= requirement.max_width
 
 @dataclass
-class AddUnaryUpstreamOp:
+class AddUnaryOp:
     source_tensor_index: int
     dag_tag: str
 
@@ -131,7 +131,7 @@ class AddUnaryUpstreamOp:
             num_core_source_tensors,
             num_source_tensors - 1
         )
-        return AddUnaryUpstreamOp(
+        return AddUnaryOp(
             source_tensor_index=source_tensor_index,
             dag_tag=requirement.dag_tag
         )
@@ -141,7 +141,7 @@ class AddUnaryUpstreamOp:
         cls,
         pick_probability: DAGGenTypePickProbability
     ) -> float:
-        return pick_probability.add_unary_upstream_op.weight
+        return pick_probability.add_unary_op.weight
 
     @classmethod
     def IsValidNumSourceTensors(
@@ -153,7 +153,7 @@ class AddUnaryUpstreamOp:
         return num_core_source_tensors < num_source_tensors
 
 @dataclass
-class AddBinaryUpstreamOp:
+class AddBinaryOp:
     source_tensor_index: int
     dag_tag: str
 
@@ -181,7 +181,7 @@ class AddBinaryUpstreamOp:
             num_core_source_tensors,
             num_source_tensors - 1
         )
-        return AddBinaryUpstreamOp(
+        return AddBinaryOp(
             source_tensor_index=source_tensor_index,
             dag_tag=requirement.dag_tag
         )
@@ -191,7 +191,7 @@ class AddBinaryUpstreamOp:
         cls,
         pick_probability: DAGGenTypePickProbability
     ) -> float:
-        return pick_probability.add_binary_upstream_op.weight
+        return pick_probability.add_binary_op.weight
 
     @classmethod
     def IsValidNumSourceTensors(
@@ -205,7 +205,7 @@ class AddBinaryUpstreamOp:
         )
 
 @dataclass
-class InsertBinaryUpstreamOp:
+class InsertBinaryOp:
     source_tensor_index: int
     dag_tag: str
 
@@ -233,7 +233,7 @@ class InsertBinaryUpstreamOp:
             0,
             num_core_source_tensors - 1
         )
-        return InsertBinaryUpstreamOp(
+        return InsertBinaryOp(
             source_tensor_index=source_tensor_index,
             dag_tag=requirement.dag_tag
         )
@@ -243,7 +243,7 @@ class InsertBinaryUpstreamOp:
         cls,
         pick_probability: DAGGenTypePickProbability
     ) -> float:
-        return pick_probability.insert_binary_upstream_op.weight
+        return pick_probability.insert_binary_op.weight
 
     @classmethod
     def IsValidNumSourceTensors(
@@ -257,7 +257,7 @@ class InsertBinaryUpstreamOp:
         )
 
 @dataclass
-class AddBinaryCloneUpstream:
+class AddBinaryClone:
     lhs_source_tensor_index: int
     rhs_source_tensor_index: int
 
@@ -290,7 +290,7 @@ class AddBinaryCloneUpstream:
             num_core_source_tensors,
             num_source_tensors - 1
         )
-        return AddBinaryCloneUpstream(
+        return AddBinaryClone(
             lhs_source_tensor_index=lhs_random_int,
             rhs_source_tensor_index=rhs_random_int,
         )
@@ -300,7 +300,7 @@ class AddBinaryCloneUpstream:
         cls,
         pick_probability: DAGGenTypePickProbability
     ) -> float:
-        return pick_probability.add_binary_clone_upstream.weight
+        return pick_probability.add_binary_clone.weight
 
     @classmethod
     def IsValidNumSourceTensors(
@@ -312,7 +312,7 @@ class AddBinaryCloneUpstream:
         return num_core_source_tensors < num_source_tensors
 
 @dataclass
-class MarkFinalSourceTensor:
+class AddSourceOp:
     source_tensor_index: int
 
     def IsValidSourceTensorIndex(
@@ -339,7 +339,7 @@ class MarkFinalSourceTensor:
             num_core_source_tensors,
             num_source_tensors - 1
         )
-        return MarkFinalSourceTensor(
+        return AddSourceOp(
             source_tensor_index=source_tensor_index,
             dag_tag=requirement.dag_tag
         )
@@ -349,7 +349,7 @@ class MarkFinalSourceTensor:
         cls,
         pick_probability: DAGGenTypePickProbability
     ) -> float:
-        return pick_probability.mark_final_source_tensor.weight
+        return pick_probability.add_source_op.weight
 
     @classmethod
     def IsValidNumSourceTensors(
@@ -362,20 +362,20 @@ class MarkFinalSourceTensor:
 
 DAGGenInstruction = ( Nope
                     | AddSinkTensor
-                    | AddUnaryUpstreamOp
-                    | AddBinaryUpstreamOp
-                    | InsertBinaryUpstreamOp
-                    | AddBinaryCloneUpstream
-                    | MarkFinalSourceTensor
+                    | AddUnaryOp
+                    | AddBinaryOp
+                    | InsertBinaryOp
+                    | AddBinaryClone
+                    | AddSourceOp
                     )
 kDAGGenInstructionClasses = [
     Nope,
     AddSinkTensor,
-    AddUnaryUpstreamOp,
-    AddBinaryUpstreamOp,
-    InsertBinaryUpstreamOp,
-    AddBinaryCloneUpstream,
-    MarkFinalSourceTensor,
+    AddUnaryOp,
+    AddBinaryOp,
+    InsertBinaryOp,
+    AddBinaryClone,
+    AddSourceOp,
 ]
 
 def GetTotalWeight(

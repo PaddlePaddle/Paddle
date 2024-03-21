@@ -69,7 +69,7 @@ class AddSinkTensor:
         )
 
 
-class AddUnaryUpstreamOp:
+class AddUnaryOp:
 
     @classmethod
     def GetPatchedDAGDimsGenInstruction(
@@ -86,21 +86,21 @@ class AddUnaryUpstreamOp:
         ]
         if middle_dims_eq_one != output_dims_eq_one:
             yield DAGDimsGenInstruction(
-                dag=dag_generator.AddUnaryUpstreamOp(
+                dag=dag_generator.AddUnaryOp(
                     source_tensor_index=idx,
                     dag_tag=dag_dims_gen_instruction.dag.dag_tag
                 ),
-                dims=dims_generator.AddUnaryUpstreamOp(
+                dims=dims_generator.AddUnaryOp(
                     source_tensor_dim_eq_one=middle_dims_eq_one
                 )
             )
         if input_dims_eq_one != middle_dims_eq_one:
             yield DAGDimsGenInstruction(
-                dag=dag_generator.AddUnaryUpstreamOp(
+                dag=dag_generator.AddUnaryOp(
                     source_tensor_index=idx,
                     dag_tag=dag_dims_gen_instruction.dag.dag_tag
                 ),
-                dims=dims_generator.AddUnaryUpstreamOp(
+                dims=dims_generator.AddUnaryOp(
                     source_tensor_dim_eq_one=input_dims_eq_one
                 )
             )
@@ -117,7 +117,7 @@ class AddUnaryUpstreamOp:
         infer_ctx.current_source_tensor_dim_eq_one[idx] = input_dims_eq_one
        
 
-class AddBinaryUpstreamOp:
+class AddBinaryOp:
 
     @classmethod
     def GetPatchedDAGDimsGenInstruction(
@@ -143,21 +143,21 @@ class AddBinaryUpstreamOp:
         ]
         if middle_dims_eq_one != output_dims_eq_one:
             yield DAGDimsGenInstruction(
-                dag=dag_generator.AddUnaryUpstreamOp(
+                dag=dag_generator.AddUnaryOp(
                     source_tensor_index=output_idx,
                     dag_tag=dag_dims_gen_instruction.dag.dag_tag
                 ),
-                dims=dims_generator.AddUnaryUpstreamOp(
+                dims=dims_generator.AddUnaryOp(
                     source_tensor_dim_eq_one=middle_dims_eq_one
                 )
             )
         if broadcast_dims_eq_one != middle_dims_eq_one:
             yield DAGDimsGenInstruction(
-                dag=dag_generator.AddUnaryUpstreamOp(
+                dag=dag_generator.AddUnaryOp(
                     source_tensor_index=output_idx,
                     dag_tag=dag_dims_gen_instruction.dag.dag_tag
                 ),
-                dims=dims_generator.AddUnaryUpstreamOp(
+                dims=dims_generator.AddUnaryOp(
                     source_tensor_dim_eq_one=broadcast_dims_eq_one
                 )
             )
@@ -178,7 +178,7 @@ class AddBinaryUpstreamOp:
             dag_dims_gen_instruction.dims.rhs_source_tensor_dim_eq_one
         )
     
-class InsertBinaryUpstreamOp:
+class InsertBinaryOp:
 
     @classmethod
     def GetPatchedDAGDimsGenInstruction(
@@ -199,21 +199,21 @@ class InsertBinaryUpstreamOp:
         new_output_idx = len(infer_ctx.current_source_tensor_dim_eq_one)
         if middle_dims_eq_one != output_dims_eq_one:
             yield DAGDimsGenInstruction(
-                dag=dag_generator.AddUnaryUpstreamOp(
+                dag=dag_generator.AddUnaryOp(
                     source_tensor_index=new_output_idx,
                     dag_tag=dag_dims_gen_instruction.dag.dag_tag
                 ),
-                dims=dims_generator.AddUnaryUpstreamOp(
+                dims=dims_generator.AddUnaryOp(
                     source_tensor_dim_eq_one=middle_dims_eq_one
                 )
             )
         if rhs_input_dims_eq_one != middle_dims_eq_one:
             yield DAGDimsGenInstruction(
-                dag=dag_generator.AddUnaryUpstreamOp(
+                dag=dag_generator.AddUnaryOp(
                     source_tensor_index=new_output_idx,
                     dag_tag=dag_dims_gen_instruction.dag.dag_tag
                 ),
-                dims=dims_generator.AddUnaryUpstreamOp(
+                dims=dims_generator.AddUnaryOp(
                     source_tensor_dim_eq_one=rhs_input_dims_eq_one
                 )
             )
@@ -241,7 +241,7 @@ class InsertBinaryUpstreamOp:
         infer_ctx.current_source_tensor_dim_eq_one.append(rhs_input_dims_eq_one)
     
 
-class AddBinaryCloneUpstream:
+class AddBinaryClone:
 
     @classmethod
     def GetPatchedDAGDimsGenInstruction(
@@ -262,21 +262,21 @@ class AddBinaryCloneUpstream:
         ]
         if middle_dims_eq_one != rhs_input_dims_eq_one:
             yield DAGDimsGenInstruction(
-                dag=dag_generator.AddUnaryUpstreamOp(
+                dag=dag_generator.AddUnaryOp(
                     source_tensor_index=rhs_input_dix,
                     dag_tag=dag_dims_gen_instruction.dag.dag_tag
                 ),
-                dims=dims_generator.AddUnaryUpstreamOp(
+                dims=dims_generator.AddUnaryOp(
                     source_tensor_dim_eq_one=middle_dims_eq_one
                 )
             )
         if lhs_input_dims_eq_one != middle_dims_eq_one:
             yield DAGDimsGenInstruction(
-                dag=dag_generator.AddUnaryUpstreamOp(
+                dag=dag_generator.AddUnaryOp(
                     source_tensor_index=rhs_input_dix,
                     dag_tag=dag_dims_gen_instruction.dag.dag_tag
                 ),
-                dims=dims_generator.AddUnaryUpstreamOp(
+                dims=dims_generator.AddUnaryOp(
                     source_tensor_dim_eq_one=lhs_input_dims_eq_one
                 )
             )
@@ -292,7 +292,7 @@ class AddBinaryCloneUpstream:
         infer_ctx.current_source_tensor_dim_eq_one.pop(rhs_output_idx)
 
 
-class MarkFinalSourceTensor:
+class AddSourceOp:
 
     @classmethod
     def GetPatchedDAGDimsGenInstruction(
@@ -315,11 +315,11 @@ class MarkFinalSourceTensor:
 kDAGGenClassToDAGDimsGenClassMap = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
-    dag_generator.AddUnaryUpstreamOp: AddUnaryUpstreamOp,
-    dag_generator.AddBinaryUpstreamOp: AddBinaryUpstreamOp,
-    dag_generator.InsertBinaryUpstreamOp: InsertBinaryUpstreamOp,
-    dag_generator.AddBinaryCloneUpstream: AddBinaryCloneUpstream,
-    dag_generator.MarkFinalSourceTensor: MarkFinalSourceTensor,
+    dag_generator.AddUnaryOp: AddUnaryOp,
+    dag_generator.AddBinaryOp: AddBinaryOp,
+    dag_generator.InsertBinaryOp: InsertBinaryOp,
+    dag_generator.AddBinaryClone: AddBinaryClone,
+    dag_generator.AddSourceOp: AddSourceOp,
 }
 
 

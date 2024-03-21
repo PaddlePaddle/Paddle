@@ -11,35 +11,35 @@ class AddSinkTensor:
       self.data = data
 
 @dataclass
-class AddUnaryUpstreamOp:
+class AddUnaryOp:
     def __init__(self, data):
       self.data = data
 
 @dataclass
-class AddBinaryUpstreamOp:
+class AddBinaryOp:
     def __init__(self, data):
       self.data = data
 
 @dataclass
-class InsertBinaryUpstreamOp:
+class InsertBinaryOp:
     def __init__(self, data):
       self.data = data
 
 @dataclass
-class AddBinaryCloneUpstream:
+class AddBinaryClone:
     def __init__(self, data):
       self.data = data
 
 @dataclass
-class MarkFinalSourceTensor:
+class AddSourceOp:
     def __init__(self, data):
       self.data = data
 
 IrGenType = ( Nope
             | AddSinkTensor
-            | AddUnaryUpstreamOp
-            | AddBinaryUpstreamOp
-            | InsertBinaryUpstreamOp
-            | AddBinaryCloneUpstream
-            | MarkFinalSourceTensor
+            | AddUnaryOp
+            | AddBinaryOp
+            | InsertBinaryOp
+            | AddBinaryClone
+            | AddSourceOp
             )
