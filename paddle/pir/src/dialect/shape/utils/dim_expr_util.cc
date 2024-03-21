@@ -632,8 +632,8 @@ struct FoldOperandTrait<Mul> {
     PADDLE_ENFORCE_NE(dem,
                       0,
                       phi::errors::InvalidArgument(
-                          "The denominator of rational can not be zero."))
-        .if (dem != 1) {
+                          "The denominator of rational can not be zero."));
+    if (dem != 1) {
       (*ret)->emplace_back(Reciprocal<DimExpr>{DimExpr{dem}});
     }
   }
@@ -674,8 +674,7 @@ struct FoldOperandTrait<Broadcast> {
           phi::errors::InvalidArgument("The value (%d) should be equel to expr "
                                        "(%d) when they are both not 1.",
                                        *value,
-                                       expr_value))
-          .
+                                       expr_value));
     } else {
       // do nothing.
     }
@@ -812,8 +811,7 @@ struct FoldRedundantSymbolicBroadcast {
                     "operands at index (%d) when they are both > 1.",
                     ret.value().value,
                     int64_value,
-                    i))
-                .
+                    i));
           }
           ret = MaxInt64{int64_value, i};
         }
