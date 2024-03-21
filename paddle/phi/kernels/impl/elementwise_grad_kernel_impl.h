@@ -71,7 +71,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
     auto out_shape = dout.dims();
     dev_ctx.template Alloc<T>(ddout);
     if (ddx_tensor == nullptr && ddy_tensor == nullptr) {
-      VLOG(4) << "Special case when ddx and ddy are not needed\n";
+      VLOG(4) << "Special case when ddx and ddy are not needed \n";
       ddout = nullptr;
     } else if (ddx_tensor == nullptr && ddy_tensor != nullptr) {
       if (ddy_tensor->dims() != out_shape) {
