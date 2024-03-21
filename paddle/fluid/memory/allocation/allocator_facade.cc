@@ -107,8 +107,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
 PADDLE_DEFINE_EXPORTED_bool(
     use_auto_growth_v2,
     false,
-    "Whether to use AutoGrowthBestFitAllocatorV2 to allocate "
-    "managed memory, only available for auto_growth "
+    "Whether to use AutoGrowthBestFitAllocatorV2 for auto_growth "
     "strategy");
 
 COMMON_DECLARE_string(allocator_strategy);
