@@ -106,10 +106,8 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
  private:
   void AnalyzeTensorRange(const std::vector<Expr>& indices,
                           const ir::Tensor& tensor) {
-    if (!tensor->buffer.defined() ||
-        tensor->buffer->memory_type == ir::MemoryType::Heap) {
-      return;
-    }
+    if (!tensor->buffer.defined()) return;
+    if (tensor->buffer->memory_type == ir::MemoryType::Heap) return;
 
     std::vector<ir::Expr> indice_extent;
     for (int i = 0; i < indices.size(); ++i) {
@@ -149,10 +147,8 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
 
   void AnalyzeBufferSize(const std::vector<Expr>& indices,
                          const ir::Tensor& tensor) {
-    if (!tensor->buffer.defined() ||
-        tensor->buffer->memory_type == ir::MemoryType::Heap) {
-      return;
-    }
+    if (!tensor->buffer.defined()) return;
+    if (tensor->buffer->memory_type == ir::MemoryType::Heap) return;
 
     const std::string& buffer_name = tensor->buffer->name;
     buffer_name_to_size[buffer_name] = AnalyzeBufferSize(indices);
@@ -287,9 +283,9 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
  private:
   void ResizeTensor(ir::Tensor* tensor_ptr) {
     ir::Buffer buffer = (*tensor_ptr)->buffer;
-    if (!buffer.defined() || buffer->memory_type == ir::MemoryType::Heap) {
-      return;
-    }
+    if (!buffer.defined()) return;
+    if (buffer->memory_type == ir::MemoryType::Heap) return;
+
     const std::string& buffer_name = buffer->name;
     if (buffer_name_to_shape_.count(buffer_name)) {
       const std::vector<ir::Expr>& analyzed_shape =
