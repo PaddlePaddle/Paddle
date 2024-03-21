@@ -80,9 +80,9 @@ void AssertTrueMsgTool::InitFlagInfo() {
       // string type parameter
       flag_values_[flag_arg[0]] = std::stof(flag_arg[1]);
     } else {
-      LOG(FATAL)
-          << "The FLAGS_cinn_check_fusion_accuracy_pass only support parameter "
-             "\"only_warning/rtol/atol/equal_nan\" now";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The FLAGS_cinn_check_fusion_accuracy_pass only support parameter "
+          "\"only_warning/rtol/atol/equal_nan\" now"));
     }
   }
 
@@ -111,8 +111,8 @@ bool MemcpyToHost(void* dst,
     cudaStreamSynchronize(cuda_stream);
     return true;
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
     return false;
 #endif
   }
@@ -120,9 +120,11 @@ bool MemcpyToHost(void* dst,
     memcpy(dst, src, bytes);
     return true;
   }
-  LOG(FATAL) << "MemcpyToHost Only support cpu or nvgpu -> cpu, but here the "
-                "input target is "
-             << input_target << "! Please check.";
+  std::stringstream ss;
+  ss << "MemcpyToHost Only support cpu or nvgpu -> cpu, but here the "
+        "input target is "
+     << input_target << "! Please check.";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return false;
 }
 
@@ -147,14 +149,17 @@ bool MemcpyToDevice(void* dst,
                     static_cast<cudaStream_t>(stream));
     return true;
   } else {
-    LOG(FATAL) << "MemcpyToDevice only support cpu or nvgpu -> nvgpu, but here "
-                  "the input target is "
-               << input_target << "! Please check.";
+    std::stringstream ss;
+    ss << "MemcpyToDevice only support cpu or nvgpu -> nvgpu, but here "
+          "the input target is "
+       << input_target << "! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     return false;
   }
 #else
-  LOG(FATAL) << "MemcpyToDevice only support nvgpu, and NVGPU Target only "
-                "support when flag CINN_WITH_CUDA ON! Please check.";
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "MemcpyToDevice only support nvgpu, and NVGPU Target only "
+      "support when flag CINN_WITH_CUDA ON! Please check."));
   return false;
 #endif
 }
@@ -187,7 +192,7 @@ void CheckAssertTrue(const bool* x,
     if (only_warning) {
       LOG(WARNING) << error_info;
     } else {
-      LOG(FATAL) << error_info;
+      PADDLE_THROW(phi::errors::InvalidArgument(error_info));
     }
   } else {
     VLOG(1) << "[AssertTrue] Check succeed!\n"

@@ -257,6 +257,7 @@ def _pir_transform(t, dtype):
                 break
     main.set_parameters_from(startup)
     with paddle.static.program_guard(main):
+        paddle.pir.reset_insertion_point_to_start()
         block = main.global_block()
         cast_param = paddle._pir_ops.parameter(t.name)
         cast_param.stop_gradient = t.stop_gradient

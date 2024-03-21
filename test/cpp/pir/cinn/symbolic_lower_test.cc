@@ -134,12 +134,8 @@ TEST(ReshapeOpGroup, CINNLowering) {
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  LOG(INFO) << scope->var_names().size();
-  ASSERT_EQ(scope->var_names().size(), 4);
-
-  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
-  auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
+  cinn::hlir::framework::PirCompiler ir_compiler(target);
+  auto fn_ptr_res = ir_compiler.Build(groups);
   ASSERT_EQ(fn_ptr_res.size(), 1);
   ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
 }
@@ -232,12 +228,8 @@ TEST(BroadcastOpGroup, CINNLowering) {
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  LOG(INFO) << scope->var_names().size();
-  ASSERT_EQ(scope->var_names().size(), 4);
-
-  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
-  auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
+  cinn::hlir::framework::PirCompiler ir_compiler(target);
+  auto fn_ptr_res = ir_compiler.Build(groups);
   ASSERT_EQ(fn_ptr_res.size(), 1);
   ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
 }
