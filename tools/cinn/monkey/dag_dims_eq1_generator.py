@@ -329,8 +329,8 @@ class DAGDimsEq1Generator:
 
     def Generate(
         self,
-        dag_gen_instructions: List[dag_generator.DAGGenInstruction],
-        dims_eq1_gen_instructions: List[dims_eq1_generator.DimsEq1GenInstruction]
+        dag_gen_instructions: List["DAGGenInstruction"],
+        dims_eq1_gen_instructions: List["DimsEq1GenInstruction"]
     ) -> List[dag_generator.DAGDimsEq1GenInstruction]:
         infer_ctx = DimsIsEqOneInferContext()
         def CreateDAGDimsEq1GenInstructions(dag_dims_eq1_gen_instruction):

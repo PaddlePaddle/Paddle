@@ -80,14 +80,14 @@ class AddSourceOp:
         return AddSourceOp()
 
 
-DimEq1GenInstruction = ( Nope
-                    | AddSinkTensor
-                    | AddUnaryOp
-                    | AddBinaryOp
-                    | InsertBinaryOp
-                    | AddBinaryClone
-                    | AddSourceOp
-                    )
+# DimEq1GenInstruction = ( Nope
+#                        | AddSinkTensor
+#                        | AddUnaryOp
+#                        | AddBinaryOp
+#                        | InsertBinaryOp
+#                        | AddBinaryClone
+#                        | AddSourceOp
+#                        )
 
 kDAGGenClassToDimEq1GenClassMap = {
     dag_generator.Nope: Nope,
@@ -106,8 +106,8 @@ class DimEq1Generator:
     # Instructions generating sink nodes of DAG are on put the front of list.
     def Generate(
         self,
-        dag_gen_instructions: List[dag_generator.DAGGenInstruction]
-    ) -> List[DimEq1GenInstruction]:
+        dag_gen_instructions: List["DAGGenInstruction"]
+    ) -> List["DimEq1GenInstruction"]:
         def CreateDimEq1GenInstruction(dag_gen_instruction):
             dag_gen_class = type(dag_gen_instruction)
             dim_eq1_gen_class = kDAGGenClassToDimEq1GenClassMap[dag_gen_class]

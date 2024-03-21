@@ -11,7 +11,7 @@ class DimsEq1GenRequirement:
 @dataclass
 class Nope:
     @classmethod
-    def Merge(cls, dim_eq1_gen_instructions: List[dim_eq1_generator.DimEq1GenInstruction]):
+    def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return Nope()
 
 
@@ -20,7 +20,7 @@ class AddSinkTensor:
     source_tensor_dim_eq1: List[bool]
 
     @classmethod
-    def Merge(cls, dim_eq1_gen_instructions: List[dim_eq1_generator.DimEq1GenInstruction]):
+    def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddSinkTensor(
             source_tensor_dim_eq1=tuple(
                 dim_eq1_gen_instance.source_tensor_dim_eq1
@@ -34,7 +34,7 @@ class AddUnaryOp:
     source_tensor_dim_eq1: List[bool]
 
     @classmethod
-    def Merge(cls, dim_eq1_gen_instructions: List[dim_eq1_generator.DimEq1GenInstruction]):
+    def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddUnaryOp(
             source_tensor_dim_eq1=tuple(
                 dim_eq1_gen_instance.source_tensor_dim_eq1
@@ -49,7 +49,7 @@ class AddBinaryOp:
     rhs_source_tensor_dim_eq1: List[bool]
 
     @classmethod
-    def Merge(cls, dim_eq1_gen_instructions: List[dim_eq1_generator.DimEq1GenInstruction]):
+    def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddBinaryOp(
             lhs_source_tensor_dim_eq1=tuple(
                 dim_eq1_gen_instance.lhs_source_tensor_dim_eq1
@@ -67,7 +67,7 @@ class InsertBinaryOp:
     rhs_source_tensor_dim_eq1: List[bool]
 
     @classmethod
-    def Merge(cls, dim_eq1_gen_instructions: List[dim_eq1_generator.DimEq1GenInstruction]):
+    def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return InsertBinaryOp(
             rhs_source_tensor_dim_eq1=tuple(
                 dim_eq1_gen_instance.rhs_source_tensor_dim_eq1
@@ -80,7 +80,7 @@ class InsertBinaryOp:
 class AddBinaryClone:
 
     @classmethod
-    def Merge(cls, dim_eq1_gen_instructions: List[dim_eq1_generator.DimEq1GenInstruction]):
+    def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddBinaryClone()
 
 
@@ -88,18 +88,18 @@ class AddBinaryClone:
 class AddSourceOp:
 
     @classmethod
-    def Merge(cls, dim_eq1_gen_instructions: List[dim_eq1_generator.DimEq1GenInstruction]):
+    def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddSourceOp()
 
 
-DimsEq1GenInstruction = ( Nope
-                     | AddSinkTensor
-                     | AddUnaryOp
-                     | AddBinaryOp
-                     | InsertBinaryOp
-                     | AddBinaryClone
-                     | AddSourceOp
-                     )
+# DimsEq1GenInstruction = ( Nope
+#                         | AddSinkTensor
+#                         | AddUnaryOp
+#                         | AddBinaryOp
+#                         | InsertBinaryOp
+#                         | AddBinaryClone
+#                         | AddSourceOp
+#                         )
 
 kDAGGenClassToDimsEq1GenClassMap = {
     dag_generator.Nope: Nope,
@@ -127,8 +127,8 @@ class DimsEq1Generator:
     # Instructions generating sink nodes of DAG are on put the front of list.
     def Generate(
         self,
-        dag_gen_instructions: List[dag_generator.DAGGenInstruction]
-    ) -> List[DimsEq1GenInstruction]:
+        dag_gen_instructions: List["DAGGenInstruction"]
+    ) -> List["DimsEq1GenInstruction"]:
         dim_eq1_gen_instructions = [
             dim_eq1_generator.Generate(dag_gen_instructions)
             for dim_eq1_generator in dim_eq1_generators

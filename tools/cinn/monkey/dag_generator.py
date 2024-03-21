@@ -360,14 +360,15 @@ class AddSourceOp:
     ) -> bool:
         return num_core_source_tensors < num_source_tensors
 
-DAGGenInstruction = ( Nope
-                    | AddSinkTensor
-                    | AddUnaryOp
-                    | AddBinaryOp
-                    | InsertBinaryOp
-                    | AddBinaryClone
-                    | AddSourceOp
-                    )
+# DAGGenInstruction = ( Nope
+#                     | AddSinkTensor
+#                     | AddUnaryOp
+#                     | AddBinaryOp
+#                     | InsertBinaryOp
+#                     | AddBinaryClone
+#                     | AddSourceOp
+#                     )
+
 kDAGGenInstructionClasses = [
     Nope,
     AddSinkTensor,
@@ -459,7 +460,7 @@ class DAGGenClassGenerator:
 class ConstDAGGenInstructions:
     def __init__(
         self,
-        instructions: List[DAGGenInstruction]
+        instructions: List["DAGGenInstruction"]
     ):
         self.instructions = instructions[:]
         self.current_num_source_tensors = 0
@@ -478,7 +479,7 @@ class MutDAGGenInstructions:
 
     def Push(
         self,
-        instruction: DAGGenInstruction
+        instruction: "DAGGenInstruction"
     ):
         self.instructions.insert(0, instruction)
         top = instruction
@@ -488,7 +489,7 @@ class DAGGenContext:
     def __init__(
         self,
         requirement: DAGGenRequirement,
-        core_dag_gen_instructions: List[DAGGenInstruction]
+        core_dag_gen_instructions: List["DAGGenInstruction"]
     ):
         self.requirement = requirement
         self.core_dag_gen_instructions = ConstDAGGenInstructions(
@@ -525,8 +526,8 @@ class DAGGenerator:
     # Instructions generating sink nodes of DAG are on the front of list.
     def Generate(
             self,
-            core_instructions: List[DAGGenInstruction]
-        ) -> List[DAGGenInstruction]:
+            core_instructions: List["DAGGenInstruction"]
+        ) -> List["DAGGenInstruction"]:
         core_instructions = core_instructions[:]
         ctx = DAGGenContext(self.requirement, core_instructions)
         def MakeInstruction(num_core_sources: int, num_sources: int):

@@ -121,9 +121,9 @@ class IrGenGenerator:
     
     def Generate(
         self,
-        dag_gen_instructions: List[dag_generator.DAGGenInstruction],
-        dims_eq1_gen_instructions: List[dims_eq1_generator.DimsEq1GenInstruction],
-        op_name_gen_instructions: List[op_name_generator.OpNameGenInstruction]
+        dag_gen_instructions: List["DAGGenInstruction"],
+        dims_eq1_gen_instructions: List["DimsEq1GenInstruction"],
+        op_name_gen_instructions: List["OpNameGenInstruction"]
     ) -> List[IrGenInstruction]:
         def CreateIrGenInstruction(triple):
             dag_gen_instr, dims_eq1_gen_instr, op_name_gen_instr = triple

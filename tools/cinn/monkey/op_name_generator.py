@@ -151,14 +151,14 @@ class AddSourceOp:
         return AddSourceOp(op_name=_GetRandomSourceOpName(requirement))
 
 
-OpNameGenInstruction = ( Nope
-                       | AddSinkTensor
-                       | AddUnaryOp
-                       | AddBinaryOp
-                       | InsertBinaryOp
-                       | AddBinaryClone
-                       | AddSourceOp
-                       )
+# OpNameGenInstruction = ( Nope
+#                        | AddSinkTensor
+#                        | AddUnaryOp
+#                        | AddBinaryOp
+#                        | InsertBinaryOp
+#                        | AddBinaryClone
+#                        | AddSourceOp
+#                        )
 
 kDAGGenClassToOpNameGenClassMap = {
     dag_generator.Nope: Nope,
@@ -212,7 +212,7 @@ class OpNameGenerator:
     def Generate(
         self,
         dag_dims_eq1_gen_instructions: List[dag_dims_eq1_generator.DAGDimsEq1GenInstruction]
-    ) -> List[OpNameGenInstruction]:
+    ) -> List["OpNameGenInstruction"]:
         infer_ctx = dag_dims_eq1_generator.DimsIsEqOneInferContext()
         def CreateOpNameGenInstruction(dag_dims_eq1_gen_instruction):
             dag_gen_class = type(dag_dims_eq1_gen_instruction.dag)
