@@ -144,13 +144,13 @@ std::unique_ptr<Token> Lexer::LexEndTagOrNullVal() {
         new Token{"<<" + token_null_val + ">>", NULL_});
     return null_token;
   } else {
-    std::string token_attrnull = "";
+    std::string token_attr_null = "";
     while (is.peek() != '>') {
-      token_attrnull += GetChar();
+      token_attr_null += GetChar();
     }
     GetChar();
     std::unique_ptr<Token> null_token(
-        new Token{"<" + token_attrnull + ">", NULL_});
+        new Token{"<" + token_attr_null + ">", NULL_});
     return null_token;
   }
 }

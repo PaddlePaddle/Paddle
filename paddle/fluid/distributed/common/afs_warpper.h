@@ -22,7 +22,7 @@
 
 #include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 namespace paddle {
 namespace distributed {
 struct FsDataConverter {

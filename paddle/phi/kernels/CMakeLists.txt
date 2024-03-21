@@ -213,6 +213,7 @@ if(WITH_ROCM)
     "gpu/put_along_axis_grad_kernel.cu"
     "gpu/put_along_axis_kernel.cu"
     "gpu/qr_kernel.cu"
+    "gpu/rms_norm_grad_kernel.cu"
     "gpu/svd_kernel.cu"
     "gpudnn/mha_cudnn_frontend.cu"
     "fusion/gpu/block_multi_head_attention_kernel.cu"

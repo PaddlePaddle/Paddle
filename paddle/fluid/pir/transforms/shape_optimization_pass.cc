@@ -245,12 +245,15 @@ class ShapeOptimizationPass : public pir::Pass {
         << "===================== ShapeOptimizationPass Run start... "
            "=====================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
+    PADDLE_ENFORCE_EQ(module_op.name(),
+                      "builtin.module",
+                      phi::errors::InvalidArgument(
+                          "ShapeOptimizationPass should run on module op."));
     PrintProgram(module_op, "Origin Program");
 
     InferSymExprForAllValues(module_op);
     // Runner is for Canonicalizer.
-    PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
+    PassPipelineRunner runner = [](pir::PassManager& pm, pir::ModuleOp m) {
       pm.EnableIRPrinting();
       return pm.Run(m.program());
     };

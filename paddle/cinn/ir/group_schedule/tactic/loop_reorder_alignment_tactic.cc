@@ -82,7 +82,7 @@ void LoopReorderAlignmentTactic::UpdateBaseRank(ir::IRSchedule* sch,
 
 bool LoopReorderAlignmentTactic::NeedReorderLoops() {
   const auto HasReduceAxis = [&]() {
-    return context_->group_tile_info->reduce_axis_.size() > 0;
+    return context_->config.base_info->reduce_axis.size() > 0;
   };
   if (!HasReduceAxis()) {
     return false;
@@ -90,26 +90,26 @@ bool LoopReorderAlignmentTactic::NeedReorderLoops() {
 
   const auto HasNonLastDimReduce = [&]() {
     std::vector<int64_t> vec_reduce_axis =
-        context_->group_tile_info->reduce_axis_;
+        context_->config.base_info->reduce_axis;
     std::sort(vec_reduce_axis.begin(), vec_reduce_axis.end());
     return vec_reduce_axis.front() !=
-           context_->group_tile_info->data_rank - vec_reduce_axis.size();
+           context_->config.base_info->data_rank - vec_reduce_axis.size();
   };
 
   return HasNonLastDimReduce();
 }
 
 std::vector<int32_t> LoopReorderAlignmentTactic::GetNewOrder() {
-  std::set<int64_t> reduce_set(context_->group_tile_info->reduce_axis_.begin(),
-                               context_->group_tile_info->reduce_axis_.end());
+  std::set<int64_t> reduce_set(context_->config.base_info->reduce_axis.begin(),
+                               context_->config.base_info->reduce_axis.end());
 
   std::vector<int32_t> new_order;
-  for (int32_t i = 0; i < context_->group_tile_info->data_rank; ++i) {
+  for (int32_t i = 0; i < context_->config.base_info->data_rank; ++i) {
     if (!reduce_set.count(i)) {
       new_order.push_back(i);
     }
   }
-  for (auto axis : context_->group_tile_info->reduce_axis_) {
+  for (auto axis : context_->config.base_info->reduce_axis) {
     new_order.push_back(axis);
   }
 
@@ -119,23 +119,23 @@ std::vector<int32_t> LoopReorderAlignmentTactic::GetNewOrder() {
 void LoopReorderAlignmentTactic::DoBroadcastLoop(ir::IRSchedule* sch,
                                                  const std::string& block_id) {
   const auto HasBroadcastInfo = [&](const std::string& block_id) {
-    return context_->group_tile_info->broadcast_info.count(block_id) > 0;
+    return context_->config.base_info->broadcast_info.count(block_id) > 0;
   };
   const auto HasBroadcastToElementwiseInfo = [&](const std::string& block_id) {
-    return context_->group_tile_info->broadcast_to_elementwise.count(block_id) >
-           0;
+    return context_->config.base_info->broadcast_to_elementwise.count(
+               block_id) > 0;
   };
   const auto IsFullBroadcast = [&](const std::string& block_id) {
-    return context_->group_tile_info->broadcast_info[block_id].full_broadcast;
+    return context_->config.base_info->broadcast_info[block_id].full_broadcast;
   };
   const auto IsSplitFirst = [&](const std::string& block_id) {
-    return context_->group_tile_info->broadcast_info[block_id].split_first;
+    return context_->config.base_info->broadcast_info[block_id].split_first;
   };
 
   if (HasBroadcastInfo(block_id)) {
     if (IsFullBroadcast(block_id)) {
       std::vector<int32_t> vec_out_split(
-          context_->group_tile_info->broadcast_info[block_id]
+          context_->config.base_info->broadcast_info[block_id]
               .output_shape.size(),
           1);
 
@@ -144,7 +144,7 @@ void LoopReorderAlignmentTactic::DoBroadcastLoop(ir::IRSchedule* sch,
       loops = sch->GetLoops(block_id);
     } else if (IsSplitFirst(block_id)) {
       for (auto& info :
-           context_->group_tile_info->broadcast_info[block_id].split_info) {
+           context_->config.base_info->broadcast_info[block_id].split_info) {
         auto axis = info.first;
         auto split_res = info.second;
 
@@ -157,13 +157,13 @@ void LoopReorderAlignmentTactic::DoBroadcastLoop(ir::IRSchedule* sch,
     }
 
     sch->Broadcast(block_id,
-                   context_->group_tile_info->broadcast_info[block_id]);
+                   context_->config.base_info->broadcast_info[block_id]);
   }
 
   if (HasBroadcastToElementwiseInfo(block_id)) {
     sch->BroadcastToElementwise(
         block_id,
-        context_->group_tile_info->broadcast_to_elementwise[block_id]
+        context_->config.base_info->broadcast_to_elementwise[block_id]
             .broadcast_axes);
   }
 }
@@ -171,7 +171,7 @@ void LoopReorderAlignmentTactic::DoBroadcastLoop(ir::IRSchedule* sch,
 void LoopReorderAlignmentTactic::DoReorder(ir::IRSchedule* sch,
                                            const std::string& block_id) {
   const auto IsReduceBlock = [&](const std::string& block_id) {
-    return context_->group_tile_info->reduce_tensor_names.count(block_id) > 0;
+    return context_->config.base_info->reduce_tensor_names.count(block_id) > 0;
   };
   if (IsReduceBlock(block_id)) {
     return;

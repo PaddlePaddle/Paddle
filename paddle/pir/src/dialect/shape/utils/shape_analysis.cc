@@ -14,7 +14,7 @@
 
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include <string>
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace pir {
 
@@ -25,8 +25,6 @@ static std::string GetValueId(Value val) {
   return val.defining_op()->name() + "_" + std::to_string(op_id) + "_rst_" +
          std::to_string(val_idx);
 }
-
-ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m) : m_(m) {}
 
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
@@ -65,7 +63,7 @@ void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
   }
 }
 
-symbol::DimExprBuilder ShapeConstraintIRAnalysis::CreateDimExprBuilder() {
+symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
   return symbol::DimExprBuilder(&constraints_);
 }
 
@@ -240,7 +238,7 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   if (it == tables_.end()) {
     it = tables_
              .emplace(program->module_op().operation()->id(),
-                      ShapeConstraintIRAnalysis(program->module_op()))
+                      ShapeConstraintIRAnalysis())
              .first;
   }
 
