@@ -33,45 +33,18 @@ class StmtFusionHelper {
   std::optional<ErrorGroupPattern> Fuse_IS_x_IS_2_IS(
       std::vector<StmtPattern>* stmt_patterns);
 
-  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(
-      std::vector<StmtPattern>* stmt_patterns);
-
-  struct FusePolicy_IS_x_PS_2_PS {
-    bool FuseCondition(const StmtPattern& upstream,
-                       const StmtPattern& downstream);
-    std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
-        const StmtPattern& upstream, const StmtPattern& downstream);
-    std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
-        const IS& upstream, const PS& downstream);
-    ShardableAxesSignature MergeShardableAxesSignature(const IS& upstream,
-                                                       const PS& downstream);
-  };
-
   std::optional<ErrorGroupPattern> Fuse_IS_x_PS_2_PS(
       std::vector<StmtPattern>* stmt_patterns);
-  struct FusePolicy_IS_x_R_2_R {
-    bool FuseCondition(const StmtPattern& upstream,
-                       const StmtPattern& downstream);
-    std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
-        const StmtPattern& upstream, const StmtPattern& downstream);
-    std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
-        const IS& upstream, const R& downstream);
-  };
+
+  std::optional<ErrorGroupPattern> Fuse_PS_x_PS_2_PS(
+      std::vector<StmtPattern>* stmt_patterns);
 
   std::optional<ErrorGroupPattern> Fuse_IS_x_R_2_R(
       std::vector<StmtPattern>* stmt_patterns);
 
-  struct FusePolicy_PS_x_R_2_R {
-    bool FuseCondition(const StmtPattern& upstream,
-                       const StmtPattern& downstream);
-    std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
-        const StmtPattern& upstream, const StmtPattern& downstream);
-    std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
-        const PS& upstream, const R& downstream);
-  };
-
   std::optional<ErrorGroupPattern> Fuse_PS_x_R_2_R(
       std::vector<StmtPattern>* stmt_patterns);
+
   StmtPattern ConvertToStmtPattern(const pir::Operation* op);
 
   IS ConvertToIS(const pir::Operation* op);
