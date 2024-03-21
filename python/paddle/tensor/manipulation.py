@@ -4235,20 +4235,6 @@ def expand(x, shape, name=None):
     if in_dynamic_mode():
         return _C_ops.expand(x, shape)
     elif in_pir_mode():
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'bool',
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'uint16',
-            ],
-            'expand',
-        )
         if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
             raise ValueError(
                 "When the data type of input 'x' for expand is bool, "

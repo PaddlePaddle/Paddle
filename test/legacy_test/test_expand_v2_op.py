@@ -23,6 +23,7 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -303,11 +304,12 @@ class TestExpandV2Error(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x1 = base.create_lod_tensor(
-                np.array([[-1]]), [[1]], base.CPUPlace()
-            )
             shape = [2, 2]
-            self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
+            if not in_pir_mode():
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
             x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
             self.assertRaises(TypeError, paddle.tensor.expand, x2, shape)
             x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
