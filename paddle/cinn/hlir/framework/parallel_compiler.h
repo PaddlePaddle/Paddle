@@ -43,11 +43,11 @@ class ParallelCompiler {
  public:
   struct Task {
     Task(int device_id,
-         std::vector<int> group_ids,
+         int group_id,
          ParallelCompiler* compiler,
          CompilationContext* context)
         : device_id(device_id),
-          group_ids(group_ids),
+          group_id(group_id),
           pcompiler(compiler),
           context(context) {}
     void Lowering();
@@ -61,7 +61,7 @@ class ParallelCompiler {
     std::string message;
 
     const int device_id;
-    std::vector<int> group_ids;
+    int group_id;
 
     std::unique_ptr<backends::ExecutionEngine> engine;
 #ifdef CINN_WITH_CUDA

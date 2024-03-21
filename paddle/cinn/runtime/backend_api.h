@@ -12,24 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/target.h"
+#pragma once
 #include <optional>
 #include <variant>
+#include "paddle/cinn/common/target.h"
 
 namespace cinn {
 namespace runtime {
 class BackendAPI {
  public:
-  BackendAPI() {};
-  virtual ~BackendAPI() {};
-  enum class MemcpyType : int{
-    HostToHost=0,
+  BackendAPI() {}
+  virtual ~BackendAPI() {}
+  enum class MemcpyType : int {
+    HostToHost = 0,
     HostToDevice,
     DeviceToHost,
     DeviceToDevice,
   };
-  enum class DeviceProperty : int{
-    MaxGridDims=0,
+  enum class DeviceProperty : int {
+    MaxGridDims = 0,
     MaxBlockDims,
     MultiProcessorCount,
     MaxThreadsPerSM,
@@ -54,17 +55,17 @@ class BackendAPI {
    * \brief Set device by device_id
    * \param device_id
    */
-  virtual void set_device(int device_id) =0;
+  virtual void set_device(int device_id) = 0;
   /*!
    * \brief get the current device_id
    * \return device_id
    */
-  virtual int get_device() =0;
+  virtual int get_device() = 0;
   /*!
    * \brief Set active device by device_ids
    * \param device_ids
    */
-  //virtual void set_active_devices(std::vector<int> device_ids) =0;
+  // virtual void set_active_devices(std::vector<int> device_ids) =0;
   /*!
    * \brief Get device property
    * \param device_property
@@ -80,29 +81,31 @@ class BackendAPI {
    * \param device_id
    * \return pointer to memory
    */
-  virtual void* malloc(size_t numBytes) =0;
+  virtual void* malloc(size_t numBytes) = 0;
   /*!
    * \brief free memory in the idth device
    * \param data pointer to memory
    * \param device_id
    */
-  virtual void free(void* data) =0;
+  virtual void free(void* data) = 0;
   /*!
    * \brief  in the idth device
    * \param data pointer to memory
    * \param device_id
    */
-  virtual void memset(void* data, int value, size_t numBytes) =0;
-  virtual void memcpy(void* dest, const void* src, size_t numBytes, MemcpyType type) =0;
+  virtual void memset(void* data, int value, size_t numBytes) = 0;
+  virtual void memcpy(void* dest,
+                      const void* src,
+                      size_t numBytes,
+                      MemcpyType type) = 0;
   /*!
    * \brief synchronize now device
    */
-  virtual void device_sync() =0;
+  virtual void device_sync() = 0;
   /*!
    * \brief synchronize the stream
    */
-  virtual void stream_sync(void* stream) =0;
-
+  virtual void stream_sync(void* stream) = 0;
 };
 }  // namespace runtime
 }  // namespace cinn

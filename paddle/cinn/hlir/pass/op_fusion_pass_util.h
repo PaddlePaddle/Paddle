@@ -217,7 +217,7 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
   }
 
   return !helper->target_.arch_is_gpu() ||
-         succesive_reduce_dimension <= helper->target_.max_num_threads();
+         successive_reduce_dimension <= helper->target_.max_num_threads();
 }
 
 CONDITION_FUNC(horizontal_or_can_inline) {

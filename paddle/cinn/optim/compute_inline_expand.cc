@@ -21,6 +21,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace optim {
@@ -120,9 +121,9 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
             }
           }
         }
-      } else if (utils::Endswith(tensor->buffer->name, "_write_cache") ||
-                 utils::Endswith(tensor->buffer->name, "_read_cache") ||
-                 utils::Endswith(tensor->buffer->name, "_temp_buffer")) {
+      } else if (utils::EndsWith(tensor->buffer->name, "_write_cache") ||
+                 utils::EndsWith(tensor->buffer->name, "_read_cache") ||
+                 utils::EndsWith(tensor->buffer->name, "_temp_buffer")) {
 #ifdef CINN_WITH_GPU
         auto axis_names = stages_[tensor]->axis_names();
         auto compute_ats = stages_[tensor]->GetComputeAts();

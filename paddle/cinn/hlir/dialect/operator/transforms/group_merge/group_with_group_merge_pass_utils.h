@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_group.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/cinn/runtime/flags.h"
 
 namespace cinn {
 namespace dialect {

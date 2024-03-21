@@ -116,7 +116,7 @@ std::pair<ir::Module, std::string> GenReduceCode(
   // now.
   auto module = builder.Build();
   auto host_module_device_module =
-      backends::SplitCudaAndHostModule(module);  // NOLINT
+      backends::SplitDeviceAndHostModule(module, target);  // NOLINT
   auto& host_module = std::get<0>(host_module_device_module);
   auto& device_module = std::get<1>(host_module_device_module);
 

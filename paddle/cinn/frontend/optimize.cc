@@ -133,6 +133,14 @@ std::vector<std::string> DefaultOpFusionPasses() {
 std::shared_ptr<hlir::framework::Graph> Optimize(
     frontend::Program* program,
     const std::unordered_set<std::string>& fetch_ids,
+    cinn::common::Target target) {
+  return Optimize(
+      program, fetch_ids, target, DefaultTrainingOptimizeOptions(target));
+}
+
+std::shared_ptr<hlir::framework::Graph> Optimize(
+    frontend::Program* program,
+    const std::unordered_set<std::string>& fetch_ids,
     cinn::common::Target target,
     const OptimizeOptions& options) {
   cinn::hlir::framework::PassPrinter::GetInstance()->Begin(fetch_ids);

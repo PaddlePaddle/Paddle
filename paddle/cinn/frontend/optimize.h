@@ -40,8 +40,13 @@ std::vector<std::string> DefaultOpFusionPasses();
 std::shared_ptr<hlir::framework::Graph> Optimize(
     frontend::Program* program,
     const std::unordered_set<std::string>& fetch_ids,
+    cinn::common::Target target);
+
+std::shared_ptr<hlir::framework::Graph> Optimize(
+    frontend::Program* program,
+    const std::unordered_set<std::string>& fetch_ids,
     cinn::common::Target target,
-    const OptimizeOptions& options = DefaultTrainingOptimizeOptions(target));
+    const OptimizeOptions& options);
 
 std::shared_ptr<hlir::framework::Graph> Optimize(
     frontend::Program* program,

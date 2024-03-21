@@ -196,10 +196,10 @@ from .poly import (  # noqa: F401
     create_stages,
 )
 
-is_compile_with_device = (
+is_compiled_with_device = (
     is_compiled_with_cuda() or is_compiled_with_sycl() or is_compiled_with_hip()
 )
-if is_compile_with_device:
+if is_compiled_with_device:
     cinndir = os.path.dirname(os.path.abspath(__file__))
     runtime_include_dir = os.path.join(cinndir, "libs")
     if is_compiled_with_cuda():

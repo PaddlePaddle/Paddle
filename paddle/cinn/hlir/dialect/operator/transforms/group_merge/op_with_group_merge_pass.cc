@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/ir_printer.h"

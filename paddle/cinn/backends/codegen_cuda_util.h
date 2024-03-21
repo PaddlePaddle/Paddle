@@ -101,7 +101,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
    * }
    * \endcode
    */
-  Expr CreateHostFunctionGivenDeviceKernel(const ir::_LoweredFunc_* func,
+  Expr CreateHostFunctionGivenDeviceKernel(ir::_LoweredFunc_* func,
                                            Target target) {
     // std::vector<Expr> args;
     // NOTE the suffix `__ptr` makes this argument lower to a pointer in LLVM
@@ -185,10 +185,10 @@ struct CollectBucketStrategyHostFunctionVisitor
       : CollectHostFunctionVisitor(module_name, target),
         kernel_args_(KERNEL_ARGS, type_of<void*>()),
         kernel_args_num_(KERNEL_ARGS_NUM, type_of<int>()),
-        kernel_stream_(KERNEL_STREAM, type_of<void*>()) {
+        kernel_stream_(KERNEL_STREAM, type_of<void*>()),
+        tensor_shape_args_(TENSOR_SHAPE_ARGS, type_of<int64_t**>()) {
     target_ = target;
   }
-  tensor_shape_args_(TENSOR_SHAPE_ARGS, type_of<int64_t**>()) {}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);
