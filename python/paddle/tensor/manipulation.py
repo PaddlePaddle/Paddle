@@ -4211,7 +4211,7 @@ def expand(x, shape, name=None):
     Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 0.
 
     Args:
-        x (Tensor): The input Tensor, its data type is bool, float16, float32, float64, int32, int64 or uint16.
+        x (Tensor): The input Tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
@@ -4275,6 +4275,7 @@ def expand(x, shape, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'uint8',
                 'uint16',
             ],
             'expand',
