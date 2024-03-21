@@ -31,7 +31,7 @@ struct FusePolicy_IS_x_PS_2_PS {
       const IS& upstream, const PS& downstream) {
     const auto& ops = [&] {
       std::vector<const pir::Operation*> ops(upstream.ops.begin(),
-                                              upstream.ops.end());
+                                             upstream.ops.end());
       for (const auto* downstream_op : downstream.ops) {
         if (std::find(ops.begin(), ops.end(), downstream_op) == ops.end()) {
           ops.push_back(downstream_op);
@@ -54,7 +54,6 @@ struct FusePolicy_IS_x_PS_2_PS {
   }
 };
 
-
 struct FusePolicy_IS_x_R_2_R {
   static bool FuseCondition(const StmtPattern& upstream,
                             const StmtPattern& downstream) {
@@ -63,7 +62,7 @@ struct FusePolicy_IS_x_R_2_R {
         const StmtPattern& upstream, const StmtPattern& downstream);
     std::variant<StmtPattern, ErrorGroupPattern> MergePatternImpl(
         const IS& upstream, const R& downstream);
-  };
+  }
 
   static std::variant<StmtPattern, ErrorGroupPattern> MergePattern(
       const StmtPattern& upstream, const StmtPattern& downstream) {
@@ -83,7 +82,6 @@ struct FusePolicy_IS_x_R_2_R {
     return StmtPattern(std::move(new_pattern));
   }
 };
-
 
 struct FusePolicy_PS_x_R_2_R {
   static bool FuseCondition(const StmtPattern& upstream,
@@ -132,9 +130,10 @@ GroupPattern StmtFusionHelper::FuseToGroupPattern() {
   if (const auto& error = Fuse_IS_x_R_2_R(&stmt_patterns)) return error.value();
   if (const auto& error = Fuse_PS_x_R_2_R(&stmt_patterns)) return error.value();
   SortStmtPatterns(&stmt_patterns);
-  VLOG(4) << "Step 1 Finished, Output:";
-  for (int i=0; i<stmt_patterns.size(); i++){
-    VLOG(4) << "Stmt " << i << "\n" << StmtDebugStr(stmt_patterns[i]);
+  VLOG(4) << "Step 1 Finished, Get " << stmt_patterns.size()
+          << " StmtPattern :";
+  for (const auto& stmt : stmt_patterns) {
+    VLOG(4) << StmtPatternDebugStr(stmt);
   }
   return stmt_patterns;
 }
@@ -292,7 +291,7 @@ bool StmtFusionHelper::IsConnected(
 }
 
 template <typename FusionPolicy>
-std::optional<ErrorGroupPattern>  StmtFusionHelper::FuseFilteredStmtPatterns(
+std::optional<ErrorGroupPattern> StmtFusionHelper::FuseFilteredStmtPatterns(
     std::vector<StmtPattern>* stmt_patterns) {
   std::list<StmtPattern*> stmts_iters = [&] {
     std::list<StmtPattern*> stmts_iters;
@@ -316,7 +315,7 @@ std::optional<ErrorGroupPattern>  StmtFusionHelper::FuseFilteredStmtPatterns(
     if (!pattern_pair.has_value()) break;
     const std::variant<StmtPattern, ErrorGroupPattern>& new_pattern =
         FusionPolicy::MergePattern(**pattern_pair.value().upstream_iter,
-                                    **pattern_pair.value().downstream_iter);
+                                   **pattern_pair.value().downstream_iter);
 
     if (std::holds_alternative<ErrorGroupPattern>(new_pattern)) {
       return std::get<ErrorGroupPattern>(new_pattern);

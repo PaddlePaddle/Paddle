@@ -76,7 +76,7 @@ std::function<bool(const pir::Operation*)> MakePredicatorIsInjectiveSource(
 
 std::vector<const pir::Operation*> GetStmtContainedOps(const StmtPattern& stmt);
 
-std::string StmtDebugStr(const StmtPattern& stmt);
+std::string StmtPatternDebugStr(const StmtPattern& stmt);
 
 struct LoopAlignableStmtPatternVec {
   std::vector<StmtPattern> stmts;

@@ -42,6 +42,8 @@ class ClusteringEngine {
     VLOG(4) << "Step 2, Searching Connected Componenet";
     std::unordered_set<const StmtPattern*> visited;
     for (const auto& start : stmt_patterns) {
+      VLOG(2) << "Choose BFS start StmtPattern: \n"
+              << StmtPatternDebugStr(start);
       if (visited.count(&start)) continue;
       std::vector<const StmtPattern*> component;
       walker(&start, [&](const auto* stmt) {
