@@ -302,10 +302,10 @@ class Context:
                 if self.envs.get("PADDLE_TRAINERS", None):
                     self._ip = self.envs["PADDLE_TRAINERS"].split(",")[0]
                 else:
-                    raise ValueError("LAUNCH ERROR the master ip error.")
+                    print("LAUNCH ERROR the master ip error.")
             if not self._port:
                 if self.envs.get("PADDLE_PORT", None):
                     self._port = self.envs.get("PADDLE_PORT")
                 else:
-                    raise ValueError("LAUNCH ERROR the master port error.")
+                    print("LAUNCH ERROR the master ip error.")
             self.args.master = f"{self._ip}:{self._port}"
