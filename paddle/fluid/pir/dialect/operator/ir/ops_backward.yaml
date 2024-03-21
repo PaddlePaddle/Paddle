@@ -644,7 +644,7 @@
     func : RankAttentionGradInferMeta
   kernel :
     func : rank_attention_grad
-    data_type : out
+    data_type : out_grad
 
 - backward_op : repeat_interleave_grad
   forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)

@@ -3869,6 +3869,8 @@
     {x : X, rank_offset : RankOffset, rank_param : RankParam}
   outputs:
     {input_help : InputHelp, out : Out, ins_rank: InsRank}
+  attrs:
+    {max_rank : MaxRank, max_size : MaxSize}
 
 - op: read_from_array
   inputs:
