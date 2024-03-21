@@ -34,7 +34,7 @@ class OpResult;
 
 namespace detail {
 class OpResultImpl;
-class OpOperendImpl;
+class OpOperandImpl;
 }  // namespace detail
 
 class CloneOptions {
@@ -229,7 +229,7 @@ class IR_API alignas(8) Operation final
 
   void Verify();
 
-  uint64_t id() { return id_; }
+  uint64_t id() const { return id_; }
 
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);

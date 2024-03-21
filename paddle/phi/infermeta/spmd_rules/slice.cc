@@ -77,8 +77,8 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
   // cannot be sharded, if it is sharded, set it to replicated.
   TensorDistAttr input_dist_attr_dst =
       CopyTensorDistAttrForOutput(input_dist_attr_src);
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];  // NOLINT
+  for (auto axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     input_dims_mapping[axis] = -1;
   }
   input_dist_attr_dst.set_dims_mapping(input_dims_mapping);
@@ -164,8 +164,8 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
     out_axes[i] = input_axes[input_axis];
   }
 
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];  // NOLINT
+  for (auto axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     // the sliced axis cannot be sharded, set its notation
     // with the special '1' to set its dim mapping to -1.
     input_axes[axis] = '1';
@@ -190,8 +190,8 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   // step2.3 get new dist attribute for output. the sliced
   // cannot be sharded, if it is sharded, set it to replicated.
   out_dims_mapping = GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+  for (auto axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     out_dims_mapping[axis] = -1;
   }
   auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out_dist_attr);

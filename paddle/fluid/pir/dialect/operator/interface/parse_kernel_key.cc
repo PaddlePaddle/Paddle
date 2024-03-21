@@ -32,6 +32,14 @@ KernelKeyTuple SaveCombineOpParseKernelKey(pir::Operation* op) {
   return {phi::DataType::FLOAT32, phi::Backend::UNDEFINED};
 }
 
+KernelKeyTuple NopOpParseKernelKey(pir::Operation* op) {
+  return {phi::DataType::FLOAT32, phi::Backend::UNDEFINED};
+}
+
+KernelKeyTuple Nop_OpParseKernelKey(pir::Operation* op) {
+  return {phi::DataType::FLOAT32, phi::Backend::UNDEFINED};
+}
+
 }  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ParseKernelKeyInterface)

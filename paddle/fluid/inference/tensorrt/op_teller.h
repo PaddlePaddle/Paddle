@@ -34,13 +34,14 @@ namespace tensorrt {
 
 /*
  * Single Op teller definition.
- * One can override this and define a more complex tell logic, considerring more
+ * One can override this and define a more complex tell logic, considering more
  * issues such as op_desc.
  */
 struct Teller {
   virtual bool operator()(const framework::OpDesc& desc,
                           bool use_no_calib_int8 = false,
                           bool with_dynamic_shape = false,
+                          bool forbid_dynamic_op_enter_into_trt = false,
                           bool use_explicit_quantization = false) = 0;
 
   virtual ~Teller() = default;
@@ -77,6 +78,7 @@ class OpTeller {
   bool Tell(const framework::ir::Node* node,
             bool use_no_calib_int8 = false,
             bool with_dynamic_shape = false,
+            bool forbid_dynamic_op_enter_into_trt = false,
             bool use_explicit_quantization = false);
 
   std::unique_ptr<Teller>& GetDefaultTeller() { return tellers_.at(0); }
