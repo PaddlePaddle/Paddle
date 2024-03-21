@@ -14,6 +14,7 @@
 
 import logging
 import socket
+import time
 
 from paddle.distributed.launch import plugins
 
@@ -220,10 +221,10 @@ class Context:
                         server_socket = socket.socket(
                             socket.AF_INET, socket.SOCK_STREAM
                         )
-                        server_socket.settimeout(30)
+                        server_socket.settimeout(200)
                         try:
                             server_socket.bind((self.node.ip, port))
-                            server_socket.listen(1)
+                            server_socket.listen()
                             connected_addrs = set()
                             connected_clients = []
                             while len(connected_addrs) < len(ip_list) - 1:
@@ -250,7 +251,9 @@ class Context:
                 else:
                     while port < 6779 and not has_connect:
                         has_connect = False
-                        for i in range(5):
+                        # wait server sokcet
+                        time.sleep(2)
+                        for i in range(3):
                             try:
                                 client_socket = socket.socket(
                                     socket.AF_INET, socket.SOCK_STREAM
@@ -262,6 +265,7 @@ class Context:
                                 response = client_socket.recv(1024).decode()
                                 if response == "connect success":
                                     has_connect = True
+                                    client_socket.close()
                                     break
                             except OSError:
                                 print(
