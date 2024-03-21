@@ -19,7 +19,6 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -134,7 +133,10 @@ void InterpolateKernel(
   }
   bool nearest = "nearest" == interp_method;
   int trans_mode = (align_corners) ? (0) : ((align_mode == 0) ? (1) : (2));
+
   if (nearest) {
+    trans_mode = (align_corners == true) ? 0 : 2;
+
     PADDLE_ENFORCE_EQ(
         (data_layout == DataLayout::kNCHW),
         true,
