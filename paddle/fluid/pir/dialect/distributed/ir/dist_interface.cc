@@ -12,19 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_interface.h"
 
-#include <vector>
+namespace paddle::dialect {}  // namespace paddle::dialect
 
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
-#include "paddle/phi/core/distributed/type_defs.h"
-
-namespace phi {
-namespace distributed {
-SpmdInfo ScaleInferSpmd(const DistMetaTensor& x,
-                        const Scalar& scale,
-                        const Scalar& bias,
-                        bool bias_after_scale);
-}
-}  // namespace phi
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DistTypeInterface)

@@ -411,5 +411,79 @@ class TestSiluHighGradCheck(unittest.TestCase):
             self.func_triple(p)
 
 
+@param.parameterized_class(
+    ('shape1', 'shape2'),
+    [
+        (
+            [2, 3, 4],
+            [2, 3, 4],
+        ),
+        (
+            [2, 3, 3, 4],
+            [3, 1, 4],
+        ),
+        (
+            [2, 3, 3, 4],
+            [3, 1, 1],
+        ),
+        (
+            [2, 3, 3, 4],
+            [2, 3, 1, 4],
+        ),
+        (
+            [2, 3, 3, 4],
+            [2, 3, 1, 1],
+        ),
+    ],
+)
+class TestMinimumHighGradCheck(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.shape1 = cls.shape1
+        cls.shape2 = cls.shape2
+
+    def minimum_wrapper(self, x):
+        return paddle.minimum(x[0], x[1])
+
+    @prog_scope()
+    def func_double(self, place):
+        shape1 = self.shape1
+        shape2 = self.shape2
+        eps = 0.0005
+        dtype = np.float64
+        x = paddle.static.data('x', shape1, dtype=dtype)
+        y = paddle.static.data('y', shape2, dtype=dtype)
+        x.persistable = True
+        y.persistable = True
+        out = paddle.minimum(x, y)
+        x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
+        y_arr = np.random.uniform(-2, 2, shape2).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        y_arr[np.abs(y_arr) < 0.005] = 0.002
+        from paddle.base import core
+
+        core._set_prim_backward_enabled(True)
+        core._set_prim_backward_blacklist("minimum_grad")
+        gradient_checker.double_grad_check(
+            [x, y], y=out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.minimum_wrapper,
+            [x, y],
+            y=out,
+            x_init=[x_arr, y_arr],
+            place=place,
+        )
+        core._set_prim_backward_enabled(False)
+
+    def test_high_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func_double(p)
+
+
 if __name__ == '__main__':
     unittest.main()
