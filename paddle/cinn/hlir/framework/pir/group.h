@@ -70,7 +70,7 @@ struct Group {
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const {
     CHECK(value_to_shape_or_data_exprs_.count(value))
-        << "value not found in value_to_shape_or_data_exprs_";
+        << "value not found in value_to_shape_or_data_exprs_: " << value.impl();
     return value_to_shape_or_data_exprs_.at(value);
   }
 

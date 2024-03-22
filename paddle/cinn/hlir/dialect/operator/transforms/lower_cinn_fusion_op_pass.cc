@@ -138,8 +138,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
                        pir::PatternRewriter& rewriter) const override {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     auto* program = fusion_op->GetParentProgram();
-    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-        fusion_op->GetParentProgram());
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
     VLOG(4) << "Program before lowering: \n"
             << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
 
@@ -258,14 +257,13 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
   mutable PreAnalysisInfo pre_analysis_info_;
 };
 
-std::shared_ptr<Group> RebuildGroup(pir::Operation*);
+std::shared_ptr<Group> RebuildGroup(pir::Operation*, bool);
 
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
-  std::shared_ptr<Group> group_ptr = RebuildGroup(fusion_op);
+  std::shared_ptr<Group> group_ptr = RebuildGroup(fusion_op, is_dy_shape_);
   pre_analysis_info_->group_infos.insert({fusion_op, group_ptr});
-  std::shared_ptr<BroadcastTreeInfo> broadcast_tree_info =
-      std::make_shared<BroadcastTreeInfo>(group_ptr);
   if (is_dy_shape_) {
+    auto broadcast_tree_info = std::make_shared<BroadcastTreeInfo>(group_ptr);
     pre_analysis_info_->broadcast_tree_infos.insert(
         {group_ptr, broadcast_tree_info});
   }
@@ -337,7 +335,6 @@ void BroadcastTreeInfo::ConstructBroadcastTree(const GroupPtr& group) {
       value_view.insert(op->result(i));
     }
   });
-
   // construct broadcast tree
   VLOG(4) << "construct broadcast tree";
   for (auto value : value_view) {
@@ -421,7 +418,8 @@ pir::Operation* ProcessDyShapeGroup(
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(const GroupPtr&, pir::ShapeConstraintIRAnalysis&);
 
-std::shared_ptr<Group> RebuildGroup(pir::Operation* fusion_op_ptr) {
+std::shared_ptr<Group> RebuildGroup(pir::Operation* fusion_op_ptr,
+                                    bool is_dy_shape) {
   auto fusion_op = fusion_op_ptr->dyn_cast<cinn::dialect::FusionOp>();
   auto group = std::make_shared<Group>();
   group->op_pattern_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
@@ -462,12 +460,14 @@ std::shared_ptr<Group> RebuildGroup(pir::Operation* fusion_op_ptr) {
   // Because the group is rebuilt, the order of group.output_values generated
   // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
   // so a mapping is required.
-  auto& shape_analysis =
-      pir::ShapeAnalysisManager::Instance().Get(fusion_op->GetParentProgram());
-  group->set_value_to_shape_or_data_exprs(
-      CreateGroupShapeOrDataExprs(group, shape_analysis));
-  if (FLAGS_cinn_enable_map_expr) {
-    cinn::adt::TryGenerateMapExprFromGroup(group);
+  if (is_dy_shape) {
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+        fusion_op->GetParentProgram());
+    group->set_value_to_shape_or_data_exprs(
+        CreateGroupShapeOrDataExprs(group, shape_analysis));
+    if (FLAGS_cinn_enable_map_expr) {
+      cinn::adt::TryGenerateMapExprFromGroup(group);
+    }
   }
   // Rebuild other informations
   // TODO(zhangyuqin1998): Do we need group.master_ops?
@@ -1097,6 +1097,7 @@ CreateGroupShapeOrDataExprs(
       auto operand = op->operand_source(i);
       if (operand && value2shape.find(operand) == value2shape.end() &&
           shape_analysis.HasShapeOrDataForValue(operand)) {
+        VLOG(6) << "Add value_to_shape_or_data_exprs for " << operand.impl();
         value2shape.insert(
             {operand,
              TrySubstitute(shape_analysis.GetShapeOrDataForValue(operand),
@@ -1107,6 +1108,7 @@ CreateGroupShapeOrDataExprs(
       auto result = op->result(i);
       if (result && value2shape.find(result) == value2shape.end() &&
           shape_analysis.HasShapeOrDataForValue(result)) {
+        VLOG(6) << "Add value_to_shape_or_data_exprs for " << result.impl();
         value2shape.insert(
             {result,
              TrySubstitute(shape_analysis.GetShapeOrDataForValue(result),
@@ -1114,6 +1116,8 @@ CreateGroupShapeOrDataExprs(
       }
     }
   }
+  VLOG(5) << group.get()
+          << " value_to_shape_or_data_exprs.size() : " << value2shape.size();
   return value2shape;
 }
 
