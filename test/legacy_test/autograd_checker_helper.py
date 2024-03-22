@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from logging import warning
 
 import numpy as np
+from decorator_helper import prog_scope
 
 import paddle
 from paddle import base
@@ -304,6 +305,7 @@ def _get_static_vjp_program(inputs, outputs, feeds, grads_in, order):
     return feeds, outputs, d_inputs, grads_in
 
 
+@prog_scope()
 def check_vjp(func, args, order=2, atol=None, rtol=None, eps=EPS):
     paddle.framework.core.set_prim_eager_enabled(True)
     paddle.framework.core._set_prim_all_enabled(True)
