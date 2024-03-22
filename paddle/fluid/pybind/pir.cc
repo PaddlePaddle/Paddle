@@ -812,23 +812,27 @@ pir::Value apply(Value self, py::object func) {
             name, BoolAttribute::get(pir::IrContext::Instance(), bool_data)); \
       })
 
-#define DEF_VALUE_POINTER_PROPERTY(name)                                       \
-  def_property(                                                                \
-      name,                                                                    \
-      [](Value self) {                                                         \
-        auto pointer_data = reinterpret_cast<PyObject *>(self.property(name)); \
-        py::object obj = py::object(py::handle(pointer_data), true);           \
-        return obj;                                                            \
-      },                                                                       \
-      [](Value self, py::object obj) {                                         \
-        pir::PropertiesDeleter deleter = [](void *python_obj) {                \
-          Py_DECREF(python_obj);                                               \
-        };                                                                     \
-        PyObject *pointer_data = obj.release().ptr();                          \
-        Py_INCREF(pointer_data);                                               \
-        pir::Property value_property(reinterpret_cast<void *>(pointer_data),   \
-                                     deleter);                                 \
-        self.set_property(name, value_property);                               \
+#define DEF_VALUE_POINTER_PROPERTY(name)                                     \
+  def_property(                                                              \
+      name,                                                                  \
+      [](Value self) {                                                       \
+        auto prop_ptr = self.property(name);                                 \
+        if (!prop_ptr) {                                                     \
+          return py::cast<py::none>(Py_None);                                \
+        }                                                                    \
+        auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
+        py::object obj = py::object(py::handle(py_data), true);              \
+        return obj;                                                          \
+      },                                                                     \
+      [](Value self, py::object obj) {                                       \
+        pir::PropertiesDeleter deleter = [](void *python_obj) {              \
+          Py_DECREF(python_obj);                                             \
+        };                                                                   \
+        PyObject *pointer_data = obj.release().ptr();                        \
+        Py_INCREF(pointer_data);                                             \
+        pir::Property value_property(reinterpret_cast<void *>(pointer_data), \
+                                     deleter);                               \
+        self.set_property(name, value_property);                             \
       })
 
 void BindValue(py::module *m) {

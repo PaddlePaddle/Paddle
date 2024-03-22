@@ -419,13 +419,9 @@ void Operation::set_value_property(const std::string &key,
 }
 
 void *Operation::value_property(const std::string &key, size_t index) const {
-  PADDLE_ENFORCE_LE(index + 1,
-                    value_properties_.size(),
-                    common::errors::PreconditionNotMet(
-                        "The index of value_properties_map is out of range, "
-                        "index: %d, value_properties_map size: %d",
-                        index,
-                        value_properties_.size()));
+  if (value_properties_.size() < (index + 1)) {
+    return nullptr;
+  }
   auto &property_map = value_properties_[index];
   auto iter = property_map.find(key);
   return iter == property_map.end() ? nullptr : iter->second.first;

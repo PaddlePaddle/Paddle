@@ -262,6 +262,7 @@ def _pir_transform(t, dtype):
         cast_param = paddle._pir_ops.parameter(t.name)
         cast_param.trainable = t.trainable
         cast_param.stop_gradient = t.stop_gradient
+        cast_param.persistable = t.persistable
         cast_param.optimize_attr = t.optimize_attr
         cast_param.regularizer = t.regularizer
         cast_param.do_model_average = t.do_model_average
