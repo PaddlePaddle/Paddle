@@ -35,8 +35,7 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
     } else if (kind == hlir::framework::kBroadcast) {
       return MakeShardableAxesSignature4BroadcastOp(op);
     } else {
-      LOG(ERROR) << "[ShardableAxesSignature] no shardable axes signature "
-                    "found. op_name:"
+      LOG(ERROR) << "[ShardableAxesSignature] not support OpPatternKind, op_name:"
                  << op->name();
     }
     return MakeEmptyShardableAxesSignature(op);
@@ -104,8 +103,7 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
   ShardableAxesSignature MakeShardableAxesSignature4ElementWiseOp(
       const pir::Operation* op) {
     if (IsDisabledElementwiseOp(op)) {
-      LOG(ERROR) << "[ShardableAxesSignature] no shardable axes signature "
-                    "found. op_name : "
+      LOG(ERROR) << "[ShardableAxesSignature] Disabled Elementwise Op, op_name : "
                  << op->name();
       return MakeEmptyShardableAxesSignature(op);
     }
@@ -159,8 +157,7 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
       const pir::Operation* op) {
     const auto& input_output_pair = GetGetBroadcastOpInputOuputValue(op);
     if (!input_output_pair.has_value()) {
-      LOG(ERROR) << "[ShardableAxesSignature] no shardable axes signature "
-                    "found. op_name : "
+      LOG(ERROR) << "[ShardableAxesSignature] Disabled Broadcast Op, op_name : "
                  << op->name();
       return MakeEmptyShardableAxesSignature(op);
     }

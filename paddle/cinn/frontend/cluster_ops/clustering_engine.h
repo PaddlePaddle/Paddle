@@ -215,7 +215,7 @@ class ClusteringEngine {
                 << StmtPatternDebugStr(*stmt);
         VLOG(4) << "ClusterWalker || Next Node is:\n"
                 << StmtPatternDebugStr(*next);
-        bool can_fuse = Fusible(prev, stmt);
+        bool can_fuse = Fusible(stmt, next);
         VLOG(4) << "ClusterWalker || Can Fuse: " << can_fuse;
         if (Fusible(stmt, next)) {
           DoEach(next);

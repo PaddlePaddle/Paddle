@@ -35,9 +35,7 @@ ClusteringResult ClusteringEngine::ClusterOps() {
     CHECK(std::holds_alternative<std::vector<StmtPattern>>(raw_parsed));
     return std::get<std::vector<StmtPattern>>(raw_parsed);
   }();
-  VLOG(4) << "- After Raw Parsing, the number of StmtPatterns is "
-          << stmt_patterns.size();
-  VLOG(4) << "- Making Acyclic Same Cluster Bfs Walker";
+
   common::BfsWalker<const StmtPattern*> walker =
       MakeAcyclicSameClusterBfsWalker(stmt_patterns);
   auto OrderValue4Op = MakeTopoOrderFinderOfOp(ops_);
@@ -48,9 +46,7 @@ ClusteringResult ClusteringEngine::ClusterOps() {
     stmts_list.push_back(stmt_ptrs);
   });
 
-  VLOG(4) << "- Sort Stmts List";
   SortStmtsList(&stmts_list, OrderValue4Op);
-  VLOG(4) << "- Make Clustering Result";
   return clustering_policy_->MakeClusteringResult(stmts_list);
 }
 
