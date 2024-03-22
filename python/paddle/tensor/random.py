@@ -1654,10 +1654,10 @@ def log_normal(mean=1.0, std=1.0, shape=None, dtype=None, name=None):
             >>> # doctest: -SKIP
 
     """
-    if not in_dynamic_or_pir_mode():
-        check_type(mean, 'mean', (list, tuple, Variable), 'log_normal')
-        check_type(std, 'std', (list, tuple, Variable), 'log_normal')
-        if isinstance(mean, Variable):
+    if not in_dynamic_mode():
+        check_type(mean, 'mean', (int, float, Variable, paddle.pir.Value), 'log_normal')
+        check_type(std, 'std', (int, float, Variable, paddle.pir.Value), 'log_normal')
+        if isinstance(mean, (Variable, paddle.pir.Value)):
             check_dtype(
                 mean.dtype,
                 'mean',
@@ -1665,7 +1665,7 @@ def log_normal(mean=1.0, std=1.0, shape=None, dtype=None, name=None):
                 'log_normal',
                 "If mean is a Tensor, it's data type only support float32, float64",
             )
-        if isinstance(std, Variable):
+        if isinstance(std, (Variable, paddle.pir.Value)):
             check_dtype(
                 std.dtype,
                 'std',
@@ -1681,7 +1681,7 @@ def log_normal(mean=1.0, std=1.0, shape=None, dtype=None, name=None):
         n_std = paddle.sqrt(paddle.log(1 + (std**2 / mean**2)))
         return n_mean, n_std
 
-    if isinstance(mean, Variable):
+    if isinstance(mean, (Variable, paddle.pir.Value)):
         check_dtype(
             mean.dtype,
             'mean',
@@ -1689,7 +1689,7 @@ def log_normal(mean=1.0, std=1.0, shape=None, dtype=None, name=None):
             'log_normal',
             "If mean is a Tensor, it's data type only support float32, float64",
         )
-        if isinstance(std, Variable):
+        if isinstance(std, (Variable, paddle.pir.Value)):
             check_dtype(
                 std.dtype,
                 'std',
@@ -1711,7 +1711,7 @@ def log_normal(mean=1.0, std=1.0, shape=None, dtype=None, name=None):
             dtype=dtype,
             name=name,
         )
-    elif isinstance(std, Variable):
+    elif isinstance(std, (Variable, paddle.pir.Value)):
         mean = paddle.to_tensor(mean)
         n_mean, n_std = normalize_mean_std(mean, std)
         distribution = gaussian(
@@ -1773,9 +1773,9 @@ def log_normal_(x, mean=0.0, std=1.0, name=None):
             >>> # doctest: -SKIP
 
     """
-    if not isinstance(mean, Variable) or not isinstance(mean, float):
+    if not isinstance(mean, (Variable, paddle.pir.Value)) or not isinstance(mean, float):
         mean = paddle.to_tensor(mean, dtype=paddle.float64)
-    if not isinstance(std, Variable) or not isinstance(std, float):
+    if not isinstance(std, (Variable, paddle.pir.Value)) or not isinstance(std, float):
         std = paddle.to_tensor(std, dtype=paddle.float64)
 
     n_mean = paddle.log(mean**2 / paddle.sqrt(mean**2 + std**2))
