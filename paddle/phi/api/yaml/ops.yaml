@@ -613,6 +613,7 @@
     func : conv3d
     data_type : input
   backward : conv3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : conv3d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, int[] output_padding={}, int[] output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCHW")
