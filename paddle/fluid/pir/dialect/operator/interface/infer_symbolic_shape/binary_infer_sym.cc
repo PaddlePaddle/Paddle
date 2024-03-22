@@ -152,10 +152,7 @@ bool Conv2dOpInferSymbolicShape(
 
 bool Conv3dOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // todo
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return Conv2dOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool EmbeddingOpInferSymbolicShape(

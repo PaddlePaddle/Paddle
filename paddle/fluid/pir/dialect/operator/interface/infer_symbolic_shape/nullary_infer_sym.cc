@@ -249,18 +249,36 @@ bool GaussianOpInferSymbolicShape(
 
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        op->name() +
-        " 's InferSymbolicShape interface is NOT implemented now."));
+        "Currently shape must comes from FullIntArrayOp in GaussianOp's "
+        "InferSymbolicShape."));
     return true;
   }
 }
 
 bool RandintOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // todo
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  const auto &shape_gen_op = op->operand_source(0).defining_op();
+
+  if (shape_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
+    std::vector<int64_t> shape = details::GetVectorAttr(
+        shape_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+    std::vector<symbol::DimExpr> sym_dims;
+    sym_dims.reserve(shape.size());
+    for (const int64_t &dim : shape) {
+      sym_dims.emplace_back(symbol::DimExpr(dim));
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_dims)};
+    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+    return true;
+
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently shape must comes from FullIntArrayOp in RandintOp's "
+        "InferSymbolicShape."));
+    return true;
+  }
 }
 
 bool TrilIndicesOpInferSymbolicShape(

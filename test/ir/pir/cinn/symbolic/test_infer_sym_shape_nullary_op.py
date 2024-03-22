@@ -113,5 +113,28 @@ class GaussianOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class RandintNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.randint(low=-5, high=5, shape=[12, 32])
+        return out
+
+
+class RandintOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = ['shape[12, 32], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = RandintNet()
+        x_spec = InputSpec(shape=[None, None, 2], dtype='float32')
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(net, input_spec, 'pd_op.randint', self.expected)
+        return True
+
+
 if __name__ == '__main__':
     unittest.main()
