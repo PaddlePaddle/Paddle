@@ -71,7 +71,6 @@ class IR_API ParameterOp : public pir::Op<ParameterOp> {
 /// StrAttribute})
 ///
 class IR_API SetParameterOp : public pir::Op<SetParameterOp, SideEffectTrait> {
-  // to do
  public:
   using Op::Op;
   static const char *name() { return "builtin.set_parameter"; }
