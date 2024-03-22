@@ -211,12 +211,7 @@ class ParamStorage(InternalStorage):
 
         # Convert the param value
         with device_guard(self.dev_id, self._device):
-            tmp_tensor = paddle.empty(
-                [var_end - self._fill], dtype=self.buffer.dtype
-            )
-            paddle.assign(self.buffer._slice(self._fill, var_end), tmp_tensor)
-
-            tmp_tensor._share_buffer_to(param)
+            self.buffer._slice(self._fill, var_end)._share_buffer_to(param)
             param.get_tensor()._set_dims(p_shape)
 
         self._fill = offset

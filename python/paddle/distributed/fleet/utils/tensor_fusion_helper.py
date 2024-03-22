@@ -261,15 +261,10 @@ class ShardingGradView:
         slice_begin = self._param_begin
         slice_end = self._param_end
 
-        slice_buffer = paddle.empty(
-            [slice_end - slice_begin], dtype=self._param_buffer.dtype
-        )
-        paddle.assign(
-            self._param_buffer._slice(slice_begin, slice_end), slice_buffer
-        )
-
         slice_param.get_tensor()._set_dims([slice_end - slice_begin])
-        slice_buffer._share_buffer_to(slice_param)
+        self._param_buffer._slice(slice_begin, slice_end)._share_buffer_to(
+            slice_param
+        )
 
     def assign_slice_grad(self, slice_param):
         assert self._param_buffer._is_shared_buffer_with(self._param)
