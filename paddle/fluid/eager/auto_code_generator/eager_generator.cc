@@ -26,7 +26,7 @@
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -1751,7 +1751,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       amp_logic_str += "\n";
       const char* GET_AMP_GET_DST_DTYPE_CONTEXT =
           "    auto amp_dst_dtype = "
-          "egr::GetAmpDestDtype(\"%s\", "
+          "paddle::imperative::GetAmpDestDtype(\"%s\", "
           "amp_tensors_vector);\n";
       amp_logic_str +=
           paddle::string::Sprintf(GET_AMP_GET_DST_DTYPE_CONTEXT, op_type);
@@ -3018,7 +3018,7 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include "
       "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n"
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
-      "#include \"paddle/fluid/eager/amp_utils.h\"\n"
+      "#include \"paddle/fluid/imperative/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
       "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
 

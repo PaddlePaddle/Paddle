@@ -40,7 +40,7 @@ static void MatMulXPUFunction(const DenseTensor& x,
   int k = mat_dim_a.width_;
   int batch_size = mat_dim_a.batch_size_;
   // batch matmul
-  int fccal_type = FCCalcType<XPUType>();
+  int fc_calc_type = FCCalcType<XPUType>();
   decltype(&xblas_fc_batch_wrapper<XPUType, int16_t, float>)
       xblas_fc_batch_api_list[6] = {
           &xblas_fc_batch_wrapper<XPUType, int16_t, float>,
@@ -51,8 +51,8 @@ static void MatMulXPUFunction(const DenseTensor& x,
           &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, float>,
       };
 
-  auto xblas_fc_batch_api = xblas_fc_batch_api_list[fccal_type];
-  if (fccal_type == XPUFCCalcType::FC_FLOAT16 &&
+  auto xblas_fc_batch_api = xblas_fc_batch_api_list[fc_calc_type];
+  if (fc_calc_type == XPUFCCalcType::FC_FLOAT16 &&
       std::getenv("XPU_PADDLE_FC_FLOAT16") != nullptr) {
     xblas_fc_batch_api =
         &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, XPUTypeFP16>;

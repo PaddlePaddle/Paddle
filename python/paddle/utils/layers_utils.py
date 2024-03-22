@@ -30,6 +30,7 @@ from ..base.framework import (
     _current_expected_place,
     in_dygraph_mode,
 )
+from ..pir import Value
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -496,11 +497,11 @@ def check_shape(shape):
     """
     Check shape type and shape elements type before passing it to fill_constant
     """
-    if isinstance(shape, Variable):
+    if isinstance(shape, (Variable, Value)):
         check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
-    else:
+    elif isinstance(shape, (list, tuple)):
         for ele in shape:
-            if not isinstance(ele, Variable):
+            if not isinstance(ele, (Variable, Value)):
                 if ele < 0:
                     raise ValueError(
                         "All elements in ``shape`` must be positive when it's a list or tuple"
@@ -509,6 +510,13 @@ def check_shape(shape):
                     raise TypeError(
                         "All elements in ``shape`` must be integers when it's a list or tuple"
                     )
+            else:
+                check_dtype(
+                    ele.dtype,
+                    'element of shape',
+                    ['int32', 'int64'],
+                    'fill_constant',
+                )
 
 
 def try_set_static_shape_tensor(tensor, shape):

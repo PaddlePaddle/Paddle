@@ -490,7 +490,7 @@ int AcquireInstance(BufState *state) {
   if (state->GetNextStep()) {
     DEBUG_STATE(state);
     return state->len;
-  } else if (state->GetNextCentrolWord()) {
+  } else if (state->GetNextCentralWord()) {
     DEBUG_STATE(state);
     return state->len;
   } else if (state->GetNextBatch()) {

@@ -55,11 +55,10 @@ typedef SSIZE_T ssize_t;
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/framework/python_headers.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
@@ -604,7 +603,7 @@ static PyObject* tensor_method__copy_to(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_reconstruct_from___doc__,
+PyDoc_STRVAR(tensor_reconstruct_from___doc__,  // NOLINT
              R"DOC(reconstruct_from_($self, other/)
 --
 
@@ -787,7 +786,7 @@ Examples:
         >>> print(y.grad)
         Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
         [1., 1., 1.])
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_retain_grads(TensorObject* self,
                                      PyObject* args,
@@ -967,6 +966,27 @@ static PyObject* tensor__zero_grads(TensorObject* self,
             paddle::experimental::zeros_like(*(meta->MutableGrad())).impl());
       }
     }
+  }
+
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__to_dist(TensorObject* self,
+                                 PyObject* args,
+                                 PyObject* kwargs) {
+  EAGER_TRY
+  const auto& placements =
+      CastPyArg2VectorOfPlacement(PyTuple_GET_ITEM(args, 0), 0);
+  const auto& mesh = CastPyArg2ProcessMesh(PyTuple_GET_ITEM(args, 1), 1);
+
+  if (self->tensor.is_dense_tensor()) {
+    const auto& dense_tensor_ptr =
+        std::static_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    auto dist_tensor_ptr = std::make_shared<phi::distributed::DistTensor>(
+        dense_tensor_ptr, mesh, placements);
+    self->tensor.set_impl(dist_tensor_ptr);
   }
 
   RETURN_PY_NONE
@@ -1199,7 +1219,7 @@ static PyObject* tensor_method_detach_(TensorObject* self,
   Py_INCREF(reinterpret_cast<PyObject*>(self));
   return reinterpret_cast<PyObject*>(self);
   EAGER_CATCH_AND_THROW_RETURN_NULL
-}
+}  // NOLINT
 
 PyDoc_STRVAR(tensor_method_get_tensor__doc__, R"DOC(get_tensor($self, /)
 --
@@ -1223,7 +1243,7 @@ Examples:
           - layout: NCHW
           - dtype: float32
           - data: [1]
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* args,
@@ -1429,10 +1449,41 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
                                              PyObject* kwargs) {
   EAGER_TRY
   phi::DenseTensor* ptr = nullptr;
+  phi::DenseTensor tensor_after_reshard;
   if (self->tensor.is_selected_rows()) {
     auto* selected_rows =
         static_cast<phi::SelectedRows*>(self->tensor.impl().get());
     ptr = static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
+  } else if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    auto* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    PADDLE_ENFORCE(
+        dist_tensor->initialized(),
+        paddle::platform::errors::Fatal(
+            "The input dist tensor can't be uninitialized for we don't "
+            "know the correct mesh to be reshard."));
+    const auto& placements = dist_tensor->placements();
+    bool need_reshard = false;
+    for (const auto& placement : placements) {
+      if (!placement->is_replicated()) {
+        need_reshard = true;
+        break;
+      }
+    }
+    if (need_reshard) {
+      tensor_after_reshard = ReshardXToReplicated(dist_tensor);
+      ptr = &tensor_after_reshard;
+    } else {
+      ptr = dist_tensor->unsafe_mutable_value();
+    }
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `_getitem_from_offset` method of (Dist)Tensor is not supported "
+        "in the current PaddlePaddle, please recompile and install "
+        "PaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
+#endif
   } else {
     ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   }
@@ -1613,10 +1664,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
               tmps = {{self->tensor}, {value_tensor}};
-          auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
-          self->tensor = egr::EagerAmpAutoCast(
+          auto amp_dtype =
+              paddle::imperative::GetAmpDestDtype("set_value", tmps);
+          self->tensor = paddle::imperative::AmpAutoCast(
               self->tensor.name(), self->tensor, amp_dtype, "set_value");
-          value_tensor = egr::EagerAmpAutoCast(
+          value_tensor = paddle::imperative::AmpAutoCast(
               value_tensor.name(), value_tensor, amp_dtype, "set_value");
         }
         if (self->tensor.dtype() != value_tensor.dtype()) {
@@ -1707,10 +1759,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
               tmps = {{self->tensor}, {value_tensor}};
-          auto amp_dtype = egr::GetAmpDestDtype("index_put", tmps);
-          self->tensor = egr::EagerAmpAutoCast(
+          auto amp_dtype =
+              paddle::imperative::GetAmpDestDtype("index_put", tmps);
+          self->tensor = paddle::imperative::AmpAutoCast(
               self->tensor.name(), self->tensor, amp_dtype, "index_put");
-          value_tensor = egr::EagerAmpAutoCast(
+          value_tensor = paddle::imperative::AmpAutoCast(
               value_tensor.name(), value_tensor, amp_dtype, "index_put");
         }
         if (self->tensor.dtype() != value_tensor.dtype()) {
@@ -1775,10 +1828,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                     .is_contiguous())
                   ? paddle::Tensor(
                         std::make_shared<phi::DenseTensor>(
-                            std::move(paddle::experimental::Trans2Contiguous(
+                            paddle::experimental::Trans2Contiguous(
                                 *(std::dynamic_pointer_cast<phi::DenseTensor>(
-                                    transback_sub_tensor.impl()))))),
-                        transback_sub_tensor.mutable_autograd_meta())
+                                    transback_sub_tensor.impl())))),
+                        transback_sub_tensor.mutable_autograd_meta(),
+                        transback_sub_tensor.name())
                   : transback_sub_tensor;
 
           grad_node = std::shared_ptr<SetValueWithTensorGradNode>(
@@ -2175,7 +2229,7 @@ Examples:
         >>> coo.nnz()
         3
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_nums(TensorObject* self,
                                                  PyObject* args,
@@ -2225,7 +2279,7 @@ Examples:
         [[0, 1, 2],
          [1, 2, 0]])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                                                     PyObject* args,
@@ -2268,7 +2322,7 @@ Examples:
         Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
         [1., 2., 3.])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_elements(TensorObject* self,
                                                      PyObject* args,
@@ -2322,7 +2376,7 @@ Examples:
         Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
         [0, 2, 3, 5])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_crows(TensorObject* self,
                                                   PyObject* args,
@@ -2366,7 +2420,7 @@ Examples:
         Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
         [1, 3, 2, 0, 1])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
                                                  PyObject* args,
@@ -2400,7 +2454,7 @@ Examples:
         >>> x = paddle.to_tensor([1.0], stop_gradient=False)
         >>> print(x.is_dense())
         True
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_dense(TensorObject* self,
                                         PyObject* args,
@@ -2430,7 +2484,7 @@ Examples:
         >>> x = paddle.to_tensor([1.0], stop_gradient=False)
         >>> print(x.is_dist())
         False
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_dist(TensorObject* self,
                                        PyObject* args,
@@ -2467,7 +2521,8 @@ Examples:
         >>> coo.is_sparse()
         True
 
-)DOC");
+)DOC");  // NOLINT
+
 static PyObject* tensor_method_is_sparse(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -2504,7 +2559,7 @@ Examples:
         >>> coo.is_sparse_coo()
         True
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_sparse_coo(TensorObject* self,
                                              PyObject* args,
@@ -2542,7 +2597,7 @@ Examples:
         >>> csr.is_sparse_csr()
         True
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_sparse_csr(TensorObject* self,
                                              PyObject* args,
@@ -2585,7 +2640,7 @@ Examples:
         cols=[1, 2, 0],
         values=[1., 2., 3.])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
                                              PyObject* args,
@@ -2632,7 +2687,7 @@ Examples:
         >>> x.is_same_shape(z)
         False
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_same_shape(TensorObject* self,
                                              PyObject* args,
@@ -2935,7 +2990,7 @@ Examples:
         >>> # doctest: +SKIP('return the address')
         93220864
         >>> # doctest: -SKIP
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* args,
@@ -2997,7 +3052,7 @@ Examples:
         >>> y = x[1]
         >>> print(y.get_strides())
         []
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_strides(TensorObject* self,
                                        PyObject* args,
@@ -3039,7 +3094,7 @@ Examples:
         >>> y = y.contiguous()
         >>> print(y)
         Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 2)
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* args,
@@ -3088,7 +3143,8 @@ Examples:
         >>> x = paddle.to_tensor([1, 2, 3])
         >>> y = x[1]
         >>> print(y.is_contiguous())
-)DOC");
+)DOC");  // NOLINT
+
 static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
@@ -3215,6 +3271,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      tensor_method_is_dist__doc__},
     {"_zero_grads",
      (PyCFunction)(void (*)())tensor__zero_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_to_dist_",
+     (PyCFunction)(void (*)())tensor__to_dist,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_share_buffer_to",

@@ -27,6 +27,8 @@ from typing import Any, Callable
 
 import opcode
 
+from paddle.jit.utils import OrderedSet
+
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_BREAKGRAPH_CODES
 from ...utils import (
@@ -47,7 +49,7 @@ from ..instruction_utils import (
     calc_stack_effect,
     get_instructions,
 )
-from ..instruction_utils.opcode_info import JumpDirection, PopJumpCond
+from ..instruction_utils.opcode_info import RETURN, JumpDirection, PopJumpCond
 from .dispatch_functions import (
     operator_BAD,
     operator_exception_match,
@@ -62,6 +64,7 @@ from .instr_flag import (
     CALL_FUNCTION_EX_FLAG as CFE,
     FORMAT_VALUE_FLAG as FV,
     MAKE_FUNCTION_FLAG as MF,
+    IntrinsicsUnaryFunctions,
 )
 from .pycode_generator import PyCodeGen
 from .tracker import (
@@ -87,6 +90,7 @@ from .variables import (
     TensorVariable,
     TupleVariable,
     UserDefinedFunctionVariable,
+    UserDefinedGeneratorFunctionVariable,
     VariableBase,
     VariableFactory,
 )
@@ -696,6 +700,21 @@ class OpcodeExecutorBase:
     def BINARY_SUBSCR(self, instr: Instruction):
         key = self.stack.pop()
         container = self.stack.pop()
+        self.binary_subscr_operation(key, container, instr.opname)
+
+    @call_break_graph_decorator(push_n=1)
+    def BINARY_SLICE(self, instr: Instruction):
+        end = self.stack.pop()
+        start = self.stack.pop()
+        container = self.stack.pop()
+        key = SliceVariable(
+            slice(start, end),
+            graph=self._graph,
+            tracker=DummyTracker([start, end]),
+        )
+        self.binary_subscr_operation(key, container, instr.opname)
+
+    def binary_subscr_operation(self, key, container, opname):
         assert isinstance(key, VariableBase)
         # TODO(xiongkun): getitem / getattr support key and attr as variable.
         if isinstance(key, TensorVariable) and isinstance(
@@ -710,7 +729,7 @@ class OpcodeExecutorBase:
 
         if isinstance(key, TensorVariable):
             raise BreakGraphError(
-                f"Key is a TensorVariable in BINARY_SUBSCR, {container}[{key}]"
+                f"Key is a TensorVariable in {opname}, {container}[{key}]"
             )
 
         result = BuiltinVariable(
@@ -755,6 +774,12 @@ class OpcodeExecutorBase:
             )(obj, attr_name_var)
         )
 
+    @call_break_graph_decorator(push_n=1)
+    def LOAD_SUPER_ATTR(self, instr: Instruction):
+        # This bytecode is for Python 3.12+, and it will break graph in Python 3.11-.
+        # We align it's behavior with Python 3.11-.
+        raise BreakGraphError("call super is not supported")
+
     def LOAD_CONST(self, instr: Instruction):
         var = self._co_consts[instr.arg]
         self.stack.push(var)
@@ -786,6 +811,9 @@ class OpcodeExecutorBase:
     def LOAD_FAST(self, instr: Instruction):
         var = self._locals[instr.argval]
         self.stack.push(var)
+
+    def LOAD_FAST_CHECK(self, instr: Instruction):
+        self.LOAD_FAST(instr)
 
     def DELETE_FAST(self, instr: Instruction):
         varname = self._code.co_varnames[instr.arg]
@@ -884,11 +912,28 @@ class OpcodeExecutorBase:
         key = self.stack.pop()
         container = self.stack.pop()
         value = self.stack.pop()
+        self.store_subscr_operation(key, container, value, instr.opname)
+
+    @call_break_graph_decorator(push_n=0)
+    def STORE_SLICE(self, instr: Instruction):
+        end = self.stack.pop()
+        start = self.stack.pop()
+        container = self.stack.pop()
+        value = self.stack.pop()
+
+        key = SliceVariable(
+            slice(start, end),
+            graph=self._graph,
+            tracker=DummyTracker([start, end]),
+        )
+        self.store_subscr_operation(key, container, value, instr.opname)
+
+    def store_subscr_operation(self, key, container, value, opname):
         assert isinstance(key, VariableBase)
         self._graph.add_global_guarded_variable(key)
         if isinstance(key, TensorVariable):
             raise BreakGraphError(
-                f"Key is a TensorVariable in STORE_SUBSCR, {container}[{key}] = {value}"
+                f"Key is a TensorVariable in {opname}, {container}[{key}] = {value}"
             )
         # TODO(xiongkun): support tensor[tensor] = tensor, dy2static is not the same with dygraph.
         container[key.get_py_value()] = value
@@ -1276,11 +1321,21 @@ class OpcodeExecutorBase:
             default_args,
             closure,
         )
-        self.stack.push(
-            UserDefinedFunctionVariable(
-                new_fn, self._graph, DummyTracker(related_list)
+        # new_fn is created for which is binded with Variables
+        # so new_fn.__module__ is a ConstantVariable
+        # can not use VariableFactory.from_value
+        if inspect.isgeneratorfunction(new_fn):
+            self.stack.push(
+                UserDefinedGeneratorFunctionVariable(
+                    new_fn, self._graph, DummyTracker(related_list)
+                )
             )
-        )
+        else:
+            self.stack.push(
+                UserDefinedFunctionVariable(
+                    new_fn, self._graph, DummyTracker(related_list)
+                )
+            )
 
     def GET_ITER(self, instr: Instruction):
         source_obj = self.stack.pop()
@@ -1357,11 +1412,13 @@ class OpcodeExecutorBase:
 
     POP_JUMP_FORWARD_IF_NONE = pop_jump_if_op_wrapper([operator_is_none])
     POP_JUMP_BACKWARD_IF_NONE = POP_JUMP_FORWARD_IF_NONE
+    POP_JUMP_IF_NONE = POP_JUMP_FORWARD_IF_NONE
 
     POP_JUMP_FORWARD_IF_NOT_NONE = pop_jump_if_op_wrapper(
         [operator_is_not_none]
     )
     POP_JUMP_BACKWARD_IF_NOT_NONE = POP_JUMP_FORWARD_IF_NOT_NONE
+    POP_JUMP_IF_NOT_NONE = POP_JUMP_FORWARD_IF_NOT_NONE
 
     @call_break_graph_decorator(push_n=lambda arg: arg)
     def UNPACK_SEQUENCE(self, instr: Instruction):
@@ -1513,6 +1570,19 @@ class OpcodeExecutorBase:
             )
         )
 
+    def CALL_INTRINSIC_1(self, instr: Instruction):
+        intrinsic_func = IntrinsicsUnaryFunctions(instr.arg)
+        if intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_1_INVALID:
+            raise RuntimeError("invalid intrinsic function")
+        elif (
+            intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_UNARY_POSITIVE
+        ):
+            self.UNARY_POSITIVE(instr)
+        elif intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_LIST_TO_TUPLE:
+            self.LIST_TO_TUPLE(instr)
+        else:
+            raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
+
 
 class OpcodeExecutor(OpcodeExecutorBase):
     """
@@ -1612,8 +1682,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
         start = self.indexof(instr)
         end = self.indexof(instr.jump_to)
         for i in range(start, end):
-            if self._instructions[i].opname == "RETURN_VALUE":
-                raise FallbackError("Found RETURN_VALUE in for loop body.")
+            if self._instructions[i].opname in RETURN:
+                raise FallbackError(
+                    f"Found {self._instructions[i].opname} in for loop body."
+                )
 
         self._graph.add_global_guarded_variable(iterator)
 
@@ -1627,8 +1699,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             self._inline_call_for_loop(iterator, instr)
             self._lasti = self.indexof(instr.jump_to)
-            next_instr = self._instructions[self._lasti]
-            self._lasti += int(next_instr.opname == 'END_FOR')
+            if sys.version_info >= (3, 12):
+                assert self._instructions[self._lasti].opname == "END_FOR"
+                self._lasti += 1
         except BreakGraphError as e:
             log(3, f"[BreakGraph] FOR_ITER sim for loop failed for: {e}\n")
             if backup_iter_idx:
@@ -1677,7 +1750,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             end_idx: instruction index where simulation get break.
             stack: current stack
         """
-        store_vars = list(stack)
+        store_vars = list(OrderedSet(stack))
         store_var_info = {var.id: None for var in stack}
 
         for name in restore_names:
@@ -1718,8 +1791,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
         stack_size_after_if = len(self.stack) - 1
 
         # 2. create true_fn and false_fn
-        def create_if_branch_fn(start_idx, input_var_names):
-            if self._instructions[start_idx].opname == "RETURN_VALUE":
+        def create_if_branch_fn(start_idx, input_var_names, is_pop_jump_branch):
+            # JUMP_IF_* maybe jump to the RETURN_VALUE, we should skip this case
+            # We shouldn't skip POP_JUMP_* case, because it will cause the stack size to be incorrect
+            if (
+                self._instructions[start_idx].opname == "RETURN_VALUE"
+                and not is_pop_jump_branch
+            ):
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
@@ -1742,6 +1820,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         true_fn = create_if_branch_fn(
             start_idx=true_fn_start_index,
             input_var_names=true_fn_input_var_names,
+            is_pop_jump_branch=False,
         )
 
         false_fn_read_names, _ = analysis_used_names(
@@ -1754,6 +1833,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         false_fn = create_if_branch_fn(
             start_idx=false_fn_start_index,
             input_var_names=false_fn_input_var_names,
+            is_pop_jump_branch=instr.opname.startswith("POP_JUMP"),
         )
 
         # 4. setup vars which is created in loop as Undefind
@@ -1808,6 +1888,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         else:
             false_start_code = self._graph.pycode_gen.gen_return()
 
+        # Replace the jump instruction with the new if structure
         if_code.jump_to = false_start_code
 
         self.new_code = self._graph.pycode_gen.gen_pycode()
@@ -2001,10 +2082,17 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
+            resume_fn_end_idx = loop_body_end_idx
+
+            # skip resume END_FOR in python3.12
+            if sys.version_info >= (3, 12):
+                assert origin_instrs[loop_body_end_idx].opname == "END_FOR"
+                resume_fn_end_idx += 1
+
             pycode_gen.set_function_inputs(
                 after_loop_fn_inputs, stack_size=len(self.stack) - 1
             )
-            pycode_gen.extend_instrs(origin_instrs[loop_body_end_idx:])
+            pycode_gen.extend_instrs(origin_instrs[resume_fn_end_idx:])
             # the resume_fn contains return code, so we don't need set output here
             # global vars are updated correctly, and need local vars will return
             after_loop_fn = pycode_gen.create_function()
@@ -2068,8 +2156,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self._graph.pycode_gen.gen_jump(
             for_iter, direction=JumpDirection.BACKWARD
         )
+
+        if sys.version_info >= (3, 12):
+            end_for = self._graph.pycode_gen.add_instr("END_FOR")
+
         nop = self._graph.pycode_gen.add_instr("NOP")
-        for_iter.jump_to = nop
+
+        for_iter.jump_to = end_for if sys.version_info >= (3, 12) else nop
         jump_if_break.jump_to = nop
 
         # 9. prepare inputs and call after_loop_fn
@@ -2139,6 +2232,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 for_iter_instr, direction=JumpDirection.BACKWARD
             )
 
+            if sys.version_info >= (3, 12):
+                end_for = pycode_gen.add_instr("END_FOR")
             nop_for_break = pycode_gen.add_instr("NOP")
 
             # 2.4. relocate jumps
@@ -2153,6 +2248,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
                     instr.jump_to = nop_for_break
 
             jump.jump_to = for_iter_instr
+            if sys.version_info >= (3, 12):
+                for_iter_instr.jump_to = end_for
 
             pycode_gen.set_function_outputs(output_var_names)
             inline_call_fn = pycode_gen.create_function()

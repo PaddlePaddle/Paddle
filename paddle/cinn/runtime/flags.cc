@@ -22,6 +22,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 
 #ifdef CINN_WITH_CUDNN
@@ -69,6 +70,14 @@ PD_DEFINE_bool(cinn_bucket_compile,
                BoolFromEnv("FLAGS_cinn_bucket_compile", false),
                "Whether to enable bucket compile for dynamic shape.");
 
+PD_DEFINE_bool(group_schedule_tiling_first,
+               BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
+               "Whether to enable new group scheduler tiling first strategy.");
+
+PD_DEFINE_bool(support_reduce_stride_read,
+               BoolFromEnv("FLAGS_support_reduce_stride_read", false),
+               "Whether to enable new group scheduler tiling first strategy.");
+
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                            false),
@@ -97,7 +106,7 @@ PD_DEFINE_bool(cinn_enable_map_expr_dynamic_shape,
 
 PD_DEFINE_bool(cinn_enable_map_expr_index_detail,
                BoolFromEnv("FLAGS_cinn_enable_map_expr_index_detail", false),
-               "It controls whether to display datail tensor index");
+               "It controls whether to display detail tensor index");
 
 PD_DEFINE_bool(
     cinn_use_custom_call,
@@ -116,7 +125,7 @@ PD_DEFINE_string(cinn_check_fusion_accuracy_pass,
 
 PD_DEFINE_bool(cinn_use_cuda_vectorize,
                BoolFromEnv("FLAGS_cinn_use_cuda_vectorize", false),
-               "Whether use cuda vectroize on schedule config");
+               "Whether use cuda vectorize on schedule config");
 
 PD_DEFINE_bool(use_reduce_split_pass,
                BoolFromEnv("FLAGS_use_reduce_split_pass", false),
@@ -141,7 +150,7 @@ PD_DEFINE_bool(
     BoolFromEnv("FLAGS_cinn_nvrtc_cubin_with_fmad", true),
     "Whether nvrtc enables fmad when compile to cubin. This flag only works "
     "when FLAGS_nvrtc_compile_to_cubin=true. Fmad is the cuda speed up "
-    "technique which contract fp mulitplication and addition/subtraction into "
+    "technique which contract fp multiplication and addition/subtraction into "
     "multiply-add operation. It may result in different fp precision.");
 
 // FLAGS for performance analysis and accuracy debug
@@ -286,7 +295,8 @@ bool GetCinnCudnnDeterministic() {
 #ifdef CINN_WITH_CUDNN
   return FLAGS_cinn_cudnn_deterministic;
 #else
-  LOG(FATAL) << "CINN is compiled without cuDNN, this api is invalid!";
+  PADDLE_THROW(phi::errors::Fatal(
+      "CINN is compiled without cuDNN, this api is invalid!"));
   return false;
 #endif
 }
@@ -333,8 +343,9 @@ cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
   if (!IsCompiledWithCUDA() &&
       target.arch == cinn::common::Target::Arch::NVGPU) {
-    LOG(FATAL) << "Current CINN version does not support NVGPU, please try to "
-                  "recompile with -DWITH_CUDA.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "Current CINN version does not support NVGPU, please try to "
+        "recompile with -DWITH_CUDA."));
   } else {
     target_ = target;
   }

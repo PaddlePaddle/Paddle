@@ -678,7 +678,7 @@ void SquareDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SinDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& dout,
+                         const DenseTensor& dout,
                          const DenseTensor& ddx,
                          DenseTensor* dx,
                          DenseTensor* ddout) {
@@ -689,7 +689,7 @@ void SinDoubleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(ddout);
   }
   phi::funcs::SinDoubleGradFunctor<T> functor;
-  functor(dev_ctx, &x, dout.get_ptr(), &ddx, dx, ddout);
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 
 template <typename T, typename Context>
@@ -726,7 +726,7 @@ void SinTripleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CosDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& dout,
+                         const DenseTensor& dout,
                          const DenseTensor& ddx,
                          DenseTensor* dx,
                          DenseTensor* ddout) {
@@ -737,7 +737,7 @@ void CosDoubleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(ddout);
   }
   phi::funcs::CosDoubleGradFunctor<T> functor;
-  functor(dev_ctx, &x, dout.get_ptr(), &ddx, dx, ddout);
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 
 template <typename T, typename Context>

@@ -13,20 +13,28 @@
 // limitations under the License.
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/type_promotion_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/common/type_promotion.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
+
+bool check_if_support_elementwise_mul_mem_opt(const std::string& device_type) {
+  // TODO(@gexiao): replace this function with api implemented at custom repo
+  if (device_type == "npu") {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
                                 const paddle::Tensor& y) {
@@ -45,10 +53,13 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{x}, {y}};
 
-    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
+    auto amp_dst_dtype =
+        paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
 
-    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
-    auto new_y = egr::EagerAmpAutoCast("y", y, amp_dst_dtype, op_name);
+    auto new_x =
+        paddle::imperative::AmpAutoCast("x", x, amp_dst_dtype, op_name);
+    auto new_y =
+        paddle::imperative::AmpAutoCast("y", y, amp_dst_dtype, op_name);
 
     {
       paddle::imperative::AutoCastGuard guard(
@@ -158,7 +169,11 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     }
     // SetAttributes if needed
     grad_node->SetAttribute_axis(-1);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (check_if_support_elementwise_mul_mem_opt(x.place().GetDeviceType())) {
+#else
     if (paddle::platform::is_gpu_place(x.place())) {
+#endif
       if (x_autograd_meta != nullptr && x_autograd_meta->StopGradient() &&
           y_autograd_meta != nullptr && !y_autograd_meta->StopGradient()) {
         grad_node->SetTensorWrapper_x(x);
@@ -392,10 +407,13 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{x}, {y}};
 
-    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
+    auto amp_dst_dtype =
+        paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
 
-    auto new_x = egr::EagerAmpAutoCast("x", x, amp_dst_dtype, op_name);
-    auto new_y = egr::EagerAmpAutoCast("y", y, amp_dst_dtype, op_name);
+    auto new_x =
+        paddle::imperative::AmpAutoCast("x", x, amp_dst_dtype, op_name);
+    auto new_y =
+        paddle::imperative::AmpAutoCast("y", y, amp_dst_dtype, op_name);
 
     {
       paddle::imperative::AutoCastGuard guard(

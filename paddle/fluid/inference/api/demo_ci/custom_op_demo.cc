@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,12 +47,13 @@ void run(Predictor *predictor,
 
 int main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  paddle::AnalysisConfig config;
+  Config config;
   config.EnableUseGpu(100, 0);
   config.SetModel(FLAGS_modeldir + "/custom_relu.pdmodel",
                   FLAGS_modeldir + "/custom_relu.pdiparams");
   config.EnableNewExecutor(true);
-  auto predictor{paddle_infer::CreatePredictor(config)};
+  config.EnableNewIR(true);
+  auto predictor = CreatePredictor(config);
   std::vector<int> input_shape = {1, 1, 28, 28};
   std::vector<float> input_data(1 * 1 * 28 * 28, 1);
   std::vector<float> out_data;

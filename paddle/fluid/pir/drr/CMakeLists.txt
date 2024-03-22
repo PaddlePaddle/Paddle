@@ -29,7 +29,7 @@ set(op_yaml_files
 )
 
 set(pd_op_creator_file
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/pd_op_factory_generated.cc)
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/pd_op_factory_generated.cc)
 set(pd_op_creator_file_tmp ${pd_op_creator_file}.tmp)
 
 set(pd_dialect_name pd_op)
@@ -54,7 +54,7 @@ add_custom_command(
 
 set(DRR_SRCS ${DRR_SRCS} ${pd_op_creator_file})
 
-if(WITH_CINN AND NOT CINN_ONLY)
+if(WITH_CINN)
   set(cinn_op_yaml_file
       ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
 
@@ -62,7 +62,7 @@ if(WITH_CINN AND NOT CINN_ONLY)
       ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
 
   set(cinn_op_creator_file
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/cinn_op_factory_generated.cc
+      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/cinn_op_factory_generated.cc
   )
   set(cinn_op_creator_file_tmp ${cinn_op_creator_file}.tmp)
   set(cinn_dialect_name cinn_op)
@@ -96,7 +96,7 @@ if(WITH_MKLDNN)
       ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
   )
   set(onednn_op_creator_file
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/onednn_op_factory_generated.cc
+      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/onednn_op_factory_generated.cc
   )
   set(onednn_op_creator_file_tmp ${onednn_op_creator_file}.tmp)
 
@@ -128,4 +128,4 @@ endif()
 cc_library(
   drr
   SRCS ${DRR_SRCS}
-  DEPS op_dialect_vjp ${CINN_DEPS} pir)
+  DEPS op_dialect_vjp ${CINN_DEPS} pir pir_general_functions)

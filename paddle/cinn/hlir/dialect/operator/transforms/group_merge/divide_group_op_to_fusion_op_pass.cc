@@ -124,13 +124,13 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
     // Record map info for yield value to each fusion_op's result
-    std::unordered_map<::pir::Value, ::pir::Value> fusion_yiled_values;
+    std::unordered_map<::pir::Value, ::pir::Value> fusion_yield_values;
 
     const auto& TryReplaceOperandSource = [&](::pir::Operation* op) {
       for (auto& operand : op->operands()) {
         const auto value = operand.source();
-        if (fusion_yiled_values.find(value) != fusion_yiled_values.end()) {
-          operand.set_source(fusion_yiled_values.at(value));
+        if (fusion_yield_values.find(value) != fusion_yield_values.end()) {
+          operand.set_source(fusion_yield_values.at(value));
         }
       }
     };
@@ -153,13 +153,14 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
 
     // step 3: Create Fusion Op for each divided sub group.
     for (auto group : merged_group_list) {
-      const std::vector<::pir::Value> vec_outs = group->GetGroupOutputValues();
+      const std::vector<::pir::Value> vec_outs =
+          group->GenerateGroupOutputValues();
       auto fusion_op = CreateFusionOp(vec_outs, group);
 
       for (size_t i = 0; i < fusion_op.num_results(); ++i) {
-        CHECK(fusion_yiled_values.insert({vec_outs[i], fusion_op.result(i)})
+        CHECK(fusion_yield_values.insert({vec_outs[i], fusion_op.result(i)})
                   .second)
-            << "fusion_yiled_values already has key!";
+            << "fusion_yield_values already has key!";
         const auto& shape_expr =
             shape_analysis.GetShapeOrDataForValue(vec_outs[i]);
         shape_analysis.SetShapeOrDataForValue(fusion_op.result(i), shape_expr);
@@ -198,7 +199,7 @@ class DivideGroupOpToFusionOpPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 
