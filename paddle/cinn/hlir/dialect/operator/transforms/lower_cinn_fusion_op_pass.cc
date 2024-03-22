@@ -670,6 +670,7 @@ CollectSubstituteDimExprMap(
     const GroupPtr& group,
     pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map;
+  std::unordered_set<std::string> base_dim_expr_set;
 
   VisitEachInputValue(group, [&](::pir::Value value) {
     if (!shape_analysis.HasShapeOrDataForValue(value)) {
@@ -682,8 +683,32 @@ CollectSubstituteDimExprMap(
         dim_expr_map[dim_expr] =
             symbol::DimExpr(shape_analysis.GetNextSymName());
       }
+      if (dim_expr.isa<std::string>()) {
+        base_dim_expr_set.insert(dim_expr.Get<std::string>());
+      }
     });
   });
+
+  const std::unordered_set<symbol::DimExpr> dim_exprs_no_outer_symbol = [&] {
+    auto HasOuterBasicSymbol = [&](const symbol::DimExpr& dim_expr) {
+      for (const auto& symbol : symbol::CollectDimExprSymbols(dim_expr)) {
+        if (base_dim_expr_set.count(symbol) == 0) {
+          return true;
+        }
+      }
+      return false;
+    };
+    std::unordered_set<symbol::DimExpr> result;
+    for (const auto& kv : dim_expr_map) {
+      if (IsComplicatedDimExpr(kv.first) && !HasOuterBasicSymbol(kv.first)) {
+        result.insert(kv.first);
+      }
+    }
+    return result;
+  }();
+  for (const auto& dim_expr : dim_exprs_no_outer_symbol) {
+    dim_expr_map.erase(dim_expr);
+  }
 
   return dim_expr_map;
 }
