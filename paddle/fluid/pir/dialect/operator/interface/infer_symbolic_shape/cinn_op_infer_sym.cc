@@ -86,7 +86,7 @@ bool ConcatOpInferSymbolicShape(
   };
 
   VLOG(3) << "constraints size:"
-          << shape_analysis->CreateDimExprBuilder().constraints().size();
+          << shape_analysis->DimExprBuilder().constraints().size();
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};

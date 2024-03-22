@@ -273,7 +273,8 @@ void CheckEquationsSolvable(
         [&](const auto& opt_old_value, const auto& simplified_value) {
           LOG(ERROR) << "old_value: " << ToTxtString(opt_old_value);
           LOG(ERROR) << "simplified_value: " << ToTxtString(simplified_value);
-          LOG(FATAL) << "CheckEquationsSolvable Failed";
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("CheckEquationsSolvable Failed"));
           return tValueInferSuccess<bool>{false};
         });
   };

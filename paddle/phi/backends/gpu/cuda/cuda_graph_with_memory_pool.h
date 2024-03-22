@@ -17,9 +17,13 @@
 #include <cstddef>
 #include <utility>
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/context_pool.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#else
+#include "paddle/phi/backends/gpu/rocm/hip_graph.h"
+#endif
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #endif
 
@@ -28,7 +32,7 @@ namespace backends {
 namespace gpu {
 
 inline bool IsCUDAGraphCapturing() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return CUDAGraph::IsCapturing();
 #else
   return false;
@@ -39,7 +43,7 @@ inline bool IsCUDAGraphCapturing() {
 // Otherwise, invoke callback directly.
 template <typename Callback>
 inline void AddPostResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (UNLIKELY(IsCUDAGraphCapturing())) {
     return CUDAGraph::AddPostResetCallbackDuringCapturing(
         std::forward<Callback>(callback));
@@ -52,7 +56,7 @@ template <typename T>
 inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
   static_assert(std::is_trivial<T>::value, "T must be trivial type");
   static_assert(!std::is_same<T, void>::value, "T cannot be void");
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (UNLIKELY(IsCUDAGraphCapturing())) {
     size_t nbytes = size * sizeof(T);
     void *new_host_mem = new uint8_t[nbytes];

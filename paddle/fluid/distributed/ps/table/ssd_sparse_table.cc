@@ -102,7 +102,6 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                mf_value_size,
                select_value_size,
                pull_values,
-               keys,
                &missed_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
@@ -432,8 +431,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
   size_t value_col = _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_col =
       _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
-  size_t update_value_col =
-      _value_accessor->GetAccessorInfo().update_size / sizeof(float);
+  // size_t update_value_col =
+  // _value_accessor->GetAccessorInfo().update_size / sizeof(float);
   {
     std::vector<std::future<int>> tasks(_real_local_shard_num);
     std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -445,13 +444,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
     for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
       tasks[shard_id] =
           _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
-              [this,
-               shard_id,
-               value_col,
-               mf_value_col,
-               update_value_col,
-               values,
-               &task_keys]() -> int {
+              [this, shard_id, value_col, mf_value_col, values, &task_keys]()
+                  -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
                 float data_buffer[value_col];  // NOLINT
@@ -706,8 +700,10 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
           out_str.second.data(), out_str.second.size());
       if (0 != write_channel->write_line(::paddle::string::format_string(
                    "%lu %s", out_str.first, format_value.c_str()))) {
-        LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
-                   << channel_config.path;
+        std::stringstream ss;
+        ss << "SSDSparseTable save failed, retry it! path:"
+           << channel_config.path;
+        PADDLE_THROW(phi::errors::Fatal(ss.str()));
       }
     }
     write_channel->close();
@@ -1647,8 +1643,10 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           last_file_idx = region->_file_idx;
         }
         if (0 != write_channel->write(region->_buf, region->_cur)) {
-          LOG(FATAL) << "DownpourSparseSSDTable save failed, retry it! path:"
-                     << channel_config.path;
+          std::stringstream ss;
+          ss << "DownpourSparseSSDTable save failed, retry it! path:"
+             << channel_config.path;
+          PADDLE_THROW(phi::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -1688,8 +1686,10 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           std::string format_value = _value_accessor->ParseToString(value, dim);
           if (0 != write_channel->write_line(paddle::string::format_string(
                        "%lu %s", k, format_value.c_str()))) {
-            LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
-                       << channel_config.path;
+            std::stringstream ss;
+            ss << "SSDSparseTable save failed, retry it! path:"
+               << channel_config.path;
+            PADDLE_THROW(phi::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -1971,8 +1971,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           last_file_idx = region->_file_idx;
         }
         if (0 != write_channel->write(region->_buf, region->_cur)) {
-          LOG(FATAL) << "DownpourSparseSSDTable save failed, retry it! path:"
-                     << channel_config.path;
+          std::stringstream ss;
+          ss << "DownpourSparseSSDTable save failed, retry it! path:"
+             << channel_config.path;
+          PADDLE_THROW(phi::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -2001,9 +2003,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
         if (0 !=
             write_channel_for_slot_feature->write(
                 region_for_slot_feature->_buf, region_for_slot_feature->_cur)) {
-          LOG(FATAL)
-              << "DownpourSparseSSDTable save feature failed, retry it! path:"
-              << channel_config_for_slot_feature.path;
+          std::stringstream ss;
+          ss << "DownpourSparseSSDTable save feature failed, retry it! path:"
+             << channel_config_for_slot_feature.path;
+          PADDLE_THROW(phi::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region_for_slot_feature->reset();
@@ -2044,8 +2047,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           std::string format_value = _value_accessor->ParseToString(value, dim);
           if (0 != write_channel->write_line(paddle::string::format_string(
                        "%lu %s", k, format_value.c_str()))) {
-            LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
-                       << channel_config.path;
+            std::stringstream ss;
+            ss << "SSDSparseTable save failed, retry it! path:"
+               << channel_config.path;
+            PADDLE_THROW(phi::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -2094,8 +2099,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           if (0 != write_channel_for_slot_feature->write_line(
                        paddle::string::format_string(
                            "%lu %s", k, format_value.c_str()))) {
-            LOG(FATAL) << "SSDSparseTable save feature failed, retry it! path:"
-                       << channel_config_for_slot_feature.path;
+            std::stringstream ss;
+            ss << "SSDSparseTable save feature failed, retry it! path:"
+               << channel_config_for_slot_feature.path;
+            PADDLE_THROW(phi::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;

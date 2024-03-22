@@ -854,7 +854,7 @@ void CasSimplifyMutator::UnfoldBound(Expr* lower_bound,
     AddBaseAndSimplify(lower_bound, var);
     AddBaseAndSimplify(upper_bound, var);
   } else {
-    LOG(FATAL) << "can't get the bound";
+    PADDLE_THROW(phi::errors::InvalidArgument("can't get the bound"));
   }
 }
 

@@ -31,7 +31,7 @@
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/op_teller.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
+#include "paddle/phi/infermeta/spmd_rules/argmax.h"
 #include "paddle/phi/infermeta/spmd_rules/cast.h"
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
 #include "paddle/phi/infermeta/spmd_rules/cross_entropy_with_softmax.h"
@@ -48,5 +49,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/tile.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
 #include "paddle/phi/infermeta/spmd_rules/triu.h"
+#include "paddle/phi/infermeta/spmd_rules/unbind.h"
 #include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
 #include "paddle/phi/infermeta/spmd_rules/where.h"
