@@ -316,7 +316,7 @@ class DygraphShardingOptimizer:
         sync parameter across sharding group
         """
         # TODO speed up this functional
-
+        print("===sharding v1 stage1======")
         with framework.no_grad():
             # TODO detach not need (?)
             valid_rank_to_params = (
@@ -325,8 +325,11 @@ class DygraphShardingOptimizer:
                 else self._rank2fused
             )
             broadcast_tasks = []
+            param2task = {}
             for rank, params in valid_rank_to_params.items():
+                print("rank:", rank)
                 for param in params:
+                    print("param.name:", param.name)
                     task = paddle.distributed.broadcast(
                         param,
                         # the collective API need src rank to be the global rank id
@@ -336,8 +339,26 @@ class DygraphShardingOptimizer:
                         sync_op=False,
                     )
                     broadcast_tasks.append(task)
-            for task in broadcast_tasks:
-                task.wait()
+                    assert param.name not in param2task
+                    param2task[param.name] = task
+            self.broadcast_forward_overlap = True
+            if self.broadcast_forward_overlap:
+                for layer in self._layers.sublayers():
+                    if len(layer.sublayers()) == 0:
+                        # Register forward pre hood for leaf layers. This will get the best performance.
+                        tasks = []
+                        for param in layer.parameters():
+                            if param.trainable:
+                                if param.name in param2task:
+                                    tasks.append(param2task[param.name])
+                        self._forward_pre_hook_remove_helper.append(
+                            layer.register_forward_pre_hook(
+                                self._forward_pre_hook_function(tasks)
+                            )
+                        )
+            else:
+                for task in broadcast_tasks:
+                    task.wait()
 
     def _update_trainable(self):
         """
