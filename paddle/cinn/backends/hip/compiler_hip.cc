@@ -25,7 +25,6 @@
 #include <iostream>
 
 #include "paddle/cinn/backends/cuda_util.h"
-//#include "paddle/cinn/backends/header_generator.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
