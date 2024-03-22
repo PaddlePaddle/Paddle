@@ -27,6 +27,7 @@ class Context:
     def __init__(self, enable_plugin=True):
         self.args, self.unknown_args = parse_args()
         self.envs = fetch_envs()
+        self.logger = self.get_logger()
 
         self.set_env_in_args()
 
@@ -37,7 +38,6 @@ class Context:
         self._port = None
 
         self.update_args()
-        self.logger = self.get_logger()
 
         # design for event queue, later
         self.events = []
@@ -149,8 +149,8 @@ class Context:
                 if attr in self.args and self.has_set(attr):
                     continue
                 else:
-                    print(
-                        f"LAUNCH WARNNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
+                    self.logger.warning(
+                        f"args {attr} will be overridden by env: {k} value: {self.envs[k]}"
                     )
                     setattr(self.args, attr, attr_type(self.envs[k]))
 
@@ -166,8 +166,8 @@ class Context:
             ip_list = self.args.ips.split(",")
 
         if ip_list is None:
-            print(
-                "LAUNCH WARNNING ips has been set, but it does not have a value. Please check the launch config"
+            self.logger.warning(
+                "ips has been set, but it does not have a value. Please check the launch config"
             )
             return
 
@@ -175,8 +175,8 @@ class Context:
             nnodes = int(self.args.nnodes)
             if nnodes < len(ip_list):
                 ip_list = ip_list[:nnodes]
-                print(
-                    f"LAUNCH WARNNING only the first {nnodes} nnodes in ip_list will be retained when nnodes {nnodes} < len(ip_list)"
+                self.logger.warning(
+                    f"only the first {nnodes} nnodes in ip_list will be retained when nnodes {nnodes} < len(ip_list)"
                 )
             elif nnodes > len(ip_list):
                 raise ValueError(
@@ -194,8 +194,8 @@ class Context:
 
         if self.has_set("master"):
             if self._ip and self._ip not in ip_list:
-                print(
-                    f"LAUNCH WARNNING master {self.args.master} will be reset when master not in ip_list {ip_list}."
+                self.logger.warning(
+                    f"master {self.args.master} will be reset when master not in ip_list {ip_list}."
                 )
             else:
                 return
@@ -231,14 +231,18 @@ class Context:
                             connected_addrs.add(client_addr)
                             connected_clients.append(client_socket)
 
-                        print(f"All clients have sent messages on port {port}")
+                        self.logger.info(
+                            f"All clients have sent messages on port {port}"
+                        )
                         for connection in connected_clients:
                             response = "connect success"
                             connection.send(response.encode())
                         has_connect = True
                         server_socket.close()
                     except OSError:
-                        print(f"Port {port} is not available for listening.")
+                        self.logger.info(
+                            f"Port {port} is not available for listening."
+                        )
                         port += 1
             else:
                 while port < 6779 and not has_connect:
@@ -260,7 +264,7 @@ class Context:
                                 client_socket.close()
                                 break
                         except OSError:
-                            print(
+                            self.logger.info(
                                 f"Failed to connect to port {port}, Still trying"
                             )
                     if has_connect:
@@ -271,7 +275,9 @@ class Context:
             self.args.master = f"{master_ip}:{port}"
             self._ip = master_ip
             self._port = port
-            print(f"Success found the master and port: {master_ip}, {port}")
+            self.logger.info(
+                f"Success found the master and port: {master_ip}, {port}"
+            )
 
     def update_args(self):
         # support master: <ip>:<port>, <ip>, :<port>
@@ -306,12 +312,10 @@ class Context:
             if not self._ip:
                 if self.envs.get("PADDLE_TRAINERS", None):
                     self._ip = self.envs["PADDLE_TRAINERS"].split(",")[0]
-                else:
-                    print("LAUNCH ERROR the master ip error.")
             if not self._port:
                 if self.envs.get("PADDLE_PORT", None):
                     self._port = self.envs.get("PADDLE_PORT")
-                else:
-                    print("LAUNCH ERROR the master ip error.")
             if self._ip and self._port:
                 self.args.master = f"{self._ip}:{self._port}"
+            else:
+                self.logger.info("launch without the master.")
