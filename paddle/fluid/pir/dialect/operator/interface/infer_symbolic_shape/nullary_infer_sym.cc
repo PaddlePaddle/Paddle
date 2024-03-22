@@ -72,10 +72,23 @@ bool ArangeOpInferSymbolicShape(
 
 bool AssignValueOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // todo
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const std::vector<int> shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "shape");
+  std::vector<symbol::DimExpr> sym_dims;
+  sym_dims.reserve(shape.size());
+  for (const int64_t &dim : shape) {
+    sym_dims.emplace_back(symbol::DimExpr(dim));
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(sym_dims)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
+}
+
+bool AssignValue_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return AssignValueOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool DataOpInferSymbolicShape(pir::Operation *op,
