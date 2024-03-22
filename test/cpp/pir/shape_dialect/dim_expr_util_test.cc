@@ -30,6 +30,17 @@ DimExpr CreateExampleDimExpr() {
 }
 }  // namespace
 
+TEST(DimExprUtil, SimplifyNeg) {
+  DimExpr dim_expr = Negative<DimExpr>{-1};
+  DimExpr ret = SimplifyDimExpr(dim_expr);
+  ASSERT_TRUE(ret.Has<std::int64_t>());
+  ASSERT_EQ(ret.Get<std::int64_t>(), 1);
+  DimExpr double_neg_expr = Negative<DimExpr>{dim_expr};
+  ret = SimplifyDimExpr(double_neg_expr);
+  ASSERT_TRUE(ret.Has<std::int64_t>());
+  ASSERT_EQ(ret.Get<std::int64_t>(), -1);
+}
+
 TEST(DimExprUtil, Substitute) {
   DimExpr dim_expr = CreateExampleDimExpr();
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> naive_to_full_name{

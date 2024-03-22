@@ -65,7 +65,7 @@ void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
   }
 }
 
-symbol::DimExprBuilder ShapeConstraintIRAnalysis::CreateDimExprBuilder() {
+symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
   return symbol::DimExprBuilder(&constraints_);
 }
 

@@ -1180,6 +1180,15 @@
   backward : pad_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : partial_allgather
+  args : (Tensor x, int nranks, int rank, int ring_id = 0, bool use_calc_stream = false)
+  output : Tensor(out)
+  infer_meta :
+    func: PartialAllgatherInferMeta
+  kernel :
+    func : partial_allgather
+  inplace : (x -> out)
+
 - op : partial_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
   output : Tensor(out)
