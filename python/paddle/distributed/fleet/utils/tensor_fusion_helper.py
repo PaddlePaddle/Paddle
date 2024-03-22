@@ -207,10 +207,10 @@ class ShardingGradView:
     def _slice_grad_from_buffer(self):
         assert self._grad_buffer is not None
         if self._param_begin < self._param_end:
-            paddle.assign(
-                self._grad_buffer._slice(self._param_begin, self._param_end),
-                self._slice_grad,
-            )
+            self._grad_buffer._slice(
+                self._param_begin, self._param_end
+            ).share_buffer_to(self._slice_grad)
+
         tmp_grad = paddle.empty(
             [self._index + self._param._numel() - self._index],
             self._grad_buffer.dtype,
