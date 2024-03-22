@@ -91,20 +91,22 @@ void ParallelCompiler::SplitTask() {
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
   int device_id = 0;
-  if (context_->target.arch_is_gpu()){
+  if (context_->target.arch_is_gpu()) {
     using cinn::runtime::BackendAPI;
     device_id = BackendAPI::get_backend(context_->target)->get_device();
   }
   // set max_group_num_of_one_task
   int max_group_num_of_one_task = 1;
-  if (context_->target.language == Target::Language::sycl){
+  if (context_->target.language == Target::Language::sycl) {
     max_group_num_of_one_task = 100;
   }
-  for (int start_group_id = 0; start_group_id < context_->graph->fusion_groups.size();
+  for (int start_group_id = 0;
+       start_group_id < context_->graph->fusion_groups.size();
        start_group_id += max_group_num_of_one_task) {
     int groups_num =
         std::min(max_group_num_of_one_task,
-                 (int)(context_->graph->fusion_groups.size() - start_group_id));
+                 static_cast<int>(context_->graph->fusion_groups.size() -
+                                  start_group_id));
     std::vector<int> group_ids;
     for (int i = 0; i < groups_num; i++) {
       group_ids.push_back(start_group_id + i);
@@ -155,7 +157,7 @@ void ParallelCompiler::RunTask() {
 
 void ParallelCompiler::LaunchTask() {
   int device_id = 0;
-  if (context_->target.arch_is_gpu()){
+  if (context_->target.arch_is_gpu()) {
     using cinn::runtime::BackendAPI;
     device_id = BackendAPI::get_backend(context_->target)->get_device();
   }
@@ -203,39 +205,41 @@ void ParallelCompiler::Task::Lowering() {
                                 __FILE__,
                                 __LINE__);
     }
-    for(int group_id : group_ids){
+    for (int group_id : group_ids) {
       pcompiler->result_.SetLoweredFuncs(group_id,
-                                       context->lowered_funcs[group_id]);
+                                         context->lowered_funcs[group_id]);
     }
   } else {
-    for(int group_id : group_ids){
+    for (int group_id : group_ids) {
       auto& dtype_dict =
-        context->graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
-            "inferdtype");
+          context->graph
+              ->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
+                  "inferdtype");
       auto& shape_dict =
           context->graph
               ->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
                   "infershape");
-      auto op_lowerer = CreateOpLowerer(dtype_dict, shape_dict, context->target);
+      auto op_lowerer =
+          CreateOpLowerer(dtype_dict, shape_dict, context->target);
       auto& group = context->graph->fusion_groups[group_id];
       VLOG(4) << "Start Lowering Group " << group_id << " at "
               << std::this_thread::get_id() << " :\n"
               << "Group " << group_id << " {\n"
               << context->graph->DebugGroupedGraph(group->CollectNodes())
               << "}\n";
-      //std::cout <<"group "<< group_id << "\n";
-      //std::cout << group->CollectNodes()[0]->op()->name << ":\n";
-      //LOG(INFO) << group->CollectNodes()[0]->op()->name;
+      // std::cout <<"group "<< group_id << "\n";
+      // std::cout << group->CollectNodes()[0]->op()->name << ":\n";
+      // LOG(INFO) << group->CollectNodes()[0]->op()->name;
       auto lowered_funcs = op_lowerer.Lower(group);
-      //std::cout << lowered_funcs[0]->body << "\n";
-      //LOG(INFO) << lowered_funcs[0]->body;
+      // std::cout << lowered_funcs[0]->body << "\n";
+      // LOG(INFO) << lowered_funcs[0]->body;
       if (lowered_funcs.size() != 1) {
         std::ostringstream err_msg;
         err_msg << "Lowering Group: " << group_id
                 << ", the number of LoweredFuncs is not equal 1, but "
                 << lowered_funcs.size()
                 << "\nOur current principle is to generate 1 LoweredFunc for "
-                  "each Group"
+                   "each Group"
                 << "\n";
         std::ostringstream detail_info;
         detail_info << "LoweredFuncs:\n";
@@ -254,18 +258,18 @@ void ParallelCompiler::Task::Lowering() {
       pcompiler->result_.SetLoweredFuncs(group_id, lowered_funcs);
     }
   }
-  for(int group_id : group_ids){
+  for (int group_id : group_ids) {
     backends::CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
-      pcompiler->result_.LoweredFuncs(group_id).front(), group_id, device_id);
+        pcompiler->result_.LoweredFuncs(group_id).front(), group_id, device_id);
   }
 }
 
 void ParallelCompiler::Task::CodegenAndJit() {
   // build module
   ir::Module::Builder builder(common::UniqName("module"), context->target);
-  for(int group_id : group_ids){
+  for (int group_id : group_ids) {
     VLOG(2) << "Start Codegen and JIT on Group " << group_id
-          << " at thread: " << std::this_thread::get_id();
+            << " at thread: " << std::this_thread::get_id();
     for (auto& func : pcompiler->result_.LoweredFuncs(group_id)) {
       builder.AddFunction(func);
     }
@@ -273,7 +277,8 @@ void ParallelCompiler::Task::CodegenAndJit() {
   auto ir_module = builder.Build();
   if (context->target == common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
-    auto splited_module = backends::SplitDeviceAndHostModule(ir_module, context->target);
+    auto splited_module =
+        backends::SplitDeviceAndHostModule(ir_module, context->target);
     auto hmodule = std::get<0>(splited_module);
     auto dmodule = std::get<1>(splited_module);
 
@@ -289,9 +294,9 @@ void ParallelCompiler::Task::CodegenAndJit() {
     }
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
-    //backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
-    //    cuda_c, group_id, device_id);
-    //pcompiler->result_.SetSourceCode(group_id, cuda_c);
+    // backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+    //     cuda_c, group_id, device_id);
+    // pcompiler->result_.SetSourceCode(group_id, cuda_c);
 
     cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
     VLOG(4) << "[CUDA]:\n" << cuda_c;
@@ -299,10 +304,10 @@ void ParallelCompiler::Task::CodegenAndJit() {
     backends::nvrtc::Compiler compiler;
     auto ptx = compiler(cuda_c);
     CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
-    //backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
-    //    ptx, group_id, device_id);
-    //pcompiler->result_.SetSourcePtx(group_id, ptx);
-    // load cumodule
+    // backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
+    //     ptx, group_id, device_id);
+    // pcompiler->result_.SetSourcePtx(group_id, ptx);
+    //  load cumodule
     cumodule = std::make_unique<CUDAModule>(ptx,
                                             compiler.compile_to_cubin()
                                                 ? CUDAModule::Kind::CUBIN
@@ -319,21 +324,26 @@ void ParallelCompiler::Task::CodegenAndJit() {
                                                std::move(symbols));
     engine->Link<backends::CodeGenCUDA_Host>(hmodule);
 #endif
-  } else if (context->target.language == Target::Language::sycl){
+  } else if (context->target.language == Target::Language::sycl) {
 #ifdef CINN_WITH_SYCL
-    auto splited_module = backends::SplitDeviceAndHostModule(ir_module, context->target);
-    auto host_module        = std::get<0>(splited_module);
-    auto device_module      = std::get<1>(splited_module);
+    auto splited_module =
+        backends::SplitDeviceAndHostModule(ir_module, context->target);
+    auto host_module = std::get<0>(splited_module);
+    auto device_module = std::get<1>(splited_module);
     backends::CodeGenSYCL_Dev codegen(context->target);
     std::string source_code = codegen.Compile(device_module);
-    CHECK(!source_code.empty()) << "Compile SYCL code failed from device module:\n" << device_module;
+    CHECK(!source_code.empty())
+        << "Compile SYCL code failed from device module:\n"
+        << device_module;
     VLOG(4) << "[SYCL]:\n" << source_code;
     cinn::backends::SourceCodePrint::GetInstance()->write(source_code);
     using runtime::Sycl::SYCLModule;
     backends::syclrtc::Compiler compiler;
     std::string share_library = compiler(source_code, context->target.arch);
-    CHECK(!share_library.empty()) << "Compile SYCL code failed from source code" << source_code;
-    sycl_module = std::make_unique<SYCLModule>(source_code, share_library, SYCLModule::Kind::so);
+    CHECK(!share_library.empty())
+        << "Compile SYCL code failed from source code" << source_code;
+    sycl_module = std::make_unique<SYCLModule>(
+        source_code, share_library, SYCLModule::Kind::so);
     // register kernel
     backends::RuntimeSymbols symbols;
     for (auto& fn : device_module.functions()) {
@@ -341,14 +351,16 @@ void ParallelCompiler::Task::CodegenAndJit() {
       CHECK(cufunc);
       symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(cufunc));
     }
-    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(), std::move(symbols));
+    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
+                                               std::move(symbols));
     engine->Link<backends::CodeGenCUDA_Host>(host_module);
 #endif
-  } else if (context->target.language == Target::Language::hip){
+  } else if (context->target.language == Target::Language::hip) {
 #ifdef CINN_WITH_ROCM
-    auto splited_module = backends::SplitDeviceAndHostModule(ir_module, context->target);
-    auto host_module        = std::get<0>(splited_module);
-    auto device_module      = std::get<1>(splited_module);
+    auto splited_module =
+        backends::SplitDeviceAndHostModule(ir_module, context->target);
+    auto host_module = std::get<0>(splited_module);
+    auto device_module = std::get<1>(splited_module);
     VLOG(4) << "Host Code:\n" << host_module;
     VLOG(4) << "Device Code:\n" << device_module;
     std::string hip_c;
@@ -360,29 +372,30 @@ void ParallelCompiler::Task::CodegenAndJit() {
       hip_c = context->attached_source_code;
     }
     CHECK(!hip_c.empty()) << "Compile HIP C code failed from device module:\n"
-                           << device_module;
+                          << device_module;
 
     cinn::backends::SourceCodePrint::GetInstance()->write(hip_c);
     VLOG(4) << "[HIP]:\n" << hip_c;
-    LOG(INFO) << "[HIP]:\n" << hip_c;
     using runtime::hip::HIPModule;
     backends::hiprtc::Compiler compiler;
     auto hsaco = compiler(hip_c);
-    CHECK(!hsaco.empty()) << "Compile hsaco failed from source code:\n" << hip_c;
-    //backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
-    //    ptx, group_id, device_id);
-    //pcompiler->result_.SetSourcePtx(group_id, ptx);
-    // load cumodule
-    hip_module = std::make_unique<HIPModule>(hsaco, 
-                                                compiler.compile_to_hipbin()
-                                                ? HIPModule::Kind::HIPBIN
-                                                : HIPModule::Kind::GCN);
+    CHECK(!hsaco.empty()) << "Compile hsaco failed from source code:\n"
+                          << hip_c;
+    // backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
+    //     ptx, group_id, device_id);
+    // pcompiler->result_.SetSourcePtx(group_id, ptx);
+    //  load cumodule
+    hip_module = std::make_unique<HIPModule>(hsaco,
+                                             compiler.compile_to_hipbin()
+                                                 ? HIPModule::Kind::HIPBIN
+                                                 : HIPModule::Kind::GCN);
     // register kernel
     backends::RuntimeSymbols symbols;
     for (auto& fn : device_module.functions()) {
       auto hip_func = hip_module->GetFunction(device_id, fn->name);
       CHECK(hip_func);
-      symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(hip_func));
+      symbols.RegisterVar(fn->name + "_ptr_",
+                          reinterpret_cast<void*>(hip_func));
     }
     engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
                                                std::move(symbols));
@@ -395,21 +408,22 @@ void ParallelCompiler::Task::CodegenAndJit() {
 }
 
 void ParallelCompiler::Task::BuildInstruction() {
-  for(int group_id : group_ids){
+  for (int group_id : group_ids) {
     // create instruction.
     VLOG(4) << "Start BuildInstruction of Group " << group_id
             << " at thread: " << std::this_thread::get_id();
     auto& group = context->graph->fusion_groups[group_id];
     CHECK(!group->input_names.empty() || !group->output_names.empty());
     auto instr = std::make_unique<Instruction>(context->target,
-                                              context->scope.get(),
-                                              group->input_names,
-                                              group->output_names,
-                                              group->GetFuncName());
+                                               context->scope.get(),
+                                               group->input_names,
+                                               group->output_names,
+                                               group->GetFuncName());
 
     auto fn_ptr = engine->Lookup(group->GetFuncName());
     CHECK(fn_ptr) << "Can't find jit function : " << group->GetFuncName();
-    instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), group->GetFuncName());
+    instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr),
+                          group->GetFuncName());
 
     instr->Finalize();
     backends::CompilationInfoDumper::DumpInstructionByGroupIndex(
