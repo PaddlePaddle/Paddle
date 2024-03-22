@@ -759,7 +759,11 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
     LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
     return;
   }
-
+  if (use_calib_mode) {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "We no longer support the use_calib_mode feature,please set "
+        "use_calib_mode false."));
+  }
   use_tensorrt_ = true;
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;

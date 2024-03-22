@@ -50,7 +50,7 @@ TEST(PredictorPool, use_trt_cuda_graph) {
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
   config.EnableTensorRtEngine(
-      1 << 20, 1, 3, PrecisionType::kFloat32, false, false, true);
+      1 << 20, 1, 3, PrecisionType::kFloat32, false, false, false);
   config.Exp_DisableTensorRtOPs({"fc"});
   config.EnableTensorRtDLA(0);
   services::PredictorPool pred_pool(config, 1);
