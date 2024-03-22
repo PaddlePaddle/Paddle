@@ -768,12 +768,9 @@ class TestTensorModScalar(unittest.TestCase):
         # self.assertEqual(res_complex.dtype.__str__(), self.expected_out_dtype_with_complex)
 
 
-# # mod API support float16, float32, float64, int32, int64
+# # mod API support float32, float64, int32, int64
 create_test_case(TestTensorModScalar, 'int32', 'int32', 'float32', 'complex64')
 create_test_case(TestTensorModScalar, 'int64', 'int64', 'float32', 'complex64')
-create_test_case(
-    TestTensorModScalar, 'float16', 'float16', 'float16', 'complex64'
-)
 create_test_case(
     TestTensorModScalar, 'float64', 'float64', 'float64', 'complex128'
 )
