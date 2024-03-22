@@ -119,18 +119,17 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
         )
 
-    def test_nanquantile_interpolation(self):
+    def test_interpolation(self):
         input_data = np.random.randn(2, 3, 4)
         input_data[0, 1, 1] = np.nan
         x = paddle.to_tensor(input_data)
-        for mode in ["lower", "higher", "midpoint", "nearest"]:
-            paddle_res = paddle.nanquantile(
-                x, q=0.35, axis=0, interpolation=mode
-            )
-            np_res = np.nanquantile(input_data, q=0.35, axis=0, method=mode)
-            np.testing.assert_allclose(
-                paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
-            )
+        for op, ref_op in API_list:
+            for mode in ["lower", "higher", "midpoint", "nearest"]:
+                paddle_res = op(x, q=0.35, axis=0, interpolation=mode)
+                np_res = ref_op(input_data, q=0.35, axis=0, method=mode)
+                np.testing.assert_allclose(
+                    paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
+                )
 
     def test_backward(self):
         def check_grad(x, q, axis, target_gard, apis=None):

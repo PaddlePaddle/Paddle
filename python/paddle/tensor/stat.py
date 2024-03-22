@@ -566,8 +566,9 @@ def _compute_quantile(
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
-        q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
-            a 1-D Tensor or a 0-D Tensor, each q will be calculated and the first dimension of output is same to the number of ``q`` .
+        q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list or
+            a 1-D Tensor, each element of q will be calculated and the first dimension of output is same to the number of ``q`` .
+            If q is a 0-D Tensor, it will be treated as an integer or float.
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
@@ -579,7 +580,8 @@ def _compute_quantile(
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
         interpolation (str, optional): The interpolation method to use
-            when the desired quantile falls between two data points. Default is linear.
+            when the desired quantile falls between two data points. Must be one of linear, higher,
+            lower, midpoint and nearest. Default is linear.
         ignore_nan: (bool, optional): Whether to ignore NaN of input Tensor.
             If ``ignore_nan`` is True, it will calculate nanquantile.
             Otherwise it will calculate quantile. Default is False.
@@ -608,6 +610,7 @@ def _compute_quantile(
             "Type of q should be int, float, list or tuple, or tensor"
         )
     for q_num in q:
+        # we do not validate tensor q in static mode
         if not in_dynamic_or_pir_mode() and isinstance(q_num, Variable):
             break
         if q_num < 0 or q_num > 1:
@@ -689,9 +692,11 @@ def _compute_quantile(
             return paddle.take_along_axis(sorted_tensor, idx, axis=axis)
 
         indices_below = paddle.floor(index).astype(paddle.int32)
-        tensor_below = paddle.take_along_axis(
-            sorted_tensor, indices_below, axis=axis
-        )
+        if interpolation != "higher":
+            # avoid unnecessary compute
+            tensor_below = paddle.take_along_axis(
+                sorted_tensor, indices_below, axis=axis
+            )
         if interpolation == "lower":
             return tensor_below
 
@@ -706,6 +711,7 @@ def _compute_quantile(
             return (tensor_upper + tensor_below) / 2
 
         weights = (index - indices_below).astype(x.dtype)
+        # "linear"
         return paddle.lerp(
             tensor_below.astype(x.dtype),
             tensor_upper.astype(x.dtype),
@@ -738,8 +744,9 @@ def quantile(x, q, axis=None, keepdim=False, interpolation="linear"):
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
-        q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
-            a 1-D Tensor or a 0-D Tensor, each q will be calculated and the first dimension of output is same to the number of ``q`` .
+        q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list or
+            a 1-D Tensor, each element of q will be calculated and the first dimension of output is same to the number of ``q`` .
+            If q is a 0-D Tensor, it will be treated as an integer or float.
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
@@ -751,13 +758,13 @@ def quantile(x, q, axis=None, keepdim=False, interpolation="linear"):
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
         interpolation (str, optional): The interpolation method to use
-            when the desired quantile falls between two data points. Default is linear.
+            when the desired quantile falls between two data points. Must be one of linear, higher,
+            lower, midpoint and nearest. Default is linear.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of quantile along ``axis`` of ``x``.
-        In order to obtain higher precision, data type of results will be float64.
 
     Examples:
         .. code-block:: python
@@ -816,7 +823,8 @@ def nanquantile(x, q, axis=None, keepdim=False, interpolation="linear"):
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
         q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list or
-            a 1-D Tensor, each q will be calculated and the first dimension of output is same to the number of ``q`` .
+            a 1-D Tensor, each element of q will be calculated and the first dimension of output is same to the number of ``q`` .
+            If q is a 0-D Tensor, it will be treated as an integer or float.
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
@@ -828,13 +836,13 @@ def nanquantile(x, q, axis=None, keepdim=False, interpolation="linear"):
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
         interpolation (str, optional): The interpolation method to use
-            when the desired quantile falls between two data points. Default is linear.
+            when the desired quantile falls between two data points. Must be one of linear, higher,
+            lower, midpoint and nearest. Default is linear.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of quantile along ``axis`` of ``x``.
-        In order to obtain higher precision, data type of results will be float64.
 
     Examples:
         .. code-block:: python
