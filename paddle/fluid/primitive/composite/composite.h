@@ -917,8 +917,6 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     auto res = (x_cast - mean_) * var_inv;
     out = reshape<T>(res, x_dim);
   }
-  auto scale_ptr = scale.get_ptr();
-  auto bias_ptr = bias.get_ptr();
 
   std::vector<int64_t> slice_bias_shape{-1, 1, 1};
   Tensor scale_cast;
