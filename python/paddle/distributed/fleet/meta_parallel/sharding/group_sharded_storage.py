@@ -356,7 +356,7 @@ class GradStorage(InternalStorage):
             tmp_var = paddle.empty(
                 [grad_end - self._fill], dtype=self.buffer.dtype
             )
-            paddle.assign(self.buffer._slice(self._fill, grad_end), tmp_var)
+            self.buffer._slice(self._fill, grad_end)._share_buffer_to(tmp_var)
 
             tmp_var.get_tensor()._set_dims(param.shape)
             if not use_main_grad:

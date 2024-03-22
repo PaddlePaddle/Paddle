@@ -211,16 +211,13 @@ class ShardingGradView:
                 self._param_begin, self._param_end
             ).share_buffer_to(self._slice_grad)
 
-        tmp_grad = paddle.empty(
-            [self._index + self._param._numel() - self._index],
-            self._grad_buffer.dtype,
+        tmp_grad = self._grad_buffer._slice(
+            self._index, self._index + self._param._numel()
         )
-        paddle.assign(
-            self._grad_buffer._slice(
-                self._index, self._index + self._param._numel()
-            ),
-            tmp_grad,
-        )
+
+        self._grad_buffer._slice(
+            self._index, self._index + self._param._numel()
+        ).share_buffer_to(tmp_grad)
 
         return tmp_grad
 
@@ -499,16 +496,13 @@ class FusedCommBuffer:
             grad_end = self.param2offset[param.name] + np.prod(param.shape)
             assert grad_end <= self.buffer_size
 
-            tmp_var = paddle.empty(
-                [grad_end - self.param2offset[param.name]],
-                dtype=self.param2offset.dtype,
+            tmp_var = self.grad_storage._slice(
+                self.param2offset[param.name], grad_end
             )
-            paddle.assign(
-                self.grad_storage._slice(
-                    self.param2offset[param.name], grad_end
-                ),
-                tmp_var,
-            )
+
+            self.grad_storage._slice(
+                self.param2offset[param.name], grad_end
+            )._share_buffer_to(tmp_var)
 
         grad_var = param.main_grad if self.use_main_grad else param.grad
         grad_var.stop_gradient = True
