@@ -23,9 +23,6 @@ from dygraph_to_static_utils import (
 
 import paddle
 
-SEED = 2020
-np.random.seed(SEED)
-
 
 class A:
     pass
