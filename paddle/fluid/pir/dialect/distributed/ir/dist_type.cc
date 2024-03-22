@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/type_storage.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 namespace paddle {
 namespace dialect {
@@ -55,6 +56,15 @@ common::DDim InferLocalDDim(const common::DDim& global_ddim,
     }
   }
   return local_ddim;
+}
+
+auto DistDenseTensorType::local_type() const -> Type {
+  return pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                   dtype(),
+                                   local_ddim(),
+                                   data_layout(),
+                                   lod(),
+                                   offset());
 }
 
 }  // namespace dialect

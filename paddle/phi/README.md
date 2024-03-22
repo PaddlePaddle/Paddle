@@ -206,7 +206,7 @@ template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& scale,
-                 float bias,
+                 const Scalar& bias,
                  bool bias_after_scale,
                  DenseTensor* out);
 ```
@@ -354,7 +354,7 @@ Tensor mean(const Tensor& x);
 
 Tensor scale(const Tensor& x,
              const Scalar& scale,
-             float bias,
+             const Scalar& bias,
              bool bias_after_scale);
 ```
 

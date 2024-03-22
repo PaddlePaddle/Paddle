@@ -18,8 +18,10 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #endif
 
 namespace paddle {
@@ -48,7 +50,7 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
                  [this] { phi::backends::gpu::SetDeviceId(place_.device); });
 
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     graph_capturing_stream_set_.insert(stream);
     return;
@@ -66,7 +68,7 @@ void StreamSafeCUDAAllocation::EraseStream(gpuStream_t stream) {
 }
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     return graph_capturing_stream_set_.empty() &&
            outstanding_event_map_.empty();

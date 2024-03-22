@@ -90,6 +90,32 @@ void cos_double_grad(const Tensor& x,
 }
 
 template <typename T>
+void minimum_double_grad(const Tensor& x,
+                         const Tensor& y,
+                         const paddle::optional<Tensor>& grad_x_grad,
+                         const paddle::optional<Tensor>& grad_y_grad,
+                         Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    if (grad_x_grad && grad_y_grad) {
+      auto x_mask = cast<T>(less_than<T>(x, y), grad_x_grad.get().dtype());
+      auto ddout =
+          grad_x_grad.get() * x_mask + grad_y_grad.get() * (1 - x_mask);
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_x_grad) {
+      auto x_mask = cast<T>(less_than<T>(x, y), grad_x_grad.get().dtype());
+      auto ddout = grad_x_grad.get() * x_mask;
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_y_grad) {
+      auto y_mask = cast<T>(greater_equal<T>(x, y), grad_y_grad.get().dtype());
+      auto ddout = grad_y_grad.get() * y_mask;
+      set_output<T>(ddout, grad_out_grad);
+    } else {
+      grad_out_grad = nullptr;
+    }
+  }
+}
+
+template <typename T>
 void tanh_triple_grad(const Tensor& out,
                       const Tensor& grad_out_forward,
                       const Tensor& grad_x_grad_forward,
