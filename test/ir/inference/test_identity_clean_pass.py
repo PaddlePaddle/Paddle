@@ -210,5 +210,44 @@ class TestIdentityCastCleanPass(PassAutoScanTest):
         self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
 
 
+class TestIdentityPadCleanPass(PassAutoScanTest):
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config(use_gpu=True)
+        yield config, ['relu'], (1e-5, 1e-5)
+
+    def sample_program_config(self, draw):
+        n = draw(st.integers(min_value=1, max_value=4))
+        c = draw(st.integers(min_value=1, max_value=20))
+        d = draw(st.integers(min_value=1, max_value=20))
+        h = draw(st.integers(min_value=1, max_value=20))
+        w = draw(st.integers(min_value=1, max_value=20))
+
+        pad3d_op_1 = OpConfig(
+            "pad3d",
+            inputs={"X": ["pad3d_op_1_in"]},
+            outputs={"Out": ["pad3d_op_1_out"]},
+            data_format="NCDHW",
+            mode="constant",
+            value=0,
+            paddings=[0, 0, 0, 0, 0, 0],
+        )
+        relu_op_1 = OpConfig(
+            "relu",
+            inputs={"X": ["pad3d_op_1_out"]},
+            outputs={"Out": ["relu_op_1_out"]},
+        )
+
+        program_config = ProgramConfig(
+            ops=[pad3d_op_1, relu_op_1],
+            weights={},
+            inputs={"pad3d_op_1_in": TensorConfig(shape=[n, c, d, h, w])},
+            outputs=["relu_op_1_out"],
+        )
+        return program_config
+
+    def test(self):
+        self.run_and_statis(max_examples=10, passes=["identity_op_clean_pass"])
+
+
 if __name__ == "__main__":
     unittest.main()

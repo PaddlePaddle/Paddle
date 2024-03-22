@@ -78,6 +78,21 @@ FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
               return in_name == out_name;
             } else if (op_type == "concat") {
               return x->Op()->Input("X").size() == 1;
+            } else if (op_type == "pad3d") {
+              if (x->Op()->HasAttr("paddings", true)) {
+                if (x->Op()->GetAttrType("paddings", true) ==
+                    proto::AttrType::INT) {
+                  return x->Op()->GetAttrIfExists<int>("paddings") == 0;
+                } else if (x->Op()->GetAttrType("paddings", true) ==
+                           proto::AttrType::INTS) {
+                  const auto ints =
+                      x->Op()->GetAttrIfExists<std::vector<int>>("paddings");
+                  for (const auto x : ints) {
+                    if (x) return false;
+                  }
+                  return true;
+                }
+              }
             }
             // you can add more cases here.
             return false;
