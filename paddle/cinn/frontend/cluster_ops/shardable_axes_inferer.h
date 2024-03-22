@@ -66,7 +66,7 @@ class ShardableAxesInferer {
       const std::list<const pir::Operation*>& sinks,
       const std::unordered_map<const pir::Operation*, ShardableAxesSignature>&
           op2shardable_axes_signature,
-      const std::unordered_map<std::string, std::string>&
+      std::unordered_map<std::string, std::string>&
           axis_name2union_find_set_root);
 
   void RenameDuplicatedAxisName(

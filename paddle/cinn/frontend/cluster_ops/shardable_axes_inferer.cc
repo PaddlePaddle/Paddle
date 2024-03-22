@@ -84,6 +84,13 @@ ShardableAxesInferer::ReversedInferShardableAxes(
       UpdateValue2ShardableAxes(input_value, *input_shardable_axes);
     }
   });
+
+  VLOG(4) << "ReversedInferShardableAxes";
+  for (const auto& [value, sa] : value2shardable_axes) {
+    VLOG(4) << "value: " << value.impl()
+            << ", defining op: " << value.defining_op()->name()
+            << ", sa: " << ShardableAxesDebugStr(sa);
+  }
   return value2shardable_axes;
 }
 
@@ -187,16 +194,21 @@ ShardableAxesInferer::GetSinkAndInitShardableAxes(
     const std::list<const pir::Operation*>& sinks,
     const std::unordered_map<const pir::Operation*, ShardableAxesSignature>&
         op2shardable_axes_signature,
-    const std::unordered_map<std::string, std::string>&
+    std::unordered_map<std::string, std::string>&
         axis_name2union_find_set_root) {
   const auto& ConvertByBoundAxisName = [&](const ShardableAxes& sa) {
     ShardableAxes ret_sa;
     for (const auto& [axis, axis_name] : sa) {
       VLOG(4) << "Find axis_name: " << axis_name;
       const auto& iter = axis_name2union_find_set_root.find(axis_name);
-      std::string axis_name_root = iter != axis_name2union_find_set_root.end()
-                                       ? (*iter).second
-                                       : axis_name;
+      std::string axis_name_root;
+      if (iter != axis_name2union_find_set_root.end()) {
+        axis_name_root = (*iter).second;
+      } else {
+        axis_name_root = axis_name;
+        axis_name2union_find_set_root[axis_name] = axis_name;
+      }
+
       ret_sa.emplace_back(ShardableAxis{
           .axis = axis,
           .axis_name = axis_name_root,
@@ -241,12 +253,20 @@ ShardableAxesInferer::GetSinkAndInitValues(
     const OpSetPtr& ops,
     const std::list<const pir::Operation*>& sinks) {
   const auto& op2shardable_axes_signature = GetOp2ShardableAxesSignature(ops);
-  const auto& axis_name2union_find_set_root =
+  // this map need to be updated in GetSinkAndInitShardableAxes, so it is not
+  // const
+  std::unordered_map<std::string, std::string> axis_name2union_find_set_root =
       GetAxisName2UnionFindSetRoot(ops, op2shardable_axes_signature);
   std::unordered_map<pir::Value, ShardableAxes> sink_and_inits =
       GetSinkAndInitShardableAxes(
           sinks, op2shardable_axes_signature, axis_name2union_find_set_root);
   RenameDuplicatedAxisName(&sink_and_inits);
+  VLOG(4) << "GetSinkAndInitValues";
+  for (const auto& [value, sa] : sink_and_inits) {
+    VLOG(4) << "value: " << value.impl()
+            << ", defining op: " << value.defining_op()->name()
+            << ", sa: " << ShardableAxesDebugStr(sa);
+  }
   return sink_and_inits;
 }
 

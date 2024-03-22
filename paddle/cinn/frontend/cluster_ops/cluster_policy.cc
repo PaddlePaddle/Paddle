@@ -159,6 +159,8 @@ class LoopAlignableClusteringPolicy final : public ClusteringPolicy {
     const auto* sink_op = GetStmtSoleSinkOp(stmt);
     pir::Value value =
         sink_op->result(GetOutputShardableAxesResultIdx(sink_op));
+    VLOG(4) << "sink_op is : " << sink_op->name()
+            << ", outout value is: " << value.impl();
     const auto& shardable_axes = ShardableAxes4Value(value);
     CHECK(shardable_axes.has_value());
     return IsStmtSinkOpOutputFullyShardable(stmt, *shardable_axes.value());
@@ -233,4 +235,4 @@ std::shared_ptr<ClusteringPolicy> MakeLoopAlignableClusteringPolicy(
     const pir::ShapeConstraintIRAnalysis* shape_analysis) {
   return std::make_shared<LoopAlignableClusteringPolicy>(shape_analysis);
 }
-} // namespace cinn::frontend::cluster_ops
+}  // namespace cinn::frontend::cluster_ops

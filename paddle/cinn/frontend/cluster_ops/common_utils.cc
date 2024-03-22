@@ -32,7 +32,6 @@ size_t GetRank(pir::Value value) {
 }
 
 std::list<const pir::Operation*> GetSinks(const OpSet& ops) {
-  VLOG(4) << "GetSinks";
   const auto IsSink = [&](const pir::Operation* op) {
     for (int i = 0; i < op->num_results(); ++i) {
       pir::Value output = op->result(i);
@@ -51,6 +50,10 @@ std::list<const pir::Operation*> GetSinks(const OpSet& ops) {
     if (IsSink(op)) {
       sinks.push_back(op);
     }
+  }
+  VLOG(4) << "GetSinks";
+  for (const auto& op : sinks) {
+    VLOG(4) << "Sink Op: " << op->name();
   }
   return sinks;
 }

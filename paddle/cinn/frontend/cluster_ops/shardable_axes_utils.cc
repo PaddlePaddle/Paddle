@@ -113,7 +113,6 @@ ShardableAxes MakeBroadcastOpInputShardableAxes(
 
 std::string ShardableAxesDebugStr(const ShardableAxes& shardable_axes) {
   std::stringstream ss;
-  ss << "ShardableAxes: ";
   for (const auto& axis : shardable_axes) {
     ss << axis.axis_name << ", ";
   }
@@ -128,7 +127,7 @@ std::string ShardableAxesSignatureDebugStr(
     ss << "input " << pair_data.first.operand_index << ": "
        << ShardableAxesDebugStr(pair_data.second) << "\n";
   }
-  ss << "output"
+  ss << "output "
      << ShardableAxesDebugStr(shardable_axes_sig.sole_output_sa.shardable_axes);
   return ss.str();
 }

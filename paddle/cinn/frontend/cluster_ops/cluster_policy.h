@@ -25,9 +25,6 @@ class ClusteringPolicy {
  public:
   virtual ~ClusteringPolicy() = default;
 
-  using ShardableAxes4ValueT =
-      std::function<std::optional<const ShardableAxes*>(pir::Value)>;
-
   virtual bool CanActAsSink(const ShardableAxes4ValueT& ShardableAxes4Value,
                             const api::StmtPattern<FrontendPattern>& node) = 0;
 

@@ -41,9 +41,8 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
           << op->name();
       result = MakeEmptyShardableAxesSignature(op);
     }
-    VLOG(4) << "[ShardableAxesSignature] Make ShardableAxesSignature for Op: "
-            << op->name() << "\n"
-            << ShardableAxesSignatureDebugStr(result);
+    VLOG(4) << "[ShardableAxesSignature] Make ShardableAxesSignature: \n"
+            << op->name() << " : " << ShardableAxesSignatureDebugStr(result);
     return result;
   }
 
