@@ -2137,8 +2137,8 @@
   args : (Tensor x, Scalar y=1.0f)
   output : Tensor(out)
   infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
+    func : PowInferMeta
+    param: [x, y]
     spmd_rule: PowInferSpmd
   kernel :
     func : pow

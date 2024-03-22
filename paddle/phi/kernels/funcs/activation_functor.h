@@ -115,6 +115,25 @@ struct Real {
   }
 };
 
+template <typename T>
+struct RealCp {
+  HOSTDEVICE T operator()(const ComplexType<T>& val) const { return val.real; }
+};
+
+template <typename T>
+struct ImagCp {
+  HOSTDEVICE T operator()(const ComplexType<T>& val) const { return val.imag; }
+};
+
+template <typename T>
+struct ComplexAssemble {
+  HOSTDEVICE ComplexAssemble() {}
+
+  HOSTDEVICE ComplexType<T> operator()(const T& r, const T& i) const {
+    return ComplexType<T>(r, i);
+  }
+};
+
 // sine'(x) = cos(x)
 template <typename T>
 struct SinGradFunctor : public BaseActivationFunctor<T> {
@@ -2777,10 +2796,32 @@ struct PowFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"factor", &factor}};
   }
+
+  T factor_cp;
+  using ComplexAttrPair = std::vector<std::pair<const char*, T*>>;
+  ComplexAttrPair GetComplexAttrs() { return {{"factor", &factor_cp}}; }
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.pow(static_cast<T>(factor));  // NOLINT
   }
+};
+
+template <typename T>
+struct PowFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  phi::dtype::complex<T> factor;
+
+  using ComplexAttrPair =
+      std::vector<std::pair<const char*, phi::dtype::complex<T>*>>;
+  ComplexAttrPair GetComplexAttrs() { return {{"factor", &factor}}; }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.pow(factor);  // NOLINT
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>
@@ -2789,6 +2830,9 @@ struct PowGradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"factor", &factor}};
   }
+  T factor_cp;
+  using ComplexAttrPair = std::vector<std::pair<const char*, T*>>;
+  ComplexAttrPair GetComplexAttrs() { return {{"factor", &factor_cp}}; }
   template <typename Device,
             typename X,
             typename Out,
@@ -2797,6 +2841,41 @@ struct PowGradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
     dx.device(d) = dout * static_cast<T>(factor) *
                    x.pow(static_cast<T>(factor) - static_cast<T>(1));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct PowGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> factor;
+  using ComplexAttrPair =
+      std::vector<std::pair<const char*, phi::dtype::complex<T>*>>;
+  ComplexAttrPair GetComplexAttrs() { return {{"factor", &factor}}; }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    auto a_ = x.unaryExpr(RealCp<T>());
+    auto b_ = x.unaryExpr(ImagCp<T>());
+    auto c_ = factor.real;
+    auto d_ = factor.imag;
+    auto arctan_ = (b_ / a_).unaryExpr(Atan<T>());
+    auto square_ = a_ * a_ + b_ * b_;
+    auto e_ = (c_ / 2 * square_.log() - d_ * arctan_).exp();
+    auto v_ = d_ / 2 * square_.log() + c_ * arctan_;
+
+    auto ux = e_ / square_ *
+              ((a_ * c_ + b_ * d_) * v_.unaryExpr(Cosine<T>()) +
+               (b_ * c_ - a_ * d_) * v_.unaryExpr(Sine<T>()));
+    auto uy = e_ / square_ *
+              ((b_ * c_ - a_ * d_) * v_.unaryExpr(Cosine<T>()) -
+               (b_ * d_ + a_ * c_) * v_.unaryExpr(Sine<T>()));
+
+    dx.device(d) = ux.binaryExpr(uy, ComplexAssemble<T>());
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

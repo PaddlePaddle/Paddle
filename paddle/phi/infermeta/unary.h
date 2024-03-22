@@ -515,6 +515,8 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaTensor* scale);
 
+void PowInferMeta(const MetaTensor& x, const Scalar& y, MetaTensor* out);
+
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ReduceInferMeta(const MetaTensor& x,
