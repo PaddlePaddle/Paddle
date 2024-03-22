@@ -398,7 +398,7 @@ std::unordered_map<GroupPtr, std::unordered_map<std::string, pir::Attribute>>
 CompileGroupAsOpAttribute(
     const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
     const std::vector<GroupPtr>& group_list) {
-  auto fn_ptr_res = pir_compiler->BuildCUDAJITInfo(group_list);
+  auto fn_ptr_res = pir_compiler->Build(group_list);
 
   std::unordered_map<GroupPtr, std::unordered_map<std::string, pir::Attribute>>
       result;
@@ -795,19 +795,14 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-    auto target = cinn::common::DefaultNVGPUTarget();
-    // TODO(Aurelius84): Remove scope after cleaning PirCompiler useless Build
-    // Interface
-    auto scope = std::make_shared<cinn::hlir::framework::Scope>();
     auto* program = fusion_op->GetParentProgram();
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
-
     VLOG(4) << "Program before lowering: \n"
             << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
-
-    auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
-        *program, target, scope);
+    auto target = cinn::common::DefaultNVGPUTarget();
+    auto ir_compiler =
+        cinn::hlir::framework::PirCompilerManager::Create(target);
     auto group = RebuildGroup(fusion_op);
     // Because the group is rebuilt, the order of group.output_values generated
     // by BuildCUDAJITInfo may not be same with the order bound in the yield op,

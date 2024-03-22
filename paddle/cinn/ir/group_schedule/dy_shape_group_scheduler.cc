@@ -47,6 +47,9 @@ void DynamicShapeGroupScheduler::InitBuckets() {
       [](ir::Expr extent, int lower_bound, int upper_bound) -> bool {
     if (!extent.is_constant()) return false;
     int extent_value = static_cast<int>(extent.get_constant());
+    VLOG(5) << "extent_value: " << extent_value
+            << ",lower_bound: " << lower_bound
+            << ",upper_bound: " << upper_bound;
     if (extent_value < lower_bound || extent_value > upper_bound) {
       return true;
     }

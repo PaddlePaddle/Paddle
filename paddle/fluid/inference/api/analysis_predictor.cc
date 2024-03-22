@@ -82,6 +82,7 @@
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/matmul_elementwise_add_fuse_pass.h"
 #endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -1001,6 +1002,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         mkldnn_pm.AddPass(::pir::CreateConv2dTransposeBiasFusePass());
         mkldnn_pm.AddPass(::pir::CreateConv3dBiasFusePass());
         mkldnn_pm.AddPass(::pir::CreateBatchNormActFusePass());
+        mkldnn_pm.AddPass(::pir::CreateMatmulElementwiseAddFusePass());
 
         auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
         constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
