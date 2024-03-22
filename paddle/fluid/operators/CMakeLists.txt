@@ -27,6 +27,10 @@ add_subdirectory(string)
 add_subdirectory(prim_ops)
 
 
+if(NOT WITH_DGC)
+  list(REMOVE_ITEM TEST_INTERP_CASES test_dgc_translator)
+endif()
+
 if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
 endif()
