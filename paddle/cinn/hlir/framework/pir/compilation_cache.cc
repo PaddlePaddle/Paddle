@@ -13,35 +13,55 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
+#include "paddle/cinn/hlir/framework/pir/group.h"
 
 #include "paddle/common/enforce.h"
 
 namespace cinn::hlir::framework {
 
+namespace pir {
 void* BackendResource::GetHostFuncPtr() const {
-  VLOG(4) << "Lookup kernel name: " << host_fn_name;
-  void* ptr = backend_compiler->Lookup(host_fn_name);
-  PADDLE_ENFORCE_NOT_NULL(ptr, "Can't find kernel function %s", host_fn_name);
+  VLOG(4) << "Lookup kernel name: " << host_fn_name_;
+  void* ptr = backend_compiler_->Lookup(host_fn_name_);
+  PADDLE_ENFORCE_NOT_NULL(ptr, "Can't find kernel function %s", host_fn_name_);
   return ptr;
 }
 
 void* BackendResource::GetInferFuncPtr() const {
-  VLOG(4) << "Lookup infer shape fn name: " << infer_fn_name;
-  void* ptr = backend_compiler->Lookup(infer_fn_name);
+  VLOG(4) << "Lookup infer shape fn name: " << infer_fn_name_;
+  void* ptr = backend_compiler_->Lookup(infer_fn_name_);
   PADDLE_ENFORCE_NOT_NULL(
-      ptr, "Can't find infer shape function %s", infer_fn_name);
+      ptr, "Can't find infer shape function %s", infer_fn_name_);
   return ptr;
 }
 
+std::shared_ptr<backends::Compiler>& BackendResource::GetBackendCompiler() {
+  return backend_compiler_;
+}
+
+const std::shared_ptr<backends::Compiler>& BackendResource::GetBackendCompiler()
+    const {
+  return backend_compiler_;
+}
+
+void BackendResource::SetHostFnName(const std::string& name) {
+  host_fn_name_ = name;
+}
+
+void BackendResource::SetInferFnName(const std::string& name) {
+  infer_fn_name_ = name;
+}
+
 pir::CINNKernelInfo BackendResource::GernerateKernelInfo(
-    const std::shared_ptr<Group>& group) const {
+    const std::shared_ptr<pir::Group>& group) const {
   pir::CINNKernelInfo kernel_info;
-  kernel_info.fn_name = host_fn_name;
+  kernel_info.fn_name = host_fn_name_;
   kernel_info.fn_ptr = GetHostFuncPtr();
   kernel_info.infer_shape_fn_ptr = GetInferFuncPtr();
   kernel_info.int_args_map = group->int_args_map;
   return kernel_info;
 }
+}  // namespace pir
 
 bool CompilationCache::Has(const CacheKey& key) const {
   return cache_.find(KeyHash(key)) != cache_.end();
@@ -62,19 +82,19 @@ void CompilationCache::Insert(const CacheKey& key, const CacheValue& value) {
 
 void CompilationCache::Clear() { cache_.clear(); }
 
-struct StringsHash {
-  size_t operator()(const& std::vector<std::string> values) const {
-    size_t seed = values.size();
-    for (auto& value : values) {
-      seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    }
-    return seed;
-  }
-};
+// struct StringsHash {
+//   size_t operator()(const& std::vector<std::string> values) const {
+//     size_t seed = values.size();
+//     for (auto& value : values) {
+//       seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+//     }
+//     return seed;
+//   }
+// };
 
 size_t CompilationCache::KeyHash(const CacheKey& key) const {
   // TODO(Aurelius84): use a better hash function
-  return pir::Group::SharedGroupHasher()(CacheKey);
+  return pir::Group::SharedGroupHasher()(key);
 }
 
 }  // namespace cinn::hlir::framework

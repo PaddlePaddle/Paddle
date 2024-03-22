@@ -52,24 +52,26 @@ using GroupPtr = std::shared_ptr<Group>;
 using GroupInfoMap = std::unordered_map<::pir::Operation*, GroupPtr>;
 using cinn::hlir::framework::pir::CompatibleInfo;
 using SharedGroupHasher = Group::SharedGroupHasher;
-using SharedGroupEqual = Group::SharedGroupEqual;
+using SharedGroupComparator = Group::SharedGroupComparator;
 using ShapeOrDataDimExprs4ValueT =
     std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>;
+using cinn::hlir::framework::CompilationCache;
 using cinn::hlir::framework::PirCompiler;
+using cinn::hlir::framework::pir::CINNKernelInfo;
 
 class BroadcastTreeInfo;
 using BroadcastTreeInfoMap =
     std::unordered_map<GroupPtr,
                        std::shared_ptr<BroadcastTreeInfo>,
                        SharedGroupHasher,
-                       SharedGroupEqual>;
+                       SharedGroupComparator>;
 
 class BroadcastTreeInfo final {
  public:
   explicit BroadcastTreeInfo(const GroupPtr& group) {
     ConstructBroadcastTree(group);
   }
-  const cinn::common::BroadcastTree& GetBroadcastTree() const;
+  const std::shared_ptr<cinn::common::BroadcastTree>& GetBroadcastTree() const;
   const cinn::adt::List<std::vector<symbol::DimExpr>> GetAllValueDimExprs()
       const;
   const std::unordered_map<pir::Value, size_t>& GetValueToDimExprIdx() const;
@@ -78,7 +80,7 @@ class BroadcastTreeInfo final {
  private:
   void ConstructBroadcastTree(const GroupPtr& group);
 
-  cinn::common::BroadcastTree broadcast_tree_;
+  std::shared_ptr<cinn::common::BroadcastTree> broadcast_tree_;
   cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs_;
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx_;
 };
@@ -86,7 +88,7 @@ class BroadcastTreeInfo final {
 struct PreAnalysisInfo {
   GroupInfoMap group_infos;
   BroadcastTreeInfoMap broadcast_tree_infos;
-}
+};
 
 class FusionOpAnalysis final {
  public:
@@ -98,7 +100,7 @@ class FusionOpAnalysis final {
   }
 
  protected:
-  void Runimpl(pir::Operation* op);
+  void RunImpl(pir::Operation* op);
   void GatherGroup(pir::Operation* fusion_op);
   void PreCompileGroup();
 
@@ -115,8 +117,14 @@ pir::Operation* ProcessDyShapeGroup(const GroupPtr&,
                                     const PreAnalysisInfo&,
                                     pir::PatternRewriter&);
 
-pir::CINNKernelInfo GetCINNKernelInfo(const GroupPtr& group) {
-  return CompilationCache::Instance().GetKernelInfo(group);
+std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
+    const GroupPtr& group) {
+  auto kernel_info = CompilationCache::Instance().GetKernelInfo(group);
+  std::unordered_map<std::string, ::pir::Attribute> attrs{
+      {cinn::dialect::JitKernelOp::kAttrName,
+       cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
+                                                   kernel_info)}};
+  return attrs;
 }
 
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
@@ -156,8 +164,12 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   }
 
  protected:
+  virtual const PreAnalysisInfo& GetPreAnalysisInfo() const {
+    return pre_analysis_info_;
+  }
+
   virtual GroupPtr GetGroup(cinn::dialect::FusionOp fusion_op) const {
-    return pre_analysis_info_.group_infos.at(fusion_op.Operation());
+    return pre_analysis_info_.group_infos.at(fusion_op.operation());
   }
 
   virtual pir::Operation* ProcessGroup(
@@ -166,15 +178,13 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       pir::PatternRewriter& rewriter) const {          // NOLINT
     auto group_inputs = GetBlockOutsideInput(group->ops);
     // compile group to jit_kernel_op
-    // auto op_attr_map = CompileGroupAsOpAttribute(pir_compiler, {group});
-    pir::CINNKernelInfo kernel_info = GetCINNKernelInfo(group);
     std::vector<pir::Type> output_types;
     const auto& group_output_values = group->output_values;
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
-        group_inputs, kernel_info, output_types);
+        group_inputs, GetJitKernelAttr(group), output_types);
     return jit_kernel_op;
   }
 
@@ -190,10 +200,9 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     context->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
     context->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-    context->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
     pir::RewritePatternSet ps(context);
-    ps.Add<FusionOpPattern>(context, &pre_analysis_info_);
+    ps.Add<FusionOpPattern>(context, pre_analysis_info_);
     return ps;
   }
 
@@ -205,7 +214,7 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
   }
 
  private:
-  PreAnalysisInfo pre_analysis_info_;
+  mutable PreAnalysisInfo pre_analysis_info_;
 };
 
 class DyShapeFusionOpPattern : public FusionOpPattern {
@@ -218,7 +227,7 @@ class DyShapeFusionOpPattern : public FusionOpPattern {
       pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
       pir::PatternRewriter& rewriter) const {          // NOLINT
     return ProcessDyShapeGroup(
-        group, shape_analysis, pre_analysis_info_, rewriter);
+        group, shape_analysis, GetPreAnalysisInfo(), rewriter);
   }
 };
 
@@ -230,10 +239,9 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     context->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
     context->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-    context->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
     pir::RewritePatternSet ps(context);
-    ps.Add<DyShapeFusionOpPattern>(context, &pre_analysis_info_);
+    ps.Add<DyShapeFusionOpPattern>(context, pre_analysis_info_);
     ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;
@@ -247,23 +255,23 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
   }
 
  private:
-  PreAnalysisInfo pre_analysis_info_;
+  mutable PreAnalysisInfo pre_analysis_info_;
 };
 
 std::shared_ptr<Group> RebuildGroup(pir::Operation*);
 
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
   std::shared_ptr<Group> group_ptr = RebuildGroup(fusion_op);
-  pre_analysis_info_.group_infos.insert({fusion_op, group_ptr});
+  pre_analysis_info_->group_infos.insert({fusion_op, group_ptr});
   std::shared_ptr<BroadcastTreeInfo> broadcast_tree_info =
       std::make_shared<BroadcastTreeInfo>(group_ptr);
-  if (is_dy_shape) {
-    pre_analysis_info_.broadcast_tree_infos.insert(
+  if (is_dy_shape_) {
+    pre_analysis_info_->broadcast_tree_infos.insert(
         {group_ptr, broadcast_tree_info});
   }
 }
 
-void FusionOpAnalysis::Runimpl(pir::Operation* op) {
+void FusionOpAnalysis::RunImpl(pir::Operation* op) {
   if (op->isa<cinn::dialect::FusionOp>()) {
     GatherGroup(op);
     return;
@@ -271,7 +279,7 @@ void FusionOpAnalysis::Runimpl(pir::Operation* op) {
   for (uint32_t i = 0; i < op->num_regions(); ++i) {
     for (auto& block : op->region(i)) {
       for (auto& op : block) {
-        Runimpl(op);
+        RunImpl(&op);
       }
     }
   }
@@ -281,17 +289,17 @@ void FusionOpAnalysis::PreCompileGroup() {
   std::vector<GroupPtr> groups;
   const auto& EnqueueGroup = [&](const GroupPtr& group) {
     const bool has_broadcast_tree =
-        pre_analysis_info_.broadcast_tree_infos.count(group) > 0;
+        pre_analysis_info_->broadcast_tree_infos.count(group) > 0;
     if (has_broadcast_tree) {
       const auto broadcast_tree =
-          pre_analysis_info_.broadcast_tree_infos.at(group);
+          pre_analysis_info_->broadcast_tree_infos.at(group);
       if (broadcast_tree->HasMultiBranch()) {
         return;  // do nothing
       }
     }
     groups.push_back(group);
   };
-  for (auto& group_info : pre_analysis_info_.group_infos) {
+  for (auto& group_info : pre_analysis_info_->group_infos) {
     EnqueueGroup(group_info.second);
   }
   // Build and trigger compilaion cache.
@@ -299,7 +307,8 @@ void FusionOpAnalysis::PreCompileGroup() {
   pir_compiler.Build(groups);
 }
 
-const cinn::common::BroadcastTree& BroadcastTreeInfo::GetBroadcastTree() const {
+const std::shared_ptr<cinn::common::BroadcastTree>&
+BroadcastTreeInfo::GetBroadcastTree() const {
   return broadcast_tree_;
 }
 
@@ -315,7 +324,7 @@ BroadcastTreeInfo::GetValueToDimExprIdx() const {
 
 bool BroadcastTreeInfo::HasMultiBranch() const {
   return broadcast_tree_
-      .Has<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>()
+      ->Has<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>();
 }
 
 void BroadcastTreeInfo::ConstructBroadcastTree(const GroupPtr& group) {
@@ -343,9 +352,10 @@ void BroadcastTreeInfo::ConstructBroadcastTree(const GroupPtr& group) {
   }
   VLOG(6) << "before constructed. broadcast-leaf: \n"
           << ToTxtString(cinn::common::BroadcastTree(all_value_dim_exprs_));
-  broadcast_tree_ = cinn::common::ConstructBroadcastTree(
-      cinn::common::BroadcastLeaf(all_value_dim_exprs_));
-  VLOG(4) << "broadcast-tree: \n" << ToTxtString(broadcast_tree_);
+  broadcast_tree_ = std::make_shared<cinn::common::BroadcastTree>(
+      cinn::common::ConstructBroadcastTree(
+          cinn::common::BroadcastLeaf(all_value_dim_exprs_)));
+  VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree_);
 }
 
 pir::Operation* CompileBroadcastTreeToConditionBlock(
@@ -366,7 +376,7 @@ pir::Operation* ProcessDyShapeGroup(
       pre_analysis_info.broadcast_tree_infos.at(group);
   auto group_inputs = GetBlockOutsideInput(group->ops);
   // has multiple branch
-  if (broadcast_tree_info.HasMultiBranch()) {
+  if (broadcast_tree_info->HasMultiBranch()) {
     std::vector<pir::Type> output_types;
     auto group_output_values = group->GetGroupOutputValues();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
@@ -380,7 +390,6 @@ pir::Operation* ProcessDyShapeGroup(
                                                 rewriter);
   } else {  // no condition block
     // compile group to jit_kernel_op
-    pir::CINNKernelInfo kernel_info = GetCINNKernelInfo(group);
     std::vector<pir::Type> output_types;
     const auto& group_output_values = group->output_values;
     for (size_t i = 0; i < group_output_values.size(); ++i) {
@@ -404,7 +413,7 @@ pir::Operation* ProcessDyShapeGroup(
       output_types.push_back(new_type);
     }
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
-        group_inputs, kernel_info, output_types);
+        group_inputs, GetJitKernelAttr(group), output_types);
     return jit_kernel_op;
   }
 }
@@ -911,7 +920,7 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
       broadcast_tree_info.GetValueToDimExprIdx();
   const auto& broadcast_tree = broadcast_tree_info.GetBroadcastTree();
   std::unordered_map<pir::Block*, GroupPtr> group_map;
-  pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
+  pir::Operation* cond_op = CreateConditionBlock(*broadcast_tree,
                                                  group,
                                                  shape_analysis,
                                                  value_to_dim_expr_idx,

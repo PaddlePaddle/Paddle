@@ -20,10 +20,12 @@
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
+#include "paddle/cinn/ir/module.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
+class CompilationTask;
 
 class GroupCompilationContext {
  public:
@@ -48,13 +50,14 @@ class CompilationTask {
       : context_(context) {}
 
   void operator()();
+  pir::CINNKernelInfo GetCINNKernelInfo();
 
+ private:
   void Lowering();
   void CodegenAndJit();
   std::unique_ptr<Instruction> BuildInstruction();
-  pir::CINNKernelInfo BuildPirCINNKernelInfo();
+  void BuildPirCINNKernelInfo(const ir::Module& module);
 
- private:
   GroupCompilationContext* context_;
 };
 

@@ -19,7 +19,7 @@
 
 namespace cinn::hlir::framework {
 
-PirCompiler::CompileResult PirCompiler::Build(
+std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::GroupPtr>& groups) {
   std::vector<pir::CINNKernelInfo> kernel_infos(groups.size());
   for (int i = 0; i < groups.size(); ++i) {
