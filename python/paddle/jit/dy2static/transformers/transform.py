@@ -92,7 +92,7 @@ class DygraphToStaticAst(BaseTransformer):
         self.visit(node)
 
         transformers = [
-            TypeHintTransformer,  # remove all typehint in gast.Name
+            TypeHintTransformer,  # remove all typehint
             RegisterHookTransformer,
             EarlyReturnTransformer,
             AttributeJstTransformer,  # Tensor.size -> Tensor.size(), it's unnecessary in PIR mode
