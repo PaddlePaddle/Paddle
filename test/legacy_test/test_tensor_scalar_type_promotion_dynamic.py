@@ -608,16 +608,10 @@ class TestTensorPowScalar(unittest.TestCase):
         # self.assertEqual(res_complex.dtype.__str__(), "paddle." + self.expected_out_dtype_with_complex)
 
 
-# pow API not support uint8, int8, complex64, complex128
-create_test_case(TestTensorPowScalar, 'bool', 'int64', 'float32', 'complex64')
+# pow API support int32, int64, float64, float32.
 create_test_case(TestTensorPowScalar, 'int32', 'int32', 'float32', 'complex64')
 create_test_case(TestTensorPowScalar, 'int64', 'int64', 'float32', 'complex64')
-create_test_case(
-    TestTensorPowScalar, 'float16', 'float16', 'float16', 'complex64'
-)
-create_test_case(
-    TestTensorPowScalar, 'bfloat16', 'bfloat16', 'bfloat16', 'complex64'
-)
+
 create_test_case(
     TestTensorPowScalar, 'float64', 'float64', 'float64', 'complex128'
 )
@@ -718,15 +712,11 @@ class TestTensorModScalar(unittest.TestCase):
         # self.assertEqual(res_complex.dtype.__str__(), "paddle." + self.expected_out_dtype_with_complex)
 
 
-# mod API not support uint8, int8, complex64, complex128
-create_test_case(TestTensorModScalar, 'bool', 'int64', 'float32', 'complex64')
+# mod API support float16, float32, float64, int32, int64
 create_test_case(TestTensorModScalar, 'int32', 'int32', 'float32', 'complex64')
 create_test_case(TestTensorModScalar, 'int64', 'int64', 'float32', 'complex64')
 create_test_case(
     TestTensorModScalar, 'float16', 'float16', 'float16', 'complex64'
-)
-create_test_case(
-    TestTensorModScalar, 'bfloat16', 'bfloat16', 'bfloat16', 'complex64'
 )
 create_test_case(
     TestTensorModScalar, 'float64', 'float64', 'float64', 'complex128'
