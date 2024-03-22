@@ -3,6 +3,17 @@
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
 # After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
+# - backward_op: straight_through_estimator_grad
+#   forward: fake_quantize_dequantize_abs_max (Tensor x, int bit_length = 8, int round_type = 0) -> Tensor(out), Tensor(out_scale)
+#   args: (Tensor out, int bit_length = 8, int round_type = 0)
+#   output: Tensor(x_grad)
+#   infer_meta:
+#     func: UnchangedInferMeta
+#     param : [out_grad]
+#   kernel:
+#     func: straight_through_estimator_grad
+#     data_type: out_grad
+
 - backward_op : add_double_grad
   forward : add_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
@@ -959,6 +970,17 @@
     func: check_model_nan_inf
     data_type: out_grad
 
+- backward_op: fake_quantize_dequantize_moving_average_abs_max_grad
+  forward: fake_quantize_dequantize_moving_average_abs_max (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, int round_type = 0, bool is_test = false) -> Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
+  args: (Tensor out, int moving_rate = 0.9, int bit_length = 8, int round_type = 0, bool is_test = false)
+  output: Tensor(out_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [out]
+  kernel:
+    func: straight_through_estimator_grad
+    data_type: out
+
 - backward_op: fused_elemwise_add_activation_grad
   forward: fused_elemwise_add_activation(Tensor x, Tensor y, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false) -> Tensor(out), Tensor(intermediate_out)
   args: (Tensor x, Tensor y, Tensor out, Tensor intermediate_out, Tensor out_grad, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false)
@@ -978,6 +1000,17 @@
   kernel:
     func: match_matrix_tensor_grad
 
+- backward_op: moving_average_abs_max_scale_grad
+  forward: moving_average_abs_max_scale (Tensor x, Tensor in_accum, Tensor in_state, float moving_rate=0.9f, bool is_test=false) -> Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
+  args: (Tensor out, int bit_length = 8, int round_type = 0)
+  output: Tensor(out_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [out]
+  kernel:
+    func: straight_through_estimator_grad
+    data_type: out_grad
+
 - backward_op: shuffle_batch_grad
   forward: shuffle_batch (Tensor x, Tensor seed, int startup_seed=0) -> Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
   args: (Tensor shuffle_idx, Tensor out_grad,int startup_seed=0)
@@ -987,17 +1020,6 @@
   kernel:
     func: shuffle_batch_grad
     data_type : out_grad
-
-- backward_op: straight_through_estimator_grad
-  forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  IntArray output_size, str data_format) -> Tensor(out)
-  args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)
-  output: Tensor(x_grad)
-  infer_meta:
-    func: UnchangedInferMeta
-    param : [x]
-  kernel:
-    func: unpool_grad
-    data_type: x
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  IntArray output_size, str data_format) -> Tensor(out)

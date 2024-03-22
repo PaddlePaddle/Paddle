@@ -1090,6 +1090,10 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_dequantize_moving_average_abs_max
+  inputs :
+    {x : X, in_scale : InScale, in_accum : InAccum, in_state : InState, moving_rate : moving_rate, bit_length : bit_length, round_type : round_type, is_test : is_test}
+  outputs :
+    {out : Out, out_scale : OutScale, out_state : OutState, out_accum : OutAccum}
   extra :
     attrs : [int round_type = 1]
 
