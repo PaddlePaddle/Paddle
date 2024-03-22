@@ -41,7 +41,7 @@ AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
     : AutoGrowthBestFitAllocator(underlying_allocator,
                                  alignment,
                                  chunk_size,
-                                 allow_free_idle_chunk,
+                                 true,
                                  extra_padding_size),
       place_(place) {}
 
@@ -58,9 +58,9 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
 
   std::lock_guard<SpinLock> guard(spinlock_);
 
-  auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
   BlockIt block_it;
   if (AutoGrowthBestFitAllocatorV2State::GetInstance().IsWarmup()) {
+    auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
     if (iter != free_blocks_.end() && iter->second->size_ >= unaligned_size &&
         iter->second->size_ <= size) {
       block_it = iter->second;
@@ -103,6 +103,8 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
       FreeIdleChunks();
       is_first_switch_to_regular_ = false;
     }
+    auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
+
     if (iter != free_blocks_.end()) {
       block_it = iter->second;
       free_blocks_.erase(iter);
