@@ -327,6 +327,9 @@ class Adam(Optimizer):
                 if not isinstance(self._beta2, Variable)
                 else self._beta2.item(0)
             )
+            found_inf = (
+                self._get_auxiliary_var('found_inf') if in_pir_mode() else None
+            )
 
             _, _, _, _, _, _ = _C_ops.adam_(
                 param_and_grad[0],
@@ -337,7 +340,7 @@ class Adam(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                None,
+                found_inf,
                 _beta1,
                 _beta2,
                 self._epsilon,

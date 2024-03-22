@@ -23,6 +23,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/pass/analysis_manager.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace pir {
 
@@ -200,12 +201,16 @@ class IR_API PatternRewritePass : public Pass {
  protected:
   virtual RewritePatternSet InitializePatterns(IrContext* context) = 0;
 
+  virtual GreedyRewriteConfig InitializeConfig();
+
   bool Initialize(IrContext* context) final;
 
   void Run(Operation* op) override;
 
  private:
   FrozenRewritePatternSet patterns_;
+
+  GreedyRewriteConfig config_;
 };
 
 }  // namespace pir
