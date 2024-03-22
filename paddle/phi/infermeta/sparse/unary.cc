@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/sparse/unary.h"
 
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
 namespace phi {
@@ -33,6 +34,12 @@ void ValuesInferMeta(const MetaTensor& x, MetaTensor* out) {
   const auto& x_dims = x.dims();
   out->set_dims({-1, x_dims[x_dims.size() - 1]});
   out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
+void SparseC2RInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype::ToReal(x.dtype()));
   out->set_layout(x.layout());
 }
 
