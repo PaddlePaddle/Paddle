@@ -239,10 +239,10 @@ class ShardingGradView:
         self._param.flatten_()
 
         paddle.assign(
+            self._param,
             self._param_buffer._slice(
                 self._index, self._index + self._param._numel()
             ),
-            self._param,
         )
 
         self._param.get_tensor()._set_dims(param_shape)
