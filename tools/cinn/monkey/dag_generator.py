@@ -4,6 +4,7 @@ from typing import List
 from collections import namedtuple
 import functools
 import random
+from .hash_combine import HashCombine
 
 @dataclass
 class DAGGenTypePickProbability:
@@ -19,6 +20,7 @@ class DAGGenTypePickProbability:
 
 @dataclass
 class DAGGenRequirement:
+    min_num_sources: int = 1
     max_width: int
     max_instructions: int
     dag_tag: str
@@ -26,6 +28,9 @@ class DAGGenRequirement:
 
 @dataclass
 class Nope:
+
+    def GetHashValue(self):
+        return int(id(Nope))
 
     def IsValidSourceTensorIndex(
         self,
@@ -66,6 +71,9 @@ class Nope:
 @dataclass
 class AddSinkTensor:
     
+    def GetHashValue(self):
+        return int(id(AddSinkTensor))
+
     def IsValidSourceTensorIndex(
         self,
         num_core_source_tensors: int,
@@ -106,6 +114,12 @@ class AddSinkTensor:
 class AddUnaryOp:
     source_tensor_index: int
     dag_tag: str
+
+    def GetHashValue(self):
+        hash_value = int(id(AddUnaryOp))
+        hash_value = HashCombine(hash_value, hash(self.source_tensor_index))
+        hash_value = HashCombine(hash_value, hash(self.dag_tag))
+        return hash_value
 
     def IsValidSourceTensorIndex(
         self,
@@ -156,6 +170,12 @@ class AddUnaryOp:
 class AddBinaryOp:
     source_tensor_index: int
     dag_tag: str
+
+    def GetHashValue(self):
+        hash_value = int(id(AddBinaryOp))
+        hash_value = HashCombine(hash_value, hash(self.source_tensor_index))
+        hash_value = HashCombine(hash_value, hash(self.dag_tag))
+        return hash_value
 
     def IsValidSourceTensorIndex(
         self,
@@ -209,6 +229,12 @@ class InsertBinaryOp:
     source_tensor_index: int
     dag_tag: str
 
+    def GetHashValue(self):
+        hash_value = int(id(InsertBinaryOp))
+        hash_value = HashCombine(hash_value, hash(self.source_tensor_index))
+        hash_value = HashCombine(hash_value, hash(self.dag_tag))
+        return hash_value
+
     def IsValidSourceTensorIndex(
         self,
         num_core_source_tensors: int,
@@ -260,6 +286,12 @@ class InsertBinaryOp:
 class AddBinaryClone:
     lhs_source_tensor_index: int
     rhs_source_tensor_index: int
+
+    def GetHashValue(self):
+        hash_value = int(id(AddBinaryClone))
+        hash_value = HashCombine(hash_value, hash(self.lhs_source_tensor_index))
+        hash_value = HashCombine(hash_value, hash(self.rhs_source_tensor_index))
+        return hash_value
 
     def IsValidSourceTensorIndex(
         self,
@@ -315,6 +347,11 @@ class AddBinaryClone:
 class AddSourceOp:
     source_tensor_index: int
 
+    def GetHashValue(self):
+        hash_value = int(id(AddBinaryClone))
+        hash_value = HashCombine(hash_value, hash(self.source_tensor_index))
+        return hash_value
+
     def IsValidSourceTensorIndex(
         self,
         num_core_source_tensors: int,
@@ -358,7 +395,10 @@ class AddSourceOp:
         num_source_tensors: int,
         requirement: DAGGenRequirement
     ) -> bool:
-        return num_core_source_tensors < num_source_tensors
+        return (
+            num_core_source_tensors < num_source_tensors
+            and num_source_tensors > requirement.min_num_sources
+        )
 
 # DAGGenInstruction = ( Nope
 #                     | AddSinkTensor
@@ -464,9 +504,16 @@ class ConstDAGGenInstructions:
     ):
         self.instructions = instructions[:]
         self.current_num_source_tensors = 0
-    
+
+    def Top(self):
+        if len(self.instructions) == 0:
+            return None
+        return self.instructions[0]
+
     def TryPop(self):
         if len(self.instructions) == 0:
+            if self.current_num_source_tensors > 0:
+                self.current_num_source_tensors = 0
             return
         top = self.instructions[0]
         self.current_num_source_tensors += type(top).GetDeltaNumSourceTensors()
@@ -501,6 +548,7 @@ class DAGGenContext:
         return self.result_dag_gen_instructions.instructions
 
     def GenerateOneInstruction(self, Converter):
+        ctx.result_dag_gen_instructions.Push(self.core_dag_gen_instructions.Top())
         self.core_dag_gen_instructions.TryPop()
         num_core_source_tensors = (
             self.core_dag_gen_instructions.current_num_source_tensors

@@ -12,7 +12,6 @@ DAGDimsEq1GenInstruction = namedtuple("DAGDimsEq1GenInstruction", ["dag", "dims_
 class DimsEq1InferContext:
     def __init__(self):
         self.current_source_tensor_dim_eq1 = []
-        self.current_num_source_tensors = 0
 
 
     def InferDimsEq1Signature(
@@ -22,14 +21,6 @@ class DimsEq1InferContext:
         dag_gen_class = type(dag_dims_eq1_gen_instruction.dag)
         cls = kDAGGenClassToDAGDimsEq1GenClassMap[dag_gen_class]
         cls.InferDimsEq1Signature(dag_dims_eq1_gen_instruction, self)
-        self._InferAndCheckCurrentNumSourceTensors(dag_gen_class)
-
-    def _InferAndCheckCurrentNumSourceTensors(self, dag_gen_class):
-        self.current_num_source_tensors += dag_gen_class.GetDeltaNumSourceTensors()
-        assert (
-            len(self.current_source_tensor_dim_eq1)
-            == self.current_num_source_tensors
-        )
 
 
 @dataclass
@@ -205,6 +196,7 @@ class DimsEq1SignatureInferer:
         dag_gen_instructions: List["DAGGenInstruction"],
         dims_eq1_gen_instructions: List["DimsEq1GenInstruction"]
     ) -> DList["DAGGenInstruction", "DimsEq1Signature"]:
+        assert len(dag_gen_instructions) == len(dims_eq1_gen_instructions)
         infer_ctx = DimsEq1InferContext()
         def MakeDimsEq1Signature(dag_dims_eq1_gen_instruction):
             dag_gen_class = type(dag_dims_eq1_gen_instruction.dag)

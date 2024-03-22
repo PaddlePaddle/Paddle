@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import .dag_generator as dag_generator
 import .dims_eq1_generator as dims_eq1_generator
+import .dims_eq1_signature_inferer as DimsEq1SignatureInferer
 from .pick_weight import PickWeight
 from typing import List, Generator
 from collections import namedtuple
@@ -59,9 +60,9 @@ class AddUnaryOp:
                     source_tensor_dim_eq1=middle_dims_eq1
                 )
             )
-        yield DAGDimsEq1GenInstruction(
+        yield (
             dag_gen_instruction,
-            dims_eq1=dims_eq1_generator.AddUnaryOp(
+            dims_eq1_generator.AddUnaryOp(
                 source_tensor_dim_eq1=input_dims_eq1
             )
         )
@@ -85,12 +86,12 @@ class AddBinaryOp:
             for x, y in zip(lhs_input_dims_eq1, rhs_input_dims_eq1)
         ]
         if broadcast_dims_eq1 != output_dims_eq1:
-            yield DAGDimsEq1GenInstruction(
-                dag=dag_generator.AddUnaryOp(
+            yield (
+                dag_generator.AddUnaryOp(
                     source_tensor_index=output_idx,
                     dag_tag=dims_eq1_signature.dag_tag
                 ),
-                dims_eq1=dims_eq1_generator.AddUnaryOp(
+                dims_eq1_generator.AddUnaryOp(
                     source_tensor_dim_eq1=broadcast_dims_eq1
                 )
             )
@@ -196,25 +197,51 @@ class DAGDimsEq1Patcher:
 
     def Patch(
         self,
+        dag_gen_instruction: List["DAGGenInstruction"],
+        dims_eq1_gen_instructions: List["DimsEq1GenInstruction"]
+    ) -> Tuple[List["DAGGenInstruction"], List["DimsEq1GenInstruction"]]:
+        # first patching
+        guarded_dims_eq1_sigs = DimsEq1SignatureInferer(
+            dag_gen_instruction, dims_eq1_gen_instructions
+        )
+        dag_gen_instruction, dims_eq1_gen_instructions = self.PatchOnce(
+            guarded_dims_eq1_sigs
+        )
+        # second patching
+        guarded_dims_eq1_sigs = DimsEq1SignatureInferer(
+            dag_gen_instruction, dims_eq1_gen_instructions
+        )
+        dag_gen_instruction, dims_eq1_gen_instructions = self.PatchOnce(
+            guarded_dims_eq1_sigs
+        )
+        # thrid patching
+        guarded_dims_eq1_sigs = DimsEq1SignatureInferer(
+            dag_gen_instruction, dims_eq1_gen_instructions
+        )
+        ret_dag_gen_instruction, ret_dims_eq1_gen_instructions = self.PatchOnce(
+            guarded_dims_eq1_sigs
+        )
+        assert len(dag_gen_instruction) == len(ret_dag_gen_instruction)
+        assert len(dims_eq1_gen_instructions) == len(ret_dims_eq1_gen_instructions)
+        return ret_dag_gen_instruction, ret_dims_eq1_gen_instructions
+
+
+
+    def PatchOnce(
+        self,
         guarded_dims_eq1_sigs: DList["DAGGenInstruction", "DimsEq1Signature"]
-    ) -> List[Tuple["DAGGenInstruction", "DimsEq1GenInstruction"]]:
+    ) -> Tuple[List["DAGGenInstruction"], List["DimsEq1GenInstruction"]]:
         def CreateDAGDimsEq1GenInstructions(dag_instr, dims_eq1_sig):
             cls = kDAGGenClassToDAGDimsEq1GenClassMap[type(dag_instr.dag)]
             yield from cls.GetPatchedDAGDimsEq1GenInstruction(
                 dag_instr, dims_eq1_sig,
             )
 
-        return [
+        pairs = [
             pair
             for pair in CreateDAGDimsEq1GenInstructions(*x)
             for x in guarded_dims_eq1_sigs.Unguard(
                 lambda key: key.GetHashValue()
             )
         ]
-
-def _IsLhsGreaterThanRhs(lhs: List[bool], rhs:  List[bool]):
-    assert len(lhs) == len(rhs)
-    for i in range(len(lhs)):
-        if not (lhs[i] > rhs[i]):
-            return False
-    return True
+        return [x for x,_ in pairs], [y for _,y for pairs]
