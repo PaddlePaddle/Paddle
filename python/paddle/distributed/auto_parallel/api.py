@@ -1025,8 +1025,8 @@ class ShardingStage2(_ShardingStageBase):
             for _ in range(len(self._mesh.shape)):
                 placements.append(dist.Replicate())
             param._to_dist_(placements, self._mesh)
-
-        param.register_hook(ShardingStage2._grad_hook)
+        if param.is_dist():
+            param.register_hook(ShardingStage2._grad_hook)
 
 
 class ShardingStage3(_ShardingStageBase):
@@ -1076,13 +1076,15 @@ class ShardingStage3(_ShardingStageBase):
             for _ in range(len(self._mesh.shape)):
                 placements.append(dist.Replicate())
             param._to_dist_(placements, self._mesh)
-
-        new_placements = get_placement_with_sharding(
-            param, self._sharding_mesh_axis
-        )
-        shard_param = dist.reshard(param, param.process_mesh, new_placements)
-        # change the holder of param to new shard_param
-        param.get_tensor()._share_data_with(shard_param.get_tensor())
+        if param.is_dist():
+            new_placements = get_placement_with_sharding(
+                param, self._sharding_mesh_axis
+            )
+            shard_param = dist.reshard(
+                param, param.process_mesh, new_placements
+            )
+            # change the holder of param to new shard_param
+            param.get_tensor()._share_data_with(shard_param.get_tensor())
 
     def _unshard_parameter(self, param):
         new_placements = param.placements
