@@ -741,10 +741,14 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             [0.48646951, 0.00815189, 3.74022293])
             >>> # doctest: -SKIP
     """
-    if not in_dynamic_or_pir_mode():
-        check_type(mean, 'mean', (int, float, Variable), 'normal')
-        check_type(std, 'std', (int, float, Variable), 'normal')
-        if isinstance(mean, Variable):
+    if not in_dynamic_mode():
+        check_type(
+            mean, 'mean', (int, float, Variable, paddle.pir.Value), 'normal'
+        )
+        check_type(
+            std, 'std', (int, float, Variable, paddle.pir.Value), 'normal'
+        )
+        if isinstance(mean, (Variable, paddle.pir.Value)):
             check_dtype(
                 mean.dtype,
                 'mean',
@@ -752,7 +756,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
                 'normal',
                 "If mean is Tensor, it's data type only support float32, float64.",
             )
-        if isinstance(std, Variable):
+        if isinstance(std, (Variable, paddle.pir.Value)):
             check_dtype(
                 std.dtype,
                 'std',
@@ -763,8 +767,8 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         if shape is not None:
             check_shape(shape, 'normal')
 
-    if isinstance(mean, Variable):
-        if isinstance(std, Variable):
+    if isinstance(mean, (Variable, paddle.pir.Value)):
+        if isinstance(std, (Variable, paddle.pir.Value)):
             if std.dtype != mean.dtype:
                 std = paddle.cast(std, mean.dtype)
             mean_shape = paddle.shape(mean)
@@ -772,7 +776,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         else:
             std = float(std)
         out = standard_normal(paddle.shape(mean), mean.dtype, name)
-    elif isinstance(std, Variable):
+    elif isinstance(std, (Variable, paddle.pir.Value)):
         mean = float(mean)
         out = standard_normal(paddle.shape(std), std.dtype, name)
     else:

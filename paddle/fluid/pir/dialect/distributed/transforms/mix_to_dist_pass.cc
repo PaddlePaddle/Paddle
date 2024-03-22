@@ -34,6 +34,8 @@
 
 using paddle::dialect::DistDenseTensorType;
 
+COMMON_DECLARE_bool(print_ir);
+
 namespace paddle {
 namespace dialect {
 
@@ -47,7 +49,7 @@ void ProcessBlock(pir::Block* block) {
 
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
-    VLOG(0) << "main loop over op name " << op_item->name();
+    VLOG(6) << "mix_to_dist main loop over op name " << op_item->name();
 
     if (paddle::dialect::IsShardTensorOp(op_item)) {
       pir::Value shard_operand_value = op_item->operand_source(0);
@@ -56,7 +58,6 @@ void ProcessBlock(pir::Block* block) {
           shard_operand_value.defining_op();
       std::string define_op_name = shard_operand_define_op->name();
 
-      VLOG(0) << "here1";
       // TODO(2024-Q2) Support more paddle op
       if (define_op_name != "builtin.parameter" &&
           define_op_name != "pd_op.data") {
@@ -64,7 +65,7 @@ void ProcessBlock(pir::Block* block) {
             "op [%s] is not Supported by shard_tensor op in pir mode.",
             define_op_name));
       }
-      VLOG(0) << "here2";
+
       // TODO(2024-Q2) Support shard_tensor is called after tensor has been
       // used.
       if (shard_operand_value.use_count() != 1) {
@@ -74,37 +75,22 @@ void ProcessBlock(pir::Block* block) {
             "not Supported in right now.",
             shard_operand_value.use_count()));
       }
-      VLOG(0) << "here3";
       shard_operand_value.set_type(shard_result_value.type());
-      VLOG(0) << "here4";
       shard_result_value.ReplaceAllUsesWith(shard_operand_value);
-      VLOG(0) << "here5";
-      // OperationDistAttribute op_dist_attr =
-      //     op_item->attribute(kAttrOpDistAttr)
-      //         .dyn_cast<OperationDistAttribute>();
-      // VLOG(0) << "here6";
-      // VLOG(0) << "here6.1";
-      // VLOG(0) << "here6.2";
-      // OperationDistAttribute new_op_dist_attr =
-      //     OperationDistAttribute::get(pir::IrContext::Instance(),
-      //                                 op_dist_attr.process_mesh_attr(),
-      //                                 op_dist_attr.operand_dist_attrs(),
-      //                                 op_dist_attr.result_dist_attrs());
-      VLOG(0) << "here7";
+
       shard_operand_define_op->set_attribute(
           kAttrOpDistAttr, op_item->attribute(kAttrOpDistAttr));
-      VLOG(0) << "here8";
       deleted_ops.push_back(op_item);
     }
 
     // TODO(2024-Q2) Handle other shard annotation op in future.
   }
-  VLOG(0) << "here8";
+
   for (auto* op : deleted_ops) {
     // TODO(2024-Q2) Support control flow / region
+    VLOG(6) << "mix_to_dist pass delete op [" << op->name() << "].";
     op->Erase();
   }
-  VLOG(0) << "here9";
 }
 
 /* Verification:
@@ -134,15 +120,13 @@ void VerifyBlock(pir::Block* block) {
                             i,
                             op_item->name()));
     }
-
-    VLOG(0) << "verifying op name " << op_item->name();
   }
 }
 
 std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog) {
-  // if (FLAGS_print_ir) {
-  std::cout << "IR before MixToDist Pass = " << *prog << std::endl;
-  // }
+  if (FLAGS_print_ir) {
+    std::cout << "IR before MixToDist Pass = " << *prog << std::endl;
+  }
 
   pir::IrMapping mapper;
   auto new_prog = prog->Clone(mapper);
@@ -154,9 +138,9 @@ std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog) {
   ProcessBlock(new_prog->block());
   VerifyBlock(new_prog->block());
 
-  // if (FLAGS_print_ir) {
-  std::cout << "IR after MixToDist Pass = " << *new_prog << std::endl;
-  // }
+  if (FLAGS_print_ir) {
+    std::cout << "IR after MixToDist Pass = " << *new_prog << std::endl;
+  }
 
   return new_prog;
 }
