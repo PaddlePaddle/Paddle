@@ -16,6 +16,7 @@
 #include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
@@ -31,23 +32,14 @@ class GroupCompilationContext {
 
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
   std::string PrintPredicate2Funcs() const;
-  void* FuncPtr();
-  std::shared_ptr<backends::Compiler> BackendCompiler();
 
  private:
   friend class CompilationTask;
-
   const Target& target_;
   const pir::GroupPtr& group_;
-
-  size_t func_size_ = 0;
   std::vector<ir::SymbolicPredicate> predicates_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
   ir::LoweredFunc infer_shape_lowered_func_;
-  std::string host_func_name_;
-  std::string host_code_;
-  std::vector<std::string> device_code_;
-  std::shared_ptr<backends::Compiler> backend_compiler_;
 };
 
 class CompilationTask {
