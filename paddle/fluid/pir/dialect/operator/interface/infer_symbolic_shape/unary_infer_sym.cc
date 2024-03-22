@@ -655,7 +655,7 @@ bool SplitWithNumOpInferSymbolicShape(
     std::vector<symbol::DimExpr> out_s_d;
     for (size_t i = 0; i < x_s_or_d.shape().size(); ++i) {
       const auto &sym_dim =
-          axis == static_cast<size_t>(i) ? axis_shape : x_s_or_d.shape()[i];
+          axis == static_cast<int64_t>(i) ? axis_shape : x_s_or_d.shape()[i];
       out_s_d.push_back(sym_dim);
     }
     return symbol::TensorShapeOrDataDimExprs(out_s_d);
