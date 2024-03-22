@@ -17,6 +17,10 @@ exclude = [
 line-length = 80
 target-version = "py38"
 
+[tool.ruff.format]
+# Prevent change to double quotes by some users use ruff format
+quote-style = "preserve"
+
 [tool.ruff.lint]
 select = [
     # Pycodestyle
@@ -32,12 +36,16 @@ select = [
     # Comprehensions
     "C4",
 
+    # Debugger
+    "T100",
+
     # Pyupgrade
     "UP",
 
     # NumPy-specific rules
     "NPY001",
     "NPY003",
+    "NPY201",
 
     # Bugbear
     "B002",
@@ -74,6 +82,9 @@ select = [
 
     # Pygrep-hooks
     "PGH004",
+
+    # Ruff-specific rules
+    "RUF100",
 ]
 unfixable = [
     "NPY001"
@@ -108,14 +119,11 @@ combine-as-imports = true
 known-first-party = ["paddle"]
 
 [tool.ruff.lint.per-file-ignores]
-# These files need tabs for testing.
-"test/dygraph_to_static/test_legacy_error.py" = ["E101", "W191"]
 # Ignore compare with True in sot unittest
 "test/sot/test_dup_top.py" = ["E712"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
-"python/paddle/static/amp/decorator.py" = ["F821"]
 # Ignore version check in setup.py
 "setup.py" = ["UP036"]
 # Ignore unnecessary comprehension in dy2st unittest test_loop
@@ -123,24 +131,7 @@ known-first-party = ["paddle"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
 
-# temp ignore unused imports in all distributed files
-"python/paddle/distributed/transpiler/__init__.py" = ["F401"]
-"python/paddle/incubate/distributed/fleet/parameter_server/distribute_transpiler/__init__.py" = ["F401", "I001"]
-"python/paddle/distributed/fleet/runtime/__init__.py" = ["F401"]
-"python/paddle/distributed/transpiler/details/__init__.py" = ["F401", "I001"]
-"python/paddle/incubate/distributed/models/moe/gate/__init__.py" = ["F401", "I001"]
-"python/paddle/incubate/distributed/models/moe/__init__.py" = ["F401", "I001"]
-"python/paddle/incubate/distributed/utils/io/__init__.py" = ["F401", "I001"]
-"python/paddle/distributed/fleet/elastic/__init__.py" = ["F401", "I001"]
 
 # temp ignore isort
-"python/paddle/amp/__init__.py" = ["I001"]
 "python/paddle/distributed/__init__.py" = ["I001"]
-"python/paddle/distributed/communication/stream/__init__.py" = ["I001"]
-"python/paddle/distributed/launch/context/__init__.py" = ["I001"]
-"python/paddle/distributed/launch/controllers/__init__.py" = ["I001"]
 "python/paddle/distributed/passes/__init__.py" = ["I001"]
-"python/paddle/distributed/rpc/__init__.py" = ["I001"]
-"python/paddle/distribution/__init__.py" = ["I001"]
-"python/paddle/incubate/distributed/fleet/__init__.py" = ["I001"]
-"python/paddle/incubate/distributed/fleet/parameter_server/pslib/__init__.py" = ["I001"]

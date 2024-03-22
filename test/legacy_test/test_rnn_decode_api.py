@@ -177,8 +177,7 @@ class SeqPGAgent:
             base.Program() if startup_program is None else startup_program
         )
         if seed is not None:
-            self.main_program.random_seed = seed
-            self.startup_program.random_seed = seed
+            paddle.seed(seed)
         self.build_program(model_cls, alg_cls, model_hparams, alg_hparams)
         self.executor = executor
 

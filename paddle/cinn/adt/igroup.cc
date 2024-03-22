@@ -59,9 +59,8 @@ List<LoopSize> MakeLoopSizeForTensorImpl(const adapter::Tensor& tensor) {
 
 List<LoopSize> MakeLoopSizeForTensorImpl(const adapter::DynamicTensor& tensor) {
   List<LoopSize> ret{};
-  for (const std::optional<DimExpr>& dim : tensor.GetShape()) {
-    CHECK(dim.has_value());
-    ret->emplace_back(dim.value());
+  for (const DimExpr& dim : tensor.GetShape()) {
+    ret->emplace_back(dim);
   }
   return ret;
 }
@@ -103,10 +102,10 @@ List<Iterator> IGroup::GetIndexIterators(const Index& index) const {
     } else if (arg_pos.Has<Undefined>()) {
       // do nothing
     } else {
-      LOG(FATAL) << "Dead code";
+      PADDLE_THROW(phi::errors::Fatal("Dead code"));
     }
   }
-  LOG(FATAL) << "Can not find anchor iterators";
+  PADDLE_THROW(phi::errors::Fatal("Can not find anchor iterators"));
 }
 
 }  // namespace cinn::adt

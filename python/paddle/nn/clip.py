@@ -18,6 +18,7 @@ from sqlite3 import NotSupportedError
 
 import paddle
 import paddle.autograd as imperative_base
+import paddle.distributed as dist
 from paddle import _C_ops
 from paddle.base import core, framework, unique_name
 from paddle.base.data_feeder import check_variable_and_dtype
@@ -67,7 +68,7 @@ def clip_by_norm(x, max_norm, name=None):
              [0.50000000, 0.50000000]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.clip_by_norm(x, max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
@@ -391,7 +392,7 @@ class ClipGradByValue(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradByValue`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Args:
         max (float): The maximum value to clip by.
@@ -498,7 +499,7 @@ class ClipGradByNorm(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradByNorm`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Args:
         clip_norm(float): The maximum norm value.
@@ -527,8 +528,7 @@ class ClipGradByNorm(ClipGradBase):
     def __str__(self):
         return "Gradient Clip By Norm, clip_norm=%f" % self.clip_norm
 
-    @imperative_base.no_grad()
-    def _dygraph_clip(self, params_grads):
+    def _clip_gradients(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
             if g is None:
@@ -539,6 +539,13 @@ class ClipGradByNorm(ClipGradBase):
             new_grad = clip_by_norm(x=g, max_norm=self.clip_norm)
             params_and_grads.append((p, new_grad))
         return params_and_grads
+
+    @imperative_base.no_grad()
+    def _dygraph_clip(self, params_grads):
+        return self._clip_gradients(params_grads)
+
+    def _pir_clip(self, params_grads):
+        return self._clip_gradients(params_grads)
 
     def _static_clip(self, params_grads):
         params_and_grads = []
@@ -623,7 +630,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Args:
         clip_norm (float): The maximum norm value.
@@ -671,6 +678,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
+        if len(params_grads) > 0 and len(params_grads[0]) > 0:
+            src_mesh = params_grads[0][0].process_mesh
+        else:
+            src_mesh = None
+
         for p, g in params_grads:
             if g is None:
                 continue
@@ -687,12 +699,20 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = get_tensor_from_selected_rows(merge_grad)
 
             sum_square = _squared_l2_norm(merge_grad)
+
+            # if the gradient mesh is not equal to src mesh
+            # do reshard to get the result of squared_l2 from other pp stage mesh
+            if src_mesh is not None and g.process_mesh != src_mesh:
+                sum_square = dist.reshard(
+                    sum_square, src_mesh, sum_square.placements
+                )
+
             if (
-                sum_square.dtype == core.VarDesc.VarType.FP16
-                or sum_square.dtype == core.VarDesc.VarType.BF16
+                sum_square.dtype == paddle.float16
+                or sum_square.dtype == paddle.bfloat16
             ):
                 sum_square_list_fp16.append(sum_square)
-            elif sum_square.dtype == core.VarDesc.VarType.FP32:
+            elif sum_square.dtype == paddle.float32:
                 sum_square_list_fp32.append(sum_square)
             else:
                 sum_square_list.append(sum_square)
@@ -723,10 +743,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
         if len(sum_square_list) > 0:
             global_norm_var_fp64 = async_add_n(sum_square_list)
             global_norm_var.append(global_norm_var_fp64)
+
         global_norm_var = async_add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
-            shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
+            shape=[], dtype=sum_dtype, fill_value=self.clip_norm
         )
 
         need_clip = False
@@ -754,6 +775,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if clip_var.dtype != g.dtype
                     else clip_var
                 )
+                if clip_input.process_mesh != g.process_mesh:
+                    clip_input = paddle.distributed.reshard(
+                        clip_input, g.process_mesh, clip_input.placements
+                    )
                 new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:

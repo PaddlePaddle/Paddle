@@ -66,17 +66,17 @@ class ParallelMode:
 
     DataParallel = "auto_parallel/data_parallel"
     TensorParallel = "auto_parallel/tensor_parallel"
-    PipelineParalel = "auto_parallel/pipeline_paralel"
+    PipelineParallel = "auto_parallel/pipeline_parallel"
     MoEParallel = "auto_parallel/moe_parallel"
 
 
 class SyncMode:
     """
-    the synchorization mode for communication or auxiliary operator
+    the synchronization mode for communication or auxiliary operator
     """
 
-    AmpFlagSync = "auto_parallel/amp_flag_synchorization"
-    GlobalNormSync = "auto_parallel/global_norm_synchorization"
+    AmpFlagSync = "auto_parallel/amp_flag_synchronization"
+    GlobalNormSync = "auto_parallel/global_norm_synchronization"
 
 
 def is_elementwise_op(op_type):
@@ -137,7 +137,7 @@ class DistributedOperatorImplContainer(abc.ABC):
         return compatible_impls
 
     # (NOTE) Currently, both DistributedOperatorImplContainer and DistributedOperatorImpl have update_dims_mapping method.
-    # But this method is supposed to be maitained by DistributedOperatorImplContainer, and we are ongoing adding method
+    # But this method is supposed to be maintained by DistributedOperatorImplContainer, and we are ongoing adding method
     # to DistributedOperatorImplContainer and removing those in DistributedOperatorImpl.
     # @abc.abstractmethod
     def update_dims_mapping(self, dist_op):
@@ -369,7 +369,7 @@ def is_parameter_related(varname, block, dist_context=None):
 
 def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
     var_shape = block._var_recursive(src_var.name).shape
-    var_topoloy = src_var_dist_attr.process_mesh.shape
+    var_topology = src_var_dist_attr.process_mesh.shape
     var_dims_mapping = src_var_dist_attr.dims_mapping
 
     complete_shape = []
@@ -377,7 +377,7 @@ def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
         if var_dims_mapping[idx] == -1:
             complete_shape.append(shape)
         else:
-            new_shape = shape * var_topoloy[var_dims_mapping[idx]]
+            new_shape = shape * var_topology[var_dims_mapping[idx]]
             complete_shape.append(new_shape)
 
     exact_shape = []
@@ -488,7 +488,7 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
 def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
     """
-    insert the allreudce and scale ops for gradients of model
+    insert the allreduce and scale ops for gradients of model
     parameters for operator in data parallelism.
 
     Args:
@@ -503,6 +503,19 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
     dist_op_context = dist_ctx.dist_op_context
     main_block = dist_op_context.work_block
 
+    allreduce_type = "c_allreduce_sum"
+    need_scale = dist_ctx.gradient_scale
+    scale_using_allreduce_avg = dist_ctx.gradient_scale_using_allreduce_avg
+
+    # With nccl_version > 2.10.00, we can use c_allreduce_avg to replace c_allreduce_sum and eliminate the scale op.
+    if (
+        need_scale
+        and scale_using_allreduce_avg
+        and int(paddle.version.nccl()) > 21000
+    ):
+        allreduce_type = "c_allreduce_avg"
+        need_scale = False
+
     for group in groups:
         group_size = len(group.ranks)
 
@@ -510,7 +523,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
             added_ops = []
             grad_var = main_block.var(var_name)
             allreduce_op = main_block.append_op(
-                type='c_allreduce_sum',
+                type=allreduce_type,
                 inputs={'X': [grad_var]},
                 outputs={'Out': [grad_var]},
                 attrs={
@@ -524,7 +537,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
             )
             added_ops.append(allreduce_op)
 
-            if dist_ctx.gradient_scale:
+            if need_scale:
                 scale_op = main_block.append_op(
                     type='scale',
                     inputs={'X': grad_var},
@@ -557,7 +570,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
 
 def get_partial_groups(dist_ctx, op, out_grad_names, rank):
     """
-    deduce the partial comminication group for current operator output vars.
+    deduce the partial communication group for current operator output vars.
 
     Args:
         dist_ctx (DistributedContext): dist context.
@@ -608,7 +621,7 @@ def gradient_synchronization(
     dist_ctx, op, act_grad_names, out_grad_names, rank
 ):
     """
-    conduct the allreudce and scaling for gradients of model
+    conduct the allreduce and scaling for gradients of model
     parameters for operator in parallelism train.
 
     Args:
@@ -654,7 +667,13 @@ def is_data_parallel_scale_op(op):
 
 def is_data_parallel_reduce_op(op):
     return (
-        op.type in ["c_reduce_sum", "c_allreduce_sum"]
+        op.type
+        in [
+            "c_allreduce_sum",
+            "c_allreduce_avg",
+            "c_reduce_sum",
+            "c_reduce_avg",
+        ]
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )
@@ -727,12 +746,12 @@ def update_op_dims_mapping(
     changed = False
     assert len(input_arg_names) == len(
         infered_input_dims_mappings
-    ), "dims mapping is NOT Match, infered [{}], orignal: [{}]; dist op: [{}]".format(
+    ), "dims mapping is NOT Match, infered [{}], original: [{}]; dist op: [{}]".format(
         len(infered_input_dims_mappings), len(input_arg_names), str(dist_op)
     )
     assert len(output_arg_names) == len(
         infered_output_dims_mappings
-    ), "dims mapping is NOT Match, infered [{}], orignal: [{}]; dist op: [{}]".format(
+    ), "dims mapping is NOT Match, infered [{}], original: [{}]; dist op: [{}]".format(
         len(infered_output_dims_mappings), len(output_arg_names), str(dist_op)
     )
 

@@ -15,6 +15,7 @@
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
+from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
@@ -225,7 +226,7 @@ def flash_attention(
     sdp_func_name = _select_sdp(head_dim)
 
     if sdp_func_name == "flash_attn":
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
                 query,
                 key,
@@ -505,7 +506,7 @@ def scaled_dot_product_attention(
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
         return out
     else:
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             fixed_seed_offset = (None,)
             return_softmax = False
             rng_name = ""

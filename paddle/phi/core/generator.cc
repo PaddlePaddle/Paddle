@@ -47,7 +47,7 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
   });
   if (device_id < 0) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("xpu device id shoule be greater than 0"));
+        phi::errors::InvalidArgument("xpu device id should be greater than 0"));
   }
 
   std::call_once(xpu_device_flags[device_id], [device_id]() {
@@ -78,7 +78,7 @@ const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
   });
   if (device_id < 0) {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "cuda device id shoule be greater than 0"));
+        "cuda device id should be greater than 0"));
   }
 
   std::call_once(cuda_device_flags[device_id], [device_id]() {
@@ -186,7 +186,7 @@ inline void Generator::print_state_info() {
 Generator::Generator() {
   auto seed = GetRandomSeed();
   current_index = states_.size();
-  states_.emplace_back(seed);
+  states_.emplace_back(-1, seed);
   print_state_info();
 }
 
@@ -203,12 +203,12 @@ Generator::Generator(uint64_t seed, int64_t device_id) {
   print_state_info();
 }
 
-phi::Generator::GeneratorState Generator::GetState() { return state().clone(); }
+phi::Generator::GeneratorState Generator::GetState() { return state(); }
 
 void Generator::SetState(const phi::Generator::GeneratorState& state) {
   std::lock_guard<std::mutex> lock(mu_);
   if (current_index < states_.size())
-    states_[current_index] = state.clone();
+    states_[current_index] = state;
   else
     PADDLE_THROW(phi::errors::NotFound("Generator index is not found"));
   print_state_info();
@@ -271,7 +271,8 @@ uint64_t Generator::Random64() {
 }
 
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(uint64_t increment) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   std::lock_guard<std::mutex> lock(mu_);
   uint64_t offset = state().offset;
   state().offset = offset + increment;

@@ -2,7 +2,7 @@
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
-Indicesou may obtain a copy of the License at
+You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
@@ -54,7 +54,7 @@ class FusedAttention {
   void ComputeBackward();
 
  private:
-  FusedMHA<T>* fmha;  // fused multihead attention
+  FusedMHA<T>* fmha;  // fused multi-head attention
 
   int batch_size;
   int max_seq_len;

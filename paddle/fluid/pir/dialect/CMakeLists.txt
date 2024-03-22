@@ -1,5 +1,5 @@
 set(PD_DIALECT_SOURCE_DIR
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir")
+    "${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir")
 
 # Generate pd_op_dialect files defining op using op_gen_file
 set(op_gen_parsed_yaml_file
@@ -12,25 +12,26 @@ set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 
 # YAML files for defining operators
 set(op_fwd_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
 )
 set(op_bwd_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
 )
 set(fused_op_fwd_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
 )
 set(fused_op_bwd_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 set(pir_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops.yaml)
 set(pir_op_bwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_backward.yaml)
+
 set(pir_update_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/update_ops.yaml)
 set(parsed_op_dir
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
 set(pir_op_fwd_yaml ${parsed_op_dir}/ops.parsed.yaml)
 set(pir_op_bwd_yaml ${parsed_op_dir}/ops_backward.parsed.yaml)
 set(pir_update_op_fwd_yaml ${parsed_op_dir}/update_ops.parsed.yaml)
@@ -94,7 +95,8 @@ execute_process(
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
     --op_info_file ${op_info_file_tmp} --op_def_cc_file ${op_src_files_tmp}
-    --op_vjp_cc_file ${op_vjp_src_file_tmp})
+    --op_vjp_cc_file ${op_vjp_src_file_tmp} --with_distributed
+    ${WITH_DISTRIBUTE})
 
 set(generated_files_pd_op
     "${op_header_file}"
@@ -108,6 +110,44 @@ set(generated_files_pd_op
     "${pir_bwd_op_source_file}"
     "${pir_update_op_source_file}")
 
+if(WITH_MKLDNN)
+  set(pir_op_onednn_yaml ${parsed_op_dir}/onednn.parsed.yaml)
+
+  set(pd_onednn_op_yaml_file
+      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/onednn.yaml)
+
+  set(pd_ops_onednn_extra_yaml_file
+      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
+  )
+
+  set(op_onednn_info_file ${PD_DIALECT_SOURCE_DIR}/onednn_op_info.cc)
+  set(op_onednn_info_file_tmp ${op_onednn_info_file}.tmp)
+
+  set(onednn_op_namespace paddle,onednn,dialect)
+  set(onednn_dialect_name onednn_op)
+  set(onednn_op_header_file ${PD_DIALECT_SOURCE_DIR}/onednn_op.h)
+  set(onednn_op_source_file ${PD_DIALECT_SOURCE_DIR}/onednn_op.cc)
+  set(onednn_op_header_file_tmp ${onednn_op_header_file}.tmp)
+  set(onednn_op_source_file_tmp ${onednn_op_source_file}.tmp)
+
+  execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+            ${pd_onednn_op_yaml_file} --output_path ${pir_op_onednn_yaml})
+
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
+      --op_compat_yaml_file ${op_compat_yaml_file} --namespaces
+      ${onednn_op_namespace} --dialect_name ${onednn_dialect_name}
+      --op_def_h_file ${onednn_op_header_file_tmp} --op_info_file
+      ${op_onednn_info_file_tmp} --op_def_cc_file ${onednn_op_source_file_tmp}
+      --onednn_yaml_file ${pir_op_onednn_yaml} --ops_onednn_extra_yaml_file
+      ${pd_ops_onednn_extra_yaml_file} --with_distributed ${WITH_DISTRIBUTE})
+
+  set(generated_files_onednn_pd_op
+      "${onednn_op_header_file}" "${onednn_op_source_file}"
+      "${op_onednn_info_file}")
+endif()
 set(api_gen_yaml_files
     ${op_fwd_yaml},${op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
 )
@@ -159,8 +199,10 @@ execute_process(
 
 set(generated_files_ops_api "${ops_api_source_file}")
 
-set(generated_files_pir ${generated_files_pd_op} ${generated_files_pd_api}
-                        ${generated_files_python_c} ${generated_files_ops_api})
+set(generated_files_pir
+    ${generated_files_pd_op} ${generated_files_onednn_pd_op}
+    ${generated_files_pd_api} ${generated_files_python_c}
+    ${generated_files_ops_api})
 foreach(generated_file ${generated_files_pir})
   if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
     execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -181,6 +223,7 @@ file(
   op_dialect_srcs
   "${CMAKE_CURRENT_SOURCE_DIR}/kernel/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/infer_symbolic_shape/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/trait/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/transforms/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/utils/*.cc")
@@ -204,8 +247,22 @@ set(op_dialect_srcs
     ${pir_op_source_file}
     ${pir_bwd_op_source_file}
     ${pir_update_op_source_file}
-    ${api_source_file})
+    ${api_source_file}
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/transforms/shape_optimization_pass.cc)
 
+if(WITH_MKLDNN)
+  set(op_dialect_srcs
+      ${op_dialect_srcs} ${onednn_op_source_file} ${op_onednn_info_file}
+      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc)
+endif()
+
+file(GLOB_RECURSE dist_dialect_srcs
+     "${CMAKE_CURRENT_SOURCE_DIR}/distributed/ir/*.cc"
+     "${CMAKE_CURRENT_SOURCE_DIR}/distributed/transforms/*.cc")
+
+# if(WITH_DISTRIBUTE) FIXME in next PR
+set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
+# endif()
 set(op_dialect_deps phi common pir type_info string_helper)
 
 cc_library(
@@ -222,6 +279,13 @@ set(op_dialect_vjp_srcs
     ${op_decomp_source_file}
     ${op_vjp_source_file}
     ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/base/decomp_trans.cc)
+
+if(WITH_MKLDNN)
+  set(op_dialect_vjp_srcs
+      ${op_dialect_vjp_srcs}
+      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_onednn_dialect.cc)
+endif()
+
 set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect)
 
 cc_library(

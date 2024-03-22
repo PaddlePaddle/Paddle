@@ -13,499 +13,227 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/fluid/pir/dialect/operator/interface/reify_infer_shape.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
+COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
+
+constexpr int vlog_level = 3;
+
+// TODO(zhangbopd): Some op results infered by InferSymbolicShape is NOT consist
+// with the result infered by InferMeta and should be fixed.
 namespace {
-
-void InferUnaryElementwiseSymbolicShape(
-    const pir::Operation& op,
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
-  auto input = op.operand_source(0);
-  auto output = op.result(0);
-  const auto& in_sym_dims =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(input);
-  const auto& out_sym_dims =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(output);
-  pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
-  for (auto i = 0; i < out_sym_dims.size(); ++i) {
-    if (in_sym_dims[i].IsDynamic() || out_sym_dims[i].IsDynamic()) {
-      sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims[i], out_sym_dims[i]);
-    } else {
-      // do nothing
-    }
-  }
+bool NeedCheckInferSymbolicWithInferMeta(const std::string& op_name,
+                                         size_t result_idx) {
+  static std::unordered_map<std::string, std::unordered_set<int>> blacklist{
+      {"pd_op.reshape", {1}},
+      {"pd_op.empty", {0}},
+  };
+  const auto& iter = blacklist.find(op_name);
+  if (iter == blacklist.end()) return true;
+  return iter->second.count(result_idx) == 0;
 }
-
-// TODO(zyfncg): support broadcast for elementwise ops.
-void InferBinaryElementwiseSymbolicShape(
-    const pir::Operation& op,
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
-  auto input0 = op.operand_source(0);
-  auto input1 = op.operand_source(1);
-  auto output = op.result(0);
-  const auto& in_sym_dims0 =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(input0);
-  const auto& in_sym_dims1 =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(input1);
-  const auto& out_sym_dims =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(output);
-  pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
-  for (auto i = 0; i < out_sym_dims.size(); ++i) {
-    if (in_sym_dims0[i].IsDynamic() || in_sym_dims1[i].IsDynamic() ||
-        out_sym_dims[i].IsDynamic()) {
-      sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims0[i], out_sym_dims[i]);
-      sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims1[i], out_sym_dims[i]);
-    } else {
-      // do nothing
-    }
-  }
-}
-
-class InferSymbolicShapePass : public pir::Pass {
- public:
-  InferSymbolicShapePass(
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
-      : pir::Pass("infer_symbolic_shape_pass", /*opt_level=*/1),
-        shape_analysis_(shape_analysis) {}
-
-  void Run(pir::Operation* op) override {
-    auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "infer_symbolic_shape_pass should run on module op.");
-
-    for (auto& op : module_op.block()) {
-      if (op.isa<cinn::dialect::GroupOp>()) {
-        for (auto* local_op : op.dyn_cast<cinn::dialect::GroupOp>().ops()) {
-          InferSymbolicShape(*local_op);
-        }
-      } else {
-        InferSymbolicShape(op);
-      }
-    }
-  }
-
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
-  }
-
- private:
-  typedef void (*InferSymShapeFunc)(
-      const pir::Operation&,
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>&);
-  void InferSymbolicShape(const pir::Operation& op) {
-    thread_local static std::unordered_map<std::string, InferSymShapeFunc>
-        infer_sym_shape_map(GetInferSymShapeMap());
-    auto it = infer_sym_shape_map.find(op.name());
-
-    if (it != infer_sym_shape_map.end()) {
-      it->second(op, shape_analysis_);
-    } else {
-      LOG(WARNING) << "[" << op.name()
-                   << "] is not supported for infer_symbolic_shape pass.";
-    }
-  }
-
-  static std::unordered_map<std::string, InferSymShapeFunc>
-  GetInferSymShapeMap() {
-    return std::unordered_map<std::string, InferSymShapeFunc>{
-        {paddle::dialect::ExpOp::name(), &InferUnaryElementwiseSymbolicShape},
-        {paddle::dialect::SubtractOp::name(),
-         &InferBinaryElementwiseSymbolicShape}};
-  }
-
-  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
-};
-
 }  // namespace
 
 namespace pir {
-
-std::unique_ptr<Pass> CreateInferSymbolicShapePass(
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
-  return std::make_unique<InferSymbolicShapePass>(shape_analysis);
-}
-
-}  // namespace pir
-
-namespace pir {
 namespace {
-
-bool InsertTieShapeOnValue(pir::Value value,
-                           pir::Builder& builder) {  // NOLINT
-  // Insert TieShapeOp only for non-zero ranked tensor type.
-  auto type = value.type().dyn_cast<DenseTensorType>();
-  if (!type || type.dims().size() == 0) return true;
-
-  std::vector<pir::Value> dim_sizes;
-  for (int64_t dim = 0, rank = type.dims().size(); dim < rank; ++dim) {
-    auto dim_op = builder.Build<shape::TensorDimOp>(value, dim);
-    dim_sizes.push_back(dim_op.out());
-  }
-  builder.Build<shape::TieShapeOp>(value, dim_sizes);
-  return true;
-}
-
-// Forward declaration
-bool InsertTieShapeOnRegion(pir::Region* region);
-
-bool InsertTieShapeOnOperation(pir::Operation* op,
-                               pir::Builder& builder) {  // NOLINT
-  // TODO(zhangbopd): skip more specialized Ops.
-  if (op->isa<shape::TieShapeOp>() || op->isa<shape::FuncOp>()) return true;
-
-  for (size_t i = 0; i < op->num_regions(); ++i) {
-    if (!InsertTieShapeOnRegion(&(op->region(i)))) return false;
-  }
-  builder.SetInsertionPointAfter(op);
-  for (pir::OpResult v : op->results()) {
-    if (!InsertTieShapeOnValue(v, builder)) return false;
-  }
-
-  return true;
-}
-
-bool InsertTieShapeOnBlock(pir::Block* block) {
-  pir::Builder builder =
-      pir::Builder(pir::IrContext::Instance(), block, block->begin());
-  // TODO(zhangbopd): mapping block arguments
-
-  std::vector<pir::Operation*> op_list;
-  for (auto& op : *block) op_list.push_back(&op);
-  for (pir::Operation* op : op_list) {
-    if (!InsertTieShapeOnOperation(op, builder)) return false;
-  }
-  return true;
-}
-
-bool InsertTieShapeOnRegion(pir::Region* region) {
-  for (auto& block : *region) {
-    if (!InsertTieShapeOnBlock(&block)) return false;
-  }
-  return true;
-}
-
-// Convert:
-//   %shape = shape.shape_of %0 : tensor<?x?xf32> -> tensor<2xindex>
-// To:
-//   %d0 = tensor.dim %0, %c0 : tensor<?x?xf32>
-//   %d1 = tensor.dim %0, %c1 : tensor<?x?xf32>
-//   %shape = tensor.from_elements %d0, %d1 : tensor<2xindex>
-struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
-  using OpRewritePattern<shape::ShapeOfOp>::OpRewritePattern;
-
-  bool MatchAndRewrite(shape::ShapeOfOp op,
-                       PatternRewriter& rewriter) const override {
-    VLOG(3) << "Apply ExpandShapeOfOpPattern...";
-
-    auto type = op.out().type().dyn_cast<pir::DenseTensorType>();
-
-    if (!type || !type.dyn_cast<ShapedTypeInterface>().HasStaticShape() ||
-        !type.dyn_cast<ShapedTypeInterface>().GetElementType().IsIndex())
-      return false;
-
-    std::vector<Value> dim_sizes;
-    for (int dim = 0,
-             rank = type.dyn_cast<ShapedTypeInterface>().GetDyShape()[0];
-         dim < rank;
-         ++dim) {
-      dim_sizes.push_back(
-          rewriter.Build<shape::TensorDimOp>(op.input(), dim).out());
-    }
-    rewriter.ReplaceOpWithNewOp<shape::FromElementsOp>(op, dim_sizes);
-    return true;
-  }
-};
-
-// Fold dim of an operation that implements the ReifyInferShapeInterface
-template <typename OpTy>
-struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
-  using OpRewritePattern<OpTy>::OpRewritePattern;
-
-  bool MatchAndRewrite(OpTy dim_op, PatternRewriter& rewriter) const override {
-    OpResult dim_value = dim_op.source().template dyn_cast<OpResult>();
-    if (!dim_value) return false;
-
-    auto shaped_type_op =
-        dim_value.owner()
-            ->dyn_cast<paddle::dialect::ReifyInferShapeInterface>();
-    if (!shaped_type_op) return false;
-
-    std::optional<int64_t> dim_index = dim_op.GetConstantIndex();
-    if (!dim_index) return false;
-
-    std::vector<Value> reified_result_shapes;
-    if (!shaped_type_op.ReifyInferShape(
-            rewriter, shaped_type_op->operands(), reified_result_shapes))
-      return false;
-
-    if (reified_result_shapes.size() != shaped_type_op->num_results())
-      return false;
-
-    Value result_shape = reified_result_shapes[dim_value.index()];
-    auto result_shape_type = result_shape.type().dyn_cast<DenseTensorType>();
-    auto shaped_type = result_shape_type.dyn_cast<ShapedTypeInterface>();
-    if (!result_shape_type || !shaped_type.GetElementType().IsIntOrIndex())
-      return false;
-
-    // TODO(zhangbopd): BuildOrFold required.
-    std::vector<Value> indices;
-    indices.push_back(rewriter.Build<shape::ConstantIndexOp>(*dim_index).out());
-
-    Value new_value =
-        rewriter.Build<shape::ExtractOp>(result_shape, indices).out();
-
-    if (!new_value.type().isa<IndexType>())
-      new_value =
-          rewriter.Build<shape::IndexCastOp>(rewriter.index_type(), new_value)
-              .out();
-
-    rewriter.ReplaceOp(dim_op, {new_value});
-    return true;
-  }
-};
-
-bool MaterializeShapeComputation(pir::ModuleOp m) {
-  // if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
-  // TODO(zhangbopd): add rewitter pattern for reifyInferShape.
-  RewritePatternSet patterns(m.ir_context());
-
-  patterns.Add<ExpandShapeOfOpPattern,
-               DimOfShapedTypeOpInterfacePattern<shape::TensorDimOp>>(
-      patterns.ir_context());
-
-  IR_ENFORCE(ApplyPatternsGreedily(m, std::move(patterns)).first,
-             "fail to materialize shape computation\n");
-  return true;
-}
 
 using PassPipelineRunner =
     std::function<bool(pir::PassManager&, pir::ModuleOp)>;
 
-// Returns true if the type is possible to be a shape tensor type.
-// Shape tensor type :
-//    - rank-1 static-shaped tensor type
-//    - element type of the tensor is int or index
-//    - number of elements of the tensor < 32, supposing that the
-//      higiest possible rank is smaller than 32.
-bool IsCandidateShapeTensorType(Type type) {
-  auto tensor_type = type.dyn_cast<DenseTensorType>();
-  auto shaped_type = tensor_type.dyn_cast<ShapedTypeInterface>();
-
-  return (tensor_type && tensor_type && shaped_type.GetRank() == 1 &&
-          shaped_type.HasStaticShape() &&
-          shaped_type.GetElementType().IsIntOrIndex() &&
-          shaped_type.GetDyShape()[0] < 32);
-}
-
-class ShapeComputationIRAnalysis {
- public:
-  using func = std::function<bool(Operation* op)>;
-  explicit ShapeComputationIRAnalysis(ModuleOp m,
-                                      SymbolicDimMgr& mgr);  // NOLINT
-  bool Run();
-
- private:
-  bool RunOnRegion(Region* region, func fn);
-  bool RunOnBlock(Block* block, func fn);
-  bool RunOnOperation(Operation* op, func fn);
-
-  bool BuildShapeOnOperation(Operation* op);
-  bool BuildShapeOnValue(Value value);
-
-  bool ApplyOpConstraint(Operation* op);
-  bool ApplyIndexOpConstraint(Operation* op);
-  bool ApplyTieShapeOpConstraint(Operation* op);
-
-  bool initialized_ = false;
-  ModuleOp m_;
-  SymbolicDimMgr& mgr_;
-
-  std::unordered_map<Value, SymbolicDimOp> value_to_sym_dim_;
-
-  // shape tensor is the 1D ranked tensor with int/index dtype.
-  std::unordered_map<Value, std::vector<SymbolicDimOp>>
-      shape_tensor_to_sym_dims_;
-
-  std::unordered_map<Value, std::vector<SymbolicDimOp>>
-      dense_tensor_to_sym_dims_;
-};
-
-ShapeComputationIRAnalysis::ShapeComputationIRAnalysis(ModuleOp m,
-                                                       SymbolicDimMgr& mgr)
-    : m_(m), mgr_(mgr) {}
-
-bool ShapeComputationIRAnalysis::Run() {
-  // Make sure only run once.
-  if (initialized_) return false;
-  initialized_ = true;
-  // auto build_shape_func =
-  //     std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
-  //               this,
-  //               std::placeholders::_1);
-  // if (!RunOnRegion(&(m_->region(0)), build_shape_func)) return false;
-  // auto apply_op_constraint_func =
-  //     std::bind(&ShapeComputationIRAnalysis::ApplyOpConstraint,
-  //               this,
-  //               std::placeholders::_1);
-  // // TODO(zhangbopd): Delete the following 1 line and fix UT
-  // // `shape_optimization_test`
-  // return true;
-  // if (!RunOnRegion(&(m_->region(0)), apply_op_constraint_func)) return false;
-  return true;
-}
-
-bool ShapeComputationIRAnalysis::RunOnRegion(Region* region, func fn) {
-  for (auto& block : *region) {
-    if (!RunOnBlock(&block, fn)) return false;
+void PrintProgram(pir::ModuleOp m, std::string msg) {
+  ShapeConstraintIRAnalysis& shape_analysis =
+      ShapeAnalysisManager::Instance().Get(m.program());
+  if (VLOG_IS_ON(vlog_level)) {
+    std::cerr << "===================== [ShapeDialect]" << msg
+              << " =====================\n"
+              << pir::CustomPrintHelper(*m.program(),
+                                        shape_analysis.PrintHook())
+              << std::endl;
   }
-  return true;
 }
 
-bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func fn) {
-  // TODO(zhangbopd): mapping block arguments
+std::string PrintOperationWithNoRegion(Operation* op) {
+  std::ostringstream os;
+  pir::IrPrinter printer(os);
 
-  std::vector<Operation*> op_list;
-  for (auto& op : *block) op_list.push_back(&op);
-  for (Operation* op : op_list) {
-    if (!RunOnOperation(op, fn)) return false;
+  // print OpResults
+  os << "(";
+  auto num_op_result = op->num_results();
+  for (size_t idx = 0; idx < num_op_result; idx++) {
+    os << "%op_" << op->id() << "_" << idx;
+    if (idx < num_op_result - 1) os << ", ";
   }
-  return true;
-}
+  os << ")";
 
-bool ShapeComputationIRAnalysis::RunOnOperation(Operation* op, func fn) {
-  for (size_t i = 0; i < op->num_regions(); ++i) {
-    if (!RunOnRegion(&(op->region(i)), fn)) return false;
-  }
-  return fn(op);
-}
+  os << " =";
 
-bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
-  if (op->isa<shape::FuncOp>()) return true;
-  if (op->isa<shape::TieShapeOp>()) {
-    Value value = op->operand_source(0);
-    std::vector<SymbolicDimOp> symbols;
-    if (op->HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) {
-      auto attrs =
-          op->attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName())
-              .AsVector();
-      for (Attribute attr : attrs) {
-        auto sym = mgr_.symbolTable().Lookup<SymbolicDimOp>(
-            attr.dyn_cast<StrAttribute>().AsString());
-        IR_ENFORCE(sym);
-        SymbolicDimOp root = mgr_.GetRootSymbolicDim(sym);
-        symbols.push_back(root);
-      }
+  // print OpName & OpId
+  os << " \"" << op->name() << "(op_" << op->id() << ")"
+     << "\"";
+
+  // print OpOperands
+  os << " (";
+  auto num_op_operands = op->num_operands();
+  for (size_t idx = 0; idx < num_op_operands; idx++) {
+    const pir::Value& input = op->operand_source(idx);
+    if (input.defining_op()) {
+      os << "op_" << input.defining_op()->id() << "_"
+         << input.dyn_cast<pir::OpResult>().index();
     } else {
-      symbols = mgr_.CreateSymbolicDimsForRankedValue(value);
-      std::vector<Attribute> attrs;
-      for (SymbolicDimOp sym : symbols) {
-        Attribute rootSymbol =
-            StrAttribute::get(m_->ir_context(), sym.GetSymName());
-        attrs.push_back(rootSymbol);
+      os << "op_NULL";
+    }
+    if (idx < num_op_operands - 1) os << ", ";
+  }
+  os << ")";
+
+  printer.PrintAttributeMap(op);
+  os << " :";
+
+  // PrintOpSignature
+  printer.PrintOperandsType(op);
+  os << " -> ";
+
+  printer.PrintOpReturnType(op);
+
+  return os.str();
+}
+
+void PrintOpInfo(pir::Operation* op) {
+  if (VLOG_IS_ON(vlog_level)) {
+    VLOG(vlog_level) << op->name() << "(op_id: op_" << op->id()
+                     << ", num_results=" << op->num_results() << ")"
+                     << " has InferSymbolicShapeInterface.\n\t"
+                     << PrintOperationWithNoRegion(op);
+    if (op->name() == "cinn_op.group") {
+      std::cerr << "<<<<<<<<<<<<<<<<<<<< " << op->name() << "(op_id: op_"
+                << op->id() << ") START..." << std::endl;
+    }
+  }
+}
+
+void DebugPrintOpInfo(
+    pir::Operation* op,
+    pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+  std::ostringstream print_stream;
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    const auto& res = op->result(i);
+    print_stream << "\tresult(" << res.dyn_cast<pir::OpResult>().index() << ") "
+                 << "ShapeOrData: {";
+
+    if (shape_analysis != nullptr) {
+      auto shape_data = shape_analysis->GetShapeOrDataForValue(res);
+      if (shape_data.isa<symbol::TensorListShapeOrDataDimExprs>()) continue;
+      print_stream << "shape: [";
+
+      for (size_t i = 0; i < shape_data.shape().size(); ++i) {
+        if (i != shape_data.shape().size() - 1) {
+          print_stream << symbol::ToString(shape_data.shape()[i]) << ",";
+        } else {
+          print_stream << symbol::ToString(shape_data.shape()[i]);
+        }
       }
-      op->set_attribute(SymbolicDimOp::GetSymbolicDimAttrName(),
-                        ArrayAttribute::get(m_->ir_context(), attrs));
+
+      print_stream << "], data: [";
+      if (shape_data.data().has_value()) {
+        for (size_t i = 0; i < shape_data.data().value().size(); ++i) {
+          if (i != shape_data.data().value().size() - 1) {
+            print_stream << symbol::ToString(shape_data.data().value()[i])
+                         << ",";
+          } else {
+            print_stream << symbol::ToString(shape_data.data().value()[i]);
+          }
+        }
+      } else {
+        print_stream << "nullopt";
+      }
+
+      print_stream << "]";
     }
-    dense_tensor_to_sym_dims_[value] = std::move(symbols);
-    return true;
+    print_stream << " }\n";
   }
-  for (auto& result : op->results()) {
-    if (!BuildShapeOnValue(result)) return false;
+  if (VLOG_IS_ON(vlog_level)) {
+    std::cerr << print_stream.str();
   }
-  return true;
 }
 
-bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
-  Type type = value.type();
-  if (type.IsIntOrIndex()) {
-    SymbolicDimOp sym = mgr_.NewSymbolicDim();
-    value_to_sym_dim_[value] = sym;
-  } else if (IsCandidateShapeTensorType(type)) {
-    auto shaped_type = type.dyn_cast<ShapedTypeInterface>();
-    std::vector<SymbolicDimOp> symbols;
-    for (size_t i = 0, d = shaped_type.GetDyShape()[0]; i < d; ++i)
-      symbols.push_back(mgr_.NewSymbolicDim());
-    shape_tensor_to_sym_dims_[value] = std::move(symbols);
-  }
-  return true;
-}
+void CheckInferSymWithInferMeta(
+    pir::Operation* op,
+    pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    const auto& res = op->result(i);
+    std::ostringstream print_stream;
 
-bool ShapeComputationIRAnalysis::ApplyOpConstraint(Operation* op) {
-  IR_ENFORCE(ApplyIndexOpConstraint(op),
-             "Fail to apply constraint for index op");
-  IR_ENFORCE(ApplyTieShapeOpConstraint(op),
-             "Fail to apply constraint for tie_shape op");
+    // InferMeta funcs of some Ops are not corrrect now, we don't check them.
+    if (!NeedCheckInferSymbolicWithInferMeta(op->name(), i)) continue;
 
-  // TODO(zhangbopd): add more constraints
-  return true;
-}
+    if (res.type().isa<paddle::dialect::DenseTensorType>()) {
+      const std::vector<int64_t>& infer_meta_shape = common::vectorize(
+          res.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+      const std::vector<symbol::DimExpr>& infer_sym_shape =
+          shape_analysis->GetShapeOrDataForValue(res).shape();
 
-bool ShapeComputationIRAnalysis::ApplyIndexOpConstraint(Operation* op) {
-  if (op->num_results() == 0) return true;
+      // Check rank.
+      if (infer_meta_shape.size() != infer_sym_shape.size()) {
+        std::ostringstream print_stream;
+        print_stream << "Warning : Check InferSymbolicShape for " << op->name()
+                     << " (op_" << op->id() << ") "
+                     << " carefully! rank of infer_meta_shape is ["
+                     << infer_meta_shape.size()
+                     << "], but rank of infer_sym_shape is ["
+                     << infer_sym_shape.size() << "].";
+        VLOG(vlog_level) << print_stream.str();
+        continue;
+      }
 
-  Type type = op->result(0).type();
-  if (!type.IsIntOrIndex()) return true;
+      // Check each dim.
+      for (size_t i = 0; i < infer_meta_shape.size(); ++i) {
+        // Check Static shape should NOT be a symbol.
+        if (infer_meta_shape[i] != -1) {
+          if (!infer_sym_shape[i].isa<int64_t>()) {
+            std::ostringstream print_stream;
+            print_stream
+                << "Warning : Check InferSymbolicShape for " << op->name()
+                << " (op_" << op->id() << ") "
+                << " carefully! "
+                << "shape[" << i
+                << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
+            VLOG(vlog_level) << print_stream.str();
+            continue;
+          }
 
-  if (auto dim_op = op->dyn_cast<shape::TensorDimOp>()) {
-    int64_t dim_index = dim_op.index()
-                            .dyn_cast<OpResult>()
-                            .owner()
-                            ->attribute<Int64Attribute>("value")
-                            .data();
-    value_to_sym_dim_[dim_op.out()].UpdateKnownNonNegative(true);
-    if (!mgr_.MapSymbolicDimEqual(
-            value_to_sym_dim_[dim_op.out()],
-            dense_tensor_to_sym_dims_[dim_op.source()][dim_index])) {
-      return false;
-    }
-
-  } else if (auto const_op = op->dyn_cast<ConstantOp>()) {
-    int64_t val = const_op.value().dyn_cast<Int64Attribute>().data();
-    if (!mgr_.MapSymbolicDimEqual(value_to_sym_dim_[op->result(0)],
-                                  mgr_.NewConstantSymbolicDim(val))) {
-      return false;
-    }
-  }
-  // TODO(zhangbopd): add support for reifyInferShape. (e.g. mul/add)
-  return true;
-}
-
-bool ShapeComputationIRAnalysis::ApplyTieShapeOpConstraint(Operation* op) {
-  if (auto tie_shape = op->dyn_cast<shape::TieShapeOp>()) {
-    auto& value = dense_tensor_to_sym_dims_[op->operand_source(0)];
-    for (size_t idx = 0; idx < tie_shape.dims().size(); ++idx) {
-      if (!mgr_.MapSymbolicDimEqual(value_to_sym_dim_[tie_shape.dims()[idx]],
-                                    value[idx]))
-        return false;
-      mgr_.GetRootSymbolicDim(value[idx]).UpdateKnownNonNegative(true);
+          // Check Static shape should be consist.
+          if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
+            std::ostringstream print_stream;
+            print_stream << "Warning : Check InferSymbolicShape for "
+                         << op->name() << " (op_" << op->id() << ") "
+                         << " carefully! "
+                         << "infer_sym_shape is [" << infer_meta_shape[i]
+                         << "], but infer_meta_shape is ["
+                         << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
+            VLOG(vlog_level) << print_stream.str();
+          }
+        }
+      }
     }
   }
-  return true;
 }
 
-bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
-  // TODO(zhangbopd): Do some Canonicalizer.
-  pir::SymbolicDimMgr mgr(m);
-  IR_ENFORCE(mgr.Load(),
-             "SymbolicDimMgr Load failed in OptimizeShapeComputation.");
-  ShapeComputationIRAnalysis analysis(m, mgr);
-  if (!analysis.Run()) {
-    return false;
+void InferSymExprForAllValues(ModuleOp module_op) {
+  ShapeConstraintIRAnalysis& shape_analysis =
+      ShapeAnalysisManager::Instance().Get(module_op.program());
+  shape_analysis.Init();
+  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
+    for (auto& block : module_op->region(i)) {
+      InferSymExprForBlock(block, &shape_analysis);
+    }
   }
-  IR_ENFORCE(mgr.Save(),
-             "SymbolicDimMgr save failed in OptimizeShapeComputation.");
-  return true;
 }
 
 class ShapeOptimizationPass : public pir::Pass {
@@ -513,16 +241,26 @@ class ShapeOptimizationPass : public pir::Pass {
   ShapeOptimizationPass() : pir::Pass("shape_optimization_pass", 0) {}
 
   void Run(pir::Operation* op) override {
+    VLOG(vlog_level)
+        << "===================== ShapeOptimizationPass Run start... "
+           "=====================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
-    MaterializeShapeComputation(module_op);
+    PADDLE_ENFORCE_EQ(module_op.name(),
+                      "builtin.module",
+                      phi::errors::InvalidArgument(
+                          "ShapeOptimizationPass should run on module op."));
+    PrintProgram(module_op, "Origin Program");
+
+    InferSymExprForAllValues(module_op);
     // Runner is for Canonicalizer.
-    PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
+    PassPipelineRunner runner = [](pir::PassManager& pm, pir::ModuleOp m) {
+      pm.EnableIRPrinting();
       return pm.Run(m.program());
     };
-    // if (!OptimizeShapeComputation(module_op, runner)) {
-    //   return;
-    // }
+
+    PrintProgram(module_op, "ShapeOptimizationPass Program");
+    VLOG(vlog_level) << "===================== ShapeOptimizationPass Run End. "
+                        "=====================";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
@@ -532,10 +270,72 @@ class ShapeOptimizationPass : public pir::Pass {
 
 }  // namespace
 
+void InferSymExprForBlock(const Block& block,
+                          ShapeConstraintIRAnalysis* shape_analysis) {
+  for (auto& op : block) {
+    auto infer_symbolic_shape_interface =
+        op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+    if (infer_symbolic_shape_interface) {
+      PrintOpInfo(&op);
+      PADDLE_ENFORCE_EQ(
+          infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
+          true,
+          "InferSymbolicShape for %s failed.",
+          op.name());
+
+      if (op.num_results() > 0) {
+        // TODO(lanxianghit): deal with the ops which have more than 1
+        // ACTUAL results
+        pir::shape::SetShapeAttrForOp(
+            &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
+    }
+    DebugPrintOpInfo(&op, shape_analysis);
+    CheckInferSymWithInferMeta(&op, shape_analysis);
+  }
+}
+
 std::unique_ptr<Pass> CreateShapeOptimizationPass() {
   return std::make_unique<ShapeOptimizationPass>();
 }
 
 }  // namespace pir
+
+namespace pir::shape {
+
+bool HasDynamicShape(const pir::Program& program) {
+  for (const auto& op : *program.block()) {
+    if (op.isa<pir::CombineOp>()) {
+      continue;
+    }
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      if (op.result(i) && op.result(i).type()) {
+        auto shape_type =
+            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
+        if (shape_type && shape_type.IsDynamicShape()) {
+          VLOG(vlog_level) << "###### HasDynamicShape == true";
+          return true;
+        }
+      }
+    }
+  }
+  VLOG(vlog_level) << "###### HasDynamicShape == false";
+  return false;
+}
+
+void AddShapeOptimizationPass(
+    std::shared_ptr<pir::PassManager>& pass_manager,  // NOLINT
+    pir::Program& program) {                          // NOLINT
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+}
+
+}  // namespace pir::shape
 
 REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);

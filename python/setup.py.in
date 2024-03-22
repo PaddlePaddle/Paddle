@@ -54,6 +54,11 @@ def get_major():
 def get_minor():
     return int(_get_version_detail(1))
 
+def get_nccl_version():
+    if '@WITH_NCCL@' == 'ON':
+        return @NCCL_VERSION@
+    return 0
+
 def get_patch():
     return str(_get_version_detail(2))
 
@@ -89,12 +94,12 @@ def get_xpu_xccl_version():
         return 'False'
 
 def get_xpu_xhpc_version():
-    if '@WITH_XPU_XHPC@' == 'ON':
+    if '@WITH_XPU@' == 'ON':
         return '@XPU_XHPC_BASE_DATE@'
     else:
         return 'False'
 
-def is_taged():
+def is_tagged():
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
         git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd="@PADDLE_SOURCE_DIR@").communicate()[0].strip()
@@ -119,18 +124,20 @@ full_version     = '%(major)d.%(minor)d.%(patch)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
 patch            = '%(patch)s'
+nccl_version     = '%(nccl)d'
 rc               = '%(rc)d'
 cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
 xpu_version      = '%(xpu)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 xpu_xhpc_version = '%(xpu_xhpc)s'
-istaged          = %(istaged)s
+is_tagged          = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
+with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
-__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -195,7 +202,7 @@ def show():
             >>> # doctest: -SKIP
 
     """
-    if istaged:
+    if is_tagged:
         print('full_version:', full_version)
         print('major:', major)
         print('minor:', minor)
@@ -205,6 +212,7 @@ def show():
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('nccl:', nccl_version)
     print('xpu:', xpu_version)
     print('xpu_xccl:', xpu_xccl_version)
     print('xpu_xhpc:', xpu_xhpc_version)
@@ -212,6 +220,24 @@ def show():
 
 def mkl():
     return with_mkl
+
+def nccl():
+    """Get nccl version of paddle package.
+
+    Returns:
+        string: Return the version information of cuda nccl. If paddle package is CPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.nccl()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '2804'
+
+    """
+    return nccl_version    
 
 def cuda():
     """Get cuda version of paddle package.
@@ -336,6 +362,7 @@ def cinn():
             'major': get_major(),
             'minor': get_minor(),
             'patch': get_patch(),
+            'nccl': get_nccl_version(),
             'rc': RC,
             'version': '${PADDLE_VERSION}',
             'cuda': get_cuda_version(),
@@ -344,9 +371,10 @@ def cinn():
             'xpu_xccl': get_xpu_xccl_version(),
             'xpu_xhpc': get_xpu_xhpc_version(),
             'commit': commit,
-            'istaged': is_taged(),
+            'is_tagged': is_tagged(),
             'with_mkl': '@WITH_MKL@',
-            'cinn': get_cinn_version()})
+            'cinn': get_cinn_version(),
+            'with_pip_cuda_libraries': '@WITH_PIP_CUDA_LIBRARIES@'})
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version/__init__.py')
 
@@ -393,6 +421,47 @@ def is_transpiler():
 
 write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/distributed/fleet/parameter_server/version.py')
 
+
+def get_paddle_extra_install_requirements():
+    #(Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
+    if '@WITH_PIP_CUDA_LIBRARIES@' == 'ON':
+        PADDLE_CUDA_INSTALL_REQUIREMENTS = {
+            "V11": (
+                "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusolver-cu11==11.4.1.48; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusparse-cu11==11.7.5.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nccl-cu11==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64'"
+            ),
+            "V12": (
+                "nvidia-cuda-runtime-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-cupti-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cudnn-cu12==8.9.2.26; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cublas-cu12==12.1.3.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cufft-cu12==11.0.2.54; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-curand-cu12==10.3.2.106; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusolver-cu12==11.4.5.107; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusparse-cu12==12.1.0.106; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64'"
+            ),
+        }
+        try:
+            output = subprocess.check_output(['nvcc', '--version']).decode('utf-8')
+            version_line = [line for line in output.split('\n') if 'release' in line][0]
+            version = version_line.split(' ')[-1].split(',')[0]
+            cuda_major_version = version.split('.')[0]
+        except Exception as e:
+            raise ValueError("CUDA not found")
+        
+        paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[cuda_major_version].split("|")
+        
+        return paddle_cuda_requires
+    else:
+        return []
 
 packages=['paddle',
           'paddle.libs',
@@ -463,6 +532,7 @@ packages=['paddle',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
+          'paddle.jit.dy2static.transformers',
           'paddle.jit.pir_dy2static',
           'paddle.jit.sot',
           'paddle.jit.sot.opcode_translator',
@@ -576,6 +646,10 @@ if sys.version_info >= (3,8):
             continue
         setup_requires_tmp+=[setup_requires_i]
     setup_requires = setup_requires_tmp
+    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+        paddle_cuda_requires = get_paddle_extra_install_requirements()
+        setup_requires += paddle_cuda_requires
+    
 
 # the prefix is sys.prefix which should always be usr
 paddle_bins = ''
@@ -631,26 +705,15 @@ shutil.copy('${BLAS_LIB}', libs_path)
 shutil.copy('${LAPACK_LIB}', libs_path)
 shutil.copy('${GFORTRAN_LIB}', libs_path)
 shutil.copy('${GNU_RT_LIB_1}', libs_path)
-if '${WITH_CUDNN_DSO}' == 'ON' and os.path.exists('${CUDNN_LIBRARY}'):
-    package_data['paddle.libs']+=[os.path.basename('${CUDNN_LIBRARY}')]
-    shutil.copy('${CUDNN_LIBRARY}', libs_path)
-    if sys.platform.startswith("linux") and '${CUDNN_MAJOR_VERSION}' == '8':
-        # libcudnn.so includes libcudnn_ops_infer.so, libcudnn_ops_train.so,
-        # libcudnn_cnn_infer.so, libcudnn_cnn_train.so, libcudnn_adv_infer.so,
-        # libcudnn_adv_train.so
-        cudnn_lib_files = glob.glob(os.path.dirname('${CUDNN_LIBRARY}') + '/libcudnn_*so.8')
-        for cudnn_lib in cudnn_lib_files:
-            if os.path.exists(cudnn_lib):
-                package_data['paddle.libs']+=[os.path.basename(cudnn_lib)]
-                shutil.copy(cudnn_lib, libs_path)
 
 if not sys.platform.startswith("linux"):
     package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
     shutil.copy('${GNU_RT_LIB_2}', libs_path)
 
-if len('${FLASHATTN_LIBRARIES}') > 1:
-    package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_LIBRARIES}')]
-    shutil.copy('${FLASHATTN_LIBRARIES}', libs_path)
+if '${WITH_GPU}' == 'ON':
+    if len('${FLASHATTN_LIBRARIES}') > 1:
+        package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_LIBRARIES}')]
+        shutil.copy('${FLASHATTN_LIBRARIES}', libs_path)
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
@@ -783,15 +846,14 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
-            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
-            commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
+            commands = ["patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
-                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party lib
-                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
-        # The sw_64 not suppot patchelf, so we just disable that.
+                commands.append("patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
+        # The sw_64 not support patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
                 if os.system(command) != 0:
@@ -837,7 +899,13 @@ headers = (
     # utils api headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)) + # paddle utils headers
     # init headers
-    list(find_files('init_phi.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')))  # phi init headers
+    list(find_files('init_phi.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')) +  # phi init headers
+    # init headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pir/include', recursive=True)) +  # pir init headers
+    # init headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/drr/include')) +  # drr init headers
+    # init headers
+    list(find_files('general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/utils')))  # pass utils init headers
 
 jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'function.h']
 for f in jit_layer_headers:

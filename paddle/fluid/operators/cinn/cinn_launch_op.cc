@@ -21,12 +21,12 @@
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/flags.h"
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_CUDA)
-PHI_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 #endif
 
 namespace paddle {
@@ -54,7 +54,7 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
   const auto& cinn_scope = *(result.scope);
   const auto& paddle2cinn_varmap = result.paddle2cinn_varmap;
 
-  VLOG(4) << "Compiled runtime_program instrunction size:["
+  VLOG(4) << "Compiled runtime_program instruction size:["
           << cinn_runtime_program->size() << "]";
 
   std::vector<std::string> infos;

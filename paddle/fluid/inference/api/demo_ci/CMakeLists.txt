@@ -7,6 +7,8 @@ option(WITH_STATIC_LIB
 option(USE_TENSORRT "Compile demo with TensorRT." OFF)
 option(WITH_ONNXRUNTIME "Compile demo with ONNXRuntime" OFF)
 option(WITH_SHARED_PHI "Compile demo with phi shared lib" ON)
+option(CUSTOM_OPERATOR_FILES "List of file names for custom operators" "")
+option(CUSTOM_PASS_FILES "List of file names for custom passes" "")
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
@@ -84,7 +86,7 @@ else()
   if(WITH_MKL)
     set(FLAG_OPENMP "-fopenmp")
   endif()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${FLAG_OPENMP}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 ${FLAG_OPENMP}")
 endif()
 
 if(WITH_GPU)
@@ -207,8 +209,9 @@ if(NOT WIN32)
       utf8proc
       ${EXTERNAL_LIB})
   if(WITH_SHARED_PHI)
-    set(DEPS ${DEPS}
-             ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX})
+    set(DEPS
+        ${DEPS} ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${PADDLE_LIB}/paddle/lib/libcommon${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
 else()
   set(DEPS
@@ -250,6 +253,22 @@ if(WITH_GPU)
     set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX})
     set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX})
   endif()
+endif()
+
+if(CUSTOM_OPERATOR_FILES)
+  if(WITH_GPU AND NOT APPLE)
+    add_definitions("-DPADDLE_WITH_CUDA")
+    enable_language(CUDA)
+    find_package(CUDA REQUIRED)
+    include_directories("${CUDA_INCLUDE_DIRS}")
+  endif()
+  add_library(pd_infer_custom_op SHARED ${CUSTOM_OPERATOR_FILES})
+  set(DEPS ${DEPS} pd_infer_custom_op)
+endif()
+
+if(CUSTOM_PASS_FILES)
+  add_library(pd_infer_custom_pass SHARED ${CUSTOM_PASS_FILES})
+  set(DEPS ${DEPS} pd_infer_custom_pass)
 endif()
 
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)

@@ -15,7 +15,7 @@
 import copy
 import os
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Dict, Tuple
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -37,7 +37,13 @@ class ReadItem:
     lengths: Tuple[int]
 
 
-def get_rank_to_files(path, state_dict, process_group, use_dist):
+PATH_TO_CHECKPOINT_FILES: Dict[str, Tuple[list, list]] = {}
+
+
+def get_checkpoint_files(path, use_cache=True):
+    global PATH_TO_CHECKPOINT_FILES
+    if use_cache and path in PATH_TO_CHECKPOINT_FILES:
+        return PATH_TO_CHECKPOINT_FILES[path]
     accessible_files = os.listdir(path)
     metadata_files = [
         file for file in accessible_files if file.endswith(".metadata")
@@ -45,7 +51,23 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     assert (
         len(metadata_files) > 0
     ), f"No metadata file found in the checkpoint directory:{path}."
-    # The neccesary files to be read
+    local_data_files = [
+        file for file in accessible_files if file.endswith(".distcp")
+    ]
+    assert (
+        len(local_data_files) > 0
+    ), f"No data file found in the checkpoint directory:{path}."
+    if use_cache:
+        PATH_TO_CHECKPOINT_FILES[path] = (metadata_files, local_data_files)
+    return (metadata_files, local_data_files)
+
+
+def get_rank_to_files(path, state_dict, process_group, use_dist):
+    """
+    Get the mapping of rank to its accessible files.
+    """
+    metadata_files, local_data_files = get_checkpoint_files(path)
+    # The necessary files to be read
     tensor_key_list = []
     necessary_files = []
     for metadata_file in metadata_files:
@@ -62,12 +84,10 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
         logger.warning(
             f"No necessary data files found in the checkpoint directory:{path}. Please check the metadata_files:{metadata_files}"
         )
-        return {}
+        missing_keys = set(state_dict.keys())
+        return {}, missing_keys
 
     # allgather all accessible files
-    local_data_files = [
-        file for file in accessible_files if file.endswith(".distcp")
-    ]
     global_data_files = []
     if use_dist:
         paddle.distributed.all_gather_object(
@@ -82,7 +102,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     logger.debug(
         f"necessary_data_files_set:{necessary_data_files_set}, global_data_files_set:{global_data_files_set}"
     )
-    # check neccesary files in global_data_files
+    # check necessary files in global_data_files
     assert (
         global_data_files_set & necessary_data_files_set
         == necessary_data_files_set
@@ -101,12 +121,16 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
             ]
             rank_to_files[rank] = local_files
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
-    return rank_to_files
+    return rank_to_files, missing_keys
 
 
 def get_local_load_files(rank_to_files):
     """
     Load files in a load-balanced manner.
+
+    Args:
+        rank_to_files (dict): mapping from rank to files.
+
     Example:
         Case1: all ranks access the same data files
             rank_to_files = {rank0:[0_0.distcp, 1_0.distcp, 2_0.distcp, 3_0.distcp], rank1:[0_0.distcp, 1_0.distcp, 2_0.distcp, 3_0.distcp]}
@@ -196,13 +220,7 @@ def get_local_load_files(rank_to_files):
 
 def get_load_infos(path, local_load_files, process_group, use_dist):
     load_info = {}
-    accessible_files = os.listdir(path)
-    metadata_files = [
-        file for file in accessible_files if file.endswith(".metadata")
-    ]
-    assert (
-        len(metadata_files) > 0
-    ), "No metadata file found in the checkpoint directory:{path}."
+    metadata_files, _ = get_checkpoint_files(path)
     for metadata_file in metadata_files:
         metadata = paddle.load(os.path.join(path, metadata_file))
         for local_tensor_index, file_name in metadata.storage_metadata.items():
@@ -233,14 +251,14 @@ def compute_overlap(
     cur_offsets = []
     storage_offsets = []
     lengths = []
-    for cur_len, cur_offset, strorage_len, storage_offset in zip(
+    for cur_len, cur_offset, storage_len, storage_offset in zip(
         cur_chunk_metadata.local_shape,
         cur_chunk_metadata.global_offset,
         storage_local_tensor_metadata.local_shape,
         storage_local_tensor_metadata.global_offset,
     ):
         begin_offset = max(cur_offset, storage_offset)
-        end_offset = min(cur_offset + cur_len, storage_offset + strorage_len)
+        end_offset = min(cur_offset + cur_len, storage_offset + storage_len)
         if begin_offset == cur_offset:
             cur_offsets.append(0)
             storage_offsets.append(begin_offset - storage_offset)
@@ -262,14 +280,14 @@ def not_overlap(
     cur_chunk_metadata: LocalTensorMetadata,
     storage_local_tensor_metadata: LocalTensorMetadata,
 ):
-    for cur_len, cur_offset, strorage_len, storage_offset in zip(
+    for cur_len, cur_offset, storage_len, storage_offset in zip(
         cur_chunk_metadata.local_shape,
         cur_chunk_metadata.global_offset,
         storage_local_tensor_metadata.local_shape,
         storage_local_tensor_metadata.global_offset,
     ):
         if (
-            cur_offset >= (storage_offset + strorage_len)
+            cur_offset >= (storage_offset + storage_len)
             or (cur_offset + cur_len) <= storage_offset
         ):
             return True
@@ -277,14 +295,8 @@ def not_overlap(
 
 
 def get_read_items(path, state_dict, process_group, use_dist):
-    accessible_files = os.listdir(path)
-    metadata_files = [
-        file for file in accessible_files if file.endswith(".metadata")
-    ]
-    assert (
-        len(metadata_files) > 0
-    ), "No metadata file found in the checkpoint directory:{path}."
     storage_state_dict_metadata = {}
+    metadata_files, _ = get_checkpoint_files(path)
     for metadata_file in metadata_files:
         metadata = paddle.load(os.path.join(path, metadata_file))
         for (
@@ -306,8 +318,8 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 ) = (
                     compute_local_shape_and_global_offset(
                         val.shape,
-                        val.dist_attr.process_mesh,
-                        val.dist_attr.dims_mapping,
+                        val.process_mesh,
+                        val.placements,
                     )
                     if len(val.shape) > 0
                     else ((), ())
@@ -405,12 +417,12 @@ def load_state_dict(
         assert isinstance(
             state_dict, dict
         ), "The state_dict should be a dictionary."
-        state_dict = flatten_state_dict(state_dict)
-        if len(state_dict) > 0:
-            for val in state_dict.values():
+        flat_state_dict, mapping = flatten_state_dict(state_dict)
+        if len(flat_state_dict) > 0:
+            for val in flat_state_dict.values():
                 assert isinstance(
                     val, paddle.Tensor
-                ), f"Only support dygraph Tensor now, but is {val}"
+                ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
 
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
 
@@ -422,9 +434,13 @@ def load_state_dict(
             # sync to avoid some ranks not write path yet
             paddle.distributed.barrier(process_group)
 
-        rank_to_files = get_rank_to_files(
-            path, state_dict, process_group, use_dist
+        rank_to_files, missing_keys = get_rank_to_files(
+            path, flat_state_dict, process_group, use_dist
         )
+        if len(missing_keys) > 0:
+            logger.warning(
+                f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
+            )
         if len(rank_to_files) <= 0:
             return
         local_load_files = get_local_load_files(rank_to_files)
@@ -434,16 +450,18 @@ def load_state_dict(
         )
         # read_items: [ReadItem(local_tensor_index, rank, cur_offsets, storage_offsets, lengths)],
         # slice the storage local tensor in (storage_offsets, lengths) to assign the current tensor in (cur_offsets, lengths) in rank.
-        read_items = get_read_items(path, state_dict, process_group, use_dist)
+        read_items = get_read_items(
+            path, flat_state_dict, process_group, use_dist
+        )
         storage_file_to_state_dict = {}
         logger.debug(
-            f"before load, state_dict:{state_dict},\n load_infos:{load_infos},\n read_items:{read_items}"
+            f"before load, state_dict:{flat_state_dict},\n load_infos:{load_infos},\n read_items:{read_items}"
         )
         state_dict_in_cpu = []
-        for k, v in state_dict.items():
+        for k, v in flat_state_dict.items():
             if v.place.is_cpu_place():
                 state_dict_in_cpu.append(k)
-                state_dict[k] = v.cuda()
+                flat_state_dict[k] = v.cuda()
         for item in read_items:
             assert (
                 item.local_tensor_index in load_infos
@@ -484,15 +502,17 @@ def load_state_dict(
             # The read item rank need to be assigned
             if item.rank == paddle.distributed.get_rank():
                 assert (
-                    item.local_tensor_index.tensor_key in state_dict
-                ), f"item:{item}, state_dict:{state_dict}"
+                    item.local_tensor_index.tensor_key in flat_state_dict
+                ), f"item:{item}, state_dict:{flat_state_dict}"
                 cur_local_tensor = (
-                    state_dict[
+                    flat_state_dict[
                         item.local_tensor_index.tensor_key
                     ]._local_value()
                     if use_dist
-                    and state_dict[item.local_tensor_index.tensor_key].is_dist()
-                    else state_dict[item.local_tensor_index.tensor_key]
+                    and flat_state_dict[
+                        item.local_tensor_index.tensor_key
+                    ].is_dist()
+                    else flat_state_dict[item.local_tensor_index.tensor_key]
                 )
                 cur_offsets = item.cur_offset
                 cur_lengths = item.lengths
@@ -513,7 +533,9 @@ def load_state_dict(
             else:
                 cur_chunk_tensor = paddle.zeros(
                     item.lengths,
-                    dtype=state_dict[item.local_tensor_index.tensor_key].dtype,
+                    dtype=flat_state_dict[
+                        item.local_tensor_index.tensor_key
+                    ].dtype,
                 )
 
             if src_rank == item.rank:
@@ -530,6 +552,6 @@ def load_state_dict(
                         cur_chunk_tensor, src=src_rank, group=process_group
                     )
 
-        for k, v in state_dict.items():
+        for k, v in flat_state_dict.items():
             if k in state_dict_in_cpu:
                 state_dict[k] = v.cpu()

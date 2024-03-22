@@ -45,7 +45,7 @@ endif()
 cc_library(
   eager_nan_inf_utils
   SRCS nan_inf_utils.cc
-  DEPS phi common nan_inf_utils enforce)
+  DEPS phi common enforce)
 cc_library(
   grad_node_info
   SRCS grad_node_info.cc

@@ -26,6 +26,8 @@ from paddle.base.framework import (
     Variable,
     default_main_program,
     in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
     name_scope,
     program_guard,
     static_only,
@@ -190,10 +192,17 @@ def fc(
         name=None,
     ):
         helper = LayerHelper("fc", **locals())
-        check_type(input, 'input', (list, tuple, Variable), 'fc')
+        check_type(
+            input, 'input', (list, tuple, Variable, paddle.pir.Value), 'fc'
+        )
         if isinstance(input, (list, tuple)):
             for i, input_x in enumerate(input):
-                check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
+                check_type(
+                    input_x,
+                    'input[' + str(i) + ']',
+                    (Variable, paddle.pir.Value),
+                    'fc',
+                )
         dtype = helper.input_dtype()
         check_dtype(
             dtype, 'input', ['float16', 'uint16', 'float32', 'float64'], 'fc'
@@ -209,17 +218,31 @@ def fc(
             w = helper.create_parameter(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
-            tmp = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type="mul",
-                inputs={"X": input_var, "Y": w},
-                outputs={"Out": tmp},
-                attrs={"x_num_col_dims": num_flatten_dims, "y_num_col_dims": 1},
-            )
+            if in_pir_mode():
+                if len(input_var.shape) > 2:
+                    new_shape = (
+                        input_var.shape[0],
+                        np.prod(input_var.shape[1:]),
+                    )
+                    input_var = paddle.reshape(input_var, new_shape)
+                tmp = paddle.matmul(input_var, w)
+            else:
+                tmp = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type="mul",
+                    inputs={"X": input_var, "Y": w},
+                    outputs={"Out": tmp},
+                    attrs={
+                        "x_num_col_dims": num_flatten_dims,
+                        "y_num_col_dims": 1,
+                    },
+                )
             mul_results.append(tmp)
 
         if len(mul_results) == 1:
             pre_bias = mul_results[0]
+        elif in_pir_mode():
+            pre_bias = paddle.add_n(mul_results)
         else:
             pre_bias = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
@@ -326,8 +349,8 @@ def instance_norm(
     dtype = helper.input_dtype()
 
     # use fp32 for in parameter
-    if dtype == paddle.framework.core.VarDesc.VarType.FP16:
-        dtype = paddle.framework.core.VarDesc.VarType.FP32
+    if dtype == paddle.float16:
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
@@ -495,7 +518,7 @@ def data_norm(
             should do model average when model average is enabled. Default: True.
         slot_dim (int, optional): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode,
             we distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
-            place of the embedding is the historical show number (occurence time of this feature id with a label 0).
+            place of the embedding is the historical show number (occurrence time of this feature id with a label 0).
             If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this
@@ -707,7 +730,7 @@ def group_norm(
         ['float16', 'uint16', 'float32', 'float64'],
         'group_norm',
     )
-    # create intput and parameters
+    # create input and parameters
     inputs = {'X': input}
     input_shape = input.shape
     if len(input_shape) < 2:
@@ -919,7 +942,7 @@ def conv2d(
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input({}) should be defined. "
+            "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(str(input.shape), str(num_channels))
         )
     assert param_attr is not False, "param_attr should not be False here."
@@ -1089,7 +1112,7 @@ def conv3d(
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are in NCDHW or NDHWC format. Where N is batch size C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    and W is the width of the feature. Convolution3D is similar with Convolution2D
     but adds one dimension(depth). If bias attribution and activation type are
     provided, bias is added to the output of the convolution, and the
     corresponding activation function is applied to the final result.
@@ -1235,7 +1258,7 @@ def conv3d(
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input({}) should be defined. "
+            "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(str(input.shape), str(num_channels))
         )
 
@@ -2748,8 +2771,8 @@ def batch_norm(
     dtype = helper.input_dtype()
 
     # use fp32 for bn parameter
-    if dtype == core.VarDesc.VarType.FP16 or dtype == core.VarDesc.VarType.BF16:
-        dtype = core.VarDesc.VarType.FP32
+    if dtype == paddle.float16 or dtype == paddle.bfloat16:
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
@@ -2810,11 +2833,11 @@ def batch_norm(
     variance_out = variance
 
     if in_dygraph_mode():
-        inputs_has_MomemtumTensor = False
+        inputs_has_MomentumTensor = False
         attrs_has_momentum = False
         tmp_tensor_type = core.eager.Tensor
         if isinstance(momentum, tmp_tensor_type):
-            inputs_has_MomemtumTensor = True
+            inputs_has_MomentumTensor = True
         else:
             attrs_has_momentum = True
 
@@ -2847,7 +2870,7 @@ def batch_norm(
                 'use_global_stats',
                 use_global_stats,
             )
-        if inputs_has_MomemtumTensor:
+        if inputs_has_MomentumTensor:
             batch_norm_out, _, _, _, _, _ = paddle._legacy_C_ops.batch_norm(
                 input,
                 scale,
@@ -3425,7 +3448,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                   Input(Weight) is the weight of conv layer, default 0.
         power_iters(int): number of power iterations to calculate spectral norm, default 1.
         eps(float): epsilon for numerical stability in calculating norms, it will be added to
-                    the denominator to aviod divide zero. Default 1e-12.
+                    the denominator to avoid divide zero. Default 1e-12.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -3454,7 +3477,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     check_type(eps, 'eps', float, 'spectral_norm')
     dtype = weight.dtype
 
-    # create intput and parameters
+    # create input and parameters
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
 
@@ -3481,7 +3504,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     )
     v.stop_gradient = True
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return paddle._C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
 
     inputs = {'Weight': weight}
@@ -3595,7 +3618,7 @@ def layer_norm(
     )
     dtype = helper.input_dtype()
 
-    # create intput and parameters
+    # create input and parameters
     inputs = {'X': input}
     input_shape = input.shape
     param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:], 1)]
@@ -3879,7 +3902,7 @@ def sparse_embedding(
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever
             lookup encounters :math:`padding\_idx` in id. And the padding data will not be updated
-            while training. If set None, it makes no efe mfect to output. Default: None.
+            while training. If set None, it makes no effect to output. Default: None.
         is_test(bool, optional): Training or prediction mode. In prediction mode (is_test=False),
             the output is not initialized and created, and it is filled with 0 and returned. Default: False.
         entry(str, optional): Entry config with parameter server whose value is ProbabilityEntry,

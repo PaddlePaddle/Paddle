@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/nonzero_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -40,6 +42,13 @@ void NonZeroKernel(const Context& dev_ctx,
                      dev_ctx.GetPlace(),
                      static_cast<void*>(true_num),
                      sizeof(int32_t));
+  if (std::getenv("XPUSIM_SKIP_RUN") &&
+      std::strcmp(std::getenv("XPUSIM_SKIP_RUN"), "1") == 0) {
+    VLOG(3) << "WARNING: In the simulator mode, the variable true_num_cpu "
+               "stores an uninitialized value. To avoid allocating a memory of "
+               "random size, we assign numel to true_num_cpu";
+    true_num_cpu = numel;
+  }
 
   out->Resize(common::make_ddim({static_cast<int64_t>(true_num_cpu), rank}));
   auto* out_data = dev_ctx.template Alloc<int64_t>(out);

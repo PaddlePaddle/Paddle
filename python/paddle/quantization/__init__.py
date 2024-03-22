@@ -17,14 +17,14 @@ from .base_observer import BaseObserver
 from .base_quanter import BaseQuanter
 from .config import QuantConfig
 from .factory import quanter
-from .imperative.ptq import (  # noqa:F401
+from .imperative.ptq import (  # noqa: F401
     ImperativePTQ,
 )
-from .imperative.ptq_config import (  # noqa:F401
+from .imperative.ptq_config import (  # noqa: F401
     PTQConfig,
     default_ptq_config,
 )
-from .imperative.ptq_quantizer import (  # noqa:F401
+from .imperative.ptq_quantizer import (  # noqa: F401
     SUPPORT_ACT_QUANTIZERS,
     SUPPORT_WT_QUANTIZERS,
     AbsmaxQuantizer,
@@ -33,10 +33,10 @@ from .imperative.ptq_quantizer import (  # noqa:F401
     KLQuantizer,
     PerChannelAbsmaxQuantizer,
 )
-from .imperative.ptq_registry import (  # noqa:F401
+from .imperative.ptq_registry import (  # noqa: F401
     PTQRegistry,
 )
-from .imperative.qat import (  # noqa:F401
+from .imperative.qat import (  # noqa: F401
     ImperativeQuantAware,
 )
 from .ptq import PTQ

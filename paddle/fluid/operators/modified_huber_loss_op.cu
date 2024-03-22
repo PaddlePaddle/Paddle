@@ -16,9 +16,9 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 #include <thrust/tuple.h>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/modified_huber_loss_op.h"
-#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

@@ -1805,7 +1805,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
-    // NOTE(minghaoBD): to make it compatible with strucutured pruning on
+    // NOTE(minghaoBD): to make it compatible with structured pruning on
     // num_head dimension:
     // 1. get dim_head from reshape.shape[3], dim_embed from
     // layer_norm_bias.shape[0]
@@ -1952,7 +1952,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
 
-      // Calc outscale and Set them
+      // Calc out scale and Set them
       auto qkv_weight_scale =
           PADDLE_GET_CONST(float, matmul0_op->GetAttr("weight_scale"));
       auto out_weight_scale =
@@ -2447,13 +2447,13 @@ FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -2629,7 +2629,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto* qkv_b_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
 
-    // NOTE(minghaoBD): to make it compatible with strucutured pruning on
+    // NOTE(minghaoBD): to make it compatible with structured pruning on
     // num_head dimension:
     // 1. get dim_head from reshape.shape[3], dim_embed from
     // layer_norm_bias.shape[0]
@@ -2758,9 +2758,9 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
 
-      // Calc outscale and Set them
+      // Calc out scale and Set them
       // TODO(wufeisheng): Currently just match layer-wise weight scale, where
-      // channel-wise weight scale should also be surpported.
+      // channel-wise weight scale should also be supported.
       auto qkv_weight_scale =
           PADDLE_GET_CONST(float, matmul0_op->GetAttr("weight_scale"));
       auto out_weight_scale =
@@ -3287,13 +3287,13 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -4083,13 +4083,13 @@ MultiDevicesFusedMultiTransformerEncoderPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -4267,7 +4267,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto* qkv_b_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
 
-    // NOTE(minghaoBD): to make it compatible with strucutured pruning on
+    // NOTE(minghaoBD): to make it compatible with structured pruning on
     // num_head dimension:
     // 1. get dim_head from reshape.shape[3], dim_embed from
     // layer_norm_bias.shape[0]
@@ -4407,7 +4407,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
 
-      // Calc outscale and Set them
+      // Calc out scale and Set them
       auto qkv_weight_scale =
           PADDLE_GET_CONST(float, matmul0_op->GetAttr("weight_scale"));
       auto out_weight_scale =
@@ -4973,13 +4973,13 @@ MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")

@@ -22,11 +22,9 @@ import paddle.nn.functional as F
 from paddle import nn
 from paddle.base import (
     Executor,
-    Program,
     core,
-    default_main_program,
-    program_guard,
 )
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestPad3dOp(OpTest):
@@ -367,7 +365,9 @@ class TestPadAPI(unittest.TestCase):
 
     def check_static_result_1(self, place):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_shape = (1, 2, 3, 4, 5)
             pad = [1, 2, 1, 1, 3, 4]
             mode = "constant"
@@ -386,7 +386,7 @@ class TestPadAPI(unittest.TestCase):
             )
             exe = Executor(place)
             fetches = exe.run(
-                default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"x": input_data},
                 fetch_list=[result],
             )
@@ -396,7 +396,9 @@ class TestPadAPI(unittest.TestCase):
 
     def check_static_result_2(self, place):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_shape = (2, 3, 4, 5, 6)
             pad = [1, 2, 1, 1, 1, 2]
             mode = "reflect"
@@ -413,7 +415,7 @@ class TestPadAPI(unittest.TestCase):
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
             exe = Executor(place)
             fetches = exe.run(
-                default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"x": input_data},
                 fetch_list=[result1, result2],
             )
@@ -429,7 +431,9 @@ class TestPadAPI(unittest.TestCase):
 
     def check_static_result_3(self, place):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_shape = (2, 3, 4, 5, 6)
             pad = [1, 2, 1, 1, 3, 4]
             mode = "replicate"
@@ -446,7 +450,7 @@ class TestPadAPI(unittest.TestCase):
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
             exe = Executor(place)
             fetches = exe.run(
-                default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"x": input_data},
                 fetch_list=[result1, result2],
             )
@@ -462,7 +466,9 @@ class TestPadAPI(unittest.TestCase):
 
     def check_static_result_4(self, place):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_shape = (2, 3, 4, 5, 6)
             pad = [1, 2, 1, 1, 3, 4]
             mode = "circular"
@@ -479,7 +485,7 @@ class TestPadAPI(unittest.TestCase):
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
             exe = Executor(place)
             fetches = exe.run(
-                default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"x": input_data},
                 fetch_list=[result1, result2],
             )
@@ -552,6 +558,7 @@ class TestPadAPI(unittest.TestCase):
 
         return out
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result_1(place=place)

@@ -71,9 +71,9 @@ from .framework.dtype import (
 Tensor = framework.core.eager.Tensor
 Tensor.__qualname__ = 'Tensor'
 
-import paddle.distributed.fleet  # noqa: F401
-import paddle.text  # noqa: F401
-import paddle.vision  # noqa: F401
+import paddle.distributed.fleet
+import paddle.text
+import paddle.vision
 from paddle import (  # noqa: F401
     amp,
     audio,
@@ -130,7 +130,7 @@ from .device import (  # noqa: F401
     set_device,
 )
 from .distributed import DataParallel
-from .framework import (  # noqa: F401  # noqa: F401
+from .framework import (  # noqa: F401
     CPUPlace,
     CUDAPinnedPlace,
     CUDAPlace,
@@ -157,7 +157,7 @@ from .hapi import (
     flops,
     summary,
 )
-from .nn.functional.distance import (  # noqa: F401
+from .nn.functional.distance import (
     pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
@@ -222,7 +222,7 @@ from .tensor.linalg import (  # noqa: F401
     transpose,
     transpose_,
 )
-from .tensor.logic import (  # noqa: F401
+from .tensor.logic import (
     allclose,
     bitwise_and,
     bitwise_and_,
@@ -253,11 +253,11 @@ from .tensor.logic import (  # noqa: F401
     logical_or,
     logical_or_,
     logical_xor,
-    logical_xor_,
+    logical_xor_,  # noqa: F401
     not_equal,
-    not_equal_,
+    not_equal_,  # noqa: F401
 )
-from .tensor.manipulation import (  # noqa: F401
+from .tensor.manipulation import (
     as_complex,
     as_real,
     as_strided,
@@ -309,6 +309,7 @@ from .tensor.manipulation import (  # noqa: F401
     select_scatter,
     shard_index,
     slice,
+    slice_scatter,
     split,
     squeeze,
     squeeze_,
@@ -357,11 +358,17 @@ from .tensor.math import (  # noqa: F401
     atan_,
     atanh,
     atanh_,
+    bitwise_left_shift,
+    bitwise_left_shift_,
+    bitwise_right_shift,
+    bitwise_right_shift_,
     broadcast_shape,
     ceil,
     clip,
     combinations,
     conj,
+    copysign,
+    copysign_,
     cos,
     cos_,
     cosh,
@@ -397,6 +404,12 @@ from .tensor.math import (  # noqa: F401
     frac,
     frac_,
     frexp,
+    gammainc,
+    gammainc_,
+    gammaincc,
+    gammaincc_,
+    gammaln,
+    gammaln_,
     gcd,
     gcd_,
     heaviside,
@@ -508,6 +521,7 @@ from .tensor.random import (
     randint_like,
     randn,
     randperm,
+    standard_gamma,
     standard_normal,
     uniform,
 )
@@ -549,6 +563,38 @@ if is_compiled_with_cinn():
     cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
+
+if is_compiled_with_cuda():
+    import os
+    import platform
+
+    if (
+        platform.system() == 'Linux'
+        and platform.machine() == 'x86_64'
+        and paddle.version.with_pip_cuda_libraries == 'ON'
+    ):
+        package_dir = os.path.dirname(os.path.abspath(__file__))
+        cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
+        set_flags({"FLAGS_cublas_dir": cublas_lib_path})
+
+        cudnn_lib_path = package_dir + "/.." + "/nvidia/cudnn/lib"
+        set_flags({"FLAGS_cudnn_dir": cudnn_lib_path})
+
+        curand_lib_path = package_dir + "/.." + "/nvidia/curand/lib"
+        set_flags({"FLAGS_curand_dir": curand_lib_path})
+
+        cusolver_lib_path = package_dir + "/.." + "/nvidia/cusolver/lib"
+        set_flags({"FLAGS_cusolver_dir": cusolver_lib_path})
+
+        cusparse_lib_path = package_dir + "/.." + "/nvidia/cusparse/lib"
+        set_flags({"FLAGS_cusparse_dir": cusparse_lib_path})
+
+        nccl_lib_path = package_dir + "/.." + "/nvidia/nccl/lib"
+        set_flags({"FLAGS_nccl_dir": nccl_lib_path})
+
+        cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
+        set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
+
 
 disable_static()
 
@@ -630,6 +676,7 @@ __all__ = [
     'amin',
     'any',
     'slice',
+    'slice_scatter',
     'normal',
     'normal_',
     'logsumexp',
@@ -754,6 +801,7 @@ __all__ = [
     'bernoulli',
     'binomial',
     'poisson',
+    'standard_gamma',
     'sinh',
     'sinh_',
     'round',
@@ -766,6 +814,10 @@ __all__ = [
     'neg_',
     'lgamma',
     'lgamma_',
+    'gammaincc',
+    'gammaincc_',
+    'gammainc',
+    'gammainc_',
     'lerp',
     'erfinv',
     'inner',
@@ -774,6 +826,8 @@ __all__ = [
     'square_',
     'divide',
     'divide_',
+    'gammaln',
+    'gammaln_',
     'ceil',
     'atan',
     'atan_',
@@ -939,6 +993,12 @@ __all__ = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'copysign',
+    'copysign_',
+    'bitwise_left_shift',
+    'bitwise_left_shift_',
+    'bitwise_right_shift',
+    'bitwise_right_shift_',
     'masked_fill',
     'masked_fill_',
     'masked_scatter',

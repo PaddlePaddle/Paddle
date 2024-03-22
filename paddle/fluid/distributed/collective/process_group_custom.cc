@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/distributed/collective/process_group_custom.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 #include "paddle/phi/api/lib/data_transform.h"
@@ -161,6 +161,32 @@ phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) const {
   return iter->second->xccl_comm();
 }
 
+std::string ProcessGroupCustom::GetCommName(int rank) {
+  PADDLE_ENFORCE_GE(rank,
+                    0,
+                    phi::errors::PreconditionNotMet(
+                        "The rank must greater or equal than 0!"));
+  auto num_devices = phi::DeviceManager::GetDeviceCount(device_type_);
+  PADDLE_ENFORCE_GT(
+      num_devices,
+      0,
+      phi::errors::InvalidArgument("The num_devices must greater than 0!"));
+
+  auto place_id = rank % num_devices;
+  platform::CustomPlace place(device_type_, place_id);
+  const auto& key = GetKeyFromPlace(place);
+  phi::DeviceGuard guard(place);
+  if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
+    CreateXCCLEnvCache(place, key);
+  }
+
+  char comm_name[128];
+  phi::DeviceManager::CCLCommName(
+      device_type_, this->GetCommContext()->GetXcclComm(), comm_name);
+  std::string name_str(comm_name);
+  return name_str;
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
@@ -236,7 +262,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
 
         std::vector<void*> send_buf, recv_buf;
         std::vector<size_t> send_count, recv_count;
-        std::vector<phi::ccl::CCLDataType> send_dtype, recv_dtype;
+        std::vector<phi::DataType> send_dtype, recv_dtype;
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
           input_partial = GetPartialTensor(tensor_tmp, in_offset, in_numel);
@@ -248,8 +274,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
           recv_buf.push_back(output_partial.data());
           send_count.push_back(in_numel);
           recv_count.push_back(out_numel);
-          send_dtype.push_back(phi::ccl::ToCCLDataType(input_partial.dtype()));
-          recv_dtype.push_back(phi::ccl::ToCCLDataType(output_partial.dtype()));
+          send_dtype.push_back(input_partial.dtype());
+          recv_dtype.push_back(output_partial.dtype());
         }
 
         phi::DeviceManager::CCLAllToAll(
@@ -992,9 +1018,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
         std::vector<void*> send_buf, recv_buf;
         std::vector<size_t> send_count(size_, input.numel() / size_),
             recv_count(size_, input.numel() / size_);
-        std::vector<phi::ccl::CCLDataType> send_dtype(
-            size_, phi::ccl::ToCCLDataType(input.dtype())),
-            recv_dtype(size_, phi::ccl::ToCCLDataType(input.dtype()));
+        std::vector<phi::DataType> send_dtype(size_, input.dtype()),
+            recv_dtype(size_, input.dtype());
         for (auto i = 0; i < size_; i++) {
           send_buf.push_back(
               GetPointerByOffset(input.data(), offset, input.dtype()));

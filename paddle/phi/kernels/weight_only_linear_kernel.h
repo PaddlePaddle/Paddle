@@ -26,5 +26,6 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                             const DenseTensor& weight_scale,
                             const std::string& weight_dtype,
                             const int32_t arch,
+                            const int32_t group_size,
                             DenseTensor* out);
 }  // namespace phi

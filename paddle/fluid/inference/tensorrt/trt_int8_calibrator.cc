@@ -30,7 +30,6 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     std::string engine_name,
     const platform::Place place)
     : batch_size_(batch_size), engine_name_(engine_name) {
-  int i = 0;
   VLOG(4) << "Init a new calibrator: " << engine_name_;
   for (const auto& it : buffers) {
     phi::DenseTensor temp_tensor;
@@ -43,7 +42,6 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     data_buffers_[input_name] = std::pair<void*, size_t>(
         static_cast<void*>(temp_tensor.mutable_data<int16_t>(place)),
         data_size);
-    i += 1;
   }
 }
 

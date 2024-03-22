@@ -268,7 +268,7 @@ class TestLstmOpInference(TestLstmOp):
 #             ['Input', 'Weight', 'Bias', 'H0', 'C0'], ['Hidden'],
 #             max_relative_error=5e-4)
 
-#     def test_check_grad_ingore_bias(self):
+#     def test_check_grad_ignore_bias(self):
 #         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -278,7 +278,7 @@ class TestLstmOpInference(TestLstmOp):
 #             max_relative_error=5e-4,
 #             no_grad_set=set('Bias'))
 
-#     def test_check_grad_ingore_weight(self):
+#     def test_check_grad_ignore_weight(self):
 #         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -288,7 +288,7 @@ class TestLstmOpInference(TestLstmOp):
 #             max_relative_error=5e-4,
 #             no_grad_set=set('Weight'))
 
-#     def test_check_grad_ingore_input(self):
+#     def test_check_grad_ignore_input(self):
 #         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -298,7 +298,7 @@ class TestLstmOpInference(TestLstmOp):
 #             max_relative_error=5e-4,
 #             no_grad_set=set('Input'))
 
-#     def test_check_grad_ingore_h0(self):
+#     def test_check_grad_ignore_h0(self):
 #         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(
@@ -308,7 +308,7 @@ class TestLstmOpInference(TestLstmOp):
 #             max_relative_error=5e-4,
 #             no_grad_set=set('H0'))
 
-#     def test_check_grad_ingore_c0(self):
+#     def test_check_grad_ignore_c0(self):
 #         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(

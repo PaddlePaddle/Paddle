@@ -68,7 +68,7 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
           op_desc, "num_or_sections"));
 
   CHECK(!num_or_sections.empty())
-      << "The Split op cannot found [num_or_sections] attrbute!  ! Please "
+      << "The Split op cannot found [num_or_sections] attribute!  ! Please "
          "check.";
 
   auto axis =
@@ -91,11 +91,13 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
       } else if (sec == -1 && !has_neg) {
         has_neg = true;
       } else if (sec == 0) {
-        LOG(FATAL) << "The attribute 'num_or_sections' of split should not has "
-                      "0 ! Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "The attribute 'num_or_sections' of split should not has "
+            "0 ! Please check."));
       } else {
-        LOG(FATAL) << "The attribute 'num_or_sections' of split can only have "
-                      "at most one '-1' ! Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "The attribute 'num_or_sections' of split can only have "
+            "at most one '-1' ! Please check."));
       }
     }
     CHECK(!has_neg && sec_sum == x_shape[axis])
@@ -254,7 +256,7 @@ void ReduceOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto x = ctx.GetVar(x_name);
 
-  VLOG(4) << "Reudce " << reduce_type << " x:" << x_name << " from shape ("
+  VLOG(4) << "Reduce " << reduce_type << " x:" << x_name << " from shape ("
           << cinn::utils::Join(x->shape, ",") << "), with axis ["
           << cinn::utils::Join(axis, ",") << "], keepdim " << keepdim;
 

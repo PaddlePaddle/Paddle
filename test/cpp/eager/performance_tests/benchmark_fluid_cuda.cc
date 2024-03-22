@@ -46,7 +46,7 @@ TEST(Benchmark, FluidScaleCUDA) {
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
-    X->SetOverridedStopGradient(false);
+    X->SetOverriddenStopGradient(false);
 
     std::vector<float> src_data(128, 5.0);
     std::vector<int64_t> dims = {2, 4, 4, 4};
@@ -101,9 +101,9 @@ TEST(Benchmark, FluidMatmulCUDA) {
 
   for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
-    X->SetOverridedStopGradient(false);
+    X->SetOverriddenStopGradient(false);
     std::shared_ptr<imperative::VarBase> Y(new imperative::VarBase(true, "Y"));
-    Y->SetOverridedStopGradient(false);
+    Y->SetOverriddenStopGradient(false);
 
     std::vector<float> x_src_data(4, 1.0);
     std::vector<float> y_src_data(4, 2.0);
@@ -182,7 +182,7 @@ TEST(Benchmark, FluidMLPCUDA) {
     std::vector<int64_t> b_dims = {MLP_K};
 
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
-    X->SetOverridedStopGradient(false);
+    X->SetOverriddenStopGradient(false);
 
     auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(common::make_ddim(x_dims));
@@ -199,10 +199,10 @@ TEST(Benchmark, FluidMLPCUDA) {
     for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
       std::shared_ptr<imperative::VarBase> W(
           new imperative::VarBase(true, "W"));
-      W->SetOverridedStopGradient(false);
+      W->SetOverriddenStopGradient(false);
       std::shared_ptr<imperative::VarBase> B(
           new imperative::VarBase(true, "B"));
-      B->SetOverridedStopGradient(false);
+      B->SetOverriddenStopGradient(false);
 
       auto* w_tensor = W->MutableVar()->GetMutable<phi::DenseTensor>();
       w_tensor->Resize(common::make_ddim(w_dims));

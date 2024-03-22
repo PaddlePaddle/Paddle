@@ -60,14 +60,14 @@ class TestLstm(Dy2StTestBase):
 
     def run_lstm(self, to_static):
         with enable_to_static_guard(to_static):
-            paddle.static.default_main_program().random_seed = 1001
-            paddle.static.default_startup_program().random_seed = 1001
+            paddle.seed(1001)
 
             net = paddle.jit.to_static(Net(12, 2))
             x = paddle.zeros((2, 10, 12))
             y = net(x)
             return y.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_lstm_to_static(self):
         dygraph_out = self.run_lstm(to_static=False)
         static_out = self.run_lstm(to_static=True)

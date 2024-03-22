@@ -212,7 +212,7 @@ class TestProgramBF16(AmpTestBase):
         self.assertEqual(
             actual_num_mp,
             expected_num_mp,
-            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but received {actual_num_mp}.",
+            f"The number of optimizers with multi_precision = True is expected to be {expected_num_mp}, but received {actual_num_mp}.",
         )
 
     def test_amp_bf16_o1(self):

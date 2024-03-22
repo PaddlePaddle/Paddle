@@ -27,8 +27,8 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
-#include "paddle/fluid/string/pretty_log.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -103,6 +103,7 @@ void IRPassManager::CreatePasses(Argument *argument,
         "mixed_white_list",
         new std::unordered_set<std::string>(argument->mixed_white_list()));
     pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
+    pass->Set("use_custom_device", new bool(argument->use_custom_device()));
     pass->Set("enable_custom_device_mixed",
               new bool(argument->enable_custom_device_mixed()));
     pass->Set("mixed_precision_mode",
@@ -113,6 +114,9 @@ void IRPassManager::CreatePasses(Argument *argument,
 
     // "use_xpu" is used for passes in subgraphs.
     pass->Set("use_xpu", new bool(argument->use_xpu()));
+
+    // "use_tensorrt" is used for passes in subgraphs.
+    pass->Set("use_tensorrt", new bool(argument->use_tensorrt()));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -166,6 +170,21 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "output_tensor_names",
           new std::vector<std::string>(argument->trt_output_tensor_names()));
+      pass->Set(
+          "trt_exclude_var_names",
+          new std::vector<std::string>(argument->trt_exclude_var_names()));
+      pass->Set(
+          "trt_parameter_run_fp16",
+          new std::vector<std::string>(argument->trt_parameter_run_fp16()));
+      pass->Set(
+          "trt_parameter_run_int8",
+          new std::vector<std::string>(argument->trt_parameter_run_int8()));
+      pass->Set(
+          "trt_parameter_run_bfp16",
+          new std::vector<std::string>(argument->trt_parameter_run_bfp16()));
+      pass->Set("forbid_dynamic_op",
+                new bool(argument->trt_forbid_dynamic_op()));
+
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));

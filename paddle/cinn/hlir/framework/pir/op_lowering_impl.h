@@ -27,12 +27,12 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/packed_func.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
-// Elementwise/Broadcast/Injective,Reduce,OutEWiseFusable,NonFusible.
-// Elementwise/Broadcast/Injective Ops is with same shcedule.
-// Reduce,OutEWiseFusable,NonFusible are using different schedule.
+// Elementwise/Broadcast/Injective,Reduce,OutEWiseFusible,NonFusible.
+// Elementwise/Broadcast/Injective Ops is with same schedule.
+// Reduce,OutEWiseFusible,NonFusible are using different schedule.
 
 namespace cinn {
 namespace hlir {
@@ -46,6 +46,19 @@ using cinn::common::Target;
 class OpLowererImpl;
 
 typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(::pir::Operation*);
+
+struct GroupInfo {
+  std::vector<int64_t> data_space;
+  std::vector<int64_t> reduce_axis;
+  std::set<std::string> reduce_var_names;
+  std::set<std::string> shared_var_names;
+  std::set<std::string> direct_output_var_names;
+  std::vector<std::string> broadcast_output_names;
+
+  std::unordered_map<std::string, cinn::ir::BroadcastInfo> broadcast_info;
+  std::unordered_map<std::string, cinn::ir::BroadcastInfo>
+      broadcast_to_elementwise;
+};
 
 class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
  public:
@@ -70,11 +83,10 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @param apply_group_schedule Whether to schedule at group level.
    * @return The lowered funcs.
    */
-  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>> BucketLower(
-      const GroupPtr& group,
-      bool apply_op_schedule = false,
-      bool apply_group_schedule = true,
-      bool apply_pass = true);
+  BucketLoweredFuncsWrapper BucketLower(const GroupPtr& group,
+                                        bool apply_op_schedule = false,
+                                        bool apply_group_schedule = true,
+                                        bool apply_pass = true);
 
   void InsertNameGeneToScope(std::shared_ptr<Scope> scope);
 
@@ -108,16 +120,19 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @param tensor_map All tensors used for calculating the group.
    * @param done_op_schedule Mark whether the Op level schedule has been
    * applied.
-   * @param func_body The scheduled func body of group.
+   * @param func_bodies The scheduled func bodies of group.
    * @param group_func_arg_tensors Tensors used as the group function arguments.
+   * @param group_func_args Arguments used as the group function arguments.
    * @return The lowered funcs after the post processing.
    */
   std::vector<ir::LoweredFunc> PostProcess(
       const GroupPtr& group,
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
       bool done_op_schedule,
-      ir::Expr func_body,
-      std::vector<ir::Tensor>* group_func_arg_tensors);
+      std::vector<ir::Expr> func_bodies,
+      std::vector<ir::Tensor>* group_func_arg_tensors,
+      std::vector<ir::Argument>* group_func_args,
+      std::vector<ir::Tensor>* infer_shape_arg_tensor);
 
   /**
    * @brief Lower an Op set to CINN IR.
@@ -214,6 +229,18 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
       const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info);
 
+  /**
+   * @brief  Generates the output tensor infer shape function.
+   * @param group The group to be lowered.
+   * @param group_func_arg_tensors Tensors used as the group function arguments.
+   * @param group_func_args Arguments used as the group function arguments.
+   * @return The lowered func to infer output tensor's shape.
+   */
+  ir::LoweredFunc GenerateInferShapeFunc(
+      const GroupPtr& group,
+      const std::vector<ir::Tensor> group_func_arg_tensors,
+      const std::vector<ir::Argument> group_func_args);
+
   // Functions used to determine which Ops to schedule at op level, define a
   // policy for each type of group.
   inline bool ReduceScheduleDetermineFunction(::pir::Operation* op);
@@ -229,10 +256,22 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
 
   ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value);
+  ir::Tensor GetTensorSymbolic(const GroupPtr& group,
+                               const ::pir::Value& value);
+
+  std::shared_ptr<GroupInfo> GetGroupInfo(
+      const GroupPtr& group,
+      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
 
   void CollectOutputInfo(::pir::Operation* op,
                          std::vector<Type>* out_types,
-                         std::vector<std::vector<int>>* out_shapes);
+                         std::vector<std::vector<int>>* out_shapes,
+                         const GroupPtr& group);
+
+  void CollectOutputInfo(::pir::Operation* op,
+                         std::vector<Type>* out_types,
+                         std::vector<std::vector<ir::Dim>>* out_shapes,
+                         const GroupPtr& group);
 
   std::string ValueName(::pir::Value value);
 
@@ -246,9 +285,14 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
 
   common::Type GetTensorDtype(const ::pir::Value& value);
 
+  void BuildBroadcastInfo(const GroupPtr& group,
+                          std::shared_ptr<GroupInfo> group_info);
+
   Target target_;
 
   PrettyNamer* name_gene_;
+
+  std::unordered_set<::pir::Operation*> erase_reshape;
 };
 
 }  // namespace pir

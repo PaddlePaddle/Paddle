@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .program_utils import (
+from .program_utils import (  # noqa: F401
     delete_ops,
     find_op_by_input_arg,
     find_op_by_output_arg,
 )
-from .ufind import UnionFind
-from .vars_distributed import VarStruct, VarDistributed, VarsDistributed
+from .ufind import UnionFind  # noqa: F401
+from .vars_distributed import (  # noqa: F401
+    VarDistributed,
+    VarsDistributed,
+    VarStruct,
+)

@@ -24,6 +24,7 @@ from paddle import enable_static
 class TestOneDNNElementwiseMulOp(ElementwiseMulOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -53,7 +54,7 @@ class TestOneDNNElementwiseMulOp4(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 
@@ -67,10 +68,10 @@ class TestOneDNNElementwiseMulOp5(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -83,10 +84,10 @@ class TestOneDNNElementwiseMulOpZeroDim(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -99,10 +100,10 @@ class TestOneDNNElementwiseMulOpZeroDim2(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -115,10 +116,10 @@ class TestOneDNNElementwiseMulOpZeroDim3(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -126,12 +127,13 @@ class TestOneDNNElementwiseMulOpZeroDim3(TestOneDNNElementwiseMulOp):
 
 
 @skip_check_grad_ci(
-    reason="oneDNN's int8 elementwise_ops don't implemend grad kernel."
+    reason="oneDNN's int8 elementwise_ops don't implement grad kernel."
 )
 class TestInt8(ElementwiseMulOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.int8
@@ -154,10 +156,10 @@ class TestInt8(ElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 

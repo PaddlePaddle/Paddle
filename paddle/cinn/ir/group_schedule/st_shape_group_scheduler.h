@@ -46,8 +46,9 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   StaticShapeGroupScheduler(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const cinn::common::Target& target)
-      : GroupScheduler(ir_sch, output_tensor_names, target) {}
+      const cinn::common::Target& target,
+      const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info)
+      : GroupScheduler(ir_sch, output_tensor_names, target, group_info) {}
 
   void Schedule() override;
 
@@ -93,9 +94,6 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   // Obtain the latest order of ScheduleBlock and the control structures
   // throughout the entire IR.
   void UpdateBlockOrder();
-
-  // Get output tensor names of group.
-  std::unordered_set<std::string> OutputTensorNames() const;
 
   /**
    * @brief Determine whether the graph level dependency is still maintained

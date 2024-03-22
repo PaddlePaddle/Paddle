@@ -26,6 +26,10 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.libpaddle import DataType
+from paddle.base.libpaddle.pir import (
+    get_current_insertion_point,
+    set_insertion_point,
+)
 
 from ..base.variable_index import _setitem_static
 
@@ -132,9 +136,11 @@ def data(name, shape, dtype=None, lod_level=0):
         ir_dtype = dtype
         if not isinstance(ir_dtype, DataType):
             ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+        prev_insertion_point = get_current_insertion_point()
         _reset_data_op_insertion_point()
         out = paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
-        paddle.pir.reset_insertion_point_to_end()
+        out.lod_level = lod_level
+        set_insertion_point(prev_insertion_point)
         return out
 
     out = helper.create_global_variable(
@@ -206,7 +212,7 @@ class InputSpec:
     def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
-        # convert dtype into united represention
+        # convert dtype into united representation
         if dtype is not None:
             if isinstance(dtype, (np.dtype, str)):
                 dtype = convert_np_dtype_to_dtype_(dtype)

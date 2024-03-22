@@ -29,9 +29,11 @@ class TestDistTensorSRP(unittest.TestCase):
     def setUp(self):
         self._shape = eval(os.getenv("shape"))
         self._dtype = os.getenv("dtype")
-        self._seeds = eval(os.getenv("seeds"))
+        self._seed = 2023
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
 
     def run_test_placements(self):
         self.placements = [core.Replicate(), core.Replicate()]
@@ -99,38 +101,43 @@ class TestDistTensorSRP(unittest.TestCase):
             place = paddle.CUDAPlace(dist.get_rank())
 
         tensor = paddle.rand([2, 10])
-        srp_tensor = paddle.Tensor(
-            tensor, process_mesh=self._mesh, placements=core.Shard(0)
-        )
-
-        self.assertEqual(srp_tensor.dist_attr.process_mesh, self._mesh)
-        self.assertEqual(srp_tensor.dist_attr.dims_mapping, [0, -1])
-        self.assertEqual(srp_tensor.num_shard, 2)
-
-        self.assertTrue(srp_tensor.dist_attr.is_annotated("process_mesh"))
-        self.assertTrue(srp_tensor.dist_attr.is_annotated("dims_mapping"))
-
-        dist_attr_tensor = paddle.Tensor(
+        dist_tensor = paddle.Tensor(
             tensor, process_mesh=self._mesh, placements=[dist.Shard(0)]
         )
 
-        self.assertEqual(
-            dist_attr_tensor.dist_attr.dims_mapping,
-            srp_tensor.dist_attr.dims_mapping,
-        )
-        self.assertEqual(
-            dist_attr_tensor.dist_attr.process_mesh,
-            srp_tensor.dist_attr.process_mesh,
-        )
+        self.assertEqual(dist_tensor.num_shard, 2)
+
         np.testing.assert_equal(
-            dist_attr_tensor._local_value().numpy(),
-            srp_tensor._local_value().numpy(),
+            dist_tensor.numpy(),
+            tensor.numpy(),
+        )
+
+    def run_test_dist_tensor_with_local_tensor(self):
+        if self._backend == "cpu":
+            paddle.set_device("cpu")
+            place = paddle.CPUPlace()
+        elif self._backend == "gpu":
+            place = paddle.CUDAPlace(dist.get_rank())
+
+        tensor = paddle.rand([2, 10])
+        global_dims = [4, 10]
+        dist_tensor = paddle.Tensor(
+            tensor,
+            dims=global_dims,
+            process_mesh=self._mesh,
+            placements=core.Shard(0),
+        )
+
+        np.testing.assert_equal(
+            dist_tensor._local_value().numpy(),
+            tensor.numpy(),
         )
 
     def test_case(self):
         self.run_test_placements()
         self.run_test_check_placements_equal()
         self.run_test_dist_tensor()
+        self.run_test_dist_tensor_with_local_tensor()
 
 
 if __name__ == "__main__":

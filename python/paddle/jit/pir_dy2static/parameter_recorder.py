@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import paddle
+from paddle.autograd.backward_utils import ValueDict
+from paddle.framework import core
 
 from ..dy2static.program_translator import _program_hash, synchronized
 
@@ -20,7 +22,7 @@ from ..dy2static.program_translator import _program_hash, synchronized
 class ParametersRecorder:
     def __init__(self):
         self.params_dict = {}
-        self.tensor2opresult = {}
+        self.tensor2value = {}
 
     @synchronized
     def get(self, program, tensor):
@@ -30,21 +32,36 @@ class ParametersRecorder:
         key = _program_hash(program)
         if key not in self.params_dict:
             self.params_dict[key] = set()
-            self.tensor2opresult[key] = {}
+            self.tensor2value[key] = {}
 
         params = self.params_dict[key]
-        mappings = self.tensor2opresult[key]
+        mappings = self.tensor2value[key]
         if id(tensor) not in mappings:
             non_used_initializer = paddle.nn.initializer.Constant(0.0)
-            op_result = create_parameter(
-                dtype=vartype_to_datatype[tensor.dtype],
+            dtype = tensor.dtype
+            if isinstance(dtype, core.VarDesc.VarType):
+                vartype_to_datatype[dtype]
+            value = create_parameter(
+                dtype=dtype,
                 shape=tensor.shape,
                 type=tensor.type,
                 initializer=non_used_initializer,
             )
+
+            if tensor.placements is not None:  # import for shard tensor api
+                import paddle.distributed as dist
+
+                value = dist.shard_tensor(
+                    value,
+                    tensor.process_mesh,
+                    tensor.placements,
+                    stop_gradient=value.stop_gradient,
+                )
+
             if isinstance(tensor, paddle.Tensor):
                 params.add(tensor)
-            mappings[id(tensor)] = op_result
+            mappings[id(tensor)] = value
+
         return mappings[id(tensor)]
 
     def pop(self, program):
@@ -52,12 +69,12 @@ class ParametersRecorder:
         params = self.params_dict.get(hash_id)
         if params is None:
             return [], []
-        params_values = [
-            self.tensor2opresult[hash_id][id(x)] for x in list(params)
-        ]
+        params = list(params)
+        params.sort(key=lambda x: x.name)
+        params_values = [self.tensor2value[hash_id][id(x)] for x in params]
         del self.params_dict[hash_id]
-        del self.tensor2opresult[hash_id]
-        return list(params), list(params_values)
+        del self.tensor2value[hash_id]
+        return params, params_values
 
 
 class InplaceMap:
@@ -65,28 +82,26 @@ class InplaceMap:
         self.params_dict = {}
 
     @synchronized
-    def add(self, program, id, param):
-        """use the default_program as key, append param the parameter list."""
+    def add(self, program, origin_value, new_value):
         key = _program_hash(program)
         if key not in self.params_dict:
-            self.params_dict[key] = {}
+            self.params_dict[key] = ValueDict()
+        inplace_dict = self.params_dict[key]
+        inplace_dict[origin_value] = new_value
 
-        params = self.params_dict[key]
-        params[id] = param
-
-    def get(self, program, id):
-        params = self.params_dict.get(_program_hash(program))
-        if params is None:
+    def get(self, program, value):
+        inplace_dict = self.params_dict.get(_program_hash(program))
+        if inplace_dict is None:
             return None
-        if id not in params:
+        if value not in inplace_dict:
             return None
-        root_var = params[id]
+        root_var = inplace_dict[value]
         saved = []
-        while id(root_var) in params.keys():
+        while root_var in inplace_dict:
             saved.append(root_var)
-            root_var = params[id(root_var)]
+            root_var = inplace_dict[root_var]
         for var in saved:
-            params[id(var)] = root_var
+            inplace_dict[var] = root_var
         return root_var
 
     def restore_checkpoint(self, checkpoint):

@@ -135,8 +135,7 @@ class TestImperativeQatLSQ(unittest.TestCase):
 
         seed = 100
         np.random.seed(seed)
-        paddle.static.default_main_program().random_seed = seed
-        paddle.static.default_startup_program().random_seed = seed
+        paddle.seed(seed)
         paddle.disable_static()
         lenet = ImperativeLenet()
         lenet = fix_model_dict(lenet)

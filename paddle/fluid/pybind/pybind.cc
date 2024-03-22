@@ -78,9 +78,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
+#include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
@@ -92,7 +93,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -134,6 +134,10 @@ limitations under the License. */
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/dist_api.h"
+#endif
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -145,7 +149,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -193,6 +197,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/rpc.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -207,13 +212,12 @@ limitations under the License. */
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/common/type_promotion.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -223,6 +227,9 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
 DECLARE_FILE_SYMBOLS(init_phi);
 DECLARE_FILE_SYMBOLS(kernel_dialect);
+#ifdef PADDLE_WITH_DISTRIBUTE
+DECLARE_FILE_SYMBOLS(dist_dialect);
+#endif
 DECLARE_FILE_SYMBOLS(buffered_allocator);
 DECLARE_FILE_SYMBOLS(best_fit_allocator);
 DECLARE_FILE_SYMBOLS(aligned_allocator);
@@ -248,6 +255,14 @@ bool IsCompiledWithAVX() {
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithCudnnFrontend() {
+#ifndef PADDLE_WITH_CUDNN_FRONTEND
   return false;
 #else
   return true;
@@ -702,8 +717,8 @@ void BindVjp(pybind11::module *m) {
       "call_vjp",
       [](pir::Operation &fwd_op,
          const std::vector<std::vector<pir::Value>> &inputs,
-         const std::vector<std::vector<pir::OpResult>> &outputs,
-         const std::vector<std::vector<pir::OpResult>> &out_grads,
+         const std::vector<std::vector<pir::Value>> &outputs,
+         const std::vector<std::vector<pir::Value>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
         paddle::dialect::VjpInterface vjp_interface =
@@ -712,7 +727,7 @@ void BindVjp(pybind11::module *m) {
             vjp_interface,
             phi::errors::InvalidArgument(
                 "The vjp function is not registered in %s op ", fwd_op.name()));
-        std::vector<std::vector<pir::OpResult>> vjp_res = vjp_interface.Vjp(
+        std::vector<std::vector<pir::Value>> vjp_res = vjp_interface.Vjp(
             &fwd_op, inputs, outputs, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
@@ -779,13 +794,14 @@ void BindVjp(pybind11::module *m) {
 void BindDecomp(pybind11::module *m) {
   m->def("sinking_decomp",
          [](pir::Program *program,
-            std::vector<pir::OpResult> &src_vars,
+            std::vector<pir::Value> &src_vars,
             std::set<std::string> &blacklist,
             std::set<std::string> &whitelist) {
            VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
            py::list res;
            DecompProgram decomp_object(program, src_vars, blacklist, whitelist);
-           auto tar_vars = decomp_object.decomp_program();
+           decomp_object.decomp_program();
+           std::vector<pir::Value> tar_vars = decomp_object.get_dst_vars();
            for (size_t i = 0; i < tar_vars.size(); ++i) {
              if (!tar_vars[i]) {
                res.append(nullptr);
@@ -799,8 +815,7 @@ void BindDecomp(pybind11::module *m) {
 
   m->def("call_decomp", [](pir::Operation &fwd_op) {
     py::list res;
-    std::vector<std::vector<pir::OpResult>> decomp_res =
-        call_decomp_rule(&fwd_op);
+    std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(&fwd_op);
     for (size_t i = 0; i < decomp_res.size(); ++i) {
       py::list sub_res;
       for (size_t j = 0; j < decomp_res[i].size(); ++j) {
@@ -963,12 +978,12 @@ PYBIND11_MODULE(libpaddle, m) {
 #endif
 
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
                   [](platform::CUDAPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
-                        place, static_cast<cudaStreamCaptureMode>(mode));
+                        place, static_cast<paddle::gpuStreamCaptureMode>(mode));
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
@@ -1232,7 +1247,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
-             if (self.IsType<String>()) {
+             if (self.IsType<String>()) {  // NOLINT
                return py::bytes(*(self.GetMutable<String>()));
              } else {
                return py::bytes(
@@ -2123,6 +2138,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_cudnn_frontend", IsCompiledWithCudnnFrontend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
@@ -2220,7 +2236,7 @@ All parameter, weight, gradient are variables in Paddle.
            const std::string &var_name,
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
-          if (data_is_lod_tensor(var)) {
+          if (data_is_lod_tensor(var)) {  // NOLINT
             return py::cast(PADDLE_GET(phi::DenseTensor, var));
           } else {
             return py::cast(PADDLE_GET(LoDTensorArray, var));
@@ -2232,7 +2248,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindProgramDesc(&m);
   BindBlockDesc(&m);
-  BindVarDsec(&m);
+  BindVarDesc(&m);
   BindOpDesc(&m);
   BindCostModel(&m);
   BindConstValue(&m);
@@ -2264,8 +2280,7 @@ All parameter, weight, gradient are variables in Paddle.
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
   pylodtensorarray
-      .def("__init__",
-           [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
+      .def(py::init([]() { return std::make_unique<LoDTensorArray>(); }))
       .def(
           "__getitem__",
           [](LoDTensorArray &self, size_t i) { return &self.at(i); },
@@ -3038,6 +3053,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  BindDistApi(&m);
+#endif
 }
 }  // namespace pybind
 }  // namespace paddle

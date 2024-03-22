@@ -47,7 +47,7 @@ def place(devices, key='place'):
     return decorate
 
 
-def parameterize_cls(fields, values=None):
+def parameterize_cls(fields, values=None, test_pir=False):
     fields = [fields] if isinstance(fields, str) else fields
     params = [dict(zip(fields, vals)) for vals in values]
 
@@ -56,10 +56,15 @@ def parameterize_cls(fields, values=None):
         for k, v in enumerate(params):
             test_cls = dict(cls.__dict__)
             test_cls.update(v)
+            test_cls["test_pir"] = False
             name = cls.__name__ + str(k)
             name = name + '.' + v.get('suffix') if v.get('suffix') else name
-
             test_cls_module[name] = type(name, (cls,), test_cls)
+            if test_pir:
+                name = name + ".pir"
+                test_cls["test_pir"] = True
+                pir_type = type(name, (cls,), test_cls)
+                test_cls_module[name] = pir_type
 
         for m in list(cls.__dict__):
             if m.startswith("test"):

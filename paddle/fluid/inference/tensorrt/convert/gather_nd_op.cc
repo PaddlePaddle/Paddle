@@ -36,7 +36,7 @@ class GatherNdOpConverter : public OpConverter {
     auto layer = TRT_ENGINE_ADD_LAYER(
         engine_, GatherV2, *input, *index, nvinfer1::GatherMode::kND);
     layer->setNbElementWiseDims(0);
-    RreplenishLayerAndOutput(layer, "gather_nd", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "gather_nd", {output_name}, test_mode);
 #else
     VLOG(4) << "convert a paddle gather_nd op to tensorrt gather_nd plugin";
 

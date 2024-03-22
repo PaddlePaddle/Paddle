@@ -45,6 +45,10 @@ class DistTensor final
   /// will be set by reshard later.
   DistTensor();
 
+  /// \brief Construct a dist tensor based dtype.
+  /// \param dtype The dtype of the current tensor.
+  explicit DistTensor(phi::DataType dtype);
+
   /// \brief Construct a dist tensor based dense tensor.
   /// \param global_value The global dense tensor of the current tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
@@ -58,8 +62,24 @@ class DistTensor final
              const ProcessMesh& process_mesh,
              const Placements& placements);
 
+  /// \brief Construct a dist tensor based local dense tensor.
+  /// \param global_dims The global dim of the dist tensor.
+  /// \param dist_attr The distributed attributes of the current tensor.
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+             const DDim& global_dims,
+             const TensorDistAttr& dist_attr);
+
+  /// \brief Construct a dist tensor based local dense tensor.
+  /// \param global_dims The global dim of the dist tensor.
+  /// \param process_mesh The process mesh of the current tensor.
+  /// \param placements The distributed placements of the current tensor.
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+             const DDim& global_dims,
+             const ProcessMesh& process_mesh,
+             const Placements& placements);
+
   /// \brief Construct a empty dist tensor (for infer spmd)
-  /// \param dims The global dimension of the currnet Tensor.
+  /// \param dims The global dimension of the current Tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
   DistTensor(const DDim& dims, const TensorDistAttr& dist_attr);
 
@@ -157,6 +177,8 @@ class DistTensor final
                      DataType dtype,
                      size_t requested_size = 0,
                      bool fake_alloc = false) override;
+
+  void clear();
 
  private:
   friend class ReshardFunction;

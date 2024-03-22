@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 def smooth_l1_loss_forward(val, delta):
@@ -46,174 +47,195 @@ class SmoothL1Loss(unittest.TestCase):
     def test_smooth_l1_loss_mean(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
-        prog = base.Program()
-        startup_prog = base.Program()
+
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
             else base.CPUPlace()
         )
-        with base.program_guard(prog, startup_prog):
-            input = paddle.static.data(
-                name='input', shape=[100, 200], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[100, 200], dtype='float32'
-            )
-            smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
-            ret = smooth_l1_loss(input, label)
 
-            exe = base.Executor(place)
-            (static_ret,) = exe.run(
-                prog,
-                feed={
-                    'input': input_np,
-                    'label': label_np,
-                },
-                fetch_list=[ret],
-            )
-            self.assertIsNotNone(static_ret)
+        expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
+
+        @test_with_pir_api
+        def test_static():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.static.data(
+                    name='input', shape=[100, 200], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[100, 200], dtype='float32'
+                )
+                smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
+                ret = smooth_l1_loss(input, label)
+
+                exe = paddle.static.Executor(place)
+                (static_ret,) = exe.run(
+                    feed={
+                        'input': input_np,
+                        'label': label_np,
+                    },
+                    fetch_list=[ret],
+                )
+                self.assertIsNotNone(static_ret)
+                np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
-        expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_sum(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
-        prog = base.Program()
-        startup_prog = base.Program()
+
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
             else base.CPUPlace()
         )
-        with base.program_guard(prog, startup_prog):
-            input = paddle.static.data(
-                name='input', shape=[100, 200], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[100, 200], dtype='float32'
-            )
-            smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
-            ret = smooth_l1_loss(input, label)
+        expected = smooth_l1_loss_np(input_np, label_np, reduction='sum')
 
-            exe = base.Executor(place)
-            (static_ret,) = exe.run(
-                prog,
-                feed={
-                    'input': input_np,
-                    'label': label_np,
-                },
-                fetch_list=[ret],
-            )
-            self.assertIsNotNone(static_ret)
+        @test_with_pir_api
+        def test_static():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.static.data(
+                    name='input', shape=[100, 200], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[100, 200], dtype='float32'
+                )
+                smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
+                ret = smooth_l1_loss(input, label)
+
+                exe = paddle.static.Executor(place)
+                (static_ret,) = exe.run(
+                    feed={
+                        'input': input_np,
+                        'label': label_np,
+                    },
+                    fetch_list=[ret],
+                )
+                self.assertIsNotNone(static_ret)
+                np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
-        expected = smooth_l1_loss_np(input_np, label_np, reduction='sum')
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_none(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
-        prog = base.Program()
-        startup_prog = base.Program()
+
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
             else base.CPUPlace()
         )
-        with base.program_guard(prog, startup_prog):
-            input = paddle.static.data(
-                name='input', shape=[100, 200], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[100, 200], dtype='float32'
-            )
-            smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
-            ret = smooth_l1_loss(input, label)
+        expected = smooth_l1_loss_np(input_np, label_np, reduction='none')
 
-            exe = base.Executor(place)
-            (static_ret,) = exe.run(
-                prog,
-                feed={
-                    'input': input_np,
-                    'label': label_np,
-                },
-                fetch_list=[ret],
-            )
-            self.assertIsNotNone(static_ret)
+        @test_with_pir_api
+        def test_static():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.static.data(
+                    name='input', shape=[100, 200], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[100, 200], dtype='float32'
+                )
+                smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
+                ret = smooth_l1_loss(input, label)
+
+                exe = paddle.static.Executor(place)
+                (static_ret,) = exe.run(
+                    feed={
+                        'input': input_np,
+                        'label': label_np,
+                    },
+                    fetch_list=[ret],
+                )
+                self.assertIsNotNone(static_ret)
+                np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
-        expected = smooth_l1_loss_np(input_np, label_np, reduction='none')
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_delta(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
         delta = np.random.rand()
-        prog = base.Program()
-        startup_prog = base.Program()
+
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
             else base.CPUPlace()
         )
-        with base.program_guard(prog, startup_prog):
-            input = paddle.static.data(
-                name='input', shape=[100, 200], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[100, 200], dtype='float32'
-            )
-            smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
-            ret = smooth_l1_loss(input, label)
+        expected = smooth_l1_loss_np(input_np, label_np, delta=delta)
 
-            exe = base.Executor(place)
-            (static_ret,) = exe.run(
-                prog,
-                feed={
-                    'input': input_np,
-                    'label': label_np,
-                },
-                fetch_list=[ret],
-            )
-            self.assertIsNotNone(static_ret)
+        @test_with_pir_api
+        def test_static():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.static.data(
+                    name='input', shape=[100, 200], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[100, 200], dtype='float32'
+                )
+                smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
+                ret = smooth_l1_loss(input, label)
+
+                exe = paddle.static.Executor(place)
+                (static_ret,) = exe.run(
+                    feed={
+                        'input': input_np,
+                        'label': label_np,
+                    },
+                    fetch_list=[ret],
+                )
+                self.assertIsNotNone(static_ret)
+                np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
-        expected = smooth_l1_loss_np(input_np, label_np, delta=delta)
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
 

@@ -108,10 +108,12 @@ class TestLambda(Dy2StTestBase):
         fn = call_lambda_directly
         self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
 
+    @test_legacy_and_pt_and_pir
     def test_call_lambda_in_func(self):
         fn = call_lambda_in_func
         self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
 
+    @test_legacy_and_pt_and_pir
     def test_call_lambda_with_if_expr(self):
         fn = call_lambda_with_if_expr
         self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())

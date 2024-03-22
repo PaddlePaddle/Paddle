@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 

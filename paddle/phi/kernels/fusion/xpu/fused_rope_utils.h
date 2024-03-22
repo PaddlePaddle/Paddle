@@ -17,11 +17,11 @@
 
 namespace phi {
 namespace fusion {
-template <typename XPUT, typename Context>
+template <typename XPUType, typename Context>
 void XPUGetSinCosData(const Context& dev_ctx,
                       const paddle::optional<DenseTensor>& sin_cos,
                       const paddle::optional<DenseTensor>& position_ids,
-                      XPUT* sin_cos_data,
+                      XPUType* sin_cos_data,
                       int64_t batch_size,
                       int64_t seq_len,
                       int64_t head_dim) {
@@ -32,7 +32,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
         (dims_size == 2 || dims_size == 4),
         true,
         phi::errors::InvalidArgument("The dims of sin and cos is expected to "
-                                     "be 2 or 4, but recieved %d.",
+                                     "be 2 or 4, but received %d.",
                                      dims_size));
     if (dims_size == 4) {
       // sin.shape: [1, seq_len, 1, head_dim]
@@ -58,7 +58,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
                         2,
                         phi::errors::InvalidArgument(
                             "The dims of position_ids is expected to "
-                            "be 2, but recieved %d.",
+                            "be 2, but received %d.",
                             position_ids_dims.size()));
 
       PADDLE_ENFORCE_EQ(
@@ -68,47 +68,61 @@ void XPUGetSinCosData(const Context& dev_ctx,
           phi::errors::InvalidArgument(
               "The batch_size and seq_len of position_ids must be the same as "
               "those of q."));
-      int ret = xpu::gather<XPUT, int64_t>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUT*>(sin_cos->data()),
-          position_ids->data<int64_t>(),
-          sin_cos_data,
-          {seq_len, head_dim},
-          batch_size * seq_len,
-          0);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather");
+      using XPUTypeFp16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+      using XPUTypeBf16 = typename XPUTypeTrait<phi::dtype::bfloat16>::Type;
+      if (std::is_same<XPUType, XPUTypeBf16>::value) {
+        int ret = xpu::gather<XPUTypeFp16, int64_t>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUTypeFp16*>(sin_cos->data()),
+            position_ids->data<int64_t>(),
+            reinterpret_cast<XPUTypeFp16*>(sin_cos_data),
+            {seq_len, head_dim},
+            batch_size * seq_len,
+            0);
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather");
+      } else {
+        int ret = xpu::gather<XPUType, int64_t>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(sin_cos->data()),
+            position_ids->data<int64_t>(),
+            sin_cos_data,
+            {seq_len, head_dim},
+            batch_size * seq_len,
+            0);
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather");
+      }
     } else {
-      int ret =
-          xpu::broadcast<XPUT>(dev_ctx.x_context(),
-                               reinterpret_cast<const XPUT*>(sin_cos->data()),
-                               sin_cos_data,
-                               {1, seq_len, head_dim},
-                               {batch_size, seq_len, head_dim});
+      int ret = xpu::broadcast<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(sin_cos->data()),
+          sin_cos_data,
+          {1, seq_len, head_dim},
+          {batch_size, seq_len, head_dim});
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
     }
   } else {
     int ret = xpu::constant(dev_ctx.x_context(),
                             sin_cos_data,
                             batch_size * seq_len * head_dim,
-                            static_cast<XPUT>(0.0f));
+                            static_cast<XPUType>(0.0f));
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
   }
 }
 
-template <typename XPUT, typename Context>
+template <typename XPUType, typename Context>
 void XPUFusedRotaryHalf(const Context& dev_ctx,
-                        const XPUT* in_data,
-                        const XPUT* sin_data,
-                        const XPUT* cos_data,
-                        XPUT* out_data,
+                        const XPUType* in_data,
+                        const XPUType* sin_data,
+                        const XPUType* cos_data,
+                        XPUType* out_data,
                         int64_t batch_size,
                         int64_t seq_len,
                         int64_t num_heads,
                         int64_t head_dim,
                         bool is_bwd = false) {
-  auto func = &xpu::rotary_no_freqs_embedding_v2<XPUT>;
+  auto func = &xpu::rotary_no_freqs_embedding_v2<XPUType>;
   if (is_bwd) {
-    func = &xpu::rotary_no_freqs_embedding_v2_grad<XPUT>;
+    func = &xpu::rotary_no_freqs_embedding_v2_grad<XPUType>;
   }
 
   int ret =
@@ -122,8 +136,8 @@ void XPUFusedRotaryHalf(const Context& dev_ctx,
            {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
            {seq_len * head_dim, head_dim, head_dim, 1});
   PADDLE_ENFORCE_XDNN_SUCCESS(ret,
-                              is_bwd ? "rotary_no_freqs_embedding_v2"
-                                     : "rotary_no_freqs_embedding_v2_grad");
+                              is_bwd ? "rotary_no_freqs_embedding_v2_grad"
+                                     : "rotary_no_freqs_embedding_v2");
 }
 }  // namespace fusion
 }  // namespace phi

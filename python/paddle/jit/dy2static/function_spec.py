@@ -131,10 +131,10 @@ class FunctionSpec:
         kwargs_with_spec = []
         if self._input_spec is not None:
             # Note: Because the value type and length of `kwargs` is uncertain.
-            # So we don't support to deal this case while specificing `input_spec` currently.
+            # So we don't support to deal this case while specifying `input_spec` currently.
             if kwargs:
                 raise ValueError(
-                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specificed.".format(
+                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specified.".format(
                         self._dygraph_function.__name__, kwargs
                     )
                 )
@@ -164,7 +164,7 @@ class FunctionSpec:
                 for idx, key in enumerate(kwargs)
             }
 
-        # If without specificing name in input_spec, add default name
+        # If without specifying name in input_spec, add default name
         # according to argument name from decorated function.
         args_with_spec = replace_spec_empty_name(
             self._arg_names, args_with_spec
@@ -194,9 +194,30 @@ class FunctionSpec:
                         dtype=convert_dtype(var_spec.dtype),
                     )
                     feed_value.stop_gradient = stop_gradient
+
+                    # warp dist tensor
+                    from paddle.distributed.auto_parallel.static.dist_input_spec import (
+                        DistributedInputSpec,
+                    )
+
+                    if isinstance(var_spec, DistributedInputSpec):
+                        # paddle.distributed.shard_tensor(feed_value)
+                        dist_feed_value = paddle._pir_ops.shard_tensor(
+                            feed_value, var_spec.mesh, var_spec.dims_mapping
+                        )
+                        inputs.append(dist_feed_value)
+                        # dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
+                        #     feed_value.type(),
+                        #     var_spec.local_shape,
+                        #     var_spec.mesh,
+                        #     var_spec.dims_mapping,
+                        # )
+                        # feed_value.set_type(dist_dense_tensor_type)
+                    else:
+                        inputs.append(feed_value)
                 else:
                     feed_value = var_spec
-                inputs.append(feed_value)
+                    inputs.append(feed_value)
 
         return paddle.utils.pack_sequence_as(input_with_spec, inputs)
 
@@ -225,8 +246,29 @@ class FunctionSpec:
                     need_check_feed=False,
                     stop_gradient=stop_gradient,
                 )
+                # warp dist tensor
+                from paddle.distributed.auto_parallel.static.dist_input_spec import (
+                    DistributedInputSpec,
+                )
+                from paddle.distributed.auto_parallel.static.dist_tensor import (
+                    DistributedTensor,
+                )
+
+                if isinstance(var_spec, DistributedInputSpec):
+                    from paddle.distributed.auto_parallel.static.dist_context import (
+                        get_default_distributed_context,
+                    )
+
+                    default_dist_ctx = get_default_distributed_context()
+                    dist_tensor = DistributedTensor(feed_layer)
+                    dist_tensor.dist_attr.process_mesh = var_spec.mesh
+                    dist_tensor.dist_attr.dims_mapping = var_spec.dims_mapping
+                    dist_tensor.dist_attr.mark_annotated("process_mesh")
+                    dist_tensor.dist_attr.mark_annotated("dims_mapping")
+                    default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
             else:
                 feed_layer = var_spec
+
             inputs.append(feed_layer)
 
         return paddle.utils.pack_sequence_as(input_with_spec, inputs)
@@ -420,7 +462,7 @@ def convert_to_input_spec(inputs, input_spec):
             for rest_input in inputs[len(input_spec) :]:
                 if isinstance(rest_input, (core.eager.Tensor, np.ndarray)):
                     logging_utils.warn(
-                        "The inputs constain `{}` without specificing InputSpec, its shape and dtype will be treated immutable. "
+                        "The inputs contain `{}` without specifying InputSpec, its shape and dtype will be treated immutable. "
                         "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs.".format(
                             type_name(rest_input)
                         )
@@ -452,7 +494,7 @@ def convert_to_input_spec(inputs, input_spec):
             real_spec.shape = input_spec.shape
         else:
             logging_utils.warn(
-                f"input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} "
+                f"input spec is not compatible with real inputs. input_spec: {input_spec} , real_spec: {real_spec} "
             )
         return real_spec
     else:
@@ -463,7 +505,7 @@ def convert_to_input_spec(inputs, input_spec):
 def replace_spec_empty_name(args_name, input_with_spec):
     """
     Adds default name according to argument name from decorated function
-    if without specificing InputSpec.name
+    if without specifying InputSpec.name
 
     The naming rule are as followed:
         1. If InputSpec.name is not None, do nothing.
@@ -497,7 +539,7 @@ def replace_spec_empty_name(args_name, input_with_spec):
 
 def _replace_spec_name(name, input_spec):
     """
-    Replaces InputSpec.name with given `name` while not specificing it.
+    Replaces InputSpec.name with given `name` while not specifying it.
     """
     if isinstance(input_spec, paddle.static.InputSpec):
         if input_spec.name is None:
@@ -520,7 +562,7 @@ def _replace_spec_name(name, input_spec):
 
 def _hash_spec_names(args_specs, kwargs_specs):
     """
-    Generater hash spec with args/kwargs InputSpec names.
+    Generator hash spec with args/kwargs InputSpec names.
     Consider the following InputSpecs with same shape/dtype except for name:
       1. [InputSpec([3,3], 'float32', 'x'), InputSpec([3,3], 'float32', 'x')]
       2. [InputSpec([3,3], 'float32', 'x'), InputSpec([3,3], 'float32', 'y')]

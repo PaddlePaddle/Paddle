@@ -42,6 +42,7 @@ NOT_FOUND = "not_found"
 BASE = "base"
 set_field_default_config(BASE, "auto_mode", "semi")
 set_field_default_config(BASE, "gradient_scale", True)
+set_field_default_config(BASE, "gradient_scale_using_allreduce_avg", False)
 set_field_default_config(BASE, "use_cache", True)
 set_field_default_config(BASE, "return_numpy", True)
 set_field_default_config(BASE, "all_ranks", False)
@@ -78,6 +79,7 @@ set_field_default_config(AMP, "custom_black_list", [])
 set_field_default_config(AMP, "custom_black_varnames", [])
 set_field_default_config(AMP, "use_fp16_guard", False)
 set_field_default_config(AMP, "use_bf16_guard", False)
+set_field_default_config(AMP, "use_master_grad", False)
 
 #########################################
 # sharding configuration
@@ -110,6 +112,8 @@ set_field_default_config(GRADIENT_MERGE, "avg", True)
 PIPELINE = "pipeline"
 set_field_default_config(PIPELINE, "enable", False)
 set_field_default_config(PIPELINE, "schedule_mode", "1F1B")
+set_field_default_config(PIPELINE, "vpp_degree", 1)
+set_field_default_config(PIPELINE, "vpp_seg_method", "")
 set_field_default_config(PIPELINE, "micro_batch_size", 1)
 set_field_default_config(PIPELINE, "accumulate_steps", 1)
 set_field_default_config(PIPELINE, "generation_batch_size", 1)
@@ -167,6 +171,9 @@ set_field_default_config(DP_OPTIMIZATION, "enable", False)
 set_field_default_config(DP_OPTIMIZATION, "fuse_all_reduce_ops", True)
 set_field_default_config(DP_OPTIMIZATION, "fuse_grad_size_in_MB", 32)
 set_field_default_config(DP_OPTIMIZATION, "overlap_comm_cacl", True)
+set_field_default_config(
+    DP_OPTIMIZATION, "gradient_sync_after_accumulate", False
+)
 
 #########################################
 # model parallel configuration

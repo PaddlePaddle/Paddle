@@ -144,31 +144,46 @@ message(
 
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
+  COMMAND ${CMAKE_COMMAND} -E make_directory
+          ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${op_yaml_file}
-          --output_path ./parsed_ops/ops.parsed.yaml
-  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_op_yaml_file}
-          --output_path ./parsed_ops/legacy_ops.parsed.yaml
-  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${bw_op_yaml_file}
-          --output_path ./parsed_ops/backward_ops.parsed.yaml --backward
+          --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/ops.parsed.yaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_op_yaml_file}
+    --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/legacy_ops.parsed.yaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${bw_op_yaml_file}
+    --output_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/backward_ops.parsed.yaml --backward
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_bw_op_yaml_file}
-    --output_path ./parsed_ops/legacy_backward_ops.parsed.yaml --backward
-  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_op_yaml_file}
-          --output_path ./parsed_ops/static_ops.parsed.yaml
-  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_op_yaml_file}
-          --output_path ./parsed_ops/fused_ops.parsed.yaml
-  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_op_yaml_file}
-          --output_path ./parsed_ops/sparse_ops.parsed.yaml
+    --output_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/legacy_backward_ops.parsed.yaml
+    --backward
+  COMMAND
+    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_op_yaml_file}
+    --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_ops.parsed.yaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_op_yaml_file}
+    --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_ops.parsed.yaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_op_yaml_file}
+    --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_ops.parsed.yaml
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_bw_op_yaml_file}
-    --output_path ./parsed_ops/sparse_backward.parsed.yaml --backward
+    --output_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_backward.parsed.yaml
+    --backward
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_bw_op_yaml_file}
-    --output_path ./parsed_ops/static_backward.parsed.yaml --backward
+    --output_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_backward.parsed.yaml
+    --backward
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_bw_op_yaml_file}
-    --output_path ./parsed_ops/fused_backward.parsed.yaml --backward
-    RESULTS_VARIABLE _results)
+    --output_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_backward.parsed.yaml
+    --backward RESULTS_VARIABLE _results)
 foreach(_result in ${_results})
   if(${_result})
     message(FATAL_ERROR "op yaml parsing failed, exiting.")
@@ -183,9 +198,11 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ./parsed_ops/ops.parsed.yaml ./parsed_ops/legacy_ops.parsed.yaml
-    --backward_yaml_paths ./parsed_ops/backward_ops.parsed.yaml
-    ./parsed_ops/legacy_backward_ops.parsed.yaml
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/ops.parsed.yaml
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/legacy_ops.parsed.yaml
+    --backward_yaml_paths
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/backward_ops.parsed.yaml
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/legacy_backward_ops.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "ops validation failed, exiting.")
@@ -195,8 +212,9 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ./parsed_ops/static_ops.parsed.yaml --backward_yaml_paths
-    ./parsed_ops/static_backward.parsed.yaml
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_ops.parsed.yaml
+    --backward_yaml_paths
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_backward.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "static ops validation failed, exiting.")
@@ -206,8 +224,9 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ./parsed_ops/fused_ops.parsed.yaml --backward_yaml_paths
-    ./parsed_ops/fused_backward.parsed.yaml
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_ops.parsed.yaml
+    --backward_yaml_paths
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_backward.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "fused ops validation failed, exiting.")
@@ -217,8 +236,9 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ./parsed_ops/sparse_ops.parsed.yaml --backward_yaml_paths
-    ./parsed_ops/sparse_backward.parsed.yaml
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_ops.parsed.yaml
+    --backward_yaml_paths
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_backward.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "sparse ops validation failed, exiting.")
@@ -233,8 +253,9 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
-    ./parsed_ops/ops.parsed.yaml --backward_yaml_path
-    ./parsed_ops/backward_ops.parsed.yaml --op_version_yaml_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/ops.parsed.yaml --backward_yaml_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/backward_ops.parsed.yaml
+    --op_version_yaml_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml
     --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
     --output_op_path "${generated_op_path_1}.tmp" "${generated_op_path_2}.tmp"
@@ -249,8 +270,10 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
-    ./parsed_ops/static_ops.parsed.yaml --backward_yaml_path
-    ./parsed_ops/static_backward.parsed.yaml --op_version_yaml_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_ops.parsed.yaml
+    --backward_yaml_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_backward.parsed.yaml
+    --op_version_yaml_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml
     --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
     --output_op_path "${generated_static_op_path}.tmp" --output_arg_map_path
@@ -264,8 +287,10 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
-    ./parsed_ops/fused_ops.parsed.yaml --backward_yaml_path
-    ./parsed_ops/fused_backward.parsed.yaml --op_version_yaml_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_ops.parsed.yaml
+    --backward_yaml_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_backward.parsed.yaml
+    --op_version_yaml_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml
     --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
     --output_op_path "${generated_fused_op_path}.tmp" --output_arg_map_path
@@ -279,9 +304,10 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_sparse_op.py --ops_yaml_path
-    ./parsed_ops/sparse_ops.parsed.yaml --backward_ops_yaml_path
-    ./parsed_ops/sparse_backward.parsed.yaml --output_op_path
-    "${generated_sparse_ops_path}.tmp" --output_arg_map_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_ops.parsed.yaml
+    --backward_ops_yaml_path
+    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_backward.parsed.yaml
+    --output_op_path "${generated_sparse_ops_path}.tmp" --output_arg_map_path
     "${generated_sparse_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
 if(${_result})

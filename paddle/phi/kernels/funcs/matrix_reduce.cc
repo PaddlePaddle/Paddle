@@ -55,6 +55,8 @@ class MatrixReduceSumFunctor<T, CPUContext> {
 
 template class MatrixReduceSumFunctor<float, CPUContext>;
 template class MatrixReduceSumFunctor<double, CPUContext>;
+template class MatrixReduceSumFunctor<phi::dtype::complex<float>, CPUContext>;
+template class MatrixReduceSumFunctor<phi::dtype::complex<double>, CPUContext>;
 
 }  // namespace funcs
 }  // namespace phi

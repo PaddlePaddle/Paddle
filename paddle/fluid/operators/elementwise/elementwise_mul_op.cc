@@ -90,7 +90,7 @@ class ElementwiseMulCompositeGradOpMaker
             axis));
     prim::multiply_grad<prim::DescTensor>(
         x, y, out_grad, axis, x_grad_p, y_grad_p);
-    VLOG(6) << "Runing mul_grad composite func";
+    VLOG(6) << "Running mul_grad composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
     this->RecoverOutputName(y_grad, y_grad_name);
   }
@@ -157,7 +157,7 @@ class ElementwiseMulCompositeDoubleGradOpMaker
     std::string y_grad_name = this->GetOutputName(y_grad_t);
     std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
 
-    VLOG(6) << "Runing multiply_double_grad composite func";
+    VLOG(6) << "Running multiply_double_grad composite func";
     prim::multiply_double_grad<prim::DescTensor>(
         x, y, out_grad, ddx, ddy, axis, x_grad, y_grad, grad_out_grad);
 

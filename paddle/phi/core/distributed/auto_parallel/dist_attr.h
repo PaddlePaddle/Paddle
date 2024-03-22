@@ -18,11 +18,11 @@ limitations under the License. */
 #include <cstdint>
 #include <iostream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
 #include "paddle/phi/common/reduce_type.h"
-#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -31,6 +31,10 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
+
+namespace auto_parallel {
+class TensorDistAttrProto;
+}
 
 constexpr int kReplicateDim = -1;
 
@@ -169,7 +173,7 @@ class TEST_API TensorDistAttr {
   // future partial-support-stage-II.
   void from_proto(const auto_parallel::TensorDistAttrProto& proto);
 
-  auto_parallel::TensorDistAttrProto to_proto() const;
+  void to_proto(auto_parallel::TensorDistAttrProto* proto) const;
 
   std::string serialize_to_string();
 
@@ -202,7 +206,7 @@ class TEST_API TensorDistAttr {
   std::map<std::string, bool> annotated_;
   int64_t chunk_id_{0};
   // partial map would be small (less than mesh.size)
-  // iterate operation (copy and comparision) would more frequency than random
+  // iterate operation (copy and comparison) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>
   paddle::flat_hash_map<int64_t, ReduceType> partial_status_;
 };

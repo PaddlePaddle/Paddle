@@ -73,7 +73,7 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
         )
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op, [input_arg_name], [output_arg_name], fw_results, bw_results
         )

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def masked_multihead_attention(
@@ -39,7 +39,7 @@ def masked_multihead_attention(
 ):
     r"""
     Masked Multi-head attention for text summarization.
-    This is a fusion operator to compute masked multihead attention in transformer model architecture.
+    This is a fusion operator to compute masked multi-head attention in transformer model architecture.
     This operator only supports running on GPU.
 
     Args:
@@ -90,7 +90,7 @@ def masked_multihead_attention(
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.masked_multihead_attention_(
             x,
             cache_kv,

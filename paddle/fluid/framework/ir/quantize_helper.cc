@@ -27,8 +27,8 @@ void SaveQuantInfoInTheGraph(
   if (!graph->Has(flag)) {
     graph->Set(flag, new bool(true));
   }
-  for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
-    graph->Set(iter->first + suffix, new std::vector<float>(iter->second));
+  for (const auto& iter : info_map) {
+    graph->Set(iter.first + suffix, new std::vector<float>(iter.second));
   }
 }
 
@@ -38,7 +38,7 @@ std::unordered_map<std::string, std::vector<float>> GetQuantInfoFromTheGraph(
   const std::string suffix = "_" + key_suffix + "_" + flag;
   if (graph->Has(flag)) {
     std::vector<std::string> attr_names = graph->AttrNames();
-    for (auto fake_name : attr_names) {
+    for (auto const& fake_name : attr_names) {
       size_t pos = fake_name.find(suffix);
       if (pos != std::string::npos) {
         std::string name = fake_name.substr(0, pos);

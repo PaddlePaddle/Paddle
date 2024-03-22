@@ -113,7 +113,7 @@ class Beta(exponential_family.ExponentialFamily):
         return self.alpha * self.beta / (sum.pow(2) * (sum + 1))
 
     def prob(self, value):
-        """Probability density funciotn evaluated at value
+        """Probability density function evaluated at value
 
         Args:
             value (Tensor): Value to be evaluated.

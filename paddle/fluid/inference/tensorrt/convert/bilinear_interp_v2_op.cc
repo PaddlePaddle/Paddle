@@ -148,7 +148,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       layer->setScales(scales.data(), scales.size());
     }
 
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "bilinear_interp_v2", {output_name}, test_mode);
   }
 };

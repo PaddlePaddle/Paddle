@@ -66,7 +66,6 @@
 #include "iterators/epilogue_predicated_tile_iterator.h"
 #include "transform/tile_smem_loader.h"
 
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
@@ -493,8 +492,6 @@ struct AttentionBackwardKernel {
           scalar_t,  // ElementC
           accum_t    // ElementAccumulator
           >;
-  static constexpr auto kOptimalAlignement =
-      std::max(DefaultConfig::kAlignmentA, DefaultConfig::kAlignmentB);
   static constexpr auto kMinimumAlignment = GemmType::kMinimumAlignment;
 
   struct MatmulQK {
@@ -1084,42 +1081,42 @@ struct AttentionBackwardKernel {
     CHECK_ALIGNED_PTR(p.output_ptr, kMinimumAlignment);
     CHECK_ALIGNED_PTR(p.grad_output_ptr, kMinimumAlignment);
     CHECK_ALIGNED_PTR(p.bias_ptr, kMinimumAlignment);
-    PADDLE_ENFORCE_EQ(p.lse_strideH % 8,
-                      0,
-                      paddle::platform::errors::InvalidArgument(
-                          "LSE is not correctly aligned"));
-    PADDLE_ENFORCE_EQ(p.lse_strideB % 8,
-                      0,
-                      paddle::platform::errors::InvalidArgument(
-                          "LSE is not correctly aligned"));
-    PADDLE_ENFORCE_EQ(p.q_strideH % kMinimumAlignment,
-                      0,
-                      paddle::platform::errors::InvalidArgument(
-                          "query is not correctly aligned"));
-    PADDLE_ENFORCE_EQ(p.k_strideH % kMinimumAlignment,
-                      0,
-                      paddle::platform::errors::InvalidArgument(
-                          "key is not correctly aligned"));
-    PADDLE_ENFORCE_EQ(p.v_strideH % kMinimumAlignment,
-                      0,
-                      paddle::platform::errors::InvalidArgument(
-                          "value is not correctly aligned"));
-    PADDLE_ENFORCE_EQ(p.bias_strideB % kMinimumAlignment,
-                      0,
-                      paddle::platform::errors::InvalidArgument(
-                          "attn_bias is not correctly aligned"));
-    PADDLE_ENFORCE_EQ(p.bias_strideH % kMinimumAlignment,
-                      0,
-                      paddle::platform::errors::InvalidArgument(
-                          "attn_bias is not correctly aligned"));
-    PADDLE_ENFORCE_EQ(p.bias_strideM % kMinimumAlignment,
-                      0,
-                      paddle::platform::errors::InvalidArgument(
-                          "attn_bias is not correctly aligned"));
-    PADDLE_ENFORCE_EQ(p.cu_seqlens_q_ptr && p.bias_ptr,
-                      false,
-                      paddle::platform::errors::InvalidArgument(
-                          "CuSeqlen + bias not implemented yet"));
+    PADDLE_ENFORCE_EQ(
+        p.lse_strideH % 8,
+        0,
+        phi::errors::InvalidArgument("LSE is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(
+        p.lse_strideB % 8,
+        0,
+        phi::errors::InvalidArgument("LSE is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(
+        p.q_strideH % kMinimumAlignment,
+        0,
+        phi::errors::InvalidArgument("query is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(
+        p.k_strideH % kMinimumAlignment,
+        0,
+        phi::errors::InvalidArgument("key is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(
+        p.v_strideH % kMinimumAlignment,
+        0,
+        phi::errors::InvalidArgument("value is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(
+        p.bias_strideB % kMinimumAlignment,
+        0,
+        phi::errors::InvalidArgument("attn_bias is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(
+        p.bias_strideH % kMinimumAlignment,
+        0,
+        phi::errors::InvalidArgument("attn_bias is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(
+        p.bias_strideM % kMinimumAlignment,
+        0,
+        phi::errors::InvalidArgument("attn_bias is not correctly aligned"));
+    PADDLE_ENFORCE_EQ(
+        p.cu_seqlens_q_ptr && p.bias_ptr,
+        false,
+        phi::errors::InvalidArgument("CuSeqlen + bias not implemented yet"));
     return true;
   }
 

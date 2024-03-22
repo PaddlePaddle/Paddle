@@ -42,7 +42,7 @@ def breakpoint():
     import paddle
 
     old = paddle.framework.core.set_eval_frame(None)
-    builtins.breakpoint()
+    builtins.breakpoint()  # noqa: T100
     paddle.framework.core.set_eval_frame(old)
 
 

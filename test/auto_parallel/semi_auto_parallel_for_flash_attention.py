@@ -23,13 +23,16 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         super().__init__()
 
-    def check_dim_mapping(self, output, expected_dim_mapping):
+    def check_placements(self, output, expected_placements):
         assert (
-            output.dist_attr.dims_mapping == expected_dim_mapping
-        ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+            output.placements == expected_placements
+        ), f"{output.placements}  vs {expected_placements}"
 
-    def test_flash_att_forward(self):
-        shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
+    def test_flash_att_forward(self, is_gqa=False):
+        if is_gqa:
+            shapes = ([2, 256, 8, 128], [2, 256, 2, 128], [2, 256, 2, 128])
+        else:
+            shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
         specs = (
             ['x', None, None, None],
             ["x", None, None, None],
@@ -42,10 +45,13 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             causal=True,
         )
-        self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
+        self.check_placements(outputs[0], [dist.Shard(0)])
 
-    def test_flash_att_forward_reshard(self):
-        shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
+    def test_flash_att_forward_reshard(self, is_gqa=False):
+        if is_gqa:
+            shapes = ([2, 256, 8, 128], [2, 256, 2, 128], [2, 256, 2, 128])
+        else:
+            shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
         specs = (
             ['x', None, None, None],
             [None, None, None, 'x'],
@@ -58,7 +64,7 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             causal=True,
         )
-        self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
+        self.check_placements(outputs[0], [dist.Shard(0)])
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -74,7 +80,9 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             device_prop_main = paddle.device.cuda.get_device_capability()[0]
             if cuda_version_main >= 11 and device_prop_main >= 8:
                 self.test_flash_att_forward()
+                self.test_flash_att_forward(is_gqa=True)
                 self.test_flash_att_forward_reshard()
+                self.test_flash_att_forward_reshard(is_gqa=True)
 
 
 if __name__ == '__main__':

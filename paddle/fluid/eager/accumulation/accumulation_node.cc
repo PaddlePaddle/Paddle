@@ -178,7 +178,8 @@ GradNodeAccumulation::operator()(
 
   if (!weak_grad_.expired() && !is_new_grad) {
     auto grad = weak_grad_.lock();
-    if (grad_out.defined() && grad_out.initialized()) {
+    if (grad_out.defined() &&
+        (grad_out.is_dist_tensor() || grad_out.initialized())) {
       CopyOrAddTensor(grad.get(), grad_out, is_fake_empty_);
     }
     // else { do nothing since there is no valid value in grad out tensor }

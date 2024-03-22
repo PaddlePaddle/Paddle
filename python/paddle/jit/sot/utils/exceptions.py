@@ -62,3 +62,7 @@ def inner_error_default_handler(func, message_fn):
             ) from e
 
     return impl
+
+
+class ExportError(SotErrorBase):
+    pass

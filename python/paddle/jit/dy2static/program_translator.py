@@ -37,7 +37,6 @@ from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
-from .ast_transformer import DygraphToStaticAst
 from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
@@ -53,11 +52,13 @@ from .partial_program import PartialProgramLayerHook
 from .pir_partial_program import (
     PartialProgramLayerHook as PirPartialProgramLayerHook,
 )
+from .transformers import DygraphToStaticAst
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
     ast_to_func,
     backend_guard,
+    cuda_pinned_tensors_move_to_excepted_place,
     func_to_source_code,
     input_specs_compatible,
     is_paddle_func,
@@ -65,7 +66,6 @@ from .utils import (
     prim_is_enabled,
     prim_or_cinn_is_enabled,
     type_name,
-    unwrap,
 )
 
 if TYPE_CHECKING:
@@ -134,9 +134,7 @@ class FunctionCache:
         If the conversion of A.foo happens after B.foo, it will reuse the transformed ast node of B.foo
         to speed up the conversion.
         """
-        # Note: In Python2, it will raise OSError when inspect function
-        # with decorator directly and function.__wrapped__ holds the actual function.
-        func = unwrap(func)
+        func = inspect.unwrap(func)
         source_code = func_to_source_code(func)
 
         # TODO(liym27):
@@ -352,7 +350,11 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
         # TODO(chenzhuo): Remove this after lowering prim into C++
-        if input_spec is not None and prim_is_enabled():
+        if (
+            input_spec is not None
+            and prim_is_enabled()
+            and not core._enable_prim_dynamic_shape()
+        ):
             from paddle.static import InputSpec
 
             for spec in flatten(input_spec):
@@ -717,6 +719,8 @@ class SymbolicStaticFunction(StaticFunction):
         from ..sot import symbolic_translate
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        cuda_pinned_tensors_move_to_excepted_place(args)
+
         (
             input_args_with_spec,
             input_kwargs_with_spec,
@@ -1254,8 +1258,7 @@ class ConcreteProgram:
                     if need_wrap_into_list:
                         outputs = [outputs]
 
-        # TODO(@xiongkun): support op call stack in new ir?
-        # main_program = update_op_callstack_with_origin_info(main_program)
+        main_program = update_op_callstack_with_origin_info(main_program)
 
         return ConcreteProgram(
             inputs=static_inputs,
@@ -1391,7 +1394,9 @@ class ParametersRecorder:
         if params is None:
             return []
         del self.params_dict[_program_hash(program)]
-        return list(params)
+        params = list(params)
+        params.sort(key=lambda x: x.name)
+        return params
 
 
 class InplaceMap:
@@ -1435,7 +1440,11 @@ class InplaceMap:
         self.params_dict = checkpoint
 
     def save_checkpoint(self):
-        return dict(self.params_dict.items())
+        ckp = {}
+        for program_id, params in self.params_dict.items():
+            new_params = dict(params.items())
+            ckp[program_id] = new_params
+        return ckp
 
 
 class FallbackProgramLayer:
@@ -1503,7 +1512,15 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                 return forward_program, dst_vars
             return forward_program, src_vars
 
-    def after_append_backward(self, whole_program, src_vars, forward_end_idx):
+    def after_append_backward(
+        self,
+        whole_program,
+        inputs,
+        src_vars,
+        grad_outputs,
+        forward_end_idx,
+        backward_start_idx,
+    ):
         with backend_guard(self.backend):
             if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
                 backward_length = (
@@ -1530,6 +1547,34 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                     len(infer_program.program.global_block().ops),
                 )
             return
+
+
+class PirAutoRecomputeHooker(PirPartialProgramLayerHook):
+    def __init__(self, recompute_ops=None):
+        self.recompute_ops = recompute_ops
+
+    def before_append_backward(self, forward_program, src_vars):
+        return forward_program, src_vars
+
+    def after_append_backward(
+        self,
+        whole_program,
+        inputs,
+        src_vars,
+        grad_outputs,
+        forward_end_idx,
+        backward_start_idx,
+    ):
+        if core._enable_auto_recompute():
+            whole_program, forward_end_idx = decomposition.auto_recompute(
+                whole_program,
+                inputs,
+                src_vars,
+                grad_outputs,
+                forward_end_idx,
+                backward_start_idx,
+            )
+        return whole_program, forward_end_idx, src_vars
 
 
 class ProgramCache:
@@ -1616,13 +1661,15 @@ class ProgramCache:
         with backend_guard(backend):
             if core._is_fwd_prim_enabled():
                 if use_pir_api():
-                    partial_program.set_hooker(
+                    partial_program.add_hooker(
                         PirPrimHooker(concrete_program.main_program, backend)
                     )
                 else:
                     partial_program.set_hooker(
                         PrimHooker(concrete_program.main_program, backend)
                     )
+        if use_pir_api() and core._enable_auto_recompute():
+            partial_program.add_hooker(PirAutoRecomputeHooker())
         return concrete_program, partial_program
 
     def __getitem__(self, item):

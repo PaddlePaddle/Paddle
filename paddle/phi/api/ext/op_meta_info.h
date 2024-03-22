@@ -21,8 +21,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/exception.h"
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
@@ -996,6 +997,15 @@ struct TrtGetOutputDimsFuncImpl<Return (*)(Args...), impl_fn> {
 
 ////////////////////// Op Meta Info //////////////////////
 
+using CustomSpmdInferTensorArg =
+    paddle::variant<phi::distributed::DistMetaTensor,
+                    std::vector<phi::distributed::DistMetaTensor>>;
+using CustomSpmdInferAttrArg = paddle::any;
+
+using InferSpmdFunc = phi::distributed::SpmdInfo (*)(
+    const std::vector<CustomSpmdInferTensorArg>& inputs,
+    const std::vector<CustomSpmdInferAttrArg>& attrs);
+
 class PADDLE_API OpMetaInfo {
  public:
   explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
@@ -1023,6 +1033,13 @@ class PADDLE_API OpMetaInfo {
   // format: PD_INFER_DTYPE(...)
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
+  // format: PD_INFER_SPMD_RULE(...)
+  OpMetaInfo& SetInferSpmdFn(InferSpmdFunc&& func);
+
+  bool IsGradOp() const;
+
+  bool IsDoubleGradOp() const;
+
 #ifdef PADDLE_WITH_TENSORRT
   // format: PD_TRT_INFER_SHAPE(...)
   OpMetaInfo& SetTrtInferShapeFn(TrtGetOutputDimsFunc&& func);
@@ -1045,6 +1062,7 @@ class PADDLE_API OpMetaInfo {
   KernelFunc kernel_fn_{nullptr};
   InferShapeFunc infer_shape_fn_{nullptr};
   InferDtypeFunc infer_dtype_fn_{nullptr};
+  InferSpmdFunc infer_spmd_fn_{nullptr};
 #ifdef PADDLE_WITH_TENSORRT
   TrtGetOutputDimsFunc trt_infer_shape_fn_{nullptr};
   std::vector<std::string> trt_supports_format_config_;
@@ -1068,6 +1086,7 @@ class OpMetaInfoHelper {
   static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info);
   static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info);
   static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info);
+  static const InferSpmdFunc& GetInferSpmdFn(const paddle::OpMetaInfo& info);
 
 #ifdef PADDLE_WITH_TENSORRT
   static const TrtGetOutputDimsFunc& GetTrtInferShapeFn(
@@ -1108,6 +1127,7 @@ class PADDLE_API OpMetaInfoBuilder {
   OpMetaInfoBuilder& SetKernelFn(KernelFunc func);
   OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc func);
   OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc func);
+  OpMetaInfoBuilder& SetInferSpmdFn(InferSpmdFunc func);
 
 #ifdef PADDLE_WITH_TENSORRT
   OpMetaInfoBuilder& SetTrtInferShapeFn(TrtGetOutputDimsFunc func);

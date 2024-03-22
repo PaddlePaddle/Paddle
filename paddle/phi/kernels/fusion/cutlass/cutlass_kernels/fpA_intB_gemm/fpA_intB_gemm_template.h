@@ -54,6 +54,7 @@ template <typename T,
           typename WeightType,
           typename arch,
           typename EpilogueTag,
+          bool FineGrained,
           typename ThreadblockShape,
           typename WarpShape,
           int Stages>
@@ -65,6 +66,7 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
                                        int m,
                                        int n,
                                        int k,
+                                       int group_size,
                                        CutlassGemmConfig gemm_config,
                                        char* workspace,
                                        size_t workspace_bytes,
@@ -117,7 +119,13 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
                                        MixedGemmArchTraits::ElementsPerAccessC,
                                        ElementAccumulator,
                                        EpilogueTag>::Op;
-  if (gemm_config.split_k_style == SplitKStyle::NO_SPLIT_K) {
+
+  if (gemm_config.split_k_style == SplitKStyle::NO_SPLIT_K ||
+      FineGrained == true) {
+    using Operator = typename MixedGemmArchTraits::Operator;
+    using TaggedOperator =
+        typename cutlass::arch::TagOperator<Operator,
+                                            FineGrained>::TaggedOperator;
     using GemmKernel_ = typename cutlass::gemm::kernel::DefaultGemm<
         ElementType,
         cutlass::layout::RowMajor,
@@ -137,14 +145,15 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
         typename cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>,
         Stages,
         true,
-        typename MixedGemmArchTraits::Operator>::GemmKernel;
+        TaggedOperator>::GemmKernel;
 
     using GemmKernel = cutlass::gemm::kernel::GemmFpAIntB<
         typename GemmKernel_::Mma,
         typename GemmKernel_::Epilogue,
         typename GemmKernel_::ThreadblockSwizzle,
         arch,  // Ensure top level arch is used for dispatch
-        GemmKernel_::kSplitKSerial>;
+        GemmKernel_::kSplitKSerial,
+        FineGrained>;
 
     if (occupancy != nullptr) {
       *occupancy = compute_occupancy_for_kernel<GemmKernel>();
@@ -161,9 +170,10 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
 
     typename Gemm::Arguments args(
         {m, n, k},
+        group_size,
         {reinterpret_cast<ElementType*>(const_cast<T*>(A)), k},
         {reinterpret_cast<CutlassWeightType*>(const_cast<WeightType*>(B)), ldb},
-        {reinterpret_cast<ElementType*>(const_cast<T*>(weight_scales)), 0},
+        {reinterpret_cast<ElementType*>(const_cast<T*>(weight_scales)), n},
         {reinterpret_cast<ElementType*>(const_cast<T*>(biases)), 0},
         {reinterpret_cast<ElementType*>(C), n},
         gemm_config.split_k_factor,
@@ -189,7 +199,7 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
       // now to run bf16 mixgemm, we have set the split-k factor to 1
       VLOG(1) << "Requested split-k but workspace size insufficient. Falling "
                  "back to non-split-k implementation.";
-      VLOG(1) << "need workspace sizoe of: " << gemm.get_workspace_size(args)
+      VLOG(1) << "need workspace size of: " << gemm.get_workspace_size(args)
               << ", but got " << workspace_bytes;
       VLOG(1) << "args.batch_stride_D:" << args.batch_stride_D;
       VLOG(1) << "args.batch_count:" << args.batch_count;
@@ -221,7 +231,8 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
                             std::string(cutlassGetStatusString(run_status));
       throw std::runtime_error("[fpA_intB Runner] " + err_msg);
     }
-  } else {
+
+  } else /* Per-Channel mode */ {
     // for stream-k, we set gemm_config.split_k_factor = 1 to use default load
     // balance.
     gemm_config.split_k_factor = 1;
@@ -334,6 +345,7 @@ template <typename T,
           typename WeightType,
           typename arch,
           typename EpilogueTag,
+          bool FineGrained,
           typename ThreadblockShape,
           typename WarpShape,
           int Stages>
@@ -345,6 +357,7 @@ void generic_mixed_gemm_kernelLauncher_template(const T* A,
                                                 int m,
                                                 int n,
                                                 int k,
+                                                int group_size,
                                                 CutlassGemmConfig gemm_config,
                                                 char* workspace,
                                                 size_t workspace_bytes,
@@ -355,6 +368,7 @@ template <typename T,
           typename WeightType,
           typename arch,
           typename EpilogueTag,
+          bool FineGrained,
           typename ThreadblockShape,
           typename WarpShape,
           int Stages,
@@ -368,6 +382,7 @@ struct dispatch_stages {
                        int m,
                        int n,
                        int k,
+                       int group_size,
                        CutlassGemmConfig gemm_config,
                        char* workspace,
                        size_t workspace_bytes,
@@ -384,12 +399,14 @@ template <typename T,
           typename WeightType,
           typename arch,
           typename EpilogueTag,
+          bool FineGrained,
           typename ThreadblockShape,
           typename WarpShape>
 struct dispatch_stages<T,
                        WeightType,
                        arch,
                        EpilogueTag,
+                       FineGrained,
                        ThreadblockShape,
                        WarpShape,
                        2> {
@@ -401,6 +418,7 @@ struct dispatch_stages<T,
                        int m,
                        int n,
                        int k,
+                       int group_size,
                        CutlassGemmConfig gemm_config,
                        char* workspace,
                        size_t workspace_bytes,
@@ -412,6 +430,7 @@ struct dispatch_stages<T,
                                                WeightType,
                                                arch,
                                                EpilogueTag,
+                                               FineGrained,
                                                ThreadblockShape,
                                                WarpShape,
                                                2>(A,
@@ -422,6 +441,7 @@ struct dispatch_stages<T,
                                                   m,
                                                   n,
                                                   k,
+                                                  group_size,
                                                   gemm_config,
                                                   workspace,
                                                   workspace_bytes,
@@ -434,6 +454,7 @@ struct dispatch_stages<T,
 template <typename T,
           typename WeightType,
           typename EpilogueTag,
+          bool FineGrained,
           typename ThreadblockShape,
           typename WarpShape,
           int Stages>
@@ -441,6 +462,7 @@ struct dispatch_stages<T,
                        WeightType,
                        cutlass::arch::Sm80,
                        EpilogueTag,
+                       FineGrained,
                        ThreadblockShape,
                        WarpShape,
                        Stages,
@@ -453,6 +475,7 @@ struct dispatch_stages<T,
                        int m,
                        int n,
                        int k,
+                       int group_size,
                        CutlassGemmConfig gemm_config,
                        char* workspace,
                        size_t workspace_bytes,
@@ -462,6 +485,7 @@ struct dispatch_stages<T,
                                                WeightType,
                                                cutlass::arch::Sm80,
                                                EpilogueTag,
+                                               FineGrained,
                                                ThreadblockShape,
                                                WarpShape,
                                                Stages>(A,
@@ -472,6 +496,7 @@ struct dispatch_stages<T,
                                                        m,
                                                        n,
                                                        k,
+                                                       group_size,
                                                        gemm_config,
                                                        workspace,
                                                        workspace_bytes,
@@ -485,6 +510,7 @@ template <typename T,
           typename WeightType,
           typename arch,
           typename EpilogueTag,
+          bool FineGrained,
           typename ThreadblockShape,
           typename WarpShape>
 void dispatch_gemm_config(const T* A,
@@ -495,13 +521,18 @@ void dispatch_gemm_config(const T* A,
                           int m,
                           int n,
                           int k,
+                          int group_size,
                           CutlassGemmConfig gemm_config,
                           char* workspace,
                           size_t workspace_bytes,
                           cudaStream_t stream,
                           int* occupancy);
 
-template <typename T, typename WeightType, typename arch, typename EpilogueTag>
+template <typename T,
+          typename WeightType,
+          typename arch,
+          typename EpilogueTag,
+          bool FineGrained>
 void dispatch_gemm_to_cutlass(const T* A,
                               const WeightType* B,
                               const T* weight_scales,
@@ -510,6 +541,7 @@ void dispatch_gemm_to_cutlass(const T* A,
                               int m,
                               int n,
                               int k,
+                              int group_size,
                               char* workspace,
                               size_t workspace_bytes,
                               CutlassGemmConfig gemm_config,

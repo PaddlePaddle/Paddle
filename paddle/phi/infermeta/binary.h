@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -159,6 +160,16 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                       MetaTensor* loss,
                                       MetaConfig config = MetaConfig());
 
+void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
+                                       const MetaTensor& label,
+                                       int64_t ignore_index,
+                                       int ring_id,
+                                       int rank,
+                                       int nranks,
+                                       MetaTensor* softmax,
+                                       MetaTensor* loss,
+                                       MetaConfig config = MetaConfig());
+
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
@@ -175,6 +186,17 @@ void DistInferMeta(const MetaTensor& x,
                    float p,
                    MetaTensor* out);
 
+void DistributeLookupTableInferMeta(
+    const std::vector<const phi::MetaTensor*>& ids,
+    const MetaTensor& w,
+    int table_id,
+    bool is_distributed,
+    const std::string& lookup_table_version,
+    int64_t padding_idx,
+    DataType dtype,
+    bool is_test,
+    std::vector<MetaTensor*> outputs);
+
 void DistributeFpnProposalsInferMeta(
     const MetaTensor& fpn_rois,
     const MetaTensor& rois_num,
@@ -187,6 +209,34 @@ void DistributeFpnProposalsInferMeta(
     std::vector<MetaTensor*> multi_level_rois_num,
     MetaTensor* restore_index,
     MetaConfig config = MetaConfig());
+
+void DistributedFusedLambInitInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    float beta1,
+    float beta2,
+    const std::vector<int>& apply_weight_decay,
+    int alignment,
+    int rank,
+    int nranks,
+    MetaTensor* fp32_fused_param,
+    MetaTensor* fp32_fused_grad,
+    MetaTensor* fp16_fused_param,
+    MetaTensor* fp16_fused_grad,
+    MetaTensor* moment1,
+    MetaTensor* moment2,
+    MetaTensor* beta1_pow,
+    MetaTensor* beta2_pow,
+    MetaTensor* fused_param_offsets,
+    MetaTensor* fp32_shard_fused_param_offsets,
+    MetaTensor* fp16_shard_fused_param_offsets,
+    MetaTensor* param_info,
+    MetaTensor* param_order,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> master_param_out,
+    std::vector<MetaTensor*> grad_out,
+    MetaTensor* global_scale,
+    MetaTensor* step);
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
@@ -211,15 +261,20 @@ void DropoutNdInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* mask);
 
-void ElementwiseInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          MetaTensor* out);
+TEST_API void ElementwiseInferMeta(const MetaTensor& x,
+                                   const MetaTensor& y,
+                                   MetaTensor* out);
 
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
+
+void BitwiseShiftInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           bool is_arithmetic,
+                           MetaTensor* out);
 
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
@@ -255,7 +310,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
                           bool transpose_y,
                           const float matmul_alpha,
                           const std::string& fuse_activation,
-                          const float fuse_lapha,
+                          const float fuse_alpha,
                           const float fuse_beat,
                           const float fused_output_scale,
                           const std::vector<int>& fused_reshape_X,
@@ -297,6 +352,11 @@ void HuberLossInferMeta(const MetaTensor& input_meta,
                         MetaTensor* residual,
                         MetaConfig config = MetaConfig());
 
+void IdentityLossGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& out_grad,
+                               const int reduction,
+                               MetaTensor* x_grad);
+
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
@@ -319,6 +379,11 @@ void IndexAddInferMeta(const MetaTensor& x,
                        MetaTensor* output);
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void LimitByCapacityInferMeta(const MetaTensor& expert_count,
+                              const MetaTensor& capacity,
+                              int n_worker,
+                              MetaTensor* out);
 
 void LogicalBinaryInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
@@ -413,6 +478,10 @@ void RowConvInferMeta(const MetaTensor& x,
                       const MetaTensor& filter,
                       MetaTensor* out);
 
+void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scales,
+                                   MetaTensor* out);
+
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
@@ -428,6 +497,12 @@ void PriorBoxInferMeta(const MetaTensor& input,
                        MetaTensor* out,
                        MetaTensor* var);
 
+void PruneGateByCapacityInferMeta(const MetaTensor& gate_idx,
+                                  const MetaTensor& expert_count,
+                                  int64_t n_expert,
+                                  int64_t n_worker,
+                                  MetaTensor* new_gate_idx);
+
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
                            bool out_int32,
@@ -437,8 +512,17 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
-                           int out_dtype,
+                           DataType out_dtype,
                            MetaTensor* y);
+
+void ShuffleBatchInferMeta(const MetaTensor& x,
+                           const MetaTensor& seed,
+                           int startup_seed,
+                           MetaTensor* out,
+                           MetaTensor* shuffle_idx,
+                           MetaTensor* seed_out
+
+);
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
@@ -500,6 +584,8 @@ void ValueCompareInferMeta(const MetaTensor& x,
 
 void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void SwiGLUInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void UnpoolInferMeta(const MetaTensor& x,
                      const MetaTensor& indices,
                      const std::vector<int>& ksize,
@@ -524,6 +610,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
                                DataType out_dtype,
+                               const int32_t group_size,
                                MetaTensor* out);
 
 }  // namespace phi

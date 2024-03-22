@@ -26,10 +26,6 @@ MODEL_PARALLEL_SIZE = 2
 IN_SIZE = 2 * MODEL_PARALLEL_SIZE
 OUT_SIZE = 2 * MODEL_PARALLEL_SIZE
 
-# Fix seed for test
-# base.default_startup_program().random_seed = 1
-# base.default_main_program().random_seed = 1
-
 
 def get_param_attr(weight, bias):
     weight_attr = paddle.ParamAttr(

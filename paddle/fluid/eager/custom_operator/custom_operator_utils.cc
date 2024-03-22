@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
@@ -22,7 +23,6 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
@@ -163,12 +163,11 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
   for (size_t i = 0; i < ctx.InputRange().size(); ++i) {
     const auto& input_pair = ctx.InputRangeAt(i);
     if (input_pair.first == input_pair.second - 1) {
-      input_shapes.emplace_back(
-          std::move(ctx.InputAt(input_pair.first).shape()));
+      input_shapes.emplace_back(ctx.InputAt(input_pair.first).shape());
     } else {
       std::vector<std::vector<int64_t>> shapes;
       for (size_t j = input_pair.first; j < input_pair.second; j++) {
-        shapes.push_back(std::move(ctx.InputAt(j).shape()));
+        shapes.push_back(ctx.InputAt(j).shape());
       }
       vec_input_shapes.emplace_back(std::move(shapes));
     }
@@ -213,7 +212,7 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       std::vector<phi::DDim> shapes;
       auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
       for (size_t j = duplicable_input_pair.first;
@@ -406,7 +405,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       std::vector<phi::DataType> dtypes;
       auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
       for (size_t j = duplicable_input_pair.first;
@@ -453,14 +452,176 @@ paddle::Tensor BuildEmptyDistPaddleTensor(
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-std::tuple<bool, bool, phi::distributed::ProcessMesh> PrepareCtxForAutoParallel(
+
+phi::distributed::SpmdInfo RunInferSpmdFn(
+    const paddle::OpMetaInfo& op_info,
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    paddle::CustomOpKernelContext& ctx) {  // NOLINT
+  auto& infer_spmd_func = paddle::OpMetaInfoHelper::GetInferSpmdFn(op_info);
+  if (infer_spmd_func == nullptr) {
+    // default rule
+    std::vector<phi::distributed::DistMetaTensor> meta_dist_inputs;
+    auto all_inputs = ctx.AllMutableInput();
+    for (auto& t : *all_inputs) {
+      phi::distributed::DistMetaTensor meta_dist_input;
+      if (t.impl().get()) {
+        meta_dist_input =
+            paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
+      }
+      meta_dist_inputs.push_back(meta_dist_input);
+    }
+    auto spmd_info_tmp =
+        phi::distributed::VariadicReplicatedInferSpmdDynamic(meta_dist_inputs);
+    // flatten input
+    phi::distributed::SpmdInfo spmd_info;
+    auto dist_attrs = PADDLE_GET(std::vector<phi::distributed::TensorDistAttr>,
+                                 spmd_info_tmp.first[0]);
+    for (auto& e : dist_attrs) {
+      spmd_info.first.push_back(std::move(e));
+    }
+    return spmd_info;
+  }
+  std::vector<paddle::CustomSpmdInferTensorArg> tensor_inputs;
+  size_t input_size = inputs.size();
+  for (size_t i = 0; i < input_size; ++i) {
+    const auto& in_name = inputs[i];
+    if (paddle::framework::detail::IsDuplicableVar(in_name)) {
+      std::vector<phi::distributed::DistMetaTensor> meta_tensors;
+      auto& range = ctx.InputRangeAt(i);
+      for (size_t j = range.first; j < range.second; ++j) {
+        auto& t = ctx.InputAt(j);
+        phi::distributed::DistMetaTensor meta_tensor;
+        if (t.impl().get()) {
+          meta_tensor =
+              paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
+        }
+        meta_tensors.emplace_back(std::move(meta_tensor));
+      }
+      tensor_inputs.emplace_back(std::move(meta_tensors));
+    } else {
+      auto& range = ctx.InputRangeAt(i);
+      auto& t = ctx.InputAt(range.first);
+      phi::distributed::DistMetaTensor meta_tensor;
+      if (t.impl().get()) {
+        meta_tensor =
+            paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
+      }
+      tensor_inputs.emplace_back(std::move(meta_tensor));
+    }
+  }
+  const std::vector<paddle::CustomSpmdInferAttrArg>& attrs = ctx.Attrs();
+  auto spmd_info_tmp = infer_spmd_func(tensor_inputs, attrs);
+  // flatten input
+  phi::distributed::SpmdInfo spmd_info;
+  for (auto& e : spmd_info_tmp.first) {
+    if (paddle::holds_alternative<phi::distributed::TensorDistAttr>(e)) {
+      spmd_info.first.push_back(
+          std::move(PADDLE_GET(phi::distributed::TensorDistAttr, e)));
+    } else {
+      for (auto& ee :
+           PADDLE_GET(std::vector<phi::distributed::TensorDistAttr>, e)) {
+        spmd_info.first.push_back(std::move(ee));
+      }
+    }
+  }
+
+  // flatten output
+  for (auto& e : spmd_info_tmp.second) {
+    if (paddle::holds_alternative<phi::distributed::TensorDistAttr>(e)) {
+      spmd_info.second.push_back(
+          std::move(PADDLE_GET(phi::distributed::TensorDistAttr, e)));
+    } else {
+      for (auto& ee :
+           PADDLE_GET(std::vector<phi::distributed::TensorDistAttr>, e)) {
+        spmd_info.second.push_back(std::move(ee));
+      }
+    }
+  }
+
+  return spmd_info;
+}
+
+std::vector<std::vector<phi::DDim>> RunInferShapeFn(
     const paddle::OpMetaInfo& op_info,
     bool is_forward,
     bool is_double_grad,
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::unordered_map<std::string, std::string>& inplace_map,
     paddle::CustomOpKernelContext& ctx) {  // NOLINT
+  auto& infer_shape_func = paddle::OpMetaInfoHelper::GetInferShapeFn(op_info);
+
+  std::vector<std::vector<phi::DDim>> out_dims;
+  if (infer_shape_func) {
+    out_dims =
+        RunInferShapeFunc(ctx, infer_shape_func, inputs, outputs, inplace_map);
+  } else {
+    if (is_forward) {  // NOLINT
+      out_dims = RunDefaultInferShapeFunc(ctx, inputs, outputs, inplace_map);
+    } else {
+      out_dims =
+          RunDefaultGradInferShapeFunc(ctx, inputs, outputs, is_double_grad);
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      out_dims.size(),
+      ctx.OutputRange().size(),
+      phi::errors::InvalidArgument(
+          "Custom op infer_shape return size should be %d, but got %d.",
+          ctx.OutputRange().size(),
+          out_dims.size()));
+
+  return out_dims;
+}
+
+std::vector<std::vector<phi::DataType>> RunInferDtypeFn(
+    const paddle::OpMetaInfo& op_info,
+    bool is_forward,
+    bool is_double_grad,
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::unordered_map<std::string, std::string>& inplace_map,
+    paddle::CustomOpKernelContext& ctx) {  // NOLINT
+
+  auto& infer_dtype_func = paddle::OpMetaInfoHelper::GetInferDtypeFn(op_info);
+  std::vector<std::vector<phi::DataType>> out_dtypes;
+  if (infer_dtype_func) {
+    out_dtypes =
+        RunInferDtypeFunc(ctx, infer_dtype_func, inputs, outputs, inplace_map);
+  } else {
+    if (is_forward) {  // NOLINT
+      out_dtypes = RunDefaultInferDtypeFunc(ctx, inputs, outputs, inplace_map);
+    } else {
+      out_dtypes =
+          RunDefaultGradInferDtypeFunc(ctx, inputs, outputs, is_double_grad);
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      out_dtypes.size(),
+      ctx.OutputRange().size(),
+      phi::errors::InvalidArgument(
+          "Custom op infer_dtype return size should be %d, but got %d.",
+          ctx.OutputRange().size(),
+          out_dtypes.size()));
+  return out_dtypes;
+}
+
+std::
+    tuple<bool, bool, phi::distributed::ProcessMesh, phi::distributed::SpmdInfo>
+    PrepareCtxForAutoParallel(
+        const paddle::OpMetaInfo& op_info,
+        bool is_forward,
+        bool is_double_grad,
+        paddle::CustomOpKernelContext& ctx,  // NOLINT
+        std::vector<std::shared_ptr<phi::distributed::DistTensor>>&
+            dist_inputs,                        // NOLINT
+        std::vector<phi::DDim>& output_dims) {  // NOLINT
   bool run_auto_parallel = false;
   bool rank_is_in_current_mesh = true;
   phi::distributed::ProcessMesh current_process_mesh;
+  phi::distributed::SpmdInfo spmd_info;
 
   const auto& inputs = paddle::OpMetaInfoHelper::GetInputs(op_info);
   const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(op_info);
@@ -483,115 +644,73 @@ std::tuple<bool, bool, phi::distributed::ProcessMesh> PrepareCtxForAutoParallel(
             .process_mesh();
     rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
 
-    std::vector<const phi::TensorBase*> input_x(x.size());
-    for (size_t i = 0; i < input_x.size(); ++i) {
-      input_x[i] = x.at(i).impl().get();
-    }
+    spmd_info = RunInferSpmdFn(op_info, inputs, outputs, ctx);
 
-    auto meta_dist_input_x = paddle::experimental::MakeDistMetaTensor(input_x);
-    auto spmd_info =
-        phi::distributed::VariadicReplicatedInferSpmdDynamic(meta_dist_input_x);
     current_process_mesh =
         paddle::holds_alternative<phi::distributed::TensorDistAttr>(
             spmd_info.first[0])
             ? paddle::get<0>(spmd_info.first[0]).process_mesh()
             : paddle::get<1>(spmd_info.first[0]).at(0).process_mesh();
 
+    std::vector<std::vector<phi::DDim>> out_dims = RunInferShapeFn(
+        op_info, is_forward, is_double_grad, inputs, outputs, inplace_map, ctx);
+
+    std::vector<std::vector<phi::DataType>> out_dtypes = RunInferDtypeFn(
+        op_info, is_forward, is_double_grad, inputs, outputs, inplace_map, ctx);
+
     if (rank_is_in_current_mesh) {
       auto* dev_ctx = phi::DeviceContextPool::Instance().Get(x.at(0).place());
-      auto dist_input_x = paddle::experimental::ReshardApiInputToKernelInput(
-          dev_ctx, x, spmd_info.first[0]);
       for (size_t i = 0; i < x.size(); ++i) {
+        auto dist_input_i = paddle::experimental::ReshardApiInputToKernelInput(
+            dev_ctx, x[i], spmd_info.first[i]);
         all_inputs->at(i).set_impl(
-            std::make_shared<phi::DenseTensor>(dist_input_x[i]->value()));
+            std::make_shared<phi::DenseTensor>(dist_input_i->value()));
+        dist_inputs.emplace_back(dist_input_i);
       }
-    } else {
-      auto& infer_shape_func =
-          paddle::OpMetaInfoHelper::GetInferShapeFn(op_info);
-      auto& infer_dtype_func =
-          paddle::OpMetaInfoHelper::GetInferDtypeFn(op_info);
+    }
 
-      std::vector<std::vector<phi::DDim>> out_dims;
-      if (infer_shape_func) {
-        out_dims = RunInferShapeFunc(
-            ctx, infer_shape_func, inputs, outputs, inplace_map);
-      } else {
-        if (is_forward) {
-          out_dims =
-              RunDefaultInferShapeFunc(ctx, inputs, outputs, inplace_map);
-        } else {
-          out_dims = RunDefaultGradInferShapeFunc(
-              ctx, inputs, outputs, is_double_grad);
-        }
-      }
-
-      std::vector<std::vector<phi::DataType>> out_dtypes;
-      if (infer_dtype_func) {
-        out_dtypes = RunInferDtypeFunc(
-            ctx, infer_dtype_func, inputs, outputs, inplace_map);
-      } else {
-        if (is_forward) {
-          out_dtypes =
-              RunDefaultInferDtypeFunc(ctx, inputs, outputs, inplace_map);
-        } else {
-          out_dtypes = RunDefaultGradInferDtypeFunc(
-              ctx, inputs, outputs, is_double_grad);
-        }
-      }
-
+    for (size_t i = 0; i < out_dims.size(); ++i) {
+      const auto& out_dim = out_dims.at(i);
+      const auto& out_dtype = out_dtypes.at(i);
+      const auto& pair = ctx.OutputRangeAt(i);
       PADDLE_ENFORCE_EQ(
-          out_dims.size(),
-          ctx.OutputRange().size(),
-          phi::errors::InvalidArgument(
-              "Custome op infer_shape return size should be %d, but got %d.",
-              ctx.OutputRange().size(),
-              out_dims.size()));
-
+          out_dim.size(),
+          pair.second - pair.first,
+          phi::errors::InvalidArgument("custom op infer_shape result[%d]'s "
+                                       "size should be %d, but got %d.",
+                                       i,
+                                       pair.second - pair.first,
+                                       out_dim.size()));
       PADDLE_ENFORCE_EQ(
-          out_dtypes.size(),
-          ctx.OutputRange().size(),
-          phi::errors::InvalidArgument(
-              "Custome op infer_dtype return size should be %d, but got %d.",
-              ctx.OutputRange().size(),
-              out_dtypes.size()));
+          out_dtype.size(),
+          pair.second - pair.first,
+          phi::errors::InvalidArgument("custom op infer_shape result[%d]'s "
+                                       "size should be %d, but got %d.",
+                                       i,
+                                       pair.second - pair.first,
+                                       out_dtype.size()));
 
-      for (size_t i = 0; i < out_dims.size(); ++i) {
-        const auto& out_dim = out_dims.at(i);
-        const auto& out_dtype = out_dtypes.at(i);
-        const auto& pair = ctx.OutputRangeAt(i);
-        PADDLE_ENFORCE_EQ(
-            out_dim.size(),
-            pair.second - pair.first,
-            phi::errors::InvalidArgument("custome op infer_shape result[%d]'s "
-                                         "size should be %d, but got %d.",
-                                         i,
-                                         pair.second - pair.first,
-                                         out_dim.size()));
-        PADDLE_ENFORCE_EQ(
-            out_dtype.size(),
-            pair.second - pair.first,
-            phi::errors::InvalidArgument("custome op infer_shape result[%d]'s "
-                                         "size should be %d, but got %d.",
-                                         i,
-                                         pair.second - pair.first,
-                                         out_dtype.size()));
-
-        if (out_dim.size() == 1) {
+      if (out_dim.size() == 1) {
+        output_dims.emplace_back(out_dim[0]);
+        if (!rank_is_in_current_mesh) {
           *(ctx.MutableOutputAt(pair.first)) = BuildEmptyDistPaddleTensor(
               current_process_mesh, out_dim[0], out_dtype[0]);
-        } else {
-          for (size_t j = pair.first; j < pair.second; j++) {
+        }
+      } else {
+        for (size_t j = pair.first; j < pair.second; j++) {
+          output_dims.emplace_back(out_dim[j]);
+          if (!rank_is_in_current_mesh) {
             *(ctx.MutableOutputAt(j)) = BuildEmptyDistPaddleTensor(
                 current_process_mesh, out_dim[j], out_dtype[j]);
           }
         }
       }
-      return std::tuple<bool, bool, phi::distributed::ProcessMesh>(
-          run_auto_parallel, rank_is_in_current_mesh, current_process_mesh);
     }
   }
-  return std::tuple<bool, bool, phi::distributed::ProcessMesh>(
-      run_auto_parallel, rank_is_in_current_mesh, current_process_mesh);
+  return {run_auto_parallel,
+          rank_is_in_current_mesh,
+          current_process_mesh,
+          spmd_info};
 }
 #endif
 
@@ -599,27 +718,48 @@ std::tuple<bool, bool, phi::distributed::ProcessMesh> PrepareCtxForAutoParallel(
 void TransCtxTensorsToDistTensors(
     paddle::CustomOpKernelContext& ctx,  // NOLINT
     bool run_auto_parallel,
-    const phi::distributed::ProcessMesh& current_process_mesh) {
+    const phi::distributed::ProcessMesh& current_process_mesh,
+    const phi::distributed::SpmdInfo& spmd_info,
+    std::vector<std::shared_ptr<phi::distributed::DistTensor>>&
+        dist_inputs,                        // NOLINT
+    std::vector<phi::DDim>& output_dims) {  // NOLINT
   if (run_auto_parallel) {
     std::vector<Tensor>* output_all = ctx.AllMutableOutput();
     for (size_t i = 0; i < output_all->size(); ++i) {
       auto& tensor = output_all->at(i);
-      phi::distributed::TensorDistAttr dist_attr =
-          phi::distributed::TensorDistAttr(common::vectorize(tensor.dims()));
-      dist_attr.set_process_mesh(current_process_mesh);
+      phi::distributed::TensorDistAttr dist_attr;
+      if (!spmd_info.second.empty()) {
+        dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr,
+                                     spmd_info.second[i]);
+      } else {
+        std::vector<int64_t> shape = common::vectorize(output_dims[i]);
+        dist_attr.set_default_dims_mapping(shape);
+        dist_attr.set_process_mesh(current_process_mesh);
+      }
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()),
+          output_dims[i],
           dist_attr);
       tensor.set_impl(dist_t);
     }
     std::vector<Tensor>* input_all = ctx.AllMutableInput();
     for (size_t i = 0; i < input_all->size(); ++i) {
       auto& tensor = input_all->at(i);
-      phi::distributed::TensorDistAttr dist_attr =
-          phi::distributed::TensorDistAttr(common::vectorize(tensor.dims()));
-      dist_attr.set_process_mesh(current_process_mesh);
+      phi::distributed::TensorDistAttr dist_attr;
+      phi::DDim global_dims;
+
+      if (i < dist_inputs.size()) {
+        auto& dist_input = dist_inputs.at(i);
+        global_dims = dist_input->dims();
+        dist_attr = dist_input->dist_attr();
+      } else {
+        dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr,
+                                     spmd_info.first[i]);
+        global_dims = tensor.dims();
+      }
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()),
+          global_dims,
           dist_attr);
       tensor.set_impl(dist_t);
     }
@@ -637,11 +777,15 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
   ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-  auto result =
-      PrepareCtxForAutoParallel(op_info, is_forward, is_double_grad, ctx);
+  // for output
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> dist_inputs;
+  std::vector<phi::DDim> output_dims;
+  auto result = PrepareCtxForAutoParallel(
+      op_info, is_forward, is_double_grad, ctx, dist_inputs, output_dims);
   bool run_auto_parallel = std::get<0>(result);
   bool rank_is_in_current_mesh = std::get<1>(result);
   phi::distributed::ProcessMesh current_process_mesh = std::get<2>(result);
+  auto& spmd_info = std::get<3>(result);
   if (!rank_is_in_current_mesh) {
     return;
   }
@@ -655,8 +799,8 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
              ->meta()
              .is_contiguous()) {
       tensor.set_impl(std::make_shared<phi::DenseTensor>(
-          std::move(paddle::experimental::Trans2Contiguous(
-              *(std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+          paddle::experimental::Trans2Contiguous(
+              *(std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())))));
     }
   }
 
@@ -667,7 +811,12 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
   ctx.AssignInplaceOutputs();
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-  TransCtxTensorsToDistTensors(ctx, run_auto_parallel, current_process_mesh);
+  TransCtxTensorsToDistTensors(ctx,
+                               run_auto_parallel,
+                               current_process_mesh,
+                               spmd_info,
+                               dist_inputs,
+                               output_dims);
 #endif
 }
 

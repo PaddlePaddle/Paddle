@@ -35,8 +35,8 @@
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/utils/string/printf.h"
 
 extern std::string paddle::framework::DataTypeToString(
     const framework::proto::VarType::Type type);
@@ -431,7 +431,7 @@ static bool IsFileExists(const std::string &path) {
   return exists;
 }
 
-void RegisterAllCustomOperator();
+void RegisterAllCustomOperator(bool use_pir);
 
 void InitGflagsFromEnv();
 
@@ -474,14 +474,14 @@ static inline void DisplayMemoryInfo(platform::Place place,
       << "MB]";
 }
 
-static std::string Precision2String(AnalysisConfig::Precision precison) {
-  if (precison == AnalysisConfig::Precision::kFloat32)
+static std::string Precision2String(AnalysisConfig::Precision precision) {
+  if (precision == AnalysisConfig::Precision::kFloat32)
     return "fp32";
-  else if (precison == AnalysisConfig::Precision::kHalf)
+  else if (precision == AnalysisConfig::Precision::kHalf)
     return "fp16";
-  else if (precison == AnalysisConfig::Precision::kInt8)
+  else if (precision == AnalysisConfig::Precision::kInt8)
     return "int8";
-  else if (precison == AnalysisConfig::Precision::kBf16)
+  else if (precision == AnalysisConfig::Precision::kBf16)
     return "bf16";
   else
     return "none";

@@ -14,19 +14,22 @@
 
 #include "paddle/fluid/framework/executor_cache.h"
 
+#include "paddle/common/flags.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
-PHI_DECLARE_bool(pir_apply_inplace_pass);
-PHI_DECLARE_bool(print_ir);
+DECLARE_FILE_SYMBOLS(print_statistics);
+
+COMMON_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace framework {
@@ -308,10 +311,9 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope *scope,
-    const std::vector<int64_t> &seeds) {
-  auto &interpretercore_info_cache =
-      framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+    const int64_t &place_hash_key) {
+  auto &cache = framework::InterpreterCoreInfoCache::Instance();
+  if (cache.Size() > 256000u /* max_cached_size*/) {
     PADDLE_THROW(platform::errors::Fatal(
         "The cached info size has exceeded max_cached_size: 256000, "
         "which will cause error. "));
@@ -325,8 +327,8 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
   core.reset(new InterpreterCore(
       place, program_desc.Block(0), scope, execution_config));
 
-  auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, scope, seeds, is_grad);
+  auto &cached_value = cache.GetMutable(
+      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/false);
   cached_value.core_ = core;
   return core;
 }
@@ -337,10 +339,9 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope *scope,
-    const std::vector<int64_t> &seeds) {
-  auto &interpretercore_info_cache =
-      framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+    const int64_t &place_hash_key) {
+  auto &cache = framework::InterpreterCoreInfoCache::Instance();
+  if (cache.Size() > 256000u /* max_cached_size*/) {
     PADDLE_THROW(platform::errors::Fatal(
         "The cached info size has exceeded max_cached_size: 256000, "
         "which will cause error. "));
@@ -354,8 +355,8 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
   core.reset(new InterpreterCore(
       place, {}, ir_program->block(), scope, execution_config));
 
-  auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, scope, seeds, is_grad);
+  auto &cached_value = cache.GetMutable(
+      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/true);
   cached_value.core_ = core;
   cached_value.ir_prog_ = std::move(ir_program);
   return core;
@@ -383,7 +384,7 @@ std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
   return ir_res;
 }
 
-std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
+std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> &output_names,
@@ -391,9 +392,6 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const std::vector<std::string> &x_names,
     const std::vector<paddle::Tensor> &params,
     const phi::Place &place) {
-  auto ir_ctx = ::pir::IrContext::Instance();
-  auto program = std::make_unique<::pir::Program>(ir_ctx);
-
   std::set<std::string> set_output_names;
   auto local_program =
       paddle::framework::ProgramDesc(*(forward_global_block->Program()));
@@ -477,10 +475,8 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
-  paddle::translator::ProgramTranslator program_translator(&local_program,
-                                                           program.get());
+  auto program = TranslateLegacyProgramToProgram(local_program);
 
-  program_translator.Translate();
   return ApplyIrPass(program.get(), place);
 }
 
@@ -491,9 +487,6 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const std::vector<paddle::Tensor *> &params_grad,
     const paddle::framework::Scope *scope,
     const phi::Place &place) {
-  auto ir_ctx = ::pir::IrContext::Instance();
-  auto program = std::make_unique<::pir::Program>(ir_ctx);
-
   auto local_program =
       paddle::framework::ProgramDesc(*(backward_global_block->Program()));
 
@@ -551,9 +544,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
 
-  paddle::translator::ProgramTranslator program_translator(&local_program,
-                                                           program.get());
-  program_translator.Translate();
+  auto program = TranslateLegacyProgramToProgram(local_program);
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
@@ -562,6 +553,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     pm.AddPass(::pir::CreateInplacePass());
     if (VLOG_IS_ON(6)) {
       pm.EnableIRPrinting();
+      pm.EnablePrintStatistics();
     }
     pm.Run(res.get());
     if (FLAGS_print_ir) {

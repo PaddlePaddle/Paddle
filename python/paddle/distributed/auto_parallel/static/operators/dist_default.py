@@ -49,6 +49,7 @@ __op_has_shape_attr__ = [
     "fill_constant_batch_size_like",
     "fill_constant",
     "expand_v2",
+    "expand_as_v2",
 ]
 
 
@@ -61,7 +62,7 @@ def prim_operator_data_parallel_functor(ctx, src_op):
     if var_name in ctx.grads_params:
         assert (
             var_name not in ctx.synced_gradient
-        ), f"in primtive mode, grad is already {var_name} synced"
+        ), f"in primitive mode, grad is already {var_name} synced"
         ctx.synced_gradient.add(var_name)
         sync_group = new_process_group(ctx.data_parallel_group)
 
@@ -141,12 +142,12 @@ class DistributedDefault(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("default_")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(input_specs, output_specs)
         bw_results = rule.infer_backward(input_specs, output_specs)
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op, input_arg_names, output_arg_names, fw_results, bw_results
         )
@@ -534,12 +535,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # replicate op in dist program
         dst_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
-        if (
-            src_op.has_attr('shape')
-            and src_op.attr('shape')
-            and src_op.type in __op_has_shape_attr__
-        ):
-            shape_list = src_op.attr('shape')
+        def get_shape_attr_name():
+            for name in ["shape", "target_shape"]:
+                if src_op.has_attr(name) and src_op.attr(name):
+                    return name
+            return None
+
+        shape_attr_name = get_shape_attr_name()
+        if shape_attr_name and src_op.type in __op_has_shape_attr__:
+            shape_list = src_op.attr(shape_attr_name)
             Out_var = main_block._var_recursive(kwargs['Out'][0])
             op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
             dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
@@ -552,9 +556,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         shape_list[idx] = (
                             shape_list[idx] // process_mesh_shape[axis]
                         )
-            dst_op.desc._set_attr('shape', shape_list)
+            dst_op.desc._set_attr(shape_attr_name, shape_list)
 
-        # data parallel synchronization for primtive operators
+        # data parallel synchronization for primitive operators
         from paddle.incubate.autograd import prim_enabled
 
         if prim_enabled():

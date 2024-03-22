@@ -18,10 +18,16 @@ or nested loop have been covered in file test_ifelse.py and test_loop.py"""
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
-from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
+from paddle.jit.dy2static.transformers.logical_transformer import (
+    cmpop_node_to_str,
+)
 from paddle.utils import gast
 
 SEED = 2020
@@ -184,6 +190,7 @@ class TestLogicalNot(TestLogicalBase):
     def _set_test_func(self):
         self.dygraph_func = test_logical_not
 
+    @test_legacy_and_pt_and_pir
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
@@ -199,6 +206,7 @@ class TestLogicalNot2(TestLogicalBase):
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_2
 
+    @test_legacy_and_pt_and_pir
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
@@ -248,10 +256,12 @@ class TestShapeNotEqual(TestLogicalNot):
 
 
 class TestCmpopNodeToStr(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_exception(self):
         with self.assertRaises(KeyError):
             cmpop_node_to_str(gast.Or())
 
+    @test_legacy_and_pt_and_pir
     def test_expected_result(self):
         self.assertEqual(cmpop_node_to_str(gast.Eq()), "==")
         self.assertEqual(cmpop_node_to_str(gast.NotEq()), "!=")

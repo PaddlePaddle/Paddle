@@ -40,10 +40,10 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -61,7 +61,7 @@ namespace phi {
 class KernelContext;
 }
 
-PHI_DECLARE_int32(inner_op_parallelism);
+COMMON_DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
 namespace framework {
@@ -103,7 +103,7 @@ constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 /// TODO(luotao): Note that this temporal attribute would be deleted after all
 /// ops contain it.
 constexpr char kAllKernelsMustComputeRuntimeShape[] =
-    "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@";
+    "ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE";
 
 // define some kernel priority
 /* Define multiple kernel type fallback order*/

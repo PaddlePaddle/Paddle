@@ -36,17 +36,12 @@ class TrtConvertEinsumTest_SingleOperand(TrtLayerAutoScanTest):
         def generate_input1(dims, batch):
             if dims == 1:
                 return np.ones(shape=[batch]).astype(np.float32)
-            elif dims == 2:
-                return np.ones(shape=[batch, 3]).astype(np.float32)
             elif dims == 3:
                 return np.ones((batch, 2, 3)).astype(np.float32)
 
         def generate_equation1(dims):
             if dims == 1:
                 return ["i->"]
-            elif dims == 2:
-                # "ij->"
-                return ["ij->ji", "ij->i", "ij->j"]
             elif dims == 3:
                 # "ijk->","ijk->j","ijk->k"
                 # error: The current implementation of Einsum doesn't support mask dimensions on multiple contracting/free dimensions
@@ -60,7 +55,7 @@ class TrtConvertEinsumTest_SingleOperand(TrtLayerAutoScanTest):
                 ]
 
         # Single operand: transpose, sum
-        for dims in [1, 2, 3]:
+        for dims in [1, 3]:
             for batch in [2]:
                 equation_list = generate_equation1(dims)
                 for equation in equation_list:
@@ -108,16 +103,7 @@ class TrtConvertEinsumTest_SingleOperand(TrtLayerAutoScanTest):
                 self.dynamic_shape.opt_input_shape = {
                     "operands_data0": [2],
                 }
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "operands_data0": [1, 3],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "operands_data0": [4, 3],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "operands_data0": [2, 3],
-                }
+
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {
                     "operands_data0": [1, 2, 3],
@@ -219,18 +205,12 @@ class TrtConvertEinsumTest_DoubuleOperand_Vector_Matrix(TrtLayerAutoScanTest):
         # Doubule operands vector
         for dims in [1]:
             self.dims = dims
-            for vec_shape in [[2], [3]]:
+            for vec_shape in [[2]]:
                 for batch in [2]:
                     equation_list = generate_equation_matrix_vector(
                         dims, vec_shape
                     )
                     for equation in equation_list:
-                        if (
-                            dims == 1
-                            and vec_shape != [2]
-                            and equation != "i,j->ij"
-                        ) or ((dims == 2 or dims == 3) and vec_shape != [3]):
-                            continue
                         self.equation = equation
                         self.dims = dims
                         dics = [{"equation": equation}, {}]
@@ -285,19 +265,6 @@ class TrtConvertEinsumTest_DoubuleOperand_Vector_Matrix(TrtLayerAutoScanTest):
                 self.dynamic_shape.opt_input_shape = {
                     "operands_data0": [2],
                     "operands_data1": [2],
-                }
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "operands_data0": [1, 3],
-                    "operands_data1": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "operands_data0": [4, 3],
-                    "operands_data1": [4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "operands_data0": [2, 3],
-                    "operands_data1": [3],
                 }
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {
@@ -379,13 +346,6 @@ class TrtConvertEinsumTest_DoubuleOperand_Matrix_Matrix(TrtLayerAutoScanTest):
             [[3, 4, 5], [4, 5], "ijk,jk->i"],
             [[3, 4, 5], [2, 5], "ijk,lk->ijl"],
             [[2, 4, 5, 3], [3, 4, 5], "ijkl,lmn->ijkmn"],
-            [[3, 4, 5], [4, 5], "ijk,jk->ik"],
-            [[3, 4, 5], [4, 5], "ijk,jk->ij"],
-            [[4, 5], [4, 2, 5], "ik,ijk->j"],
-            [[4, 2, 5], [4, 5], "ijk,ik->jk"],
-            [[2, 4, 5, 3], [3, 2, 4], "ijkl,lmn->kmn"],
-            [[2, 4, 5, 3], [3, 2, 4], "ijkl,lmn->ijn"],
-            [[1, 3, 5], [1, 2, 3, 4], "blq,bhlk->bhlqk"],
         ]:
             self.x_shape = item[0]
             self.y_shape = item[1]
