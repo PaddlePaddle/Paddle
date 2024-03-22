@@ -59,7 +59,6 @@ class Context:
 
         if self.args.master:
             return False
-
         if len(self.unknown_args) > 0:
             self.logger.warning(
                 f"Compatible mode enable with args {self.unknown_args}"
@@ -165,6 +164,12 @@ class Context:
                     ip_list.append(ip)
         except:
             ip_list = self.args.ips.split(",")
+
+        if ip_list is None:
+            print(
+                "LAUNCH WARNNING ips has been set, but it does not have a value. Please check the launch config"
+            )
+            return
 
         if self.has_set("nnodes"):
             nnodes = int(self.args.nnodes)
@@ -308,4 +313,5 @@ class Context:
                     self._port = self.envs.get("PADDLE_PORT")
                 else:
                     print("LAUNCH ERROR the master ip error.")
-            self.args.master = f"{self._ip}:{self._port}"
+            if self._ip and self._port:
+                self.args.master = f"{self._ip}:{self._port}"
