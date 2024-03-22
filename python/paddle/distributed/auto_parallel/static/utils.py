@@ -2316,7 +2316,7 @@ def is_sequential_run():
 
 def get_pp_degree(dist_context):
     if len(dist_context.process_meshes) < 2:
-        return 0
+        return 0, []
 
     process_ids = set()
     process_meshes = copy.deepcopy(dist_context.process_meshes)

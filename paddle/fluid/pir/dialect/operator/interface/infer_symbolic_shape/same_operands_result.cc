@@ -16,8 +16,8 @@
 
 #define OP_SAME_OPERANDS_AND_RESULT(name)                                   \
   bool name##OpInferSymbolicShape(                                          \
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) { \
-    const symbol::ShapeOrDataDimExprs& operand_shape_or_data =              \
+      pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) { \
+    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =              \
         shape_analysis->GetShapeOrDataForValue(op->operand_source(0));      \
     shape_analysis->SetShapeOrDataForValue(op->result(0),                   \
                                            operand_shape_or_data);          \
@@ -104,7 +104,6 @@ OP_SAME_OPERANDS_AND_RESULT(Round)
 OP_SAME_OPERANDS_AND_RESULT(Round_)
 OP_SAME_OPERANDS_AND_RESULT(Rsqrt)
 OP_SAME_OPERANDS_AND_RESULT(Rsqrt_)
-OP_SAME_OPERANDS_AND_RESULT(Scale)
 OP_SAME_OPERANDS_AND_RESULT(ScaleSr)
 OP_SAME_OPERANDS_AND_RESULT(ScaleSr_)
 OP_SAME_OPERANDS_AND_RESULT(Scale_)
@@ -126,6 +125,43 @@ OP_SAME_OPERANDS_AND_RESULT(Tril)
 OP_SAME_OPERANDS_AND_RESULT(Tril_)
 OP_SAME_OPERANDS_AND_RESULT(Trunc)
 OP_SAME_OPERANDS_AND_RESULT(Trunc_)
+
+bool ScaleOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  std::vector<symbol::DimExpr> shape(operand_shape_or_data.shape());
+
+  if (operand_shape_or_data.data()) {
+    const std::vector<symbol::DimExpr> data = [&] {
+      const symbol::DimExpr scale = [&]() -> symbol::DimExpr {
+        if (op->num_operands() == 2) {
+          return shape_analysis->GetShapeOrDataForValue(op->operand_source(1))
+              .data()
+              ->at(0);
+        }
+        return static_cast<int64_t>(
+            op->attribute("scale").dyn_cast<pir::FloatAttribute>().data());
+      }();
+      int bias = op->attribute("bias").dyn_cast<pir::FloatAttribute>().data();
+
+      std::vector<symbol::DimExpr> data;
+      for (auto &val : *(operand_shape_or_data.data())) {
+        data.push_back(val * scale + bias);
+      }
+      return data;
+    }();
+
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs(shape, data));
+  } else {
+    shape_analysis->SetShapeOrDataForValue(op->result(0),
+                                           operand_shape_or_data);
+  }
+
+  return true;
+}
 
 }  // namespace paddle::dialect
 
