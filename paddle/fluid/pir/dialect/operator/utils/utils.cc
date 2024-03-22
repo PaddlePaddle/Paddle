@@ -37,6 +37,8 @@ namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
     LoadCombineOp::name(),
+    BatchFcOp::name(),
+    BatchFcGradOp::name(),
     CConcatOp::name(),
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
@@ -73,8 +75,12 @@ const std::unordered_set<std::string> LegacyOpList = {
     SoftReluGradOp::name(),
     MatchMatrixTensorOp::name(),
     MatchMatrixTensorGradOp::name(),
+    PartialConcatOp::name(),
+    PartialConcatGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
+    PartialSumOp::name(),
+    PartialSumGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
