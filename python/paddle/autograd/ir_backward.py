@@ -642,6 +642,10 @@ def append_backward_ops(
                         len(output_grads) == 0
                         or all(zero_flag)
                         or all_output_grad_none(output_grads)
+                        or all(
+                            all(stop_gradients)
+                            for stop_gradients in input_grad_stopgradients
+                        )
                     ) and op.name() not in [
                         "pd_op.while",
                         "pd_op.if",
