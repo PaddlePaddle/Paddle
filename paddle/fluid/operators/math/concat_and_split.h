@@ -35,12 +35,12 @@ namespace math {
  *               [5,6]]
  */
 template <typename DeviceContext, typename T>
-class ConcatFunctor {
+class TEST_API ConcatFunctor {
  public:
-  void operator()(const DeviceContext& context,
-                  const std::vector<phi::DenseTensor>& input,
-                  int axis,
-                  phi::DenseTensor* output);
+  TEST_API void operator()(const DeviceContext& context,
+                           const std::vector<phi::DenseTensor>& input,
+                           int axis,
+                           phi::DenseTensor* output);
 };
 
 /*

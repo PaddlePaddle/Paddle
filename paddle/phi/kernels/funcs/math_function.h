@@ -59,9 +59,9 @@ struct Transpose {
 
 template <typename DeviceContext, typename T>
 struct SetConstant {
-  void operator()(const DeviceContext& context,
-                  phi::DenseTensor* tensor,
-                  T num);
+  TEST_API void operator()(const DeviceContext& context,
+                           phi::DenseTensor* tensor,
+                           T num);
 };
 
 #ifdef PADDLE_WITH_XPU

@@ -69,25 +69,27 @@ using DataLayout = phi::DataLayout;
 template <typename DeviceContext, typename T>
 class Vol2ColFunctor {
  public:
-  void operator()(const DeviceContext& context,
-                  const phi::DenseTensor& vol,
-                  const std::vector<int>& dilations,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  phi::DenseTensor* col,
-                  const DataLayout data_layout = DataLayout::kNCHW) const;
+  TEST_API void operator()(
+      const DeviceContext& context,
+      const phi::DenseTensor& vol,
+      const std::vector<int>& dilations,
+      const std::vector<int>& strides,
+      const std::vector<int>& paddings,
+      phi::DenseTensor* col,
+      const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 
 template <typename DeviceContext, typename T>
 class Col2VolFunctor {
  public:
-  void operator()(const DeviceContext& context,
-                  const phi::DenseTensor& col,
-                  const std::vector<int>& dilations,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  phi::DenseTensor* vol,
-                  const DataLayout data_layout = DataLayout::kNCHW) const;
+  TEST_API void operator()(
+      const DeviceContext& context,
+      const phi::DenseTensor& col,
+      const std::vector<int>& dilations,
+      const std::vector<int>& strides,
+      const std::vector<int>& paddings,
+      phi::DenseTensor* vol,
+      const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 
 }  // namespace funcs
