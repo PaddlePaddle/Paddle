@@ -305,78 +305,77 @@ int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
       dim_expr.variant());
 }
 
-// void ShapeConstraintIRAnalysis::SubstituteDimExpr(const symbol::DimExpr& lhs,
-//                                                               const
-//                                                               symbol::DimExpr&
-//                                                               rhs){
-//   VLOG(1) << "CstrEqNew the constraint: " << lhs << " == " << rhs;
-//   std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
-//   if(GetDimExprPriority(lhs) > GetDimExprPriority(rhs))
-//     substitution_pattern[lhs] = rhs;
-//   else
-//     substitution_pattern[rhs] = lhs;
+bool CanDimExprSubstitute(const symbol::DimExpr& lhs,
+                          const symbol::DimExpr& rhs) {
+  int priority_lhs = GetDimExprPriority(lhs);
+  int priority_rhs = GetDimExprPriority(rhs);
+  if (priority_lhs >= 2 || priority_rhs >= 2) return false;
+  return true;
+}
 
-//   VLOG(1) << "before substitute: ";
-//   for(auto it = value_to_shape_or_data_.begin(); it !=
-//   value_to_shape_or_data_.end(); it++){
-//     VLOG(1) << it->second;
-//   }
-//   for(auto it = value_to_shape_or_data_.begin(); it !=
-//   value_to_shape_or_data_.end(); it++){
-//     const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
-//         SubstituteShapeOrData(it->second, substitution_pattern);
-//     shape_analysis->SetShapeOrDataForValue(it->first,
-//                                             substituted_shape_or_data);
-//   }
-//   VLOG(1) << "after substitute: ";
-//   value_to_shape_or_data = shape_analysis->GetValueToShapeOrData();
-//   for(auto it = value_to_shape_or_data.begin(); it !=
-//   value_to_shape_or_data.end(); it++){
-//     VLOG(1) << it->second;
-//   }
-// }
+/**
+ * @brief Compare the two dim exprs
+ *
+ * @param lhs The left-hand side dim expr
+ * @param rhs The right-hand side dim expr
+ *
+ * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
+ * they are equal
+ */
+int CompareDimExpr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? -1 : 1;
+  }
+
+  // if the priority is same, we compare the string value to find the smallest
+  // one
+  if (lhs.isa<std::string>()) {
+    const auto& lhs_str = lhs.dyn_cast<std::string>();
+    const auto& rhs_str = rhs.dyn_cast<std::string>();
+    if (lhs_str.size() != rhs_str.size()) {
+      return lhs_str.size() < rhs_str.size() ? -1 : 1;
+    }
+    return lhs_str.compare(rhs_str);
+  }
+  return 0;
+}
 
 void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
                                           const symbol::DimExpr& rhs) {
+  if (lhs == rhs) return;
   eq_cstr_set.Union(lhs, rhs);
-
-  const std::vector<std::vector<symbol::DimExpr>>& dim_expr_clusters =
-      eq_cstr_set.Clusters();
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
-  for (const auto& dim_expr_cluster : dim_expr_clusters) {
-    CHECK(!dim_expr_cluster.empty());
-    auto dim_expr_root = dim_expr_cluster[0];
-    for (const auto& dim_expr : dim_expr_cluster) {
-      if (GetDimExprPriority(dim_expr) < GetDimExprPriority(dim_expr_root)) {
-        dim_expr_root = dim_expr;
-      }
-    }
-    for (const auto& dim_expr : dim_expr_cluster) {
-      if (dim_expr != dim_expr_root) {
-        substitution_pattern[dim_expr] = dim_expr_root;
-      }
-    }
-  }
-
   VLOG(1) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
-  VLOG(1) << "before substitute##########";
-  for (auto it = value_to_shape_or_data_.begin();
-       it != value_to_shape_or_data_.end();
-       it++) {
-    VLOG(1) << it->second;
-  }
-  for (auto it = value_to_shape_or_data_.begin();
-       it != value_to_shape_or_data_.end();
-       it++) {
-    const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
-        SubstituteShapeOrData(it->second, substitution_pattern);
-    SetShapeOrDataForValue(it->first, substituted_shape_or_data);
-  }
-  VLOG(1) << "after substitute##########";
-  for (auto it = value_to_shape_or_data_.begin();
-       it != value_to_shape_or_data_.end();
-       it++) {
-    VLOG(1) << it->second;
+
+  if (CanDimExprSubstitute(lhs, rhs)) {
+    std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
+    int is_lhs_prior_rhs = CompareDimExpr(lhs, rhs);
+    if (CompareDimExpr(lhs, rhs) < 0) {
+      substitution_pattern[rhs] = lhs;
+    } else {
+      substitution_pattern[lhs] = rhs;
+    }
+
+    VLOG(1) << "before substitute##########";
+    for (auto it = value_to_shape_or_data_.begin();
+         it != value_to_shape_or_data_.end();
+         it++) {
+      VLOG(1) << it->second;
+    }
+    for (auto it = value_to_shape_or_data_.begin();
+         it != value_to_shape_or_data_.end();
+         it++) {
+      const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+          SubstituteShapeOrData(it->second, substitution_pattern);
+      SetShapeOrDataForValue(it->first, substituted_shape_or_data);
+    }
+    VLOG(1) << "after substitute##########";
+    for (auto it = value_to_shape_or_data_.begin();
+         it != value_to_shape_or_data_.end();
+         it++) {
+      VLOG(1) << it->second;
+    }
   }
 }
 
