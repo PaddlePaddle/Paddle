@@ -27,18 +27,24 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
 
   ShardableAxesSignature MakeShardableAxesSignature4Op(
       const pir::Operation* op) override {
+    ShardableAxesSignature result;
     const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
     if (kind == hlir::framework::kReduction) {
-      return MakeShardableAxesSignature4ReduceOp(op);
+      result = MakeShardableAxesSignature4ReduceOp(op);
     } else if (kind == hlir::framework::kElementWise) {
-      return MakeShardableAxesSignature4ElementWiseOp(op);
+      result = MakeShardableAxesSignature4ElementWiseOp(op);
     } else if (kind == hlir::framework::kBroadcast) {
-      return MakeShardableAxesSignature4BroadcastOp(op);
+      result = MakeShardableAxesSignature4BroadcastOp(op);
     } else {
-      LOG(ERROR) << "[ShardableAxesSignature] not support OpPatternKind, op_name:"
-                 << op->name();
+      LOG(ERROR)
+          << "[ShardableAxesSignature] not support OpPatternKind, op_name: "
+          << op->name();
+      result = MakeEmptyShardableAxesSignature(op);
     }
-    return MakeEmptyShardableAxesSignature(op);
+    VLOG(4) << "[ShardableAxesSignature] Make ShardableAxesSignature for Op: "
+            << op->name() << "\n"
+            << ShardableAxesSignatureDebugStr(result);
+    return result;
   }
 
  private:
@@ -62,7 +68,8 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
     ShardableAxes output_sa = MakeFullyShardableAxes(GetRank(output));
     InputSignature empty_input_sig;
     for (int i = 0; i < op->num_operands(); ++i) {
-      empty_input_sig[OpAndOperandIndex{op, i}] = ShardableAxes{};
+      empty_input_sig[OpAndOperandIndex{op, i}] =
+          MakeFullyShardableAxes(GetRank(op->operand_source(i)));
     }
     return ShardableAxesSignature{
         .sole_output_sa =
@@ -103,8 +110,9 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
   ShardableAxesSignature MakeShardableAxesSignature4ElementWiseOp(
       const pir::Operation* op) {
     if (IsDisabledElementwiseOp(op)) {
-      LOG(ERROR) << "[ShardableAxesSignature] Disabled Elementwise Op, op_name : "
-                 << op->name();
+      LOG(ERROR)
+          << "[ShardableAxesSignature] Disabled Elementwise Op, op_name : "
+          << op->name();
       return MakeEmptyShardableAxesSignature(op);
     }
     const size_t rank = [&] {

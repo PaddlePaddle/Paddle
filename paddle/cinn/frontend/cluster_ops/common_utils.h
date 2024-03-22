@@ -30,6 +30,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/utils/string.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn::frontend::cluster_ops {

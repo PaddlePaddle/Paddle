@@ -89,4 +89,7 @@ ShardableAxes MakeReduceOpInputShardableAxes(
 ShardableAxes MakeBroadcastOpInputShardableAxes(
     const size_t input_rank, const std::vector<int64_t>& broadcast_axes);
 
+std::string ShardableAxesDebugStr(const ShardableAxes& shardable_axes);
+std::string ShardableAxesSignatureDebugStr(
+    const ShardableAxesSignature& shardable_axes_sig);
 }  // namespace cinn::frontend::cluster_ops

@@ -142,6 +142,12 @@ ShardableAxesInferer::GetAxisName2BoundAxisName(
       UpdateAxisName2BoundAxisName(*input_sa.value(), sa);
     }
   }
+
+  VLOG(4) << "GetAxisName2BoundAxisName Result:";
+  for (const auto& pair_data : axis_name2bound_axis_name) {
+    VLOG(4) << pair_data.first << "  :  "
+            << cinn::utils::Join(pair_data.second, ",");
+  }
   return axis_name2bound_axis_name;
 }
 
@@ -169,6 +175,10 @@ ShardableAxesInferer::GetAxisName2UnionFindSetRoot(
       CHECK(axis_name2root.emplace(axis_name, union_find_root).second);
     });
   }
+  VLOG(4) << "GetAxisName2UnionFindSetRoot Result:";
+  for (const auto& pair_data : axis_name2root) {
+    VLOG(4) << "first: " << pair_data.first << ", second: " << pair_data.second;
+  }
   return axis_name2root;
 }
 
@@ -182,11 +192,14 @@ ShardableAxesInferer::GetSinkAndInitShardableAxes(
   const auto& ConvertByBoundAxisName = [&](const ShardableAxes& sa) {
     ShardableAxes ret_sa;
     for (const auto& [axis, axis_name] : sa) {
+      VLOG(4) << "Find axis_name: " << axis_name;
       const auto& iter = axis_name2union_find_set_root.find(axis_name);
-      CHECK(iter != axis_name2union_find_set_root.end());
+      std::string axis_name_root = iter != axis_name2union_find_set_root.end()
+                                       ? (*iter).second
+                                       : axis_name;
       ret_sa.emplace_back(ShardableAxis{
           .axis = axis,
-          .axis_name = iter->second,
+          .axis_name = axis_name_root,
       });
     }
     return ret_sa;

@@ -111,4 +111,26 @@ ShardableAxes MakeBroadcastOpInputShardableAxes(
   return ret;
 }
 
+std::string ShardableAxesDebugStr(const ShardableAxes& shardable_axes) {
+  std::stringstream ss;
+  ss << "ShardableAxes: ";
+  for (const auto& axis : shardable_axes) {
+    ss << axis.axis_name << ", ";
+  }
+  return ss.str();
+}
+
+std::string ShardableAxesSignatureDebugStr(
+    const ShardableAxesSignature& shardable_axes_sig) {
+  std::stringstream ss;
+  ss << "ShardableAxes Signature:\n";
+  for (const auto& pair_data : shardable_axes_sig.input_shardable_axes) {
+    ss << "input " << pair_data.first.operand_index << ": "
+       << ShardableAxesDebugStr(pair_data.second) << "\n";
+  }
+  ss << "output"
+     << ShardableAxesDebugStr(shardable_axes_sig.sole_output_sa.shardable_axes);
+  return ss.str();
+}
+
 }  // namespace cinn::frontend::cluster_ops
