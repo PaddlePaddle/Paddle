@@ -33,8 +33,8 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(sort_sum_gradient);
 
@@ -366,7 +366,7 @@ class GradientAccumulationInfo {
       if (!grad_var_) {
         grad_var_ = std::make_shared<VarBase>(true, mapped_grad_var_->Name());
         grad_var_->SetOverriddenStopGradient(false);
-        if (sort_gradient_) {
+        if (sort_gradient_) {  // NOLINT
           accumulator_ = std::make_unique<SortedGradientAccumulator>(
               grad_var_->SharedVar().get());
         } else {

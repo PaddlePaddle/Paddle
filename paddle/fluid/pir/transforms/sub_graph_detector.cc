@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include <iterator>
 #include <queue>
 #include <regex>
 #include <set>
@@ -83,17 +84,20 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       }
       auto* defined_op = operand.source().defining_op();
       --pending_count[defined_op];
-      if (defined_op && pending_count[defined_op] == 0) {
+      if (defined_op && pending_count[defined_op] == 0 &&
+          defined_op->GetParent() == block) {
         queue.push(defined_op);
       }
     }
   }
 
-  IR_ENFORCE(
-      block->size() == sort_ops.size(),
-      "sort_ops.size() must be equal to block.size(), but received %d != %d",
+  PADDLE_ENFORCE_EQ(
       block->size(),
-      sort_ops.size());
+      sort_ops.size(),
+      phi::errors::InvalidArgument("sort_ops.size() must be equal to "
+                                   "block.size(), but received %d != %d",
+                                   block->size(),
+                                   sort_ops.size()));
 
   return sort_ops;
 }
@@ -109,7 +113,8 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
       continue;
     }
     auto* source_op = operand.source().defining_op();
-    if (source_op && !producers.count(source_op)) {
+    if (source_op && !producers.count(source_op) &&
+        source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
       PADDLE_ENFORCE(
           op2id.count(source_op),
@@ -134,7 +139,8 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     if (!operand || !(operand.source())) {
       continue;
     }
-    if (auto* source_op = operand.source().defining_op()) {
+    auto* source_op = operand.source().defining_op();
+    if (source_op && source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
     }
   }
@@ -316,11 +322,11 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
     if (!consumer->substitute) {
       continue;
     }
-    // fast depency check.
+    // fast dependency check.
     if (IsDependencySimplify(producer, consumer, consumers)) {
       continue;
     }
-    // global depency check.
+    // global dependency check.
     if (IsDependency(producer, consumer, consumers)) {
       continue;
     }
@@ -341,7 +347,7 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
         producer->ops.end(), candidate->ops.begin(), candidate->ops.end());
     producer->op_set.insert(candidate->op_set.begin(), candidate->op_set.end());
 
-    // update bound for check depency
+    // update bound for check dependency
     producer->max_depth = std::max(producer->max_depth, candidate->max_depth);
     producer->min_depth = std::min(producer->min_depth, candidate->min_depth);
 
@@ -364,7 +370,7 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
       tmp->producers.erase(candidate);
     }
 
-    // remove candicate in producer/consumer
+    // remove candidate in producer/consumer
     producer->producers.erase(candidate);
     producer->consumers.erase(candidate);
 
@@ -387,7 +393,7 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
 
   return true;
 }
-// check exist depency.
+// check exist dependency.
 bool SubgraphDetector::IsDependency(
     const SubGraphPtr& producer_g,
     const SubGraphPtr& consumer,
@@ -510,6 +516,74 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
   }
   return insert_point_op;
 }
+
+struct IncrementalOrder {
+  bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
+    CHECK(lhs->GetParent() == rhs->GetParent())
+        << "lhs and rhs should have same parent block.";
+    auto lhs_iter = lhs->operator Block::ConstIterator();
+    auto rhs_iter = rhs->operator Block::ConstIterator();
+    auto end_iter = lhs->GetParent()->end();
+    while (lhs_iter != end_iter) {
+      lhs_iter++;
+      if (lhs_iter == rhs_iter) return true;
+      if (lhs_iter == end_iter) return false;
+    }
+    CHECK(false) << "rhs " << rhs->id() << " is not reachable from lhs "
+                 << lhs->id();
+    return false;
+  }
+};
+
+std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
+    const pir::Operation* position_op,
+    const pir::Block* block,
+    const pir::Operation* op,
+    std::unordered_set<pir::Operation*>* visited_ops) {
+  std::unordered_set<pir::Operation*> ops;
+  const auto& IsInBlock = [](const pir::Operation* src_op,
+                             const pir::Block* block) {
+    for (auto& op : *block) {
+      if (src_op == &op) return true;
+    }
+    return false;
+  };
+
+  for (auto value : op->operands_source()) {
+    if (!value || !value.defining_op()) continue;
+    pir::Operation* defining_op = value.defining_op();
+    if (visited_ops->count(defining_op)) continue;
+    visited_ops->insert(defining_op);
+    if (!IsInBlock(defining_op, block)) continue;
+    if (IncrementalOrder()(defining_op, position_op)) continue;
+
+    ops.insert(defining_op);
+    auto recursive_ops = GetUpstreamOpsAfterPosition(
+        position_op, block, defining_op, visited_ops);
+    ops.insert(recursive_ops.begin(), recursive_ops.end());
+  }
+  return ops;
+}
+
+void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
+                               pir::Block* block,
+                               pir::Operation* insert_point_op) {
+  const auto moved_ops = [&]() {
+    std::set<pir::Operation*, IncrementalOrder> ops_set;
+    std::unordered_set<pir::Operation*> visited_ops;
+    for (auto& op : group_ops) {
+      auto upstream_ops =
+          GetUpstreamOpsAfterPosition(insert_point_op, block, op, &visited_ops);
+      ops_set.insert(upstream_ops.begin(), upstream_ops.end());
+    }
+    return ops_set;
+  }();
+
+  for (auto& op : moved_ops) {
+    VLOG(5) << "Move " << op->name() << " before " << insert_point_op->name();
+    op->MoveTo(block, insert_point_op->operator Block::Iterator());
+  }
+}
 }  // namespace
 
 void ReplaceWithGroupOp(pir::Block* block,
@@ -524,6 +598,7 @@ void ReplaceWithGroupOp(pir::Block* block,
 
   // step 1: Analysis and insert group op before insert_point.
   auto* insert_point = FindInsertPoint(group_ops, outputs);
+  MoveUpstreamOpBeforeGroup(group_ops, block, insert_point);
   builder.set_insertion_point(insert_point);
   VLOG(6) << "Insert GroupOp after " << insert_point->name();
 

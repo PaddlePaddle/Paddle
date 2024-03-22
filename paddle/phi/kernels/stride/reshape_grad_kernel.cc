@@ -40,7 +40,10 @@ void ReshapeDoubleGradStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    reshape_grad, STRIDED, phi::ReshapeGradStridedKernel) {}
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    reshape_double_grad, STRIDED, phi::ReshapeDoubleGradStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_grad,
+                                         STRIDED,
+                                         phi::ReshapeGradStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_double_grad,
+                                         STRIDED,
+                                         phi::ReshapeDoubleGradStridedKernel) {}

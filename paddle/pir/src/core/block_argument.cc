@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
+
 #include "paddle/pir/include/core/block_argument.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation_utils.h"
@@ -73,7 +75,17 @@ class BlockArgumentImpl : public ValueImpl {
 
 BlockArgumentImpl::~BlockArgumentImpl() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destroyed a block argument that is still in use.";
+    if (is_kwarg_) {
+      PADDLE_FATAL(
+          "Destroyed a keyword block argument that is still in use. The key is "
+          ": %s",
+          keyword_);
+    } else {
+      PADDLE_FATAL(
+          "Destroyed a position block argument that is still in use. The index "
+          "is : %u",
+          index_);
+    }
   }
 }
 

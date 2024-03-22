@@ -152,7 +152,7 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                   "device")
         .SetDefault(false);
     AddAttr<int>("place_type",
-                 "(int, default -1) allow mamually setting place where the "
+                 "(int, default -1) allow manually setting place where the "
                  "variable should be hold. "
                  "-1: not set manually, determine the place by executor. "
                  "0: CPUPlace. "

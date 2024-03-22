@@ -27,6 +27,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/eliminate_common_factor_of_local_index.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/resize_buffer.h"
@@ -260,7 +261,7 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(&for_ir->body, &for_ir->body);
   }
   void Visit(const ir::PolyFor *op, Expr *expr) override {
-    LOG(FATAL) << "Unkown PolyFor!";
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown PolyFor!"));
   }
 };
 
@@ -443,6 +444,8 @@ void OptimizeExprGPU(Expr *expr) {
   // update local buffer axis
   LocalAxisVisitor local_axis_visitor;
   local_axis_visitor(expr);
+
+  EliminateCommonFactorOfLocalIndex(expr);
 
   ResizeBufferToMaxVarRange(expr);
 
