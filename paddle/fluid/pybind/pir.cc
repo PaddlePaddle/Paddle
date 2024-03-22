@@ -815,7 +815,7 @@ pir::Value apply(Value self, py::object func) {
 #define DEF_VALUE_POINTER_PROPERTY(name)                                     \
   def_property(                                                              \
       name,                                                                  \
-      [](Value self) {                                                       \
+      [](Value self) -> py::object {                                         \
         auto prop_ptr = self.property(name);                                 \
         if (!prop_ptr) {                                                     \
           return py::cast<py::none>(Py_None);                                \
