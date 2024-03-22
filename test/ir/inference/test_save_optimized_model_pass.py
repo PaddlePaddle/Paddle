@@ -119,7 +119,6 @@ class TestSaveOptimizedModelPassWithTRT(
                 min_subgraph_size=3,
                 precision_mode=PrecisionType.Half,
                 use_static=True,
-                use_calib_mode=False,
             )
             config.set_trt_dynamic_shape_info(
                 {"x": [1, 3, 224, 224], "flatten_0.tmp_0": [1, 9216]},
@@ -147,7 +146,6 @@ class TestSaveOptimizedModelPassWithTRT(
                 min_subgraph_size=3,
                 precision_mode=PrecisionType.Half,
                 use_static=True,
-                use_calib_mode=False,
             )
             config.enable_memory_optim()
             config.switch_ir_optim(False)

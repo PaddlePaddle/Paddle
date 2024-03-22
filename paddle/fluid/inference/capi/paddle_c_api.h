@@ -218,8 +218,7 @@ PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
     int max_batch_size,
     int min_subgraph_size,
     Precision precision,
-    bool use_static,
-    bool use_calib_mode);
+    bool use_static);
 
 PADDLE_CAPI_EXPORT extern bool PD_TensorrtEngineEnabled(
     const PD_AnalysisConfig* config);

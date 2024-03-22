@@ -155,7 +155,6 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.min_subgraph_size,
                     self.trt_parameters.precision,
                     self.trt_parameters.use_static,
-                    self.trt_parameters.use_calib_mode,
                 )
                 if self.trt_parameters.use_inspector:
                     config.enable_tensorrt_inspector(
@@ -316,7 +315,6 @@ class InferencePassTest(unittest.TestCase):
             min_subgraph_size,
             precision,
             use_static,
-            use_calib_mode,
             use_inspector=False,
             inspector_serialize=False,
         ):
@@ -325,7 +323,6 @@ class InferencePassTest(unittest.TestCase):
             self.min_subgraph_size = min_subgraph_size
             self.precision = precision
             self.use_static = use_static
-            self.use_calib_mode = use_calib_mode
             self.use_inspector = use_inspector
             self.inspector_serialize = inspector_serialize
 

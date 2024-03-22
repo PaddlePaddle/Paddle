@@ -59,8 +59,7 @@ config$enable_tensorrt_engine(workspace_size,
                               max_batch_size,
                               min_subgraph_size,
                               paddle$AnalysisConfig$Precision$Float32,
-                              use_static,
-                              use_calib_mode
+                              use_static
                               ) # 开启TensorRT
 config$enable_mkldnn() # 开启MKLDNN
 config$disable_glog_info() # 禁用预测中的glog日志

@@ -103,7 +103,6 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             min_subgraph_size=3,
             precision_mode=PrecisionType.Float32,
             use_static=False,
-            use_calib_mode=False,
         )
 
         config.exp_specify_tensorrt_subgraph_precision(

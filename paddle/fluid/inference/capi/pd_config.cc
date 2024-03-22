@@ -247,8 +247,7 @@ void PD_EnableTensorRtEngine(PD_AnalysisConfig* config,
                              int max_batch_size,
                              int min_subgraph_size,
                              Precision precision,
-                             bool use_static,
-                             bool use_calib_mode) {
+                             bool use_static) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       paddle::platform::errors::InvalidArgument(
@@ -257,8 +256,7 @@ void PD_EnableTensorRtEngine(PD_AnalysisConfig* config,
                                       max_batch_size,
                                       min_subgraph_size,
                                       paddle::ConvertToACPrecision(precision),
-                                      use_static,
-                                      use_calib_mode);
+                                      use_static);
 }
 
 bool PD_TensorrtEngineEnabled(const PD_AnalysisConfig* config) {

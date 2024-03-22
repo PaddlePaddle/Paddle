@@ -46,8 +46,7 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
         #     workspace_size=10240,
         #     min_subgraph_size=0,
         #     precision_mode=paddle_infer.PrecisionType.Float32,
-        #     use_static=False,
-        #     use_calib_mode=False)
+        #     use_static=False)
         # yield config, ["matmul", ], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):

@@ -62,8 +62,7 @@ config$enable_tensorrt_engine(workspace_size,
                               max_batch_size,
                               min_subgraph_size,
                               paddle$AnalysisConfig$Precision$FLOAT32,
-                              use_static,
-                              use_calib_mode
+                              use_static
                               ) # use TensorRT
 config$enable_mkldnn() # use MKLDNN
 config$delete_pass(pass_name) # delete IR pass

@@ -613,14 +613,12 @@ class TrtLayerAutoScanTest(AutoScanTest):
             min_subgraph_size,
             precision,
             use_static,
-            use_calib_mode,
         ):
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
             self.min_subgraph_size = min_subgraph_size
             self.precision = precision
             self.use_static = use_static
-            self.use_calib_mode = use_calib_mode
 
     class DynamicShapeParam:
         """
@@ -647,7 +645,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
             min_subgraph_size=0,
             precision=paddle_infer.PrecisionType.Float32,
             use_static=True,
-            use_calib_mode=False,
         )
         self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
         self.num_percent_cases = float(
@@ -670,7 +667,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 min_subgraph_size=self.trt_param.min_subgraph_size,
                 precision_mode=self.trt_param.precision,
                 use_static=self.trt_param.use_static,
-                use_calib_mode=self.trt_param.use_calib_mode,
             )
             if self.dynamic_shape.min_input_shape and (
                 self.dynamic_shape.min_input_shape.keys()

@@ -146,9 +146,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   }
 
   auto enable_int8 = Get<bool>("enable_int8");
-  auto use_calib_mode = Get<bool>("use_calib_mode");
   bool use_cuda_graph = Get<bool>("use_cuda_graph");
-  bool no_calib_int8 = enable_int8 && !(use_calib_mode);
+  bool no_calib_int8 = enable_int8;
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
@@ -516,7 +515,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   bool enable_bfp16 = false;
   if (precision_mode == phi::DataType::BFLOAT16) enable_bfp16 = true;
 
-  auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
   auto min_input_shape =
       Get<std::map<std::string, std::vector<int>>>("min_input_shape");
@@ -752,7 +750,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
 
   // Get "" when there is no cached calibration table data.
   std::string calibration_data = "";
-  if (enable_int8 && use_calib_mode) {
+  if (enable_int8) {
     calibration_data =
         GetTrtCalibTableData(Get<std::string>("model_opt_cache_dir"),
                              calibration_engine_key,
@@ -762,7 +760,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("enable_int8", enable_int8);
   op_desc->SetAttr("enable_fp16", enable_fp16);
   op_desc->SetAttr("enbale_bfp16", enable_bfp16);
-  op_desc->SetAttr("use_calib_mode", use_calib_mode);
   op_desc->SetAttr("engine_key", engine_key);
   op_desc->SetAttr("calibration_engine_key", calibration_engine_key);
   op_desc->SetAttr("predictor_id", predictor_id);
@@ -794,8 +791,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   }
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
-  bool calibration_mode =
-      (enable_int8 && calibration_data.empty() && use_calib_mode);
+  bool calibration_mode = (enable_int8 && calibration_data.empty());
   if (calibration_mode) {
     // calibration mode means generate int8 calibration table data process.
     return calibration_engine_key;

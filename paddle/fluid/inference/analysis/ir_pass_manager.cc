@@ -188,8 +188,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
-      bool use_calib_mode = argument->tensorrt_use_calib_mode();
-      pass->Set("use_calib_mode", new bool(use_calib_mode));
       pass->Set("trt_precision_mode", new int(trt_precision_mode));
       pass->Set("context_memory_sharing",
                 new bool(argument->trt_engine_memory_sharing()));
@@ -199,8 +197,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool inspector_serialize = argument->tensorrt_inspector_serialize();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
-      bool int8_valid = !(model_from_memory && optim_cache_dir.empty() &&
-                          enable_int8 && use_calib_mode);
+      bool int8_valid =
+          !(model_from_memory && optim_cache_dir.empty() && enable_int8);
       PADDLE_ENFORCE_EQ(
           int8_valid,
           true,

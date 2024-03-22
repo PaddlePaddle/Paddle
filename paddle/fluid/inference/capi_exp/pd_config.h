@@ -336,8 +336,6 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIrOptim(
 /// \param[in] precision The precision used in TensorRT.
 /// \param[in] use_static Serialize optimization information to disk for
 /// reusing.
-/// \param[in] use_calib_mode Use TRT int8 calibration(post training
-/// quantization).
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtEngine(
     __pd_keep PD_Config* pd_config,
@@ -345,8 +343,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtEngine(
     int32_t max_batch_size,
     int32_t min_subgraph_size,
     PD_PrecisionType precision,
-    PD_Bool use_static,
-    PD_Bool use_calib_mode);
+    PD_Bool use_static);
 ///
 /// \brief A boolean state telling whether the TensorRT engine is used.
 ///

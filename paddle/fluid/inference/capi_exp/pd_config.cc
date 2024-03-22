@@ -239,15 +239,13 @@ void PD_ConfigEnableTensorRtEngine(__pd_keep PD_Config* pd_config,
                                    int32_t max_batch_size,
                                    int32_t min_subgraph_size,
                                    PD_PrecisionType precision,
-                                   PD_Bool use_static,
-                                   PD_Bool use_calib_mode) {
+                                   PD_Bool use_static) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableTensorRtEngine(workspace_size,
                                max_batch_size,
                                min_subgraph_size,
                                ConvertToCxxPrecisionType(precision),
-                               use_static,
-                               use_calib_mode);
+                               use_static);
 }
 PD_Bool PD_ConfigTensorRtEngineEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;

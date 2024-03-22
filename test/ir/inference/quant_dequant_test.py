@@ -217,7 +217,6 @@ class QuantDequantTest(unittest.TestCase):
                     self.trt_parameters.min_subgraph_size,
                     self.trt_parameters.precision,
                     self.trt_parameters.use_static,
-                    self.trt_parameters.use_calib_mode,
                 )
 
                 if self.dynamic_shape_params:
@@ -423,14 +422,12 @@ class QuantDequantTest(unittest.TestCase):
             min_subgraph_size,
             precision,
             use_static,
-            use_calib_mode,
         ):
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
             self.min_subgraph_size = min_subgraph_size
             self.precision = precision
             self.use_static = use_static
-            self.use_calib_mode = use_calib_mode
 
     class DynamicShapeParam:
         '''
