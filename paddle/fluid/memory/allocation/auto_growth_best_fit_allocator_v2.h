@@ -43,6 +43,7 @@ class AutoGrowthBestFitAllocatorV2 : public AutoGrowthBestFitAllocator {
 
  private:
   platform::CUDAPlace place_;
+  bool is_first_switch_to_regular_{true};
 };
 
 class AutoGrowthBestFitAllocatorV2State {
@@ -51,7 +52,7 @@ class AutoGrowthBestFitAllocatorV2State {
 
   ~AutoGrowthBestFitAllocatorV2State() {}
 
-  void SetWarmup(bool) { is_warmup_ = true; }
+  void SetWarmup(bool warmup) { is_warmup_ = warmup; }
 
   bool IsWarmup() { return is_warmup_; }
 

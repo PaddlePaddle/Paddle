@@ -99,6 +99,10 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
               << static_cast<void *>(p) << ") by strict_matching_state.";
     }
   } else {
+    if (is_first_switch_to_regular_) {
+      FreeIdleChunks();
+      is_first_switch_to_regular_ = false;
+    }
     if (iter != free_blocks_.end()) {
       block_it = iter->second;
       free_blocks_.erase(iter);
