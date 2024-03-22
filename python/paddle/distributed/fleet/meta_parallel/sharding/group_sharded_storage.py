@@ -211,6 +211,7 @@ class ParamStorage(InternalStorage):
 
         # Convert the param value
         with device_guard(self.dev_id, self._device):
+            param = self.buffer._slice(self._fill, var_end)
             self.buffer._slice(self._fill, var_end)._share_buffer_to(param)
             param.get_tensor()._set_dims(p_shape)
 

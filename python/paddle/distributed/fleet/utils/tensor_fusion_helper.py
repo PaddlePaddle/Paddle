@@ -207,9 +207,13 @@ class ShardingGradView:
     def _slice_grad_from_buffer(self):
         assert self._grad_buffer is not None
         if self._param_begin < self._param_end:
+            self._slice_grad = self._grad_buffer._slice(
+                self._param_begin, self._param_end
+            )
+
             self._grad_buffer._slice(
                 self._param_begin, self._param_end
-            ).share_buffer_to(self._slice_grad)
+            )._share_buffer_to(self._slice_grad)
 
         tmp_grad = self._grad_buffer._slice(
             self._index, self._index + self._param._numel()
@@ -217,7 +221,7 @@ class ShardingGradView:
 
         self._grad_buffer._slice(
             self._index, self._index + self._param._numel()
-        ).share_buffer_to(tmp_grad)
+        )._share_buffer_to(tmp_grad)
 
         return tmp_grad
 
@@ -258,6 +262,7 @@ class ShardingGradView:
         slice_begin = self._param_begin
         slice_end = self._param_end
 
+        slice_buffer = self._param_buffer._slice(slice_begin, slice_end)
         slice_param.get_tensor()._set_dims([slice_end - slice_begin])
         self._param_buffer._slice(slice_begin, slice_end)._share_buffer_to(
             slice_param
