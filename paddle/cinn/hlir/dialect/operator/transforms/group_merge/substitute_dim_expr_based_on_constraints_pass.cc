@@ -119,6 +119,10 @@ symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
     const symbol::TensorShapeOrDataDimExprs& shape_or_data,
     const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
         substitution_pattern) {
+  for (const auto& it : substitution_pattern) {
+    VLOG(4) << "substitution_pattern: " << it.first << " -> " << it.second;
+  }
+
   auto SubstituteOneDimExpr =
       [](const std::vector<symbol::DimExpr>& original_dim_expr,
          const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
@@ -298,6 +302,9 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     }
     for (const auto& dim_expr : dim_expr_cluster) {
       if (dim_expr != dim_expr_root) {
+        if (!dim_expr.isa<std::string>() && !dim_expr.isa<int64_t>()) {
+          continue;
+        }
         substitution_pattern[dim_expr] = dim_expr_root;
       }
     }

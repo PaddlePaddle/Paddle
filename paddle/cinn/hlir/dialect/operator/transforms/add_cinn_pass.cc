@@ -127,10 +127,13 @@ void ApplyGroupOpPass(::pir::Program* program,
                           CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (HasDynamicShape(*program)) {
-    pass_manager->AddPass(::pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(
+    std::shared_ptr<pir::PassManager> pass_manager_local = CreatePassManager();
+    pass_manager_local->AddPass(::pir::CreateShapeOptimizationPass());
+    pass_manager_local->AddPass(
         cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
+    pass_manager_local->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
+    pass_manager_local->Run(program);
+
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(
