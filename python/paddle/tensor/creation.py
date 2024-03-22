@@ -907,15 +907,15 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             value = float(value)
             if isinstance(shape, (list, tuple)):
                 shape = paddle.utils.convert_shape_to_list(shape)
-
         else:
+            paddle.utils.check_shape(shape)
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
                     shape = paddle.utils.get_int_tensor_list(shape, place)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
-                TypeError("Shape only supports OpResult, or list, or tuple.")
+                raise TypeError("Shape only supports Value, or list, or tuple.")
 
         if out is None:
             out = _C_ops.full(shape, value, dtype, place)
@@ -2542,6 +2542,24 @@ def _memcpy(input, place=None, output=None):
              [2.5 2.5]
              [2.5 2.5]]
     """
+    dst_place_type = -1
+    if place is None:
+        dst_place_type = -1
+    else:
+        p = core.Place()
+        p.set_place(place)
+        if p.is_cpu_place():
+            dst_place_type = 0
+        elif p.is_gpu_place():
+            dst_place_type = 1
+        elif p.is_cuda_pinned_place():
+            dst_place_type = 2
+        elif p.is_xpu_place():
+            dst_place_type = 3
+
+    if in_pir_mode():
+        return _C_ops.memcpy(input, dst_place_type)
+
     helper = LayerHelper('memcpy', **locals())
     check_type(input, 'input', (Variable), 'memcpy')
 
@@ -2565,21 +2583,6 @@ def _memcpy(input, place=None, output=None):
         )
     if output is None:
         output = helper.create_variable_for_type_inference(dtype=input.dtype)
-
-    dst_place_type = -1
-    if place is None:
-        dst_place_type = -1
-    else:
-        p = core.Place()
-        p.set_place(place)
-        if p.is_cpu_place():
-            dst_place_type = 0
-        elif p.is_gpu_place():
-            dst_place_type = 1
-        elif p.is_cuda_pinned_place():
-            dst_place_type = 2
-        elif p.is_xpu_place():
-            dst_place_type = 3
 
     attrs = {'dst_place_type': dst_place_type}
     helper.append_op(
