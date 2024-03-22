@@ -103,10 +103,16 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
             self._scale = self._create_scale_from_constant(1.0)
         return self._scale
 
+    def _get_or_create_step(self):
+        if self._step is None:
+            self._step = self._create_persistable_var('step', dtype='int64')
+        return self._step
+
     def append_op(self):
         self.op_type = "distributed_fused_lamb"
         params = [paddle.ones(shape=(1, 1), dtype="float32")]
         grads = [paddle.ones(shape=(1, 1), dtype="float32")]
+        lr = paddle.to_tensor(0.001, dtype="float32")
         rank = paddle.distributed.get_rank()
         nranks = paddle.distributed.get_world_size()
         fp32_fused_param = self._create_persistable_var("fp32_fused_param")
@@ -164,17 +170,6 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
             fp32_acc_fused_grad = []
             fp16_acc_fused_grad = []
             acc_step = []
-
-        lr = None
-        for p_g in params:
-            if lr is None:
-                lr = self._create_param_lr(p_g)
-            else:
-                new_lr = self._create_param_lr(p_g)
-                assert id(lr) == id(
-                    new_lr
-                ), "The learning rate for each parameter should be the same"
-        assert lr is not None
 
         scale = self._get_or_create_scale()
 
