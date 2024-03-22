@@ -1100,7 +1100,6 @@ def get_input_grad_semantic(op_info, op_info_items):
 
         bwd_fwd_input_list = bwd_op_info.forward_input_name_list
         if bwd_fwd_input_list is not None:
-            print(bwd_op_name, bwd_fwd_input_list, num_inputs)
             assert (
                 len(bwd_fwd_input_list) == num_inputs
             ), "Configuration of forward op and backward op is not match."
