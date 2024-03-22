@@ -211,7 +211,9 @@ class ParamStorage(InternalStorage):
 
         # Convert the param value
         with device_guard(self.dev_id, self._device):
-            tmp_tensor = self.buffer._slice(self._fill, var_end)
+            tmp_tensor = None
+            paddle.assign(tmp_tensor, self.buffer._slice(self._fill, var_end))
+
             tmp_tensor._share_buffer_to(param)
             param.get_tensor()._set_dims(p_shape)
 
@@ -354,7 +356,9 @@ class GradStorage(InternalStorage):
 
         # Copy the current grad value to InternalStorage
         with device_guard(self.dev_id, self._device):
-            tmp_var = self.buffer._slice(self._fill, grad_end)
+            tmp_var = None
+            paddle.assign(tmp_var, self.buffer._slice(self._fill, grad_end))
+
             tmp_var.get_tensor()._set_dims(param.shape)
             if not use_main_grad:
                 param._copy_gradient_from(tmp_var)
