@@ -613,7 +613,7 @@ function(paddle_test_build TARGET_NAME)
     if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
       target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
     endif()
-    if(WITH_CINN AND NOT CINN_ONLY)
+    if(WITH_CINN)
       target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>
                             cinn_transforms)
       add_dependencies(${TARGET_NAME} cinnapi)

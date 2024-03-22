@@ -16,6 +16,7 @@
 
 #include <queue>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -98,20 +99,6 @@ void PatternGraph::UpdateTmpTensor(const std::string &tmp_tensor_name,
 
 size_t PatternGraph::CountOfOpCalls() const { return owned_op_call_.size(); }
 
-OpCall *SourcePatternGraph::AnchorNode() const {
-  for (const auto &output_tensor : output_tensors_) {
-    OpCall *output_op_candidate =
-        id2owned_tensor_.at(output_tensor)->producer();
-    if (std::all_of(output_op_candidate->outputs().begin(),
-                    output_op_candidate->outputs().end(),
-                    [this](const Tensor *output) -> bool {
-                      return this->output_tensors().count(output->name());
-                    }))
-      return output_op_candidate;
-  }
-  IR_THROW("Unable to find a valid anchor");
-}
-
 std::unordered_set<const OpCall *> SourcePatternGraph::OutputNodes() const {
   std::unordered_set<const OpCall *> output_op_set;
   for (const auto &output_tensor : output_tensors_) {
@@ -123,6 +110,10 @@ std::unordered_set<const OpCall *> SourcePatternGraph::OutputNodes() const {
                       return this->output_tensors().count(output->name());
                     }))
       output_op_set.insert(output_op_candidate);
+  }
+  if (output_op_set.empty()) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unable to find a valid anchor in drr's source result pattern!"));
   }
   return output_op_set;
 }

@@ -421,6 +421,7 @@
   kernel :
     func : minimum_grad
   composite : minimum_grad(x, y, out_grad, axis, x_grad, y_grad)
+  backward : minimum_double_grad
 
 - backward_op : mish_grad
   forward : mish (Tensor x, float lambda) -> Tensor(out)
@@ -875,6 +876,13 @@
   kernel:
     func : fused_gemm_epilogue_grad
   optional : reserve_space
+
+- backward_op: minimum_double_grad
+  forward: minimum_grad(Tensor x, Tensor y, Tensor grad_out) -> Tensor(grad_x), Tensor(grad_y)
+  args: (Tensor x, Tensor y, Tensor grad_x_grad, Tensor grad_y_grad)
+  output: Tensor(grad_out_grad)
+  composite: minimum_double_grad(x, y, grad_x_grad, grad_y_grad, grad_out_grad)
+  optional : grad_x_grad, grad_y_grad
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  IntArray output_size, str data_format) -> Tensor(out)

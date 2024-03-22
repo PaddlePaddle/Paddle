@@ -270,7 +270,7 @@ class GeneralGrad {
     target_node->RegisterGradientHook(
         rank_info.first,
         rank_info.second,
-        std::move(std::make_shared<egr::CppTensorHook>(hook)));
+        std::make_shared<egr::CppTensorHook>(hook));
     return tmp;
   }
 

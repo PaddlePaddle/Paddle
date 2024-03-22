@@ -97,7 +97,7 @@ void SinDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CosDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& dout,
+                         const DenseTensor& dout,
                          const DenseTensor& ddx,
                          DenseTensor* dx,
                          DenseTensor* ddout);

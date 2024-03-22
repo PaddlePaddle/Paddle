@@ -46,7 +46,7 @@ class OpOperandImpl {
  private:
   OpOperandImpl(Value source, Operation *owner);
 
-  // Insert self to the UD chain holded by source_;
+  // Insert self to the UD chain held by source_;
   // It is not safe. So set private.
   void InsertToUdChain();
 

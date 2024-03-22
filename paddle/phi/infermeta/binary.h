@@ -380,6 +380,11 @@ void IndexAddInferMeta(const MetaTensor& x,
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void LimitByCapacityInferMeta(const MetaTensor& expert_count,
+                              const MetaTensor& capacity,
+                              int n_worker,
+                              MetaTensor* out);
+
 void LogicalBinaryInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             MetaTensor* out);
@@ -491,6 +496,12 @@ void PriorBoxInferMeta(const MetaTensor& input,
                        bool min_max_aspect_ratios_order,
                        MetaTensor* out,
                        MetaTensor* var);
+
+void PruneGateByCapacityInferMeta(const MetaTensor& gate_idx,
+                                  const MetaTensor& expert_count,
+                                  int64_t n_expert,
+                                  int64_t n_worker,
+                                  MetaTensor* new_gate_idx);
 
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,

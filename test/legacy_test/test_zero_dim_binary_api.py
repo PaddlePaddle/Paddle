@@ -22,6 +22,8 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.framework import use_pir_api
+from paddle.pir_utils import test_with_pir_api
 
 binary_api_list = [
     {'func': paddle.add, 'cls_method': '__add__'},
@@ -215,11 +217,18 @@ class TestBinaryAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_static_binary(self):
+    def assertShapeEqual(self, out, target_tuple):
+        if not use_pir_api():
+            out_shape = list(out.shape)
+        else:
+            out_shape = out.shape
+        self.assertEqual(out_shape, target_tuple)
+
+    @test_with_pir_api
+    def test_static_binary_0D_0D(self):
         paddle.enable_static()
         for api in binary_api_list:
             main_prog = paddle.static.Program()
-            block = main_prog.global_block()
             with paddle.static.program_guard(
                 main_prog, paddle.static.Program()
             ):
@@ -231,25 +240,40 @@ class TestBinaryAPI(unittest.TestCase):
                 if isinstance(api, dict):
                     out = api['func'](x, y)
                     out_cls = getattr(
-                        paddle.static.Variable, api['cls_method']
+                        paddle.pir.Value
+                        if use_pir_api()
+                        else paddle.static.Variable,
+                        api['cls_method'],
                     )(x, y)
                     self.assertEqual(out.shape, out_cls.shape)
                 else:
                     out = api(x, y)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[x, y, out]
+                )
 
-                self.assertEqual(x.shape, ())
-                self.assertEqual(y.shape, ())
-                self.assertEqual(out.shape, ())
-                if block.has_var(x.grad_name):
-                    out_grad = block.var(out.grad_name)
-                    x_grad = block.var(x.grad_name)
-                    y_grad = block.var(y.grad_name)
+                self.assertShapeEqual(x, [])
+                self.assertShapeEqual(y, [])
+                self.assertShapeEqual(out, [])
 
-                    self.assertEqual(x_grad.shape, ())
-                    self.assertEqual(y_grad.shape, ())
-                    self.assertEqual(out_grad.shape, ())
+                if len(grad_list) != 0 and grad_list[0][1] is not None:
+                    # x_grad
+                    self.assertShapeEqual(grad_list[0][1], [])
+                    # y_grad
+                    self.assertShapeEqual(grad_list[1][1], [])
+                    # out_grad
+                    self.assertShapeEqual(grad_list[2][1], [])
 
+        paddle.disable_static()
+
+    @test_with_pir_api
+    def test_static_binary_0D_ND(self):
+        paddle.enable_static()
+        for api in binary_api_list:
+            main_prog = paddle.static.Program()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
                 # 2) x is 0D, y is ND
                 x = paddle.rand([])
                 y = paddle.rand([2, 3, 4])
@@ -258,25 +282,39 @@ class TestBinaryAPI(unittest.TestCase):
                 if isinstance(api, dict):
                     out = api['func'](x, y)
                     out_cls = getattr(
-                        paddle.static.Variable, api['cls_method']
+                        paddle.pir.Value
+                        if use_pir_api()
+                        else paddle.static.Variable,
+                        api['cls_method'],
                     )(x, y)
                     self.assertEqual(out.shape, out_cls.shape)
                 else:
                     out = api(x, y)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[x, y, out]
+                )
 
-                self.assertEqual(x.shape, ())
-                self.assertEqual(y.shape, (2, 3, 4))
-                self.assertEqual(out.shape, (2, 3, 4))
-                if block.has_var(x.grad_name):
-                    out_grad = block.var(out.grad_name)
-                    x_grad = block.var(x.grad_name)
-                    y_grad = block.var(y.grad_name)
+                self.assertShapeEqual(x, [])
+                self.assertShapeEqual(y, [2, 3, 4])
+                self.assertShapeEqual(out, [2, 3, 4])
 
-                    self.assertEqual(x_grad.shape, ())
-                    self.assertEqual(y_grad.shape, (2, 3, 4))
-                    self.assertEqual(out_grad.shape, (2, 3, 4))
+                if len(grad_list) != 0 and grad_list[0][1] is not None:
+                    # x_grad
+                    self.assertShapeEqual(grad_list[0][1], [])
+                    # y_grad
+                    self.assertShapeEqual(grad_list[1][1], [2, 3, 4])
+                    # out_grad
+                    self.assertShapeEqual(grad_list[2][1], [2, 3, 4])
+        paddle.disable_static()
 
+    @test_with_pir_api
+    def test_static_binary_ND_0D(self):
+        paddle.enable_static()
+        for api in binary_api_list:
+            main_prog = paddle.static.Program()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
                 # 3) x is ND, y is 0d
                 x = paddle.rand([2, 3, 4])
                 y = paddle.rand([])
@@ -285,44 +323,66 @@ class TestBinaryAPI(unittest.TestCase):
                 if isinstance(api, dict):
                     out = api['func'](x, y)
                     out_cls = getattr(
-                        paddle.static.Variable, api['cls_method']
+                        paddle.pir.Value
+                        if use_pir_api()
+                        else paddle.static.Variable,
+                        api['cls_method'],
                     )(x, y)
                     self.assertEqual(out.shape, out_cls.shape)
                 else:
                     out = api(x, y)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[x, y, out]
+                )
 
-                self.assertEqual(x.shape, (2, 3, 4))
-                self.assertEqual(y.shape, ())
-                self.assertEqual(out.shape, (2, 3, 4))
-                if block.has_var(x.grad_name):
-                    out_grad = block.var(out.grad_name)
-                    x_grad = block.var(x.grad_name)
-                    y_grad = block.var(y.grad_name)
+                self.assertShapeEqual(x, [2, 3, 4])
+                self.assertShapeEqual(y, [])
+                self.assertShapeEqual(out, [2, 3, 4])
 
-                    self.assertEqual(x_grad.shape, (2, 3, 4))
-                    self.assertEqual(y_grad.shape, ())
-                    self.assertEqual(out_grad.shape, (2, 3, 4))
+                if len(grad_list) != 0 and grad_list[0][1] is not None:
+                    # x_grad
+                    self.assertShapeEqual(grad_list[0][1], [2, 3, 4])
+                    # y_grad
+                    self.assertShapeEqual(grad_list[1][1], [])
+                    # out_grad
+                    self.assertShapeEqual(grad_list[2][1], [2, 3, 4])
+        paddle.disable_static()
 
+    @test_with_pir_api
+    def test_static_binary_0D_scalar(self):
+        paddle.enable_static()
+        for api in binary_api_list:
+            main_prog = paddle.static.Program()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
                 # 4) x is 0D , y is scalar
                 x = paddle.rand([])
                 x.stop_gradient = False
                 y = 0.5
                 if isinstance(api, dict):
-                    out = getattr(paddle.static.Variable, api['cls_method'])(
-                        x, y
+                    out = getattr(
+                        paddle.pir.Value
+                        if use_pir_api()
+                        else paddle.static.Variable,
+                        api['cls_method'],
+                    )(x, y)
+                    grad_list = paddle.static.append_backward(
+                        out, parameter_list=[x, out]
                     )
-                    paddle.static.append_backward(out)
+                    self.assertShapeEqual(x, [])
+                    self.assertShapeEqual(out, [])
 
-                    self.assertEqual(x.shape, ())
-                    self.assertEqual(out.shape, ())
-                    if block.has_var(x.grad_name):
-                        out_grad = block.var(out.grad_name)
-                        x_grad = block.var(x.grad_name)
+                    if len(grad_list) != 0 and grad_list[0][1] is not None:
+                        # x_grad
+                        self.assertShapeEqual(grad_list[0][1], [])
+                        # out_grad
+                        self.assertShapeEqual(grad_list[1][1], [])
+        paddle.disable_static()
 
-                        self.assertEqual(out_grad.shape, ())
-                        self.assertEqual(x_grad.shape, ())
-
+    @test_with_pir_api
+    def test_static_binary_int_api(self):
+        paddle.enable_static()
         for api in binary_int_api_list:
             main_prog = paddle.static.Program()
             with paddle.static.program_guard(
@@ -332,19 +392,19 @@ class TestBinaryAPI(unittest.TestCase):
                 x = paddle.randint(-10, 10, [])
                 y = paddle.randint(-10, 10, [])
                 out = api(x, y)
-                self.assertEqual(out.shape, ())
+                self.assertShapeEqual(out, [])
 
                 # 2) x is ND , y is 0D
                 x = paddle.randint(-10, 10, [3, 5])
                 y = paddle.randint(-10, 10, [])
                 out = api(x, y)
-                self.assertEqual(out.shape, (3, 5))
+                self.assertShapeEqual(out, [3, 5])
 
                 # 3) x is 0D , y is ND
                 x = paddle.randint(-10, 10, [])
                 y = paddle.randint(-10, 10, [3, 5])
                 out = api(x, y)
-                self.assertEqual(out.shape, (3, 5))
+                self.assertShapeEqual(out, [3, 5])
 
         paddle.disable_static()
 

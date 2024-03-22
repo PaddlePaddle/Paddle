@@ -75,7 +75,7 @@ inline void CheckAndUpdateSliceAttrs(
     } else if (start_positive_end_negative) {
       starts[i] = starts[i] - in_dims[axis];
     } else {
-      LOG(FATAL) << "Dead code";
+      PADDLE_THROW(phi::errors::Fatal("Dead code"));
     }
   }
 }

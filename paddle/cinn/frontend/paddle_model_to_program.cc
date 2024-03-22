@@ -104,7 +104,8 @@ void PaddleModelToProgram::AddOpMapper_scale() {
     if (op_desc.HasAttr("bias")) {  // the old model format
       bias = op_desc.GetAttr<float>("bias");
     } else {
-      LOG(FATAL) << "Didn't find [bias] attr in Scale operator!!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Didn't find [bias] attr in Scale operator!!"));
     }
     absl::flat_hash_map<std::string, hlir::framework::NodeAttr::attr_t> attrs;
     auto out = net_builder_->Scale(x, scale, bias);
@@ -243,7 +244,9 @@ void PaddleModelToProgram::AddOpMapper_fill_constant() {
       DO(INT32, int);
 #undef DO
       default:
-        LOG(FATAL) << "unknown data type " << dtype;
+        std::stringstream ss;
+        ss << "unknown data type " << dtype;
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
     AddVar(TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
@@ -622,7 +625,9 @@ void PaddleModelToProgram::AddOp(const paddle::cpp::OpDesc& op_desc) {
     return;
   }
   // feed op's output is a input of the model
-  LOG(FATAL) << "Not supported op [" << op_desc.Type() << "] found";
+  std::stringstream ss;
+  ss << "Not supported op [" << op_desc.Type() << "] found";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 void PaddleModelToProgram::TransposeVar(const std::string& name) {
@@ -658,7 +663,8 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
           cudaMemcpyHostToDevice));
 #endif
 #else
-      LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+      PADDLE_THROW(phi::errors::Fatal(
+          "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
     } else {
       CINN_NOT_IMPLEMENTED
@@ -674,7 +680,9 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
     var->type = Float(32);
     AddVar(name, var, true);
   } else {
-    LOG(FATAL) << "No var called [" << name << "] exists";
+    std::stringstream ss;
+    ss << "No var called [" << name << "] exists";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -707,13 +715,16 @@ void PaddleModelToProgram::ReverseHWVar(const std::string& name) {
           tensor->shape().numel() * sizeof(float),
           cudaMemcpyHostToDevice));
 #else
-      LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+      PADDLE_THROW(phi::errors::Fatal(
+          "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
     } else {
       CINN_NOT_IMPLEMENTED
     }
   } else {
-    LOG(FATAL) << "No var called [" << name << "] exists";
+    std::stringstream ss;
+    ss << "No var called [" << name << "] exists";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -736,7 +747,9 @@ Variable PaddleModelToProgram::GetVar(const std::string& name) {
     return var;
   }
 
-  LOG(FATAL) << "No var called [" << name << "] exists";
+  std::stringstream ss;
+  ss << "No var called [" << name << "] exists";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return Variable();
 }
 

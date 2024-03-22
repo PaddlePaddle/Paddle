@@ -131,7 +131,8 @@ void BindFramework(pybind11::module *m) {
                    t->shape().numel() * t->type().bytes(),
                    cudaMemcpyDeviceToHost));
 #else
-    LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
+    "you need to set WITH_CUDA ON!"));
 #endif
              } else {
                CINN_NOT_IMPLEMENTED
@@ -175,7 +176,8 @@ void BindFramework(pybind11::module *m) {
                                    self->shape().numel() * self->type().bytes(),
                                    cudaMemcpyDeviceToHost));
 #else
-    LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
+    "you need to set WITH_CUDA ON!"));
 #endif
             } else {
               CINN_NOT_IMPLEMENTED
@@ -210,7 +212,8 @@ void BindFramework(pybind11::module *m) {
                                    self->shape().numel() * self->type().bytes(),
                                    cudaMemcpyHostToDevice));
 #else
-    LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
+    "you need to set WITH_CUDA ON!"));
 #endif
             } else {
               CINN_NOT_IMPLEMENTED

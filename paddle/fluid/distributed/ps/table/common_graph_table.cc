@@ -1621,11 +1621,10 @@ void GraphTable::clear_edge_shard() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : edge_shards) {
     for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
+      tasks.push_back(load_node_edge_task_pool->enqueue([&shard]() -> int {
+        delete shard;
+        return 0;
+      }));
     }
   }
   for (auto &task : tasks) task.get();
@@ -1643,11 +1642,10 @@ void GraphTable::clear_feature_shard() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : feature_shards) {
     for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
+      tasks.push_back(load_node_edge_task_pool->enqueue([&shard]() -> int {
+        delete shard;
+        return 0;
+      }));
     }
   }
   for (auto &task : tasks) task.get();
@@ -1665,11 +1663,10 @@ void GraphTable::clear_node_shard() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : node_shards) {
     for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
+      tasks.push_back(load_node_edge_task_pool->enqueue([&shard]() -> int {
+        delete shard;
+        return 0;
+      }));
     }
   }
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
@@ -2898,7 +2895,7 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
         first -= total_size;
         second -= total_size;
         tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-            [&shards, this, first, second, i, &res, &mutex]() -> size_t {
+            [&shards, first, second, i, &res, &mutex]() -> size_t {
               std::vector<uint64_t> keys;
               shards[i]->get_ids_by_range(first, second, &keys);
 
@@ -3322,8 +3319,7 @@ int32_t GraphTable::pull_graph_list(GraphTableType table_type,
     int count = std::min(1 + (size + cur_size - start - 1) / step, total_size);
     int end = start + (count - 1) * step + 1;
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-        [&search_shards, this, i, start, end, step, size]()
-            -> std::vector<Node *> {
+        [&search_shards, i, start, end, step, size]() -> std::vector<Node *> {
           return search_shards[i]->get_batch(start - size, end - size, step);
         }));
     start += count * step;

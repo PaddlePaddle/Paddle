@@ -14,7 +14,7 @@ if(WITH_GPU OR WITH_ROCM)
     list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
   endif()
   if(WITH_ROCM)
-    list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)
+    list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc gpu/rocm/hip_graph.cc)
   endif()
 endif()
 

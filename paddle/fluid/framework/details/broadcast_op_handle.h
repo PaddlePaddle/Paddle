@@ -35,7 +35,7 @@ class Node;
 }  // namespace framework
 namespace platform {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-struct NCCLContextMap;
+class NCCLContextMap;
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
 struct BKCLContextMap;

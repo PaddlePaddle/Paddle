@@ -295,6 +295,11 @@ def default_candidates(tuner_cfg):
         raise ValueError(
             f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
         )
+    custom_search_dim = tuner_cfg.get("custom_search_dim", None)
+    if custom_search_dim is not None:
+        candidates["custom_search_dim"] = []
+        for key, value in custom_search_dim.items():
+            candidates["custom_search_dim"].append(value["value"])
     return candidates
 
 
@@ -359,6 +364,17 @@ def search_all(tuner_cfg):
         )
     )
 
+    custom_search_dim = tuner_cfg.get("custom_search_dim", None)
+    if custom_search_dim is not None:
+        custom_search_dim_candidates = candidates["custom_search_dim"]
+        custom_dim_cfgs = list(itertools.product(*custom_search_dim_candidates))
+        other_cfgs_without_cumtom = other_dim_cfgs
+        other_dim_cfgs = []
+        for cfg_without_cumtom in other_cfgs_without_cumtom:
+            for custom_cfg in custom_dim_cfgs:
+                cfg = list(cfg_without_cumtom) + list(custom_cfg)
+                other_dim_cfgs.append(cfg)
+
     all_cfgs = []
     refined_recompute = tuner_cfg.get("refined_recompute", None)
     for valid_degree in valid_degrees:
@@ -370,7 +386,7 @@ def search_all(tuner_cfg):
                 vpp,
                 use_recompute,
                 recompute_granularity,
-            ) = list(other_dim_cfg)
+            ) = list(other_dim_cfg[:5])
             if (
                 tuner_cfg["model_cfg"]["global_batch_size"]
                 % (mbs * sharding_degree * dp_degree)
@@ -455,6 +471,10 @@ def search_all(tuner_cfg):
         7: "use_recompute",
         8: "recompute_granularity",
     }
+
+    if custom_search_dim is not None:
+        for key, _ in custom_search_dim.items():
+            mapping[len(mapping)] = key
 
     if refined_recompute is not None:
         for dim in refined_recompute:
@@ -1467,20 +1487,29 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
     cmd = copy.deepcopy(tuner_cfg["run_cmd"])
     res_args = copy.deepcopy(raw_args)
 
-    _gen_new_arg("dp_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("mp_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("pp_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("vpp_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("micro_batch_size", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("sharding_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("sharding_stage", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("use_recompute", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("recompute_granularity", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("local_batch_size", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("gradient_accumulation_steps", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("global_batch_size", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("sequence_parallel", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("refined_recompute", cmd, cfg, res_args, tuner_cfg)
+    new_args = [
+        "dp_degree",
+        "mp_degree",
+        "pp_degree",
+        "vpp_degree",
+        "micro_batch_size",
+        "sharding_degree",
+        "sharding_stage",
+        "use_recompute",
+        "recompute_granularity",
+        "local_batch_size",
+        "gradient_accumulation_steps",
+        "global_batch_size",
+        "sequence_parallel",
+        "refined_recompute",
+    ]
+
+    if "custom_search_dim" in tuner_cfg:
+        for key in tuner_cfg["custom_search_dim"]:
+            new_args.append(key)
+
+    for arg in new_args:
+        _gen_new_arg(arg, cmd, cfg, res_args, tuner_cfg)
 
     if tuner_cfg["run_cmd"].get("search_stage", None) and not run_best:
         cmd = copy.deepcopy(tuner_cfg["run_cmd"]["search_stage"])

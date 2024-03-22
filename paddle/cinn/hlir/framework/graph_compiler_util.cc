@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -128,7 +128,7 @@ std::string CompilationResult::Message(int idx) const {
     ss << "The index(" << idx
        << ") is expected to be less than the size of group("
        << lowered_funcs_.size() << ").";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return messages_[idx];
 }
@@ -145,7 +145,7 @@ std::vector<std::vector<ir::LoweredFunc>> CompilationResult::LoweredFuncs()
          << "Some errors may have occurred during or before the lower "
             "process.\n"
          << Message();
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));
     }
   }
   return res;
@@ -157,14 +157,14 @@ std::vector<ir::LoweredFunc> CompilationResult::LoweredFuncs(int idx) const {
     ss << "The index(" << idx
        << ") is expected to be less than the size of group("
        << lowered_funcs_.size() << ").";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   if (!lowered_funcs_[idx].has_value()) {
     std::stringstream ss;
     ss << "LoweredFuncs of group[" << idx << "] is not generated.\n"
        << "Some errors may have occurred during or before the lower process.\n"
        << Message();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::Fatal(ss.str()));
   }
   return lowered_funcs_[idx].value();
 }
@@ -180,7 +180,7 @@ std::vector<std::string> CompilationResult::SourceCodes() const {
          << "Some errors may have occurred during or before the codegen "
             "process.\n"
          << Message();
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));
     }
   }
   return res;
@@ -192,7 +192,7 @@ std::string CompilationResult::SourceCode(int idx) const {
     ss << "The index(" << idx
        << ") is expected to be less than the size of group("
        << lowered_funcs_.size() << ").";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   if (!source_codes_[idx].has_value()) {
     std::stringstream ss;
@@ -200,7 +200,7 @@ std::string CompilationResult::SourceCode(int idx) const {
        << "Some errors may have occurred during or before the codegen "
           "process.\n"
        << Message();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::Fatal(ss.str()));
   }
   return source_codes_[idx].value();
 }
@@ -216,7 +216,7 @@ std::vector<std::string> CompilationResult::SourcePtxs() const {
          << "Some errors may have occurred during or before the nvrtc compile "
             "process.\n"
          << Message();
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));
     }
   }
   return res;
@@ -228,7 +228,7 @@ std::string CompilationResult::SourcePtx(int idx) const {
     ss << "The index(" << idx
        << ") is expected to be less than the size of group("
        << lowered_funcs_.size() << ").";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   if (!source_ptxs_[idx].has_value()) {
     std::stringstream ss;
@@ -236,7 +236,7 @@ std::string CompilationResult::SourcePtx(int idx) const {
        << "Some errors may have occurred during or before the nvrtc compile "
           "process.\n"
        << Message();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::Fatal(ss.str()));
   }
   return source_ptxs_[idx].value();
 }
@@ -253,7 +253,7 @@ CompilationResult::RuntimeInstructions() const {
          << "Some errors may have occurred during or before the build "
             "instruction process.\n"
          << Message();
-      CINN_THROW(ss.str());
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));
     }
   }
   return instructions_;
@@ -268,7 +268,7 @@ const std::unique_ptr<Instruction>& CompilationResult::RuntimeInstruction(
     ss << "The index(" << idx
        << ") is expected to be less than the size of group(" << insts.size()
        << ").";
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return insts[idx];
 }
@@ -279,7 +279,7 @@ std::unique_ptr<Program> CompilationResult::RuntimeProgram() {
     ss << "Runtime program is not generated.\n"
        << "Some errors may have occurred during the compilation process.\n"
        << Message();
-    CINN_THROW(ss.str());
+    PADDLE_THROW(phi::errors::Fatal(ss.str()));
   }
   return std::move(runtime_program_);
 }

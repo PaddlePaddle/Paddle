@@ -28,7 +28,8 @@
 
 namespace symbol {
 
-#define SYMBOL_NOT_IMPLEMENTED LOG(FATAL) << "Not Implemented"
+#define SYMBOL_NOT_IMPLEMENTED \
+  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"))
 
 template <class... Ts>
 struct Overloaded : Ts... {
@@ -224,8 +225,6 @@ class IR_API DimExpr : public DimExprBase {
 // DimExprConstraint = Equal DimExpr
 //                   | Broadcastable DimExpr
 using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
-
-// ShapeOrDataDimExprs = (tShape [DimExpr], tData (opt [DimExpr]))
 
 IR_API std::string ToString(const DimExpr& dim_expr);
 

@@ -75,10 +75,12 @@ std::vector<std::string> Compiler::FindCUDAIncludePaths() {
     return {cuda_include_path};
   }
 #endif
-  LOG(FATAL) << "Cannot find cuda include path."
-             << "CUDA_PATH is not set or CUDA is not installed in the default "
-                "installation path."
-             << "In other than linux, it is necessary to set CUDA_PATH.";
+  std::stringstream ss;
+  ss << "Cannot find cuda include path."
+     << "CUDA_PATH is not set or CUDA is not installed in the default "
+        "installation path."
+     << "In other than linux, it is necessary to set CUDA_PATH.";
+  PADDLE_THROW(phi::errors::Fatal(ss.str()));
   return {cuda_include_path};
 }
 

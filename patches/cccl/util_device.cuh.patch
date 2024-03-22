@@ -1,0 +1,31 @@
+diff --git a/cub/cub/util_device.cuh b/cub/cub/util_device.cuh
+index c7e15cafe..756336914 100644
+--- a/cub/cub/util_device.cuh
++++ b/cub/cub/util_device.cuh
+@@ -278,7 +278,7 @@ public:
+ /**
+  * \brief Retrieves the PTX version that will be used on the current device (major * 100 + minor * 10).
+  */
+-CUB_RUNTIME_FUNCTION inline cudaError_t PtxVersionUncached(int& ptx_version)
++CUB_RUNTIME_FUNCTION __forceinline__ cudaError_t PtxVersionUncached(int& ptx_version)
+ {
+     // Instantiate `EmptyKernel<void>` in both host and device code to ensure
+     // it can be called.
+@@ -375,7 +375,7 @@ __host__ inline cudaError_t PtxVersion(int& ptx_version, int device)
+  *
+  * \note This function is thread safe.
+  */
+-CUB_RUNTIME_FUNCTION inline cudaError_t PtxVersion(int &ptx_version)
++CUB_RUNTIME_FUNCTION __forceinline__ cudaError_t PtxVersion(int &ptx_version)
+ {
+   cudaError_t result = cudaErrorUnknown;
+   NV_IF_TARGET(
+@@ -593,7 +593,7 @@ CUB_RUNTIME_FUNCTION inline cudaError_t HasUVA(bool& has_uva)
+  *
+  */
+ template <typename KernelPtr>
+-CUB_RUNTIME_FUNCTION inline
++CUB_RUNTIME_FUNCTION __forceinline__
+ cudaError_t MaxSmOccupancy(
+     int&                max_sm_occupancy,          ///< [out] maximum number of thread blocks that can reside on a single SM
+     KernelPtr           kernel_ptr,                 ///< [in] Kernel pointer for which to compute SM occupancy

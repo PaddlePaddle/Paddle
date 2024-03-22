@@ -52,11 +52,43 @@ static PyObject *static_api_shard_tensor(PyObject *self,
   }
 }
 
+static PyObject *static_api_reshard(PyObject *self,
+                                    PyObject *args,
+                                    PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add reshard op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto input = CastPyArg2Value(input_obj, "reshard", 0);
+
+    PyObject *process_mesh_obj = PyTuple_GET_ITEM(args, 1);
+    auto process_mesh = CastPyArg2ProcessMesh(process_mesh_obj, 1);
+
+    PyObject *dims_mapping_obj = PyTuple_GET_ITEM(args, 2);
+    auto dims_mapping = CastPyArg2VectorOfInt64(dims_mapping_obj, 2);
+
+    // Call ir static api
+    auto static_api_out =
+        paddle::dialect::reshard(input, process_mesh, dims_mapping);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyMethodDef DistOpsAPI[] = {
     {"shard_tensor",
      (PyCFunction)(void (*)(void))static_api_shard_tensor,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for shard_tensor."},
+    {"reshard",
+     (PyCFunction)(void (*)(void))static_api_reshard,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for reshard."},
 
     {nullptr, nullptr, 0, nullptr}};
 

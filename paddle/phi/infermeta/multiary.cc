@@ -4584,6 +4584,86 @@ void FusedRopeInferMeta(const MetaTensor& q,
   }
 }
 
+void FusedTokenPruneInferMeta(const MetaTensor& attn,
+                              const MetaTensor& x,
+                              const MetaTensor& mask,
+                              const MetaTensor& new_mask,
+                              bool keep_first_token,
+                              bool keep_order,
+                              MetaTensor* slimmed_x,
+                              MetaTensor* cls_inds) {
+  auto mask_dim = mask.dims();
+  auto attn_dim = attn.dims();
+  auto x_dim = x.dims();
+  auto new_mask_dim = new_mask.dims();
+
+  PADDLE_ENFORCE_EQ(
+      mask_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The input mask must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      attn_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The input attn must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      3,
+      phi::errors::InvalidArgument("The input x must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      new_mask_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The input attn must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(mask_dim[0],
+                    attn_dim[0],
+                    phi::errors::InvalidArgument(
+                        "The first dim of mask and attn should be the same"
+                        "which is batch size"));
+  PADDLE_ENFORCE_EQ(mask_dim[1],
+                    attn_dim[1],
+                    phi::errors::InvalidArgument(
+                        "The second dim of mask and attn should be the same"
+                        "which is nb_head"));
+  PADDLE_ENFORCE_EQ(mask_dim[0],
+                    x_dim[0],
+                    phi::errors::InvalidArgument(
+                        "The first dim of mask and x should be the same"
+                        "which is batch size"));
+  PADDLE_ENFORCE_EQ(
+      mask_dim[2],
+      mask_dim[3],
+      phi::errors::InvalidArgument(
+          "The third dim and the fourth dim of mask should be the same"
+          "which is max seq len"));
+  PADDLE_ENFORCE_EQ(
+      attn_dim[2],
+      attn_dim[3],
+      phi::errors::InvalidArgument(
+          "The third dim and the fourth dim of mask should be the same"
+          "which is max seq len"));
+  PADDLE_ENFORCE_EQ(attn_dim[2],
+                    mask_dim[2],
+                    phi::errors::InvalidArgument(
+                        "The third dim of mask and attn should be the same"
+                        "which is max seq len"));
+  PADDLE_ENFORCE_EQ(attn_dim[2],
+                    x_dim[1],
+                    phi::errors::InvalidArgument(
+                        "The third dim of mask and the second dim of attn"
+                        "should be the same which is max seq len"));
+
+  auto bsz = mask_dim[0];
+  auto c = x_dim[2];
+  auto slim_seq_len = new_mask_dim[2];
+
+  std::vector<int64_t> slimmed_x_dims({bsz, slim_seq_len, c});
+  slimmed_x->set_dims(common::make_ddim(slimmed_x_dims));
+  slimmed_x->set_dtype(x.dtype());
+
+  std::vector<int64_t> cls_inds_dims({bsz, slim_seq_len});
+  cls_inds->set_dims(common::make_ddim(cls_inds_dims));
+  cls_inds->set_dtype(phi::DataType::INT64);
+}
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,

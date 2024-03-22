@@ -559,7 +559,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       vec_input_name2id_map[inputs[i]] = vec_input_index;
       vec_input_index++;
       std::vector<pir::Value> input_values =
-          std::move(CastPyArg2VectorOfValue(obj, op_type, i + 1));  // NOLINT
+          CastPyArg2VectorOfValue(obj, op_type, i + 1);
       for (auto &input_value : input_values) {
         paddle::dialect::DenseTensorType input_tensor =
             input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();

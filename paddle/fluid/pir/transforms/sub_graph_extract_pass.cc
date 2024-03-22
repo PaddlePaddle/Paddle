@@ -46,7 +46,10 @@ class SubGraphExtractPass : public pir::Pass {
 
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "sub_graph_extract_pass should run on module op.");
+    PADDLE_ENFORCE_EQ(module_op.name(),
+                      "builtin.module",
+                      phi::errors::InvalidArgument(
+                          "sub_graph_extract_pass should run on module op."));
     auto& block = module_op.block();
 
     std::vector<GroupOpsVec> groups =

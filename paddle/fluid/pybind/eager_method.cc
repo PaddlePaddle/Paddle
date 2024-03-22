@@ -1828,9 +1828,9 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                     .is_contiguous())
                   ? paddle::Tensor(
                         std::make_shared<phi::DenseTensor>(
-                            std::move(paddle::experimental::Trans2Contiguous(
+                            paddle::experimental::Trans2Contiguous(
                                 *(std::dynamic_pointer_cast<phi::DenseTensor>(
-                                    transback_sub_tensor.impl()))))),
+                                    transback_sub_tensor.impl())))),
                         transback_sub_tensor.mutable_autograd_meta())
                   : transback_sub_tensor;
 

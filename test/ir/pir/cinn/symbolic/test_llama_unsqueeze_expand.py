@@ -37,7 +37,7 @@ class UnsqueezeExpandNet(nn.Layer):
         s2 = paddle.shape(y)[0]
         s3 = paddle.shape(x)[1]
 
-        z = x.unsqueeze([1, 2]).cast(bool)
+        z = x.unsqueeze([1, 2]).cast("bool")
         z.stop_gradient = True
         out = paddle.expand(z, [s0, s1, s2, s3])
         return out

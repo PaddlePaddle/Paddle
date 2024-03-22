@@ -58,14 +58,14 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _global_flags_ = core.globals()
 
 SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
-    "elementwise_add": ['X', 'Y'],
-    "elementwise_add_grad": ['X', 'Y'],
-    "elementwise_sub": ['X', 'Y'],
-    "elementwise_sub_grad": ['X', 'Y'],
-    "elementwise_mul": ['X', 'Y'],
-    "elementwise_mul_grad": ['X', 'Y'],
-    "where": ['X', 'Y'],
-    "where_grad": ['X', 'Y'],
+    "elementwise_add": ["X", "Y"],
+    "elementwise_add_grad": ["X", "Y"],
+    "elementwise_sub": ["X", "Y"],
+    "elementwise_sub_grad": ["X", "Y"],
+    "elementwise_mul": ["X", "Y"],
+    "elementwise_mul_grad": ["X", "Y"],
+    "where": ["X", "Y"],
+    "where_grad": ["X", "Y"],
 }
 
 
@@ -88,7 +88,7 @@ def set_flags(flags):
                 >>> paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
     """
     if not isinstance(flags, dict):
-        raise TypeError('flags in set_flags should be a dict')
+        raise TypeError("flags in set_flags should be a dict")
     for key, value in flags.items():
         if _global_flags().is_public(key):
             _global_flags()[key] = value
@@ -128,7 +128,7 @@ def get_flags(flags):
                 flags_value.update(temp)
             else:
                 raise ValueError(
-                    'Flag %s cannot get its value through this function.'
+                    "Flag %s cannot get its value through this function."
                     % (key)
                 )
     elif isinstance(flags, str):
@@ -138,10 +138,10 @@ def get_flags(flags):
             flags_value.update(temp)
         else:
             raise ValueError(
-                'Flag %s cannot get its value through this function.' % (flags)
+                "Flag %s cannot get its value through this function." % (flags)
             )
     else:
-        raise TypeError('Flags in get_flags should be a list, tuple or string.')
+        raise TypeError("Flags in get_flags should be a list, tuple or string.")
     return flags_value
 
 
@@ -157,7 +157,7 @@ class GlobalThreadLocal(threading.local):
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
         self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
-            'FLAGS_enable_pir_api'
+            "FLAGS_enable_pir_api"
         ]
 
     def __str__(self):
@@ -171,7 +171,7 @@ class GlobalThreadLocal(threading.local):
         return "\n".join(strings)
 
     def __setattr__(self, name, val):
-        if name == '_dygraph_tracer_':
+        if name == "_dygraph_tracer_":
             global _dygraph_tracer_
             _dygraph_tracer_ = val
             core._switch_tracer(val)
@@ -365,8 +365,8 @@ def in_cinn_mode():
 
 global_ipu_index = -1
 global_ipu_stage = -1
-ipu_index_attr_name = 'ipu_index'
-ipu_stage_attr_name = 'ipu_stage'
+ipu_index_attr_name = "ipu_index"
+ipu_stage_attr_name = "ipu_stage"
 
 
 @signature_safe_contextmanager
@@ -527,7 +527,7 @@ def require_version(min_version, max_version=None):
             % (type(max_version))
         )
 
-    check_format = re.match(r'\d+(\.\d+){0,3}', min_version)
+    check_format = re.match(r"\d+(\.\d+){0,3}", min_version)
     if check_format is None or check_format.group() != min_version:
         raise ValueError(
             "The value of 'min_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
@@ -535,7 +535,7 @@ def require_version(min_version, max_version=None):
         )
 
     if max_version is not None:
-        check_format = re.match(r'\d+(\.\d+){0,3}', max_version)
+        check_format = re.match(r"\d+(\.\d+){0,3}", max_version)
         if check_format is None or check_format.group() != max_version:
             raise ValueError(
                 "The value of 'max_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
@@ -548,7 +548,7 @@ def require_version(min_version, max_version=None):
         paddle_version.patch,
         paddle_version.rc,
     ]
-    zero_version = ['0', '0', '0', '0']
+    zero_version = ["0", "0", "0", "0"]
 
     def version_cmp(ver_a, ver_b):
         for i in range(len(ver_a)):
@@ -577,13 +577,13 @@ def require_version(min_version, max_version=None):
             )
         return
 
-    min_version_split = min_version.split('.')
+    min_version_split = min_version.split(".")
     min_version_to_check = (
         min_version_split + zero_version[len(min_version_split) :]
     )
 
     if max_version is not None:
-        max_version_split = max_version.split('.')
+        max_version_split = max_version.split(".")
         max_version_to_check = (
             max_version_split + zero_version[len(max_version_split) :]
         )
@@ -684,13 +684,13 @@ def _fake_interface_only_(func):
 def deprecate_stat_dict(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if 'stat_dict' in kwargs:
+        if "stat_dict" in kwargs:
             warnings.warn(
                 "The argument `stat_dict` has deprecated, please change it to `state_dict`.",
                 DeprecationWarning,
             )
-            kwargs['state_dict'] = kwargs['stat_dict']
-            kwargs.pop('stat_dict')
+            kwargs["state_dict"] = kwargs["stat_dict"]
+            kwargs.pop("stat_dict")
         return func(*args, **kwargs)
 
     return wrapper
@@ -776,16 +776,16 @@ def _cpu_num():
     if "CPU_NUM" not in os.environ.keys():
         if multiprocessing.cpu_count() > 1:
             sys.stderr.write(
-                '!!! The CPU_NUM is not specified, you should set CPU_NUM in the environment variable list.\n'
-                'CPU_NUM indicates that how many CPUPlace are used in the current task.\n'
-                'And if this parameter are set as N (equal to the number of physical CPU core) the program may be faster.\n\n'
-                'export CPU_NUM={} # for example, set CPU_NUM as number of physical CPU core which is {}.\n\n'
-                '!!! The default number of CPU_NUM=1.\n'.format(
+                "!!! The CPU_NUM is not specified, you should set CPU_NUM in the environment variable list.\n"
+                "CPU_NUM indicates that how many CPUPlace are used in the current task.\n"
+                "And if this parameter are set as N (equal to the number of physical CPU core) the program may be faster.\n\n"
+                "export CPU_NUM={} # for example, set CPU_NUM as number of physical CPU core which is {}.\n\n"
+                "!!! The default number of CPU_NUM=1.\n".format(
                     multiprocessing.cpu_count(), multiprocessing.cpu_count()
                 )
             )
-        os.environ['CPU_NUM'] = str(1)
-    cpu_num = os.environ.get('CPU_NUM')
+        os.environ["CPU_NUM"] = str(1)
+    cpu_num = os.environ.get("CPU_NUM")
     return int(cpu_num)
 
 
@@ -1250,7 +1250,7 @@ def grad_var_name(var_name):
     return var_name + GRAD_VAR_SUFFIX
 
 
-def convert_np_dtype_to_dtype_(np_dtype):
+def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
     """
     Convert the data type in numpy to the data type in Paddle.
 
@@ -1259,11 +1259,9 @@ def convert_np_dtype_to_dtype_(np_dtype):
             string.
 
     Returns:
-        core.VarDesc.VarType / core.DataType : The data type in Paddle.
+        core.VarDesc.VarType : The data type in Paddle.
 
     """
-    if use_pir_api():
-        return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
@@ -1299,6 +1297,44 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.COMPLEX128
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
+
+
+def convert_np_dtype_to_dtype_(np_dtype):
+    """
+    Convert the data type in numpy to the data type in Paddle.
+
+    Args:
+        np_dtype (np.dtype|str): The data type in numpy or valid data type
+            string.
+
+    Returns:
+        core.VarDesc.VarType / core.DataType : The data type in Paddle.
+
+    """
+    if use_pir_api():
+        return pir.core.convert_np_dtype_to_dtype_(np_dtype)
+
+    return convert_np_dtype_to_proto_type(np_dtype)
+
+
+def convert_to_proto_type(dtype):
+    """
+    Convert the data type in numpy to the data type in Paddle.
+
+    Args:
+        dtype (np.dtype|str|core.DataType|core.VarDesc.VarType): The data type in numpy, valid data type
+            string or paddle dtype.
+
+    Returns:
+        core.VarDesc.VarType : The data type in Paddle.
+
+    """
+    if isinstance(dtype, core.VarDesc.VarType):
+        return dtype
+    elif isinstance(dtype, core.DataType):
+        return paddle_type_to_proto_type[dtype]
+    else:
+        return convert_np_dtype_to_proto_type(dtype)
 
 
 def dtype_is_floating(dtype):
@@ -1350,10 +1386,7 @@ def _create_tensor(
     **kwargs,
 ):
     if dtype is not None:
-        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
-        if isinstance(dtype, core.DataType):
-            dtype = paddle_type_to_proto_type[dtype]
+        dtype = convert_to_proto_type(dtype)
     else:
         dtype = core.VarDesc.VarType.FP32
 
@@ -1562,11 +1595,10 @@ class Variable(metaclass=VariableMetaClass):
     ):
         self.block = block
         if name is None:
-            name = self.block.program._name_generator('_generated_var')
+            name = self.block.program._name_generator("_generated_var")
 
         if dtype is not None:
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_to_proto_type(dtype)
 
         if dtype == core.VarDesc.VarType.STRINGS:
             type = core.VarDesc.VarType.STRINGS
@@ -1701,9 +1733,9 @@ class Variable(metaclass=VariableMetaClass):
             )
 
         self.block.append_op(
-            type='share_data',
-            inputs={'X': [self]},
-            outputs={'Out': [output]},
+            type="share_data",
+            inputs={"X": [self]},
+            outputs={"Out": [output]},
         )
         return output
 
@@ -1933,12 +1965,12 @@ class Variable(metaclass=VariableMetaClass):
                 var X : LOD_TENSOR.shape(-1, 23, 48).dtype(float32).stop_gradient(False)
         """
         # VarType.LOD_TENSOR -> LOD_TENSOR
-        type_str = str(self.type).split('.')[1]
+        type_str = str(self.type).split(".")[1]
         if (
             self.type == core.VarDesc.VarType.SELECTED_ROWS
             or self.type == core.VarDesc.VarType.LOD_TENSOR
         ):
-            dtype_str = str(self.dtype).split('.')[1]
+            dtype_str = str(self.dtype).split(".")[1]
             var_str = "{name} : {type}.shape{shape}.dtype({dtype}).stop_gradient({stop_gradient})".format(
                 name=self.name,
                 type=type_str,
@@ -2330,7 +2362,7 @@ class Variable(metaclass=VariableMetaClass):
         with unique_name.guard(self.block.program._name_generator):
             out = self.block.create_var(
                 name=unique_name.generate_with_ignorable_key(
-                    self.name + '.tmp'
+                    self.name + ".tmp"
                 ),
                 dtype=self.dtype,
                 type=self.type,
@@ -2339,7 +2371,7 @@ class Variable(metaclass=VariableMetaClass):
             )
             input_shape = self.block.create_var(
                 name=unique_name.generate_with_ignorable_key(
-                    self.name + '.tmp'
+                    self.name + ".tmp"
                 ),
                 dtype=self.dtype,
                 type=core.VarDesc.VarType.LOD_TENSOR,
@@ -2348,10 +2380,10 @@ class Variable(metaclass=VariableMetaClass):
             )
 
             self.block.append_op(
-                type='transpose2',
-                inputs={'X': [self]},
-                outputs={'Out': [out], 'XShape': [input_shape]},
-                attrs={'axis': perm},
+                type="transpose2",
+                inputs={"X": [self]},
+                outputs={"Out": [out], "XShape": [input_shape]},
+                attrs={"axis": perm},
             )
             return out
 
@@ -2390,9 +2422,9 @@ class Variable(metaclass=VariableMetaClass):
             )
 
             self.block.append_op(
-                type='assign',
-                inputs={'X': [self]},
-                outputs={'Out': [output]},
+                type="assign",
+                inputs={"X": [self]},
+                outputs={"Out": [output]},
             )
             return output
 
@@ -2551,9 +2583,9 @@ class Variable(metaclass=VariableMetaClass):
         new_var = self._cloneVar()
         self.block.append_op(
             type="slice",
-            inputs={'Input': [self]},
-            outputs={'Out': [new_var]},
-            attrs={'axes': axes, 'starts': starts, 'ends': ends},
+            inputs={"Input": [self]},
+            outputs={"Out": [new_var]},
+            attrs={"axes": axes, "starts": starts, "ends": ends},
         )
         return new_var
 
@@ -2561,10 +2593,10 @@ class Variable(metaclass=VariableMetaClass):
         new_var = self._cloneVar()
         self.block.append_op(
             type="concat",
-            inputs={'X': inputs},
-            outputs={'Out': [new_var]},
+            inputs={"X": inputs},
+            outputs={"Out": [new_var]},
             attrs={
-                'axis': axis,
+                "axis": axis,
             },
         )
         return new_var
@@ -2680,7 +2712,7 @@ class Variable(metaclass=VariableMetaClass):
         return t
 
     def set_value(self, value, scope=None):
-        '''
+        """
 
         Set the value to the tensor in given scope.
 
@@ -2722,14 +2754,14 @@ class Variable(metaclass=VariableMetaClass):
                 ...         t_load = paddle.load(path+var.name+'.pdtensor')
                 ...         var.set_value(t_load)
 
-        '''
+        """
 
         # The 'framework' is a low-level module, and 'executor'
         # can not be imported at the beginning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
 
-        if not (isinstance(value, np.ndarray) or hasattr(value, '__array__')):
+        if not (isinstance(value, np.ndarray) or hasattr(value, "__array__")):
             raise TypeError(
                 "`value` should be `numpy.ndarray` or `LoDTensor`, but received {}.".format(
                     type(value)
@@ -2754,7 +2786,7 @@ class Variable(metaclass=VariableMetaClass):
 
         t = var_temp.get_tensor()
 
-        if hasattr(value, 'shape'):
+        if hasattr(value, "shape"):
             if isinstance(value.shape, (MethodType, FunctionType)):
                 value_shape = value.shape()
             else:
@@ -2820,9 +2852,9 @@ class Variable(metaclass=VariableMetaClass):
             )
 
             self.block.append_op(
-                type='size',
-                inputs={'Input': [self]},
-                outputs={'Out': [output]},
+                type="size",
+                inputs={"Input": [self]},
+                outputs={"Out": [output]},
             )
             return output
 
@@ -2920,14 +2952,14 @@ class OpProtoHolder:
 
     @classmethod
     def instance(cls):
-        if not hasattr(cls, '_instance'):
+        if not hasattr(cls, "_instance"):
             cls._instance = cls()
         return cls._instance
 
     def __init__(self):
         assert not hasattr(
-            self.__class__, '_instance'
-        ), 'Please use `instance()` to get OpProtoHolder object!'
+            self.__class__, "_instance"
+        ), "Please use `instance()` to get OpProtoHolder object!"
         op_protos = get_all_op_protos()
         self.op_proto_map = {}
         for proto in op_protos:
@@ -2943,7 +2975,7 @@ class OpProtoHolder:
 
         """
         if type not in self.op_proto_map:
-            raise ValueError("Operator \"%s\" has not been registered." % type)
+            raise ValueError('Operator "%s" has not been registered.' % type)
         return self.op_proto_map[type]
 
     def update_op_proto(self):
@@ -3020,34 +3052,34 @@ class Operator:
     """
 
     OP_WITHOUT_KERNEL_SET = {
-        'feed',
-        'fetch',
-        'recurrent',
-        'go',
-        'conditional_block',
-        'pylayer',
-        'while',
-        'send',
-        'recv',
-        'listen_and_serv',
-        'fl_listen_and_serv',
-        'ncclInit',
-        'select',
-        'checkpoint_notify',
-        'gen_bkcl_id',
-        'c_gen_bkcl_id',
-        'gen_nccl_id',
-        'c_gen_nccl_id',
-        'c_comm_init',
-        'c_sync_calc_stream',
-        'c_sync_comm_stream',
-        'queue_generator',
-        'dequeue',
-        'enqueue',
-        'heter_listen_and_serv',
-        'c_wait_comm',
-        'c_wait_compute',
-        'copy_cross_scope',
+        "feed",
+        "fetch",
+        "recurrent",
+        "go",
+        "conditional_block",
+        "pylayer",
+        "while",
+        "send",
+        "recv",
+        "listen_and_serv",
+        "fl_listen_and_serv",
+        "ncclInit",
+        "select",
+        "checkpoint_notify",
+        "gen_bkcl_id",
+        "c_gen_bkcl_id",
+        "gen_nccl_id",
+        "c_gen_nccl_id",
+        "c_comm_init",
+        "c_sync_calc_stream",
+        "c_sync_comm_stream",
+        "queue_generator",
+        "dequeue",
+        "enqueue",
+        "heter_listen_and_serv",
+        "c_wait_comm",
+        "c_wait_compute",
+        "copy_cross_scope",
     }
 
     def __init__(
@@ -3127,7 +3159,7 @@ class Operator:
                     op_attrs[callstack_var_name].append(
                         f'  File "{frame[0]}", line {frame[1]}, in {frame[2]}'
                     )
-                    op_attrs[callstack_var_name].append(f'    {frame[3]}')
+                    op_attrs[callstack_var_name].append(f"    {frame[3]}")
 
             self.desc.set_type(type)
             proto = OpProtoHolder.instance().get_op_proto(type)
@@ -3146,11 +3178,11 @@ class Operator:
                     warnings.warn(
                         "The Op(%s) is not support to set device." % type
                     )
-                if 'force_cpu' in op_attrs:
+                if "force_cpu" in op_attrs:
                     if (
-                        type == 'less_than'
-                        and op_attrs['force_cpu'] is not None
-                    ) or op_attrs['force_cpu'] is not False:
+                        type == "less_than"
+                        and op_attrs["force_cpu"] is not None
+                    ) or op_attrs["force_cpu"] is not False:
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
@@ -3158,7 +3190,7 @@ class Operator:
                         )
             if _current_pipeline_stage is not None:
                 pipeline_attr_name = (
-                    'pipeline_stage' + core.kAutoParallelSuffix()
+                    "pipeline_stage" + core.kAutoParallelSuffix()
                 )
                 self._update_desc_attr(
                     pipeline_attr_name, _current_pipeline_stage
@@ -3220,13 +3252,13 @@ class Operator:
                         ):
                             raise ValueError(
                                 "Incorrect setting for output(s) of "
-                                f"operator \"{type}\", should set: [{m.name}]."
+                                f'operator "{type}", should set: [{m.name}].'
                             )
                     else:
                         if not ((m.name in outputs) or m.dispensable):
                             raise ValueError(
                                 "Incorrect setting for output(s) of "
-                                f"operator \"{type}\", should set: [{m.name}]."
+                                f'operator "{type}", should set: [{m.name}].'
                             )
 
                 for out_proto in proto.outputs:
@@ -3267,7 +3299,7 @@ class Operator:
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
-                    if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
+                    if os.environ.get("FLAGS_print_extra_attrs", "0") == "1":
                         warnings.warn(f"op {type} use extra_attr: {attr_name}")
 
                     if (attr_name not in op_attrs) or (
@@ -3279,7 +3311,7 @@ class Operator:
                     else:
                         self._update_desc_attr(attr_name, op_attrs[attr_name])
 
-                if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
+                if os.environ.get("FLAGS_print_extra_attrs", "0") == "1":
                     if type in extra_op_attrs:
                         attrs = extra_op_attrs.get(type, [])
                         for attr in attrs:
@@ -3418,7 +3450,7 @@ class Operator:
                     "'%s'" % var.name() for var in self.desc.attr(name, True)
                 ]
                 a = "{name} = Vars[{value}]".format(
-                    name=name, value=','.join(attr_var_names)
+                    name=name, value=",".join(attr_var_names)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3442,17 +3474,17 @@ class Operator:
             # it is bytes of serialized protobuf
             if (
                 is_compiled_with_cinn()
-                and self.type == 'cinn_launch'
-                and name == 'compilation_key'
+                and self.type == "cinn_launch"
+                and name == "compilation_key"
             ):
                 key = self.desc.attr(name)
                 v = core.get_serialize_comile_key(key)
                 prog = Program()
                 prog = prog.parse_from_string(v)
                 s = prog._to_readable_code()
-                lines = s.split('\n')
-                value = '\n'.join(['      ' + line for line in lines])
-                value = '\n' + value
+                lines = s.split("\n")
+                value = "\n".join(["      " + line for line in lines])
+                value = "\n" + value
             else:
                 value = self.desc.attr(name)
 
@@ -3900,7 +3932,7 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                     and inplace_map.get("Input", None) == "Out"
                 ):
                     raise ValueError(
-                        'Sorry about what\'s happened. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                        "Sorry about what's happened. In to_static mode, {}'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.".format(
                             op_type, k
                         )
                     )
@@ -3912,7 +3944,7 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                             and inplace_map.get("Input", None) == "Out"
                         ):
                             raise ValueError(
-                                'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                                "Sorry about what's happend. In to_static mode, {}'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.".format(
                                     op_type, k
                                 )
                             )
@@ -4355,8 +4387,8 @@ class Block:
             var = _create_tensor(*args, **kwargs)
         else:
             var = Variable(block=self, *args, **kwargs)
-            if 'initializer' in kwargs:
-                kwargs['initializer'](var, self)
+            if "initializer" in kwargs:
+                kwargs["initializer"](var, self)
         return var
 
     def has_var(self, name):
@@ -4463,7 +4495,7 @@ class Block:
         # need record it state and reset it back after calling this API
         stop_gradient = param.stop_gradient
 
-        if 'initializer' in kwargs:
+        if "initializer" in kwargs:
 
             def _is_inited_by(block, var):
                 init_ops = []
@@ -4482,7 +4514,7 @@ class Block:
                         init_ops.append(op)
                 return init_ops
 
-            initializer = kwargs['initializer']
+            initializer = kwargs["initializer"]
             init_ops = _is_inited_by(global_block, param)
             init_ops_len = len(init_ops)
             if init_ops_len > 1:
@@ -4549,7 +4581,7 @@ class Block:
                 """
                 need_reset = True
                 for var in flatten(ins):
-                    if getattr(var, 'stop_gradient', None) is False:
+                    if getattr(var, "stop_gradient", None) is False:
                         need_reset = False
                         break
                 if need_reset:
@@ -4564,14 +4596,14 @@ class Block:
             # be converted into Variable(s) with same name and block location.
             # This is ONE and ONLY logic of type transformation of dy2static.
             ignore_ops = {
-                'conditional_block',
-                'conditional_block_grad',
-                'pylayer',
-                'pylayer_grad',
-                'recurrent',
-                'recurrent_grad',
-                'while',
-                'while_grad',
+                "conditional_block",
+                "conditional_block_grad",
+                "pylayer",
+                "pylayer_grad",
+                "recurrent",
+                "recurrent_grad",
+                "while",
+                "while_grad",
             }
             from .dygraph.base import in_to_static_mode
 
@@ -4914,7 +4946,7 @@ class IrNode:
         """
         assert isinstance(
             node, core.Node
-        ), 'node must be the instance of core.Node.'
+        ), "node must be the instance of core.Node."
         self.node = node
 
     def name(self):
@@ -5092,7 +5124,7 @@ class IrVarNode(IrNode):
         """
         assert (
             isinstance(node, core.Node) and node.is_var()
-        ), 'node must be the instance of core.Node and it must be a variable node.'
+        ), "node must be the instance of core.Node and it must be a variable node."
         super().__init__(node)
         self.node = node
 
@@ -5191,7 +5223,7 @@ class IrOpNode(IrNode):
         """
         assert (
             isinstance(node, core.Node) and node.is_op()
-        ), 'node must be the instance of core.Node and it must be a operator node.'
+        ), "node must be the instance of core.Node and it must be a operator node."
         super().__init__(node)
         self.node = node
 
@@ -5357,7 +5389,7 @@ class IrGraph:
         """
         assert isinstance(
             graph, core.Graph
-        ), 'graph must be the instance of core.Graph.'
+        ), "graph must be the instance of core.Graph."
         self.graph = graph
         self._for_test = for_test
 
@@ -5545,7 +5577,7 @@ class IrGraph:
             old_input_node.node in self.graph.nodes()
             and new_input_node.node in self.graph.nodes()
             and op_node.node in self.graph.nodes()
-        ), 'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
+        ), "The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes."
         old_input_node.remove_output(op_node)
         op_node.remove_input(old_input_node)
         new_input_node.append_output(op_node)
@@ -5565,7 +5597,7 @@ class IrGraph:
             old_output_node.node in self.graph.nodes()
             and new_output_node.node in self.graph.nodes()
             and op_node.node in self.graph.nodes()
-        ), 'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
+        ), "The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes."
         old_output_node.remove_input(op_node)
         op_node.remove_output(old_output_node)
         new_output_node.append_input(op_node)
@@ -5581,10 +5613,10 @@ class IrGraph:
             node_out(IrNode): the output node.
         """
         assert node_in.node in self.graph.nodes(), (
-            'node_in(%s) must be in the graph nodes.' % node_in.node.name()
+            "node_in(%s) must be in the graph nodes." % node_in.node.name()
         )
         assert node_out.node in self.graph.nodes(), (
-            'node_out(%s) must be in the graph nodes.' % node_out.node.name()
+            "node_out(%s) must be in the graph nodes." % node_out.node.name()
         )
         node_in.append_output(node_out)
         node_out.append_input(node_in)
@@ -5684,13 +5716,13 @@ class IrGraph:
         """
 
         def _convert_to_pdf(dot_file_path):
-            pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
+            pdf_save_path = os.path.splitext(dot_file_path)[0] + ".pdf"
             exited_code = subprocess.call(
-                ['dot', '-Tpdf', dot_file_path, '-o', pdf_save_path]
+                ["dot", "-Tpdf", dot_file_path, "-o", pdf_save_path]
             )
             if exited_code != 0:
-                print('The dot command is needed for creating pdf files.')
-                print(f'The {dot_file_path} is saved as the dot filetype.')
+                print("The dot command is needed for creating pdf files.")
+                print(f"The {dot_file_path} is saved as the dot filetype.")
 
         remove_ctr_vars = set()
         if remove_ctr_var:
@@ -5698,7 +5730,7 @@ class IrGraph:
                 if node.is_ctrl_var():
                     remove_ctr_vars.add(node)
             self.safe_remove_nodes(remove_ctr_vars)
-        print(f'Total ops num = {len(self.all_op_nodes())}.')
+        print(f"Total ops num = {len(self.all_op_nodes())}.")
 
         if marked_nodes is not None:
             if not isinstance(marked_nodes, set):
@@ -5709,14 +5741,14 @@ class IrGraph:
             marked_nodes = {n.node for n in marked_nodes}
             remove_ctr_vars = {n.node for n in remove_ctr_vars}
             marked_nodes = marked_nodes - remove_ctr_vars
-            if self.graph.has('__graphviz__marked_node__'):
-                self.graph.erase('__graphviz__marked_node__')
-            self.graph.set('__graphviz__marked_node__', marked_nodes)
+            if self.graph.has("__graphviz__marked_node__"):
+                self.graph.erase("__graphviz__marked_node__")
+            self.graph.set("__graphviz__marked_node__", marked_nodes)
         if not os.path.exists(save_path):
             os.makedirs(save_path)
-        viz_dot_path = os.path.join(save_path, name) + '.dot'
-        viz_pass = core.get_pass('graph_viz_pass')
-        viz_pass.set('graph_viz_path', viz_dot_path)
+        viz_dot_path = os.path.join(save_path, name) + ".dot"
+        viz_pass = core.get_pass("graph_viz_pass")
+        viz_pass.set("graph_viz_path", viz_dot_path)
         viz_pass.apply(self.graph)
         _convert_to_pdf(viz_dot_path)
 
@@ -5731,9 +5763,9 @@ class IrGraph:
         Returns:
             Program: a program converted from the graph.
         """
-        convert_pass = core.get_pass('graph_to_program_pass')
+        convert_pass = core.get_pass("graph_to_program_pass")
         desc = core.ProgramDesc()
-        convert_pass.set_not_owned('program', desc)
+        convert_pass.set_not_owned("program", desc)
         convert_pass.apply(self.graph)
         program = Program._construct_from_desc(desc)
         return program
@@ -5909,9 +5941,9 @@ class Program:
                     old_var = None
 
                 kwargs = {
-                    'type': new_var_desc.type(),
-                    'name': new_var_desc.name(),
-                    'shape': get_var_desc_attr_or_none(
+                    "type": new_var_desc.type(),
+                    "name": new_var_desc.name(),
+                    "shape": get_var_desc_attr_or_none(
                         new_var_desc,
                         "shape",
                         [
@@ -5920,7 +5952,7 @@ class Program:
                             core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                         ],
                     ),
-                    'dtype': get_var_desc_attr_or_none(
+                    "dtype": get_var_desc_attr_or_none(
                         new_var_desc,
                         "dtype",
                         [
@@ -5929,7 +5961,7 @@ class Program:
                             core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                         ],
                     ),
-                    'lod_level': get_var_desc_attr_or_none(
+                    "lod_level": get_var_desc_attr_or_none(
                         new_var_desc,
                         "lod_level",
                         [
@@ -5937,17 +5969,17 @@ class Program:
                             core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                         ],
                     ),
-                    'error_clip': old_var.error_clip
+                    "error_clip": old_var.error_clip
                     if old_var is not None
                     else None,
-                    'stop_gradient': old_var.stop_gradient
+                    "stop_gradient": old_var.stop_gradient
                     if old_var is not None
                     else False,
-                    'is_data': old_var.is_data
+                    "is_data": old_var.is_data
                     if old_var is not None
                     else False,
-                    'need_check_feed': new_var_desc.need_check_feed(),
-                    'belong_to_optimizer': old_var.belong_to_optimizer
+                    "need_check_feed": new_var_desc.need_check_feed(),
+                    "belong_to_optimizer": old_var.belong_to_optimizer
                     if old_var is not None
                     else False,
                 }
@@ -5955,27 +5987,27 @@ class Program:
                 if isinstance(old_var, Parameter):
                     kwargs.update(
                         {
-                            'trainable': old_var.trainable,
-                            'optimize_attr': old_var.optimize_attr,
-                            'regularizer': old_var.regularizer,
-                            'do_model_average': old_var.do_model_average,
-                            'need_clip': old_var.need_clip,
-                            'is_distributed': old_var.is_distributed,
-                            'is_parameter': old_var.is_parameter,
+                            "trainable": old_var.trainable,
+                            "optimize_attr": old_var.optimize_attr,
+                            "regularizer": old_var.regularizer,
+                            "do_model_average": old_var.do_model_average,
+                            "need_clip": old_var.need_clip,
+                            "is_distributed": old_var.is_distributed,
+                            "is_parameter": old_var.is_parameter,
                         }
                     )
                     block_new_vars.append(
                         {
-                            'class': Parameter,
-                            'kwargs': copy.deepcopy(kwargs),
+                            "class": Parameter,
+                            "kwargs": copy.deepcopy(kwargs),
                         }
                     )
                 else:
-                    kwargs['persistable'] = new_var_desc.persistable()
+                    kwargs["persistable"] = new_var_desc.persistable()
                     block_new_vars.append(
                         {
-                            'class': Variable,
-                            'kwargs': copy.deepcopy(kwargs),
+                            "class": Variable,
+                            "kwargs": copy.deepcopy(kwargs),
                         }
                     )
 
@@ -6004,9 +6036,9 @@ class Program:
         for idx in range(block_num):
             block = self.blocks[idx]
             for new_var in all_new_vars[idx]:
-                clazz = new_var['class']
-                kwargs = new_var['kwargs']
-                kwargs['block'] = block
+                clazz = new_var["class"]
+                kwargs = new_var["kwargs"]
+                kwargs["block"] = block
                 clazz(**kwargs)
 
         # then append op
@@ -6214,7 +6246,7 @@ class Program:
         program_str = ""
         for block in self.blocks:
             program_str += block._to_readable_code(skip_op_callstack)
-            program_str += '\n'
+            program_str += "\n"
         return program_str
 
     def to_string(self, throw_on_error, with_details=False):
@@ -6500,15 +6532,15 @@ class Program:
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
-            if hasattr(self, 'lr_scheduler'):
+            if hasattr(self, "lr_scheduler"):
                 p.lr_scheduler = self.lr_scheduler
-            if hasattr(self, '_pipeline_opt'):
+            if hasattr(self, "_pipeline_opt"):
                 p._pipeline_opt = self._pipeline_opt
-            if hasattr(self, '_pass_opt'):
+            if hasattr(self, "_pass_opt"):
                 p._pass_opt = self._pass_opt
-            if hasattr(self, '_need_decomp'):
+            if hasattr(self, "_need_decomp"):
                 p._need_decomp = self._need_decomp
-            if hasattr(self, '_grad_var_to_var'):
+            if hasattr(self, "_grad_var_to_var"):
                 p._grad_var_to_var = self._grad_var_to_var
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
@@ -6693,7 +6725,7 @@ class Program:
             while True:
                 if (
                     read_op_idx >= root_block.op_size()
-                    or root_block.op(read_op_idx).type() == 'read'
+                    or root_block.op(read_op_idx).type() == "read"
                 ):
                     break
                 read_op_idx += 1
@@ -6708,8 +6740,8 @@ class Program:
             block = res.desc.block(i)
             for j in range(block.op_size()):
                 op = block.op(j)
-                if op.has_attr('is_test'):
-                    op._set_bool_attr('is_test', True)
+                if op.has_attr("is_test"):
+                    op._set_bool_attr("is_test", True)
                 if op.type() == "batch_norm":
                     # Remove the output ReserveSpace of batch_norm if exists.
                     op.remove_output("ReserveSpace")
@@ -6737,7 +6769,7 @@ class Program:
 
         # Note: The op_role and op_role_var cann't be deleted currently,
         # and we will try to remove them in the future.
-        common_clipped_attrs_list = ['op_callstack', 'with_quant_attr']
+        common_clipped_attrs_list = ["op_callstack", "with_quant_attr"]
 
         for i in range(res.desc.num_blocks()):
             block = res.desc.block(i)
@@ -7262,7 +7294,7 @@ class Program:
             parameters.extend(each_block.all_parameters())
         return parameters
 
-    def state_dict(self, mode='all', scope=None):
+    def state_dict(self, mode="all", scope=None):
         """
         Get parameters and persistable buffers of program as a dict. The key is the name of the parameter or the name of the buffer.
         The value is the tensor of this variable in the given scope.
@@ -7341,11 +7373,11 @@ class Program:
             return False
 
         def condition(var):
-            if mode == 'param':
+            if mode == "param":
                 return is_parameter(var)
-            elif mode == 'opt':
+            elif mode == "opt":
                 return is_belong_to_optimizer(var)
-            elif mode == 'all':
+            elif mode == "all":
                 return is_parameter(var) or is_belong_to_optimizer(var)
             else:
                 raise ValueError(
@@ -7416,14 +7448,14 @@ class Program:
 
         vars_dict = {var.name: var for var in self.list_vars()}
         condition = (
-            True if 'StructuredToParameterName@@' in state_dict else False
+            True if "StructuredToParameterName@@" in state_dict else False
         )
         for name, value in state_dict.items():
             if condition:
                 if name == "StructuredToParameterName@@":
                     continue
-                if name in state_dict['StructuredToParameterName@@']:
-                    name = state_dict['StructuredToParameterName@@'][name]
+                if name in state_dict["StructuredToParameterName@@"]:
+                    name = state_dict["StructuredToParameterName@@"][name]
             if name in vars_dict:
                 try:
                     vars_dict[name].set_value(value, scope)
@@ -7490,17 +7522,17 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             type=type,
             **kwargs,
         )
-        self.trainable = kwargs.get('trainable', True)
+        self.trainable = kwargs.get("trainable", True)
 
         self.stop_gradient = not self.trainable
 
-        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+        self.optimize_attr = kwargs.get("optimize_attr", {"learning_rate": 1.0})
 
-        self.regularizer = kwargs.get('regularizer', None)
+        self.regularizer = kwargs.get("regularizer", None)
 
-        self.do_model_average = kwargs.get('do_model_average', None)
+        self.do_model_average = kwargs.get("do_model_average", None)
 
-        self.need_clip = kwargs.get('need_clip', True)
+        self.need_clip = kwargs.get("need_clip", True)
 
         self.is_distributed = False
 
@@ -7592,14 +7624,11 @@ class EagerParamBase(core.eager.Tensor):
                 )
 
         if dtype is not None:
-            if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-                dtype = convert_np_dtype_to_dtype_(dtype)
-            if isinstance(dtype, core.DataType):
-                dtype = paddle_type_to_proto_type[dtype]
+            dtype = convert_to_proto_type(dtype)
         else:
             dtype = core.VarDesc.VarType.FP32
 
-        name = kwargs.get('name', unique_name.generate('_eager_param_base'))
+        name = kwargs.get("name", unique_name.generate("_eager_param_base"))
 
         if isinstance(shape, core.eager.Tensor):
             shape = shape.numpy()
@@ -7613,18 +7642,18 @@ class EagerParamBase(core.eager.Tensor):
         )
         self.retain_grads()
 
-        trainable = kwargs.get('trainable', True)
+        trainable = kwargs.get("trainable", True)
         self.stop_gradient = not trainable
 
-        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+        self.optimize_attr = kwargs.get("optimize_attr", {"learning_rate": 1.0})
 
-        self.regularizer = kwargs.get('regularizer', None)
+        self.regularizer = kwargs.get("regularizer", None)
 
-        self.do_model_average = kwargs.get('do_model_average', None)
+        self.do_model_average = kwargs.get("do_model_average", None)
 
-        self.need_clip = kwargs.get('need_clip', True)
+        self.need_clip = kwargs.get("need_clip", True)
 
-        self.is_distributed = kwargs.get('is_distributed', False)
+        self.is_distributed = kwargs.get("is_distributed", False)
         # hook functions for lazy initialization
         self._init_func = None
         self._init_op_creator = None
@@ -7901,15 +7930,15 @@ def program_guard(main_program, startup_program=None):
     from .data_feeder import check_type
 
     check_type(
-        main_program, 'main_program', Program, 'paddle.static.program_guard'
+        main_program, "main_program", Program, "paddle.static.program_guard"
     )
     main_program = switch_main_program(main_program)
     if startup_program is not None:
         check_type(
             startup_program,
-            'startup_program',
+            "startup_program",
             Program,
-            'paddle.static.program_guard',
+            "paddle.static.program_guard",
         )
         # Tag the program __is_start_up as True
         startup_program._is_start_up_program_ = True
@@ -8036,12 +8065,12 @@ def device_guard(device=None):
     """
 
     index = None
-    if device and ':' in device:
-        device, index = device.split(':')
-        if device == 'cpu':
+    if device and ":" in device:
+        device, index = device.split(":")
+        if device == "cpu":
             raise ValueError("Should not set device id for cpu.")
     if (
-        device not in ['cpu', 'gpu', 'xpu', '', None]
+        device not in ["cpu", "gpu", "xpu", "", None]
         and device not in core.get_all_custom_device_type()
     ):
         raise ValueError(
@@ -8121,7 +8150,7 @@ def _get_paddle_place(place):
         return core.Place()
 
     # GPU
-    available_gpu_place = re.match(r'gpu:\d+', place)
+    available_gpu_place = re.match(r"gpu:\d+", place)
     if place == "gpu_pinned" or place == "gpu" or available_gpu_place:
         if not core.is_compiled_with_cuda():
             raise ValueError(
@@ -8133,38 +8162,38 @@ def _get_paddle_place(place):
         elif place == "gpu":
             return core.CUDAPlace(0)
         else:
-            place_info_list = place.split(':', 1)
+            place_info_list = place.split(":", 1)
             device_id = place_info_list[1]
             device_id = int(device_id)
             return core.CUDAPlace(device_id)
 
     # XPU
-    available_xpu_place = re.match(r'xpu:\d+', place)
+    available_xpu_place = re.match(r"xpu:\d+", place)
     if available_xpu_place:
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
                 "not compiled with XPU".format(available_xpu_place.group())
             )
-        place_info_list = place.split(':', 1)
+        place_info_list = place.split(":", 1)
         device_id = place_info_list[1]
         device_id = int(device_id)
         return core.XPUPlace(device_id)
 
     # IPU
-    available_ipu_place = re.match(r'ipu:\d+', place)
+    available_ipu_place = re.match(r"ipu:\d+", place)
     if available_ipu_place:
         if not core.is_compiled_with_ipu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
                 "not compiled with IPU".format(available_ipu_place.group())
             )
-        place_info_list = place.split(':', 1)
+        place_info_list = place.split(":", 1)
         device_id = place_info_list[1]
         device_id = int(device_id)
         return core.IPUPlace(device_id)
 
-    place_info_list = place.split(':', 1)
+    place_info_list = place.split(":", 1)
     device_type = place_info_list[0]
     if device_type in core.get_all_custom_device_type():
         device_id = place_info_list[1]
@@ -8202,8 +8231,8 @@ def dtype_to_str(in_dtype):
 
 
 def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
-    op_device = op.attr('op_device')
-    cast_name = var_name.name + '.cast_' + dtype_to_str(out_dtype)
+    op_device = op.attr("op_device")
+    cast_name = var_name.name + ".cast_" + dtype_to_str(out_dtype)
     out_var = block.create_var(
         name=cast_name,
         dtype=out_dtype,
@@ -8212,8 +8241,8 @@ def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
     )
     op_role = (
         int(core.op_proto_and_checker_maker.OpRole.Forward)
-        if not op.has_attr('op_role')
-        else op.attr('op_role')
+        if not op.has_attr("op_role")
+        else op.attr("op_role")
     )
     block._insert_op_without_sync(
         idx,

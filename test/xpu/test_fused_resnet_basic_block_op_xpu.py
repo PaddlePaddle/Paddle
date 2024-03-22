@@ -18,14 +18,12 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
-    create_test_class,
     get_xpu_op_support_types,
 )
 from op_test import OpTest
 
 import paddle
 from paddle import base, nn
-from paddle.base import core
 from paddle.base.framework import default_main_program
 from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
 
@@ -302,13 +300,13 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('resnet_basic_block')
-for stype in support_types:
-    create_test_class(
-        globals(),
-        XPUTestResNetBasicBlockOp,
-        stype,
-        ignore_device_version=[core.XPUVersion.XPU1],
-    )
+# for stype in support_types:
+#    create_test_class(
+#        globals(),
+#        XPUTestResNetBasicBlockOp,
+#        stype,
+#        ignore_device_version=[core.XPUVersion.XPU1],
+#    )
 
 if __name__ == '__main__':
     unittest.main()

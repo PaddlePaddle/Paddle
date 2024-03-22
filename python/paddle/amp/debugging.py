@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.base import core
-from paddle.base.framework import dygraph_only
 
 from ..framework import LayerHelper, in_dynamic_or_pir_mode
 
@@ -455,7 +454,6 @@ def _print_operator_stats(op_count_dict):
     print("<{:-^120}>\n".format(" op count: " + str(total_ops) + " "))
 
 
-@dygraph_only
 def enable_operator_stats_collection():
     """
     Enable to collect the number of operators for different data types.
@@ -494,7 +492,6 @@ def enable_operator_stats_collection():
     paddle.set_flags({'FLAGS_low_precision_op_list': 1})
 
 
-@dygraph_only
 def disable_operator_stats_collection():
     """
     Disable the collection the number of operators for different data types.
@@ -535,7 +532,6 @@ def disable_operator_stats_collection():
     paddle.set_flags({'FLAGS_low_precision_op_list': 0})
 
 
-@dygraph_only
 @contextlib.contextmanager
 def collect_operator_stats():
     """

@@ -1017,8 +1017,9 @@ void StaticShapeGroupScheduler::AllocateStorage() {
                        consumer_block_name)) {
         // TODO(BiynXu): Return error information to the front-end instead of
         // terminating the program.
-        LOG(FATAL) << "Fusion requires synchronization across blocks, but "
-                      "currently we do not support it.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Fusion requires synchronization across blocks, but "
+            "currently we do not support it."));
         break;
       } else if (IsCrossThread(store_indice_value,
                                load_indice_value,

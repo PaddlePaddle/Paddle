@@ -17,19 +17,21 @@
 
 #include <random>
 #include <vector>
-
 #include "paddle/cinn/common/bfloat16.h"
 #include "paddle/cinn/common/float16.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace common {
 
-#define CUDA_CALL(func)                                            \
-  {                                                                \
-    auto status = func;                                            \
-    if (status != cudaSuccess) {                                   \
-      LOG(FATAL) << "CUDA Error : " << cudaGetErrorString(status); \
-    }                                                              \
+#define CUDA_CALL(func)                                    \
+  {                                                        \
+    auto status = func;                                    \
+    if (status != cudaSuccess) {                           \
+      std::stringstream ss;                                \
+      ss << "CUDA Error : " << cudaGetErrorString(status); \
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));          \
+    }                                                      \
   }
 
 class CudaMem {

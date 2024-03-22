@@ -89,12 +89,7 @@ void CropFunction(const framework::ExecutionContext& context) {
     out_dims[0] = x->dims()[0];
   }
   out->mutable_data<T>(out_dims, context.GetPlace());
-  auto x_stride = common::stride(x->dims());
   auto offsets = GetOffsets(context);
-  int64_t offset = 0;
-  for (size_t i = 0; i < offsets.size(); ++i) {
-    offset += (x_stride[i] * offsets[i]);
-  }
 
   auto x_tensor = EigenTensor<T, D>::From(*x);
   auto out_tensor = EigenTensor<T, D>::From(*out);

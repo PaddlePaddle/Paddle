@@ -46,7 +46,7 @@ struct SimplifyOneOperand {
     } else {
       return Op<DimExpr>{ret_operand};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
@@ -71,13 +71,14 @@ struct SimplifyUnitOneOperand {
     } else {
       return expr;
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
 /*
  * Simplify Example:
  * Negative(Negative(dim_expr)) => dim_expr
+ * Negative(int) => -int
  */
 struct SimplifyDoubleNeg {
   using dim_expr_type = Negative<DimExpr>;
@@ -87,6 +88,8 @@ struct SimplifyDoubleNeg {
     if (inner_expr.Has<Negative<DimExpr>>()) {
       const auto& ret_expr = inner_expr.Get<Negative<DimExpr>>()->data;
       return ret_expr;
+    } else if (inner_expr.Has<std::int64_t>()) {
+      return -inner_expr.Get<std::int64_t>();
     } else {
       return expr;
     }
@@ -123,7 +126,7 @@ struct SimplifyOperands {
     } else {
       return Op<DimExpr>{mut_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
@@ -388,7 +391,7 @@ struct GetInversed<Mul> {
 template <>
 struct GetInversed<Broadcast> {
   static DimExpr Call(const DimExpr& expr) {
-    LOG(FATAL) << "Broadcast is not a group in math.";
+    PADDLE_THROW(phi::errors::Fatal("Broadcast is not a group in math."));
   }
 };
 
@@ -461,7 +464,7 @@ struct FoldUnitConstant {
     } else {
       return Op<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
@@ -500,7 +503,7 @@ struct FoldConstants {
     } else {
       return Op<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 };
 
@@ -557,7 +560,7 @@ ConstRational SimplifiedConstRational(int64_t num, int64_t dem) {
 
 template <typename T>
 std::optional<ConstRational> GetConstRationalImpl(const T& expr) {
-  LOG(FATAL) << "not supported.";
+  PADDLE_THROW(phi::errors::Fatal("not supported."));
   return std::nullopt;
 }
 
@@ -722,7 +725,7 @@ struct FoldInversedPairToUnit {
     } else {
       return Op<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 
   std::optional<SearchResult> SearchInversedPair(
@@ -776,7 +779,7 @@ struct FoldRedundantSymbolicBroadcast {
     } else {
       return Broadcast<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 
   std::optional<MaxInt64> SearchMaxInt64(const List<DimExpr>& operands) {
@@ -835,7 +838,7 @@ struct FoldRedundantBroadcast {
     } else {
       return Broadcast<DimExpr>{ret_operands};
     }
-    LOG(FATAL) << "Dead code.";
+    PADDLE_THROW(phi::errors::Fatal("Dead code."));
   }
 
   std::optional<SearchResult> SearchInversedPair(
@@ -987,6 +990,58 @@ DimExpr SubstituteDimExpr(
   const auto& opt_replaced =
       SubstituteDimExprHelper(pattern_to_replacement).Substitute(dim_expr);
   return opt_replaced.has_value() ? opt_replaced.value() : dim_expr;
+}
+
+}  // namespace symbol
+
+namespace symbol {
+namespace {
+
+void CollectUnaryDimExprSymbolsImpl(const DimExpr& dim_expr,
+                                    std::unordered_set<std::string>* ret) {
+  std::unordered_set<std::string> symbols = CollectDimExprSymbols(dim_expr);
+  ret->insert(symbols.begin(), symbols.end());
+}
+
+void CollectListDimExprSymbolsImpl(const List<DimExpr>& dim_exprs,
+                                   std::unordered_set<std::string>* ret) {
+  for (const auto& dim_expr : *dim_exprs) {
+    std::unordered_set<std::string> symbols = CollectDimExprSymbols(dim_expr);
+    ret->insert(symbols.begin(), symbols.end());
+  }
+}
+}  // namespace
+
+std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
+  std::unordered_set<std::string> symbols;
+  // clang-format off
+  auto lambdas = Overloaded{
+      [&](std::int64_t dim_expr) { return; },
+      [&](const std::string& dim_expr) { symbols.insert(dim_expr); },
+      [&](const Negative<DimExpr>& dim_expr) {
+        CollectUnaryDimExprSymbolsImpl(dim_expr->data, &symbols);
+      },
+      [&](const Reciprocal<DimExpr>& dim_expr) {
+        CollectUnaryDimExprSymbolsImpl(dim_expr->data, &symbols);
+      },
+      [&](const Add<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Mul<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Max<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Min<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      },
+      [&](const Broadcast<DimExpr>& dim_expr) {
+        CollectListDimExprSymbolsImpl(dim_expr.operands, &symbols);
+      }};
+  // clang-format on
+  std::visit(lambdas, dim_expr.variant());
+  return symbols;
 }
 
 }  // namespace symbol

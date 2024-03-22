@@ -1001,7 +1001,7 @@ OperatorBase::OperatorBase(const std::string& type,
   // as Input.
   for (auto& attr : FilterAttrVar(attrs)) {
     VLOG(3) << "found Attribute with Variable type: " << attr.first;
-    inputs_[attr.first] = std::move(AttrVarNames(attr.second));
+    inputs_[attr.first] = AttrVarNames(attr.second);
     attrs_.erase(attr.first);
   }
 }
@@ -1765,7 +1765,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             std::make_unique<phi::KernelSignature>(type_.c_str());
       } else {
         kernel_signature_ = std::make_unique<phi::KernelSignature>(
-            std::move(GetExpectedPhiKernelArgs(exe_ctx)));
+            GetExpectedPhiKernelArgs(exe_ctx));
       }
 
       VLOG(6) << *kernel_signature_.get();
@@ -2287,8 +2287,8 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
   if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {  // NOLINT
     kernel_signature_ = std::make_unique<phi::KernelSignature>(type_.c_str());
   } else {
-    kernel_signature_ = std::make_unique<phi::KernelSignature>(
-        std::move(GetExpectedPhiKernelArgs(ctx)));
+    kernel_signature_ =
+        std::make_unique<phi::KernelSignature>(GetExpectedPhiKernelArgs(ctx));
   }
   VLOG(6) << *kernel_signature_.get();
   phi_kernel_name = kernel_signature_->name;
@@ -3358,27 +3358,27 @@ void OperatorWithKernel::BuildPhiKernelContext(
           need_prepare_phi_data_ = true;
           auto& ins_vector = ctx.inputs.at(attr_names[i]);
           phi_kernel_context->EmplaceBackAttr(
-              std::move(framework::MakePhiScalarFromVar(*ins_vector.front())));
+              framework::MakePhiScalarFromVar(*ins_vector.front()));
         }
         break;
       case phi::AttributeType::INT_ARRAY:
         if (attr_iter != Attrs().end()) {
           switch (AttrTypeID(attr_iter->second)) {
             case proto::AttrType::INTS:  // NOLINT
-              phi_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-                  PADDLE_GET_CONST(std::vector<int32_t>, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(phi::IntArray(
+                  PADDLE_GET_CONST(std::vector<int32_t>, attr_iter->second)));
               break;
             case proto::AttrType::LONGS:
-              phi_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-                  PADDLE_GET_CONST(std::vector<int64_t>, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(phi::IntArray(
+                  PADDLE_GET_CONST(std::vector<int64_t>, attr_iter->second)));
               break;
             case proto::AttrType::INT:
-              phi_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-                  &PADDLE_GET_CONST(int32_t, attr_iter->second), 1)));
+              phi_kernel_context->EmplaceBackAttr(phi::IntArray(
+                  &PADDLE_GET_CONST(int32_t, attr_iter->second), 1));
               break;
             case proto::AttrType::LONG:
-              phi_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-                  &PADDLE_GET_CONST(int64_t, attr_iter->second), 1)));
+              phi_kernel_context->EmplaceBackAttr(phi::IntArray(
+                  &PADDLE_GET_CONST(int64_t, attr_iter->second), 1));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -3390,11 +3390,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
           need_prepare_phi_data_ = true;
           auto& ins_vector = ctx.inputs.at(attr_names[i]);
           if (ins_vector.size() == 1) {  // ShapeTensor
-            phi_kernel_context->EmplaceBackAttr(std::move(
-                framework::MakePhiIntArrayFromVar(*ins_vector.front())));
+            phi_kernel_context->EmplaceBackAttr(
+                framework::MakePhiIntArrayFromVar(*ins_vector.front()));
           } else {  // ShapeTensorList
             phi_kernel_context->EmplaceBackAttr(
-                std::move(framework::MakePhiIntArrayFromVarList(ins_vector)));
+                framework::MakePhiIntArrayFromVarList(ins_vector));
           }
         }
         break;

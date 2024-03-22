@@ -368,7 +368,7 @@ void DropoutFwGPUKernelDriver(
 
       phi::backends::gpu::CUDAGraphNodeLauncher::parameterSetter_t
           parameterSetter = [offset, dev_ctx_p, state_index, is_fix_seed](
-                                phi::backends::gpu::CUDAKernelParams& params) {
+                                phi::backends::gpu::gpuKernelParams& params) {
             if (!is_fix_seed) {
               // we assume seed is null pointer
               // seed copy to cpu is meaningless here
@@ -389,7 +389,7 @@ void DropoutFwGPUKernelDriver(
             }
           };
 
-      phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
+      phi::backends::gpu::CUDAGraphNodeLauncher::gpuKernelCallback_t
           cudaKernelCallback = [=](unsigned int id) {
             void* functionPtr =
                 reinterpret_cast<void*>(&(VectorizedRandomGenerator<T>));

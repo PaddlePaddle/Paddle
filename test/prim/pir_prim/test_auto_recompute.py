@@ -125,6 +125,7 @@ class TestAutoRecomputeRmsNorm(unittest.TestCase):
                 [out],
                 grad_outputs=[out_grad],
                 fwd_op_end_idx=13,
+                backward_op_start_idx=15,
             )
             exe = paddle.static.Executor(place)
             res = exe.run(

@@ -118,12 +118,12 @@ class IR_API IrContext {
                       void (*verify_region)(Operation *));
 
   ///
-  /// \brief Get registered operaiton infomation.
+  /// \brief Get registered operation infomation.
   ///
   OpInfo GetRegisteredOpInfo(const std::string &name);
 
   ///
-  /// \brief Get registered operaiton infomation map.
+  /// \brief Get registered operation infomation map.
   ///
   const OpInfoMap &registered_op_info_map();
 

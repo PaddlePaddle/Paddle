@@ -492,7 +492,7 @@ static std::ostream& operator<<(std::ostream& os, MemoryType t) {
     MEMORY_TYPE_FOR_ALL(__)
 
     default:
-      LOG(FATAL) << "Not supported memory type";
+      PADDLE_THROW(phi::errors::InvalidArgument("Not supported memory type"));
 #undef __
   }
   return os;
@@ -500,7 +500,7 @@ static std::ostream& operator<<(std::ostream& os, MemoryType t) {
 
 template <typename T>
 Expr ExprNode<T>::Copy() const {
-  LOG(FATAL) << "Not Implemented";
+  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
   return Expr();
 }
 

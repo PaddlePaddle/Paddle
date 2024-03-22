@@ -285,8 +285,9 @@ Variable NetBuilder::FillConstant(const std::vector<int>& shape,
   } else if (type.is_bool()) {
     value = !cinn::runtime::CheckStringFlagFalse(str_value);
   } else {
-    LOG(FATAL) << "FillConstant only support int/float/bool, but here "
-               << dtype;
+    std::stringstream ss;
+    ss << "FillConstant only support int/float/bool, but here " << dtype;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   auto out = CustomInstr("fill_constant",
                          {},
@@ -676,7 +677,9 @@ std::vector<int> UpdatePool2dKernelSize(const std::vector<int>& x_shape,
     height_axis = 1;
     width_axis = 2;
   } else {
-    LOG(FATAL) << "Unsupport data_format: " << data_format;
+    std::stringstream ss;
+    ss << "Unsupport data_format: " << data_format;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   if (global_pooling) {
     new_ksize[0] = x_shape[height_axis];
@@ -709,7 +712,9 @@ std::vector<int> UpdatePool2dPaddings(const std::vector<int>& paddings,
     height_axis = 1;
     width_axis = 2;
   } else {
-    LOG(FATAL) << "Unsupport data_format: " << data_format;
+    std::stringstream ss;
+    ss << "Unsupport data_format: " << data_format;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   // When padding_algorithm is VALID, set paddings to [0, 0, 0, 0].
   // When padding_algorithm is SAME, the calculation formula of padding is as

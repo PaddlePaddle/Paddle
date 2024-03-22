@@ -91,11 +91,13 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
       } else if (sec == -1 && !has_neg) {
         has_neg = true;
       } else if (sec == 0) {
-        LOG(FATAL) << "The attribute 'num_or_sections' of split should not has "
-                      "0 ! Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "The attribute 'num_or_sections' of split should not has "
+            "0 ! Please check."));
       } else {
-        LOG(FATAL) << "The attribute 'num_or_sections' of split can only have "
-                      "at most one '-1' ! Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "The attribute 'num_or_sections' of split can only have "
+            "at most one '-1' ! Please check."));
       }
     }
     CHECK(!has_neg && sec_sum == x_shape[axis])

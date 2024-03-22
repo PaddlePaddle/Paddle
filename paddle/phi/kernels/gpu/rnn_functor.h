@@ -120,7 +120,7 @@ class RNNDescriptors {
     last_c_desc_.descriptor<T>(dims_hx, strides_hx);
 
     // ------------------- cudnn dropout descriptors ---------------------
-    size_t state_size;
+    size_t state_size = 0;
     bool is_initialized = dropout_state->initialized();
 #ifdef PADDLE_WITH_HIP
     if (!is_initialized) {

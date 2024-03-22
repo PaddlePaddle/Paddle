@@ -202,8 +202,10 @@ void cinn_call_cublas(void *v_args,
   } else if (is_bfloat16) {
     cuda_dtype = CUDA_R_16BF;
   } else {
-    LOG(FATAL) << "unsupported cublas data type: "
-               << static_cast<int>(type_code) << ", bytes = " << bytes;
+    std::stringstream ss;
+    ss << "unsupported cublas data type: " << static_cast<int>(type_code)
+       << ", bytes = " << bytes;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   if (a1 * a2 * b1 * b2 == 1) {
@@ -424,8 +426,10 @@ void cinn_call_batched_cublas(void *v_args,
   } else if (is_bfloat16) {
     cuda_dtype = CUDA_R_16BF;
   } else {
-    LOG(FATAL) << "unsupported cublas data type: "
-               << static_cast<int>(type_code) << ", bytes = " << bytes;
+    std::stringstream ss;
+    ss << "unsupported cublas data type: " << static_cast<int>(type_code)
+       << ", bytes = " << bytes;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   int m = trans_o ? (trans_a ? a4 : a3) : (trans_b ? b3 : b4);
@@ -630,7 +634,8 @@ cudnnDataType_t convert_to_cudnn_dtype(void *v_args, int num_args) {
     auto t = args[i].operator cinn_buffer_t *()->type.code;
     int b = args[0].operator cinn_buffer_t *()->type.bits;
     if (t != type_code || bits != b) {
-      LOG(FATAL) << "The types of all arguments need to be consistent.";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The types of all arguments need to be consistent."));
     }
   }
   cudnnDataType_t data_type;
@@ -645,8 +650,10 @@ cudnnDataType_t convert_to_cudnn_dtype(void *v_args, int num_args) {
   } else if (is_float && bits == 64) {
     data_type = CUDNN_DATA_DOUBLE;
   } else {
-    LOG(FATAL) << "unsupported cudnn data type: " << static_cast<int>(type_code)
-               << ", bits = " << bits;
+    std::stringstream ss;
+    ss << "unsupported cudnn data type: " << static_cast<int>(type_code)
+       << ", bits = " << bits;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return data_type;
 }
@@ -660,8 +667,9 @@ cudnnDataType_t get_cudnn_compute_dtype(cudnnDataType_t data_type) {
     case CUDNN_DATA_DOUBLE:
       return CUDNN_DATA_DOUBLE;
     default:
-      LOG(FATAL) << "unsupported cudnn data type, only support "
-                    "float16/bfloat16/float32/float64 now!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "unsupported cudnn data type, only support "
+          "float16/bfloat16/float32/float64 now!"));
   }
   return CUDNN_DATA_FLOAT;
 }
@@ -673,7 +681,8 @@ std::string debug_cudnn_tensor_format(cudnnTensorFormat_t tensor_format) {
     case CUDNN_TENSOR_NHWC:
       return "NHWC";
     default:
-      LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Only support NCHW and NHWC data layout\n"));
   }
   return "";
 }
@@ -689,7 +698,8 @@ std::string debug_cudnn_tensor_dtype(cudnnDataType_t tensor_dtype) {
     case CUDNN_DATA_DOUBLE:
       return "float64";
     default:
-      LOG(FATAL) << "Only support float16/bfloat16/float32/float64 now!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Only support float16/bfloat16/float32/float64 now!"));
   }
   return "";
 }
@@ -705,7 +715,8 @@ std::string debug_cudnn_pool_mode(cudnnPoolingMode_t pool_mode) {
     case CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING:
       return "avg_exclude_padding";
     default:
-      LOG(FATAL) << "Pool only support max and avg now!";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Pool only support max and avg now!"));
   }
   return "";
 }
@@ -2076,8 +2087,8 @@ void cinn_call_gaussian_random(
     double *ptr = reinterpret_cast<double *>(output->memory);
     CURAND_CALL(curandGenerateNormalDouble(generator, ptr, numel, mean, std));
   } else {
-    LOG(FATAL)
-        << "gaussian_random only support float32 and float64! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "gaussian_random only support float32 and float64! Please check."));
   }
 }
 
@@ -2105,8 +2116,8 @@ void cinn_call_uniform_random(
     double *ptr = reinterpret_cast<double *>(output->memory);
     CURAND_CALL(curandGenerateUniformDouble(generator, ptr, numel));
   } else {
-    LOG(FATAL)
-        << "uniform_random only support float32 and float64! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "uniform_random only support float32 and float64! Please check."));
   }
 }
 
@@ -2129,7 +2140,8 @@ void cinn_call_randint(void *v_args, int num_args, int seed, void *stream) {
     unsigned int *ptr = reinterpret_cast<unsigned int *>(output->memory);
     CURAND_CALL(curandGenerate(generator, ptr, numel));
   } else {
-    LOG(FATAL) << "randint only support int32! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "randint only support int32! Please check."));
   }
 }
 
@@ -2152,21 +2164,25 @@ cudnnDataType_t convert_to_cudnn_dtype(cinn_buffer_t *input) {
   } else if (is_float && bits == 64) {
     data_type = CUDNN_DATA_DOUBLE;
   } else {
-    LOG(FATAL) << "unsupported cudnn data type: " << static_cast<int>(type_code)
-               << ", bits = " << bits;
+    std::stringstream ss;
+    ss << "unsupported cudnn data type: " << static_cast<int>(type_code)
+       << ", bits = " << bits;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return data_type;
 }
 }  // namespace
 
-#define GetAttrValue(attr_map, key_name, default_value)      \
-  int key_name = 0;                                          \
-  if (attr_map.count(#key_name) != 0) {                      \
-    key_name = attr_map.find(#key_name)->second;             \
-  } else if (default_value >= 0) {                           \
-    key_name = default_value;                                \
-  } else {                                                   \
-    LOG(FATAL) << #key_name << " is not exist in attr_map!"; \
+#define GetAttrValue(attr_map, key_name, default_value)   \
+  int key_name = 0;                                       \
+  if (attr_map.count(#key_name) != 0) {                   \
+    key_name = attr_map.find(#key_name)->second;          \
+  } else if (default_value >= 0) {                        \
+    key_name = default_value;                             \
+  } else {                                                \
+    std::stringstream ss;                                 \
+    ss << #key_name << " is not exist in attr_map!";      \
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str())); \
   }
 
 void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,

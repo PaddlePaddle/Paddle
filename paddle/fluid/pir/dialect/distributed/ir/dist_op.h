@@ -22,6 +22,8 @@
 
 namespace paddle {
 namespace dialect {
+class TensorDistAttribute;
+
 class ShardTensorOp : public pir::Op<ShardTensorOp> {
  public:
   using Op::Op;
@@ -36,7 +38,21 @@ class ShardTensorOp : public pir::Op<ShardTensorOp> {
   pir::Value out() { return result(0); }
   void VerifySig();
 };
+
+class ReShardOp : public pir::Op<ReShardOp> {
+ public:
+  using Op::Op;
+  static const char* name() { return "dist_op.reshard"; }
+  static const char* attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  TEST_API static void Build(pir::Builder& builder,             // NOLINT
+                             pir::OperationArgument& argument,  // NOLINT
+                             pir::Value input,
+                             TensorDistAttribute tensor_dist_attr);
+  void VerifySig();
+};
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ReShardOp)

@@ -31,31 +31,16 @@ namespace xpu = baidu::xpu::api;
 namespace phi {
 
 struct XPUContext::Impl {
-  void SetL3Cache(int l3_size = 14155776) {
-    const int MAX_XPU_NUM = 16;
-    static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
+  void SetL3Cache(int l3_size = 1024) {
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(context_->xpu_stream));
+    context_->_l3_mgr.set(nullptr, 0, true);  // free origin l3
+    void* l3_ptr = nullptr;
+    xpu_malloc(static_cast<void**>(&l3_ptr), l3_size, XPU_MEM_L3);
 
-    if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
-      l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
-    }
-
-    auto selected_xpus = backends::xpu::GetXPUSelectedDevices();
-    for (unsigned int i = 0; i < selected_xpus.size(); i++) {
-      if (place_.GetDeviceId() == selected_xpus[i]) {
-        if (l3ptrs[place_.GetDeviceId()] != nullptr) {
-          xpu_free(l3ptrs[place_.GetDeviceId()]);
-          l3ptrs[place_.GetDeviceId()] = nullptr;
-        }
-        xpu_malloc(static_cast<void**>(&l3ptrs[place_.GetDeviceId()]),
-                   l3_size,
-                   XPU_MEM_L3);
-        if (l3ptrs[place_.GetDeviceId()] != nullptr) {
-          context_->_l3_mgr.set(l3ptrs[place_.GetDeviceId()], l3_size);
-          VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
-                  << " set l3 size " << l3_size;
-        }
-        break;
-      }
+    if (l3_ptr != nullptr) {
+      VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
+              << "context " << context_ << " set l3 size " << l3_size;
+      context_->_l3_mgr.set(l3_ptr, l3_size, true);
     }
   }
 
@@ -145,28 +130,26 @@ struct XPUContext::Impl {
     }
   }
 
-  void Init() {
+  void Init(int gm_default_size = 1024, int l3_default_size = 1024) {
     owned_ = true;
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     LOG_FIRST_N(WARNING, 1)
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
+
     context_ = xpu::create_context();
-    // Setup XPU GM Buffer
-    if (std::getenv("XPUAPI_DEFAULT_SIZE") != nullptr) {
-      context_->set_option("XPUAPI_DEFAULT_SIZE",
-                           std::getenv("XPUAPI_DEFAULT_SIZE"));
-    } else {
-      // Optimization described in
-      // https://github.com/PaddlePaddle/Paddle/pull/54674
-      context_->set_option("XPUAPI_DEFAULT_SIZE", "1");
-    }
+    context_->set_option("XPUAPI_DEFAULT_SIZE",
+                         std::to_string(gm_default_size).c_str());
+    VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
+            << "context " << context_ << " set xpuapi_default_size "
+            << gm_default_size;
+
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
       XPUStream s;
       xpu_stream_create(&s);
       context_->set_stream(s);
     }
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
-    SetL3Cache();
+    SetL3Cache(l3_default_size);
   }
 
   void SetXContext(xpu::Context* context) {
@@ -239,27 +222,61 @@ struct XPUContext::Impl {
   xpu::BKCLContext_t bkcl_context_{nullptr};
 };
 
+static int get_gm_size(int i) {
+  int default_size = 1024;
+  if (std::getenv("XPUAPI_DEFAULT_SIZE") != nullptr) {
+    default_size = atoi(std::getenv("XPUAPI_DEFAULT_SIZE"));
+  }
+  std::string cur_env = std::string("XPUAPI_DEFAULT_SIZE") + std::to_string(i);
+  if (std::getenv(cur_env.c_str()) != nullptr) {
+    default_size = atoi(std::getenv(cur_env.c_str()));
+  }
+  return default_size;
+}
+
+static int get_l3_size(int i) {
+  int default_size = 1024;
+  if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
+    default_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
+  }
+  std::string cur_env = std::string("XPU_PADDLE_L3_SIZE") + std::to_string(i);
+  if (std::getenv(cur_env.c_str()) != nullptr) {
+    default_size = atoi(std::getenv(cur_env.c_str()));
+  }
+  return default_size;
+}
+
 XPUContext::XPUContext() : DeviceContext() {
   if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
-    for (int i = 0; i < 4; i++) {
+    int default_num_stream = 4;
+    if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER") != nullptr) {
+      default_num_stream =
+          atoi(std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER"));
+    }
+    for (int i = 0; i < default_num_stream; i++) {
       impls_.push_back(std::make_unique<Impl>());
-      impls_[i]->Init();
+      impls_[i]->Init(get_gm_size(i), get_l3_size(i));
     }
   } else {
     impls_.push_back(std::make_unique<Impl>());
-    impls_[0]->Init();
+    impls_[0]->Init(get_gm_size(0), get_l3_size(0));
   }
 }
 
 XPUContext::XPUContext(const XPUPlace& place) : DeviceContext() {
   if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
-    for (int i = 0; i < 4; i++) {
+    int default_num_stream = 4;
+    if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER") != nullptr) {
+      default_num_stream =
+          atoi(std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER"));
+    }
+    for (int i = 0; i < default_num_stream; i++) {
       impls_.push_back(std::make_unique<Impl>(place));
-      impls_[i]->Init();
+      impls_[i]->Init(get_gm_size(i), get_l3_size(i));
     }
   } else {
     impls_.push_back(std::make_unique<Impl>(place));
-    impls_[0]->Init();
+    impls_[0]->Init(get_gm_size(0), get_l3_size(0));
   }
 }
 
@@ -303,11 +320,13 @@ void XPUContext::Wait() const {
   }
 }
 
-void XPUContext::SetXContext(xpu::Context* context) {
-  impls_[0]->SetXContext(context);
+void XPUContext::SetXContext(xpu::Context* context, int i) {
+  impls_[i]->SetXContext(context);
 }
 
-void XPUContext::SetL3Cache(int l3_size) { impls_[0]->SetL3Cache(l3_size); }
+void XPUContext::SetL3Cache(int l3_size, int i) {
+  impls_[i]->SetL3Cache(l3_size);
+}
 
 void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
   impls_[0]->SetBkclContext(context);

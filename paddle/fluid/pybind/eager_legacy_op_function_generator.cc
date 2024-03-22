@@ -212,7 +212,6 @@ std::string GenerateOpFunctionsBody(
   std::string outs_initializer_with_null = "";
   std::string return_str = "";
 
-  int outs_num = 0;
   for (auto& output : op_proto->outputs()) {
     auto& out_name = output.name();
 
@@ -287,10 +286,6 @@ std::string GenerateOpFunctionsBody(
       }
       outs_initializer += ",";
     }
-
-    // return_str += paddle::string::Sprintf(return_template, out_name);
-    // return_str += ",";
-    outs_num += 1;
   }
   call_api_str += "attrs);";
   if (outs_initializer.back() == ',') {

@@ -211,7 +211,7 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
          seed_offset_data,
          state_index,
          seed_tensor_ptr,
-         fix_seed](phi::backends::gpu::CUDAKernelParams& params) {
+         fix_seed](phi::backends::gpu::gpuKernelParams& params) {
           if (!fix_seed) {
             auto gen_cuda = dev_ctx_p->GetGenerator();
             // ensure the generator use correct state index
@@ -233,7 +233,7 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
             seed_offset_data[1] = static_cast<int64_t>(increment);
           }
         };
-    phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
+    phi::backends::gpu::CUDAGraphNodeLauncher::gpuKernelCallback_t
         cudaKernelCallback = [=](unsigned int id) {
           void* functionPtr = reinterpret_cast<void*>(
               &(VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>));

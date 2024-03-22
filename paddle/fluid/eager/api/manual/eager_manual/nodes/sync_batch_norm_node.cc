@@ -21,6 +21,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
@@ -37,6 +38,19 @@ SyncBatchNormGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "sync_batch_norm_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_SyncBatchNormGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
 
   // Apply Gradient Hooks
@@ -256,6 +270,19 @@ SyncBatchNormGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "sync_batch_norm_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_SyncBatchNormGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
 
   // Apply Gradient Hooks

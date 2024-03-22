@@ -38,6 +38,8 @@ class IR_API Value {
 
   Value(const Value &other) = default;
 
+  Value &operator=(const Value &other) = default;
+
   bool operator==(const Value &other) const;
 
   bool operator!=(const Value &other) const;

@@ -30,9 +30,7 @@ int64_t RegisterGradientHookForTensor(
   auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
 
   return grad_node->RegisterGradientHook(
-      rank_info.first,
-      rank_info.second,
-      std::move(std::make_shared<CppTensorHook>(hook)));
+      rank_info.first, rank_info.second, std::make_shared<CppTensorHook>(hook));
 }
 
 void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
@@ -48,7 +46,7 @@ void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
     accumulation_grad_node->RegisterReduceHook(
-        std::move(std::make_shared<CppVoidHook>(hook)));
+        std::make_shared<CppVoidHook>(hook));
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Only can register reduce hook for leaf Tensor."));

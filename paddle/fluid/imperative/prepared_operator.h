@@ -405,31 +405,31 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(float, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(float, attr)));
               break;
             case framework::proto::AttrType::FLOAT64:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(double, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(double, attr)));
               break;
             case framework::proto::AttrType::INT:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(int, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(int, attr)));
               break;
             case framework::proto::AttrType::LONG:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(int64_t, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr)));
               break;
             case framework::proto::AttrType::STRING:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(std::string, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(std::string, attr)));
               break;
             case framework::proto::AttrType::BOOLEAN:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(bool, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr)));
               break;
             case framework::proto::AttrType::SCALAR:
-              kernel_ctx->EmplaceBackAttr(std::move(phi::Scalar(
-                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr))));
+              kernel_ctx->EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -448,20 +448,20 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::INTS:
-              kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(PADDLE_GET_CONST(std::vector<int32_t>, attr))));
+              kernel_ctx->EmplaceBackAttr(
+                  phi::IntArray(PADDLE_GET_CONST(std::vector<int32_t>, attr)));
               break;
             case framework::proto::AttrType::LONGS:
-              kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(PADDLE_GET_CONST(std::vector<int64_t>, attr))));
+              kernel_ctx->EmplaceBackAttr(
+                  phi::IntArray(PADDLE_GET_CONST(std::vector<int64_t>, attr)));
               break;
             case framework::proto::AttrType::INT:
-              kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(&PADDLE_GET_CONST(int32_t, attr), 1)));
+              kernel_ctx->EmplaceBackAttr(
+                  phi::IntArray(&PADDLE_GET_CONST(int32_t, attr), 1));
               break;
             case framework::proto::AttrType::LONG:
-              kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(&PADDLE_GET_CONST(int64_t, attr), 1)));
+              kernel_ctx->EmplaceBackAttr(
+                  phi::IntArray(&PADDLE_GET_CONST(int64_t, attr), 1));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -481,7 +481,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
               variables.push_back(var_base->MutableVar());
             }
             kernel_ctx->EmplaceBackAttr(
-                std::move(framework::MakePhiIntArrayFromVarList(variables)));
+                framework::MakePhiIntArrayFromVarList(variables));
           }
         }
         break;

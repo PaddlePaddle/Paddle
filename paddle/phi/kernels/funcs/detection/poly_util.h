@@ -80,7 +80,7 @@ void Array2Poly(const T* box,
 template <class T>
 void PointVec2Poly(const std::vector<Point_<T>>& vec,
                    phi::funcs::gpc_polygon* poly) {
-  int pts_num = vec.size();
+  size_t pts_num = vec.size();
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   (*poly).hole[0] = 0;

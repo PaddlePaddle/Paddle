@@ -255,9 +255,7 @@ class ProgramHelper:
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        concrete_program = getattr(
-            self.proxy_layer, func_name
-        ).concrete_program  # noqa: B018
+        concrete_program = getattr(self.proxy_layer, func_name).concrete_program
 
         # TODO(zhiqiu): prepare_op_amp_options is not supported for PIR program
         # It will to use dynamic-static unified amp in pir program, and there is
@@ -366,10 +364,14 @@ class ProgramHelper:
                     var
                 )
                 is_comm = True
-                tmp = paddle.base.core.reshard(param, var_dist_attr)
+                # No need to construct backward.
+                with paddle.no_grad():
+                    tmp = paddle.base.core.reshard(param, var_dist_attr)
                 if tmp._is_initialized():
                     param.get_tensor()._share_data_with(tmp.get_tensor())
                 else:
+                    # Only setting the "param" to "None" can't release the memory
+                    param.get_tensor()._clear()
                     param = None
             paddle.device.synchronize()
 
@@ -377,6 +379,8 @@ class ProgramHelper:
             if param is None:
                 continue
             if param.name not in main_program.global_block().vars:
+                # Release the reduntant params
+                param.get_tensor()._clear()
                 continue
             if param.is_dense():
                 # get param_var's dist_attr

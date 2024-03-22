@@ -70,7 +70,7 @@ static void RunProgramDescs(const ProgramDescs &programs,
 
 FetchResultType ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::IsCUDAGraphCapturing()) {
     strategy_.num_iteration_per_drop_scope_ =
         std::numeric_limits<size_t>::max();

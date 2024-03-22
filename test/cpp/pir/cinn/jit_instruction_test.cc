@@ -82,8 +82,6 @@ TEST(CinnJitInstruction, Run) {
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-
   std::set<std::string> checking_cinn_ops = {"pd_op.sin", "pd_op.cos"};
 
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -98,23 +96,21 @@ TEST(CinnJitInstruction, Run) {
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
     if (checking_cinn_ops.count(it->name())) {
-      auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
-          *program, target, scope);
+      auto ir_compiler =
+          cinn::hlir::framework::PirCompilerManager::Create(target);
 
       std::vector<::pir::Operation*> ops = {it};
       auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
       group->loop_ranges = std::vector<int64_t>{8, 8};
       group->output_values.push_back(it->result(0));
-      auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
+      auto fn_ptr_res = ir_compiler->Build({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,
            cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
       };
 
       auto out_type = it->result(0).type();
-
       std::vector<pir::Value> vec_ins;
-
       for (size_t i = 0; i < it->num_operands(); ++i) {
         vec_ins.push_back(value_map.at(it->operand_source(i)));
       }
@@ -123,7 +119,6 @@ TEST(CinnJitInstruction, Run) {
           ::pir::Operation::Create(vec_ins, op_attrs, {out_type}, op_info);
 
       value_map[it->result(0)] = cinn_op->result(0);
-
       ir_program->block()->push_back(cinn_op);
     } else {
       std::vector<pir::Value> vec_ins;

@@ -41,7 +41,7 @@ const jit::EngineMap &CompilationUnit::EngineMap() const { return engine_map_; }
 std::shared_ptr<CompilationUnit> CompilationUnit::Clone(void *stream) {
   auto x = std::make_shared<CompilationUnit>();
   for (auto &it : engine_map_) {
-    x->SetEngine(it.first, std::move(it.second->Clone(stream)));
+    x->SetEngine(it.first, it.second->Clone(stream));
   }
   return x;
 }

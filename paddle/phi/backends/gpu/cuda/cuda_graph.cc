@@ -301,8 +301,7 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
 
 #if CUDA_VERSION >= 11000
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
-    parameterSetter_t parameterSetter,
-    cudaKernelCallback_t cudakernelCallback) {
+    parameterSetter_t parameterSetter, gpuKernelCallback_t cudakernelCallback) {
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     unsigned int id = GenerateIdentifier();
     auto cudaFunc = cudakernelCallback(id);
@@ -333,7 +332,7 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cuGraphKernelNodeGetParams(cuNode, &cuParams));
-      CUDAKernelParams kernel_params(cuParams.kernelParams);
+      gpuKernelParams kernel_params(cuParams.kernelParams);
       auto kernel =
           parameterSetters.find(static_cast<cudaFunction_t>(cuParams.func));
       VLOG(10) << "[GetParameterSettersForExecGraph] cuParams.func = "
@@ -350,7 +349,7 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
           auto setter = parameterSetter->second;
           hooks.emplace_back([setter, cuNode, cuParams](
                                  cudaGraphExec_t exec_graph) {
-            CUDAKernelParams kernel_params(cuParams.kernelParams);
+            gpuKernelParams kernel_params(cuParams.kernelParams);
             setter(kernel_params);
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::cuGraphExecKernelNodeSetParams(
                 static_cast<CUgraphExec>(exec_graph), cuNode, &cuParams));
@@ -369,7 +368,7 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
     cudaFunction_t cudaFunc,
     parameterSetter_t parameterSetter,
-    cudaKernelCallback_t cudakernelCallback) {
+    gpuKernelCallback_t cudakernelCallback) {
   cudakernelCallback(0);
 }
 

@@ -349,8 +349,6 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     const auto* weight_h = ctx.Input<phi::DenseTensor>("WeightH");
     const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto* hidden = ctx.Output<phi::DenseTensor>("Hidden");
-    auto* cell = ctx.Output<phi::DenseTensor>("Cell");
-    cell = cell;
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                           ? common::flatten_to_2d(x_dims, 1)

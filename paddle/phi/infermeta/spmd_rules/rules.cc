@@ -435,12 +435,13 @@ PD_REGISTER_SPMD_RULE(
     logical_xor,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     not_equal,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
-
+PD_REGISTER_SPMD_RULE(swiglu,
+                      PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmdReverse));
 // TODO(pkuzyc): add multiary elementwise rule
 
 // reduction rule

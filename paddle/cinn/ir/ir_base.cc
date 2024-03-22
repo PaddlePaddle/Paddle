@@ -22,7 +22,7 @@
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -51,7 +51,7 @@ std::ostream &operator<<(std::ostream &os, IrNodeTy type) {
 #undef __m
 
     default:
-      LOG(FATAL) << "unknown IrNodeTy found";
+      PADDLE_THROW(phi::errors::InvalidArgument("unknown IrNodeTy found"));
   }
 
   return os;

@@ -109,7 +109,7 @@ def convert_load(x):
             if new_var is not None:
                 return new_var
 
-        if x is paddle.amp.auto_cast:
+        if x is paddle.amp.auto_cast and not use_pir_api():
             return convert_auto_cast
 
     return x

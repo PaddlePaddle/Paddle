@@ -124,8 +124,11 @@ void SqueezeStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    squeeze_infer, STRIDED, phi::SqueezeInferStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    squeeze, STRIDED, phi::SqueezeStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze_infer,
+                                         STRIDED,
+                                         phi::SqueezeInferStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze,
+                                         STRIDED,
+                                         phi::SqueezeStridedKernel) {}

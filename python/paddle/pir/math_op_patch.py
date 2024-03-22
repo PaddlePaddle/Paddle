@@ -590,7 +590,7 @@ def monkey_patch_value():
             )
 
     def value_hash(self):
-        raise NotImplementedError('In python Value can not hash!')
+        return hash(id(self))
 
     import paddle
 

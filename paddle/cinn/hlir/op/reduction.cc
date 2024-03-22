@@ -88,7 +88,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
       CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
     }
   } else {
-    LOG(FATAL) << "reduce dimension is not set!";
+    PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
   bool keep_dim = false;
@@ -270,7 +270,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else {
-          LOG(FATAL) << "Unkown Reduce Type!";
+          PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       } else {
         if (arg_pack.size() == 2) {
@@ -304,7 +304,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else {
-          LOG(FATAL) << "Unkown Reduce Type!";
+          PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       }
     } else {
@@ -352,7 +352,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
     }
   } else {
-    LOG(FATAL) << "reduce dimension is not set!";
+    PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
   bool keep_dim = false;

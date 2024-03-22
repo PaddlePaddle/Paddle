@@ -547,10 +547,10 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->operand_source(0);
 
     Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
-    if (auto bool_atttr =
+    if (auto bool_attr =
             value.attribute<pir::BoolAttribute>(kAttrIsPersistable)) {
-      if (bool_atttr.data()) {
-        VLOG(6) << "Handle for builtin.shadow_ouptut persistable value:"
+      if (bool_attr.data()) {
+        VLOG(6) << "Handle for builtin.shadow_output persistable value:"
                 << var_name;
         scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
       }
@@ -744,7 +744,7 @@ void BuildScope(const pir::Block& block,
     Variable* var = value_exe_info->GetScope()->FindVar(kwarg.first);
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
-                       "The variable %s shoud exist", kwarg.first));
+                       "The variable %s should exist", kwarg.first));
 
     value_exe_info->Add(kwarg.second, kwarg.first);
   }

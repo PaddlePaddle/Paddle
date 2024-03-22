@@ -17,6 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -52,14 +53,16 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     conv({&pat.Tensor("input"), &pat.Tensor("filter")},
          {&pat.Tensor("conv_out")});
-    const auto &parameter_bias = pat.Op(
-        pir::ParameterOp::name(), {{"parameter_name", pat.Attr("param_name")}});
-    pat.Tensor("bias") = parameter_bias();
+
     pat.Tensor("add_out") = add(pat.Tensor("conv_out"), pat.Tensor("bias"));
 
     if (conv_name_ == paddle::dialect::Conv2dOp::name() ||
         conv_name_ == paddle::onednn::dialect::FusedConv2dOp::name()) {
       pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+        if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
+          return false;
+        }
+
         std::set<std::string> padding_algorithm = {"EXPLICIT", "SAME", "VALID"};
         std::set<std::string> data_format = {"NCHW", "NHWC", "AnyLayout"};
         if (padding_algorithm.count(
@@ -73,6 +76,10 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
       });
     } else {
       pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+        if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
+          return false;
+        }
+
         std::set<std::string> padding_algorithm = {"EXPLICIT", "SAME", "VALID"};
         std::set<std::string> data_format = {"NDHWC", "NCDHW"};
         if (padding_algorithm.count(
@@ -146,21 +153,18 @@ class FusedConvAddFusePattern : public paddle::drr::DrrPatternBase {
     const auto &add2 = pat.Op(paddle::dialect::AddOp::name());
     conv({&pat.Tensor("input"), &pat.Tensor("filter")},
          {&pat.Tensor("conv_out")});
-    const auto &parameter_bias = pat.Op(
-        pir::ParameterOp::name(), {{"parameter_name", pat.Attr("param_name")}});
-    pat.Tensor("bias") = parameter_bias();
 
     pat.Tensor("add_out") = add(pat.Tensor("conv_out"), pat.Tensor("bias"));
-
-    const auto &parameter = pat.Op(
-        pir::ParameterOp::name(), {{"parameter_name", pat.Attr("param_name")}});
-    pat.Tensor("other_param") = parameter();
     pat.Tensor("result") =
         add2(pat.Tensor("add_out"), pat.Tensor("other_param"));
 
     if (conv_name_ == paddle::dialect::Conv2dOp::name() ||
         conv_name_ == paddle::onednn::dialect::FusedConv2dOp::name()) {
       pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+        if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
+          return false;
+        }
+
         std::set<std::string> padding_algorithm = {"EXPLICIT", "SAME", "VALID"};
         std::set<std::string> data_format = {"NCHW", "NHWC", "AnyLayout"};
         if (padding_algorithm.count(
@@ -174,6 +178,13 @@ class FusedConvAddFusePattern : public paddle::drr::DrrPatternBase {
       });
     } else {
       pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+        if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
+          return false;
+        }
+        if (!pir::ValueIsPersistable(match_ctx.Tensor("other_param"))) {
+          return false;
+        }
+
         std::set<std::string> padding_algorithm = {"EXPLICIT", "SAME", "VALID"};
         std::set<std::string> data_format = {"NDHWC", "NCDHW"};
         if (padding_algorithm.count(
@@ -245,12 +256,14 @@ class ConvTransposeBiasFusePattern : public paddle::drr::DrrPatternBase {
           &pat.Tensor("filter"),
           &pat.Tensor("output_size")},
          {&pat.Tensor("conv_out")});
-    const auto &parameter_bias = pat.Op(
-        pir::ParameterOp::name(), {{"parameter_name", pat.Attr("param_name")}});
-    pat.Tensor("bias") = parameter_bias();
+
     pat.Tensor("add_out") = add(pat.Tensor("conv_out"), pat.Tensor("bias"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
+        return false;
+      }
+
       std::set<std::string> padding_algorithm = {"EXPLICIT", "SAME", "VALID"};
       std::set<std::string> data_format = {"NCHW", "NHWC", "AnyLayout"};
       if (padding_algorithm.count(
@@ -316,19 +329,19 @@ class FusedConvTransposeAddFusePattern : public paddle::drr::DrrPatternBase {
           &pat.Tensor("filter"),
           &pat.Tensor("output_size")},
          {&pat.Tensor("conv_out")});
-    const auto &parameter_bias = pat.Op(
-        pir::ParameterOp::name(), {{"parameter_name", pat.Attr("param_name")}});
-    pat.Tensor("bias") = parameter_bias();
 
     pat.Tensor("add_out") = add(pat.Tensor("conv_out"), pat.Tensor("bias"));
-
-    const auto &parameter = pat.Op(
-        pir::ParameterOp::name(), {{"parameter_name", pat.Attr("param_name")}});
-    pat.Tensor("other_param") = parameter();
     pat.Tensor("result") =
         add2(pat.Tensor("add_out"), pat.Tensor("other_param"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
+        return false;
+      }
+      if (!pir::ValueIsPersistable(match_ctx.Tensor("other_param"))) {
+        return false;
+      }
+
       std::set<std::string> padding_algorithm = {"EXPLICIT", "SAME", "VALID"};
       std::set<std::string> data_format = {"NCHW", "NHWC", "AnyLayout"};
       if (padding_algorithm.count(

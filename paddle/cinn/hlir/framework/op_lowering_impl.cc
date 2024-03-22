@@ -74,7 +74,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                         apply_pass,
                         &OpLowererImpl::ReduceScheduleDetermineFunction);
     case framework::kOutFusible:
-      LOG(FATAL) << "Group Pattern Kind kOutFusible Is Not Implemented!";
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Group Pattern Kind kOutFusible Is Not Implemented!"));
     case framework::kNonFusible:
       return LowerGroup(group,
                         apply_op_schedule,
@@ -82,7 +83,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                         apply_pass,
                         &OpLowererImpl::NonFusibleScheduleDetermineFunction);
     default:
-      LOG(FATAL) << "Group Pattern Kind Is Unknown!";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Group Pattern Kind Is Unknown!"));
   }
 }
 

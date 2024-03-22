@@ -90,7 +90,9 @@ std::string Type2StrForReduce(cinn::common::Type type) {
   } else if (type.is_bool()) {
     return "";
   }
-  LOG(FATAL) << "Reduce Not Support " << type;
+  std::stringstream ss;
+  ss << "Reduce Not Support " << type;
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return "";
 }
 
@@ -1118,7 +1120,9 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
   } else if (op.As<ir::Or>()) {
     return "cinn_block_reduce_any_internal_shm";
   } else {
-    LOG(FATAL) << "Reduce type: " << op << " Not supported yet!";
+    std::stringstream ss;
+    ss << "Reduce type: " << op << " Not supported yet!";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return "";
 }

@@ -649,6 +649,12 @@ def launch():
                     dir_name += str(cur_cfg[key])
                     log_dir = log_dir + "_" + dir_name
 
+            if "custom_search_dim" in tuner_cfg:
+                for key in tuner_cfg["custom_search_dim"]:
+                    dir_name = "".join(i.capitalize() for i in key.split("_"))
+                    dir_name += str(cur_cfg[key])
+                    log_dir = log_dir + "_" + dir_name
+
             ctx.args.log_dir = os.path.join(
                 os.path.dirname(ctx.args.auto_tuner_json), log_dir
             )

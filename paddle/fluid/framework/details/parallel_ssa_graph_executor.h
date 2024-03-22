@@ -27,7 +27,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class ParallelSSAGraphExecutor : public SSAGraphExecutor {
+class ParallelSSAGraphExecutor final : public SSAGraphExecutor {
  public:
   enum FeedStatus {
     kNone = 0,    // No feed

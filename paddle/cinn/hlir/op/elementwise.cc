@@ -337,22 +337,27 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
     void operator()(bool v) { scalar_ = Expr(v); }
     void operator()(const std::string &v) { scalar_ = Expr(v); }
     void operator()(const std::vector<int> &) {
-      LOG(FATAL) << "wrong type std::vector<int>";
+      PADDLE_THROW(phi::errors::InvalidArgument("wrong type std::vector<int>"));
     }
     void operator()(const std::vector<int64_t> &) {
-      LOG(FATAL) << "wrong type std::vector<int64_t>";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("wrong type std::vector<int64_t>"));
     }
     void operator()(const std::vector<float> &) {
-      LOG(FATAL) << "wrong type std::vector<float>";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("wrong type std::vector<float>"));
     }
     void operator()(const std::vector<double> &) {
-      LOG(FATAL) << "wrong type std::vector<double>";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("wrong type std::vector<double>"));
     }
     void operator()(const std::vector<bool> &) {
-      LOG(FATAL) << "wrong type std::vector<bool>";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("wrong type std::vector<bool>"));
     }
     void operator()(const std::vector<std::string> &) {
-      LOG(FATAL) << "wrong type std::vector<std::string>";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("wrong type std::vector<std::string>"));
     }
   };
   absl::visit(Visitor{scalar}, attr);
@@ -436,8 +441,9 @@ std::shared_ptr<OpStrategy> StrategyForSum(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  LOG(FATAL) << "The operator will be decomposed into several primitive "
-                "operators. Please Use Decomposer Program Pass.";
+  PADDLE_THROW(phi::errors::Fatal(
+      "The operator will be decomposed into several primitive "
+      "operators. Please Use Decomposer Program Pass."));
 }
 
 std::vector<shape_t> InferShapeForSum(const std::vector<shape_t> &inputs_shape,
@@ -446,10 +452,11 @@ std::vector<shape_t> InferShapeForSum(const std::vector<shape_t> &inputs_shape,
   auto shape = inputs_shape[0];
   for (size_t i = 1; i < inputs_shape.size(); ++i) {
     if (inputs_shape[i] != shape) {
-      LOG(FATAL) << "The input shapes must be the same. But received: the i-th("
-                 << i << ") input shape is "
-                 << utils::Join(inputs_shape[i], ",")
-                 << " and the first input shape is " << utils::Join(shape, ",");
+      std::stringstream ss;
+      ss << "The input shapes must be the same. But received: the i-th(" << i
+         << ") input shape is " << utils::Join(inputs_shape[i], ",")
+         << " and the first input shape is " << utils::Join(shape, ",");
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   std::vector<shape_t> out_shape{shape};
@@ -463,9 +470,11 @@ std::vector<Type> InferDtypeForSum(const std::vector<Type> &inputs_type,
   auto type = inputs_type[0];
   for (size_t i = 1; i < inputs_type.size(); ++i) {
     if (inputs_type[i] != type) {
-      LOG(FATAL) << "The input types must be the same. But received: the i-th("
-                 << i << ") input type is " << inputs_type[i]
-                 << " and the first input type is " << type;
+      std::stringstream ss;
+      ss << "The input types must be the same. But received: the i-th(" << i
+         << ") input type is " << inputs_type[i]
+         << " and the first input type is " << type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   std::vector<Type> res{type};
@@ -656,7 +665,9 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
     }
     EXPAND_ATTR_TYPE(EXPAND_VALUE_TO_TENSOR)
     else {  // NOLINT
-      LOG(FATAL) << "Assign value not support the type " << out_type[0];
+      std::stringstream ss;
+      ss << "Assign value not support the type " << out_type[0];
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
 #undef EXPAND_VALUE_TO_TENSOR
 
@@ -697,7 +708,8 @@ std::vector<shape_t> InferShapeForAssignValue(
   }
   EXPAND_ATTR_TYPE(EXPAND_ATTR_TO_GET_SHAPE)
   else {  // NOLINT
-    LOG(FATAL) << "assign_value not support the type!";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("assign_value not support the type!"));
   }
 #undef EXPAND_ATTR_TO_GET_SHAPE
 
@@ -738,7 +750,8 @@ std::vector<Type> InferDtypeForAssignValue(
     }
     EXPAND_ATTR_TYPE(EXPAND_ATTR_TO_GET_DTYPE)
     else {  // NOLINT
-      LOG(FATAL) << "assign_value not support the type!";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("assign_value not support the type!"));
     }
 #undef EXPAND_ATTR_TO_GET_DTYPE
   }
@@ -1085,9 +1098,12 @@ std::vector<std::vector<int>> InferShapeForReshape(
     } else if (output_shape[i] == -1 && flag_index == -1) {
       flag_index = i;
     } else if (output_shape[i] == -1) {
-      LOG(FATAL) << "More than one -1 in output_shape of op reshape.";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "More than one -1 in output_shape of op reshape."));
     } else {
-      LOG(FATAL) << "Unsupported output_shape " << output_shape[i];
+      std::stringstream ss;
+      ss << "Unsupported output_shape " << output_shape[i];
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   if (flag_index >= 0) output_shape[flag_index] = tensor_size;

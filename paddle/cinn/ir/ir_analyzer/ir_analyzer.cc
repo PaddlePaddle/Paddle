@@ -34,8 +34,8 @@
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/random_engine.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -74,9 +74,12 @@ std::vector<Expr> GetLoops(const std::vector<Expr>& exprs, const Expr& block) {
     FindLoopsVisitor visitor(block);
     auto find_loops = visitor(&it_expr);
     if (!find_loops.empty()) {
-      if (!result.empty())
-        LOG(FATAL) << "Find block with name: \n"
-                   << block_name << " appeared in more than one AST!";
+      if (!result.empty()) {
+        std::stringstream ss;
+        ss << "Find block with name: \n"
+           << block_name << " appeared in more than one AST!";
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      }
       result = find_loops;
     }
   }
@@ -120,8 +123,10 @@ Expr GetBlock(const std::vector<Expr>& exprs, const std::string& block_name) {
       return result;
     }
   }
-  LOG(FATAL) << "Didn't find a block with name " << block_name
-             << " in this ModuleExpr!";
+  std::stringstream ss;
+  ss << "Didn't find a block with name " << block_name
+     << " in this ModuleExpr!";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr) {
@@ -139,9 +144,9 @@ Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr) {
       return it_expr.As<ir::Block>()->stmts[0];
     }
   }
-  LOG(FATAL) << "Didn't find expr \n"
-             << expr << "in StScheduleImpl:\n"
-             << exprs[0];
+  std::stringstream ss;
+  ss << "Didn't find expr \n" << expr << "in StScheduleImpl:\n" << exprs[0];
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 DeviceAPI GetDeviceAPI(const std::vector<Expr>& exprs) {
@@ -208,9 +213,10 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
     visitor.target_->As<ir::ScheduleBlock>()->body = loop;
     return loop;
   } else {
-    LOG(FATAL) << "Can't find block's parent!";
+    PADDLE_THROW(phi::errors::InvalidArgument("Can't find block's parent!"));
   }
-  LOG(FATAL) << "Shouldn't reach code here in AddUnitLoop";
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("Shouldn't reach code here in AddUnitLoop"));
   return Expr{nullptr};
 }
 

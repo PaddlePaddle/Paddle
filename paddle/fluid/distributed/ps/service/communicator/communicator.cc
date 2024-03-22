@@ -254,8 +254,8 @@ void Communicator::RpcSendSparseParam(const std::string &varname,
     push_g_vec.push_back(tensor->data<float>() + i * dim);
   }
 
-  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
-      request_call_num, [this, request_call_num](void *done) {
+  DownpourBrpcClosure *closure =
+      new DownpourBrpcClosure(request_call_num, [request_call_num](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
@@ -422,8 +422,8 @@ void Communicator::SendGlobalStep(const CommContext &ctx,
   auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
   data[0] = static_cast<int64_t>(batches);
   VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
-  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
-      request_call_num, [this, request_call_num](void *done) {
+  DownpourBrpcClosure *closure =
+      new DownpourBrpcClosure(request_call_num, [request_call_num](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {

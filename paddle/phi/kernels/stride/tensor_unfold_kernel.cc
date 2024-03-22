@@ -71,5 +71,7 @@ void TensorUnfoldKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    tensor_unfold, STRIDED, phi::TensorUnfoldKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(tensor_unfold,
+                                         STRIDED,
+                                         phi::TensorUnfoldKernel) {}

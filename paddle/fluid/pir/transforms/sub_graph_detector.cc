@@ -91,11 +91,13 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     }
   }
 
-  IR_ENFORCE(
-      block->size() == sort_ops.size(),
-      "sort_ops.size() must be equal to block.size(), but received %d != %d",
+  PADDLE_ENFORCE_EQ(
       block->size(),
-      sort_ops.size());
+      sort_ops.size(),
+      phi::errors::InvalidArgument("sort_ops.size() must be equal to "
+                                   "block.size(), but received %d != %d",
+                                   block->size(),
+                                   sort_ops.size()));
 
   return sort_ops;
 }

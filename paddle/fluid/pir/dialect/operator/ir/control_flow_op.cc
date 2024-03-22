@@ -738,6 +738,46 @@ bool WhileOp::InferSymbolicShape(
 
   pir::InferSymExprForBlock(body(), shape_analysis);
 
+  // add constraints for args
+  const auto &body_args = block_args();
+  for (size_t i = 0; i < body_args.size(); ++i) {
+    const auto &input_arg_shape =
+        shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
+    const auto &yield_value_shape =
+        shape_analysis
+            ->GetShapeOrDataForValue(body().back().operand_source(i + 1))
+            .shape();
+    PADDLE_ENFORCE_EQ(input_arg_shape.size(),
+                      yield_value_shape.size(),
+                      phi::errors::InvalidArgument(
+                          "while op's input[%d] rank should equal to "
+                          "output[%d]'s rank, Now the rank of input is %d,"
+                          "the rank of output is %d.",
+                          i,
+                          i + 1,
+                          input_arg_shape.size(),
+                          yield_value_shape.size()));
+    const auto &original_input_shape =
+        shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    for (size_t j = 0; j < input_arg_shape.size(); ++j) {
+      if (input_arg_shape[j].isa<int64_t>()) {
+        continue;
+      }
+      if (input_arg_shape[j] ==
+          yield_value_shape[j]) {  // Dim isn't changed in while
+        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
+                                                input_arg_shape[j]);
+        continue;
+      }
+      if (original_input_shape.size() == yield_value_shape.size() &&
+          original_input_shape[j] == yield_value_shape[j]) {
+        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
+                                                input_arg_shape[j]);
+        continue;
+      }
+    }
+  }
+
   const auto &last_op = body().back();
   for (size_t i = 1; i < last_op.operands_source().size(); ++i) {
     shape_analysis->SetShapeOrDataForValue(
@@ -757,11 +797,11 @@ std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs.size() >= 1u,
       true,
-      phi::errors::InvalidArgument(
-          "tupe_push op's inputs' size should be greater_equal than 1, and the "
-          "inputs[i] should be non-empty. "
-          "Now the inputs's size is %d.",
-          inputs.size()));
+      phi::errors::InvalidArgument("tuple_push op's inputs' size should be "
+                                   "greater_equal than 1, and the "
+                                   "inputs[i] should be non-empty. "
+                                   "Now the inputs's size is %d.",
+                                   inputs.size()));
   auto pop_op = ApiBuilder::Instance().GetBuilder()->Build<TuplePopOp>(
       TuplePushOp::dyn_cast(op).outlet());
   std::vector<std::vector<pir::Value>> res{inputs.size()};

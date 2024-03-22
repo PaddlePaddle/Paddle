@@ -586,7 +586,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
           for (auto& i : tensor_args_) {
             LOG(INFO) << i->name;
           }
-          LOG(FATAL) << "Fatal Error!";
+          PADDLE_THROW(phi::errors::InvalidArgument("Fatal Error!"));
         }
         Reference(&arg)->buffer = tensor_map.at(arg->name)->buffer;
       }

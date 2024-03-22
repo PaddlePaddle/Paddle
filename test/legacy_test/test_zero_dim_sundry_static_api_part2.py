@@ -242,10 +242,11 @@ class TestSundryAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.increment(x, 1.0)
         grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
-
         prog = paddle.static.default_main_program()
         if paddle.framework.in_pir_mode():
-            grad_list = [_grad for _param, _grad in grad_list if _grad]
+            grad_list = [
+                _grad for _param, _grad in grad_list if _grad is not None
+            ]
             res = self.exe.run(prog, fetch_list=[x, out] + grad_list)
             self.assertEqual(res[0].shape, ())
             self.assertEqual(res[1].shape, ())

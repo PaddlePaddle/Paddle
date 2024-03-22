@@ -218,7 +218,7 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
     // seed_offset_data should preserved by cudaGraph pool
     const phi::GPUContext* dev_ctx_p = &dev_ctx;
     auto parameterSetter = [offset, dev_ctx_p, seed_offset](
-                               phi::backends::gpu::CUDAKernelParams& params) {
+                               phi::backends::gpu::gpuKernelParams& params) {
       const auto* seed_offset_data = seed_offset.data<int64_t>();
       const uint64_t seed_data = static_cast<uint64_t>(seed_offset_data[0]);
       const uint64_t increment = static_cast<uint64_t>(seed_offset_data[1]);
@@ -229,7 +229,7 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
                << ", increment = " << increment;
     };
 
-    phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
+    phi::backends::gpu::CUDAGraphNodeLauncher::gpuKernelCallback_t
         cudaKernelCallback = [=](unsigned int id) {
           void* functionPtr = reinterpret_cast<void*>(
               &(VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>));

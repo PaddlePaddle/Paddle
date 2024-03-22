@@ -27,7 +27,11 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/rocm/hip_graph.h"
+#endif
 
 namespace paddle {
 namespace memory {
@@ -47,11 +51,11 @@ void CUDAMallocAsyncAllocation::RecordStreamWithNoGraphCapturing(
   if (event_map_.find(stream) == event_map_.end()) {
     gpuEvent_t event;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
+        gpuEventCreateWithFlags(&event, gpuEventDisableTiming));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuEventRecord(event, stream));
     event_map_[stream] = event;
   } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_map_[stream], stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuEventRecord(event_map_[stream], stream));
   }
 }
 
@@ -93,16 +97,16 @@ bool CUDAMallocAsyncAllocation::CanBeFreed(bool synchronize) {
   for (auto it = event_map_.begin(); it != event_map_.end();) {
     gpuEvent_t& event = it->second;
     if (synchronize) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(event));
+      PADDLE_ENFORCE_GPU_SUCCESS(gpuEventSynchronize(event));
     } else {
-      gpuError_t err = cudaEventQuery(event);
-      if (err == cudaErrorNotReady) {
+      gpuError_t err = gpuEventQuery(event);
+      if (err == gpuErrorNotReady) {
         VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
         return false;
       }
       PADDLE_ENFORCE_GPU_SUCCESS(err);
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuEventDestroy(event));
     VLOG(8) << "Destroy event " << event;
     it = event_map_.erase(it);
   }
@@ -117,7 +121,7 @@ CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
       place_(place),
       default_stream_(default_stream) {
   PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaStreamCreateWithPriority(&memory_stream_, cudaStreamNonBlocking, 0));
+      gpuStreamCreateWithPriority(&memory_stream_, gpuStreamNonBlocking, 0));
 }
 
 bool CUDAMallocAsyncAllocator::IsAllocThreadSafe() const { return true; }

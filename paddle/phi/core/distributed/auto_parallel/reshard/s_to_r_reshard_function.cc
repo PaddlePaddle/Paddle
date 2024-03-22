@@ -35,7 +35,7 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
                             int64_t split_axis,
                             const std::vector<int64_t>& process_ids,
                             const DenseTensor& in,
-                            int64_t num_of_padding,
+                            int64_t padding_nums,
                             DenseTensor* out) {
   int64_t num_of_process = process_ids.size();
   auto dtype = in.dtype();
@@ -46,7 +46,7 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
   RESHARD_FUNCTOR_WITH_COMM(
       dev_ctx, AllGather, dtype, process_ids, in, num_of_process, out);
 
-  if (split_axis != 0 || num_of_padding != 0) {
+  if (split_axis != 0 || padding_nums != 0) {
     IntArray sections(std::vector<int64_t>(num_of_process, in.dims()[0]));
 
     std::vector<DenseTensor> split_out_vec;
@@ -58,20 +58,18 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
                     /*split_axis*/ 0,
                     &split_out_vec);
 
-    if (num_of_padding != 0) {
-      for (int64_t i = num_of_padding; i < num_of_process; ++i) {
-        std::vector<DenseTensor> tmp_out_vec;
-        IntArray tmp_sections(
-            std::vector<int64_t>{in.dims()[split_axis] - 1, 1});
-        RESHARD_FUNCTOR(dev_ctx,
-                        Split,
-                        dtype,
-                        split_out_vec[i],
-                        tmp_sections,
-                        split_axis,
-                        &tmp_out_vec);
-        split_out_vec[i] = tmp_out_vec[0];
-      }
+    if (padding_nums != 0) {
+      std::vector<DenseTensor> tmp_out_vec;
+      IntArray tmp_sections(std::vector<int64_t>{
+          in.dims()[split_axis] - padding_nums, padding_nums});
+      RESHARD_FUNCTOR(dev_ctx,
+                      Split,
+                      dtype,
+                      split_out_vec[num_of_process - 1],
+                      tmp_sections,
+                      split_axis,
+                      &tmp_out_vec);
+      split_out_vec[num_of_process - 1] = tmp_out_vec[0];
     }
 
     // Concat the result after split on correct axis.
@@ -124,15 +122,19 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                            split_axis,
                            in_process_ids,
                            in.value(),
-                           num_of_padding,
+                           /*padding_nums*/ 0,
                            GetMutableTensor(out));
   } else {
     VLOG(3) << "Unbalanced reshard from shard to replicated";
-    bool need_padding =
-        (in.dims()[split_axis] / num_of_process == in.local_dims()[split_axis]);
+    int64_t avg_size_on_split_axis =
+        (in.dims()[split_axis] + num_of_process - 1) / num_of_process;
+    int64_t padding_nums =
+        avg_size_on_split_axis * num_of_process - in.dims()[split_axis];
+    bool need_padding = (in.local_dims()[split_axis] != avg_size_on_split_axis);
+
     if (need_padding) {
       DDim concat_local_shape = in.local_dims();
-      concat_local_shape[split_axis] = 1;
+      concat_local_shape[split_axis] = padding_nums;
       IntArray concat_local_shape_int_array(concat_local_shape.Get(),
                                             concat_local_shape.size());
       auto dtype = in.dtype();
@@ -156,14 +158,14 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                              split_axis,
                              in_process_ids,
                              concat_result,
-                             num_of_padding,
+                             padding_nums,
                              GetMutableTensor(out));
     } else {
       ReshardSToRWithPadding(dev_ctx,
                              split_axis,
                              in_process_ids,
                              in.value(),
-                             num_of_padding,
+                             padding_nums,
                              GetMutableTensor(out));
     }
   }
@@ -173,23 +175,12 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
 bool SToRReshardFunctionCrossMesh::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
-  const auto& in_dims_mapping = in_dist_attr.dims_mapping();
 
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
-
-  int64_t cur_global_rank = GetCurGlobalRank();
-  if (in_process_mesh.contains(cur_global_rank)) {
-    int split_axis =
-        GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
-    int64_t num_of_process = in_process_mesh.size();
-    RESHARD_SHORTCUT_IF_FALSE(in.local_dims()[static_cast<int>(split_axis)] *
-                                  num_of_process ==
-                              in.dims()[static_cast<int>(split_axis)]);
-  }
 
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
   RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);

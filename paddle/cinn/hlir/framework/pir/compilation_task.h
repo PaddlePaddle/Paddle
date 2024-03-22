@@ -26,10 +26,8 @@ namespace framework {
 
 class GroupCompilationContext {
  public:
-  GroupCompilationContext(const Target& target,
-                          const pir::GroupPtr& group,
-                          std::shared_ptr<Scope> scope)
-      : target_(target), group_(group), scope_(scope) {}
+  GroupCompilationContext(const Target& target, const pir::GroupPtr& group)
+      : target_(target), group_(group) {}
 
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
   std::string PrintPredicate2Funcs() const;
@@ -41,7 +39,6 @@ class GroupCompilationContext {
 
   const Target& target_;
   const pir::GroupPtr& group_;
-  std::shared_ptr<Scope> scope_;
 
   size_t func_size_ = 0;
   std::vector<ir::SymbolicPredicate> predicates_;

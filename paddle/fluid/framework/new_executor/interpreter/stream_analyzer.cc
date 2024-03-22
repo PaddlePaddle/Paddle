@@ -123,8 +123,8 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
       }
     }
   }
-  // NOTE(lizhiyu): The mannual event only support the program_interpreter to
-  // annalyze the streams across the sub_programs. construct mannual events to
+  // NOTE(lizhiyu): The manual event only support the program_interpreter to
+  // analyze the streams across the sub_programs. construct manual events to
   // record
   for (auto& instruction : *instructions) {
     // create extra event to record
@@ -158,11 +158,11 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
         instruction.AddEventToRecord(device_event, platform::kCUDA /*unused*/);
         (*program_force_events_to_wait_)[op_func_node->event_to_record_] =
             instruction.EventToRecord();
-        VLOG(6) << "Create mannual event: " << op_func_node->event_to_record_
+        VLOG(6) << "Create manual event: " << op_func_node->event_to_record_
                 << " for the operator: " << instruction.OpBase()->Type();
       }
     }
-    // add extra mannual events
+    // add extra manual events
     if (!(op_func_node->events_to_wait_.empty())) {
       for (auto event_name : op_func_node->events_to_wait_) {
         PADDLE_ENFORCE_NE(
@@ -608,10 +608,10 @@ void shrink_event_info(
         }
       }
 
-      for (size_t unnecessary_wiater_instr_id : unnecessary_waiter_instr_ids) {
+      for (size_t unnecessary_waiter_instr_id : unnecessary_waiter_instr_ids) {
         VLOG(8) << "Shrink event : " << recorder_instr_id << " -> "
-                << unnecessary_wiater_instr_id;
-        waiter_recorder_map[unnecessary_wiater_instr_id].erase(
+                << unnecessary_waiter_instr_id;
+        waiter_recorder_map[unnecessary_waiter_instr_id].erase(
             recorder_instr_id);
       }
     }
@@ -738,8 +738,8 @@ void PirStreamAnalyzer::ConstructEvents(
       }
     }
   }
-  // NOTE(lizhiyu): The mannual event only support the program_interpreter to
-  // annalyze the streams across the sub_programs. construct mannual events to
+  // NOTE(lizhiyu): The manual event only support the program_interpreter to
+  // annalyze the streams across the sub_programs. construct manual events to
   // record
   for (auto& instr : instructions) {
     // create extra event to record
@@ -770,11 +770,11 @@ void PirStreamAnalyzer::ConstructEvents(
         instr->AddEventToRecord(device_event, platform::kCUDA /*unused*/);
         (*program_force_events_to_wait_)[instr->EventToRecordInfo()] =
             instr->EventToRecord();
-        VLOG(6) << "Create mannual event: " << instr->EventToRecordInfo()
+        VLOG(6) << "Create manual event: " << instr->EventToRecordInfo()
                 << " for the operator: " << instr->Name();
       }
     }
-    // add extra mannual events
+    // add extra manual events
     if (!(instr->EventsToWaitInfo().empty())) {
       for (auto event_name : instr->EventsToWaitInfo()) {
         PADDLE_ENFORCE_NE(

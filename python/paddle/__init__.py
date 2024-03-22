@@ -73,7 +73,7 @@ Tensor.__qualname__ = 'Tensor'
 
 import paddle.distributed.fleet
 import paddle.text
-import paddle.vision  # noqa: F401
+import paddle.vision
 from paddle import (  # noqa: F401
     amp,
     audio,

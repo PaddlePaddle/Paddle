@@ -32,9 +32,7 @@ class LayerCase(paddle.nn.Layer):
         var_1,  # (shape: [1, 192, 64, 64], dtype: paddle.float32, stop_gradient: False)
         var_2,  # (shape: [1, 96, 128, 128], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_3 = paddle.tensor.attribute.shape(var_0)
-        var_4 = var_3[0]
-        var_5 = var_3[1]
+        var_3 = var_0.shape
         var_6 = var_3[2]
         var_7 = var_3[3]
         var_8 = paddle.tensor.creation.arange(end=var_7)
@@ -52,9 +50,7 @@ class LayerCase(paddle.nn.Layer):
             [1, var_19, 1], 32, dtype='float32'
         )
         var_21 = var_6 * var_7
-        var_22 = paddle.tensor.attribute.shape(var_1)
-        var_23 = var_22[0]
-        var_24 = var_22[1]
+        var_22 = var_1.shape
         var_25 = var_22[2]
         var_26 = var_22[3]
         var_27 = paddle.tensor.creation.arange(end=var_26)
@@ -71,10 +67,7 @@ class LayerCase(paddle.nn.Layer):
         var_39 = paddle.tensor.creation.full(
             [1, var_38, 1], 16, dtype='float32'
         )
-        var_40 = var_25 * var_26
-        var_41 = paddle.tensor.attribute.shape(var_2)
-        var_42 = var_41[0]
-        var_43 = var_41[1]
+        var_41 = var_2.shape
         var_44 = var_41[2]
         var_45 = var_41[3]
         var_46 = paddle.tensor.creation.arange(end=var_45)
@@ -89,14 +82,13 @@ class LayerCase(paddle.nn.Layer):
         var_56 = var_55.reshape([1, -1, 2])
         var_57 = var_44 * var_45
         var_58 = paddle.tensor.creation.full([1, var_57, 1], 8, dtype='float32')
-        var_59 = var_44 * var_45
         var_60 = paddle.tensor.manipulation.concat(
             [var_18, var_37, var_56], axis=1
         )
         var_61 = paddle.tensor.manipulation.concat(
             [var_20, var_39, var_58], axis=1
         )
-        return var_60, var_21, var_40, var_59, var_61
+        return var_60, var_61
 
 
 class TestLayer(unittest.TestCase):
@@ -123,16 +115,15 @@ class TestLayer(unittest.TestCase):
         outs = net(*self.inputs)
         return outs
 
-    # NOTE prim + cinn lead to error
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=False, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':

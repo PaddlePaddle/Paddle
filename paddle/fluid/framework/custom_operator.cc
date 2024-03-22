@@ -147,7 +147,7 @@ static void RunKernelFunc(
                                   in_name));
         VLOG(3) << "Custom Operator: KernelFunc's input " << in_name
                 << " is optional dtype with None input";
-        kernel_ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+        kernel_ctx.EmplaceBackInput(paddle::Tensor());
       }
     }
   }
@@ -215,7 +215,7 @@ static void RunKernelFunc(
         VLOG(3) << "Custom Operator: InferDtype - inplace optional outputs : "
                 << out_name << " is None.";
         true_out_ptrs.emplace_back(nullptr);
-        kernel_ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
+        kernel_ctx.EmplaceBackOutput(paddle::Tensor());
         continue;
       }
       // general/inplace vector<Tensor> outputs
@@ -252,7 +252,7 @@ static void RunKernelFunc(
         VLOG(3) << "Custom Operator: InferDtype - inplace optional outputs : "
                 << out_name << " is None.";
         true_out_ptrs.emplace_back(nullptr);
-        kernel_ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
+        kernel_ctx.EmplaceBackOutput(paddle::Tensor());
         continue;
       }
       // general/inplace Tensor outputs

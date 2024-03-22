@@ -77,6 +77,51 @@ class TestMasterWeight(AmpTestBase):
             optimizer.clear_grad()
         return losses
 
+    def run_pir(self, dtype, level, use_promote, max_iters, x_data):
+        with paddle.pir_utils.IrGuard():
+            losses = []
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                model = SimpleNet(100, 100)
+                optimizer = paddle.optimizer.AdamW(
+                    learning_rate=0.01,
+                    parameters=model.parameters(),
+                )
+                scaler = paddle.amp.GradScaler(enable=True)
+                model, optimizer = paddle.amp.decorate(
+                    models=model,
+                    optimizers=optimizer,
+                    level=level,
+                    dtype=dtype,
+                    master_weight=False,
+                    master_grad=False,
+                )
+                with paddle.amp.auto_cast(
+                    enable=True,
+                    dtype=dtype,
+                    level=level,
+                    use_promote=use_promote,
+                ):
+                    x = paddle.static.data('x', x_data.shape, 'float16')
+                    out = model(x)
+                    loss = paddle.mean(out)
+                scaled = scaler.scale(loss)
+                scaler.minimize(optimizer, scaled)
+            place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            exe.run(startup)
+            for iter_id in range(max_iters):
+                results = exe.run(
+                    main,
+                    feed={'x': x_data},
+                    fetch_list=[loss],
+                )
+
+                losses.append(results[0])
+
+            return losses
+
     def run_static(self, dtype, level, use_promote, max_iters, x_data):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -121,6 +166,8 @@ class TestMasterWeight(AmpTestBase):
         return losses
 
     def test_master_weight(self):
+        np.random.seed(1)
+        paddle.seed(1)
         dtype = 'float16'
         level = 'O2'
         use_promote = True
@@ -133,9 +180,11 @@ class TestMasterWeight(AmpTestBase):
         loss_static = self.run_static(
             dtype, level, use_promote, total_steps, x_data
         )
+        loss_pir = self.run_pir(dtype, level, use_promote, total_steps, x_data)
 
         for i in range(total_steps):
             self.assertEqual(loss_dygraph[i], loss_static[i])
+            self.assertEqual(loss_dygraph[i], loss_pir[i])
 
 
 if __name__ == '__main__':

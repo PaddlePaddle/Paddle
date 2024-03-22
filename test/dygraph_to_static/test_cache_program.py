@@ -172,6 +172,7 @@ def sum_under_while(limit):
 
 
 class TestToOutputWithCache(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_output(self):
         ret = paddle.jit.to_static(sum_even_until_limit)(80, 10)
         self.assertEqual(ret.numpy(), 30)

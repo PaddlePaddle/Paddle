@@ -707,7 +707,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
-      // set mannual event information
+      // set manual event information
       op_func_node.force_record_event_ = dist_attr->force_record_event();
       op_func_node.events_to_wait_ = dist_attr->events_to_wait();
       op_func_node.event_to_record_ = dist_attr->event_to_record();

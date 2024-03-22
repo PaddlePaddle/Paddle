@@ -76,7 +76,7 @@ std::string CodeGenC::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    LOG(FATAL) << "Not supported OutputKind";
+    PADDLE_THROW(phi::errors::Unimplemented("Not supported OutputKind"));
   }
   return str_;
 }
@@ -526,8 +526,9 @@ void CodeGenC::Visit(const ir::Let *op) {
 }
 
 void CodeGenC::Visit(const ir::Reduce *op) {
-  LOG(FATAL) << "Reduce IR is just for internal representation, should not be "
-                "used for CodeGen.";
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Reduce IR is just for internal representation, should not be "
+      "used for CodeGen."));
 }
 
 void CodeGenC::Visit(const ir::Ramp *op) {
@@ -731,7 +732,8 @@ void CodeGenC::PrintRuntimeType(const cinn_type_t &type) {
   } else if (type == cinn_float64_t()) {
     str_ += "cinn_float64_t()";
   } else {
-    LOG(FATAL) << "Unknown type is not supported to print";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Unknown type is not supported to print"));
   }
 }
 
@@ -806,7 +808,9 @@ void CodeGenC::Visit(const ir::intrinsics::PodValueToX *op) {
   } else if (to_type == type_of<cinn_buffer_t *>()) {
     str_ += runtime::intrinsic::pod_value_to_buffer_p;
   } else {
-    LOG(FATAL) << "Not supported type: " << to_type;
+    std::stringstream ss;
+    ss << "Not supported type: " << to_type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   str_ += "(";

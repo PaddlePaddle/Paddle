@@ -201,16 +201,23 @@ class FunctionSpec:
                     )
 
                     if isinstance(var_spec, DistributedInputSpec):
-                        dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
-                            feed_value.type(),
-                            var_spec.local_shape,
-                            var_spec.mesh,
-                            var_spec.dims_mapping,
+                        # paddle.distributed.shard_tensor(feed_value)
+                        dist_feed_value = paddle._pir_ops.shard_tensor(
+                            feed_value, var_spec.mesh, var_spec.dims_mapping
                         )
-                        feed_value.set_type(dist_dense_tensor_type)
+                        inputs.append(dist_feed_value)
+                        # dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
+                        #     feed_value.type(),
+                        #     var_spec.local_shape,
+                        #     var_spec.mesh,
+                        #     var_spec.dims_mapping,
+                        # )
+                        # feed_value.set_type(dist_dense_tensor_type)
+                    else:
+                        inputs.append(feed_value)
                 else:
                     feed_value = var_spec
-                inputs.append(feed_value)
+                    inputs.append(feed_value)
 
         return paddle.utils.pack_sequence_as(input_with_spec, inputs)
 
