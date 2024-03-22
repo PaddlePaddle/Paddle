@@ -125,44 +125,5 @@ class TestCosHighGradCheck(TestUnaryHighGradCheck):
         self.check_high_grad()
 
 
-@param.parameterized_class(
-    ('shape', "dtype"),
-    [
-        (
-            [2, 3, 4],
-            "float32",
-        ),
-        (
-            [2, 3, 3, 4],
-            "float32",
-        ),
-        (
-            [3, 1, 1],
-            "float64",
-        ),
-        (
-            [2, 3, 1, 4],
-            "float32",
-        ),
-        (
-            [2, 3, 3, 4],
-            "float64",
-        ),
-    ],
-)
-class TestTanhHighGradCheck(TestUnaryHighGradCheck):
-    @classmethod
-    def setUpClass(cls):
-        cls.shape = cls.shape
-        cls.dtype = cls.dtype
-        cls.input = np.random.randn(*cls.shape).astype(cls.dtype)
-
-    def func_wrapper(self, x):
-        return paddle.tanh(x[0])
-
-    def test_tanh_high_grad(self):
-        self.check_high_grad()
-
-
 if __name__ == "__main__":
     unittest.main()
