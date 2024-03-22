@@ -125,6 +125,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'all_reduce',
     'all_reduce_',
+    'batch_fc',
+    'barrier',
     'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_max',
@@ -143,6 +145,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'dpsgd',
     'embedding_grad_sparse',
     'ftrl',
+    'fused_adam_',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
     'fused_elemwise_add_activation',
@@ -155,6 +158,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'lars_momentum',
     'lars_momentum_',
     'max_pool2d_v2',
+    'partial_sum',
     'random_routing',
     'recv_v2',
     'rnn_',
@@ -181,6 +185,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',
+    'partial_concat',
     'partial_send',
     'partial_recv',
     'partial_allgather',
@@ -193,6 +198,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fake_quantize_dequantize_moving_average_abs_max',
     'fake_quantize_range_abs_max',
     'fake_quantize_moving_average_abs_max',
+    'limit_by_capacity',
+    'global_scatter',
 ]
 
 

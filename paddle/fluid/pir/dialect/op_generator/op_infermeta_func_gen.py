@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from gen_utils import to_pascal_case
 from op_build_gen import (
     _INFERMETA_NEED_META_CONFIG,
     _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE,
 )
-from utils import to_pascal_case
 
 OP_INFERMETA_DECL_STRING = (
     "  static void InferMeta(phi::InferMetaContext *infer_meta );\n"
