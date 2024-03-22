@@ -155,7 +155,7 @@ class DefaultShardableAxesProvider final : public ShardableAxesProvider {
       return std::tuple{expand_op.x(), 0, expand_op.out()};
     }
     if (op->isa<cinn::dialect::BroadcastOp>()) {
-      auto broadcast_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
+      auto broadcast_op = mut_op->dyn_cast<cinn::dialect::BroadcastOp>();
       return std::tuple{broadcast_op.x(), 0, broadcast_op.out()};
     }
     return std::nullopt;
