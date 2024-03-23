@@ -46,6 +46,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("multiclass_nms");
 #endif
 #if IS_TRT_VERSION_GE(7000)
+    // use TensorRT plugin
     teller_set.insert("tile");
     int8_teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
