@@ -88,13 +88,13 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         )
         return main_var
 
-    def _create_scale_from_constant(self):
-        name = unique_name.generate("global_scale")
+    def _create_scale_from_constant(self, value):
+        name = unique_name.generate('global_scale')
         return paddle.static.create_global_var(
             name=name,
             shape=[1],
-            dtype="float32",
-            value=1.0,
+            dtype='float32',
+            value=float(value),
             persistable=True,
         )
 
