@@ -13,21 +13,20 @@
 // limitations under the License.
 
 #include "paddle/cinn/backends/hip/compiler_hip.h"
-#include "paddle/cinn/runtime/hip/hip_util.h"
 
 #include <hip/hip_runtime.h>
 #include <hip/hiprtc.h>
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
 #include <fstream>
 #include <iostream>
 
 #include "paddle/cinn/backends/cuda_util.h"
-//#include "paddle/cinn/backends/header_generator.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/runtime/hip/hip_util.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -42,44 +41,44 @@ std::string Compiler::operator()(const std::string& code,
   return CompileHipSource(code, include_headers);
 }
 
-Compiler::Compiler() {
-}
+Compiler::Compiler() {}
 
 std::vector<std::string> Compiler::FindHIPIncludePaths() {
-    const std::string delimiter = "/";
-    std::string hip_include_path;
-    const char* hip_path_env = std::getenv("ROCM_PATH");
-    if (hip_path_env != nullptr) {
-        hip_include_path += hip_path_env;
-        hip_include_path += delimiter + "include";
-        return {hip_include_path};
-    }
+  const std::string delimiter = "/";
+  std::string hip_include_path;
+  const char* hip_path_env = std::getenv("ROCM_PATH");
+  if (hip_path_env != nullptr) {
+    hip_include_path += hip_path_env;
+    hip_include_path += delimiter + "include";
+    return {hip_include_path};
+  }
 
 #if defined(__linux__)
-    struct stat st;
-    hip_include_path = "/opt/rocm/include";
-    if (stat(hip_include_path.c_str(), &st) == 0) {
-        return {hip_include_path};
-    }
-#endif
-    LOG(FATAL) << "Cannot find hip include path."
-                << "ROCM_PATH is not set or HIP is not installed in the default "
-                    "installation path."
-                << "In other than linux, it is necessary to set ROCM_PATH.";
+  struct stat st;
+  hip_include_path = "/opt/rocm/include";
+  if (stat(hip_include_path.c_str(), &st) == 0) {
     return {hip_include_path};
+  }
+#endif
+  LOG(FATAL) << "Cannot find hip include path."
+             << "ROCM_PATH is not set or HIP is not installed in the default "
+                "installation path."
+             << "In other than linux, it is necessary to set ROCM_PATH.";
+  return {hip_include_path};
 }
 
 std::vector<std::string> Compiler::FindCINNRuntimeIncludePaths() {
-    return {Context::Global().runtime_include_dir()};
+  return {Context::Global().runtime_include_dir()};
 }
 
 std::string Compiler::CompileHipSource(const std::string& code,
-                                        bool include_headers) {
-  //const auto& header_gen = JitSafeHeaderGenerator::GetInstance();
+                                       bool include_headers) {
+  // const auto& header_gen = JitSafeHeaderGenerator::GetInstance();
   std::vector<std::string> compile_options;
   std::vector<const char*> param_cstrings{};
   hiprtcProgram prog;
-  compile_options.push_back(std::string("--gpu-architecture=") + GetDeviceArch());
+  compile_options.push_back(std::string("--gpu-architecture=") +
+                            GetDeviceArch());
   compile_options.push_back("-std=c++14");
 
   if (include_headers) {  // prepare include headers
@@ -100,12 +99,8 @@ std::string Compiler::CompileHipSource(const std::string& code,
     param_cstrings.push_back(option.c_str());
   }
   VLOG(3) << "compile options: " << utils::Join(compile_options, " ");
-  HIPRTC_CALL(hiprtcCreateProgram(&prog,
-                                code.c_str(),
-                                nullptr,
-                                0,
-                                    nullptr,
-                                    nullptr));
+  HIPRTC_CALL(
+      hiprtcCreateProgram(&prog, code.c_str(), nullptr, 0, nullptr, nullptr));
   hiprtcResult compile_res =
       hiprtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
 
@@ -129,14 +124,13 @@ std::string Compiler::CompileHipSource(const std::string& code,
 }
 
 std::string Compiler::CompileWithHipcc(const std::string& hip_c) {
-  //todo，参考hipcc_test.cc
+  // todo，参考hipcc_test.cc
   return "";
 }
 
-
 std::string Compiler::GetDeviceArch() {
   // Get device properties from the first device available.
-  hipDeviceProp_t        props;
+  hipDeviceProp_t props;
   constexpr unsigned int device_id = 0;
   HIP_CALL(hipGetDeviceProperties(&props, device_id));
   return props.gcnArchName;

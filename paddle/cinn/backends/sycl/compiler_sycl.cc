@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/backends/sycl/compiler_sycl.h"
-#include <sys/stat.h> //for mkdir ...
+#include <sys/stat.h>  // for mkdir
 #include <fstream>
 #include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
 using cinn::runtime::Sycl::SYCLBackendAPI;
@@ -31,7 +31,8 @@ Compiler* Compiler::Global() {
   return inst;
 }
 
-std::string Compiler::operator()(const std::string& code, const Target::Arch gpu_type) {
+std::string Compiler::operator()(const std::string& code,
+                                 const Target::Arch gpu_type) {
   return CompileToSo(code, gpu_type);
 }
 
@@ -39,14 +40,19 @@ std::vector<std::string> Compiler::FindCINNRuntimeIncludePaths() {
   return {Context::Global().runtime_include_dir()};
 }
 
-std::string Compiler::CompileToSo(const std::string& source_code, const Target::Arch gpu_type) {
+std::string Compiler::CompileToSo(const std::string& source_code,
+                                  const Target::Arch gpu_type) {
   // create the folder to store sycl temporary files
   if (access(prefix_dir.c_str(), F_OK) == -1) {
-    CHECK(mkdir(prefix_dir.c_str(), 7) != -1) << "Fail to mkdir " << prefix_dir;
+    PADDLE_ENFORCE_NE(
+        mkdir(prefix_dir.c_str(), 7),
+        -1,
+        ::common::errors::PreconditionNotMet("Fail to mkdir " + prefix_dir));
   }
   // get unqiue file_path
   compile_num++;
-  std::string filename = prefix_dir + "/sycl_" + std::to_string(NUM::getNumxx());
+  std::string filename =
+      prefix_dir + "/sycl_" + std::to_string(NUM::getNumxx());
   source_file_path = filename + ".cc";
   shared_lib_path = filename + ".so";
   // write source file
@@ -54,7 +60,7 @@ std::string Compiler::CompileToSo(const std::string& source_code, const Target::
   CHECK(ofs.is_open()) << "Fail to open file " << source_file_path;
   ofs << source_code;
   ofs.close();
-  //set compile command
+  // set compile command
   std::string command = compiler_path;
   // prepare include headers
   auto cinn_headers = FindCINNRuntimeIncludePaths();
@@ -62,8 +68,8 @@ std::string Compiler::CompileToSo(const std::string& source_code, const Target::
     command += " -I " + header;
   }
   SetDeviceArchOptions(gpu_type);
-  command += " " + device_arch_options + " " + cxx_compile_options +
-                        " " + source_file_path + " -o " + shared_lib_path;
+  command += " " + device_arch_options + " " + cxx_compile_options + " " +
+             source_file_path + " -o " + shared_lib_path;
   // compile
   LOG(INFO) << "compile command: " << command;
   VLOG(2) << "compile command: " << command;
@@ -71,25 +77,27 @@ std::string Compiler::CompileToSo(const std::string& source_code, const Target::
   return shared_lib_path;
 }
 
-void Compiler::SetDeviceArchOptions(const Target::Arch gpu_type){
+void Compiler::SetDeviceArchOptions(const Target::Arch gpu_type) {
   std::string gpu_version = SYCLBackendAPI::Global()->GetGpuVersion();
-  switch (gpu_type)
-  {
-  case Target::Arch::NVGPU:
-    device_arch_options="-fsycl";
-    device_arch_options+= " -fsycl-targets=nvptx64-nvidia-cuda";
-    device_arch_options += " -Xsycl-target-backend --offload-arch=" + gpu_version;
-    break;
-  case Target::Arch::AMDGPU:
-    device_arch_options="-fsycl";
-    device_arch_options+= " -fsycl-targets=amdgcn-amd-amdhsa";
-    device_arch_options += " -Xsycl-target-backend --offload-arch=" + gpu_version;
-    break;
-  case Target::Arch::IntelGPU:
-    device_arch_options="-fsycl";
-    break;
-  default:
-    LOG(ERROR) << "valid gpu value in target! possible options: intel/amd/nvidia.";
+  switch (gpu_type) {
+    case Target::Arch::NVGPU:
+      device_arch_options = "-fsycl";
+      device_arch_options += " -fsycl-targets=nvptx64-nvidia-cuda";
+      device_arch_options +=
+          " -Xsycl-target-backend --offload-arch=" + gpu_version;
+      break;
+    case Target::Arch::AMDGPU:
+      device_arch_options = "-fsycl";
+      device_arch_options += " -fsycl-targets=amdgcn-amd-amdhsa";
+      device_arch_options +=
+          " -Xsycl-target-backend --offload-arch=" + gpu_version;
+      break;
+    case Target::Arch::IntelGPU:
+      device_arch_options = "-fsycl";
+      break;
+    default:
+      LOG(ERROR)
+          << "valid gpu value in target! possible options: intel/amd/nvidia.";
   }
 }
 

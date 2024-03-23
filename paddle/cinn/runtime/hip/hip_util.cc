@@ -22,15 +22,15 @@ namespace runtime {
 namespace hip {
 
 void cinn_call_hip_kernel(void *kernel_fn,
-                           void *v_args,
-                           int num_args,
-                           int grid_x,
-                           int grid_y,
-                           int grid_z,
-                           int block_x,
-                           int block_y,
-                           int block_z,
-                           void *stream) {
+                          void *v_args,
+                          int num_args,
+                          int grid_x,
+                          int grid_y,
+                          int grid_z,
+                          int block_x,
+                          int block_y,
+                          int block_z,
+                          void *stream) {
   VLOG(3) << "cinn_call_hip_kernel, grid_dim={" << grid_x << ", " << grid_y
           << ", " << grid_z << "}, block_dim={" << block_x << ", " << block_y
           << ", " << block_z << "}, num_args=" << num_args
@@ -56,19 +56,18 @@ void cinn_call_hip_kernel(void *kernel_fn,
     cinn::utils::RecordEvent record_run("hipLaunchKernel",
                                         cinn::utils::EventType::kInstruction);
     HIP_DRIVER_CALL(hipModuleLaunchKernel(static_cast<hipFunction_t>(kernel_fn),
-                                    grid_x,
-                                    grid_y,
-                                    grid_z,
-                                    block_x,
-                                    block_y,
-                                    block_z,
-                                    0,  // share memory
-                                    static_cast<hipStream_t>(stream),
-                                    kernel_args.data(),
-                                    nullptr))
+                                          grid_x,
+                                          grid_y,
+                                          grid_z,
+                                          block_x,
+                                          block_y,
+                                          block_z,
+                                          0,  // share memory
+                                          static_cast<hipStream_t>(stream),
+                                          kernel_args.data(),
+                                          nullptr))
   }
 }
-
 
 }  // namespace hip
 }  // namespace runtime

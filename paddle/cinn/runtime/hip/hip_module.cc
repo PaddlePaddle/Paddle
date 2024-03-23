@@ -42,7 +42,7 @@ HIPModule::HIPModule(const std::string& data, Kind kind)
 }
 
 hipFunction_t HIPModule::GetFunction(int device_id,
-                                   const std::string& func_name) {
+                                     const std::string& func_name) {
   VLOG(5) << "GetFuncion : " << func_name << " with device_id : " << device_id;
   cinn::utils::RecordEvent record_run("hipGetFunction",
                                       cinn::utils::EventType::kOrdinary);

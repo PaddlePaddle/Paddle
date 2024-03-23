@@ -40,7 +40,7 @@ struct Target {
     Unk = -1,
     X86,
     ARM,
-    NVGPU,    
+    NVGPU,
     AMDGPU,
     IntelGPU,
     HygonDCU,
@@ -131,7 +131,7 @@ const Target& DefaultHostTarget();
 
 const Target& DefaultNVGPUTarget();
 
-const Target& SYCLTarget(Target::Arch arch=Target::Arch::Unk);
+const Target& SYCLTarget(Target::Arch arch = Target::Arch::Unk);
 
 const Target& DefaultROCMTarget();
 

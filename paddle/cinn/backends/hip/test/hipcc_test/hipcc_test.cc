@@ -1,55 +1,67 @@
-// hipcc hipcc_test.cc -o hipcc_test
-#include<iostream>
-#include <hip/hip_runtime.h>
-#include <vector>
-#include <numeric>
-#include <algorithm>
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-template<class BidirectionalIterator>
-inline std::string format_range(const BidirectionalIterator begin, const BidirectionalIterator end)
-{
-    std::stringstream sstream;
-    sstream << "[ ";
-    for(auto it = begin; it != end; ++it)
-    {
-        sstream << *it;
-        if(it != std::prev(end))
-        {
-            sstream << ", ";
-        }
+// hipcc hipcc_test.cc -o hipcc_test
+#include <hip/hip_runtime.h>
+#include <algorithm>
+#include <iostream>
+#include <numeric>
+#include <vector>
+
+#include "glog/logging.h"
+
+template <class BidirectionalIterator>
+inline std::string format_range(const BidirectionalIterator begin,
+                                const BidirectionalIterator end) {
+  std::stringstream sstream;
+  sstream << "[ ";
+  for (auto it = begin; it != end; ++it) {
+    sstream << *it;
+    if (it != std::prev(end)) {
+      sstream << ", ";
     }
-    sstream << " ]";
-    return sstream.str();
+  }
+  sstream << " ]";
+  return sstream.str();
 }
 
-#define HIP_CHECK(condition)                                                                \
-    {                                                                                       \
-        const hipError_t error = condition;                                                 \
-        if(error != hipSuccess)                                                             \
-        {                                                                                   \
-            std::cerr << "An error encountered: \"" << hipGetErrorString(error) << "\" at " \
-                      << __FILE__ << ':' << __LINE__ << std::endl;                          \
-            std::exit(-1);                                                     \
-        }                                                                                   \
-    }
+#define HIP_CHECK(condition)                                              \
+  {                                                                       \
+    const hipError_t error = condition;                                   \
+    if (error != hipSuccess) {                                            \
+      std::cerr << "An error encountered: \"" << hipGetErrorString(error) \
+                << "\" at " << __FILE__ << ':' << __LINE__ << std::endl;  \
+      std::exit(-1);                                                      \
+    }                                                                     \
+  }
 
-int main(){
+int main() {
   // hipcc compile command
   std::string options = "hipcc -O3 --genco";
   // arch
   // Get device properties from the first device available.
-  hipDeviceProp_t        props;
+  hipDeviceProp_t props;
   constexpr unsigned int device_id = 0;
   hipGetDeviceProperties(&props, device_id);
-  if(props.gcnArchName[0])
-  {
-      options += std::string(" --offload-arch=") + props.gcnArchName;
+  if (props.gcnArchName[0]) {
+    options += std::string(" --offload-arch=") + props.gcnArchName;
   }
   // include path
   options += " -I /workspace/Paddle/paddle/cinn/backends/hip/hipcc_test";
   options += " -o kernel.hsaco";
   options += " kernel.cc";
-  std::cout << options << std::endl;
+  VLOG(6) << options << std::endl;
   system(options.c_str());
 
   // Now we launch the kernel on the device.
@@ -69,11 +81,13 @@ int main(){
   // Constant value 'a' to be used in the expression 'a*x+y'.
   constexpr float a = 5.1f;
 
-  // Allocate x vector in host and fill it with increasing sequence 1, 2, 3, 4, ... .
+  // Allocate x vector in host and fill it with increasing sequence 1, 2, 3, 4,
+  // ... .
   std::vector<float> x(size);
   std::iota(x.begin(), x.end(), 1.f);
 
-  // Allocate y vector in host and fill it with increasing sequence 2, 4, 6, 8, ... .
+  // Allocate y vector in host and fill it with increasing sequence 2, 4, 6, 8,
+  // ... .
   std::vector<float> y(x);
   std::for_each(y.begin(), y.end(), [](float& f) { f = 2 * f; });
 
@@ -85,7 +99,8 @@ int main(){
   HIP_CHECK(hipMemcpy(d_x, x.data(), size_bytes, hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(d_y, y.data(), size_bytes, hipMemcpyHostToDevice));
 
-  // Load the HIP module corresponding to the compiled binary into the current context.
+  // Load the HIP module corresponding to the compiled binary into the current
+  // context.
   hipModule_t module;
   HIP_CHECK(hipModuleLoad(&module, "kernel.hsaco"));
 
@@ -94,12 +109,12 @@ int main(){
   HIP_CHECK(hipModuleGetFunction(&kernel, module, "saxpy_kernel"));
 
   // Create and fill array with kernel arguments.
-  size_t offset    = 0;
-  char   args[256] = {};
+  size_t offset = 0;
+  char args[256] = {};
 
   *(reinterpret_cast<float*>(&args[offset])) = a;
   offset += sizeof(a);
-  offset += 4; // aligning fix for CUDA executions
+  offset += 4;  // aligning fix for CUDA executions
   *(reinterpret_cast<float**>(&args[offset])) = d_x;
   offset += sizeof(d_x);
   *(reinterpret_cast<float**>(&args[offset])) = d_y;
@@ -114,7 +129,7 @@ int main(){
                     &offset,
                     HIP_LAUNCH_PARAM_END};
 
-  std::cout << "Calculating y[i] = a * x[i] + y[i] over " << size << " elements." << std::endl;
+  VLOG(6) << "Calculating y[i] = a * x[i] + y[i] over " << size << " elements.";
 
   // Launch the kernel on the NULL stream and with the above configuration.
   HIP_CHECK(hipModuleLaunchKernel(kernel,
@@ -127,7 +142,7 @@ int main(){
                                   0,
                                   nullptr,
                                   nullptr,
-                                  (void**)&config));
+                                  static_cast<void**>(&config));
 
   // Check if the kernel launch was successful.
   HIP_CHECK(hipGetLastError())
@@ -144,8 +159,8 @@ int main(){
 
   // Print the first few elements of the results for validation.
   constexpr size_t elements_to_print = 10;
-  std::cout << "First " << elements_to_print << " elements of the results: "
-            << format_range(y.begin(), y.begin() + elements_to_print) << std::endl;
+  VLOG(6) << "First " << elements_to_print << " elements of the results: "
+          << format_range(y.begin(), y.begin() + elements_to_print);
 
   return 0;
 }

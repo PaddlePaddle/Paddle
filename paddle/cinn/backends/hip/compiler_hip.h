@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #ifdef CINN_WITH_ROCM
 #if defined(__linux__)
 #include <sys/stat.h>
@@ -27,7 +28,8 @@ namespace backends {
 namespace hiprtc {
 
 /**
- * An helper class to call HIPRTC. Input HIP device source code, get hsaco string.
+ * An helper class to call HIPRTC. Input HIP device source code, get hsaco
+ * string.
  */
 class Compiler {
  public:

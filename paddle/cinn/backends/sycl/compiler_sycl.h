@@ -21,16 +21,11 @@ namespace cinn {
 namespace backends {
 namespace syclrtc {
 
-
 class NUM {
-  public:
-    static int n;
-    static int getNum(){
-      return n;
-    }
-    static int getNumxx(){
-      return n++;
-    }
+ public:
+  static int n;
+  static int getNum() { return n; }
+  static int getNumxx() { return n++; }
 };
 
 /**
@@ -48,7 +43,6 @@ class Compiler {
   std::string operator()(const std::string& code, const Target::Arch gpu_type);
 
  private:
-
   /**
    * Get the directories of CINN runtime's header files.
    * @return list of header file directories.
@@ -61,9 +55,14 @@ class Compiler {
 
   std::string compiler_path = SYCL_CXX_COMPILER;
   std::string prefix_dir = "./source";
-  std::string cxx_compile_options = "-std=c++17 -O3 -fPIC -shared -ldl -fbracket-depth=1030"; // set 1030 for constant op, default max bracket-depth = 256";
+  std::string cxx_compile_options =
+      "-std=c++17 -O3 -fPIC -shared -ldl -fbracket-depth=1030";  // set 1030 for
+                                                                 // constant op,
+                                                                 // default max
+                                                                 // bracket-depth
+                                                                 // = 256";
   std::string device_arch_options;
-  int compile_num=0;
+  int compile_num = 0;
   std::string source_file_path;
   std::string shared_lib_path;
 };

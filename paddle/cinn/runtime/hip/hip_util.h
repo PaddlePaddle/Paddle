@@ -18,7 +18,6 @@
 #include <hip/hip_runtime.h>
 #include <hip/hiprtc.h>
 
-
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
@@ -34,7 +33,7 @@ namespace hip {
     }                                                            \
   }
 
-#define HIP_DRIVER_CALL(func)                                                \
+#define HIP_DRIVER_CALL(func)                                                 \
   {                                                                           \
     auto status = func;                                                       \
     if (status != hipSuccess) {                                               \
@@ -45,11 +44,11 @@ namespace hip {
   }
 
 #define HIPRTC_CALL(func)                                             \
-  {                                                                  \
-    auto status = func;                                              \
+  {                                                                   \
+    auto status = func;                                               \
     if (status != HIPRTC_SUCCESS) {                                   \
       LOG(FATAL) << "NVRTC Error : " << hiprtcGetErrorString(status); \
-    }                                                                \
+    }                                                                 \
   }
 
 const int kHIPMaxCards{8};
@@ -61,16 +60,15 @@ const int kHIPMaxCards{8};
  * @param args an array of cinn_pod_value_ts(consists of scalars and buffers).
  */
 void cinn_call_hip_kernel(void* kernel_fn,
-                           void* v_args,
-                           int num_args,
-                           int grid_x,
-                           int grid_y,
-                           int grid_z,
-                           int block_x,
-                           int block_y,
-                           int block_z,
-                           void* stream);
-
+                          void* v_args,
+                          int num_args,
+                          int grid_x,
+                          int grid_y,
+                          int grid_z,
+                          int block_x,
+                          int block_y,
+                          int block_z,
+                          void* stream);
 
 }  // namespace hip
 }  // namespace runtime

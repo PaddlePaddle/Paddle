@@ -1,11 +1,26 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/cinn/runtime/hip/hip_backend_api.h"
+#include <glog/logging.h>
 #include <hip/hip_runtime.h>
 #include "paddle/cinn/runtime/hip/hip_util.h"
-#include <glog/logging.h>
 
 namespace cinn {
 namespace runtime {
 namespace hip {
+
 HIPBackendAPI* HIPBackendAPI::Global() {
   static auto* inst = new HIPBackendAPI();
   return inst;
@@ -21,8 +36,8 @@ int HIPBackendAPI::get_device() {
   return device_id;
 }
 
-std::variant<int, std::array<int, 3>> HIPBackendAPI::get_device_property(DeviceProperty device_property,
-                            std::optional<int> device_id) {
+std::variant<int, std::array<int, 3>> HIPBackendAPI::get_device_property(
+    DeviceProperty device_property, std::optional<int> device_id) {
   int dev_index = device_id.value_or(get_device());
   std::variant<int, std::array<int, 3>> rv_variant;
   int rv = -1;
@@ -30,42 +45,61 @@ std::variant<int, std::array<int, 3>> HIPBackendAPI::get_device_property(DeviceP
     case DeviceProperty::MaxBlockDims: {
       hipDeviceProp_t prop_;
       HIP_CALL(hipGetDeviceProperties(&prop_, dev_index));
-      rv_variant = std::array<int, 3>{prop_.maxThreadsDim[0], prop_.maxThreadsDim[1], prop_.maxThreadsDim[2]};
+      rv_variant = std::array<int, 3>{prop_.maxThreadsDim[0],
+                                      prop_.maxThreadsDim[1],
+                                      prop_.maxThreadsDim[2]};
       break;
     }
     case DeviceProperty::MaxGridDims: {
       hipDeviceProp_t prop_;
       HIP_CALL(hipGetDeviceProperties(&prop_, dev_index));
-      rv_variant = std::array<int, 3>{prop_.maxGridSize[0], prop_.maxGridSize[1], prop_.maxGridSize[2]};
+      rv_variant = std::array<int, 3>{
+          prop_.maxGridSize[0], prop_.maxGridSize[1], prop_.maxGridSize[2]};
       break;
     }
     case DeviceProperty::MaxSharedMemoryPerBlock: {
-      HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMaxSharedMemoryPerBlock, dev_index));
+      HIP_CALL(hipDeviceGetAttribute(
+          &rv,
+          hipDeviceAttribute_t::hipDeviceAttributeMaxSharedMemoryPerBlock,
+          dev_index));
       rv_variant = rv;
       break;
     }
     case DeviceProperty::MaxThreadsPerBlock: {
-      HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerBlock, dev_index));
+      HIP_CALL(hipDeviceGetAttribute(
+          &rv,
+          hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerBlock,
+          dev_index));
       rv_variant = rv;
       break;
     }
     case DeviceProperty::MaxThreadsPerSM: {
-      HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerMultiProcessor, dev_index));
+      HIP_CALL(hipDeviceGetAttribute(
+          &rv,
+          hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerMultiProcessor,
+          dev_index));
       rv_variant = rv;
       break;
     }
     case DeviceProperty::MultiProcessorCount: {
-      HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMultiprocessorCount, dev_index));
+      HIP_CALL(hipDeviceGetAttribute(
+          &rv,
+          hipDeviceAttribute_t::hipDeviceAttributeMultiprocessorCount,
+          dev_index));
       rv_variant = rv;
       break;
     }
-    case DeviceProperty:: MaxBlocksPerSM: {
-      HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerMultiProcessor, dev_index));
+    case DeviceProperty::MaxBlocksPerSM: {
+      HIP_CALL(hipDeviceGetAttribute(
+          &rv,
+          hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerMultiProcessor,
+          dev_index));
       rv_variant = rv;
       break;
     }
     case DeviceProperty::WarpSize: {
-      HIP_CALL(hipDeviceGetAttribute(&rv, hipDeviceAttribute_t::hipDeviceAttributeWarpSize, dev_index));
+      HIP_CALL(hipDeviceGetAttribute(
+          &rv, hipDeviceAttribute_t::hipDeviceAttributeWarpSize, dev_index));
       rv_variant = rv;
       break;
     }
@@ -75,24 +109,24 @@ std::variant<int, std::array<int, 3>> HIPBackendAPI::get_device_property(DeviceP
   return rv_variant;
 }
 
-
-void* HIPBackendAPI::malloc(size_t numBytes){
+void* HIPBackendAPI::malloc(size_t numBytes) {
   void* dev_mem = nullptr;
   HIP_CALL(hipMalloc(&dev_mem, numBytes));
   return dev_mem;
 }
 
-void HIPBackendAPI::free(void* data) {
-  HIP_CALL(hipFree(data));
-}
+void HIPBackendAPI::free(void* data) { HIP_CALL(hipFree(data)); }
 
-void HIPBackendAPI::memset(void* data, int value, size_t numBytes){
+void HIPBackendAPI::memset(void* data, int value, size_t numBytes) {
   HIP_CALL(hipMemset(data, value, numBytes));
 }
 
-void HIPBackendAPI::memcpy(void* dest, const void* src, size_t numBytes, MemcpyType type){
+void HIPBackendAPI::memcpy(void* dest,
+                           const void* src,
+                           size_t numBytes,
+                           MemcpyType type) {
   hipMemcpyKind copy_kind;
-  switch(type){
+  switch (type) {
     case MemcpyType::HostToHost:
       copy_kind = hipMemcpyHostToHost;
       break;
@@ -109,11 +143,9 @@ void HIPBackendAPI::memcpy(void* dest, const void* src, size_t numBytes, MemcpyT
   HIP_CALL(hipMemcpy(dest, src, numBytes, copy_kind));
 }
 
-void HIPBackendAPI::device_sync(){
-  HIP_CALL(hipDeviceSynchronize());
-}
+void HIPBackendAPI::device_sync() { HIP_CALL(hipDeviceSynchronize()); }
 
-void HIPBackendAPI::stream_sync(void* stream){
+void HIPBackendAPI::stream_sync(void* stream) {
   HIP_CALL(hipStreamSynchronize(static_cast<hipStream_t>(stream)));
 }
 

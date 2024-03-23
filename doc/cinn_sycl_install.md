@@ -139,7 +139,3 @@ SYCL_target = common.SYCLTarget()
 #HIP_target = common.DefaultROCMTarget()
 build_run(SYCL_target)
 ```
-
-
-
-

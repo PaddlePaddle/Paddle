@@ -30,24 +30,27 @@ using cinn::backends::syclrtc::NUM;
 namespace cinn {
 namespace backends {
 
-const std::string CodeGenSYCL_Dev::source_header_ =
-    R"(#include <sycl/sycl.hpp>
+const std::string &CodeGenSYCL_Dev::GetSourceHeader() {
+  std::string source_header =
+      R"(#include <sycl/sycl.hpp>
 #include "cinn_sycl_runtime_source.h"
 typedef sycl::half float16;
 )";
-
-const std::string &CodeGenSYCL_Dev::GetSourceHeader() { return source_header_; }
+  return source_header;
+}
 
 CodeGenSYCL_Dev::CodeGenSYCL_Dev(Target target) : CodeGenC(target) {}
 
-std::string CodeGenSYCL_Dev::Compile(const ir::Module &module, bool for_syclrtc) {
+std::string CodeGenSYCL_Dev::Compile(const ir::Module &module,
+                                     bool for_syclrtc) {
   for_syclrtc_ = for_syclrtc;
   auto source = Compile(module, OutputKind::CImpl);
 
   return source;
 }
 
-void CodeGenSYCL_Dev::Compile(const ir::Module &module, const Outputs &outputs) {
+void CodeGenSYCL_Dev::Compile(const ir::Module &module,
+                              const Outputs &outputs) {
   LOG(FATAL) << "CINN_SYCL_codegen_NOT_IMPLEMENTED";
 }
 
@@ -93,7 +96,9 @@ void CodeGenSYCL_Dev::Visit(const ir::_LoweredFunc_ *op) {
   str_ += "// CodeGenSYCL: NOTE: Auto-generated packed function\n";
   str_ += "void ";
   str_ += op->name;
-  str_ += "(sycl::queue &Q, sycl::range<3> dimGrid, sycl::range<3> dimBlock, void** void_args) {\n";
+  str_ +=
+      "(sycl::queue &Q, sycl::range<3> dimGrid, sycl::range<3> dimBlock, "
+      "void** void_args) {\n";
   IncIndent();
   // read void_args
   PrintFunctionDeclaration(op);
@@ -101,7 +106,9 @@ void CodeGenSYCL_Dev::Visit(const ir::_LoweredFunc_ *op) {
   str_ += "Q.submit([&](sycl::handler &h) {\n";
   IncIndent();
   DoIndent();
-  str_ += "h.parallel_for<class " + GenerateKernelName(op) + ">(sycl::nd_range<3>(dimGrid * dimBlock, dimBlock), [=](sycl::nd_item<3> item) "
+  str_ += "h.parallel_for<class " + GenerateKernelName(op) +
+          ">(sycl::nd_range<3>(dimGrid * dimBlock, dimBlock), "
+          "[=](sycl::nd_item<3> item) "
           "[[intel::kernel_args_restrict]]";
   if (op->cuda_axis_info.valid()) {
     str_ += "[[intel::max_work_group_size(";
@@ -125,10 +132,11 @@ void CodeGenSYCL_Dev::Visit(const ir::_LoweredFunc_ *op) {
 }
 
 void CodeGenSYCL_Dev::Visit(const ir::_Var_ *op) {
-  if (utils::Startswith(op->name, "threadIdx") || utils::Startswith(op->name, "blockIdx")) {
-    if (utils::Startswith(op->name, "threadIdx")){
+  if (utils::Startswith(op->name, "threadIdx") ||
+      utils::Startswith(op->name, "blockIdx")) {
+    if (utils::Startswith(op->name, "threadIdx")) {
       str_ += "(int)item.get_local_id(";
-    }else{
+    } else {
       str_ += "(int)item.get_group(";
     }
     if (utils::Endswith(op->name, "x")) {
@@ -171,10 +179,11 @@ void CodeGenSYCL_Dev::PrintFunctionBody(const ir::_LoweredFunc_ *op) {
   std::vector<Expr> new_body;
 
   auto alloca_temp_buffers = op->PrepareAllocTempBufferExprs();
-  auto temp_buffer_alias   = GenerateBufferAliasExprs(op, op->temp_bufs);
-  auto alis_var_exprs      = op->CudaAliasVarExprs();
+  auto temp_buffer_alias = GenerateBufferAliasExprs(op, op->temp_bufs);
+  auto alis_var_exprs = op->CudaAliasVarExprs();
 
-#define APPEND_TO_NEW_BODY(field__) new_body.insert(std::end(new_body), std::begin(field__), std::end(field__));
+#define APPEND_TO_NEW_BODY(field__) \
+  new_body.insert(std::end(new_body), std::begin(field__), std::end(field__));
   APPEND_TO_NEW_BODY(alloca_temp_buffers)
   APPEND_TO_NEW_BODY(temp_buffer_alias)
   APPEND_TO_NEW_BODY(alis_var_exprs)
@@ -191,9 +200,7 @@ void CodeGenSYCL_Dev::PrintFunctionBody(const ir::_LoweredFunc_ *op) {
   IrPrinter::Visit(func_body);
 }
 
-
 void CodeGenSYCL_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
-
   for (int i = 0; i < op->args.size(); i++) {
     DoIndent();
     auto &arg = op->args[i];
@@ -203,7 +210,7 @@ void CodeGenSYCL_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
       if (arg.is_input()) str_ += "const ";
       str_ += GetTypeRepr(arg.buffer_arg()->dtype);
       str_ += "* ";
-      //str_ += kCKeywordRestrict;
+      // str_ += kCKeywordRestrict;
       str_ += " ";
       str_ += ir::BufferGetTensorName(arg.buffer_arg().As<ir::_Buffer_>());
       str_ += " = (";
@@ -211,7 +218,7 @@ void CodeGenSYCL_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
       str_ += "* ";
     } else if (arg.is_var()) {
       if (arg.var_arg()->type().is_cpp_handle()) {
-        //str_ += kCKeywordRestrict;
+        // str_ += kCKeywordRestrict;
       }
       str_ += GetTypeRepr(arg.type());
       str_ += " ";
@@ -280,22 +287,21 @@ void CodeGenSYCL_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     str_ += " ]";
   };
   switch (buffer->memory_type) {
-    case ir::MemoryType::GPUShared:
-      {
-        str_ += "auto ";
-        str_ += buffer->name;
-        str_ += " = *sycl::ext::oneapi::group_local_memory<";
-        str_ += GetTypeRepr(buffer->dtype);
-        str_ += "[ ";
-        Expr buffer_size(1);
-        for (int i = 0; i < buffer->shape.size(); i++) {
-          buffer_size = buffer_size * buffer->shape[i];
-        }
-        optim::Simplify(&buffer_size);
-        IrPrinter::Visit(buffer_size);
-        str_ += " ]>(item.get_group())";
-        break;
+    case ir::MemoryType::GPUShared: {
+      str_ += "auto ";
+      str_ += buffer->name;
+      str_ += " = *sycl::ext::oneapi::group_local_memory<";
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += "[ ";
+      Expr buffer_size(1);
+      for (int i = 0; i < buffer->shape.size(); i++) {
+        buffer_size = buffer_size * buffer->shape[i];
       }
+      optim::Simplify(&buffer_size);
+      IrPrinter::Visit(buffer_size);
+      str_ += " ]>(item.get_group())";
+      break;
+    }
 
     case ir::MemoryType::GPULocal:
       print_gpu_memory("");
@@ -354,7 +360,7 @@ void CodeGenSYCL_Dev::Visit(const ir::Call *op) {
   // sycl need parameter nd_item
   if ((op->name.find("cinn_block_reduce") != std::string::npos) ||
       (op->name.find("cinn_warp_reduce") != std::string::npos)) {
-    str_ +=  ", item";
+    str_ += ", item";
   }
 
   str_ += ")";
@@ -371,7 +377,7 @@ void CodeGenSYCL_Dev::Visit(const ir::Let *op) {
     str_ += GetTypeRepr(op->type());
     if (op->type().is_cpp_handle()) {
       str_ += " ";
-      //str_ += kCKeywordRestrict;
+      // str_ += kCKeywordRestrict;
     }
     str_ += " ";
     IrPrinter::Visit(op->symbol);
@@ -445,7 +451,7 @@ void CodeGenSYCL_Dev::Visit(const ir::Store *op) {
   }
 }
 
-std::string CodeGenSYCL_Dev::GenerateKernelName(const ir::_LoweredFunc_ *op){
+std::string CodeGenSYCL_Dev::GenerateKernelName(const ir::_LoweredFunc_ *op) {
   std::string kernel_name = "space" + std::to_string(NUM::getNum());
   kernel_name += "_";
   kernel_name += op->name;

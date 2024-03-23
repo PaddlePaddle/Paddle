@@ -27,7 +27,6 @@ class HeaderGeneratorBase {
   virtual const std::vector<const char*>& include_names() const = 0;
 };
 
-
 class JitSafeHeaderGenerator : public HeaderGeneratorBase {
  public:
   static HeaderGeneratorBase& GetInstance();

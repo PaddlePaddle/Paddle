@@ -12,26 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/runtime/backend_api.h"
+#pragma once
+
 #include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/runtime/backend_api.h"
 
 namespace cinn {
 namespace runtime {
 namespace cuda {
+
 class CUDABackendAPI final : public BackendAPI {
  public:
-  CUDABackendAPI(){};
-  ~CUDABackendAPI(){};
+  CUDABackendAPI() {}
+  ~CUDABackendAPI() {}
   static CUDABackendAPI* Global();
   void set_device(int device_id) final;
   int get_device() final;
   // void set_active_devices(std::vector<int> device_ids) final;
-  std::variant<int, std::array<int, 3>> get_device_property(DeviceProperty device_property,
-                            std::optional<int> device_id = std::nullopt) final;
+  std::variant<int, std::array<int, 3>> get_device_property(
+      DeviceProperty device_property,
+      std::optional<int> device_id = std::nullopt) final;
   void* malloc(size_t numBytes) final;
   void free(void* data) final;
   void memset(void* data, int value, size_t numBytes) final;
-  void memcpy(void* dest, const void* src, size_t numBytes, MemcpyType type) final;
+  void memcpy(void* dest,
+              const void* src,
+              size_t numBytes,
+              MemcpyType type) final;
   void device_sync() final;
   void stream_sync(void* stream) final;
 };

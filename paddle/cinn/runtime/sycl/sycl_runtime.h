@@ -1,16 +1,33 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
-#include <sycl/sycl.hpp>
-#include <glog/logging.h>
 #include <mutex>
 #include <string>
 #include <vector>
+
+#include <sycl/sycl.hpp>
+
+#include "glog/logging.h"
 #include "paddle/cinn/common/target.h"
-using namespace cinn::common;
+
+using cinn::common::Target;
 
 inline const char* SYCLGetErrorString(std::error_code error_code) {
   sycl::errc error_code_value = static_cast<sycl::errc>(error_code.value());
-  switch(error_code_value){
+  switch (error_code_value) {
     case sycl::errc::success:
       return "SUCCESS";
     case sycl::errc::runtime:
@@ -42,7 +59,7 @@ inline const char* SYCLGetErrorString(std::error_code error_code) {
     case sycl::errc::backend_mismatch:
       return "BACKEND MISMATCH";
     default:
-        return "";
+      return "";
   }
 }
 
@@ -50,15 +67,17 @@ inline const char* SYCLGetErrorString(std::error_code error_code) {
  * \brief Protected SYCL call
  * \param func Expression to call.
  */
-#define SYCL_CALL(func)                                                       \
-  {                                                                           \
-    try{                                                                      \
-      func;                                                                   \
-    }catch(const sycl::exception &e){                                         \
-      CHECK(e.code() == sycl::errc::success) << "SYCL Error, code=" << ": " << SYCLGetErrorString(e.code()) <<", message:"<< e.what();;\
-    }                                                                         \
+#define SYCL_CALL(func)                                                        \
+  {                                                                            \
+    try {                                                                      \
+      func;                                                                    \
+    } catch (const sycl::exception& e) {                                       \
+      CHECK(e.code() == sycl::errc::success)                                   \
+          << "SYCL Error, code="                                               \
+          << ": " << SYCLGetErrorString(e.code()) << ", message:" << e.what(); \
+      ;                                                                        \
+    }                                                                          \
   }
-
 
 /*!
  * \brief Process global SYCL workspace.
@@ -87,11 +106,11 @@ class SYCLWorkspace {
   std::mutex mu;
   // destructor
   ~SYCLWorkspace() {
-    for(auto queue : active_queues){
+    for (auto queue : active_queues) {
       SYCL_CALL(queue->wait_and_throw());
       delete queue;
     }
-    for(auto context : active_contexts){
+    for (auto context : active_contexts) {
       delete context;
     }
   }
@@ -101,9 +120,8 @@ class SYCLWorkspace {
   void Init(const Target::Arch arch, const std::string& platform_name = "");
   // set active devices
   void SetActiveDevices(std::vector<int> deviceIds);
-  void* malloc(size_t nbytes, int device_id=0);
-  void free(void* data, int device_id=0);
-  void queueSync(int queue_id=0);
-  void memcpy(void* dest, const void* src, size_t nbytes, int queue_id=0);
-
+  void* malloc(size_t nbytes, int device_id = 0);
+  void free(void* data, int device_id = 0);
+  void queueSync(int queue_id = 0);
+  void memcpy(void* dest, const void* src, size_t nbytes, int queue_id = 0);
 };

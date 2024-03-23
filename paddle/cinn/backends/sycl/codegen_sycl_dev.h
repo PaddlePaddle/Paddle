@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -94,18 +95,17 @@ class CodeGenSYCL_Dev : public CodeGenC {
    * n);`
    */
   void PrintFunctionDeclaration(const ir::_LoweredFunc_* op);
-  void PrintFunctionBody(const ir::_LoweredFunc_ *op);
+  void PrintFunctionBody(const ir::_LoweredFunc_* op);
 
  private:
-  //generate unique kernel name, which is namespace + op->name.
-  std::string GenerateKernelName(const ir::_LoweredFunc_ *op);
+  // generate unique kernel name, which is namespace + op->name.
+  std::string GenerateKernelName(const ir::_LoweredFunc_* op);
   Target target_;
   bool for_syclrtc_{false};
   // names of vectorized tensors from `Let` statments where dtypes of the
   // tensors are customized_type with customized_type::kcuda_builtin_vector_t
   // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
-  static const std::string source_header_;
 };
 
 }  // namespace backends

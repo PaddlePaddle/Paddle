@@ -10,7 +10,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.
+// limitations under the License./
 
 #include "paddle/cinn/backends/hip/codegen_hip_dev.h"
 
@@ -32,8 +32,6 @@ const std::string CodeGenHIP_Dev::source_header_ =  // NOLINT
     R"(#include <hip/hip_runtime.h>
 )";
 
-// #include "cinn_hip_runtime_source.h"
-
 const std::string &CodeGenHIP_Dev::GetSourceHeader() { return source_header_; }
 
 CodeGenHIP_Dev::CodeGenHIP_Dev(Target target) : CodeGenC(target) {}
@@ -45,8 +43,7 @@ std::string CodeGenHIP_Dev::Compile(const ir::Module &module, bool for_hiprtc) {
   return source;
 }
 
-void CodeGenHIP_Dev::Compile(const ir::Module &module,
-                              const Outputs &outputs) {
+void CodeGenHIP_Dev::Compile(const ir::Module &module, const Outputs &outputs) {
   ir::ir_utils::IrVerify(Expr(module));
 
   CodeGenC::inline_builtin_codes_ = false;
@@ -218,7 +215,7 @@ void CodeGenHIP_Dev::PrintFuncArg(const ir::Argument &arg) {
 void CodeGenHIP_Dev::PrintBuiltinCodes() {}
 
 std::string CodeGenHIP_Dev::Compile(const ir::Module &module,
-                                     CodeGenC::OutputKind output_kind) {
+                                    CodeGenC::OutputKind output_kind) {
   if (output_kind == OutputKind::CHeader) {
     GenerateHeaderFile(module);
   } else if (output_kind == OutputKind::CImpl) {
@@ -351,8 +348,8 @@ void CodeGenHIP_Dev::Visit(const ir::Let *op) {
 }
 
 bool CodeGenHIP_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
-                                               ir::Expr index_expr,
-                                               bool is_store) {
+                                              ir::Expr index_expr,
+                                              bool is_store) {
   static constexpr char index2suffix[8] = {
       'x', 'y', 'z', 'w', 'v', 'u', 't', 's'};
 

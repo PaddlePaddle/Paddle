@@ -14,36 +14,44 @@
 
 #include "paddle/cinn/runtime/backend_api.h"
 #include <glog/logging.h>
-#include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/runtime/flags.h"
+
 using cinn::backends::GlobalSymbolRegistry;
 
 namespace cinn {
 namespace runtime {
-BackendAPI* BackendAPI::get_backend(const common::Target target){
+BackendAPI* BackendAPI::get_backend(const common::Target target) {
   return get_backend(target.language);
 }
 
 BackendAPI* BackendAPI::get_backend(common::Target::Language target_language) {
   CheckCompileWith(target_language);
-  void * temp_backend_api;
-  switch(target_language){
+  void* temp_backend_api;
+  switch (target_language) {
     case common::Target::Language::cuda:
-      temp_backend_api = GlobalSymbolRegistry::Global().Lookup("backend_api.cuda");
-      CHECK(temp_backend_api != nullptr) << "global symbol (backend_api.cuda) not found!";
+      temp_backend_api =
+          GlobalSymbolRegistry::Global().Lookup("backend_api.cuda");
+      CHECK(temp_backend_api != nullptr)
+          << "global symbol (backend_api.cuda) not found!";
       break;
     case common::Target::Language::sycl:
-      temp_backend_api = GlobalSymbolRegistry::Global().Lookup("backend_api.sycl");
-      CHECK(temp_backend_api != nullptr) << "global symbol (backend_api.sycl) not found!";
+      temp_backend_api =
+          GlobalSymbolRegistry::Global().Lookup("backend_api.sycl");
+      CHECK(temp_backend_api != nullptr)
+          << "global symbol (backend_api.sycl) not found!";
       break;
     case common::Target::Language::hip:
-      temp_backend_api = GlobalSymbolRegistry::Global().Lookup("backend_api.hip");
-      CHECK(temp_backend_api != nullptr) << "global symbol (backend_api.hip) not found!";
+      temp_backend_api =
+          GlobalSymbolRegistry::Global().Lookup("backend_api.hip");
+      CHECK(temp_backend_api != nullptr)
+          << "global symbol (backend_api.hip) not found!";
       break;
     case common::Target::Language::bangc:
-      LOG(FATAL) << "Target(" << target_language <<") is not support get_backend now.";
+      LOG(FATAL) << "Target(" << target_language
+                 << ") is not support get_backend now.";
     default:
-      LOG(FATAL) << "Target(" << target_language <<") is not supported now.";
+      LOG(FATAL) << "Target(" << target_language << ") is not supported now.";
   }
   return reinterpret_cast<BackendAPI*>(temp_backend_api);
 }
