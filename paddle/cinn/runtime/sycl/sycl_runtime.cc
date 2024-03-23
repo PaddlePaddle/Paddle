@@ -1,4 +1,19 @@
-#include <paddle/cinn/runtime/sycl/sycl_runtime.h>
+// Copyright (c) 2024 CINN Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/cinn/runtime/sycl/sycl_runtime.h"
+
 #include <iostream>
 
 SYCLWorkspace* SYCLWorkspace::Global() {
@@ -6,13 +21,14 @@ SYCLWorkspace* SYCLWorkspace::Global() {
   return inst;
 }
 
-void SYCLWorkspace::Init(const Target::Arch arch, const std::string& platform_name) {
+void SYCLWorkspace::Init(const Target::Arch arch,
+                         const std::string& platform_name) {
   if (initialized_) return;
   std::lock_guard<std::mutex> lock(this->mu);
 
   // look for matched platform
   bool have_platform = false;
-  auto platforms     = sycl::platform::get_platforms();
+  auto platforms = sycl::platform::get_platforms();
   std::string platform_key;
   switch (arch) {
     case Target::Arch::NVGPU:
@@ -31,17 +47,19 @@ void SYCLWorkspace::Init(const Target::Arch arch, const std::string& platform_na
     std::string name = platform.get_info<sycl::info::platform::name>();
     // neither NVIDIA CUDA BACKEND nor AMD HIP BACKEND nor Intel Level-Zero
     if (name.find(platform_key) == std::string::npos) continue;
-    std::vector<sycl::device> devices = platform.get_devices(sycl::info::device_type::gpu);
+    std::vector<sycl::device> devices =
+        platform.get_devices(sycl::info::device_type::gpu);
     this->platforms.push_back(platform);
     this->devices.insert(this->devices.end(), devices.begin(), devices.end());
     this->platform_names.push_back(platform_name);
     have_platform = true;
   }
   if (!have_platform) {
-    LOG(FATAL) << "No valid gpu device/platform matched given existing options ...";
+    LOG(FATAL)
+        << "No valid gpu device/platform matched given existing options ...";
     return;
   }
-  if(this->active_device_ids.size() == 0){
+  if (this->active_device_ids.size() == 0) {
     // default device: 0
     std::vector<int> devicesIds = {0};
     this->SetActiveDevices(devicesIds);
@@ -49,7 +67,7 @@ void SYCLWorkspace::Init(const Target::Arch arch, const std::string& platform_na
   initialized_ = true;
 }
 
-void SYCLWorkspace::SetActiveDevices(std::vector<int> deviceIds){
+void SYCLWorkspace::SetActiveDevices(std::vector<int> deviceIds) {
   this->active_device_ids = deviceIds;
   this->active_contexts.clear();
   this->active_queues.clear();
@@ -59,36 +77,41 @@ void SYCLWorkspace::SetActiveDevices(std::vector<int> deviceIds){
       try {
         std::rethrow_exception(e);
       } catch (const sycl::exception& e) {
-        std::cout << "Caught asynchronous SYCL exception:\n" << e.what() << std::endl;
+        std::cout << "Caught asynchronous SYCL exception:\n"
+                  << e.what() << std::endl;
       }
     }
   };
   sycl::property_list q_prop{sycl::property::queue::in_order()};
-  for(int deviceId : deviceIds){
-    if(deviceId > this->devices.size()-1){
-      LOG(FATAL) << "set valid device id! device id:" << deviceId << " > max device id:"<< this->devices.size()-1;
+  for (int deviceId : deviceIds) {
+    if (deviceId > this->devices.size() - 1) {
+      LOG(FATAL) << "set valid device id! device id:" << deviceId
+                 << " > max device id:" << this->devices.size() - 1;
     }
     // create context and queue
-    sycl::context* ctx = new sycl::context(this->devices[deviceId], exception_handler);
+    sycl::context* ctx =
+        new sycl::context(this->devices[deviceId], exception_handler);
     this->active_contexts.push_back(ctx);
     // one device one queue
-    sycl::queue* queue = new sycl::queue(*ctx, this->devices[deviceId], q_prop);  // In order queue
+    sycl::queue* queue = new sycl::queue(
+        *ctx, this->devices[deviceId], q_prop);  // In order queue
     this->active_queues.push_back(queue);
   }
   this->active_events.resize(this->active_queues.size());
-  VLOG(1) << "active devices size : " << this->active_queues.size() << std::endl;
+  VLOG(1) << "active devices size : " << this->active_queues.size()
+          << std::endl;
   // delete SYCLWorkspace::Global();
 }
 
-void* SYCLWorkspace::malloc(size_t nbytes, int device_id){
-    void* data;
-    SYCL_CALL(data = sycl::malloc_device(nbytes, *this->active_queues[device_id]))
-    if(data == nullptr)
-      LOG(ERROR) << "allocate sycl device memory failure!"<<std::endl;
-    return data;
+void* SYCLWorkspace::malloc(size_t nbytes, int device_id) {
+  void* data;
+  SYCL_CALL(data = sycl::malloc_device(nbytes, *this->active_queues[device_id]))
+  if (data == nullptr)
+    LOG(ERROR) << "allocate sycl device memory failure!" << std::endl;
+  return data;
 }
 
-void SYCLWorkspace::free(void* data, int device_id){
+void SYCLWorkspace::free(void* data, int device_id) {
   SYCL_CALL(sycl::free(data, *this->active_queues[device_id]));
 }
 
@@ -96,6 +119,9 @@ void SYCLWorkspace::queueSync(int queue_id) {
   SYCL_CALL(this->active_queues[queue_id]->wait_and_throw());
 }
 
-void SYCLWorkspace::memcpy(void* dest, const void* src, size_t nbytes, int queue_id) {
+void SYCLWorkspace::memcpy(void* dest,
+                           const void* src,
+                           size_t nbytes,
+                           int queue_id) {
   SYCL_CALL(this->active_queues[queue_id]->memcpy(dest, src, nbytes).wait());
 }

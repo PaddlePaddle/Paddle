@@ -1,5 +1,20 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
 #include <glog/logging.h>
+
 namespace cinn {
 namespace runtime {
 namespace Sycl {
@@ -15,7 +30,8 @@ Target::Arch SYCLBackendAPI::Init(Target::Arch arch) {
   switch (arch) {
     case Target::Arch::Unk:
       SYCL_CALL(backend =
-                    sycl::device::get_devices(sycl::info::device_type::gpu)[0].get_backend());
+                    sycl::device::get_devices(sycl::info::device_type::gpu)[0]
+                        .get_backend());
       break;
     case Target::Arch::NVGPU:
       backend = sycl::backend::ext_oneapi_cuda;
@@ -89,22 +105,27 @@ void SYCLBackendAPI::set_device(int device_id) {
   this->now_device_id = device_id;
 }
 
-int SYCLBackendAPI::get_device(){
-  return this->now_device_id;
-}
+int SYCLBackendAPI::get_device() { return this->now_device_id; }
 
-std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(DeviceProperty device_property,
-                            std::optional<int> device_id) {
+std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(
+    DeviceProperty device_property, std::optional<int> device_id) {
   int index = device_id.value_or(this->now_device_id);
   std::variant<int, std::array<int, 3>> rv;
   switch (device_property) {
     case DeviceProperty::MaxBlockDims: {
-      sycl::id<3> max_work_item_sizes = this->devices[index].get_info<sycl::info::device::max_work_item_sizes<3>>();
-      rv = std::array<int, 3>{max_work_item_sizes[2], max_work_item_sizes[1], max_work_item_sizes[0]};
+      sycl::id<3> max_work_item_sizes =
+          this->devices[index]
+              .get_info<sycl::info::device::max_work_item_sizes<3>>();
+      rv = std::array<int, 3>{max_work_item_sizes[2],
+                              max_work_item_sizes[1],
+                              max_work_item_sizes[0]};
       break;
     }
     case DeviceProperty::MaxGridDims: {
-      //sycl::id<3> grid_dims = this->devices[index].get_info<sycl::ext::oneapi::experimental::info::device::max_work_groups<3>>() / this->devices[index].get_info<sycl::info::device::max_work_item_sizes<3>>();
+      // sycl::id<3> grid_dims =
+      // this->devices[index].get_info<sycl::ext::oneapi::experimental::info::device::max_work_groups<3>>()
+      // /
+      // this->devices[index].get_info<sycl::info::device::max_work_item_sizes<3>>();
       rv = std::array<int, 3>{2097151, 2097151, 2097151};
       break;
     }
@@ -113,25 +134,30 @@ std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(Device
       break;
     }
     case DeviceProperty::MaxThreadsPerBlock: {
-      rv = this->devices[index].get_info<sycl::info::device::max_work_group_size>();
+      rv = this->devices[index]
+               .get_info<sycl::info::device::max_work_group_size>();
       break;
     }
     case DeviceProperty::MaxThreadsPerSM: {
       // LOG(FATAL) << "SYCL Not supported device property : MaxThreadsPerSM !";
-      rv = this->devices[index].get_info<sycl::info::device::max_work_group_size>();
+      rv = this->devices[index]
+               .get_info<sycl::info::device::max_work_group_size>();
       break;
     }
     case DeviceProperty::MultiProcessorCount: {
-      rv = this->devices[index].get_info<sycl::info::device::max_compute_units>();
+      rv = this->devices[index]
+               .get_info<sycl::info::device::max_compute_units>();
       break;
     }
-    case DeviceProperty:: MaxBlocksPerSM: {
+    case DeviceProperty::MaxBlocksPerSM: {
       LOG(FATAL) << "SYCL Not supported device property : MaxBlocksPerSM !";
       break;
     }
     case DeviceProperty::WarpSize: {
-      std::vector<size_t> sub_group_sizes = this->devices[index].get_info<sycl::info::device::sub_group_sizes>();
-      size_t max_sub_group_size = *max_element(std::begin(sub_group_sizes), std::end(sub_group_sizes));
+      std::vector<size_t> sub_group_sizes =
+          this->devices[index].get_info<sycl::info::device::sub_group_sizes>();
+      size_t max_sub_group_size =
+          *max_element(std::begin(sub_group_sizes), std::end(sub_group_sizes));
       rv = static_cast<int>(max_sub_group_size);
       break;
     }
@@ -145,8 +171,9 @@ void* SYCLBackendAPI::malloc(size_t numBytes) {
   if (now_device_id == -1) set_device(0);
   VLOG(3) << "sycl malloc";
   void* dev_mem = nullptr;
-  SYCL_CALL(dev_mem = sycl::malloc_device(
-      numBytes, this->devices[now_device_id], *this->contexts[now_device_id]));
+  SYCL_CALL(dev_mem = sycl::malloc_device(numBytes,
+                                          this->devices[now_device_id],
+                                          *this->contexts[now_device_id]));
   if (dev_mem == nullptr)
     LOG(ERROR) << "allocate sycl device memory failure!" << std::endl;
   return dev_mem;
@@ -191,15 +218,15 @@ void SYCLBackendAPI::device_sync() {
   if (now_device_id == -1) set_device(0);
   for (auto queues_in_one_device : this->queues) {
     for (auto queue : queues_in_one_device) {
-      //LOG(INFO) << "sycl stream sync";
+      // LOG(INFO) << "sycl stream sync";
       SYCL_CALL(queue->wait_and_throw());
     }
   }
 }
 
-void SYCLBackendAPI::stream_sync(void* stream){
+void SYCLBackendAPI::stream_sync(void* stream) {
   VLOG(3) << "sycl stream sync";
-  SYCL_CALL(static_cast<sycl::queue *>(stream)->wait_and_throw());
+  SYCL_CALL(static_cast<sycl::queue*>(stream)->wait_and_throw());
 }
 
 sycl::queue* SYCLBackendAPI::get_now_queue() {
